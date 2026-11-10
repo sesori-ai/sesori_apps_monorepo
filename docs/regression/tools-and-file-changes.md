@@ -35,7 +35,10 @@ sub-agent parts, plus the signal that a tool changed files.
   red icon. A sub-agent shows its agent, then its task. An explicit `shellCommand` instead renders an underlined
   command disclosure: completed calls say “Ran”; other calls retain their
   pending/running/failed/cancelled/unknown status. Tool-name strings never decide
-  whether a shell panel is available.
+  whether a shell panel is available. Phone and desktop lead each settled state
+  with the same glyph: a tool's wrench, a shell's terminal in its line's colour,
+  a sub-agent's robot and a thought's still AI loader. Only a shell command is
+  underlined; a title, path or pattern stays plain text, and none is monospace.
 - Consecutive tool, thinking and sub-agent parts collapse into one summary row
   that reads only the count of its finished steps, “N steps”: every thinking
   block, tool call and sub-agent is one step, failed ones included, and a lone

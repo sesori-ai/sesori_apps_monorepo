@@ -3,7 +3,6 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
-import "package:theme_prego/theme/primitives/prego_color_primitives.g.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/remote_failure_view.dart";
@@ -19,9 +18,6 @@ class const SessionDetailNeedsYouCard({
   required final String request,
   required final String action,
 
-  /// Sets [request] as code under a pointer, as the review modal shows it.
-  required final bool requestIsCode,
-
   /// Whether this card's action leads. With two cards, only the first one does.
   required final bool leads,
   required final VoidCallback onPressed,
@@ -30,7 +26,6 @@ class const SessionDetailNeedsYouCard({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     const radius = PregoRadius.x2l;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, PregoSpacing.md),
@@ -40,47 +35,35 @@ class const SessionDetailNeedsYouCard({
         child: DecoratedBox(
           decoration: BoxDecoration(
             // The light token reads cream; its dark twin is a heavy brown.
-            color: isDark
-                ? prego.colors.fgWarningPrimary.withValues(alpha: pointer ? 0.07 : 0.1)
-                : prego.colors.bgWarningPrimary,
+            color: isDark ? prego.colors.fgWarningPrimary.withValues(alpha: 0.07) : prego.colors.bgWarningPrimary,
             borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: prego.colors.fgWarningPrimary.withValues(alpha: pointer ? 0.24 : 0.3)),
+            border: Border.all(color: prego.colors.fgWarningPrimary.withValues(alpha: 0.24)),
           ),
           child: Padding(
-            // Under a pointer the 8 pt button sits 8 pt into this 16 pt corner.
-            padding: pointer
-                ? const EdgeInsetsDirectional.fromSTEB(
-                    PregoSpacing.lg,
-                    PregoSpacing.md,
-                    PregoSpacing.md,
-                    PregoSpacing.md,
-                  )
-                : const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.lg),
+            // The button sits 8 pt into this 16 pt corner.
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              PregoSpacing.lg,
+              PregoSpacing.md,
+              PregoSpacing.md,
+              PregoSpacing.md,
+            ),
             child: Row(
               spacing: PregoSpacing.lg,
               children: [
-                Icon(icon, size: pointer ? 16 : PregoIconSize.md, color: prego.colors.fgWarningPrimary),
+                Icon(icon, size: 16, color: prego.colors.fgWarningPrimary),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         label,
-                        // The light token is 3.3:1 on cream; one step darker clears 4.5:1.
-                        style: prego.textTheme.textXs.medium.copyWith(
-                          color: pointer
-                              ? prego.colors.smallWarningText
-                              : isDark
-                              ? prego.colors.textWarningPrimary
-                              : PregoColorPrimitives.warning700,
-                        ),
+                        style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.smallWarningText),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         request,
-                        style: (pointer && requestIsCode ? prego.textTheme.code : prego.textTheme.textSm.medium)
-                            .copyWith(color: prego.colors.textPrimary),
+                        style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -88,16 +71,12 @@ class const SessionDetailNeedsYouCard({
                   ),
                 ),
                 ConstrainedBox(
-                  // Stacked cards' actions share a left edge under a pointer.
-                  constraints: BoxConstraints(minWidth: pointer ? 72 : 0),
+                  // Stacked cards' actions share a left edge.
+                  constraints: const BoxConstraints(minWidth: 72),
                   child: PregoButtonsSolid(
                     label: action,
-                    // A white pill in both themes; dark's grey secondary is lost on the tint.
-                    hierarchy: switch ((isDark, pointer)) {
-                      (_, true) when !leads => PregoButtonsSolidHierarchy.secondary,
-                      (true, _) || (false, true) => PregoButtonsSolidHierarchy.primaryAlt,
-                      (false, false) => PregoButtonsSolidHierarchy.secondary,
-                    },
+                    // Only the leading card's action is the solid one.
+                    hierarchy: leads ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary,
                     size: PregoButtonsSolidSize.sm,
                     onPressed: onPressed,
                   ),

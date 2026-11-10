@@ -326,6 +326,42 @@ void main() {
   });
 
   group("Agent picker", () {
+    for (final mode in PregoInteractionMode.values) {
+      testWidgets("leads with the robot under ${mode.name}, in the composer and read-only", (tester) async {
+        IconData pillIcon() => tester
+            .widget<PregoPickerButton>(
+              find.ancestor(of: find.text("aristotle-impl-review"), matching: find.byType(PregoPickerButton)),
+            )
+            .leadingIcon;
+        await tester.pumpWidget(
+          PregoInteractionScope(
+            mode: mode,
+            child: _buildApp(agents: _agents, onAgentSelected: (_) {}, readOnly: false, compact: true),
+          ),
+        );
+        expect(pillIcon(), TablerRegular.robot);
+
+        await tester.pumpWidget(
+          PregoInteractionScope(
+            mode: mode,
+            child: MaterialApp(
+              theme: ThemeData(extensions: [PregoDesignSystem.light]),
+              home: Scaffold(
+                body: ReadOnlyAgentModelPills(
+                  agents: _agents,
+                  agent: "aristotle-impl-review",
+                  providers: const [],
+                  model: null,
+                  compact: true,
+                ),
+              ),
+            ),
+          ),
+        );
+        expect(pillIcon(), TablerRegular.robot);
+      });
+    }
+
     testWidgets("appears only when there is more than one agent", (tester) async {
       final only = _agent(name: "aristotle-impl-review", description: "Reviews");
       for (final (agents, matcher) in [
