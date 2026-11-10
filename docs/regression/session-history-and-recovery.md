@@ -208,9 +208,11 @@ reconnect or restart.
   before reloaded tiles can link children), whether `session/list` lists child
   sessions as top-level sessions, and whether pre-capability transcripts carry
   `agentId`.
-- A failed Hermes turn shows exactly one error notice, never none and never
-  two, live and after any number of reloads, for every Hermes failure kind.
-  Hermes sends its reason as its final text and ends the turn normally, but
+- A failed Hermes turn shows exactly one error notice after any number of
+  reloads, never none and never two, for every Hermes failure kind. Unless the
+  model already streamed part of a reply, Hermes also sends its reason live, as
+  its final text, and ends the turn normally; after a streamed partial reply it
+  sends no failure text live, so the notice first appears on reload. Hermes
   saves a different fixed row ("Your request was not processed…", or "This turn
   did not complete. Some actions may already have run…" after a tool ran) in
   its own history. That row replays as the turn's notice, so a turn that failed
