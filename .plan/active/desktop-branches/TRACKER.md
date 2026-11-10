@@ -8,8 +8,8 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | 2 Fold the subtle desktop differences | Merged | #2475 | 10 items folded (2.11 only its radius), 2.15 done by #2460; 2.6, 2.13 and 2.11's fill and wrap dropped (below). 2.10 and 2.14, also dropped, were decided in round 3 and folded in step 4. 2.1 folded to the phone's values, not the pointer's. |
 | 3 Fold the transcript and needs-you card looks | Merged | #2479 | Decisions 1, 2, 3, 8 and 10 folded, nothing dropped (below). The bash step's label branch stays (2.6). Dark secondary button checked on the phone simulator: 6.29:1, shipped. |
 | 4 Fold the settings, alert, diff and picker looks | Merged | #2482 | Decisions 4, 5, 6, 7 and 9, and round 3's items 2.10 and 2.14; nothing dropped (measurements below). |
-| 5 Flag new interaction-mode reads | PR open | #2485 | 74 markers on the 74 reads (below): 70 `pending:` and 4 permanent. `unnecessary_ignore` does not report a stale plugin ignore, so the strict phase greps for stale markers. |
-| 6 Reconcile regression docs | Pending | | |
+| 5 Flag new interaction-mode reads | Merged | #2485 (`eb71881bf4`) | 74 markers on the 74 reads (below): 70 `pending:` and 4 permanent. `unnecessary_ignore` does not report a stale plugin ignore, so the strict phase greps for stale markers. |
+| 6 Reconcile regression docs | PR open | | Docs only, checked against `main` (below). The waiting-dot amber and #2486's needs-you button sentences left as they are. |
 | 7 Run the verification matrix and retire the plan | Pending | | |
 
 ## Outside the series
@@ -149,3 +149,23 @@ phase can decide.
 Stale markers: a `// ignore: no_slop_linter/avoid_interaction_mode_reads` above a line with no read gives no
 diagnostic, while a stale `// ignore: avoid_print` on the same line reports `unnecessary_ignore`. So a PR that
 removes a read must delete its marker by hand, and the strict phase greps for markers with no read under them.
+
+## Step 6 doc fixes
+
+Steps 2–4 had already updated the docs for what they folded. Step 6 read the ten docs and `multi-computer.md`
+against `main` and fixed what was still wrong:
+
+| Doc | Was | Now |
+| --- | --- | --- |
+| `tools-and-file-changes.md` | step rows: a 14 px line in secondary text on both | 14 px on the phone, 12.5 px on desktop; desktop's label in primary text (2.6, dropped) |
+| `tools-and-file-changes.md` | the Shell panel shares code blocks' inset | it shares the phone's; desktop code blocks are quieter with a hairline (`session-turns.md`) |
+| `tools-and-file-changes.md` | the phone is the only transcript surface | the phone and the desktop both show it |
+| `diffs-and-source-control.md` | the Changes counts fade, and a phone circle stretches into a pill | desktop's counts have their own slot and change at once (2.9); the phone has only the menu row |
+| `popup-alerts.md` | every alert fades in over 220 ms | adds desktop's solid within 40 ms, as `desktop-cockpit-shell.md` says |
+| `session-creation-and-options.md` | the harness name "over" a chevron | the mark, the name and the chevron in one row |
+| `multi-computer.md` | the entry sits under "Bridge" on both apps | "Connected bridge" on desktop |
+| `multi-computer.md` | the desktop footer row ends in a chevron | an up-and-down picker glyph, as `desktop-cockpit-shell.md` says |
+
+For step 7, the differences that remain on purpose: the step row's size, label colour and strut; the alert's dark
+fill, wrap and fade without Reduce Motion; the harness chevron's 44 box; desktop's code block fill; and, once #2486
+merges, the needs-you buttons.

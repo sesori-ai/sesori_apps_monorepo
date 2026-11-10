@@ -62,9 +62,10 @@ that baseline, and the branch and worktree facts a session carries.
   two seconds. A failed refresh keeps the last totals. A missing session is
   a 404 with a `sessionNotFound` body; an older bridge's bare 404 for the
   unknown route makes the page stop asking and keep plain "Changes".
-  The button resizes smoothly as the counts arrive, change or leave, with the
-  counts fading, and the phone circle stretches into its pill. Under reduced
-  motion the change is instant.
+  On desktop the counts have a slot of their own, so the button keeps its
+  width as they arrive, change or leave. Counts too wide for the slot widen
+  the button smoothly; the counts themselves change at once, with no fade.
+  Under reduced motion the widening is instant too.
 
 ## Regression Levels
 
