@@ -544,9 +544,14 @@ class SessionDetailCubit(
   /// messages, for a resend once it returns. A send the transcript shows
   /// stays there as a sent message.
   SessionDetailLoaded _returnUndeliveredToComposer({required SessionDetailLoaded current}) {
+    // The launch's follow-ups not yet sending would only reach the blocked
+    // harness, so they come back too, as at a stop. One still sending is
+    // followed as the screen's own: the composer gets it once accepted.
+    final (:withdrawn, sendingPromptIds: _) = _sessionLaunchService.withdrawFollowUps(sessionId: _sessionId);
     final accepted = {
       for (final prompt in current.bridgeQueuedPrompts) prompt.id,
       for (final (:submission, since: _) in _promptQueue.awaitingBridge) submission.promptId,
+      for (final submission in withdrawn) submission.promptId,
     };
     final delivered = {
       for (final message in current.messages)
@@ -554,7 +559,10 @@ class SessionDetailCubit(
     };
     final undelivered = _draftCalculator.uniqueReturned(
       prompts: [
-        for (final prompt in _unsentQueuedPrompts())
+        for (final prompt in [
+          ..._unsentQueuedPrompts(),
+          for (final submission in withdrawn) _unsentSubmission(submission: submission),
+        ])
           if (accepted.contains(prompt.promptId) &&
               !delivered.contains(prompt.promptId) &&
               !_returnedPromptIds.contains(prompt.promptId))

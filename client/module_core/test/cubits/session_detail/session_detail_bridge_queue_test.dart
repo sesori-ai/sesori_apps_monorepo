@@ -3595,7 +3595,11 @@ void main() {
               final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
               abortResponse.complete(ApiResponse.success(true));
               expect(await aborting, isA<SessionAbortAccepted>());
-              expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed"));
+              expect(
+                cubit.composerDraft,
+                ComposerDraft.typed(text: "and then prm_b\n\nand then prm_a\n\nhalf typed"),
+                reason: "accepted later, it comes back after what the block returned",
+              );
 
               // The send's outcome reaches the launch and then this screen.
               firstSend.complete(succeeds ? ApiResponse.success(null) : ApiResponse.error(ApiError.generic()));
@@ -3610,7 +3614,11 @@ void main() {
               expect(state.launchFollowUps, isEmpty);
               expect(state.bridgeQueuedPrompts, isEmpty);
               expect(state.composerRestorations, 1);
-              expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_a\n\nand then prm_b\n\nhalf typed"));
+              expect(
+                cubit.composerDraft,
+                ComposerDraft.typed(text: "and then prm_b\n\nand then prm_a\n\nhalf typed"),
+                reason: "accepted later, it comes back after what the block returned",
+              );
 
               // Opened again, the session shows no copy of it, sent or failed.
               expect(repository.retryFollowUp(promptId: "prm_a"), isNull);
@@ -3806,6 +3814,46 @@ void main() {
             final state = cubit.state as SessionDetailLoaded;
             expect(state.awaitingBridgeSubmissions, isEmpty, reason: "the harness the block shut down dropped it");
             expect(state.launchFollowUps, isEmpty);
+          });
+
+          test("returns one queued behind the launch's send with its images, and it never sends", () async {
+            final (:cubit, :repository) = await stopWhileSending(
+              queuedBehind: [
+                LaunchFollowUp.queued(
+                  submission: withImage(promptId: "prm_b", text: "and then prm_b"),
+                  since: DateTime(2026),
+                ),
+              ],
+              managementSnapshots: snapshots,
+            );
+
+            await block(cubit);
+
+            expect(cubit.composerDraft, ComposerDraft.typed(text: "and then prm_b\n\nhalf typed"));
+            expect(cubit.restoredAttachments, [image]);
+            expect(
+              [
+                for (final followUp in (cubit.state as SessionDetailLoaded).launchFollowUps)
+                  followUp.submission.promptId,
+              ],
+              ["prm_a"],
+              reason: "only the one sending keeps its row",
+            );
+
+            firstSend.complete(ApiResponse.success(null));
+            await _awaitCondition(() => (cubit.state as SessionDetailLoaded).composerRestorations == 2);
+            for (var i = 0; i < 10; i++) {
+              await Future<void>.delayed(Duration.zero);
+            }
+
+            expect(
+              cubit.composerDraft,
+              ComposerDraft.typed(text: "and then prm_b\n\nand then prm_a\n\nhalf typed"),
+              reason: "accepted later, it comes back after what the block returned",
+            );
+            expect(sentPromptIds, ["prm_a"]);
+            expect((cubit.state as SessionDetailLoaded).launchFollowUps, isEmpty);
+            expect(await repository.watchForSession(sessionId: _sessionId).first, isEmpty);
           });
         });
 
