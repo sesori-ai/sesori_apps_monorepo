@@ -9,7 +9,7 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | 3 Fold the transcript and needs-you card looks | Merged | #2479 | Decisions 1, 2, 3, 8 and 10 folded, nothing dropped (below). The bash step's label branch stays (2.6). Dark secondary button checked on the phone simulator: 6.29:1, shipped. |
 | 4 Fold the settings, alert, diff and picker looks | Merged | #2482 | Decisions 4, 5, 6, 7 and 9, and round 3's items 2.10 and 2.14; nothing dropped (measurements below). |
 | 5 Flag new interaction-mode reads | Merged | #2485 (`eb71881bf4`) | 74 markers on the 74 reads (below): 70 `pending:` and 4 permanent. `unnecessary_ignore` does not report a stale plugin ignore, so the strict phase greps for stale markers. |
-| 6 Reconcile regression docs | PR open | | Docs only, checked against `main` (below). The waiting-dot amber and #2486's needs-you button sentences left as they are. |
+| 6 Reconcile regression docs | PR open | #2488 | Docs only, checked against `main` (below). The waiting-dot amber and #2486's needs-you button sentences left as they are. |
 | 7 Run the verification matrix and retire the plan | Pending | | |
 
 ## Outside the series
