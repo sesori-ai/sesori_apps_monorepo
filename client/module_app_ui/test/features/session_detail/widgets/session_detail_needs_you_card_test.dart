@@ -7,7 +7,7 @@ import "package:theme_prego/module_prego.dart";
 void main() {
   for (final mode in PregoInteractionMode.values) {
     for (final brightness in Brightness.values) {
-      testWidgets("two needs-you cards follow one set of rules under ${mode.name}, ${brightness.name}", (tester) async {
+      testWidgets("two needs-you cards under ${mode.name}, ${brightness.name}", (tester) async {
         await tester.pumpWidget(
           PregoInteractionScope(
             mode: mode,
@@ -45,9 +45,18 @@ void main() {
               find.descendant(of: find.byKey(ValueKey(leads)), matching: find.byType(PregoButtonsSolid)),
             )
             .hierarchy;
-        // Only the leading card's action is the solid one.
-        expect(action(leads: true), PregoButtonsSolidHierarchy.primaryAlt);
-        expect(action(leads: false), PregoButtonsSolidHierarchy.secondary);
+        if (mode == PregoInteractionMode.pointer) {
+          // Only the leading card's action is the solid one.
+          expect(action(leads: true), PregoButtonsSolidHierarchy.primaryAlt);
+          expect(action(leads: false), PregoButtonsSolidHierarchy.secondary);
+        } else {
+          // On the phone every card's action stays bright: white on dark, the white secondary on light.
+          final bright = brightness == Brightness.dark
+              ? PregoButtonsSolidHierarchy.primaryAlt
+              : PregoButtonsSolidHierarchy.secondary;
+          expect(action(leads: true), bright);
+          expect(action(leads: false), bright);
+        }
         // The darker amber that clears 4.5:1 on the card.
         expect(
           tester.widgetList<Text>(find.text("1 pending request")).map((text) => text.style?.color).toSet(),

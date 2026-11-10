@@ -207,12 +207,13 @@ reaches the backend so the turn continues.
   its composer, as wide as the composer. There is one card per request type:
   questions, then permissions. Each names the pending count, shows the first
   request's opening line in ordinary text, a command included, and its Answer or
-  Review button opens the existing modal. Phone and desktop share one look: light
-  uses a cream warning fill and dark a faint amber tint, each with a soft amber
-  border, an amber icon and a darker amber label that clears 4.5:1, over primary
-  text. Only the first card's button is solid (black in light, white in dark);
-  a second card's is the quieter secondary button, and stacked buttons share a
-  left edge.
+  Review button opens the existing modal. The card itself looks the same on phone
+  and desktop: light uses a cream warning fill and dark a faint amber tint, each
+  with a soft amber border, an amber icon and a darker amber label that clears
+  4.5:1, over primary text. The buttons differ. On the phone every card's button is bright: the white secondary button
+  in light, the white solid one in dark. On desktop only the first card's button
+  is solid (black in light, white in dark) and a second card's is the quieter
+  secondary button. Stacked buttons share a left edge.
   A card grows in above the composer and folds away when answered, holding the
   newest row's gap to the composer on every frame; reduced motion shows it at
   once. Read-only, archived and blocked sessions show no card.

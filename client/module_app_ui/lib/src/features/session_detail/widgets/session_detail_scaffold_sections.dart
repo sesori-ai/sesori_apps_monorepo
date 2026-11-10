@@ -18,7 +18,8 @@ class const SessionDetailNeedsYouCard({
   required final String request,
   required final String action,
 
-  /// Whether this card's action leads. With two cards, only the first one does.
+  /// Whether this card's action leads. Under a pointer, with two cards, only
+  /// the first one does.
   required final bool leads,
   required final VoidCallback onPressed,
 }) extends StatelessWidget {
@@ -26,6 +27,8 @@ class const SessionDetailNeedsYouCard({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     const radius = PregoRadius.x2l;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, PregoSpacing.md),
@@ -75,8 +78,11 @@ class const SessionDetailNeedsYouCard({
                   constraints: const BoxConstraints(minWidth: 72),
                   child: PregoButtonsSolid(
                     label: action,
-                    // Only the leading card's action is the solid one.
-                    hierarchy: leads ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary,
+                    // Under a pointer only the leading card's action is solid; on the
+                    // phone every card's action stays bright, a white pill in both themes.
+                    hierarchy: pointer
+                        ? (leads ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary)
+                        : (isDark ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary),
                     size: PregoButtonsSolidSize.sm,
                     onPressed: onPressed,
                   ),
