@@ -128,6 +128,30 @@ void main() {
     verify(() => messaging.getInitialMessage()).called(1);
   });
 
+  test("initialize skips the permission prompt when it must not request permission", () async {
+    await source.dispose();
+    source = FirebasePushMessagingSource.test(messaging: messaging, requestsPermission: false);
+    when(
+      () => messaging.setForegroundNotificationPresentationOptions(
+        alert: false,
+        badge: false,
+        sound: false,
+      ),
+    ).thenAnswer((_) async {});
+    when(() => messaging.getInitialMessage()).thenAnswer((_) async => null);
+
+    await source.initialize();
+
+    verifyNever(
+      () => messaging.requestPermission(
+        alert: any(named: "alert"),
+        badge: any(named: "badge"),
+        sound: any(named: "sound"),
+      ),
+    );
+    verify(() => messaging.getInitialMessage()).called(1);
+  });
+
   test("forwards foreground messages from the injected static adapter", () async {
     final foregroundMessages = StreamController<RemoteMessage>();
     addTearDown(foregroundMessages.close);

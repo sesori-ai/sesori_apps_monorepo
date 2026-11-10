@@ -22,6 +22,7 @@ import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/singular_attribution_startup.dart";
 import "core/routing/app_router.dart";
+import "core/sesori_test_mode.dart";
 import "core/widgets/feedback_voice_input_scope.dart";
 import "firebase_options.dart";
 
@@ -88,6 +89,7 @@ void main() async {
 
   await bootstrapSesoriApp(
     shouldInitializeFirebase: firebaseEnabled,
+    testMode: sesoriTestMode,
     configureDependenciesFn: () async {
       final analyticsBootstrap = await configureDependencies(
         scope: clientPersistenceScope,
@@ -123,8 +125,12 @@ void main() async {
   );
 }
 
+/// With [testMode] (see [sesoriTestMode]) the automatic rating prompt and
+/// founder call sheet never start, and the composer leads with typing
+/// regardless of the stored choice, so an unattended driver is never blocked.
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
+  required bool testMode,
   required Future<AnalyticsRuntimeBootstrap> Function() configureDependenciesFn,
   required void Function() prepareSingularAttributionFn,
   required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
@@ -141,8 +147,10 @@ Future<void> bootstrapSesoriApp({
   final analyticsBootstrap = await configureDependenciesFn();
   prepareSingularAttributionFn();
   await startProductAnalyticsFn();
-  startFeedbackPromptFn();
-  startFounderCallFn();
+  if (!testMode) {
+    startFeedbackPromptFn();
+    startFounderCallFn();
+  }
   await startAnalyticsRouteListenerFn();
   if (shouldInitializeFirebase) {
     unawaited(
@@ -157,7 +165,8 @@ Future<void> bootstrapSesoriApp({
   // The chat input mode rides along concurrently — same store, and reading it
   // here keeps the composer preference synchronous for the rest of the app.
   // Both reads swallow their own failures, so the parallel wait cannot throw.
-  final (appearance, chatInputMode) = await (readAppearanceFn(), readChatInputModeFn()).wait;
+  final (appearance, storedChatInputMode) = await (readAppearanceFn(), readChatInputModeFn()).wait;
+  final chatInputMode = testMode ? ChatInputMode.textFirst : storedChatInputMode;
 
   final isImpeller = ui.ImageFilter.isShaderFilterSupported;
 

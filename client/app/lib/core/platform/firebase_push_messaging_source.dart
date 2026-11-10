@@ -8,6 +8,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../di/firebase_register_module.dart";
+import "../sesori_test_mode.dart";
 import "firebase/firebase_messaging_static_adapter.dart";
 
 @firebaseEnabledEnvironment
@@ -16,6 +17,10 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   final FirebaseMessaging _messaging;
   final FirebaseMessagingStaticAdapter _staticAdapter;
   final bool Function() _isApplePlatform;
+
+  /// False under [sesoriTestMode], whose unattended drivers cannot answer the
+  /// native prompt.
+  final bool _requestsPermission;
   final Future<void> Function(Duration) _delay;
   final StreamController<PushNotificationMessage> _foregroundMessageController =
       StreamController<PushNotificationMessage>.broadcast();
@@ -35,6 +40,7 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   }) : _messaging = messaging,
        _staticAdapter = staticAdapter,
        _isApplePlatform = _defaultIsApplePlatform,
+       _requestsPermission = !sesoriTestMode,
        _delay = Future<void>.delayed;
 
   @visibleForTesting
@@ -42,10 +48,12 @@ class FirebasePushMessagingSource implements PushMessagingSource {
     required FirebaseMessaging messaging,
     FirebaseMessagingStaticAdapter staticAdapter = const FirebaseMessagingStaticAdapter.disabled(),
     bool Function()? isApplePlatform,
+    bool requestsPermission = true,
     Future<void> Function(Duration)? delay,
   }) : _messaging = messaging,
        _staticAdapter = staticAdapter,
        _isApplePlatform = isApplePlatform ?? _defaultIsApplePlatform,
+       _requestsPermission = requestsPermission,
        _delay = delay ?? Future<void>.delayed;
 
   static bool _defaultIsApplePlatform() => Platform.isIOS;
@@ -73,7 +81,9 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   }
 
   Future<void> _doInitialize() async {
-    await _messaging.requestPermission(alert: true, badge: true, sound: true);
+    if (_requestsPermission) {
+      await _messaging.requestPermission(alert: true, badge: true, sound: true);
+    }
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: false,
       badge: false,
