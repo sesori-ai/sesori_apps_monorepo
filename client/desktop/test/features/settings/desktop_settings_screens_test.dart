@@ -644,6 +644,14 @@ void main() {
     expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
   });
 
+  testWidgets("Bridge shows no computer card until the list names the current computer", (tester) async {
+    await open(tester: tester, tab: DesktopSettingsTab.bridge);
+
+    expect(find.byKey(const Key("computer_settings_entry")), findsNothing);
+    // The page's first card is the bridge settings one, not an empty computer card.
+    expect(find.descendant(of: find.byType(PregoGroupedRows).first, matching: find.text("Harnesses")), findsOneWidget);
+  });
+
   testWidgets("Harnesses is a Bridge row, not a tab, and opens inside the Bridge tab with Back to it", (tester) async {
     await open(tester: tester, tab: DesktopSettingsTab.general);
     expect(find.byKey(const ValueKey("desktop-settings-tab-harnesses")), findsNothing);

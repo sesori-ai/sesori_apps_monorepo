@@ -86,22 +86,7 @@ class const BridgeSettingsSection({
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) ...[
-            PregoGroupedRows(
-              children: [
-                // On the card rows' icon and trailing columns.
-                Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(18, 0, 12, 0),
-                  child: ComputerSettingsEntry(
-                    onSwitchComputer: onSwitchComputer,
-                    onManageComputers: onManageComputers,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: PregoSpacing.md),
-          ] else
-            ComputerSettingsEntry(onSwitchComputer: onSwitchComputer, onManageComputers: onManageComputers),
+          ComputerSettingsEntry(onSwitchComputer: onSwitchComputer, onManageComputers: onManageComputers),
           if (description != null) ...[
             Text(
               description,

@@ -6,17 +6,14 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/computer_menu.dart";
 
-/// Gap between the computer entry and the settings that apply to it.
-const double _entryGap = PregoSpacing.lg;
-
-/// The computer the bridge settings below it apply to, as a flat row on the
-/// page background: platform, name, and whether it is online. It lines up with
-/// the section caption above it. Tapping it opens the computer menu; picking
-/// another computer switches with the Settings source, and the menu's footer
-/// opens the Computers page.
+/// The computer the bridge settings below it apply to, in a card of its own:
+/// platform, name, and whether it is online. Tapping it opens the computer
+/// menu; picking another computer switches with the Settings source, and the
+/// menu's footer opens the Computers page.
 ///
-/// Renders nothing until the account's list names the current computer, and
-/// grows into place when it does instead of pushing the settings down at once.
+/// Renders nothing, card included, until the account's list names the current
+/// computer, and grows into place when it does instead of pushing the settings
+/// down at once.
 class const ComputerSettingsEntry({
   super.key,
   required final ComputerSwitchCallback onSwitchComputer,
@@ -31,67 +28,74 @@ class const ComputerSettingsEntry({
     final entry = computer == null
         ? const SizedBox(width: double.infinity)
         : Padding(
-            // A pointer shell's card makes its own room around the row.
-            padding: EdgeInsetsDirectional.only(
-              bottom: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? 0 : _entryGap,
-            ),
-            child: ComputerMenu(
-              onSelect: ({required bridgeId}) =>
-                  onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.settings),
-              onManageComputers: onManageComputers,
-              currentFirst: false,
-              triggerBuilder: (context, toggle) => Semantics(
-                hint: context.loc.computerMenuSwitchHint,
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: InkWell(
-                    key: const Key("computer_settings_entry"),
-                    mouseCursor: WidgetStateMouseCursor.clickable,
-                    borderRadius: BorderRadius.circular(PregoRadius.md),
-                    onTap: toggle,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: PregoSpacing.sm),
-                      child: Row(
-                        spacing: PregoSpacing.md,
-                        children: [
-                          Icon(
-                            ComputerMenu.platformIcon(platform: computer.platform),
-                            size: PregoIconSize.lg,
-                            color: prego.colors.textTertiary,
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
+            padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
+            child: PregoGroupedRows(
+              children: [
+                // On the card rows' icon and trailing columns.
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(18, 0, 12, 0),
+                  child: ComputerMenu(
+                    onSelect: ({required bridgeId}) =>
+                        onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.settings),
+                    onManageComputers: onManageComputers,
+                    currentFirst: false,
+                    triggerBuilder: (context, toggle) => Semantics(
+                      hint: context.loc.computerMenuSwitchHint,
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: InkWell(
+                          key: const Key("computer_settings_entry"),
+                          mouseCursor: WidgetStateMouseCursor.clickable,
+                          borderRadius: BorderRadius.circular(PregoRadius.md),
+                          onTap: toggle,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: PregoSpacing.sm),
+                            child: Row(
+                              spacing: PregoSpacing.md,
                               children: [
-                                Text(
-                                  computer.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+                                Icon(
+                                  ComputerMenu.platformIcon(platform: computer.platform),
+                                  size: PregoIconSize.lg,
+                                  color: prego.colors.textTertiary,
                                 ),
-                                PregoStatusLabel(
-                                  status: ComputerMenu.presenceStatus(computer: computer),
-                                  text: ComputerMenu.presenceLabel(context: context, computer: computer),
-                                  style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
-                                  maxLines: null,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        computer.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: prego.textTheme.textMd.regular.copyWith(
+                                          color: prego.colors.textPrimary,
+                                        ),
+                                      ),
+                                      PregoStatusLabel(
+                                        status: ComputerMenu.presenceStatus(computer: computer),
+                                        text: ComputerMenu.presenceLabel(context: context, computer: computer),
+                                        style: prego.textTheme.textXs.regular.copyWith(
+                                          color: prego.colors.textSecondary,
+                                        ),
+                                        maxLines: null,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  TablerRegular.selector,
+                                  size: PregoIconSize.sm,
+                                  color: prego.colors.textTertiary,
                                 ),
                               ],
                             ),
                           ),
-                          Icon(
-                            TablerRegular.selector,
-                            size: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-                                ? PregoIconSize.sm
-                                : PregoIconSize.lg,
-                            color: prego.colors.textTertiary,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           );
     // Under reduced motion no wrapper at all: a zero-length AnimatedSize would

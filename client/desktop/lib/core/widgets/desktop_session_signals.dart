@@ -26,7 +26,7 @@ class const DesktopSessionSignals({
               child: Container(
                 width: 8,
                 height: 8,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: context.prego.colors.pointerWarningFill),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: context.prego.colors.fgWarningPrimary),
               ),
             ),
           ),

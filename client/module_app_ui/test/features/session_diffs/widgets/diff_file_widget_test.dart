@@ -99,6 +99,19 @@ void main() {
       await tester.pumpWidget(buildTestWidget(vm));
       expect(find.text("M"), findsOneWidget);
     });
+
+    testWidgets('"M" is grey on phone and desktop, since amber means "needs you"', (tester) async {
+      for (final mode in PregoInteractionMode.values) {
+        await tester.pumpWidget(
+          PregoInteractionScope(
+            mode: mode,
+            child: buildTestWidget(buildVM(status: FileDiffStatus.modified)),
+          ),
+        );
+        final colors = tester.element(find.byType(DiffFileWidget)).prego.colors;
+        expect(tester.widget<Text>(find.text("M")).style?.color, colors.textSecondary, reason: "$mode");
+      }
+    });
   });
 
   testWidgets("the pinned header keeps its height at 1x and 130% and grows past that instead of cropping", (

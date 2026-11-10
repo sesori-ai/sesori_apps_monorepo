@@ -152,7 +152,7 @@ void main() {
         expect(find.text("now"), findsOneWidget);
       });
 
-      testWidgets("a waiting session says Waiting in amber, with an amber dot under a finger", (tester) async {
+      testWidgets("a waiting session says Waiting in amber, with the phone's amber dot", (tester) async {
         final semantics = tester.ensureSemantics();
         await pump(
           tester,
@@ -176,11 +176,10 @@ void main() {
         expect(find.bySemanticsLabel(RegExp("Awaiting input")), findsOneWidget);
         expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
         expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.smallWarningText);
-        if (pointer) {
-          expect((tester.widget<Container>(dot).decoration as BoxDecoration?)?.color, colors.pointerWarningFill);
-        } else {
-          expect((tester.widget<Container>(dot).decoration as BoxDecoration?)?.color, colors.fgWarningPrimary);
-        }
+        expect(
+          tester.widget<Container>(dot).decoration,
+          isA<BoxDecoration>().having((decoration) => decoration.color, "color", colors.fgWarningPrimary),
+        );
         expect(find.text("now"), findsOneWidget);
         semantics.dispose();
       });

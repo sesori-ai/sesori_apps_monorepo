@@ -47,7 +47,8 @@ that baseline, and the branch and worktree facts a session carries.
 - Diff colours come from the Prego status tokens in both themes. An added or
   removed line has a 10% status tint and a 2-point status bar at its left
   edge; both run the full height of a wrapped line. A file's status is a plain
-  coloured letter (A, D, M). Change counts leave out a zero side and use the
+  letter: A in green, D in red, and M in secondary grey on phone and desktop,
+  since amber means "needs you". Change counts leave out a zero side and use the
   "−" sign, both on file headers and in the page subtitle.
 - The session page's Changes control carries the session's line totals, as
   "Changes +12 −2" on the desktop toolbar and at the trailing end of the

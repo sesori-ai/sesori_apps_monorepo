@@ -528,7 +528,7 @@ state.
   (about every 1.6 s, fading to about a third opacity), only while an agent works: not while
   the session waits for the user, and not for being the open session. With
   reduced motion it stays lit and still. Right after the title's text comes its status mark: a turning sparkle
-  while running, an amber dot while waiting for the user (which wins over
+  while running, an amber dot, the same amber on phone and desktop, while waiting for the user (which wins over
   running), a resting sparkle when unread. A quiet session shows no mark and
   keeps no space for one. A long title fades out before the mark, so the mark
   stays in view just ahead of the time. The time sits

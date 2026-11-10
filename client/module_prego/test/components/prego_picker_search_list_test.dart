@@ -56,6 +56,36 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets("a heading is in spaced capitals on phone and desktop", (tester) async {
+    for (final mode in PregoInteractionMode.values) {
+      await tester.pumpWidget(
+        PregoInteractionScope(
+          mode: mode,
+          child: MaterialApp(
+            theme: buildPregoThemeData(brightness: Brightness.light),
+            home: Scaffold(
+              body: PregoPickerSearchList(
+                searchHint: "Search",
+                onQueryChanged: (_) {},
+                footer: null,
+                rows: [
+                  const PregoPickerSearchHeading(text: "Recent"),
+                  PregoPickerSearchOption(isSelected: false, onPick: () {}, child: const Text("first")),
+                ],
+                emptyText: null,
+                onClose: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("Recent"), findsNothing, reason: "$mode");
+      expect(tester.widget<Text>(find.text("RECENT")).style?.letterSpacing, 0.8, reason: "$mode");
+    }
+  });
+
   testWidgets("a pair shares the footer's width equally, leading first", (tester) async {
     await pumpList(tester: tester, mode: PregoInteractionMode.touch);
 

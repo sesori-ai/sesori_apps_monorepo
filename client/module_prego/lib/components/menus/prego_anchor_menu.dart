@@ -23,8 +23,7 @@ import "anchored_spotlight_backdrop.dart";
 /// Material rows (Android) without the caller knowing which path is active.
 sealed class const PregoMenuEntry();
 
-/// A non-interactive section header: uppercase on the touch paths, sentence case
-/// under a pointer.
+/// A non-interactive section header, in spaced capitals on every path.
 class const PregoMenuLabel({required final String text}) extends PregoMenuEntry;
 
 /// A tappable menu row with a [title], optional [subtitle], an optional
@@ -509,9 +508,8 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           padding: compact
               ? const EdgeInsetsDirectional.fromSTEB(_compactRowInset, 6, _compactRowInset, 2)
               : const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 4),
-          // Uppercased to match GlassMenuLabel on the glass path; sentence case
-          // under a pointer, as every other label there is.
-          child: Text(compact ? text : text.toUpperCase(), style: _labelStyle(prego)),
+          // Uppercased to match GlassMenuLabel on the glass path.
+          child: Text(text.toUpperCase(), style: _labelStyle(prego)),
         );
       case PregoMenuItem(
         :final key,

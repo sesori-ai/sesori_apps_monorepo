@@ -643,6 +643,15 @@ void main() {
     });
     await tester.pumpAndSettle();
     expect(dot, findsOneWidget);
+    // The phone's amber, as on every waiting dot.
+    expect(
+      tester.widget<Container>(dot).decoration,
+      isA<BoxDecoration>().having(
+        (decoration) => decoration.color,
+        "color",
+        PregoDesignSystem.light.colors.fgWarningPrimary,
+      ),
+    );
 
     activity.emitSessionActivity(const {});
     await tester.pumpAndSettle();

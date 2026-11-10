@@ -99,31 +99,25 @@ void main() {
     expect(cardRight - iconRight, PregoSpacing.xl);
   });
 
-  testWidgets("uses Figma's shallow lower-edge accent gradient", (tester) async {
-    await tester.pumpWidget(
-      _harness(
-        const PregoPopupAlertsNotifications(
-          title: "Accepted",
-          variant: PregoPopupAlertsNotificationsVariant.success,
-        ),
-      ),
-    );
+  testWidgets("the icon alone carries the variant, with no glow behind the card", (tester) async {
+    for (final mode in PregoInteractionMode.values) {
+      for (final variant in PregoPopupAlertsNotificationsVariant.values) {
+        await tester.pumpWidget(
+          PregoInteractionScope(
+            mode: mode,
+            child: _harness(PregoPopupAlertsNotifications(title: variant.name, variant: variant)),
+          ),
+        );
 
-    final gradient = tester
-        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
-        .map((box) => box.decoration)
-        .whereType<BoxDecoration>()
-        .map((decoration) => decoration.gradient)
-        .whereType<RadialGradient>()
-        .single;
-
-    expect(gradient.center, const Alignment(0, -0.885));
-    expect(gradient.radius, 0.94);
-    expect(gradient.transform, isNotNull);
-    expect(gradient.colors, [
-      const Color(0x08FFFFFF),
-      PregoDesignSystem.dark.colors.fgSuccessSecondary.withValues(alpha: 0.30),
-    ]);
+        final gradients = tester
+            .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+            .map((box) => box.decoration)
+            .whereType<BoxDecoration>()
+            .map((decoration) => decoration.gradient)
+            .nonNulls;
+        expect(gradients, isEmpty, reason: "$mode $variant");
+      }
+    }
   });
 
   testWidgets("presenter places the alert below navigation and auto dismisses", (tester) async {
@@ -321,6 +315,57 @@ void main() {
       expect(card, findsNothing);
     });
   }
+
+  testWidgets("under a pointer it is solid while it slides, and with Reduce Motion fades as on the phone", (
+    tester,
+  ) async {
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    late PregoPopupAlertPresenter presenter;
+    await tester.pumpWidget(
+      PregoInteractionScope(
+        mode: PregoInteractionMode.pointer,
+        child: _harness(
+          Builder(
+            builder: (context) {
+              presenter = PregoPopupAlertPresenter.of(context);
+              return const SizedBox.expand();
+            },
+          ),
+        ),
+      ),
+    );
+    final card = find.byType(PregoPopupAlertsNotifications);
+    double opacity() => tester
+        .widget<FadeTransition>(find.ancestor(of: card, matching: find.byType(FadeTransition)).first)
+        .opacity
+        .value;
+
+    presenter.show(title: "Moving", duration: null);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 20));
+    expect(opacity(), 1, reason: "its words never sit over the page's while it slides");
+    await tester.pumpAndSettle();
+    presenter.dismiss();
+    await tester.pumpAndSettle();
+    expect(card, findsNothing);
+
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+    presenter.show(title: "Still", duration: null);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 20));
+    // The phone's fade, which reaches 0.9 at 80 ms.
+    expect(opacity(), inExclusiveRange(0.2, 0.5));
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(opacity(), moreOrLessEquals(0.9, epsilon: 0.02));
+    await tester.pumpAndSettle();
+
+    presenter.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 20));
+    expect(opacity(), inExclusiveRange(0.3, 0.7), reason: "it fades out from the start, as on the phone");
+    await tester.pumpAndSettle();
+    expect(card, findsNothing);
+  });
 
   testWidgets("reacts to iOS Reduce Motion changing during entrance and exit", (tester) async {
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);

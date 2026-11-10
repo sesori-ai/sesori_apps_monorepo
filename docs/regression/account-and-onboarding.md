@@ -72,13 +72,13 @@ participates.
   Cancel or dismissal leaves the session untouched.
 - Mobile Settings runs Account, Bridge, Preferences, Appearance, Support,
   Legal. Bridge opens with the current computer's entry (platform,
-  name, presence), a flat row under the caption, above the computer-scoped
-  card, which leads with Harnesses; Preferences holds Notifications and Default
+  name, presence), in a card of its own under the caption, as on desktop, above
+  the computer-scoped card, which leads with Harnesses; Preferences holds Notifications and Default
   input. The entry opens the same computer menu as the home, ending in "Manage
   computers…" ([multi-computer](multi-computer.md)), and picking another
   computer lands on its home; picking the current one only closes the
-  menu. The entry appears only once
-  the computer list names the current computer and grows in without a jump.
+  menu. The entry and its card appear only once the computer list names the
+  current computer and grow in without a jump; no empty card shows while it loads.
   Offline, Harnesses and the YOLO and warm-up rows dim and do not respond to taps.
 - The desktop Bridge settings tab shows the same entry above its description;
   switching closes the settings window and then switches. Its card leads with the
