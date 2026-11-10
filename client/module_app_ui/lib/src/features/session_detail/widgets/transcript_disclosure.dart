@@ -29,28 +29,24 @@ class const TranscriptDisclosure({
 }
 
 class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with TickerProviderStateMixin {
-  // Read once for these controllers, which can be made before the first build.
-  late final bool _pointer =
-      context.getInheritedWidgetOfExactType<PregoInteractionScope>()?.mode == PregoInteractionMode.pointer;
+  /// Softer than a popover's curve: this one moves the rows being read.
+  static const Curve _curve = Cubic(0.25, 0.55, 0.2, 1);
+
   late final AnimationController _disclosure = AnimationController(
     vsync: this,
-    duration: _pointer ? pregoPointerEnterDuration : transcriptMotionDuration,
-    reverseDuration: _pointer ? pregoPointerExitDuration : null,
+    duration: pregoPointerEnterDuration,
+    reverseDuration: pregoPointerExitDuration,
   );
   late final CurvedAnimation _panelSize = CurvedAnimation(
     parent: _disclosure,
-    // Softer than a popover's curve: this one moves the rows being read.
-    curve: _pointer ? const Cubic(0.25, 0.55, 0.2, 1) : transcriptMotionCurve,
+    curve: _curve,
     reverseCurve: transcriptMotionReverseCurve,
   );
   late final AnimationController _resize = AnimationController(
     vsync: this,
-    duration: _pointer ? const Duration(milliseconds: 180) : transcriptMotionDuration,
+    duration: const Duration(milliseconds: 180),
   );
-  late final CurvedAnimation _resizeCurve = CurvedAnimation(
-    parent: _resize,
-    curve: _pointer ? const Cubic(0.25, 0.55, 0.2, 1) : transcriptMotionCurve,
-  );
+  late final CurvedAnimation _resizeCurve = CurvedAnimation(parent: _resize, curve: _curve);
 
   /// The user's choice. The panel itself stays mounted until it has closed.
   bool get _expanded => _disclosure.isForwardOrCompleted;
@@ -218,7 +214,8 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
             style: TextButton.styleFrom(
               foregroundColor: prego.colors.textSecondary,
               padding: EdgeInsets.zero,
-              minimumSize: _pointer ? Size.zero : const Size(44, 44),
+              // Adjusted for density, as the step row's own height is.
+              minimumSize: const Size(44, 44),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               alignment: AlignmentDirectional.centerStart,
               // The default stadium hover reads as a pill across the whole row.
