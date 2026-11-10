@@ -8,8 +8,7 @@ const String providerTimeoutNotice =
 
 /// The row Hermes saves to close a turn that failed before any tool ran
 /// (`messages.display_kind = 'failed_turn'` in `~/.hermes/state.db`).
-const String failedTurnBoundary =
-    "Your request was not processed. Send it again if you still want me to carry it out.";
+const String failedTurnBoundary = "Your request was not processed. Send it again if you still want me to carry it out.";
 
 /// The same row when a tool already ran in the failed turn.
 const String partialFailedTurnBoundary =
