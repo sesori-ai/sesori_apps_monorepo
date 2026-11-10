@@ -480,9 +480,7 @@ class const SessionTile({
           height: _waitingDotSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-                ? context.prego.colors.pointerWarningFill
-                : context.prego.colors.fgWarningPrimary,
+            color: context.prego.colors.fgWarningPrimary,
           ),
         ),
       );

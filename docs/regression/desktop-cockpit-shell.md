@@ -60,6 +60,7 @@ The main pane hosts one full-width routed page.
 - A pointer shell's session row has no leading state column. Title and metadata sit flush left, and a long title fades
   out, never an ellipsis or a second line. The state mark sits just before the time: a turning star for working, a
   resting blue star for finished or unread, and an amber dot for waiting. A row with no mark gives that room to its title.
+  Every waiting dot, the row's, the hidden sidebar toggle's and the page title's, is the phone's amber.
   The metadata line reads "Waiting" while the session waits for the user, otherwise "Running (retrying)" while a retry
   runs, then the project, then background tasks as a stack glyph and their number (the words in its tooltip), and ends
   with the harness glyph under the time, which hover actions cover. A plain running row has no "Running" word; screen
@@ -267,7 +268,8 @@ The main pane hosts one full-width routed page.
   input nor remains in accessibility announcements.
 - Popup alerts, such as Archived with its Undo, appear centred at the top of the window as on the phone, sized to
   their words up to the window's width less its 16-pixel insets, never in a corner. Under a pointer the card keeps its
-  desktop surface without the accent glow, turns solid within its first 40 ms, and keeps actions that wrap below a
+  desktop surface, turns solid within its first 40 ms (under reduced motion it fades as on the phone), and keeps
+  actions that wrap below a
   long title at its trailing edge.
 - On this computer, the computer row exposes its supervised status through a dot and an
   accessible description; while another computer is viewed, that status stays in the row's menu. Takeover (another copy of this computer's own bridge, here or on a cloned machine;

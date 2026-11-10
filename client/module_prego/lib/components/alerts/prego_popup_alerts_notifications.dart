@@ -84,12 +84,11 @@ class const PregoPopupAlertsNotifications({
             BoxShadow(color: Color(0x0D000000), offset: Offset(0, 13), blurRadius: 10),
           ],
         ),
+        // The icon alone carries the variant: no glow behind the card.
         child: ClipRRect(
           borderRadius: radius,
           child: Stack(
             children: [
-              // Under a pointer the icon alone carries the variant.
-              if (!pointer) Positioned.fill(child: IgnorePointer(child: _buildAccent(colors))),
               // A lone title keeps its actions and close button on its own
               // line, centred, instead of stacking a button under one word.
               // When large text leaves no room, the actions wrap below.
@@ -222,26 +221,6 @@ class const PregoPopupAlertsNotifications({
     return Icon(_icon, size: _iconSize, color: _iconColor(colors));
   }
 
-  Widget _buildAccent(PregoColors colors) {
-    final accent = switch (variant) {
-      PregoPopupAlertsNotificationsVariant.success => colors.fgSuccessSecondary,
-      PregoPopupAlertsNotificationsVariant.warning => colors.fgWarningPrimary,
-      PregoPopupAlertsNotificationsVariant.error => colors.fgErrorPrimary,
-      PregoPopupAlertsNotificationsVariant.info || PregoPopupAlertsNotificationsVariant.loading => null,
-    };
-    if (accent == null) return const SizedBox.shrink();
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: const Alignment(0, -0.885),
-          radius: 0.94,
-          transform: const _WideEllipseGradientTransform(6.7),
-          colors: [const Color(0x08FFFFFF), accent.withValues(alpha: 0.30)],
-        ),
-      ),
-    );
-  }
-
   IconData get _icon => switch (variant) {
     PregoPopupAlertsNotificationsVariant.info => TablerRegular.info_circle,
     PregoPopupAlertsNotificationsVariant.success => TablerRegular.circle_check,
@@ -272,32 +251,6 @@ class const PregoPopupAlertsNotifications({
     PregoPopupAlertsNotificationsVariant.info ||
     PregoPopupAlertsNotificationsVariant.loading => PregoButtonsSolidType.regular,
   };
-}
-
-/// Stretches the accent radial into Figma's broad, shallow lower-edge glow.
-class const _WideEllipseGradientTransform(final double scaleX) extends GradientTransform {
-  @override
-  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
-    final centerX = bounds.center.dx;
-    return Matrix4(
-      scaleX,
-      0,
-      0,
-      0,
-      0,
-      1,
-      0,
-      0,
-      0,
-      0,
-      1,
-      0,
-      centerX * (1 - scaleX),
-      0,
-      0,
-      1,
-    );
-  }
 }
 
 /// A stable presentation target that can be captured before asynchronous work.
@@ -452,7 +405,8 @@ class _PregoPopupAlertOverlayState()
     );
     _position = _controller.drive(Tween<Offset>(begin: const Offset(0, -0.12), end: Offset.zero));
     _scale = _controller.drive(Tween<double>(begin: 0.96, end: 1));
-    // Solid within 40 ms under a pointer, so its words never sit over the page's.
+    // Solid within 40 ms under a pointer, so its words never sit over the page's
+    // while it slides; with nothing moving, Reduce Motion fades it as on the phone.
     _opacity = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0, 0.18, curve: Curves.easeOut),
@@ -509,7 +463,9 @@ class _PregoPopupAlertOverlayState()
       bottom: false,
       child: Center(
         child: FadeTransition(
-          opacity: PregoInteractionScope.of(context) == PregoInteractionMode.pointer ? _opacity : _controller,
+          opacity: !reducedMotion && PregoInteractionScope.of(context) == PregoInteractionMode.pointer
+              ? _opacity
+              : _controller,
           child: SlideTransition(
             position: reducedMotion ? const AlwaysStoppedAnimation(Offset.zero) : _position,
             child: ScaleTransition(

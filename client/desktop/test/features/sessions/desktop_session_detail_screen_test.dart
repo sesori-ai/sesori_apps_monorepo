@@ -598,6 +598,15 @@ void main() {
       // The pending question puts the awaiting glyph in the slot before the title.
       final signals = find.byType(DesktopSessionSignals);
       expect(tester.widget<DesktopSessionSignals>(signals).isAwaitingInput, isTrue);
+      // The phone's amber, as on every waiting dot.
+      expect(
+        tester.widget<Container>(find.descendant(of: signals, matching: find.byType(Container))).decoration,
+        isA<BoxDecoration>().having(
+          (decoration) => decoration.color,
+          "color",
+          PregoDesignSystem.light.colors.fgWarningPrimary,
+        ),
+      );
       expect(tester.getTopLeft(breadcrumb).dx, lessThan(tester.getTopLeft(signals).dx));
       expect(tester.getTopLeft(signals).dx, lessThan(tester.getTopLeft(title).dx));
 

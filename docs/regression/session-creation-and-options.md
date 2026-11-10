@@ -392,7 +392,8 @@ variant, and worktree mode, and creating the session with its first input.
 - The model and slash-command pickers open as popovers anchored to their
   composer button on phone and desktop, above it, inside the window edge, and
   no taller than 380 px; their rows scroll inside. Each has a search field.
-  The model picker groups models under uppercase provider headings, shows each
+  The model picker groups models under provider headings in spaced capitals (as
+  every menu and picker section heading is, on phone and desktop), shows each
   provider's representative models until a search reveals the rest, and checks
   the selected model, following a selection or catalog change while open. The
   command picker shows source tags in both themes; long names and tags wrap

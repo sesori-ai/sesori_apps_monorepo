@@ -8,7 +8,8 @@ and render above the current route, below the top navigation bar.
 ## Required Behavior
 
 - Success, info, warning, error, and loading variants use the matching icon and
-  accent treatment from the Prego design system.
+  icon colour from the Prego design system; the icon alone carries the variant,
+  with no coloured glow behind the card, on phone and desktop.
 - An alert without supporting text stays compact; supporting text and optional
   actions expand the card without clipping at accessibility text sizes.
 - An alert with actions but no supporting text keeps its icon, title, actions,
@@ -26,7 +27,8 @@ and render above the current route, below the top navigation bar.
   scale over 220 ms, and fade upward over 160 ms when dismissed. Closing during
   entrance continues from the current position without a jump.
 - Android Remove animations and iOS Reduce Motion use fade-only entry and exit,
-  including when the preference changes while an alert is visible. User-driven
+  the same fade on phone and desktop (0.9 opaque at about 80 ms), including when
+  the preference changes while an alert is visible. User-driven
   upward swipe dismissal remains available alongside close and automatic dismissal.
 - Presented alerts expose a live region so assistive technology can announce
   transient feedback.

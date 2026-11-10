@@ -113,13 +113,8 @@ class const DiffStatusLetter({super.key, required final FileDiffStatus? status})
     final (label, color) = switch (status) {
       FileDiffStatus.added => ("A", colors.textSuccessPrimary),
       FileDiffStatus.deleted => ("D", colors.textErrorPrimary),
-      // Amber means "needs you" under a pointer, and a modified file does not.
-      FileDiffStatus.modified || null => (
-        "M",
-        PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-            ? colors.textSecondary
-            : colors.textWarningPrimary,
-      ),
+      // Grey, not amber: amber means "needs you", and a modified file does not.
+      FileDiffStatus.modified || null => ("M", colors.textSecondary),
     };
     return Text(
       label,

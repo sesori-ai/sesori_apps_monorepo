@@ -494,11 +494,8 @@ class const _Heading({required final String text, required final bool pointer}) 
       child: Semantics(
         header: true,
         child: Text(
-          pointer ? text : text.toUpperCase(),
-          style: prego.textTheme.textXs.medium.copyWith(
-            color: prego.colors.textSecondary,
-            letterSpacing: pointer ? 0 : 0.8,
-          ),
+          text.toUpperCase(),
+          style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary, letterSpacing: 0.8),
         ),
       ),
     );

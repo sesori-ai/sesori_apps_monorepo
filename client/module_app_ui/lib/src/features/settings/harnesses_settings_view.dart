@@ -172,9 +172,7 @@ class const _ReadyView({
             child: SettingsSection(
               title: _groupTitle(context: context, group: group),
               child: PregoGroupedRows(
-                color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-                    ? null
-                    : context.prego.colors.bgSurface2,
+                color: context.prego.colors.bgSurface2,
                 showDividers: false,
                 children: [
                   PregoAnimatedList<PluginManagementMetadata>(
@@ -208,9 +206,7 @@ class const _ReadyView({
           SettingsSection(
             title: loc.harnessManagementDefaultsSection,
             child: PregoGroupedRows(
-              color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-                  ? null
-                  : context.prego.colors.bgSurface2,
+              color: context.prego.colors.bgSurface2,
               children: [
                 PregoGroupedRow(
                   key: const Key("harness_management_default_timeout"),
@@ -428,9 +424,7 @@ class const _HarnessActionFeedback({
         ? Padding(
             padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
             child: PregoGroupedRows(
-              color: PregoInteractionScope.of(context) == PregoInteractionMode.pointer
-                  ? null
-                  : context.prego.colors.bgSurface2,
+              color: context.prego.colors.bgSurface2,
               children: [feedback],
             ),
           )

@@ -538,8 +538,10 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   Authentication and force sheets belong to this flow and leave with it; sheet dismissal
   remains distinct from cancelling authentication. Safe lifecycle conflicts still authorize
   force confirmation, never an install retry.
-- Shared cards use surface2, 26px radius, 16px page/section gaps, 68px minimum overview/action
-  rows and 52px minimum detail facts, growing at larger text sizes. Switches keep their
+- Shared cards use surface2 on overview and detail alike, on phone and desktop. On the phone
+  they have a 26px radius, 16px page/section gaps, 68px minimum overview/action rows and 52px
+  minimum detail facts, growing at larger text sizes; desktop keeps its pointer cards' 12px
+  radius and 44/56px minimum rows. Switches keep their
   64×28 visual track inside an independently tappable, labeled 64×44 target; padding taps
   toggle rather than navigate. Overview groups omit dividers and default badges.
   Unsupported automatic-update and install pause/stop controls

@@ -919,6 +919,22 @@ void main() {
       expect(tester.getSize(panel).width, 200);
     });
 
+    testWidgets("a section label is in spaced capitals, as on the phone", (tester) async {
+      await tester.pumpWidget(
+        pointer(
+          child: _harness(flat: true, [
+            const PregoMenuLabel(text: "Section"),
+            const PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, shortcutLabel: null, onTap: _noop),
+          ]),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Section"), findsNothing);
+      expect(tester.widget<Text>(find.text("SECTION")).style?.letterSpacing, 0.8);
+    });
+
     testWidgets("a menu that does not fit below the pointer flips above it", (tester) async {
       await tester.pumpWidget(pointer(child: row(alignment: Alignment.bottomLeft)));
       await secondaryClick(tester: tester, at: const Offset(120, 580));

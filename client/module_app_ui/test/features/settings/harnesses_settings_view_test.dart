@@ -251,6 +251,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("under a pointer the overview cards match the detail pages' fill", (tester) async {
+    publish(
+      plugins: [
+        _ready,
+        _plugin(id: "disabled", runtime: PluginRuntimeState.disabled, setup: PluginSetupState.authenticationRequired),
+      ],
+    );
+    await tester.pumpWidget(PregoInteractionScope(mode: PregoInteractionMode.pointer, child: app()));
+    await tester.pumpAndSettle();
+
+    final cards = tester.widgetList<PregoGroupedRows>(find.byType(PregoGroupedRows));
+    // The two groups and the defaults card.
+    expect(cards, hasLength(3));
+    for (final card in cards) {
+      expect(card.color, PregoDesignSystem.light.colors.bgSurface2);
+    }
+  });
+
   testWidgets("name and download open detail while the enabled switch independently changes eligibility", (
     tester,
   ) async {
