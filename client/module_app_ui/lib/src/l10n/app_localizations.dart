@@ -1876,7 +1876,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessesStatusDormant.
   ///
   /// In en, this message translates to:
-  /// **'Dormant'**
+  /// **'Not running'**
   String get harnessesStatusDormant;
 
   /// No description provided for @harnessesStatusStarting.

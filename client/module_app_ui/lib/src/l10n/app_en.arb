@@ -763,7 +763,7 @@
   "harnessesSetupUnavailable": "Unavailable",
   "harnessesStatusDisabled": "Disabled",
   "harnessesStatusBlocked": "Blocked",
-  "harnessesStatusDormant": "Dormant",
+  "harnessesStatusDormant": "Not running",
   "harnessesStatusStarting": "Starting",
   "harnessesStatusActive": "Active",
   "harnessesStatusDegraded": "Needs attention",

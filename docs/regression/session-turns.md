@@ -50,7 +50,20 @@ defaults and queued client sends coherent.
   since its release and cancel controls are hidden; the draft and staged
   attachments stay for when the composer returns.
   A turn the block cuts off (a gateway or login failure mid-turn) ends with it:
-  its Working or Retrying row stops.
+  its Working or Retrying row stops. The harness it shuts down drops the sends it
+  accepted and had not shown yet, such as a follow-up still "Sending to" it, so
+  as the block lands each of those leaves its row and goes back into the hidden
+  composer, oldest first with a blank line between each, ahead of the draft, as
+  a stop returns queued messages: dictated words stay dictated, and the images
+  this screen still holds come back after the composer's own. A composer
+  restored this way returns after Check setup holding them, and the refresh
+  does not put them back again. A send still in flight as the block lands goes
+  back the same way once the shut-down harness accepts it, after the ones
+  already returned and ahead of the draft, its images after theirs, even when
+  it lands before the composer has shown them. A Stop pressed before the block
+  lands and answered after it returns each message once, whichever path takes
+  it first. A send the transcript shows stays there as its sent message and is
+  not restored.
   Open response dialogs close without answering when availability changes.
 - Disconnects, background/resume reconnects, and the management snapshot refresh
   that follows preserve a loaded chat's last known availability. A usable chat
@@ -85,8 +98,9 @@ defaults and queued client sends coherent.
   archives the session.
 - Pending local sends stop draining while blocked; users can still cancel those
   local-only entries, but cannot cancel a bridge-owned prompt until interaction is
-  usable. Existing queue behavior otherwise stays unchanged. Availability gating
-  adds no failed-send recovery, persistence, attachment retention or retry redesign.
+  usable. Existing queue behavior otherwise stays unchanged. Beyond returning the
+  sends a block drops, availability gating adds no failed-send recovery,
+  persistence, attachment retention or retry redesign.
 
 - A prompt send targets one session with optional agent, model, and variant.
   Prompt and slash-command sends complete on acceptance — durably enqueued by
@@ -995,7 +1009,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   triggers a completion notification, or queued sends reorder, vanish, or
   resend. A stop drops a queued or still-sending message instead of returning
   it to the composer, returns one the transcript already shows, reorders them,
-  or overwrites what the composer held. A plain Claude prompt sent to a busy resident process waits for the
+  or overwrites what the composer held. A follow-up still "Sending to" a
+  harness that a gateway or login failure blocks is missing from the composer
+  after Check setup, or a delivered one comes back as a draft. A plain Claude prompt sent to a busy resident process waits for the
   running turn to finish before reaching stdin, carries a priority other than
   `next`, or incorrectly reports idle between an active turn and its queued
   continuation. A bridge-queued prompt disappears after leaving and reopening

@@ -75,6 +75,11 @@ void main() {
         PluginMcpCapability.connectorSetup,
       });
       expect(
+        CodexPluginDescriptor.production().mcpScopes,
+        {PluginMcpScopeKind.harness, PluginMcpScopeKind.session},
+        reason: "Codex reads harness-wide and thread MCP, not projects",
+      );
+      expect(
         CodexPluginDescriptor.production(),
         isA<InteractivePluginAuthenticationDescriptor>(),
       );
