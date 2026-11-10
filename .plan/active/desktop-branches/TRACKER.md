@@ -6,7 +6,7 @@ Status values: Pending, In progress, PR open, Merged, Blocked, Dropped.
 | --- | --- | --- | --- |
 | 1 Raise the plan | Merged | #2463 | |
 | 2 Fold the subtle desktop differences | Merged | #2475 | 10 items folded (2.11 only its radius), 2.15 done by #2460; 2.6, 2.10, 2.13, 2.14 and 2.11's fill and wrap dropped (below). 2.1 folded to the phone's values, not the pointer's. |
-| 3 Fold the transcript and needs-you card looks | PR open | | Decisions 1, 2, 3, 8 and 10 folded, nothing dropped (below). The bash step's label branch stays (2.6). Dark secondary button checked on the phone simulator: 6.29:1, shipped. |
+| 3 Fold the transcript and needs-you card looks | PR open | #2479 | Decisions 1, 2, 3, 8 and 10 folded, nothing dropped (below). The bash step's label branch stays (2.6). Dark secondary button checked on the phone simulator: 6.29:1, shipped. |
 | 4 Fold the settings, alert, diff and picker looks | Pending | | Waits for step 2. Can run in parallel with step 3. |
 | 5 Flag new interaction-mode reads | Pending | | Waits for steps 3 and 4. Record whether `unnecessary_ignore` reports stale plugin ignores. |
 | 6 Reconcile regression docs | Pending | | |
