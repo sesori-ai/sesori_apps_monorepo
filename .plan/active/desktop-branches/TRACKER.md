@@ -60,12 +60,12 @@ Folded, before → after:
 | 1 settled shell glyph | desktop: check, `textTertiary` | terminal, the line's colour (`textSecondary`, red on failure) | desktop |
 | 1 settled tool glyph | desktop: check | wrench | desktop |
 | 1 settled thought glyph | desktop: 14 pt bulb, `textTertiary` | the still 20 pt outline AI loader, `textSecondary` | desktop |
-| 1 New Session harness pill caret | desktop: up-and-down selector | the phone's down chevron, same size and colour; both open the same anchored menu | desktop |
+| 1 New Session harness pill caret | desktop: up-and-down selector | the phone's down chevron, at desktop's 14 pt and colour; both open the same anchored menu. The 14 vs 18 pt size stays with the pill's metrics | desktop |
 | 2 shell command | desktop: monospace (live in `textPrimary`) | Satoshi, underlined, the row's colour | desktop |
 | 2 tool title or path | desktop: monospace, `textSecondary` | plain text | desktop |
-| 2 permission request line | desktop: monospace 12 w400 | Satoshi 12.5 w500, as a question's | desktop |
+| 2 permission request line | desktop: monospace 12 w400 | Satoshi 12.5 w500, matching a question's line | desktop |
 | 3 needs-you cards | desktop: grow in and fold away (200 ms since step 2) | the same on the phone, holding the newest row's gap on every frame | phone |
-| 8 inline code chip | desktop: no chip | `alphaBlack10`: light page `#FCFCFC` → `#E2E2E2` (text 17.96 → 14.26:1), dark page `#141414` → `#2C2C2C` (13.74:1); bubbles light `#D8D8D8` (12.87:1), dark `#353535` (12.07:1) | desktop |
+| 8 inline code chip | desktop: no chip | `alphaBlack10`: light page `#FCFCFC` → `#E2E2E2` (text 17.96 → 14.22:1), dark page `#141414` → `#2C2C2C` (18.11 → 13.73:1); bubbles light `#F0F0F0` → `#D8D8D8` (16.17 → 12.93:1), dark `#1E1E1E` → `#353535` (16.39 → 12.06:1). Light is 10% black, dark 10% white | desktop |
 | 10 card height | phone: 62 pt | 54 pt (desktop 50) | phone |
 | 10 card padding and icon | phone: 12 all round, icon 18 | 12/8/8/8, icon 16 | phone |
 | 10 card label | phone light `#B54708` (5.20:1) | `#854B00` (6.70:1); dark `#FDB022` 8.63 → 9.08:1 | phone |
@@ -73,7 +73,9 @@ Folded, before → after:
 | 10 card actions | phone: light secondary on both cards, dark white on both | the first card's solid (light `#18191B`, white text 17.59:1; dark white), a second card's secondary (light white, `#474747` 9.29:1; dark `#2C2C2C`, `#AEAEAE` 6.29:1, fill on card 1.20:1) | phone |
 | 10 action minimum width | 0 | 72 (buttons are 112 wide, so nothing moves) | neither |
 
-Dropped: none. The dark secondary button was measured on the phone simulator's screenshot (`#AEAEAE` on `#2C2C2C`, 6.29:1) and is legible, so decision 10 shipped whole.
+Dropped: none. The dark secondary button was measured on the phone simulator's screenshot
+(`#AEAEAE` on `#2C2C2C`, 6.29:1) and is legible, so decision 10 shipped whole. Whether it reads as
+disabled is an open owner question.
 
 ## Read counts
 
@@ -81,8 +83,21 @@ Dropped: none. The dark secondary button was measured on the phone simulator's s
 | --- | --- | --- |
 | `origin/main` `478ea1c15e` | 105 | 46 |
 | After #2460 | 101 | 44 |
-| After step 2 | 92 | 41 |
-| After step 3 | 83 | 38 |
+| After step 2 (`c799ab8775`) | 91 | 41 |
+| After step 3 | 82 | 38 |
 | After step 4 (planned) | about 71 | about 35 |
 
-Step 3 removed 9 reads, not the 10 planned: the bash label read stays with item 2.6. The harness pill's caret fold removes no read: the same read still sets the pill's radius, fill, height, padding and text, logo and caret sizes (metrics phase). Step 3 counted with `git grep -hoE 'PregoInteractionScope\.of\(|InheritedWidgetOfExactType<PregoInteractionScope>|isDesktopScale|ComposerPresentation\.(pointer|touch)'` over `client/module_app_ui/lib` and `client/module_prego/lib`, without the two files that define the modes. That gives 91 on `origin/main` after step 2, one fewer than recorded, and 82 after step 3.
+Every row is counted with this command from `client/`, on the commit named or the step's merge:
+
+```sh
+git grep -hoE 'PregoInteractionScope\.of\(|InheritedWidgetOfExactType<PregoInteractionScope>|isDesktopScale|ComposerPresentation\.(pointer|touch)' \
+  -- 'module_app_ui/lib' 'module_prego/lib' \
+  ':!**/interactions/prego_interaction_scope.dart' ':!**/theme/prego_design_system.dart' | wc -l
+```
+
+Use `-l` instead of `-o` for files. Step 2 recorded 92 from its PR head; `7e36369232` (the desktop text size
+setting) removed one more read on `main` before step 2 merged, so `main` held 91 after it.
+
+Step 3 removed 9 reads, not the 10 planned: the bash label read stays with item 2.6. The harness pill's caret
+fold removes no read: the same read still sets the pill's radius, fill, height, padding and its text, logo and
+caret sizes, which wait for the metrics phase.
