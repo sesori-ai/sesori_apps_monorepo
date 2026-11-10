@@ -159,6 +159,9 @@ class _GitHubApi {
         }
       } on IOException catch (error) {
         // Socket, TLS and "connection closed before full header" failures.
+        if (attempt == maxAttempts) {
+          rethrow;
+        }
         failure = 'failed: $error';
       }
       if (attempt == maxAttempts) {
