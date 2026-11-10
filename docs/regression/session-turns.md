@@ -250,9 +250,12 @@ defaults and queued client sends coherent.
   while the transcript shows Working; background sub-agents alone report as
   running child sessions with the main agent stopped. A task a sub-agent runs
   itself (`owned_by_subagent`, such as its own Bash call) keeps the session
-  busy, even after that sub-agent ends, but never sets `mainAgentRunning`,
-  and its completion opens no main-agent wake-up turn: the CLI delivers it to
-  the sub-agent. A background sub-agent's permission ask is its own work too:
+  busy, even after that sub-agent ends, but sets `mainAgentRunning` only once
+  no sub-agent runs, when no running child shows it, and its completion opens
+  no main-agent wake-up turn: the CLI delivers it to the sub-agent. A
+  sub-agent's busy or idle status and an API retry's start or recovery each
+  republish the summary, so the list's background-task count and Retrying
+  label move with the transcript mid-turn. A background sub-agent's permission ask is its own work too:
   it never sets `mainAgentRunning`. While the ask waits on the user, its
   permission card stands in for the sub-agent row, as for any waiting
   question or permission; once it is answered the row is back. Under YOLO the bridge answers every ask before a client sees
@@ -271,6 +274,12 @@ defaults and queued client sends coherent.
   background and streams more output as `in_progress`. Failure signal: the
   sub-agent row stays hidden behind a stale streaming reply or a finished
   command card that reopened as running.
+- OpenCode session lists and the chat agree on a running session. An OpenCode
+  v2 session that starts while the bridge's cold start lists sessions still
+  shows running in the list once the cold start reads its details. An OpenCode
+  v1 status of an unknown type keeps the session's last known activity, as the
+  chat does, instead of dropping it from the summary. Failure signal: the
+  sidebar row reads idle while the open chat shows Working.
 - Claude tasks, OpenCode child sessions, and Grok children expose scoped stop.
   The client first asks with `confirm`; while sub-agents
   run the bridge refuses with the running count and whether the main agent is
@@ -393,7 +402,11 @@ defaults and queued client sends coherent.
   whose selection the bridge just applied through Pi's setters; the setters'
   thinking-level echoes do not invalidate that selection. A model or
   thinking-level change remains bridge-queued until the
-  current run settles. Pi may run model-backed automatic compaction before it
+  current run settles. A Pi stop keeps the session Working in both the session
+  list and the chat until Pi acknowledges the abort and its process is torn
+  down, then both go idle together. A prompt sent during the stop waits for
+  that teardown, runs on a fresh process, and keeps the session busy
+  throughout. Pi may run model-backed automatic compaction before it
   acknowledges a prompt, so that preflight uses a turn-scale deadline instead
   of the shorter history/control RPC deadline. The prompt remains visibly
   queued alongside the live compaction row while compaction
@@ -1042,13 +1055,18 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   reply to a steered follow-up lands above it; or a steered follow-up
   dismisses a pending permission or form request.
   A Pi abort waits for the general history/control timeout, lets hidden steering
-  resume after Stop, or leaves later sends stuck in their sending state.
+  resume after Stop, or leaves later sends stuck in their sending state. A
+  stopping Pi session reads idle in the session list while its chat still
+  shows Working, or a prompt sent during the stop fails on the stopped process
+  or reads idle in the chat while it runs.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
 - A Claude session reports idle while a background sub-agent still runs, or
   shows a transient idle between the task notification and its wake-up turn;
   the session list shows a Claude session idle while its transcript shows
-  Working on a background shell; a
+  Working on a background shell, including one a finished sub-agent left
+  running; the list's background-task count or Retrying label lags the
+  transcript until the turn ends; a
   `<task-notification>` envelope renders as a user bubble, or a prompt that
   quotes the envelope disappears; sub-agent text appears in the root transcript.
 - A Codex spawn is absent from the parent chat, appears twice as both a tool

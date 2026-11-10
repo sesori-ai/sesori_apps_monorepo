@@ -734,6 +734,48 @@ void main() {
       await subscription.cancel();
     });
 
+    test("archiving a session cancels its pending dialog and invalidates the summary", () async {
+      final session = await harness.plugin.createSession(
+        fastMode: false,
+        directory: harness.project.path,
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "archive")],
+        userVisibleText: "archive",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final process = await harness.nextSessionProcess();
+      await waitForCommand(process: process, type: "prompt");
+      final asked = harness.plugin.events.firstWhere((event) => event is BridgeSseQuestionAsked);
+      process.emit(
+        frame: {
+          "type": "extension_ui_request",
+          "id": "archive-input",
+          "method": "input",
+        },
+      );
+      await asked;
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      await harness.plugin.archiveSession(sessionId: session.id);
+      await pump();
+
+      expect(await harness.plugin.getPendingQuestions(sessionId: session.id), isEmpty);
+      expect(events.whereType<BridgeSseQuestionRejected>().single.sessionID, session.id);
+      expect(events.whereType<BridgeSseProjectUpdated>(), isNotEmpty);
+      expect(
+        harness.plugin.getActiveSessionsSummary().expand((summary) => summary.activeSessions),
+        everyElement(isA<PluginActiveSession>().having((active) => active.awaitingInput, "awaitingInput", isFalse)),
+      );
+      expect(
+        process.written.where((frame) => frame["type"] == "extension_ui_response").single,
+        containsPair("cancelled", true),
+      );
+    });
+
     test("deleting a root fences descendant dialogs but removes only the root file", () async {
       harness.writeSession(id: "root", parentPath: null);
       final rootPath = harness.sessionPath("root");

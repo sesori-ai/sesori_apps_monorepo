@@ -800,6 +800,65 @@ void main() {
     }
   });
 
+  test("archiving a session publishes a fresh projects summary without it", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    // A backend that keeps reporting the session waiting, as OpenCode does for
+    // a request still pending in its own server.
+    final plugin = harness.plugins.single
+      ..activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: "/repo",
+          activeSessions: [PluginActiveSession(id: "backend-session", awaitingInput: true)],
+        ),
+      ];
+    final summaries = <SesoriProjectsSummary>[];
+    final summarySubscription = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriProjectsSummary)
+        .cast<SesoriProjectsSummary>()
+        .listen(summaries.add);
+    addTearDown(summarySubscription.cancel);
+
+    plugin.emitEvent(const BridgeSseProjectUpdated());
+    await _waitFor(() => summaries.length == 1, reason: "the live summary");
+    expect(summaries.single.projects.single.activeSessions.single.awaitingInput, isTrue);
+
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "PATCH",
+        "/session/update/archive",
+        body: jsonEncode(
+          const UpdateSessionArchiveRequest(
+            sessionId: "stable-session",
+            archived: true,
+            deleteWorktree: false,
+            deleteBranch: false,
+            force: false,
+          ).toJson(),
+        ),
+      ),
+    );
+    expect(response.status, 200);
+    await _waitFor(() => summaries.length == 2, reason: "the post-archive summary");
+    expect(summaries.last.projects.expand((project) => project.activeSessions), isEmpty);
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+  });
+
   test("aggregate project summaries are built and delivered in trigger order across plugins", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(

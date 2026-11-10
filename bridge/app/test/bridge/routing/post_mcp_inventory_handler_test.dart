@@ -661,6 +661,81 @@ void main() {
     await unsupportedRuntime.dispose();
   });
 
+  test("a dormant integration without MCP support reports unsupported, not inactive", () async {
+    final unsupportedRuntime = createTestPluginRuntime(
+      plugins: [
+        FakeDerivedBridgePlugin(id: "unsupported", launchDirectory: "/fixture", allSessions: const []),
+      ],
+    )..stoppedPluginIds.add("unsupported");
+    addTearDown(unsupportedRuntime.dispose);
+    final repository = McpRepository(
+      runtime: unsupportedRuntime,
+      sessionDao: db.sessionDao,
+      projectsDao: db.projectsDao,
+    );
+    final unsupportedAction = isA<McpControlUnavailable>().having(
+      (r) => r.reason,
+      "reason",
+      McpActionUnavailableReason.unsupportedHarness,
+    );
+
+    final inventory = await repository.getInventory(pluginId: "unsupported", scope: const McpHarnessScope());
+    expect(
+      inventory,
+      isA<McpInventoryUnavailable>().having(
+        (r) => r.reason,
+        "reason",
+        McpInventoryUnavailableReason.unsupportedHarness,
+      ),
+    );
+    expect(
+      await repository.executeServerAction(
+        pluginId: "unsupported",
+        target: const McpServerTarget(scope: McpHarnessScope(), serverKey: "fixture"),
+        action: McpServerAction.reconnect,
+      ),
+      unsupportedAction,
+    );
+    expect(
+      await repository.forgetAuthentication(
+        pluginId: "unsupported",
+        target: const McpServerTarget(scope: McpHarnessScope(), serverKey: "fixture"),
+      ),
+      unsupportedAction,
+    );
+    expect(
+      await repository.resolveConnectorSetup(
+        pluginId: "unsupported",
+        target: const McpConnectorOfferTarget(scope: McpHarnessScope(), offerKey: "fixture"),
+      ),
+      unsupportedAction,
+    );
+    expect(unsupportedRuntime.stoppedPluginIds, contains("unsupported"));
+  });
+
+  test("the real runtime reads declared MCP support from a dormant descriptor", () async {
+    final dormantRuntime = createRegisteredTestPluginRuntime(
+      pluginIds: const ["without-mcp", "with-mcp"],
+      mcpCapabilities: const {
+        "with-mcp": {PluginMcpCapability.management},
+      },
+    );
+    addTearDown(dormantRuntime.dispose);
+    final repository = McpRepository(runtime: dormantRuntime, sessionDao: db.sessionDao, projectsDao: db.projectsDao);
+
+    final without = await repository.getInventory(pluginId: "without-mcp", scope: const McpHarnessScope());
+    expect((without as McpInventoryUnavailable).reason, McpInventoryUnavailableReason.unsupportedHarness);
+    final dormant = await repository.getInventory(pluginId: "with-mcp", scope: const McpHarnessScope());
+    expect((dormant as McpInventoryUnavailable).reason, McpInventoryUnavailableReason.pluginInactive);
+    expect(
+      await repository.forgetAuthentication(
+        pluginId: "with-mcp",
+        target: const McpServerTarget(scope: McpHarnessScope(), serverKey: "fixture"),
+      ),
+      isA<McpControlUnavailable>().having((r) => r.reason, "reason", McpActionUnavailableReason.unsupportedHarness),
+    );
+  });
+
   test("rejects empty IDs and invalid scope JSON at the transport boundary", () async {
     expect((await read(pluginId: "", scope: const McpHarnessScope())).status, 400);
     expect(

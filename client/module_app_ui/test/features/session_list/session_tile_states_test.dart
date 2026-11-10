@@ -175,12 +175,11 @@ void main() {
         // Heard once, from the mark; the word stays silent.
         expect(find.bySemanticsLabel(RegExp("Awaiting input")), findsOneWidget);
         expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
+        expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.smallWarningText);
         if (pointer) {
           expect((tester.widget<Container>(dot).decoration as BoxDecoration?)?.color, colors.pointerWarningFill);
-          expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.pointerWarningText);
         } else {
           expect((tester.widget<Container>(dot).decoration as BoxDecoration?)?.color, colors.fgWarningPrimary);
-          expect(tester.widget<Text>(find.text("Waiting")).style?.color, colors.textWarningPrimary);
         }
         expect(find.text("now"), findsOneWidget);
         semantics.dispose();

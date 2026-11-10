@@ -159,6 +159,11 @@ void main() {
     expect(children, isEmpty);
   });
 
+  test("reads no details for a session of an archived project", () async {
+    api.currentSession = api.initialSession.copyWith(id: "archived", projectID: "archived-project");
+    expect(await repository.getSessionDetails(sessionId: "archived"), isNull);
+  });
+
   test("uses the session location for display names and preserves native transcript identities", () async {
     api.currentSession = api.initialSession.copyWith(
       agent: "build",
@@ -176,7 +181,7 @@ void main() {
         ],
       }),
     ];
-    final details = await repository.getSessionDetails(sessionId: "session-fixture");
+    final details = await repository.getSessionDetails(sessionId: "session-fixture") ?? fail("expected details");
     expect(details.projectID, directory);
     expect(details.directory, worktree);
     expect((details.promptDefaults ?? fail("expected prompt defaults")).agent, "Build");

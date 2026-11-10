@@ -33,7 +33,7 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   /// time, and the `ai-title` record — sits in the first few lines. Measured
   /// across 60 real transcripts the title record's line number was at most 50
   /// (median 13), so 64 clears the observed range with margin. A title written
-  /// past the bound is still found by [readTailTitleRecords] once the CLI
+  /// past the bound is still found by [readTailRecords] once the CLI
   /// re-appends it.
   ///
   /// The bound is what makes enumeration affordable: reading these transcripts
@@ -41,7 +41,7 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   /// measured on.
   static const int headerLineBudget = 64;
 
-  /// How many trailing bytes [readTailTitleRecords] scans.
+  /// How many trailing bytes [readTailRecords] scans.
   ///
   /// The CLI keeps re-appending a session's title records as its transcript
   /// grows, so a `/rename` made long after the header still sits near the end.
@@ -85,13 +85,39 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
     return _decodeRecords(lines, ignoreMalformedLastLine: true);
   }
 
+  /// How far back from the end [readTailRecords] looks for the newest turn
+  /// when [tailByteBudget] holds only part of it, as when the last turn is a
+  /// large tool result.
+  static const int turnSearchByteBudget = 1024 * 1024;
+
   /// Decodes the `custom-title` and `ai-title` records within the last
-  /// [tailByteBudget] bytes.
+  /// [tailByteBudget] bytes, then [sessionId]'s newest turn.
   ///
   /// The tail is mostly tool output, so other lines are dropped before they
   /// are decoded. The CLI writes compact JSON, which makes the type a plain
   /// substring; the same text inside a prompt is escaped and never matches.
-  List<ClaudeTranscriptRecordDto> readTailTitleRecords({required String transcriptPath}) {
+  List<ClaudeTranscriptRecordDto> readTailRecords({required String transcriptPath, required String sessionId}) {
+    final tail = _readTailLines(transcriptPath: transcriptPath, budget: tailByteBudget);
+    final titles = [
+      for (final line in tail.lines)
+        if (_titleTypes.any(line.contains)) line,
+    ];
+    final newestTurn =
+        _newestTurn(lines: tail.lines, sessionId: sessionId) ??
+        (tail.truncated
+            ? _newestTurn(
+                lines: _readTailLines(transcriptPath: transcriptPath, budget: turnSearchByteBudget).lines,
+                sessionId: sessionId,
+              )
+            : null);
+    return [..._decodeRecords(titles, ignoreMalformedLastLine: true), ?newestTurn];
+  }
+
+  static const List<String> _titleTypes = ['"type":"custom-title"', '"type":"ai-title"'];
+
+  /// The whole lines within the last [budget] bytes; [truncated] when the file
+  /// is longer.
+  ({List<String> lines, bool truncated}) _readTailLines({required String transcriptPath, required int budget}) {
     final handle = File(transcriptPath).openSync();
     final int start;
     final List<int> bytes;
@@ -99,7 +125,7 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
       final length = handle.lengthSync();
       // One byte before the window, so a record starting exactly at the
       // window's edge stays whole.
-      start = length > tailByteBudget ? length - tailByteBudget - 1 : 0;
+      start = length > budget ? length - budget - 1 : 0;
       handle.setPositionSync(start);
       bytes = handle.readSync(length - start);
     } finally {
@@ -107,14 +133,24 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
     }
     final lines = const LineSplitter().convert(const Utf8Decoder(allowMalformed: true).convert(bytes));
     // The first line is the end of a record before the window, or empty.
-    final titles = [
-      for (final line in start > 0 ? lines.skip(1) : lines)
-        if (_titleTypes.any(line.contains)) line,
-    ];
-    return _decodeRecords(titles, ignoreMalformedLastLine: true);
+    return (lines: start > 0 ? lines.skip(1).toList(growable: false) : lines, truncated: start > 0);
   }
 
-  static const List<String> _titleTypes = ['"type":"custom-title"', '"type":"ai-title"'];
+  /// [sessionId]'s last own turn in [lines]: the newest record with a
+  /// timestamp that is neither a sub-agent's nor another session's. The
+  /// metadata the CLI appends without a turn, such as `cost-state` when its
+  /// process exits, carries no timestamp, so this dates the last real activity.
+  ClaudeTranscriptRecordDto? _newestTurn({required List<String> lines, required String sessionId}) {
+    for (var i = lines.length - 1; i >= 0; i--) {
+      final line = lines[i];
+      if (!line.contains('"timestamp":"')) continue;
+      // Only the final line can be a half-written append.
+      final record = _decodeRecords([line], ignoreMalformedLastLine: i == lines.length - 1).firstOrNull;
+      if (record == null || record.timestamp == null || (record.isSidechain ?? false)) continue;
+      if (record.sessionId == null || record.sessionId == sessionId) return record;
+    }
+    return null;
+  }
 
   /// Decodes every record in a transcript.
   List<ClaudeTranscriptRecordDto> readTranscript({required String transcriptPath}) {

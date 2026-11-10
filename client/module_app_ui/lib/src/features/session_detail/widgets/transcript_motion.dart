@@ -80,7 +80,7 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
         context.getInheritedWidgetOfExactType<PregoInteractionScope>()?.mode == PregoInteractionMode.pointer;
     final controller = _controller = AnimationController(
       vsync: this,
-      duration: pointer ? pregoContentMoveDuration : transcriptMotionDuration,
+      duration: transcriptMotionDuration,
       reverseDuration: pointer ? pregoPointerExitDuration : transcriptMotionDuration,
       value: from,
     );

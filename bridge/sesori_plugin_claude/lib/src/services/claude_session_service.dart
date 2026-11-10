@@ -132,13 +132,17 @@ final class ClaudeSessionService({
   /// Whether the main agent itself works: a queued or self-started turn, or a
   /// background shell or workflow it launched. Background sub-agents and the
   /// tasks they run keep the session busy without it; the sub-agents report as
-  /// child sessions instead.
+  /// child sessions instead. A sub-agent's task still running once no
+  /// sub-agent runs counts as the main agent's, since no running child shows it.
   bool isMainAgentRunning({required String sessionId}) => switch (_turns[sessionId]) {
     final state? =>
       state.pending > 0 ||
           state.selfStartedTurn != null ||
           state.runningTaskIds.entries.any(
-            (task) => task.value != ClaudeTaskType.subAgent && !state.subAgentOwnedTaskIds.contains(task.key),
+            (task) =>
+                task.value != ClaudeTaskType.subAgent &&
+                (!state.subAgentOwnedTaskIds.contains(task.key) ||
+                    !state.runningTaskIds.containsValue(ClaudeTaskType.subAgent)),
           ),
     null => false,
   };
@@ -957,6 +961,7 @@ final class ClaudeSessionService({
     if (message is! ClaudeStreamEventMessage && message is! ClaudeAssistantMessage) return;
     if (_retryStatuses.remove(sessionId) == null) return;
     _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy()));
+    _emit(const BridgeSseProjectUpdated());
   }
 
   void _endSelfStartedTurn({required String sessionId, required _SessionTurnState state}) {

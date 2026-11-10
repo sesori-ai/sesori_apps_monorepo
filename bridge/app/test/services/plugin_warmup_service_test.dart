@@ -125,6 +125,7 @@ const _activeSnapshot = PluginRuntimeSnapshot(
   pluginId: "opencode",
   projectOwnership: PluginProjectOwnership.native,
   setup: PluginSetupReady(),
+  setupSource: PluginSetupSource.inspection,
   accessGate: PluginRuntimeAccessGate.enabled,
   startAllowed: true,
   generation: 1,

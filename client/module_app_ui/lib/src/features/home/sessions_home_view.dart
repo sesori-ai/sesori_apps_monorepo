@@ -358,13 +358,12 @@ class const _HomeComputerButton({
             PregoNavStatus.offline => loc.homeComputerButtonConnecting(name),
             PregoNavStatus.error => loc.homeComputerButtonOffline(name),
           };
-    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
     return ComputerMenu(
       onSelect: ({required bridgeId}) => onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
       onManageComputers: _manageComputersFrom(context: context, onManageComputers: onManageComputers),
       currentFirst: true,
       triggerBuilder: (context, toggle) {
-        final button = Stack(
+        return Stack(
           clipBehavior: Clip.none,
           children: [
             PregoButtonsIconGlass(
@@ -397,7 +396,6 @@ class const _HomeComputerButton({
             ),
           ],
         );
-        return pointer ? Tooltip(message: label, excludeFromSemantics: true, child: button) : button;
       },
     );
   }

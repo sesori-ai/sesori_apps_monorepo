@@ -4282,6 +4282,7 @@ void _stubPromptAttachmentCapability({
             isDefault: true,
             state: PluginLifecycleState.ready,
             actionHint: null,
+            failureBlock: null,
             supportsPromptAttachments: supportsPromptAttachments,
           ),
         ],

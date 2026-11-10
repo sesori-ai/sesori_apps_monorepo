@@ -597,10 +597,7 @@ class const SessionTile({
     final loc = context.loc;
     final prego = context.prego;
     final (String, Color)? status = switch ((awaitingInput, isRetrying)) {
-      (true, _) => (
-        loc.sessionListWaiting,
-        pointer ? prego.colors.pointerWarningText : prego.colors.textWarningPrimary,
-      ),
+      (true, _) => (loc.sessionListWaiting, prego.colors.smallWarningText),
       (false, true) => (loc.sessionListRunningRetrying, prego.colors.fgErrorPrimary),
       (false, false) => null,
     };

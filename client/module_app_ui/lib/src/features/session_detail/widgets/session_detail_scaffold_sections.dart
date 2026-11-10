@@ -69,7 +69,7 @@ class const SessionDetailNeedsYouCard({
                         // The light token is 3.3:1 on cream; one step darker clears 4.5:1.
                         style: prego.textTheme.textXs.medium.copyWith(
                           color: pointer
-                              ? prego.colors.pointerWarningText
+                              ? prego.colors.smallWarningText
                               : isDark
                               ? prego.colors.textWarningPrimary
                               : PregoColorPrimitives.warning700,

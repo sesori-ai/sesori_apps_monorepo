@@ -401,13 +401,39 @@ Only OMP is assessed here. Other harnesses are not assessed.
 |---|---|
 | OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.12.6` source, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
 
-## External Codex session activity
+## External session activity
 
-Codex catalog scans refresh existing sessions using the newest of rollout file
-modification time, session-index activity, and creation time. This includes
-terminal and desktop work whose session-index timestamp is stale or absent,
-without resuming threads or reading full transcripts for activity. The bridge
-retains its existing monotonic timestamp merge and local title overrides.
+Every pull-to-refresh imports from each routable harness. The import moves an
+existing session's time forward to the time the harness reports, so work done
+in the harness's own terminal or desktop app reorders the list after the next
+pull. The bridge keeps its monotonic timestamp merge and local title overrides.
+Apart from a manual refresh, the only import is the automatic hydration import
+each harness runs when it becomes ready, until its completion marker for the
+current catalog version is recorded; after that, outside activity waits for the
+next pull.
+
+| Harness | Status |
+|---|---|
+| Claude Code | ✅ The newest timestamped record in the transcript's last 64 KiB, re-read on every scan; the modification time only when that window has none. The transcript's modification time alone is not activity: the CLI appends untimestamped metadata such as `cost-state` when its process exits (observed in real CLI `2.1.319` transcripts on 2026-11-09) (#2462). |
+| Codex | ✅ Newest of rollout modification time, session-index activity and creation time, so terminal and desktop work counts even when the session index is stale or absent. Verified live on `0.167.0` (2026-11-09): a `codex exec resume` turn moved its session to the top after one pull. |
+| OpenCode | ✅ The session's `time_updated`, from the read-only database snapshot or the running server. |
+| Pi | ✅ Session file modification time, re-read on every scan. |
+| OMP | ✅ ACP `session/list` `updatedAt`. Verified live on `18.18.5` (2026-11-09): Sesori's long-running ACP process reports a turn made by a separate `omp -c -p` process, and one pull moved the session to the top. |
+| Grok | ✅ Root sessions: ACP `session/list` `updatedAt`, verified live on `1.0.30` (2026-11-09) against a long-running ACP process after a separate `grok -c -p` turn. Sub-agent sessions use `summary.json` `updated_at`, not verified live. |
+| Hermes | ✅ Sessions created through ACP, whose `updatedAt` Hermes re-reads from its database on every `session/list`. 🚫 Sessions started in the Hermes CLI or desktop app: Hermes's ACP `session/list` returns only sessions whose source is `acp` (read in the v0.21.5 source, not verified live). |
+| DeepSeek | 🚫 Sesori starts DeepSeek with a bridge-owned `--state-dir`, so sessions a DeepSeek CLI keeps in its own state are not in the store Sesori lists. |
+| Cursor, Copilot, Antigravity | Not verified: the time is the ACP `session/list` `updatedAt` each harness reports. |
+
+## Pending requests on archive
+
+Whatever the harness reports, an archived session never counts as running or
+awaiting input in the bridge's activity summary, which every archive refreshes
+at once, and the bridge lists none of its pending requests.
+
+| Harness | Archiving cancels the session's own pending requests |
+|---|---|
+| Claude Code, Codex, Pi, every ACP harness | ✅ Nothing else could answer them once the session is read-only. |
+| OpenCode | ⬜ Not implemented: they stay pending in OpenCode's server, which OpenCode's own clients can share, until something answers them there. |
 
 ## Pre-start catalog import
 
@@ -616,7 +642,14 @@ moves the slot to the state its `recovery` selects: `authenticationRequired` for
 raises it with `externalConfiguration` when the gateway behind a custom base URL
 rejects a turn, so no login is offered. DeepSeek reports a
 provider with no models only as an `authenticationRequired` session-options
-result, which leaves the slot unchanged.
+result, which leaves the slot unchanged. While a slot is blocked this way,
+`GET /plugin` keeps listing the harness with `failureBlock`
+(`authenticationRequired` or `unavailable`) and the setup's hint, so the new
+session picker can offer it with its blocked notice and Check setup; a harness
+that inspection alone reports blocked stays out of that list. The listing lasts
+from the shutdown the failure starts until a setup check no longer reports the
+login or access refused. This applies to every
+harness that raises the exception.
 
 ## Managed runtime platform coverage
 

@@ -276,7 +276,11 @@ final class PiPlugin._({
       _catalogRepository.deleteSession(sessionId: backendSessionId, directory: null);
 
   @override
-  Future<void> archiveSession({required String sessionId}) async {}
+  Future<void> archiveSession({required String sessionId}) async {
+    // An archived session refuses replies, so nothing could ever answer its
+    // pending dialogs.
+    _extensionUiService.cancelForOwner(sessionId: sessionId, processGeneration: null);
+  }
 
   @override
   Future<void> deleteWorkspace({required String projectId, required String worktreePath}) async {}

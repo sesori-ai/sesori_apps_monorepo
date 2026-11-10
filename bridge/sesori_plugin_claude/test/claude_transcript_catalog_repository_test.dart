@@ -293,6 +293,34 @@ void main() {
       expect(session.time?.updated, modified.millisecondsSinceEpoch);
     });
 
+    test("dates a session by its newest record, not by metadata the CLI appends on exit", () async {
+      _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(_sessionA, cwd: "/work/alpha"),
+          for (var i = 0; i < ClaudeTranscriptApi.tailByteBudget ~/ 1000 + 10; i++)
+            {"type": "progress", "data": "x" * 1000},
+          {
+            "type": "assistant",
+            "sessionId": _sessionA,
+            "cwd": "/work/alpha",
+            "isSidechain": false,
+            "timestamp": "2026-08-04T11:30:00.000Z",
+          },
+          // Written when the process exits, hours after the last turn.
+          {"type": "last-prompt", "lastPrompt": "done", "sessionId": _sessionA},
+          {"type": "cost-state", "sessionId": _sessionA, "totalCostUSD": 0.1},
+        ],
+      );
+      _setModified(claudeHome, id: _sessionA, to: DateTime.utc(2026, 8, 4, 18));
+
+      final session = (await catalog.listAllSessions(knownDirectories: const {})).single;
+
+      expect(session.time?.updated, DateTime.utc(2026, 8, 4, 11, 30).millisecondsSinceEpoch);
+    });
+
     test("filters sessions to one project, normalizing the requested id", () async {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", project: "-work-alpha");
       _writeSession(claudeHome, id: _sessionB, cwd: "/work/beta", project: "-work-beta");
@@ -438,8 +466,8 @@ void main() {
 /// Holds the scan isolate after each parse, so a test can act mid-scan.
 final class _SlowTailTranscriptApi({required super.environment}) extends ClaudeTranscriptApi {
   @override
-  List<ClaudeTranscriptRecordDto> readTailTitleRecords({required String transcriptPath}) {
-    final tail = super.readTailTitleRecords(transcriptPath: transcriptPath);
+  List<ClaudeTranscriptRecordDto> readTailRecords({required String transcriptPath, required String sessionId}) {
+    final tail = super.readTailRecords(transcriptPath: transcriptPath, sessionId: sessionId);
     sleep(const Duration(milliseconds: 800));
     return tail;
   }

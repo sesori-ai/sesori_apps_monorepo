@@ -10,6 +10,21 @@ enum PluginLifecycleState() {
   failed,
 }
 
+/// What a harness the bridge stopped after a refused request needs before it
+/// starts again. Only a fresh setup check lifts it, once the user has fixed
+/// the cause.
+enum PluginFailureBlock() {
+  /// Its backend login stopped working.
+  authenticationRequired,
+
+  /// Something outside the backend's own login refused it, such as the
+  /// gateway configured for it.
+  unavailable,
+
+  /// A reason this app does not know yet.
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginMetadata with _$PluginMetadata {
   const factory({
@@ -18,6 +33,15 @@ sealed class PluginMetadata with _$PluginMetadata {
     required bool isDefault,
     @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required PluginLifecycleState state,
     required String? actionHint,
+
+    /// Set while the bridge holds this harness back after a refused request,
+    /// which lists it although its [state] is unavailable, so the user can
+    /// pick it, read why and check setup again; [actionHint] then says what to
+    /// fix. Null for every other harness.
+    // COMPATIBILITY 2026-11-09 (v1.12.0): Bridges before this field omit it and
+    // leave a held-back harness out of the list, so null (not held back) needs
+    // no fallback. Nothing to remove once those bridges are unsupported.
+    @JsonKey(unknownEnumValue: PluginFailureBlock.unknown) required PluginFailureBlock? failureBlock,
     // COMPATIBILITY 2026-08-04 (v1.8.0): Older bridges omit this
     // per-plugin capability. Unknown plugins stay disabled; the client
     // repository narrowly restores released legacy OpenCode support from the

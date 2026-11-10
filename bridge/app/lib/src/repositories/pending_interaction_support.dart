@@ -79,7 +79,7 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
     );
     return [
       for (final question in questions)
-        if (bindings[question.sessionID] case final session?)
+        if (bindings[question.sessionID] case final session? when session.archivedAt == null)
           if (_displayBinding(bindings: bindings, displaySessionId: question.displaySessionId) case final display?)
             question.toSharedPendingQuestion(sessionId: session.sessionId, displaySessionId: display.sessionId),
     ];
@@ -131,7 +131,7 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
     );
     return [
       for (final permission in permissions)
-        if (bindings[permission.sessionID] case final session?)
+        if (bindings[permission.sessionID] case final session? when session.archivedAt == null)
           if (_displayBinding(bindings: bindings, displaySessionId: permission.displaySessionId) case final display?)
             permission.toSharedPendingPermission(sessionId: session.sessionId, displaySessionId: display.sessionId),
     ];

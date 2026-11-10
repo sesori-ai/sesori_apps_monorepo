@@ -325,6 +325,37 @@ void main() {
       await expectLater(stopping, throwsA(operationFailure(cause: isA<StateError>())));
     });
 
+    test("archiving during a prompt write cancels the input buffered for that write", () async {
+      await connect();
+      final session = await create("session-1");
+      plugin.onPromptWriting = () {
+        plugin.handleAgentServerRequest(
+          request: AcpServerRequest(
+            id: 92,
+            method: AcpMethods.sessionRequestPermission,
+            params: {
+              "sessionId": session.id,
+              "toolCall": {"toolCallId": "tool-1", "title": "Run", "kind": "execute"},
+              "options": [
+                {"optionId": "allow", "name": "Allow", "kind": "allow_once"},
+              ],
+            },
+          ),
+        );
+        unawaited(plugin.archiveSession(sessionId: session.id));
+      };
+      await send(session.id, "active turn");
+      final prompt = await waitForFrameCount(AcpMethods.sessionPrompt, 1);
+      await pump();
+
+      expect(await plugin.getPendingPermissions(sessionId: session.id), isEmpty);
+      final reply = fake.written.singleWhere((frame) => frame["id"] == 92 && frame.containsKey("result"));
+      expect(reply["result"], {
+        "outcome": {"outcome": "cancelled"},
+      });
+      respond(prompt, {"stopReason": "end_turn"});
+    });
+
     test("a stop addressed to a sub-agent is refused before any cancellation", () async {
       final session = await setUpRootCancel(timeout: const Duration(seconds: 1));
       await send(session.id, "delegate");

@@ -2304,7 +2304,13 @@ abstract class AcpPlugin({
 
   @override
   Future<void> archiveSession({required String sessionId}) async {
-    // Best-effort — mobile DB archive state is authoritative.
+    // Best-effort — mobile DB archive state is authoritative. An archived
+    // session refuses replies, so nothing could ever answer its pending input,
+    // including input buffered by a prompt write still in flight.
+    if (_isPromptFrameWriting(sessionId: sessionId)) {
+      _cancelledPromptWriteSessions.add(sessionId);
+    }
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
   }
 
   @override

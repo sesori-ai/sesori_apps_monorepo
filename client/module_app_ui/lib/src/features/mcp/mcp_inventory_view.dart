@@ -86,7 +86,7 @@ class const _InventoryHeader({required final McpActionClientState action}) exten
             McpActionUnavailableReason.unsupportedHarness => loc.mcpUnsupportedHarness,
             McpActionUnavailableReason.unsupportedScope => loc.mcpUnsupportedScope,
             McpActionUnavailableReason.liveSessionRequired => loc.mcpLiveSessionRequired,
-            McpActionUnavailableReason.pluginInactive => loc.mcpPluginInactive,
+            McpActionUnavailableReason.pluginInactive => loc.mcpPluginInactiveAction,
             McpActionUnavailableReason.unknown ||
             McpActionUnavailableReason.busy ||
             McpActionUnavailableReason.notSupported ||

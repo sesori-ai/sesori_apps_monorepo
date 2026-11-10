@@ -2652,6 +2652,194 @@ void main() {
     expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, compactionMessageId);
   });
 
+  test("a stopping session reads running in the list and the chat until the stop lands", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+    bool listRunning() => service.getActiveSessionsSummary().any(
+      (project) => project.activeSessions.any((session) => session.id == "session" && session.mainAgentRunning),
+    );
+    PluginSessionStatus? chatStatus() => events.whereType<BridgeSseSessionStatus>().lastOrNull?.status;
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-stopping",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "work")],
+      userVisibleText: "work",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    final abort = service.abort(sessionId: "session");
+    final abortCommand = await waitForCommand(process: process, type: "abort");
+
+    expect(chatStatus(), const PluginSessionStatus.busy());
+    expect(listRunning(), isTrue);
+
+    process.emitResponse(id: abortCommand.requestId, command: "abort");
+    await abort;
+    await pump();
+
+    expect(chatStatus(), const PluginSessionStatus.idle());
+    expect(listRunning(), isFalse);
+  });
+
+  test("a prompt sent while a stop finishes runs on a fresh process and stays running", () async {
+    final process = FakePiProcess();
+    final replacement = FakePiProcess();
+    final fixture = _Fixture(processes: [process, replacement]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+    bool listRunning() => service.getActiveSessionsSummary().any(
+      (project) => project.activeSessions.any((session) => session.id == "session" && session.mainAgentRunning),
+    );
+    PluginSessionStatus? chatStatus() => events.whereType<BridgeSseSessionStatus>().lastOrNull?.status;
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-before-stop",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "before")],
+      userVisibleText: "before",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    final abort = service.abort(sessionId: "session");
+    final abortCommand = await waitForCommand(process: process, type: "abort");
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-after-stop",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "after")],
+      userVisibleText: "after",
+      variant: null,
+      model: null,
+    );
+    await pump();
+    process.emitResponse(id: abortCommand.requestId, command: "abort");
+    await abort;
+    await pump();
+
+    expect(chatStatus(), const PluginSessionStatus.busy());
+    expect(listRunning(), isTrue);
+    await _answerEntries(replacement);
+    final next = await waitForCommand(process: replacement, type: "prompt");
+    expect(next["message"], "after");
+    replacement.emitResponse(id: next.requestId, command: "prompt");
+    replacement.emit(frame: {"type": "agent_start"});
+    await pump();
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(events.whereType<BridgeSseSessionIdle>(), isEmpty);
+    expect(chatStatus(), const PluginSessionStatus.busy());
+    expect(listRunning(), isTrue);
+  });
+
+  test("a prompt sent after a second stop survives the first stop landing", () async {
+    final process = FakePiProcess();
+    final replacement = FakePiProcess();
+    final fixture = _Fixture(processes: [process, replacement]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-before-stops",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "before")],
+      userVisibleText: "before",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    final firstStop = service.abort(sessionId: "session");
+    await waitForCommand(process: process, type: "abort");
+    final secondStop = service.abort(sessionId: "session");
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-after-stops",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "after")],
+      userVisibleText: "after",
+      variant: null,
+      model: null,
+    );
+    await _captureWarnings(() => Future.wait([firstStop, secondStop]));
+    await _answerEntries(replacement);
+    final next = await waitForCommand(process: replacement, type: "prompt");
+    replacement.emitResponse(id: next.requestId, command: "prompt");
+    replacement.emit(frame: {"type": "agent_start"});
+    await pump();
+
+    expect(next["message"], "after");
+    expect(replacement.killed, isFalse);
+    expect(events.whereType<BridgeSseSessionStatus>().last.status, const PluginSessionStatus.busy());
+  });
+
+  test("a prompt sent while an idle session stops reads running at once", () async {
+    final process = FakePiProcess(stdinCloseCompletes: false);
+    final replacement = FakePiProcess();
+    final fixture = _Fixture(processes: [process, replacement]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-finished",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "finished")],
+      userVisibleText: "finished",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    final stop = service.abort(sessionId: "session");
+    await pump();
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-during-stop",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "during")],
+      userVisibleText: "during",
+      variant: null,
+      model: null,
+    );
+    await pump();
+
+    expect(events.whereType<BridgeSseSessionStatus>().last.status, const PluginSessionStatus.busy());
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+
+    process.completeStdinClose();
+    await stop;
+    await _answerEntries(replacement);
+    final next = await waitForCommand(process: replacement, type: "prompt");
+    expect(next["message"], "during");
+  });
+
   test("abort force-replaces Pi when its acknowledgement waits on hidden steering", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process])..abortRpcTimeout = const Duration(milliseconds: 10);

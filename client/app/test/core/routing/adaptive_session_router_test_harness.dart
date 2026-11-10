@@ -144,6 +144,7 @@ class AdaptiveSessionRouterTestHarness() {
               isDefault: true,
               state: PluginLifecycleState.ready,
               actionHint: null,
+              failureBlock: null,
             ),
           ],
         ),

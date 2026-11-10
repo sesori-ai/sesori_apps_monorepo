@@ -1524,6 +1524,19 @@ void main() {
       expect(fake.serverResponseFor(99)["result"], {"decision": "decline"});
     });
 
+    test("archiving a thread rejects its pending approval and clears work state", () async {
+      await connectWithPendingPermission(threadId: "t-archive-pending");
+      final summaryInvalidated = plugin.events.where((event) => event is BridgeSseProjectUpdated).first;
+
+      await plugin.archiveSession(sessionId: "t-archive-pending");
+
+      await summaryInvalidated.timeout(const Duration(seconds: 1));
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(await plugin.getPendingPermissions(sessionId: "t-archive-pending"), isEmpty);
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(fake.serverResponseFor(99)["result"], {"decision": "decline"});
+    });
+
     test("a closed thread rejects its pending approval and clears work state", () async {
       await connectWithPendingPermission(threadId: "t-close-pending");
       final idle = plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
