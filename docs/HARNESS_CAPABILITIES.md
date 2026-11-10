@@ -892,6 +892,19 @@ The explicit event is additive across the client/bridge wire boundary. Older
 clients ignore it and converge on refresh; newer clients retain snapshot
 reconciliation when connected to an older bridge.
 
+## Failed-turn notices sent as text
+
+Some ACP harnesses end a turn that did no work with `stopReason: end_turn` and
+send the reason as ordinary assistant text. The plugin recognizes that text and
+shows it as an error notice instead of a reply. Recognition matches the
+harness's exact wording, so a reworded notice falls back to plain assistant
+text.
+
+| Harness | Sesori availability |
+|---|---|
+| Cursor | ✅ The account/plan gate ("Check your settings to continue"), live and after history load. |
+| Hermes | ✅ The notice Hermes sends once its model provider has failed every retry ("… didn't respond in time on any of 3 attempts — …"), live. Hermes saves a different row for that turn ("Your request was not processed…", or "This turn did not complete…" after a tool ran); replay drops it, so a reload shows the live notice once. Wording read in the Hermes 0.21.5 source on 2026-11-09. 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
+
 ## Saved prompt files
 
 The bridge core saves every prompt file that doesn't reach the plugin as an

@@ -1,7 +1,9 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "hermes_event_mapper.dart";
 import "hermes_identity.dart";
+import "repositories/hermes_replay_collector.dart";
 import "services/hermes_session_options_service.dart";
 
 /// Hermes Agent backend over ACP.
@@ -18,7 +20,7 @@ import "services/hermes_session_options_service.dart";
 class HermesPlugin({
   required super.launchSpec,
   required super.launchDirectory,
-  required super.eventMapper,
+  required HermesEventMapper super.eventMapper,
   required super.childSessionTracker,
   required super.commandTracker,
   required super.processFactory,
@@ -29,6 +31,12 @@ class HermesPlugin({
         id: HermesPluginIdentity.id,
         agentDisplayName: HermesPluginIdentity.displayName,
       );
+
+  @override
+  Future<AcpSessionReplayCollector> createSessionReplayCollector({
+    required String sessionId,
+    required AcpReplayCollectorFactory collectorFactory,
+  }) async => HermesReplayCollector(standardCollector: collectorFactory(toolPartSuppression: null));
 
   @override
   void captureSessionConfig(

@@ -4,6 +4,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:hermes_plugin/hermes_plugin.dart";
 import "package:hermes_plugin/src/api/hermes_acp_api.dart";
+import "package:hermes_plugin/src/hermes_event_mapper.dart";
 import "package:hermes_plugin/src/repositories/hermes_catalog_repository.dart";
 import "package:hermes_plugin/src/services/hermes_session_options_service.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
@@ -417,6 +418,47 @@ void main() {
         isEmpty,
       );
     });
+
+    test("history replay drops Hermes's saved failed-turn boundary", () async {
+      final collector = await plugin.createSessionReplayCollector(
+        sessionId: "s1",
+        collectorFactory: ({required toolPartSuppression}) => AcpReplayCollector(
+          sessionUpdateNormalizer: null,
+          shellCommandResolver: null,
+          sessionId: "s1",
+          agentId: "hermes",
+          initialUserMessage: null,
+          messageIdOverride: null,
+          messageTimeResolver: null,
+          haltClassifier: null,
+          toolPartReplacement: null,
+          toolPartSuppression: toolPartSuppression,
+        ),
+      );
+      for (final update in [
+        {
+          "sessionUpdate": "user_message_chunk",
+          "content": {"type": "text", "text": "Hello"},
+        },
+        {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {
+            "type": "text",
+            "text": "Your request was not processed. Send it again if you still want me to carry it out.",
+          },
+        },
+      ]) {
+        collector.consumeNotification(
+          notification: AcpNotification(
+            method: "session/update",
+            params: {"sessionId": "s1", "update": update},
+          ),
+        );
+      }
+
+      final messages = collector.buildWithAssistantSelection(modelId: null, providerId: null, variant: null);
+      expect(messages.map((message) => message.info), [isA<PluginMessageUser>()]);
+    });
   });
 }
 
@@ -457,7 +499,7 @@ HermesPlugin _plugin({
     ),
     launchDirectory: "/repo",
     childSessionTracker: childSessionTracker,
-    eventMapper: AcpEventMapper(
+    eventMapper: HermesEventMapper(
       launchDirectory: "/repo",
       pluginId: "hermes",
       configurationTracker: configurationTracker,

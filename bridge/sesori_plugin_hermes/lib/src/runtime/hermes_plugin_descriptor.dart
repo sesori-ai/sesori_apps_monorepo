@@ -8,6 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/hermes_acp_api.dart";
 import "../hermes_binary.dart";
+import "../hermes_event_mapper.dart";
 import "../hermes_identity.dart";
 import "../hermes_plugin_impl.dart";
 import "../repositories/hermes_catalog_repository.dart";
@@ -386,7 +387,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       );
     final commandTracker = AcpCommandTracker();
     final childSessionTracker = AcpChildSessionTracker();
-    final eventMapper = AcpEventMapper(
+    final eventMapper = HermesEventMapper(
       launchDirectory: cwd,
       pluginId: HermesPluginIdentity.id,
       configurationTracker: configurationTracker,
