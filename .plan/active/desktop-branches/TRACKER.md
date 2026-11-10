@@ -60,6 +60,7 @@ Folded, before → after:
 | 1 settled shell glyph | desktop: check, `textTertiary` | terminal, the line's colour (`textSecondary`, red on failure) | desktop |
 | 1 settled tool glyph | desktop: check | wrench | desktop |
 | 1 settled thought glyph | desktop: 14 pt bulb, `textTertiary` | the still 20 pt outline AI loader, `textSecondary` | desktop |
+| 1 New Session harness pill caret | desktop: up-and-down selector | the phone's down chevron, same size and colour; both open the same anchored menu | desktop |
 | 2 shell command | desktop: monospace (live in `textPrimary`) | Satoshi, underlined, the row's colour | desktop |
 | 2 tool title or path | desktop: monospace, `textSecondary` | plain text | desktop |
 | 2 permission request line | desktop: monospace 12 w400 | Satoshi 12.5 w500, as a question's | desktop |
@@ -84,4 +85,4 @@ Dropped: none. The dark secondary button was measured on the phone simulator's s
 | After step 3 | 83 | 38 |
 | After step 4 (planned) | about 71 | about 35 |
 
-Step 3 removed 9 reads, not the 10 planned: the bash label read stays with item 2.6. Step 3 counted with `git grep -hoE 'PregoInteractionScope\.of\(|InheritedWidgetOfExactType<PregoInteractionScope>|isDesktopScale|ComposerPresentation\.(pointer|touch)'` over `client/module_app_ui/lib` and `client/module_prego/lib`, without the two files that define the modes. That gives 91 on `origin/main` after step 2, one fewer than recorded, and 82 after step 3.
+Step 3 removed 9 reads, not the 10 planned: the bash label read stays with item 2.6. The harness pill's caret fold removes no read: the same read still sets the pill's radius, fill, height, padding and text, logo and caret sizes (metrics phase). Step 3 counted with `git grep -hoE 'PregoInteractionScope\.of\(|InheritedWidgetOfExactType<PregoInteractionScope>|isDesktopScale|ComposerPresentation\.(pointer|touch)'` over `client/module_app_ui/lib` and `client/module_prego/lib`, without the two files that define the modes. That gives 91 on `origin/main` after step 2, one fewer than recorded, and 82 after step 3.
