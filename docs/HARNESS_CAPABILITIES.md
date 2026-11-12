@@ -903,7 +903,10 @@ text.
 The bridge's history store keeps one notice per failed turn. When the live
 notice and the replayed one are worded differently, the stored notice shows the
 live wording. It adds the replayed wording after it only when the replayed
-notice has another error name, that is, when it says something of its own.
+notice has another error name, that is, when it says something of its own, and
+another message id. A replayed notice under the live notice's own id is an
+update from the backend, so with another error name its wording replaces the
+live one.
 
 | Harness | Sesori availability |
 |---|---|

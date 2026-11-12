@@ -220,9 +220,12 @@ reconnect or restart.
   one. When the live notice was seen, the reloaded notice shows only Hermes's
   live reason in place of the generic "Your request was not processed…" row,
   which says nothing more; the partial-turn warning still follows the live
-  reason, because it says that actions may already have run. A notice an older
-  bridge stored with the generic row appended, or stored live under Hermes's
-  old kind name, loses that paragraph on the next reload or re-import. An assistant message whose whole text is
+  reason, because it says that actions may already have run. Notices stored by
+  an older bridge show the same after the next reload or re-import: a notice
+  stored with the generic row appended after the live reason loses that
+  appended row, and a live notice stored under Hermes's old kind name
+  (`hermes_turn_failure`) gets no generic row appended but still gets the
+  partial-turn warning. An assistant message whose whole text is
   one of Hermes's notices is that notice. A reply that quotes one inside other
   text, adds to it or carries a tool or reasoning stays a reply, and so does a
   reasoning-only stop, which carries the model's last thoughts.
@@ -230,7 +233,10 @@ reconnect or restart.
   same place of the transcript are one notice even when they are worded
   differently. The error name is the notice's kind. A replayed notice of the
   same kind is a stand-in, so the live wording stands alone; one of another
-  kind follows the live wording, which stays first. Notices in different places
+  kind with another message id follows the live wording, which stays first. A
+  replayed notice under the live notice's own id is an update from the
+  backend, so with another kind and other wording it replaces the live
+  wording. Notices in different places
   stay separate.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. Exact identities satisfy their replay occurrences
