@@ -221,8 +221,8 @@ reconnect or restart.
   live reason in place of the generic "Your request was not processed…" row,
   which says nothing more; the partial-turn warning still follows the live
   reason, because it says that actions may already have run. A notice an older
-  bridge stored with the generic row appended loses that paragraph on the next
-  reload or re-import. An assistant message whose whole text is
+  bridge stored with the generic row appended, or stored live under Hermes's
+  old kind name, loses that paragraph on the next reload or re-import. An assistant message whose whole text is
   one of Hermes's notices is that notice. A reply that quotes one inside other
   text, adds to it or carries a tool or reasoning stays a reply, and so does a
   reasoning-only stop, which carries the model's last thoughts.

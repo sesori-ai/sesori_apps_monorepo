@@ -1869,13 +1869,14 @@ void main() {
       Future<TestChatHistory> liveFailedTurn({
         required _FakeSessionRepository repository,
         required String liveText,
+        String liveErrorName = "hermes_failed_turn",
       }) async {
         final history = createTestChatHistory(sessionRepository: repository);
         await _captureMessages(
           history: history,
           messages: [
             _messageWithText(id: "live-user", text: "Hello", createdAt: 100, promptId: null),
-            _errorMessage(id: "live-error", errorName: "hermes_failed_turn", text: liveText, createdAt: 200),
+            _errorMessage(id: "live-error", errorName: liveErrorName, text: liveText, createdAt: 200),
           ],
         );
         return history;
@@ -1914,6 +1915,23 @@ void main() {
         await history.service.backfillSession(sessionId: "ses_a");
 
         expect(await storedNotices(history: history), const ["$liveReason\n\n$partialRow"]);
+      });
+
+      test("stored under Hermes's old kind name drops the generic saved row and keeps the partial warning", () async {
+        for (final (replay, expected) in [
+          (failedTurnReplay(text: savedRow, errorName: "hermes_failed_turn"), liveReason),
+          (failedTurnReplay(text: partialRow, errorName: "hermes_partial_turn"), "$liveReason\n\n$partialRow"),
+        ]) {
+          final history = await liveFailedTurn(
+            repository: _FakeSessionRepository(transcript: replay),
+            liveText: liveReason,
+            liveErrorName: "hermes_turn_failure",
+          );
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(await storedNotices(history: history), [expected]);
+        }
       });
 
       test("keeps its wording across later re-imports", () async {
