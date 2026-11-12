@@ -44,6 +44,8 @@
 		<false/>
 		<key>FirebaseAutomaticScreenReportingEnabled</key>
 		<false/>
+		<key>FirebaseMessagingInstallationIdEnabled</key>
+		<true/>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

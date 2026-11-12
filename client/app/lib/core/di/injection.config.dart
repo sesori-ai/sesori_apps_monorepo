@@ -12,6 +12,8 @@
 
 import 'package:device_info_plus/device_info_plus.dart' as _i833;
 import 'package:firebase_analytics/firebase_analytics.dart' as _i398;
+import 'package:firebase_app_installations/firebase_app_installations.dart'
+    as _i22;
 import 'package:firebase_core/firebase_core.dart' as _i982;
 import 'package:firebase_crashlytics/firebase_crashlytics.dart' as _i141;
 import 'package:firebase_messaging/firebase_messaging.dart' as _i892;
@@ -223,6 +225,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => firebaseRegisterModule.enabledFirebaseMessaging,
       registerFor: {_firebaseEnabled},
     );
+    gh.lazySingleton<_i22.FirebaseInstallations>(
+      () => firebaseRegisterModule.enabledFirebaseInstallations,
+      registerFor: {_firebaseEnabled},
+    );
     gh.lazySingleton<_i398.FirebaseAnalytics>(
       () => firebaseRegisterModule.enabledFirebaseAnalytics,
       registerFor: {_firebaseEnabled},
@@ -248,6 +254,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.AnalyticsReleaseCutoffSource>(
       () => _i1005.NoOpAnalyticsReleaseCutoffSource(),
       registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i948.PushMessagingSource>(
+      () => _i1042.FirebasePushMessagingSource(
+        messaging: gh<_i892.FirebaseMessaging>(),
+        installations: gh<_i22.FirebaseInstallations>(),
+        staticAdapter: gh<_i178.FirebaseMessagingStaticAdapter>(),
+      ),
+      registerFor: {_firebaseEnabled},
     );
     gh.lazySingleton<_i178.FirebaseMessagingStaticAdapter>(
       () => firebaseRegisterModule.disabledFirebaseMessagingStaticAdapter,
@@ -307,13 +321,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i987.FlutterPluginAuthenticationBrowser(
         client: gh<_i489.FlutterWebAuthClient>(),
       ),
-    );
-    gh.lazySingleton<_i948.PushMessagingSource>(
-      () => _i1042.FirebasePushMessagingSource(
-        messaging: gh<_i892.FirebaseMessaging>(),
-        staticAdapter: gh<_i178.FirebaseMessagingStaticAdapter>(),
-      ),
-      registerFor: {_firebaseEnabled},
     );
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i52.NoOpFailureReporter(),

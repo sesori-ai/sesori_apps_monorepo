@@ -9,7 +9,7 @@ class MockNotificationApi() extends Mock implements NotificationApi;
 class MockNotificationPreferencesDeviceIdStorage() extends Mock implements NotificationPreferencesDeviceIdStorage;
 
 const _deviceId = "de250236-dd17-4fbf-a37e-4fcf5dc8c86b";
-const _token = "fcm-token";
+const _fid = "fid-1";
 
 void main() {
   late MockNotificationApi api;
@@ -17,52 +17,49 @@ void main() {
   late NotificationRepository repository;
 
   setUpAll(() {
-    registerFallbackValue(const RegisterTokenRequest(token: _token, platform: DevicePlatform.ios, deviceId: null));
+    registerFallbackValue(const RegisterFidRequest(fid: _fid, platform: DevicePlatform.ios, deviceId: _deviceId));
   });
 
   setUp(() {
     api = MockNotificationApi();
     deviceIdStorage = MockNotificationPreferencesDeviceIdStorage();
-    when(() => api.registerToken(request: any(named: "request"))).thenAnswer((_) async {});
+    when(() => api.registerFid(request: any(named: "request"))).thenAnswer((_) async {});
     repository = NotificationRepository(api: api, deviceIdStorage: deviceIdStorage);
   });
 
   group("NotificationRepository", () {
-    // This is the id the notification settings are stored under, so sending it
-    // is what lets the server apply per-device filtering to this token at all.
-    test("registerToken sends the stored device id", () async {
+    // This is the id the notification settings are stored under, and the one
+    // the server retires this device's pre-FID push token by, so it has to
+    // reach the server with the FID.
+    test("registerFid sends the stored device id", () async {
       when(() => deviceIdStorage.getOrCreate()).thenAnswer((_) async => _deviceId);
 
-      await repository.registerToken(token: _token, platform: DevicePlatform.ios);
+      await repository.registerFid(fid: _fid, platform: DevicePlatform.ios);
 
       final captured =
-          verify(() => api.registerToken(request: captureAny(named: "request"))).captured.single
-              as RegisterTokenRequest;
-      expect(captured.token, _token);
+          verify(() => api.registerFid(request: captureAny(named: "request"))).captured.single as RegisterFidRequest;
+      expect(captured.fid, _fid);
       expect(captured.platform, DevicePlatform.ios);
       expect(captured.deviceId, _deviceId);
     });
 
-    // Losing the device id costs filtering; failing the registration would cost
-    // push entirely, so the token still has to reach the server.
-    test("registerToken still registers when the device id cannot be read", () async {
+    // An FID row without a device id could not replace this device's old token
+    // row, so the install would get each push twice; sending nothing lets a
+    // later report, login or launch retry with the id.
+    test("registerFid fails without sending when the device id cannot be read", () async {
       when(() => deviceIdStorage.getOrCreate()).thenThrow(Exception("secure storage unavailable"));
 
-      await repository.registerToken(token: _token, platform: DevicePlatform.android);
+      await expectLater(repository.registerFid(fid: _fid, platform: DevicePlatform.android), throwsException);
 
-      final captured =
-          verify(() => api.registerToken(request: captureAny(named: "request"))).captured.single
-              as RegisterTokenRequest;
-      expect(captured.token, _token);
-      expect(captured.deviceId, isNull);
+      verifyNever(() => api.registerFid(request: any(named: "request")));
     });
 
-    test("unregisterToken delegates to the api without touching device id storage", () async {
-      when(() => api.unregisterToken(token: _token)).thenAnswer((_) async {});
+    test("unregisterFid delegates to the api without touching device id storage", () async {
+      when(() => api.unregisterFid(fid: _fid)).thenAnswer((_) async {});
 
-      await repository.unregisterToken(token: _token);
+      await repository.unregisterFid(fid: _fid);
 
-      verify(() => api.unregisterToken(token: _token)).called(1);
+      verify(() => api.unregisterFid(fid: _fid)).called(1);
       verifyNever(() => deviceIdStorage.getOrCreate());
     });
   });

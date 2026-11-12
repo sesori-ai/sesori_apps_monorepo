@@ -10,8 +10,8 @@ import "../../di/firebase_register_module.dart";
 /// is resolved from the settings and profile screens on every platform, not only
 /// from the Firebase-guarded notification startup.
 ///
-/// There is no messaging SDK to obtain a token from, so [getToken] reports none
-/// and every stream stays empty — which is what keeps registration from ever
+/// There is no messaging SDK to register with, so [registeredFidStream] never
+/// emits an installation ID — which is what keeps server registration from ever
 /// running here.
 @firebaseDisabledEnvironment
 @LazySingleton(as: PushMessagingSource)
@@ -19,22 +19,22 @@ class NoOpPushMessagingSource() implements PushMessagingSource {
   @override
   Future<void> initialize() async {}
 
-  /// Never read in this environment: token registration is reached only through
-  /// a non-null [getToken] result or a [tokenRefreshStream] event, and neither
-  /// occurs here. Reporting a platform beats throwing, because the settings
-  /// screen resolves this service and a throw would take the screen down over a
-  /// value nothing consumes.
+  /// Never read in this environment: server registration is reached only
+  /// through a [registeredFidStream] event, which never occurs here. Reporting
+  /// a platform beats throwing, because the settings screen resolves this
+  /// service and a throw would take the screen down over a value nothing
+  /// consumes.
   @override
   DevicePlatform get devicePlatform => DevicePlatform.android;
 
   @override
-  Future<String?> getToken() async => null;
+  Future<void> register() async {}
 
   @override
-  Future<void> deleteToken() async {}
+  Future<void> unregister() async {}
 
   @override
-  Stream<String> get tokenRefreshStream => const Stream<String>.empty();
+  Stream<String> get registeredFidStream => const Stream<String>.empty();
 
   @override
   Stream<PushNotificationMessage> get foregroundMessageStream => const Stream<PushNotificationMessage>.empty();

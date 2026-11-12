@@ -14,11 +14,17 @@ class NotificationRegistrationService({
   required final PushMessagingSource _pushMessagingSource,
 }) {
   StreamSubscription<AuthState>? _authSubscription;
-  StreamSubscription<String>? _tokenRefreshSubscription;
-  String? _currentRegisteredToken;
+  StreamSubscription<String>? _registeredFidSubscription;
+
+  /// The latest FID the messaging provider reported, so logout can remove it
+  /// from the server even when its registration there failed during this run.
+  String? _latestFid;
+
+  /// The FID the server last accepted, so repeated reports of it are not resent.
+  String? _registeredFid;
   AuthState? _initialAuthStateToIgnore;
   Future<void> _syncQueue = Future<void>.value();
-  bool _localTokenDeleted = false;
+  bool _locallyUnregistered = false;
   bool _registrationSuspended = false;
   bool _unauthenticatedObservedWhileSuspended = false;
   bool _started = false;
@@ -38,9 +44,11 @@ class NotificationRegistrationService({
     _started = true;
     _initialAuthStateToIgnore = initialState;
     _authSubscription = _authSession.authStateStream.listen(_onAuthStateChanged, onError: _onAuthStreamError);
-    _tokenRefreshSubscription = _pushMessagingSource.tokenRefreshStream.listen(
-      _onTokenRefresh,
-      onError: _onTokenRefreshStreamError,
+    // Subscribed before the first registration request: the FID only ever
+    // arrives as an event.
+    _registeredFidSubscription = _pushMessagingSource.registeredFidStream.listen(
+      _onRegisteredFid,
+      onError: _onRegisteredFidStreamError,
     );
 
     try {
@@ -75,53 +83,36 @@ class NotificationRegistrationService({
           _registrationSuspended = false;
           _unauthenticatedObservedWhileSuspended = false;
         }
-        await _registerCurrentToken();
+        await _requestRegistration();
       case AuthUnauthenticated() || AuthFailed():
         if (_registrationSuspended) {
           _unauthenticatedObservedWhileSuspended = true;
         }
-        await _deleteLocalToken();
+        await _unregisterLocally();
       case AuthInitial() || AuthAuthenticating():
         return;
     }
   }
 
-  Future<void> _registerCurrentToken() async {
-    final token = await _pushMessagingSource.getToken();
-    if (token == null || token.isEmpty) {
-      return;
-    }
-    _localTokenDeleted = false;
-    if (token == _currentRegisteredToken) return;
-
-    await _repository.registerToken(token: token, platform: _pushMessagingSource.devicePlatform);
-    _currentRegisteredToken = token;
+  /// The resulting FID reaches the server through [_handleRegisteredFid].
+  Future<void> _requestRegistration() async {
+    _locallyUnregistered = false;
+    await _pushMessagingSource.register();
   }
 
   Future<void> _unregisterCurrentDevice() async {
-    // Do not let queued auth work or a refresh re-register before logout.
+    // Do not let queued auth work or a registration event re-register before logout.
     _registrationSuspended = true;
     _unauthenticatedObservedWhileSuspended = false;
 
-    var token = _currentRegisteredToken;
-    if (token == null && !_localTokenDeleted) {
-      try {
-        token = await _pushMessagingSource.getToken();
-        if (token != null && token.isNotEmpty) {
-          _localTokenDeleted = false;
-        }
-      } catch (error, stackTrace) {
-        logw("Failed to read push token during logout", error, stackTrace);
-      }
-    }
-
-    if (token != null && token.isNotEmpty) {
-      try {
-        await _repository.unregisterToken(token: token);
-        _currentRegisteredToken = null;
-      } catch (error, stackTrace) {
-        logw("Failed to unregister push token during logout", error, stackTrace);
-      }
+    final fid = _latestFid;
+    if (fid == null) return;
+    try {
+      await _repository.unregisterFid(fid: fid);
+      _registeredFid = null;
+      logi("Push FID ${_fidForLog(fid)} unregistered from the server for logout");
+    } catch (error, stackTrace) {
+      logw("Failed to unregister push FID during logout", error, stackTrace);
     }
   }
 
@@ -130,20 +121,21 @@ class NotificationRegistrationService({
 
     _registrationSuspended = false;
     _unauthenticatedObservedWhileSuspended = false;
-    await _registerCurrentToken();
+    await _requestRegistration();
   }
 
-  Future<void> _deleteLocalToken() async {
-    if (_localTokenDeleted) {
-      _currentRegisteredToken = null;
+  Future<void> _unregisterLocally() async {
+    if (_locallyUnregistered) {
+      _registeredFid = null;
       return;
     }
 
     try {
-      await _pushMessagingSource.deleteToken();
-      _localTokenDeleted = true;
+      await _pushMessagingSource.unregister();
+      _locallyUnregistered = true;
+      logi("Unregistered from FCM and retired this installation's FID");
     } finally {
-      _currentRegisteredToken = null;
+      _registeredFid = null;
     }
   }
 
@@ -156,44 +148,57 @@ class NotificationRegistrationService({
 
     unawaited(
       _enqueueSync(() => _syncForState(state: state)).catchError((Object error, StackTrace stackTrace) {
-        logw("Failed to sync push token for auth state change", error, stackTrace);
+        logw("Failed to sync push registration for auth state change", error, stackTrace);
       }),
     );
   }
 
-  void _onTokenRefresh(String newToken) {
+  void _onRegisteredFid(String fid) {
     unawaited(
-      _enqueueSync(() => _handleTokenRefresh(newToken: newToken)).catchError((Object error, StackTrace stackTrace) {
-        logw("Failed to sync refreshed push token", error, stackTrace);
+      _enqueueSync(() => _handleRegisteredFid(fid: fid)).catchError((Object error, StackTrace stackTrace) {
+        logw("Failed to register push FID with the server", error, stackTrace);
       }),
     );
   }
 
-  Future<void> _handleTokenRefresh({required String newToken}) async {
-    if (newToken.isEmpty) return;
-
-    _localTokenDeleted = false;
+  Future<void> _handleRegisteredFid({required String fid}) async {
+    logi("Push FID ${_fidForLog(fid)} received from FCM");
+    _latestFid = fid;
+    _locallyUnregistered = false;
     final authState = _authSession.currentState;
     if (_registrationSuspended && authState is AuthAuthenticated) {
       return;
     }
     if (authState is! AuthAuthenticated) {
+      // An FID reported while not signed in never reaches the server. After a
+      // sign-out (logout or a rejected session) this unregisters it again and
+      // retires it. A cold start while signed out stays AuthInitial, so FCM
+      // keeps the registration it made by itself, but that FID is new since
+      // the sign-out and the server never stored it. Only a retire that failed
+      // (offline) leaves an FID the server may still hold; see
+      // docs/regression/notifications.md.
       await _syncForState(state: authState);
       return;
     }
-
-    final oldToken = _currentRegisteredToken;
-    if (oldToken != null && oldToken != newToken) {
-      try {
-        await _repository.unregisterToken(token: oldToken);
-      } catch (error, stackTrace) {
-        logw("Failed to unregister old push token", error, stackTrace);
-      }
-      _currentRegisteredToken = null;
+    if (fid == _registeredFid) {
+      logd("Push FID ${_fidForLog(fid)} is already registered with the server");
+      return;
     }
 
-    await _repository.registerToken(token: newToken, platform: _pushMessagingSource.devicePlatform);
-    _currentRegisteredToken = newToken;
+    final previousFid = _registeredFid;
+    if (previousFid != null) {
+      try {
+        await _repository.unregisterFid(fid: previousFid);
+        logi("Previous push FID ${_fidForLog(previousFid)} unregistered from the server");
+      } catch (error, stackTrace) {
+        logw("Failed to unregister previous push FID", error, stackTrace);
+      }
+      _registeredFid = null;
+    }
+
+    await _repository.registerFid(fid: fid, platform: _pushMessagingSource.devicePlatform);
+    _registeredFid = fid;
+    logi("Push FID ${_fidForLog(fid)} registered with the server");
   }
 
   // ignore: no_slop_linter/prefer_required_named_parameters
@@ -202,16 +207,20 @@ class NotificationRegistrationService({
   }
 
   // ignore: no_slop_linter/prefer_required_named_parameters
-  void _onTokenRefreshStreamError(Object error, StackTrace stackTrace) {
-    loge("Notification registration token refresh stream error", error, stackTrace);
+  void _onRegisteredFidStreamError(Object error, StackTrace stackTrace) {
+    loge("Notification registration FID stream error", error, stackTrace);
   }
 
   @disposeMethod
   Future<void> dispose() async {
     _disposed = true;
     await _authSubscription?.cancel();
-    await _tokenRefreshSubscription?.cancel();
+    await _registeredFidSubscription?.cancel();
     _authSubscription = null;
-    _tokenRefreshSubscription = null;
+    _registeredFidSubscription = null;
   }
 }
+
+/// An FID is this installation's push delivery address, so logs carry only a
+/// prefix: enough to match a server-side record, not enough to send to.
+String _fidForLog(String fid) => fid.length > 6 ? "${fid.substring(0, 6)}…" : fid;

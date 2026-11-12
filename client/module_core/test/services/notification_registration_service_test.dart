@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:meta/meta.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/logging/logging.dart";
 import "package:sesori_dart_core/src/platform/notification_open_request.dart";
 import "package:sesori_dart_core/src/platform/push_messaging_source.dart";
 import "package:sesori_dart_core/src/platform/push_notification_message.dart";
@@ -25,7 +26,7 @@ void main() {
       repository = RecordingNotificationRepository(operations: operations);
       authSession = FakeAuthSession(initialState: _authenticatedState());
       pushMessagingSource = FakePushMessagingSource(
-        initialToken: "token-1",
+        fid: "fid-1",
         devicePlatform: DevicePlatform.android,
         operations: operations,
       );
@@ -42,316 +43,354 @@ void main() {
       await pushMessagingSource.dispose();
     });
 
-    test("auth state and token refresh keep server and local registration in sync", () async {
+    test("auth state and FID events keep server and local registration in sync", () async {
       await service.start();
+      await _settle();
 
+      expect(pushMessagingSource.registerCalls, 1);
       expect(
-        repository.registeredTokens,
-        equals([
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-        ]),
+        repository.registeredFids,
+        equals([const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android)]),
       );
-      expect(repository.unregisteredTokens, isEmpty);
+      expect(repository.unregisteredFids, isEmpty);
 
-      pushMessagingSource.emitTokenRefresh("token-2");
-      await Future<void>.delayed(Duration.zero);
+      // A repeated report of the registered FID is not sent again.
+      pushMessagingSource.emitRegisteredFid("fid-1");
+      await _settle();
+      expect(repository.registeredFids, hasLength(1));
 
+      pushMessagingSource.emitRegisteredFid("fid-2");
+      await _settle();
+
+      expect(repository.unregisteredFids, equals(["fid-1"]));
       expect(
-        repository.unregisteredTokens,
-        equals(["token-1"]),
-      );
-      expect(
-        repository.registeredTokens,
+        repository.registeredFids,
         equals([
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-          const RegisteredToken(token: "token-2", platform: DevicePlatform.android),
+          const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android),
+          const RegisteredFid(fid: "fid-2", platform: DevicePlatform.android),
         ]),
       );
 
       authSession.emit(const AuthState.unauthenticated());
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
 
-      expect(repository.unregisteredTokens, equals(["token-1"]));
-      expect(pushMessagingSource.deleteTokenCalls, 1);
-      expect(pushMessagingSource.currentToken, isNull);
+      expect(repository.unregisteredFids, equals(["fid-1"]));
+      expect(pushMessagingSource.unregisterCalls, 1);
     });
 
-    test("unauthenticated refresh is deleted until auth returns", () async {
+    test("unauthenticated registrations are undone locally until auth returns", () async {
       authSession.emit(const AuthState.unauthenticated());
       await service.start();
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
 
-      expect(repository.registeredTokens, isEmpty);
-      expect(pushMessagingSource.deleteTokenCalls, 1);
+      expect(repository.registeredFids, isEmpty);
+      expect(pushMessagingSource.registerCalls, 0);
+      expect(pushMessagingSource.unregisterCalls, 1);
 
-      pushMessagingSource.currentToken = "token-2";
-      pushMessagingSource.emitTokenRefresh("token-2");
-      await Future<void>.delayed(Duration.zero);
+      pushMessagingSource.emitRegisteredFid("fid-2");
+      await _settle();
 
-      expect(repository.registeredTokens, isEmpty);
-      expect(pushMessagingSource.deleteTokenCalls, 2);
-      expect(pushMessagingSource.currentToken, isNull);
+      expect(repository.registeredFids, isEmpty);
+      expect(pushMessagingSource.unregisterCalls, 2);
 
-      pushMessagingSource.currentToken = "token-3";
+      pushMessagingSource.currentFid = "fid-3";
       authSession.emit(_authenticatedState());
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
 
       expect(
-        repository.registeredTokens,
-        equals([
-          const RegisteredToken(token: "token-3", platform: DevicePlatform.android),
-        ]),
+        repository.registeredFids,
+        equals([const RegisteredFid(fid: "fid-3", platform: DevicePlatform.android)]),
       );
     });
 
-    test("unauthenticated startup deletes the current local token after restart", () async {
-      authSession = FakeAuthSession(initialState: const AuthState.unauthenticated());
-      pushMessagingSource = FakePushMessagingSource(
-        initialToken: "token-1",
-        devicePlatform: DevicePlatform.android,
-        operations: operations,
-      );
-      service = NotificationRegistrationService(
-        repository: repository,
-        authSession: authSession,
-        pushMessagingSource: pushMessagingSource,
-      );
-
+    test("logout cleanup unregisters remotely before auth unregisters locally", () async {
       await service.start();
-
-      expect(repository.registeredTokens, isEmpty);
-      expect(repository.unregisteredTokens, isEmpty);
-      expect(pushMessagingSource.deleteTokenCalls, 1);
-      expect(pushMessagingSource.currentToken, isNull);
-    });
-
-    test("logout cleanup unregisters remotely before auth deletes the local token", () async {
-      await service.start();
+      await _settle();
       operations.clear();
 
       await service.unregisterCurrentDevice();
 
-      expect(operations, equals(["unregister:token-1"]));
-      expect(repository.unregisteredTokens, equals(["token-1"]));
-      expect(pushMessagingSource.deleteTokenCalls, 0);
+      expect(operations, equals(["unregister:fid-1"]));
+      expect(pushMessagingSource.unregisterCalls, 0);
 
-      pushMessagingSource.emitTokenRefresh("token-2");
-      await Future<void>.delayed(Duration.zero);
+      pushMessagingSource.emitRegisteredFid("fid-2");
+      await _settle();
 
       expect(
-        repository.registeredTokens,
-        equals([
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-        ]),
+        repository.registeredFids,
+        equals([const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android)]),
       );
-      expect(pushMessagingSource.deleteTokenCalls, 0);
 
       authSession.emit(const AuthState.unauthenticated());
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
 
-      expect(operations, equals(["unregister:token-1", "delete-local"]));
-      expect(pushMessagingSource.deleteTokenCalls, 1);
+      expect(operations, equals(["unregister:fid-1", "unregister-local"]));
     });
 
-    test("unauthenticated cleanup retries local deletion after failures", () async {
+    // The FID is known only from events, so logout must not depend on the
+    // server registration having succeeded during this run.
+    test("logout removes the reported FID even when its server registration failed", () async {
+      repository.failNextRegisterFid = true;
       await service.start();
-      repository.failNextUnregisterToken = true;
-      pushMessagingSource.failNextDeleteToken = true;
+      await _settle();
+
+      expect(repository.registeredFids, isEmpty);
 
       await service.unregisterCurrentDevice();
 
-      expect(repository.unregisteredTokens, equals(["token-1"]));
-      expect(pushMessagingSource.deleteTokenCalls, 0);
+      expect(repository.unregisteredFids, equals(["fid-1"]));
+    });
+
+    test("unauthenticated cleanup retries local unregistration after failures", () async {
+      await service.start();
+      await _settle();
+      repository.failNextUnregisterFid = true;
+      pushMessagingSource.failNextUnregister = true;
+
+      await service.unregisterCurrentDevice();
+
+      expect(repository.unregisteredFids, equals(["fid-1"]));
+      expect(pushMessagingSource.unregisterCalls, 0);
 
       authSession.emit(const AuthState.unauthenticated());
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
 
-      expect(pushMessagingSource.deleteTokenCalls, 1);
+      expect(pushMessagingSource.unregisterCalls, 1);
 
-      pushMessagingSource.emitTokenRefresh("token-2");
-      await Future<void>.delayed(Duration.zero);
+      pushMessagingSource.emitRegisteredFid("fid-2");
+      await _settle();
 
-      expect(pushMessagingSource.deleteTokenCalls, 2);
-      expect(pushMessagingSource.currentToken, isNull);
+      expect(pushMessagingSource.unregisterCalls, 2);
     });
 
     test("queued authenticated work cannot clear logout suspension", () async {
       await service.start();
-      final tokenCompleter = Completer<String?>();
-      pushMessagingSource.tokenFuture = tokenCompleter.future;
+      await _settle();
+      final registerGate = Completer<void>();
+      pushMessagingSource.registerGate = registerGate.future;
 
       authSession.emit(_authenticatedState());
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
       final cleanupFuture = service.unregisterCurrentDevice();
-      pushMessagingSource.emitTokenRefresh("token-2");
+      pushMessagingSource.emitRegisteredFid("fid-2");
 
-      tokenCompleter.complete("token-1");
+      registerGate.complete();
       await cleanupFuture;
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
 
       expect(
-        repository.registeredTokens,
-        equals([
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-        ]),
+        repository.registeredFids,
+        equals([const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android)]),
       );
-      expect(repository.unregisteredTokens, equals(["token-1"]));
+      expect(repository.unregisteredFids, equals(["fid-1"]));
     });
 
     test("failed logout resumes registration for the authenticated user", () async {
       await service.start();
+      await _settle();
       await service.unregisterCurrentDevice();
 
       await service.resumeRegistrationAfterFailedLogout();
-      pushMessagingSource.emitTokenRefresh("token-2");
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
+      pushMessagingSource.emitRegisteredFid("fid-2");
+      await _settle();
 
       expect(
-        repository.registeredTokens,
+        repository.registeredFids,
         equals([
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-          const RegisteredToken(token: "token-2", platform: DevicePlatform.android),
+          const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android),
+          const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android),
+          const RegisteredFid(fid: "fid-2", platform: DevicePlatform.android),
         ]),
       );
-      expect(repository.unregisteredTokens, equals(["token-1", "token-1"]));
+      expect(repository.unregisteredFids, equals(["fid-1", "fid-1"]));
     });
 
-    test("keeps listening after an initial sync failure", () async {
-      repository.failNextRegisterToken = true;
+    test("keeps listening after an initial registration failure", () async {
+      pushMessagingSource.failNextRegister = true;
 
       await service.start();
+      await _settle();
 
-      expect(repository.registeredTokens, isEmpty);
+      expect(repository.registeredFids, isEmpty);
 
       authSession.emit(const AuthState.unauthenticated());
-      await Future<void>.delayed(Duration.zero);
-      pushMessagingSource.currentToken = "token-1";
+      await _settle();
       authSession.emit(_authenticatedState());
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
 
       expect(
-        repository.registeredTokens,
-        equals([
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-        ]),
+        repository.registeredFids,
+        equals([const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android)]),
       );
 
-      pushMessagingSource.emitTokenRefresh("token-2");
-      await Future<void>.delayed(Duration.zero);
+      pushMessagingSource.emitRegisteredFid("fid-2");
+      await _settle();
 
-      expect(repository.unregisteredTokens, equals(["token-1"]));
+      expect(repository.unregisteredFids, equals(["fid-1"]));
       expect(
-        repository.registeredTokens,
+        repository.registeredFids,
         equals([
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-          const RegisteredToken(token: "token-2", platform: DevicePlatform.android),
+          const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android),
+          const RegisteredFid(fid: "fid-2", platform: DevicePlatform.android),
         ]),
       );
     });
 
-    test("processes auth changes that happen during the initial sync window", () async {
-      final tokenCompleter = Completer<String?>();
-      pushMessagingSource.tokenFuture = tokenCompleter.future;
+    // A registration the repository refuses (for example an unreadable device
+    // id) must leave the FID unregistered, so the next report of it retries.
+    test("retries a failed server registration on the next report of the same FID", () async {
+      repository.failNextRegisterFid = true;
+      await service.start();
+      await _settle();
+
+      expect(repository.registeredFids, isEmpty);
+
+      pushMessagingSource.emitRegisteredFid("fid-1");
+      await _settle();
+
+      expect(
+        repository.registeredFids,
+        equals([const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android)]),
+      );
+    });
+
+    // Retiring the installation needs the network and runs only after auth was
+    // cleared, so an offline failure must be logged without failing logout.
+    test("a failed local unregister at logout is logged and logout still completes", () async {
+      final sink = _RecordingLogSink();
+      setLogSink(sink: sink);
+      addTearDown(() => setLogSink(sink: const StdoutLogSink()));
+      await service.start();
+      await _settle();
+      pushMessagingSource.failNextUnregister = true;
+
+      await service.unregisterCurrentDevice();
+      authSession.emit(const AuthState.unauthenticated());
+      await _settle();
+
+      expect(repository.unregisteredFids, equals(["fid-1"]));
+      expect(pushMessagingSource.unregisterCalls, 1);
+      expect(
+        sink.records.where((record) => record.level == LogLevel.warning).map((record) => record.message),
+        contains("Failed to sync push registration for auth state change"),
+      );
+
+      authSession.emit(_authenticatedState());
+      await _settle();
+
+      expect(pushMessagingSource.registerCalls, 2);
+    });
+
+    test("does not register an FID that arrives after sign-out during the initial sync", () async {
+      final registerGate = Completer<void>();
+      pushMessagingSource.registerGate = registerGate.future;
 
       final startFuture = service.start();
       authSession.emit(const AuthState.unauthenticated());
 
-      tokenCompleter.complete("token-1");
+      registerGate.complete();
       await startFuture;
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
 
-      expect(
-        repository.registeredTokens,
-        equals([
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-        ]),
-      );
-      expect(repository.unregisteredTokens, isEmpty);
-      expect(pushMessagingSource.deleteTokenCalls, 1);
+      expect(repository.registeredFids, isEmpty);
+      expect(repository.unregisteredFids, isEmpty);
+      expect(pushMessagingSource.unregisterCalls, 2);
     });
 
     test("processes the first changed auth snapshot after startup sync", () async {
-      final tokenCompleter = Completer<String?>();
-      pushMessagingSource.tokenFuture = tokenCompleter.future;
+      final registerGate = Completer<void>();
+      pushMessagingSource.registerGate = registerGate.future;
 
       final startFuture = service.start();
       authSession.emit(const AuthState.unauthenticated());
       authSession.emit(_authenticatedState());
 
-      tokenCompleter.complete("token-1");
+      registerGate.complete();
       await startFuture;
-      await Future<void>.delayed(Duration.zero);
+      await _settle();
 
+      expect(pushMessagingSource.registerCalls, 2);
       expect(
-        repository.registeredTokens,
-        equals([
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-          const RegisteredToken(token: "token-1", platform: DevicePlatform.android),
-        ]),
+        repository.registeredFids,
+        equals([const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android)]),
       );
-      expect(repository.unregisteredTokens, isEmpty);
-      expect(pushMessagingSource.deleteTokenCalls, 1);
+      expect(repository.unregisteredFids, isEmpty);
+      expect(pushMessagingSource.unregisterCalls, 1);
     });
   });
 }
 
+/// Lets queued registration events and the work they enqueue finish.
+Future<void> _settle() => Future<void>.delayed(Duration.zero);
+
+class _RecordingLogSink() implements LogSink {
+  final records = <LogRecord>[];
+
+  @override
+  void write({required LogRecord record}) => records.add(record);
+
+  @override
+  Future<void> flush() async {}
+}
+
 class RecordingNotificationRepository({required final List<String> operations}) implements NotificationRepository {
-  final List<RegisteredToken> registeredTokens = <RegisteredToken>[];
-  final List<String> unregisteredTokens = <String>[];
-  bool failNextRegisterToken = false;
-  bool failNextUnregisterToken = false;
+  final List<RegisteredFid> registeredFids = <RegisteredFid>[];
+  final List<String> unregisteredFids = <String>[];
+  bool failNextRegisterFid = false;
+  bool failNextUnregisterFid = false;
 
   @override
-  Future<String?> readDeviceId() async => null;
-
-  @override
-  Future<void> registerToken({required String token, required DevicePlatform platform}) async {
-    if (failNextRegisterToken) {
-      failNextRegisterToken = false;
-      throw StateError("register token failed");
+  Future<void> registerFid({required String fid, required DevicePlatform platform}) async {
+    if (failNextRegisterFid) {
+      failNextRegisterFid = false;
+      throw StateError("register FID failed");
     }
-    registeredTokens.add(RegisteredToken(token: token, platform: platform));
-    operations.add("register:$token");
+    registeredFids.add(RegisteredFid(fid: fid, platform: platform));
+    operations.add("register:$fid");
   }
 
   @override
-  Future<void> unregisterToken({required String token}) async {
-    unregisteredTokens.add(token);
-    operations.add("unregister:$token");
-    if (failNextUnregisterToken) {
-      failNextUnregisterToken = false;
-      throw StateError("unregister token failed");
+  Future<void> unregisterFid({required String fid}) async {
+    unregisteredFids.add(fid);
+    operations.add("unregister:$fid");
+    if (failNextUnregisterFid) {
+      failNextUnregisterFid = false;
+      throw StateError("unregister FID failed");
     }
   }
 }
 
 @immutable
-class const RegisteredToken({required final String token, required final DevicePlatform platform}) {
+class const RegisteredFid({required final String fid, required final DevicePlatform platform}) {
   @override
   bool operator ==(Object other) {
-    return other is RegisteredToken && other.token == token && other.platform == platform;
+    return other is RegisteredFid && other.fid == fid && other.platform == platform;
   }
 
   @override
-  int get hashCode => Object.hash(token, platform);
+  int get hashCode => Object.hash(fid, platform);
 }
 
+/// Mirrors the SDK: a registration delivers the FID as an event, never as a
+/// return value.
 class FakePushMessagingSource({
-  required String? initialToken,
+  required String fid,
   @override required final DevicePlatform devicePlatform,
   required final List<String> operations,
 }) implements PushMessagingSource {
-  final StreamController<String> _tokenRefreshController = StreamController<String>.broadcast();
+  final StreamController<String> _registeredFidController = StreamController<String>.broadcast();
   final StreamController<PushNotificationMessage> _foregroundMessageController =
       StreamController<PushNotificationMessage>.broadcast();
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
       StreamController<NotificationOpenRequest>.broadcast();
 
-  String? currentToken = initialToken;
-  Future<String?>? tokenFuture;
-  int deleteTokenCalls = 0;
-  bool failNextDeleteToken = false;
+  String currentFid = fid;
+  Future<void>? registerGate;
+  int registerCalls = 0;
+  int unregisterCalls = 0;
+  bool failNextRegister = false;
+  bool failNextUnregister = false;
 
   @override
   Stream<PushNotificationMessage> get foregroundMessageStream => _foregroundMessageController.stream;
@@ -360,17 +399,24 @@ class FakePushMessagingSource({
   Future<NotificationOpenRequest?> getInitialNotificationOpen() async => null;
 
   @override
-  Future<String?> getToken() async => await (tokenFuture ?? currentToken);
+  Future<void> register() async {
+    registerCalls++;
+    await registerGate;
+    if (failNextRegister) {
+      failNextRegister = false;
+      throw StateError("register failed");
+    }
+    _registeredFidController.add(currentFid);
+  }
 
   @override
-  Future<void> deleteToken() async {
-    deleteTokenCalls++;
-    operations.add("delete-local");
-    if (failNextDeleteToken) {
-      failNextDeleteToken = false;
-      throw StateError("delete token failed");
+  Future<void> unregister() async {
+    unregisterCalls++;
+    operations.add("unregister-local");
+    if (failNextUnregister) {
+      failNextUnregister = false;
+      throw StateError("unregister failed");
     }
-    currentToken = null;
   }
 
   @override
@@ -380,15 +426,15 @@ class FakePushMessagingSource({
   Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
 
   @override
-  Stream<String> get tokenRefreshStream => _tokenRefreshController.stream;
+  Stream<String> get registeredFidStream => _registeredFidController.stream;
 
-  void emitTokenRefresh(String token) {
-    currentToken = token;
-    _tokenRefreshController.add(token);
+  void emitRegisteredFid(String fid) {
+    currentFid = fid;
+    _registeredFidController.add(fid);
   }
 
   Future<void> dispose() async {
-    await _tokenRefreshController.close();
+    await _registeredFidController.close();
     await _foregroundMessageController.close();
     await _notificationOpenedController.close();
   }

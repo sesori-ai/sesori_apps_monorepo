@@ -1,8 +1,7 @@
-// The source still wraps the token API that firebase_messaging 17 deprecates.
-// ignore_for_file: deprecated_member_use
-
 import "dart:async";
 
+import "package:firebase_app_installations/firebase_app_installations.dart";
+import "package:firebase_core/firebase_core.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
@@ -11,15 +10,19 @@ import "package:sesori_mobile/core/platform/firebase_push_messaging_source.dart"
 
 class MockFirebaseMessaging() extends Mock implements FirebaseMessaging;
 
+class MockFirebaseInstallations() extends Mock implements FirebaseInstallations;
+
 class FakeNotificationSettings() extends Fake implements NotificationSettings;
 
 void main() {
   late FirebasePushMessagingSource source;
   late MockFirebaseMessaging messaging;
+  late MockFirebaseInstallations installations;
 
   setUp(() {
     messaging = MockFirebaseMessaging();
-    source = FirebasePushMessagingSource.test(messaging: messaging);
+    installations = MockFirebaseInstallations();
+    source = FirebasePushMessagingSource.test(messaging: messaging, installations: installations);
   });
 
   tearDown(() async {
@@ -133,7 +136,11 @@ void main() {
 
   test("initialize skips the permission prompt when it must not request permission", () async {
     await source.dispose();
-    source = FirebasePushMessagingSource.test(messaging: messaging, requestsPermission: false);
+    source = FirebasePushMessagingSource.test(
+      messaging: messaging,
+      installations: installations,
+      requestsPermission: false,
+    );
     when(
       () => messaging.setForegroundNotificationPresentationOptions(
         alert: false,
@@ -160,6 +167,7 @@ void main() {
     addTearDown(foregroundMessages.close);
     source = FirebasePushMessagingSource.test(
       messaging: messaging,
+      installations: installations,
       staticAdapter: FirebaseMessagingStaticAdapter.test(
         foregroundMessageStream: foregroundMessages.stream,
         notificationOpenedStream: const Stream.empty(),
@@ -187,6 +195,7 @@ void main() {
     addTearDown(notificationOpens.close);
     source = FirebasePushMessagingSource.test(
       messaging: messaging,
+      installations: installations,
       staticAdapter: FirebaseMessagingStaticAdapter.test(
         foregroundMessageStream: const Stream.empty(),
         notificationOpenedStream: notificationOpens.stream,
@@ -214,28 +223,84 @@ void main() {
     expect(request.sessionTitle, "Session title");
   });
 
-  test("getToken returns null when APNS token never becomes available", () async {
-    when(() => messaging.getAPNSToken()).thenAnswer((_) async => null);
+  group("register", () {
+    setUp(() {
+      when(() => messaging.register()).thenAnswer((_) async {});
+    });
 
-    final appleSource = FirebasePushMessagingSource.test(
-      messaging: messaging,
-      isApplePlatform: () => true,
-      delay: (_) async {},
-    );
+    test("waits for the APNs token on Apple platforms before registering", () async {
+      final apnsTokens = <String?>[null, null, "apns-token"];
+      when(() => messaging.getAPNSToken()).thenAnswer((_) async => apnsTokens.removeAt(0));
+      final delays = <Duration>[];
+      final appleSource = FirebasePushMessagingSource.test(
+        messaging: messaging,
+        installations: installations,
+        isApplePlatform: () => true,
+        delay: (duration) async => delays.add(duration),
+      );
 
-    final token = await appleSource.getToken();
+      await appleSource.register();
 
-    expect(token, isNull);
-    verifyNever(() => messaging.getToken());
-    await appleSource.dispose();
+      expect(delays, hasLength(2));
+      verify(() => messaging.register()).called(1);
+      await appleSource.dispose();
+    });
+
+    // Registering anyway lets the SDK report the missing APNs token instead of
+    // the registration silently never happening.
+    test("still registers when the APNs token never arrives", () async {
+      when(() => messaging.getAPNSToken()).thenAnswer((_) async => null);
+      final delays = <Duration>[];
+      final appleSource = FirebasePushMessagingSource.test(
+        messaging: messaging,
+        installations: installations,
+        isApplePlatform: () => true,
+        delay: (duration) async => delays.add(duration),
+      );
+
+      await appleSource.register();
+
+      expect(delays, hasLength(5));
+      verify(() => messaging.register()).called(1);
+      await appleSource.dispose();
+    });
+
+    test("registers without reading an APNs token off Apple platforms", () async {
+      final androidSource = FirebasePushMessagingSource.test(
+        messaging: messaging,
+        installations: installations,
+        isApplePlatform: () => false,
+      );
+
+      await androidSource.register();
+
+      verifyNever(() => messaging.getAPNSToken());
+      verify(() => messaging.register()).called(1);
+      await androidSource.dispose();
+    });
   });
 
-  test("deleteToken delegates to Firebase Messaging", () async {
-    when(() => messaging.deleteToken()).thenAnswer((_) async {});
+  group("unregister", () {
+    // Deleting the installation gives the next registration a new FID, so a row
+    // the server still holds for the old one can never deliver. Unregistering
+    // first clears the cached FCM registration that would otherwise make both
+    // SDKs re-register with the rotated FID.
+    test("unregisters from FCM, then deletes the installation", () async {
+      when(() => messaging.unregister()).thenAnswer((_) async {});
+      when(() => installations.delete()).thenAnswer((_) async {});
 
-    await source.deleteToken();
+      await source.unregister();
 
-    verify(() => messaging.deleteToken()).called(1);
+      verifyInOrder([() => messaging.unregister(), () => installations.delete()]);
+    });
+
+    // The caller logs the failure; logout itself has already cleared auth.
+    test("reports a failed installation delete to the caller", () async {
+      when(() => messaging.unregister()).thenAnswer((_) async {});
+      when(() => installations.delete()).thenThrow(FirebaseException(plugin: "firebase_app_installations"));
+
+      await expectLater(source.unregister(), throwsA(isA<FirebaseException>()));
+    });
   });
 }
 
