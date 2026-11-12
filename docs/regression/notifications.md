@@ -49,14 +49,12 @@ external.
   when authenticated and sends every FID FCM then reports, including registrations FCM starts itself, to the server,
   replacing a previously registered FID that changed. It removes the FID from the server before logout, restores
   registration if logout fails, and never re-registers while logout is in flight. Once signed out (logout or a rejected
-  session) it unregisters from FCM and then deletes the Firebase Installation, so the next start gets a new FID and any
-  row the server still holds for the old one (a logout DELETE that failed, or a rejection other than signing out
-  everywhere, which deletes every row) can never deliver. An FID FCM reports while signed out is never sent to the
-  server; on a signed-out cold start FCM may register the new FID by itself, which the server never stored. The deletion
-  needs the network: when it fails (offline) the failure is logged, logout still completes, and the old FID survives, so
-  FCM can register it again on a later start and, if the server still holds its row, that signed-out device receives the
-  account's pushes until a sign-in on it moves the row or a push sent while it was unregistered prunes it. Deleting the
-  installation also gives Remote Config and Crashlytics a new installation after each sign-out. FCM rejects FID
+  session) it unregisters from FCM and then deletes the Firebase Installation. Once that deletion succeeds, the next
+  start gets a new FID and any row the server still holds for the old one (a logout DELETE that failed, or a rejection
+  other than signing out everywhere, which deletes every row) can never deliver. An FID FCM reports while signed out is
+  never sent to the server; on a signed-out cold start FCM may register the new FID by itself, which the server never
+  stored. When the deletion fails the failure is logged and logout still completes (see Known Limitations). Deleting
+  the installation also gives Remote Config and Crashlytics a new installation after each sign-out. FCM rejects FID
   registration unless the app opts in (`FirebaseMessagingInstallationIdEnabled` in the iOS Info.plist,
   `firebase_messaging_installation_id_enabled` in the Android manifest); the opt-in also disables the token API, so the
   app never sends a token. On iOS, registration waits up to five seconds for the APNs token first.
@@ -173,6 +171,10 @@ provider because current payload content leaves the encrypted channel.
 
 ## Known Limitations
 
+- Deleting the Firebase Installation at sign-out needs the network. When it fails (offline), the old FID survives,
+  FCM can register it again on a later start and, if the server still holds its row, that signed-out device receives
+  the account's pushes until a sign-in on it moves the row or a push sent while it was unregistered prunes it. Delivery
+  after a sign-out that happened online remains a failure signal.
 - Provider delivery is external and best effort; a missing notification may be throttling or OS policy. Never record
   unobserved delivery as pass or claim a delivery rate.
 - Grok owned-phone QA on 2026-09-12 backgrounded the app while a natural child
