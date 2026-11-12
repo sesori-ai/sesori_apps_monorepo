@@ -787,6 +787,10 @@
   "settingsBasicUsageAnalyticsLoadFailed": "Analytics preference failed to load.",
   "settingsBasicUsageAnalyticsSyncFailed": "Couldn't sync preference.",
   "settingsBasicUsageAnalyticsRetry": "Retry preference sync",
+  "settingsBasicUsageAnalyticsSigningOut": "Can't change this while signing out.",
+  "@settingsBasicUsageAnalyticsSigningOut": {
+    "description": "Notice shown when the user taps the analytics preference or its retry button while logout is in progress"
+  },
   "settingsAppearanceLight": "Light",
   "@settingsAppearanceLight": {
     "description": "Theme option that always renders the app in the light theme"

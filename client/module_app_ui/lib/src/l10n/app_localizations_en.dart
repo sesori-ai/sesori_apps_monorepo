@@ -1076,6 +1076,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsBasicUsageAnalyticsRetry => 'Retry preference sync';
 
   @override
+  String get settingsBasicUsageAnalyticsSigningOut => 'Can\'t change this while signing out.';
+
+  @override
   String get settingsAppearanceLight => 'Light';
 
   @override

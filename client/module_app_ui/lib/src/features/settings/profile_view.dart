@@ -216,7 +216,17 @@ class const _ProductAnalyticsPreferenceRow({
     final hasFailure = status?.isFailure ?? false;
     final canToggle = preference != null && !isBusy;
 
+    // While signing out the row keeps its look, so a tap answers why nothing
+    // changes instead of acting.
+    void showBlockedNotice() {
+      PregoPopupAlertPresenter.of(context).show(
+        title: loc.settingsBasicUsageAnalyticsSigningOut,
+        variant: PregoPopupAlertsNotificationsVariant.info,
+      );
+    }
+
     void toggle({required bool enabled}) {
+      if (blocked) return showBlockedNotice();
       unawaited(context.read<ProductAnalyticsPreferenceCubit>().setEnabled(enabled: enabled));
     }
 
@@ -230,7 +240,9 @@ class const _ProductAnalyticsPreferenceRow({
       hierarchy: PregoButtonsSolidHierarchy.link,
       size: PregoButtonsSolidSize.sm,
       leadingIcon: TablerRegular.refresh,
-      onPressed: () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
+      onPressed: blocked
+          ? showBlockedNotice
+          : () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
     );
     final Widget trailing;
     if (!hasFailure) {
@@ -255,13 +267,8 @@ class const _ProductAnalyticsPreferenceRow({
       trailing: trailing,
       onTap: canToggle ? () => toggle(enabled: preference != ProductAnalyticsPreference.enabled) : null,
     );
-    // Logging out ignores taps without the disabled look, so the row does not
-    // change under the user while the screen leaves.
-    return IgnorePointer(
-      ignoring: blocked,
-      child: PregoGroupedRows(
-        children: [hasFailure ? row : MergeSemantics(child: row)],
-      ),
+    return PregoGroupedRows(
+      children: [hasFailure ? row : MergeSemantics(child: row)],
     );
   }
 }

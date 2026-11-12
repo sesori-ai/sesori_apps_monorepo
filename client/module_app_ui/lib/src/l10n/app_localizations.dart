@@ -2017,6 +2017,12 @@ abstract class AppLocalizations {
   /// **'Retry preference sync'**
   String get settingsBasicUsageAnalyticsRetry;
 
+  /// Notice shown when the user taps the analytics preference or its retry button while logout is in progress
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t change this while signing out.'**
+  String get settingsBasicUsageAnalyticsSigningOut;
+
   /// Theme option that always renders the app in the light theme
   ///
   /// In en, this message translates to:

@@ -1072,6 +1072,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byType(PregoSwitch));
+    await tester.pump();
+    expect(find.text("Can't change this while signing out."), findsOneWidget);
     await tester.tap(find.text("Basic usage analytics"));
     await tester.pump();
     verifyNever(
@@ -1112,9 +1114,14 @@ void main() {
 
     expect(find.text("octocat"), findsOneWidget);
     expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isTrue);
-    // The switch keeps its enabled look; logout only makes it ignore taps.
+    // The switch keeps its enabled look, and a tap says why nothing changes.
     expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNotNull);
     expect(find.text("Loading preference…"), findsNothing);
+    await tester.tap(find.byType(PregoSwitch));
+    await tester.pump();
+    expect(find.text("Can't change this while signing out."), findsOneWidget);
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isTrue);
+    verifyNever(() => productAnalyticsService.setPreference(preference: any(named: "preference")));
 
     // Logout succeeding leaves the screen without changing it first.
     logoutFinished.complete();
