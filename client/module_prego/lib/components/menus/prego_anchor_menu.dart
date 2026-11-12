@@ -68,6 +68,12 @@ class const PregoMenuItem({
   /// taps. Pair it with a [subtitle] saying why.
   final bool isEnabled = true,
 
+  /// Gives an enabled row the dimmed title and leading mark of a disabled one
+  /// while it stays tappable, and keeps its [subtitle] at full contrast: for an
+  /// option that cannot be picked but answers a tap, for example with where to
+  /// fix it. Pair it with a [subtitle] saying why.
+  final bool looksUnavailable = false,
+
   /// Marks an action that destroys something the user cannot get back (delete,
   /// not archive). Tints the title and glyph with the error colour on both
   /// paths. Reach for it sparingly — a menu where several rows shout stops any
@@ -84,6 +90,7 @@ class const PregoMenuItem({
         "A row leads with either a glyph or a custom widget, not both.",
       ),
       assert(!(isDestructive && isWarning), "A row is either destructive or a warning, not both."),
+      assert(isEnabled || !looksUnavailable, "A disabled row already dims as a whole."),
       assert(trailing == null || !isSelected, "A row ends with either its own mark or the selected check, not both.");
 }
 
@@ -346,6 +353,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         :final leading,
         :final trailing,
         :final isEnabled,
+        :final looksUnavailable,
         :final isDestructive,
         :final isWarning,
       ):
@@ -360,16 +368,22 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           // red; the explicit style below keeps it on the design system's error
           // token instead. The flag still drives its press feedback.
           isDestructive: isDestructive,
-          icon:
-              leading ??
-              (leadingIcon == null
-                  ? null
-                  : Icon(
-                      leadingIcon,
-                      size: PregoIconSize.md,
-                      color: _iconColor(prego, isDestructive: isDestructive, isWarning: isWarning),
-                    )),
-          titleStyle: _titleStyle(prego, isDestructive: isDestructive, isWarning: isWarning),
+          icon: _dimmedIf(
+            dim: looksUnavailable,
+            mark:
+                leading ??
+                (leadingIcon == null
+                    ? null
+                    : Icon(
+                        leadingIcon,
+                        size: PregoIconSize.md,
+                        color: _iconColor(prego, isDestructive: isDestructive, isWarning: isWarning),
+                      )),
+          ),
+          titleStyle: _dimmedStyleIf(
+            dim: looksUnavailable,
+            style: _titleStyle(prego, isDestructive: isDestructive, isWarning: isWarning),
+          ),
           subtitleStyle: _subtitleStyle(prego),
           trailing: trailing ?? (isSelected ? _selectedCheck(prego) : null),
           onTap: onTap,
@@ -529,6 +543,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         :final leading,
         :final trailing,
         :final isEnabled,
+        :final looksUnavailable,
         :final isDestructive,
         :final isWarning,
       ):
@@ -544,6 +559,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           leading: leading,
           trailing: trailing,
           isEnabled: isEnabled,
+          looksUnavailable: looksUnavailable,
           isDestructive: isDestructive,
           isWarning: isWarning,
           onTap: () {
@@ -570,6 +586,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           shortcutLabel: null,
           leadingIcon: leadingIcon,
           isEnabled: true,
+          looksUnavailable: false,
           isDestructive: false,
           isWarning: false,
           onTap: () {
@@ -617,16 +634,13 @@ class const _FlatMenuTile({
   required final String? shortcutLabel,
   required final VoidCallback onTap,
   required final bool isEnabled,
+  required final bool looksUnavailable,
   required final bool isDestructive,
   required final bool isWarning,
   final IconData? leadingIcon,
   final Widget? leading,
   final Widget? trailing,
 }) extends StatelessWidget {
-  /// How far a row that cannot be picked is dimmed — GlassMenuItem's own
-  /// disabled opacity, so both paths read the same.
-  static const double _disabledOpacity = 0.4;
-
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -636,7 +650,7 @@ class const _FlatMenuTile({
     final leading = this.leading;
     final trailing = this.trailing;
     return Opacity(
-      opacity: isEnabled ? 1 : _disabledOpacity,
+      opacity: isEnabled ? 1 : _dimmedOpacity,
       child: InkWell(
         mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: isEnabled ? onTap : null,
@@ -654,13 +668,16 @@ class const _FlatMenuTile({
             child: Row(
               children: [
                 if (leading != null) ...[
-                  leading,
+                  ?_dimmedIf(dim: looksUnavailable, mark: leading),
                   SizedBox(width: compact ? 8 : 12),
                 ] else if (leadingIcon != null) ...[
-                  Icon(
-                    leadingIcon,
-                    size: compact ? 16 : 20,
-                    color: _iconColor(prego, isDestructive: isDestructive, isWarning: isWarning),
+                  ?_dimmedIf(
+                    dim: looksUnavailable,
+                    mark: Icon(
+                      leadingIcon,
+                      size: compact ? 16 : 20,
+                      color: _iconColor(prego, isDestructive: isDestructive, isWarning: isWarning),
+                    ),
                   ),
                   SizedBox(width: compact ? 8 : 12),
                 ],
@@ -673,7 +690,10 @@ class const _FlatMenuTile({
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: _titleStyle(prego, isDestructive: isDestructive, isWarning: isWarning),
+                        style: _dimmedStyleIf(
+                          dim: looksUnavailable,
+                          style: _titleStyle(prego, isDestructive: isDestructive, isWarning: isWarning),
+                        ),
                       ),
                       if (subtitle != null && subtitle.isNotEmpty)
                         switch (subtitleStatus) {
@@ -715,6 +735,18 @@ class const _FlatMenuTile({
 }
 
 // ── Shared entry styling (keeps the glass and flat paths visually identical) ──
+
+/// How far a row that cannot be picked is dimmed — GlassMenuItem's own
+/// disabled opacity, so both paths read the same.
+const double _dimmedOpacity = 0.4;
+
+/// [mark] dimmed like a disabled row's when [dim] holds.
+Widget? _dimmedIf({required bool dim, required Widget? mark}) =>
+    dim && mark != null ? Opacity(opacity: _dimmedOpacity, child: mark) : mark;
+
+/// [style] with its colour dimmed like a disabled row's when [dim] holds.
+TextStyle _dimmedStyleIf({required bool dim, required TextStyle style}) =>
+    dim ? style.copyWith(color: style.color?.withValues(alpha: _dimmedOpacity)) : style;
 
 // ── Glass row heights ────────────────────────────────────────────────────────
 //

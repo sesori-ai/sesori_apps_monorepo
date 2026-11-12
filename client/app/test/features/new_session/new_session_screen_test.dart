@@ -1030,8 +1030,16 @@ void main() {
     expect(findBrandLogo("cursor"), findsOneWidget);
     expect(find.byIcon(TablerRegular.plug), findsOneWidget);
 
-    // A harness that can't run still answers a tap (with harness settings), so
-    // every row stays enabled; its status line says why it can't be picked.
+    // A row that can't be picked dims its name and artwork — the marks carry
+    // their own colours, so a tint alone would leave them reading active — but
+    // keeps its status line readable and answers a tap with harness settings.
+    double logoOpacity(String pluginId) => tester
+        .widget<Opacity>(find.ancestor(of: findBrandLogo(pluginId).last, matching: find.byType(Opacity)).first)
+        .opacity;
+    expect(logoOpacity("cursor"), lessThan(1.0));
+    expect(tester.widget<Text>(find.text("Third Tool")).style?.color?.a, lessThan(1.0));
+    expect(tester.widget<Text>(find.text("Unavailable")).style?.color?.a, 1.0);
+    expect(logoOpacity("codex"), 1.0);
     expect(_harnessRowInk(tester, "failed-id").onTap, isNotNull);
     expect(_harnessRowInk(tester, "cursor").onTap, isNotNull);
     expect(_harnessRowInk(tester, "codex").onTap, isNotNull);

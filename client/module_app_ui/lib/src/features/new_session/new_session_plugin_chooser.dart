@@ -75,6 +75,8 @@ class const NewSessionPluginChooser({
               isSelected: plugin.id == selectedPluginId,
               shortcutLabel: null,
               isEnabled: isSelectionEnabled,
+              // It still looks unavailable, so opening settings is no surprise.
+              looksUnavailable: isSelectionEnabled && !plugin.isPickable,
               leading: PregoBrandLogo(
                 pluginId: plugin.id,
                 color: context.prego.colors.textSecondary,
