@@ -48,14 +48,17 @@ final class const _NumberField({
   required final bool integer,
   required final String? suggestedText,
 }) extends AcpElicitationField {
-  /// Unparsable text encodes as null: the property is omitted, or the form
-  /// declined when it is required.
+  /// Unparsable or non-finite text (NaN, Infinity, 1e999) encodes as null: the
+  /// property is omitted, or the form declined when it is required. JSON cannot
+  /// carry a non-finite number.
   @override
   Object? encode({required List<String> selected}) {
     if (selected.isEmpty) return null;
     final suggested = suggestedText;
     final text = (selected.first == _suggestedTextLabel && suggested != null ? suggested : selected.first).trim();
-    return integer ? int.tryParse(text) : num.tryParse(text);
+    if (integer) return int.tryParse(text);
+    final number = num.tryParse(text);
+    return number != null && number.isFinite ? number : null;
   }
 }
 

@@ -337,6 +337,30 @@ void main() {
       expect(responses.single.$2, const {"action": "decline"});
     });
 
+    test("declines a form whose required number answer is not finite", () async {
+      requests.add(
+        form(
+          properties: {
+            "temperature": {"type": "number", "title": "Temperature"},
+          },
+          requiredKeys: ["temperature"],
+        ),
+      );
+      await pump();
+      final asked = emitted.single as BridgeSseQuestionAsked;
+
+      expect(
+        await registry.replyQuestion(
+          requestId: asked.id,
+          answers: [
+            ["1e999"],
+          ],
+        ),
+        isTrue,
+      );
+      expect(responses.single.$2, const {"action": "decline"});
+    });
+
     test("maps titled oneOf choices back to their const values", () async {
       requests.add(
         form(
