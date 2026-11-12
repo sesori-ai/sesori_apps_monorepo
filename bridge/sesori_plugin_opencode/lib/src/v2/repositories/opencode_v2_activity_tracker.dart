@@ -173,7 +173,9 @@ class OpenCodeV2ActivityTracker() {
           V2SessionCompactionFailed() ||
           V2ProjectUpdated() ||
           V2AgentUpdated() ||
-          V2CommandUpdated():
+          V2CommandUpdated() ||
+          V2ProviderUpdated() ||
+          V2ModelUpdated():
         return false;
     }
   }

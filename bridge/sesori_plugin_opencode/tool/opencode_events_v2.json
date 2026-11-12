@@ -381,6 +381,14 @@
     {
       "type": "command.updated",
       "fields": []
+    },
+    {
+      "type": "provider.updated",
+      "fields": []
+    },
+    {
+      "type": "model.updated",
+      "fields": []
     }
   ]
 }
