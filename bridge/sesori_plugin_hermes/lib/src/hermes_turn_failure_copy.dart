@@ -18,7 +18,11 @@
 /// name for it.
 ///
 /// Left out on purpose: `reasoning_only`, which ends with the model's own last
-/// thoughts ("which may contain the answer"), so it stays a reply.
+/// thoughts ("which may contain the answer"), so it stays a reply, and the
+/// "No reply:" explanations for exits that do not fail the turn
+/// (`empty_response`, `partial_stream_recovery`, `fallback_prior_turn_content`,
+/// `redirect_restart_limit_exceeded`, `rebuilt_restart_limit_exceeded`,
+/// `budget_exhausted`, `interrupted_during_api_call`, `max_iterations_reached`).
 const Map<String, String> _turnFailureTemplates = {
   // exhausted_copy: `{lead}` is an `_EXHAUSTED_LEADS` lead or, since 0.22.6, a
   // first-attempt `_EXHAUSTED_FIRST_ATTEMPT_LEADS` lead.
@@ -181,6 +185,70 @@ const Map<String, String> _turnFailureTemplates = {
       "Send `continue` to let it summarize.",
   "pending_tool_result_fallback":
       "No reply: the turn stopped while a tool result was still pending. Send `continue` to let the model summarize.",
+  // 0.23.1 `agent/turn_explainers.py`: the other "⚠️ No reply: …" explanations
+  // for exits that fail the turn (`_EXIT_REASON_FAILURES` with fails_turn).
+  "all_retries_exhausted_no_response":
+      "No reply: the model provider didn't answer after all retries. Send /retry, or switch models with /model.",
+  "ollama_runtime_context_too_small":
+      "No reply: the local model's context window was too small to finish. Increase the context size or use a "
+      "larger model.",
+  "error_near_max_iterations":
+      "No reply: an error occurred near the iteration limit before a final answer. Check the tool output above, "
+      "then send `continue`.",
+  "repeated_outer_errors":
+      "No reply: the turn kept failing with repeated errors and was stopped early instead of retrying forever. "
+      "Check the errors above, then send `continue` to retry.",
+  // The same for `session_persistence_failed`, by cause (`explainer.persistence`).
+  "persistence_compression":
+      "No reply: the turn was stopped because another process was compressing this session. Your message should "
+      "already be saved — please send it again after compression completes.",
+  "persistence_compression_closed":
+      "No reply: the turn was stopped because this session was rotated by context compression and its live "
+      "continuation could not be adopted. The storage itself is healthy — refresh the client (or start a new turn) "
+      "so it picks up the new session id, then send your message again.",
+  "persistence_turn_lease":
+      "No reply: the turn was stopped because another Hermes process took over this session. Your reply was not "
+      "saved — wait for the other process to finish, then send your message again.",
+  "persistence_session_row_missing":
+      "No reply: this session was deleted from storage while the chat was still open, and Hermes could not "
+      "recreate it, so this message was not saved. Send your message again; if it keeps failing, run `hermes "
+      "{profile_arg}doctor`.",
+  "persistence_locked":
+      "No reply: the turn was stopped because session storage was busy (another Hermes process was writing to the "
+      "state database). Your message should already be saved — please send it again in a moment.",
+  "persistence_replaced":
+      "No reply: the session database file was replaced while Hermes was running, so this message was not saved (a "
+      "copy is kept in {home}/sessions/). Stop Hermes (`hermes {profile_arg}gateway stop`), run `hermes "
+      "{profile_arg}doctor` — not `hermes {profile_arg}doctor --fix`, which would repair the wrong file in place — "
+      "then start it again and send your message once more. Advanced recovery steps are in the log.",
+  "persistence_deleted_wal":
+      "No reply: another Hermes process still holds an old copy of the session database's write-ahead log, so "
+      "Hermes stopped writing to keep the file safe and this message was not saved (a copy is kept in "
+      "{home}/sessions/). Nothing is lost. Quit every Hermes process on this profile (Desktop app, `hermes "
+      "{profile_arg}gateway stop`, dashboard, cron), run `hermes {profile_arg}doctor` — it names any process still "
+      "holding the log — then start Hermes again and send your message once more. Do not run `doctor --fix` or "
+      "delete any state.db files while they run. Guide: {recovery_docs}",
+  "persistence_corrupt":
+      "No reply: the turn was stopped because the state database reported structural corruption (the transcript "
+      "would have been lost on restart). Freeing disk space will not help. Recovery options:\n1. Run `hermes "
+      "{profile_arg}doctor --fix`\n2. Stop the gateway, then recover with:\n   hermes {profile_arg}sessions "
+      "recover --source {db_path} --inspect-only\n   (if it reports recoverable) hermes {profile_arg}sessions "
+      "recover --source {db_path} --output recovered-state.db\n   — recovery snapshots the damaged file first; do "
+      'NOT run `sqlite3 ... ".recover"` against the live state.db, a vulnerable sqlite3 CLI can corrupt it '
+      "further\n3. Restore from a backup in {backups_dir}/\nThen send your message again.",
+  "persistence_fts_index":
+      "No reply: the turn was stopped because the session search index (FTS5) is corrupt and could not be "
+      "detached, so this message was not saved. The message store itself is not damaged: do not run recovery tools "
+      "or restore a backup. Run `hermes {profile_arg}doctor --fix` (or restart Hermes, which repairs the index on "
+      "open), then send your message again.",
+  "persistence_disk":
+      "No reply: Hermes couldn't save this conversation to disk, so it stopped rather than lose your messages. The "
+      "disk is probably full: free some space (or fix the permissions on {home}/state.db), then send your message "
+      "again.",
+  "persistence_default":
+      "No reply: Hermes couldn't save this conversation, so it stopped rather than lose your messages. Possible "
+      "causes: the drive is out of room, or another Hermes process is holding the database. Close other Hermes "
+      "windows, run `hermes {profile_arg}doctor` to check storage, then send your message again.",
 };
 
 /// The last paragraph of launch_credentials_unavailable when Hermes names the
@@ -235,6 +303,17 @@ bool isHermesTurnFailureNotice({required String text}) =>
 /// (`untyped_failed_turn_display_kind`): the exact text and nothing else, so a
 /// reply that quotes one stays a reply.
 bool isHermesFailedTurnRow({required String text}) => text.trim() == hermesFailedTurnRow;
+
+/// [text] without the generic saved row Hermes appends as its last paragraph
+/// after a live reason; the row alone stays. The bridge's history store drops
+/// the row from a notice the same way when the replayed row is the same kind.
+String withoutTrailingFailedTurnRow({required String text}) {
+  final trimmed = text.trimRight();
+  const appended = "\n\n$hermesFailedTurnRow";
+  if (!trimmed.endsWith(appended)) return text;
+  final reason = trimmed.substring(0, trimmed.length - appended.length);
+  return reason.trim().isEmpty ? text : reason;
+}
 
 /// Whether [text] is a row Hermes saved to close a turn whose actions may
 /// already have run, matched like [isHermesFailedTurnRow].

@@ -212,7 +212,9 @@ reconnect or restart.
   reloads, never none and never two, for every Hermes failure kind. Unless the
   model already streamed part of a reply, Hermes also sends its reason live, as
   its final text, and then fails the prompt with `admitted_turn_failed`, which
-  adds no second notice. After a streamed partial reply it sends no failure
+  adds no second notice. Hermes closes that live reason with its generic "Your
+  request was not processed…" row; the live notice drops it, so the notice
+  reads the same before and after a reload. After a streamed partial reply it sends no failure
   text, so the failed prompt shows live as Hermes's own "Your request was not
   processed…" notice. Hermes saves a different fixed row ("Your request was not processed…", or "This turn
   did not complete. Some actions may already have run…" after a tool ran) in

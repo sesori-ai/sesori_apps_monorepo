@@ -27,6 +27,11 @@ class HermesEventMapper({
   /// unstreamed final response under a fresh message id and closes that id
   /// straight away (`acp_adapter/server.py::_finish_turn`), so nothing can
   /// join it and the id carries no grouping.
+  ///
+  /// Hermes closes the reason with its generic saved row as a last paragraph
+  /// (`gateway/run_turn_persistence.py::_hmwa_add_failed_turn_notice`). The
+  /// history store drops that same-kind row from the notice on reload, so it
+  /// is dropped live too and the notice reads the same before and after.
   @override
   Map<String, dynamic> normalizeSessionUpdate({required Map<String, dynamic> params}) {
     final update = params["update"];
@@ -39,7 +44,9 @@ class HermesEventMapper({
     if (text is! String || classifyHaltNotice(text: text) == null) return params;
     return {
       ...params,
-      "update": Map<String, dynamic>.of(update.cast<String, dynamic>())..remove("messageId"),
+      "update": Map<String, dynamic>.of(update.cast<String, dynamic>())
+        ..remove("messageId")
+        ..["content"] = {...content, "text": withoutTrailingFailedTurnRow(text: text)},
     };
   }
 

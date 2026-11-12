@@ -92,6 +92,45 @@ void main() {
       }
     });
 
+    // Hermes 0.23.1 closes a live reason with its generic saved row, which
+    // the history store drops on reload as the same kind of notice.
+    test("a live notice drops the generic saved row Hermes appends after the reason", () {
+      final events = mapper.map(finalResponse(text: "$providerTimeoutNotice\n\n$failedTurnBoundary"));
+
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().single.info,
+        isA<PluginMessageError>().having((error) => error.errorMessage, "errorMessage", providerTimeoutNotice),
+      );
+    });
+
+    test("a live notice keeps the generic saved row when it is the only text", () {
+      final events = mapper.map(finalResponse(text: failedTurnBoundary));
+
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().single.info,
+        isA<PluginMessageError>().having((error) => error.errorMessage, "errorMessage", failedTurnBoundary),
+      );
+    });
+
+    test("a live notice keeps an appended partial-turn warning", () {
+      final events = mapper.map(finalResponse(text: "$providerTimeoutNotice\n\n$partialFailedTurnBoundary"));
+
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().single.info,
+        isA<PluginMessageError>().having(
+          (error) => error.errorMessage,
+          "errorMessage",
+          "$providerTimeoutNotice\n\n$partialFailedTurnBoundary",
+        ),
+      );
+    });
+
+    test("a no-reply explanation for an exit that does not fail the turn stays a reply", () {
+      for (final text in advisoryNoReplyTexts.values) {
+        expect(mapper.classifyHaltNotice(text: text), isNull, reason: text);
+      }
+    });
+
     test("a real reply stays assistant text", () {
       final events = mapper.map(finalResponse(text: "The build passes now."));
 
