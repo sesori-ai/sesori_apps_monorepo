@@ -1065,7 +1065,7 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.2.1 over dsh 0.2.1-rc.3 is the managed target;
+⁹ DeepSeek's published adapter 0.2.2 over dsh 0.2.2-rc.2 is the managed target;
 adapter 0.1.5 remains the minimum accepted runtime. From dsh 0.2.0 a sub-agent
 may delegate only one level by default (previously three), with at most eight
 active; users raise `subagent.config.maxDepth` in their DeepSeek profile. Provider

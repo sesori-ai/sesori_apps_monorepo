@@ -74,7 +74,7 @@ separate regions; whichever lands later merges `main` in.
 - Docs: the OMP rows in `HARNESS_CAPABILITIES.md` (tool title row, form row,
   Windows ARM64 row), the hold text in `docs/regression/plugin-setup-and-lifecycle.md`,
   the OMP section of `.agents/skills/update-backend-runtimes/references/harnesses.md`,
-  and hold H1 in `.plan/active/harness-refresh-2026-11/PLAN.md` (lifted).
+  and hold H1 in `.plan/completed/harness-refresh-2026-11/PLAN.md` (lifted).
 
 **Not handled.** Leftovers already imported from a PATH 18.18.9+ binary stay in
 the bridge database; the filter only stops new imports. Low damage, accepted.
