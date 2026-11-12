@@ -44,6 +44,8 @@ class _NeutralRegistry({required final List<String> settlements}) extends AcpPen
   @override
   void rejectAmbiguousServerRequest({required AcpServerRequest request}) => ambiguous.add(request);
   @override
+  void withdrawServerRequest({required Object requestId}) {}
+  @override
   void handleRequest(AcpServerRequest request) {
     requests.add(request);
     registerPendingPermission(

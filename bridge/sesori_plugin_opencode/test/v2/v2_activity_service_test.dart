@@ -429,6 +429,33 @@ void main() {
     expect(service.workState, PluginWorkState.busy);
   });
 
+  test("an interrupted execution retires the session's pending permissions", () async {
+    tracker.seed(
+      sessions: [root, child],
+      activeSessionIds: {"child"},
+      permissions: [
+        permission,
+        PermissionRequest.fromJson(<String, dynamic>{
+          "id": "root-permission",
+          "sessionID": root.id,
+          "action": "shell",
+          "resources": const <String>["ls"],
+        }),
+      ],
+      forms: [],
+    );
+    final events = await service.handleEvent(
+      envelope: frame(type: "session.execution.interrupted", data: {"sessionID": "child", "reason": "user"}),
+    );
+    final retired = events.whereType<BridgeSsePermissionReplied>().single;
+    expect(retired.requestID, "permission");
+    expect(retired.sessionID, "child");
+    expect(retired.displaySessionId, root.id);
+    expect(retired.reply, PluginPermissionReply.reject.name);
+    expect(tracker.permissions.map((request) => request.id), ["root-permission"]);
+    expect(await service.getPendingPermissions(sessionId: root.id), hasLength(1));
+  });
+
   test("tool and assistant snapshot hydration never replays unrelated text", () async {
     await service.coldStart();
     repository.calls.clear();

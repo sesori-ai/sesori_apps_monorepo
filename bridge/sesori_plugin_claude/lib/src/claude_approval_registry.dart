@@ -511,6 +511,18 @@ final class ClaudeApprovalRegistry({
     }
   }
 
+  /// Retires the entry the CLI withdrew with `control_cancel_request`. The CLI
+  /// no longer waits for it, so nothing is sent back.
+  void withdraw({required String sessionId, required String requestId}) {
+    final entries = _pending.values
+        .where((entry) => entry.sessionId == sessionId && entry.requestId == requestId)
+        .toList(growable: false);
+    for (final entry in entries) {
+      _pending.remove(entry.id);
+      _emitCancellation(entry: entry);
+    }
+  }
+
   /// Archive leaves the process alive; only a successful native write settles.
   void cancelForArchive({required String sessionId}) {
     final entries = _pending.values.where((entry) => entry.sessionId == sessionId).toList(growable: false);

@@ -69,6 +69,18 @@ class OpenCodeV2ActivityTracker() {
   void removeForm({required String formId}) => _forms.remove(formId);
   void removePermission({required String requestId}) => _permissions.remove(requestId);
 
+  /// Removes and returns every pending permission of [sessionId].
+  List<PermissionRequest> withdrawPermissions({required String sessionId}) {
+    final withdrawn = [
+      for (final request in _permissions.values)
+        if (request.sessionID == sessionId) request,
+    ];
+    for (final request in withdrawn) {
+      _permissions.remove(request.id);
+    }
+    return withdrawn;
+  }
+
   /// Replaces the baseline and returns every session whose status it changed,
   /// such as idle for a turn that ended while no event could report it.
   Map<String, PluginSessionStatus> seed({

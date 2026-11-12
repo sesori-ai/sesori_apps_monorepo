@@ -333,6 +333,7 @@ class ClaudeStreamClient({
       case ClaudeStreamEventMessage():
       case ClaudeResultMessage():
       case ClaudeControlRequestMessage():
+      case ClaudeControlCancelRequestMessage():
       case ClaudeIgnoredMessage():
         break;
     }

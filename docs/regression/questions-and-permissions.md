@@ -196,11 +196,15 @@ reaches the backend so the turn continues.
   and clears without waiting for the turn to end. Each resolution is announced
   once; OpenCode v1 announces a reply the bridge cleared at once, even when
   OpenCode's own event never arrives, and drops that event when it does.
-- A request the harness withdrew itself (Codex `serverRequest/resolved` after
-  another client answered it or a turn interrupt abandoned it) retires through
-  the same clearing event as a cancellation, sends the harness nothing, and a
-  late Sesori answer to it is refused. Only the request with that exact
-  JSON-RPC id (int or string) retires. Other harnesses are listed in
+- A request the harness withdrew itself retires through the same clearing event
+  as a cancellation, sends the harness nothing, and a late Sesori answer to it
+  is refused. Codex `serverRequest/resolved`, ACP `$/cancel_request` (sent by
+  OMP when steering supersedes a pending approval) and Claude
+  `control_cancel_request` each retire only the request with that exact id; a
+  JSON-RPC id may be an int or a string. OpenCode v2 sends no reply event when
+  an interrupt drops a pending permission, so its `session.execution.interrupted`
+  (reason user, superseded or inactivity) retires every pending permission of
+  that session, including after Sesori's own Stop. Every harness is listed in
   [Requests the harness withdrew](../HARNESS_CAPABILITIES.md#requests-the-harness-withdrew).
 - ACP and Codex teardown attempts every pending backend resolution independently,
   logs responder or request-subscription failures, and still clears each stale
