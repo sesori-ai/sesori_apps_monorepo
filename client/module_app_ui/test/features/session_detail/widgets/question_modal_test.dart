@@ -1081,5 +1081,39 @@ void main() {
         const ReplyAnswer(values: ["Green"]),
       ]);
     });
+
+    testWidgets("picking an option clears the empty-Other reason in multi-select", (tester) async {
+      final capture = _ReplyCapture();
+      final router = _createRouter(
+        question: _questionAsked(
+          questions: const [
+            QuestionInfo(
+              question: "Pick colors",
+              header: "Colors",
+              custom: true,
+              multiple: true,
+              options: [
+                QuestionOption(label: "Red", description: ""),
+                QuestionOption(label: "Blue", description: ""),
+              ],
+            ),
+          ],
+        ),
+        capture: capture,
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(_buildApp(router: router));
+      await _openQuestionModal(tester);
+      await tester.tap(find.byKey(const Key("custom-answer-toggle")));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("question-primary-action")));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("custom-answer-empty-reason")), findsOneWidget);
+
+      await tester.tap(find.text("Red"));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key("custom-answer-empty-reason")), findsNothing);
+    });
   });
 }

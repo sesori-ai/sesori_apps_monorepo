@@ -182,14 +182,15 @@ class _QuestionModalState() extends State<QuestionModal> {
     draft.customFocus.unfocus();
     setState(() {
       final wasDeclined = draft.isDeclined;
-      draft.disposition = _QuestionDisposition.answer;
+      draft
+        ..disposition = _QuestionDisposition.answer
+        ..showsEmptyCustomReason = false;
       if (wasDeclined) {
         if (_currentInfo.multiple) {
           draft.selectedLabels.add(label);
         } else {
           draft
             ..customSelected = false
-            ..showsEmptyCustomReason = false
             ..selectedLabels.clear();
           draft.selectedLabels.add(label);
         }
@@ -202,9 +203,7 @@ class _QuestionModalState() extends State<QuestionModal> {
           draft.selectedLabels.add(label);
         }
       } else {
-        draft
-          ..customSelected = false
-          ..showsEmptyCustomReason = false;
+        draft.customSelected = false;
         // Single-select: toggle — only one at a time.
         if (draft.selectedLabels.contains(label)) {
           draft.selectedLabels.clear();
@@ -297,13 +296,12 @@ class _QuestionModalState() extends State<QuestionModal> {
   /// Why Submit cannot send yet, or null. An empty "Other" field explains
   /// itself under the field instead.
   String? _unresolvedReason({required bool showQuestionNavigator}) {
-    if (_allQuestionsResolved) return null;
+    if (_allQuestionsResolved || _currentDraft.showsEmptyCustomReason) return null;
     final loc = context.loc;
     if (_isMultiQuestion) {
       return (_isLastQuestion && showQuestionNavigator) || _explainingUnresolved ? loc.questionModalResolveAll : null;
     }
-    if (!_explainingUnresolved || _currentDraft.showsEmptyCustomReason) return null;
-    return loc.questionModalChooseAnswer;
+    return _explainingUnresolved ? loc.questionModalChooseAnswer : null;
   }
 
   @override

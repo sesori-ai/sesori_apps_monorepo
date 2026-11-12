@@ -191,7 +191,7 @@ class const V2ModelMapper({required final String _pluginId}) {
       key: field.key,
       title: field.title,
       description: field.description,
-      options: _options(options: field.options ?? const []),
+      options: _options(options: field.options ?? const [], defaults: {?field.defaultValue}),
       multiple: false,
       custom: field.options == null || (field.custom ?? false),
     ),
@@ -199,7 +199,7 @@ class const V2ModelMapper({required final String _pluginId}) {
       key: field.key,
       title: field.title,
       description: field.description,
-      options: _options(options: field.options),
+      options: _options(options: field.options, defaults: {...?field.defaultValue}),
       multiple: true,
       custom: field.custom ?? false,
     ),
@@ -207,9 +207,9 @@ class const V2ModelMapper({required final String _pluginId}) {
       key: field.key,
       title: field.title,
       description: field.description,
-      options: const [
-        PluginQuestionOption(label: "true", description: "Yes", isDefault: false),
-        PluginQuestionOption(label: "false", description: "No", isDefault: false),
+      options: [
+        PluginQuestionOption(label: "true", description: "Yes", isDefault: field.defaultValue ?? false),
+        PluginQuestionOption(label: "false", description: "No", isDefault: field.defaultValue == false),
       ],
       multiple: false,
       custom: false,
@@ -223,9 +223,13 @@ class const V2ModelMapper({required final String _pluginId}) {
     _ => throw StateError("Only supported visible fields reach question projection"),
   };
 
-  List<PluginQuestionOption> _options({required List<FormOption> options}) => [
+  List<PluginQuestionOption> _options({required List<FormOption> options, required Set<String> defaults}) => [
     for (final option in options)
-      PluginQuestionOption(label: option.label, description: option.description ?? option.label, isDefault: false),
+      PluginQuestionOption(
+        label: option.label,
+        description: option.description ?? option.label,
+        isDefault: defaults.contains(option.value),
+      ),
   ];
 
   PluginQuestionInfo _question({
