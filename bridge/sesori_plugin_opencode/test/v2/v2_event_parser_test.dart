@@ -15,11 +15,13 @@ void main() {
     expect(event.data, isA<V2ServerConnected>());
   });
 
-  test("decodes the empty agent and command catalog announcements", () {
+  test("decodes the empty catalog announcements", () {
     // Frames captured from OpenCode 2.2.7 when a cold location finishes loading.
     for (final (type, matcher) in [
       ("agent.updated", isA<V2AgentUpdated>()),
       ("command.updated", isA<V2CommandUpdated>()),
+      ("provider.updated", isA<V2ProviderUpdated>()),
+      ("model.updated", isA<V2ModelUpdated>()),
     ]) {
       final event =
           parser.parse(

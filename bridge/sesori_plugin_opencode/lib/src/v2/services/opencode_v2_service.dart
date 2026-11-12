@@ -464,7 +464,12 @@ class OpenCodeV2Service({
     final event = envelope.data;
     final sessionId = switch (event) {
       final V2SessionEventData scoped => _sessionId(event: scoped),
-      V2ServerConnected() || V2ProjectUpdated() || V2AgentUpdated() || V2CommandUpdated() => null,
+      V2ServerConnected() ||
+      V2ProjectUpdated() ||
+      V2AgentUpdated() ||
+      V2CommandUpdated() ||
+      V2ProviderUpdated() ||
+      V2ModelUpdated() => null,
     };
     final deleted = event is V2SessionDeleted ? _tracker.session(sessionId: event.sessionID) : null;
     var changed = _tracker.apply(event: event);
@@ -629,7 +634,9 @@ class OpenCodeV2Service({
           V2FormCancelled() ||
           V2ProjectUpdated() ||
           V2AgentUpdated() ||
-          V2CommandUpdated():
+          V2CommandUpdated() ||
+          V2ProviderUpdated() ||
+          V2ModelUpdated():
         return const [];
     }
   }

@@ -143,8 +143,8 @@ void main() {
     });
   }
 
-  test("agent and command catalog announcements refresh session options", () {
-    for (final type in ["agent.updated", "command.updated"]) {
+  test("agent, command, provider and model catalog announcements refresh session options", () {
+    for (final type in ["agent.updated", "command.updated", "provider.updated", "model.updated"]) {
       expect(
         mapper.map(
           envelope: frame(type: type, data: const {}),
