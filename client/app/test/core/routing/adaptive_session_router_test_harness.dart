@@ -146,6 +146,7 @@ class AdaptiveSessionRouterTestHarness() {
               actionHint: null,
               failureBlock: null,
               mcpScopes: null,
+              failureReason: null,
             ),
           ],
         ),

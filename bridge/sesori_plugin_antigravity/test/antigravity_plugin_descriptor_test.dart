@@ -1008,6 +1008,28 @@ void main() {
     expect(await processes.agents.single.exitCode, -15);
   });
 
+  test("a missing runtime fails the start with a reason written for the user", () async {
+    final host = _Host(
+      config: config(server: null),
+      stateDirectory: state.path,
+      environment: const {"PATH": "/definitely/missing"},
+      processes: processes,
+      store: store,
+      startAborted: StartAbortSignal.never,
+    );
+
+    await expectLater(
+      descriptor(http: null).start(host),
+      throwsA(
+        isA<PluginStartException>().having(
+          (error) => error.userFacingReason,
+          "userFacingReason",
+          startsWith("Sesori could not find the Antigravity runtime."),
+        ),
+      ),
+    );
+  });
+
   test("initial abort prevents preparation and runtime launch", () async {
     final abort = StartAbortController()..abort();
     final host = _Host(

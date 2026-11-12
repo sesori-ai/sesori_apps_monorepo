@@ -32,6 +32,7 @@ _PluginMetadata _$PluginMetadataFromJson(Map json) => _PluginMetadata(
         ),
       )
       .toSet(),
+  failureReason: json['failureReason'] as String?,
 );
 
 Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
@@ -46,6 +47,7 @@ Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
       'mcpScopes': ?instance.mcpScopes
           ?.map((e) => _$McpScopeKindEnumMap[e]!)
           .toList(),
+      'failureReason': ?instance.failureReason,
     };
 
 const _$PluginLifecycleStateEnumMap = {

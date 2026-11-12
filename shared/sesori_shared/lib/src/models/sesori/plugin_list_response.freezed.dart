@@ -22,7 +22,11 @@ mixin _$PluginMetadata {
 /// fix. Null for every other harness.
 @JsonKey(unknownEnumValue: PluginFailureBlock.unknown) PluginFailureBlock? get failureBlock; bool get supportsPromptAttachments;/// Where this harness answers MCP inventory; empty when it has no MCP
 /// support. Mirrors `PluginManagementMetadata.mcpScopes`.
-@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? get mcpScopes;
+@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? get mcpScopes;/// Why a failed harness could not start, in words its plugin wrote for the
+/// user. Mirrors `PluginManagementMetadata.failureReason`: null when the
+/// harness has not failed or gave no such reason; older bridges omit it,
+/// which reads the same.
+ String? get failureReason;
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -36,20 +40,20 @@ $PluginMetadataCopyWith<PluginMetadata> get copyWith => _$PluginMetadataCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as PluginMetadata;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetadata&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.isDefault, _this.isDefault) || other.isDefault == _this.isDefault)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint)&&(identical(other.failureBlock, _this.failureBlock) || other.failureBlock == _this.failureBlock)&&(identical(other.supportsPromptAttachments, _this.supportsPromptAttachments) || other.supportsPromptAttachments == _this.supportsPromptAttachments)&&const DeepCollectionEquality().equals(other.mcpScopes, _this.mcpScopes));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetadata&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.isDefault, _this.isDefault) || other.isDefault == _this.isDefault)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint)&&(identical(other.failureBlock, _this.failureBlock) || other.failureBlock == _this.failureBlock)&&(identical(other.supportsPromptAttachments, _this.supportsPromptAttachments) || other.supportsPromptAttachments == _this.supportsPromptAttachments)&&const DeepCollectionEquality().equals(other.mcpScopes, _this.mcpScopes)&&(identical(other.failureReason, _this.failureReason) || other.failureReason == _this.failureReason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PluginMetadata;
-  return Object.hash(runtimeType,_this.id,_this.displayName,_this.isDefault,_this.state,_this.actionHint,_this.failureBlock,_this.supportsPromptAttachments,const DeepCollectionEquality().hash(_this.mcpScopes));
+  return Object.hash(runtimeType,_this.id,_this.displayName,_this.isDefault,_this.state,_this.actionHint,_this.failureBlock,_this.supportsPromptAttachments,const DeepCollectionEquality().hash(_this.mcpScopes),_this.failureReason);
 }
 
 @override
 String toString() {
   final _this = this as PluginMetadata;
-  return 'PluginMetadata(id: ${_this.id}, displayName: ${_this.displayName}, isDefault: ${_this.isDefault}, state: ${_this.state}, actionHint: ${_this.actionHint}, failureBlock: ${_this.failureBlock}, supportsPromptAttachments: ${_this.supportsPromptAttachments}, mcpScopes: ${_this.mcpScopes})';
+  return 'PluginMetadata(id: ${_this.id}, displayName: ${_this.displayName}, isDefault: ${_this.isDefault}, state: ${_this.state}, actionHint: ${_this.actionHint}, failureBlock: ${_this.failureBlock}, supportsPromptAttachments: ${_this.supportsPromptAttachments}, mcpScopes: ${_this.mcpScopes}, failureReason: ${_this.failureReason})';
 }
 
 
@@ -60,7 +64,7 @@ abstract mixin class $PluginMetadataCopyWith<$Res>  {
   factory $PluginMetadataCopyWith(PluginMetadata value, $Res Function(PluginMetadata) _then) = _$PluginMetadataCopyWithImpl;
 @useResult
 $Res call({
- String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint,@JsonKey(unknownEnumValue: PluginFailureBlock.unknown) PluginFailureBlock? failureBlock, bool supportsPromptAttachments,@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? mcpScopes
+ String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint,@JsonKey(unknownEnumValue: PluginFailureBlock.unknown) PluginFailureBlock? failureBlock, bool supportsPromptAttachments,@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? mcpScopes, String? failureReason
 });
 
 
@@ -77,7 +81,7 @@ class _$PluginMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? failureBlock = freezed,Object? supportsPromptAttachments = null,Object? mcpScopes = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? failureBlock = freezed,Object? supportsPromptAttachments = null,Object? mcpScopes = freezed,Object? failureReason = freezed,}) {
   return _then(PluginMetadata(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -87,7 +91,8 @@ as PluginLifecycleState,actionHint: freezed == actionHint ? _self.actionHint : a
 as String?,failureBlock: freezed == failureBlock ? _self.failureBlock : failureBlock // ignore: cast_nullable_to_non_nullable
 as PluginFailureBlock?,supportsPromptAttachments: null == supportsPromptAttachments ? _self.supportsPromptAttachments : supportsPromptAttachments // ignore: cast_nullable_to_non_nullable
 as bool,mcpScopes: freezed == mcpScopes ? _self.mcpScopes : mcpScopes // ignore: cast_nullable_to_non_nullable
-as Set<McpScopeKind>?,
+as Set<McpScopeKind>?,failureReason: freezed == failureReason ? _self.failureReason : failureReason // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -99,7 +104,7 @@ as Set<McpScopeKind>?,
 @JsonSerializable()
 
 class _PluginMetadata implements PluginMetadata {
-  const _PluginMetadata({required this.id, required this.displayName, required this.isDefault, @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required this.state, required this.actionHint, @JsonKey(unknownEnumValue: PluginFailureBlock.unknown) required this.failureBlock, this.supportsPromptAttachments = false, @JsonKey(unknownEnumValue: McpScopeKind.unknown) required  Set<McpScopeKind>? mcpScopes}): _mcpScopes = mcpScopes;
+  const _PluginMetadata({required this.id, required this.displayName, required this.isDefault, @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required this.state, required this.actionHint, @JsonKey(unknownEnumValue: PluginFailureBlock.unknown) required this.failureBlock, this.supportsPromptAttachments = false, @JsonKey(unknownEnumValue: McpScopeKind.unknown) required  Set<McpScopeKind>? mcpScopes, required this.failureReason}): _mcpScopes = mcpScopes;
   factory _PluginMetadata.fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);
 
 @override final  String id;
@@ -126,6 +131,11 @@ class _PluginMetadata implements PluginMetadata {
   return EqualUnmodifiableSetView(value);
 }
 
+/// Why a failed harness could not start, in words its plugin wrote for the
+/// user. Mirrors `PluginManagementMetadata.failureReason`: null when the
+/// harness has not failed or gave no such reason; older bridges omit it,
+/// which reads the same.
+@override final  String? failureReason;
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
@@ -140,18 +150,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.failureBlock, failureBlock) || other.failureBlock == failureBlock)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments)&&const DeepCollectionEquality().equals(other.mcpScopes, _mcpScopes));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.failureBlock, failureBlock) || other.failureBlock == failureBlock)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments)&&const DeepCollectionEquality().equals(other.mcpScopes, _mcpScopes)&&(identical(other.failureReason, failureReason) || other.failureReason == failureReason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,displayName,isDefault,state,actionHint,failureBlock,supportsPromptAttachments,const DeepCollectionEquality().hash(_mcpScopes));
+    return Object.hash(runtimeType,id,displayName,isDefault,state,actionHint,failureBlock,supportsPromptAttachments,const DeepCollectionEquality().hash(_mcpScopes),failureReason);
 }
 
 @override
 String toString() {
-    return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint, failureBlock: $failureBlock, supportsPromptAttachments: $supportsPromptAttachments, mcpScopes: $mcpScopes)';
+    return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint, failureBlock: $failureBlock, supportsPromptAttachments: $supportsPromptAttachments, mcpScopes: $mcpScopes, failureReason: $failureReason)';
 }
 
 
@@ -162,7 +172,7 @@ abstract mixin class _$PluginMetadataCopyWith<$Res> implements $PluginMetadataCo
   factory _$PluginMetadataCopyWith(_PluginMetadata value, $Res Function(_PluginMetadata) _then) = __$PluginMetadataCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint,@JsonKey(unknownEnumValue: PluginFailureBlock.unknown) PluginFailureBlock? failureBlock, bool supportsPromptAttachments,@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? mcpScopes
+ String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint,@JsonKey(unknownEnumValue: PluginFailureBlock.unknown) PluginFailureBlock? failureBlock, bool supportsPromptAttachments,@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? mcpScopes, String? failureReason
 });
 
 
@@ -179,7 +189,7 @@ class __$PluginMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? failureBlock = freezed,Object? supportsPromptAttachments = null,Object? mcpScopes = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? failureBlock = freezed,Object? supportsPromptAttachments = null,Object? mcpScopes = freezed,Object? failureReason = freezed,}) {
   return _then(_PluginMetadata(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -189,7 +199,8 @@ as PluginLifecycleState,actionHint: freezed == actionHint ? _self.actionHint : a
 as String?,failureBlock: freezed == failureBlock ? _self.failureBlock : failureBlock // ignore: cast_nullable_to_non_nullable
 as PluginFailureBlock?,supportsPromptAttachments: null == supportsPromptAttachments ? _self.supportsPromptAttachments : supportsPromptAttachments // ignore: cast_nullable_to_non_nullable
 as bool,mcpScopes: freezed == mcpScopes ? _self._mcpScopes : mcpScopes // ignore: cast_nullable_to_non_nullable
-as Set<McpScopeKind>?,
+as Set<McpScopeKind>?,failureReason: freezed == failureReason ? _self.failureReason : failureReason // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

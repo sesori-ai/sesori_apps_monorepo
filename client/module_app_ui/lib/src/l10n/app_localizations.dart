@@ -4507,6 +4507,12 @@ abstract class AppLocalizations {
   /// **'Failed'**
   String get newSessionPluginFailed;
 
+  /// A failed harness's row in the new-session harness menu, followed by the reason its plugin gave.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed · {reason}'**
+  String newSessionPluginFailedWithReason(String reason);
+
   /// No description provided for @newSessionHarnessSettings.
   ///
   /// In en, this message translates to:

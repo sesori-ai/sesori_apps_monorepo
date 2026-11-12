@@ -35,6 +35,7 @@ const pluginA = PluginMetadata(
   actionHint: null,
   failureBlock: null,
   mcpScopes: null,
+  failureReason: null,
 );
 const pluginB = PluginMetadata(
   id: "plugin-b",
@@ -44,6 +45,7 @@ const pluginB = PluginMetadata(
   actionHint: null,
   failureBlock: null,
   mcpScopes: null,
+  failureReason: null,
 );
 const connectedStatus = ConnectionStatus.connected(
   config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
@@ -333,6 +335,7 @@ void main() {
         actionHint: null,
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       const refreshedB = PluginMetadata(
         id: "plugin-b",
@@ -342,6 +345,7 @@ void main() {
         actionHint: "Check the bridge console.",
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       const unavailableB = PluginMetadata(
         id: "plugin-b",
@@ -351,6 +355,7 @@ void main() {
         actionHint: "Start the plugin.",
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       var discoveryCalls = 0;
       when(pluginRepository.listPlugins).thenAnswer((_) async {
@@ -441,6 +446,7 @@ void main() {
         actionHint: null,
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       final refreshed = Completer<ApiResponse<PluginDiscoverySnapshot>>();
       var discoveryCalls = 0;
@@ -501,6 +507,7 @@ void main() {
         actionHint: gatewayHint,
         failureBlock: PluginFailureBlock.unavailable,
         mcpScopes: null,
+        failureReason: null,
       );
 
       test("stays pickable and shows its notice in the composer's place", () async {
@@ -770,6 +777,7 @@ void main() {
         actionHint: "Start the plugin.",
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       final reconnectDiscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
       var discoveryCalls = 0;
@@ -819,6 +827,7 @@ void main() {
         actionHint: null,
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       final originalCommand = testCommandInfo();
       final refreshedCommand = testCommandInfo(template: "/review {{path}}");
@@ -1708,6 +1717,7 @@ void main() {
         actionHint: null,
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       const unavailableB = PluginMetadata(
         id: "plugin-b",
@@ -1717,6 +1727,7 @@ void main() {
         actionHint: "Start the plugin.",
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       final command = testCommandInfo();
       final fallbackAgents = Completer<ApiResponse<Agents>>();
@@ -1839,6 +1850,7 @@ void main() {
         actionHint: "Restart the bridge.",
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       const second = PluginMetadata(
         id: "selected",
@@ -1848,6 +1860,7 @@ void main() {
         actionHint: null,
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [first, second])),
@@ -1874,6 +1887,7 @@ void main() {
         actionHint: "Check the bridge console.",
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [degraded])),
@@ -1931,6 +1945,7 @@ void main() {
         actionHint: "Check the bridge console.",
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       const failed = PluginMetadata(
         id: "failed",
@@ -1940,6 +1955,7 @@ void main() {
         actionHint: "Restart the bridge.",
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       );
       when(pluginRepository.listPlugins).thenAnswer(
         (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [unavailable, failed])),

@@ -15,6 +15,7 @@ void main() {
           failureBlock: null,
           mcpScopes: null,
           supportsPromptAttachments: true,
+          failureReason: null,
         ),
         PluginMetadata(
           id: "opencode",
@@ -24,6 +25,7 @@ void main() {
           actionHint: null,
           failureBlock: null,
           mcpScopes: null,
+          failureReason: null,
         ),
       ],
     );
@@ -59,6 +61,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: {McpScopeKind.harness, McpScopeKind.session},
+      failureReason: null,
     );
     final future = PluginMetadata.fromJson(const {
       "id": "future",
@@ -139,6 +142,7 @@ void main() {
       actionHint: "Check the gateway's credentials, then check setup.",
       failureBlock: PluginFailureBlock.unavailable,
       mcpScopes: null,
+      failureReason: null,
     );
     const ready = PluginMetadata(
       id: "opencode",
@@ -148,6 +152,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
 
     expect(blocked.toJson()["failureBlock"], "unavailable");

@@ -58,6 +58,12 @@ sealed class PluginMetadata with _$PluginMetadata {
     // session MCP as before. Make it non-nullable once the minimum supported
     // bridge sends it.
     @JsonKey(unknownEnumValue: McpScopeKind.unknown) required Set<McpScopeKind>? mcpScopes,
+
+    /// Why a failed harness could not start, in words its plugin wrote for the
+    /// user. Mirrors `PluginManagementMetadata.failureReason`: null when the
+    /// harness has not failed or gave no such reason; older bridges omit it,
+    /// which reads the same.
+    required String? failureReason,
   }) = _PluginMetadata;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);

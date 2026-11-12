@@ -2537,6 +2537,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionPluginFailed => 'Failed';
 
   @override
+  String newSessionPluginFailedWithReason(String reason) {
+    return 'Failed · $reason';
+  }
+
+  @override
   String get newSessionHarnessSettings => 'Harness settings';
 
   @override
