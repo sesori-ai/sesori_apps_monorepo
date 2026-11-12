@@ -35,15 +35,18 @@ class const TranscriptLatestWords({super.key, required final String text, requir
   /// document on every flush.
   static const int _kLatestWordsChars = 160;
 
+  /// How much of the end of the text is parsed at most, so a long paragraph
+  /// costs the same on every flush however much has streamed before it.
+  static const int _kParsedChars = 2000;
+
   /// The latest words of streaming Markdown [text], on one line, as they
   /// render: emphasis markers and backticks are resolved, not shown.
   @visibleForTesting
   static String latestWords({required String text}) {
-    // Parse from the start of a line, so the window never opens between the
-    // two markers of a pair and leaves the closing one behind as text.
-    final windowStart = max(0, text.length - _kLatestWordsChars);
-    final lineStart = windowStart == 0 ? 0 : text.lastIndexOf("\n", windowStart) + 1;
-    final plain = markdownPlainText(markdown: _withoutOpenEmphasis(text.substring(lineStart)), nameImage: null);
+    final plain = markdownPlainText(
+      markdown: _withoutOpenEmphasis(text.substring(_parseStart(text: text))),
+      nameImage: null,
+    );
     var start = max(0, plain.length - _kLatestWordsChars);
     // Never start on the low half of a UTF-16 surrogate pair (emoji etc.):
     // an orphaned low surrogate renders as a replacement character.
@@ -52,6 +55,23 @@ class const TranscriptLatestWords({super.key, required final String text, requir
   }
 
   static bool _isLowSurrogate(int codeUnit) => (codeUnit & 0xFC00) == 0xDC00;
+
+  /// Where parsing starts: at the paragraph holding the shown window, so the
+  /// window never opens between the two markers of a pair and leaves the
+  /// closing one behind as text, or else at its line. Never further back than
+  /// [_kParsedChars].
+  static int _parseStart({required String text}) {
+    final windowStart = max(0, text.length - _kLatestWordsChars);
+    if (windowStart == 0) return 0;
+    var budgetStart = max(0, text.length - _kParsedChars);
+    if (budgetStart > 0 && _isLowSurrogate(text.codeUnitAt(budgetStart))) budgetStart++;
+    // A missing separator puts the paragraph or line at the text's start.
+    final paragraphStart = text.lastIndexOf("\n\n", windowStart) + 2;
+    if (paragraphStart >= max(budgetStart, 2)) return paragraphStart;
+    if (budgetStart == 0) return 0;
+    final lineStart = text.lastIndexOf("\n", windowStart) + 1;
+    return max(lineStart, budgetStart);
+  }
 
   /// [markdown] without the opening marker of an emphasis still streaming on
   /// its last line, such as a title arriving as `**Planning th`: until the

@@ -226,6 +226,18 @@ void main() {
       expect(words, endsWith("word done"));
     });
 
+    test("resolves an emphasis that spans lines of one paragraph", () {
+      final text = "**${"word " * 20}\n${"more " * 40}end**";
+
+      expect(TranscriptLatestWords.latestWords(text: text), allOf(isNot(contains("*")), endsWith("more end")));
+    });
+
+    test("keeps the end of a very long one-line thought", () {
+      final text = "${"long " * 2000}newest words";
+
+      expect(TranscriptLatestWords.latestWords(text: text), endsWith("long newest words"));
+    });
+
     test("hides the opening marker of a title that is still streaming", () {
       expect(TranscriptLatestWords.latestWords(text: "**Planning th"), "Planning th");
       expect(TranscriptLatestWords.latestWords(text: "Done.\n\n**Next st"), "Done. Next st");

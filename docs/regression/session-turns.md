@@ -186,7 +186,9 @@ defaults and queued client sends coherent.
   are not rendered as conversation messages or used as assistant model attribution.
 - Reasoning uses an unboxed activity row with 14px body text, a bounded live-tail
   preview, and a one-line Markdown-stripped completed preview; the live tail
-  shows rendered words too, never emphasis markers or backticks. Tap or keyboard
+  shows rendered words too: a marker pair resolves once it closes, and the
+  opening marker of an emphasis still streaming at the start of the line is
+  hidden. Tap or keyboard
   activation opens the same full, selectable reasoning modal; its streaming
   follow/detach behavior is unchanged. A long finished thought shows a spinner
   until the modal's entry transition ends, so the ripple and transition never
