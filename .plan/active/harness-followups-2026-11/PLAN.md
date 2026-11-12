@@ -109,8 +109,9 @@ OpenCode, Pi, Codex and DeepSeek; OMP is ⬜ in `HARNESS_CAPABILITIES.md`.
 `deepseek_compaction_tracker.dart`): an `OmpEventMapper extends AcpEventMapper`
 overriding `mapExtension` and `shouldBufferDuringPromptWrite`, plus an
 `OmpCompactionTracker` using `host.clock`, wired in `omp_plugin_impl.dart` and
-`omp_plugin_descriptor.dart`. Mapping: start → running; end with `willRetry` →
-stays running; `aborted` → failed (`cancelled`); `errorMessage` → failed, with
+`omp_plugin_descriptor.dart`. Mapping: start → running; `willRetry` is ignored
+(the 18.19.0 source sets it only on a successful compaction, meaning OMP
+re-sends the overflowed turn); `aborted` → failed (`cancelled`); `errorMessage` → failed, with
 the raw error logged locally; `skipped` → the same state the other plugins use
 for "nothing to compact"; otherwise completed with trigger `auto` and
 `BridgeSseSessionCompacted`. No summary or freed-token count exists.

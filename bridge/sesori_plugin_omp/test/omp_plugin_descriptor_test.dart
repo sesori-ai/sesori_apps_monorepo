@@ -309,10 +309,12 @@ void main() {
               required launchDirectory,
               required scratchDirectory,
               required processFactory,
+              required clock,
             }) => OmpPlugin(
               binaryPath: binaryPath,
               launchDirectory: launchDirectory,
               scratchDirectory: scratchDirectory,
+              clock: clock,
               processFactory: (_) async => throw StateError("connection failed"),
             ),
         buildRuntimeAssetService: _runtimeAssets,
@@ -338,10 +340,12 @@ void main() {
               required launchDirectory,
               required scratchDirectory,
               required processFactory,
+              required clock,
             }) => OmpPlugin(
               binaryPath: binaryPath,
               launchDirectory: launchDirectory,
               scratchDirectory: scratchDirectory,
+              clock: clock,
               processFactory: (_) async {
                 if (attempts++ == 0) throw StateError("connection failed");
                 return process;

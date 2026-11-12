@@ -14,6 +14,7 @@ import "services/omp_session_cleanup_service.dart";
 import "services/omp_session_options_service.dart";
 import "services/omp_steering_service.dart";
 import "trackers/omp_catalog_tracker.dart";
+import "trackers/omp_compaction_tracker.dart";
 
 /// Oh My Pi backend over ACP.
 ///
@@ -33,6 +34,7 @@ class OmpPlugin._({
   required final OmpSessionOptionsService _ompSessionOptionsService,
   required final OmpSessionCleanupService _cleanupService,
   required final OmpSteeringService _steeringService,
+  required final OmpEventMapper _ompEventMapper,
   required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   factory({
@@ -40,6 +42,7 @@ class OmpPlugin._({
     required String launchDirectory,
     required String? scratchDirectory,
     required AcpProcessFactory processFactory,
+    required ServerClock clock,
   }) {
     final launchSpec = OmpBinary.launchSpec(
       binary: binaryPath,
@@ -84,16 +87,21 @@ class OmpPlugin._({
       totalTimeout: const Duration(seconds: 20),
       maxPages: 50,
     );
-    return OmpPlugin._(
+    late final OmpPlugin plugin;
+    final eventMapper = OmpEventMapper(
+      launchDirectory: launchDirectory,
+      pluginId: OmpPluginIdentity.id,
+      configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
+      compactionTracker: OmpCompactionTracker(clock: clock),
+      hasPendingTurn: ({required sessionId}) => plugin.hasPendingTurn(sessionId: sessionId),
+    );
+    return plugin = OmpPlugin._(
       launchSpec: launchSpec,
       launchDirectory: launchDirectory,
       childSessionTracker: childSessionTracker,
-      eventMapper: OmpEventMapper(
-        launchDirectory: launchDirectory,
-        pluginId: OmpPluginIdentity.id,
-        configurationTracker: configurationTracker,
-        childSessions: childSessionTracker,
-      ),
+      eventMapper: eventMapper,
+      ompEventMapper: eventMapper,
       commandTracker: commandTracker,
       catalogService: catalogService,
       ompSessionOptionsService: ompSessionOptionsService,
@@ -213,7 +221,23 @@ class OmpPlugin._({
   }
 
   @override
-  void onConnectionReset() => _ompSessionOptionsService.resetConnection();
+  void onConnectionReset() {
+    _ompSessionOptionsService.resetConnection();
+    _ompEventMapper.endCompactionsAfterExit().forEach(emitEvent);
+  }
+
+  /// A running automatic compaction keeps its session busy: OMP is working,
+  /// and holds a prompt sent meanwhile until the compaction ends.
+  @override
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async {
+    final statuses = await super.getSessionStatuses();
+    final compacting = _ompEventMapper.compactingSessionIds;
+    if (compacting.isEmpty) return statuses;
+    return Map.unmodifiable({
+      ...statuses,
+      for (final sessionId in compacting) sessionId: const PluginSessionStatus.busy(),
+    });
+  }
 
   @override
   Iterable<BridgeSseEvent> mapPromptFailure({

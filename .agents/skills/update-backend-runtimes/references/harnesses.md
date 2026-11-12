@@ -381,6 +381,15 @@ concrete problem can justify a documented temporary hold with a resolution path.
   `OmpPlugin.supportsFormElicitation` remains enabled; `OmpAcpApi.open()` keeps
   scratch/catalog/cleanup form elicitation disabled. See
   `docs/regression/questions-and-permissions.md` for the focused live-client gate.
+- **Compaction:** `OmpEventMapper` maps the `_omp/compaction/start` and
+  `_omp/compaction/end` extension notifications (sent by OMP's
+  `#handleLifetimeEvent` in `packages/coding-agent/src/modes/acp/acp-agent.ts`,
+  automatic compaction only) to the shared compaction row. Each release, re-check
+  the end payload fields (`aborted`, `skipped`, `errorMessage`, `willRetry`,
+  `tokensBefore`): `willRetry` means OMP re-sends the overflowed turn after a
+  successful compaction, so it is ignored, and a failed method's fallback is a new
+  start/end pair. If OMP starts signalling manual `/compact` or carries a summary,
+  freed count or attempt id, extend the mapping and the capability row.
 
 ## DeepSeek
 
