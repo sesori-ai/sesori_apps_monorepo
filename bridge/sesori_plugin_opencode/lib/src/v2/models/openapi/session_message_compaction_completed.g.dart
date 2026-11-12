@@ -1,12 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 import 'model_ref.g.dart';
 import 'session_message_compaction.g.dart';
-import 'session_message_native_4.g.dart';
+import 'session_message_native.g.dart';
 import 'token_usage_info.g.dart';
 
 @immutable
@@ -30,7 +30,7 @@ class SessionMessageCompactionCompleted implements SessionMessageCompaction {
       time: SessionMessageCompactionCompletedTime.fromJson(json["time"] as Map<String, dynamic>),
       reason: SessionMessageCompactionCompletedReason.fromJson(json["reason"] as String),
       model: json["model"] == null ? null : ModelRef.fromJson(json["model"] as Map<String, dynamic>),
-      native: json["native"] == null ? null : SessionMessageNative4.fromJson(json["native"] as Map<String, dynamic>),
+      native: json["native"] == null ? null : SessionMessageNative.fromJson(json["native"] as Map<String, dynamic>),
       summary: json["summary"] as String,
       cost: (json["cost"] as num?)?.toDouble(),
       tokens: json["tokens"] == null ? null : TokenUsageInfo.fromJson(json["tokens"] as Map<String, dynamic>),
@@ -62,7 +62,7 @@ class SessionMessageCompactionCompleted implements SessionMessageCompaction {
     SessionMessageCompactionCompletedTime? time,
     SessionMessageCompactionCompletedReason? reason,
     ModelRef? model,
-    SessionMessageNative4? native,
+    SessionMessageNative? native,
     String? summary,
     double? cost,
     TokenUsageInfo? tokens,
@@ -102,7 +102,7 @@ class SessionMessageCompactionCompleted implements SessionMessageCompaction {
   final SessionMessageCompactionCompletedTime time;
   final SessionMessageCompactionCompletedReason reason;
   final ModelRef? model;
-  final SessionMessageNative4? native;
+  final SessionMessageNative? native;
   final String summary;
   final double? cost;
   final TokenUsageInfo? tokens;

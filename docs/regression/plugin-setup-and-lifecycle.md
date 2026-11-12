@@ -30,7 +30,7 @@ Antigravity retains its exact-pair policy rather than an independent floor.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
-| OpenCode | `2.1.4` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes (npm integrity agrees) and layouts verified; v2 models and the event manifest regenerated against `v2.1.4` (the removed `session.compaction.ended` `recent` field is no longer required). The provider-list decode of `chunkTimeout: false` is covered by a model test only. Current-target native install/version, authenticated provider list and reads, SSE startup and teardown remain unverified; earlier `2.0.18` sandboxed macOS arm64 install and authenticated read observations are historical. Provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
+| OpenCode | `2.2.7` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes (npm integrity agrees) and layouts verified; v2 models regenerated against `v2.2.7` and the event manifest re-checked (no event change). The managed binary reports `opencode v2.2.7`; `serve` answers authenticated `/api/info` (`2.2.7`) and rejects unauthenticated reads, also when started without a password. Provider list, SSE startup and teardown, provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
 | Antigravity | package/server `1.4.3` | Exact package/server/ACP 1 | Six archive hashes/layouts/permissions independently verified and matching the registry's published hashes. A 2026-10-25 network-denied macOS ARM64 run reported `Build label: 1.4.3` and passed initialize-only ACP (agent `1.4.3`, protocol 1, unchanged capabilities and auth methods) and teardown; that run used plain `unzip`, and the production managed install pipeline was not rerun. Other native targets and authenticated behavior remain unverified; earlier `1.3.0` observations are historical. |
 | Codex | `0.164.0` | `0.139.0` | Six package hashes match `codex-package_SHA256SUMS` and the GitHub digests; the sandboxed macOS arm64 package reports `codex-cli 0.164.0`. Current-target managed install, stdio and WebSocket app-server checks remain unverified. |
 | GitHub Copilot | `1.0.103` | `1.0.78` | Six archive hashes match `SHA256SUMS.txt` and the GitHub digests; the sandboxed macOS arm64 binary reports `GitHub Copilot CLI 1.0.103.`. ACP initialize and configured lifecycle remain unverified. |
@@ -194,7 +194,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   v2 adapter at 2.0.11 or newer; v1 retains its existing adapter. Below-minimum v2
   fails with an upgrade hint, never a downgrade recommendation. An owned runtime
   is stopped before refusal; an attached server is never stopped. Cancellation
-  during the probe wins over refusal. Managed downloads target `2.1.4` via npm;
+  during the probe wins over refusal. Managed downloads target `2.2.7` via npm;
   first v2 launch migrates the native database one-way, while PATH v1 stays supported.
   Attach mode without a server retains degraded v1 recovery; a later-started v2
   server requires a bridge restart to select its adapter.

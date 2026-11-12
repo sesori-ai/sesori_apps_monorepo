@@ -244,7 +244,7 @@ output; it adds no gap beyond the command sources listed here.
 | Harness | Status and established command source |
 |---|---|
 | Claude | Implemented: exact `Bash` input command, retained through tool-result correlation and transcript replay. |
-| OpenCode | Implemented: exact `bash` tool input command in generated SSE/REST tool parts. |
+| OpenCode | Implemented: exact `bash` tool input command (v2's `shell` tool, which aliases `bash`, included) in generated SSE/REST tool parts. |
 | Codex | Implemented: `commandExecution.command`, `exec_command` arguments, literal single-invocation code-mode commands, and correlated command-execution evidence. Normalized `shell` names and arbitrary JavaScript/title text are not authority. |
 | Pi | Implemented: `bash` tool-call arguments and typed `bashExecution.command`, live and replay. |
 | Grok | Implemented: exact `_meta["x.ai/tool"].name == "run_terminal_command"` plus typed `rawInput.command`. Evidence is the owning repository fixture, not a fresh upstream capture. |
@@ -335,14 +335,14 @@ sub-agents finish.
 
 ## OpenCode v2 adapter
 
-Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.1.4.
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.2.7.
 V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the native database one-way.
 
 | Capability | Status |
 |---|---|
 | Explicit parent-linked creation | Not implemented. The native create API accepts `parentID` since 2.0.23, but no Sesori flow creates parent-linked sessions and the 2.0.11 floor lacks it, so the request is refused before mutation. Native forks remain standalone roots, never children of their source. |
 | Conditional/external form rendering | Not implemented; native-only. Visible replies preserve native keys/types and numeric bounds; native validation remains authoritative. |
-| Native archival | Not supported; archival stays in the bridge database. |
+| Native archival | Not implemented: OpenCode `2.1.0`+ archives natively (`PATCH /api/session/{id}` with `archived`), but the `2.0.11` minimum cannot; archival stays in the bridge database. |
 | Prompt/compaction correlation | Implemented with caller-supplied native IDs and stateless projection. |
 | Custom-command correlation | Not supported by the native command route: no caller ID or result ID is exposed. Command dispatch still waits for native acceptance. |
 | Shared background server | Implemented. When OpenCode's own `opencode serve --service` is registered, healthy and 2.0.11 or newer, the bridge uses it instead of spawning a private server. When none is running in managed mode without an explicit `--opencode-bin`, the bridge runs `opencode service start` with the selected runtime and uses that service, which keeps running after the bridge stops, as one started by the TUI does. The phone, TUI and desktop then share one server's turns, events, permissions, forms and Stop. When the service stops or moves, the plugin fails after a 5-second debounce and the next request re-attaches, starting the service again if needed. Turn it off with `--opencode-no-shared-service`, an explicit `--opencode-bin`, or OpenCode's `opencode service set disabled true`. When the selected runtime is older than the 2.0.11 floor (including OpenCode 1), or the start fails or times out, the bridge spawns its own server, and a service started later on the same database can resume that server's in-flight turns a second time. OpenCode-specific: no other harness has a shared server, and OpenCode 1 has no service. |
@@ -883,7 +883,7 @@ end with `session.prompt-settled` so clients can remove its optimistic row.
 | Claude | ✅ Command dispatch publishes a correlated synthetic user message. |
 | OpenCode v1 | ✅ Correlated backend user echoes cover prompts, commands and manual compaction. |
 | OpenCode v2 prompts / fallback compaction | ✅ Caller-supplied native IDs correlate prompt echoes; completed or failed compaction snapshots emit explicit prompt settlement. |
-| OpenCode v2 native commands | 🚫 The 2.1.4 command route exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
+| OpenCode v2 native commands | 🚫 The command route (unchanged from 2.1.4 through 2.2.7) exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
 | Codex | ✅ Turn-backed commands correlate their user echo; native `compact` emits explicit prompt settlement because it returns no turn identity. |
 | Pi | ✅ User echoes and agent-running fallback synthesis remain transcript-backed; an accepted slash command with no agent work emits explicit prompt settlement after its state barrier. |
 | Antigravity, Copilot, Cursor, Hermes, OMP, DeepSeek, Grok | ✅ Shared ACP dispatch publishes a correlated user message; no silent accepted-command path is exposed. |

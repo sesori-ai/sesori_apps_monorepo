@@ -1,9 +1,9 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
 import 'session_message_assistant_content.g.dart';
-import 'session_message_native_1.g.dart';
+import 'session_message_native.g.dart';
 
 @immutable
 class SessionMessageAssistantReasoning implements SessionMessageAssistantContent {
@@ -16,7 +16,7 @@ class SessionMessageAssistantReasoning implements SessionMessageAssistantContent
   factory SessionMessageAssistantReasoning.fromJson(Map<String, dynamic> json) {
     return SessionMessageAssistantReasoning(
       text: json["text"] as String,
-      native: json["native"] == null ? null : SessionMessageNative1.fromJson(json["native"] as Map<String, dynamic>),
+      native: json["native"] == null ? null : SessionMessageNative.fromJson(json["native"] as Map<String, dynamic>),
       time: json["time"] == null ? null : SessionMessageAssistantReasoningTime.fromJson(json["time"] as Map<String, dynamic>),
     );
   }
@@ -35,7 +35,7 @@ class SessionMessageAssistantReasoning implements SessionMessageAssistantContent
   /// Nullable fields cannot be set to null through this helper; null means keep.
   SessionMessageAssistantReasoning copyWith({
     String? text,
-    SessionMessageNative1? native,
+    SessionMessageNative? native,
     SessionMessageAssistantReasoningTime? time,
   }) {
     return SessionMessageAssistantReasoning(
@@ -57,7 +57,7 @@ class SessionMessageAssistantReasoning implements SessionMessageAssistantContent
   int get hashCode => Object.hash(text, native, time);
 
   final String text;
-  final SessionMessageNative1? native;
+  final SessionMessageNative? native;
   final SessionMessageAssistantReasoningTime? time;
 }
 

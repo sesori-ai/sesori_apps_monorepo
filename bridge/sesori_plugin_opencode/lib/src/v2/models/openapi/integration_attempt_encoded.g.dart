@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -12,6 +12,7 @@ class IntegrationAttemptEncoded {
     required this.url,
     required this.instructions,
     required this.mode,
+    required this.paste,
     required this.time,
   });
 
@@ -21,6 +22,7 @@ class IntegrationAttemptEncoded {
       url: json["url"] as String,
       instructions: json["instructions"] as String,
       mode: IntegrationAttemptEncodedMode.fromJson(json["mode"] as String),
+      paste: json["paste"] as bool?,
       time: IntegrationAttemptEncodedTime.fromJson(json["time"] as Map<String, dynamic>),
     );
   }
@@ -31,6 +33,7 @@ class IntegrationAttemptEncoded {
       "url": url,
       "instructions": instructions,
       "mode": mode.toJson(),
+      "paste": ?paste,
       "time": time.toJson(),
     };
   }
@@ -42,6 +45,7 @@ class IntegrationAttemptEncoded {
     String? url,
     String? instructions,
     IntegrationAttemptEncodedMode? mode,
+    bool? paste,
     IntegrationAttemptEncodedTime? time,
   }) {
     return IntegrationAttemptEncoded(
@@ -49,6 +53,7 @@ class IntegrationAttemptEncoded {
       url: url ?? this.url,
       instructions: instructions ?? this.instructions,
       mode: mode ?? this.mode,
+      paste: paste ?? this.paste,
       time: time ?? this.time,
     );
   }
@@ -61,15 +66,17 @@ class IntegrationAttemptEncoded {
           other.url == url &&
           other.instructions == instructions &&
           other.mode == mode &&
+          other.paste == paste &&
           other.time == time);
 
   @override
-  int get hashCode => Object.hash(attemptID, url, instructions, mode, time);
+  int get hashCode => Object.hash(attemptID, url, instructions, mode, paste, time);
 
   final String attemptID;
   final String url;
   final String instructions;
   final IntegrationAttemptEncodedMode mode;
+  final bool? paste;
   final IntegrationAttemptEncodedTime time;
 }
 

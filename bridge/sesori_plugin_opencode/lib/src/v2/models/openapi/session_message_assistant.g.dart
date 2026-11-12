@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -8,7 +8,7 @@ import 'model_ref.g.dart';
 import 'session_message_assistant_content.g.dart';
 import 'session_message_assistant_retry.g.dart';
 import 'session_message_info.g.dart';
-import 'session_message_native_3.g.dart';
+import 'session_message_native.g.dart';
 import 'session_structured_error.g.dart';
 import 'token_usage_info.g.dart';
 
@@ -42,7 +42,7 @@ class SessionMessageAssistant implements SessionMessageInfo {
       snapshot: json["snapshot"] == null ? null : SessionMessageAssistantSnapshot.fromJson(json["snapshot"] as Map<String, dynamic>),
       finish: json["finish"] == null ? null : SessionMessageAssistantFinish.fromJson(json["finish"] as String),
       rawFinish: json["rawFinish"] as String?,
-      native: json["native"] == null ? null : SessionMessageNative3.fromJson(json["native"] as Map<String, dynamic>),
+      native: json["native"] == null ? null : SessionMessageNative.fromJson(json["native"] as Map<String, dynamic>),
       cost: (json["cost"] as num?)?.toDouble(),
       tokens: json["tokens"] == null ? null : TokenUsageInfo.fromJson(json["tokens"] as Map<String, dynamic>),
       error: json["error"] == null ? null : SessionStructuredError.fromJson(json["error"] as Map<String, dynamic>),
@@ -83,7 +83,7 @@ class SessionMessageAssistant implements SessionMessageInfo {
     SessionMessageAssistantSnapshot? snapshot,
     SessionMessageAssistantFinish? finish,
     String? rawFinish,
-    SessionMessageNative3? native,
+    SessionMessageNative? native,
     double? cost,
     TokenUsageInfo? tokens,
     SessionStructuredError? error,
@@ -138,7 +138,7 @@ class SessionMessageAssistant implements SessionMessageInfo {
   final SessionMessageAssistantSnapshot? snapshot;
   final SessionMessageAssistantFinish? finish;
   final String? rawFinish;
-  final SessionMessageNative3? native;
+  final SessionMessageNative? native;
   final double? cost;
   final TokenUsageInfo? tokens;
   final SessionStructuredError? error;

@@ -9,7 +9,7 @@ Both share the raw HTTP client and `SseConnection`, not business state. The v2 s
 `src/v2/`: facade → service → repository → API, with stateless mappers and an activity tracker.
 Its complete cold-start/reconnect snapshot establishes baseline trust and emits the status
 changes it reveals, settling a turn that ended unseen with idle and its newest assistant message;
-failed refresh preserves useful state but reports unknown work. Managed downloads target 2.1.4
+failed refresh preserves useful state but reports unknown work. Managed downloads target 2.2.7
 through six integrity-pinned npm archives; the PATH minimum remains 1.14.0. First launch on v2
 migrates the native database one-way.
 

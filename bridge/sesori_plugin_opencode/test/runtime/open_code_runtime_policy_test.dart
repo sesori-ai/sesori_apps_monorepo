@@ -504,6 +504,7 @@ void main() {
           "Opencode_Server_Password": "leak",
           "opencode_server_password": "leak2",
           "OPENCODE_SERVER_PASSWORD": "leak3",
+          "OPENCODE_PASSWORD": "leak4",
         },
       );
 
@@ -519,7 +520,30 @@ void main() {
       expect(environment.containsKey("Opencode_Server_Password"), isFalse);
       expect(environment.containsKey("opencode_server_password"), isFalse);
       expect(environment.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
+      expect(environment.containsKey("OPENCODE_PASSWORD"), isFalse);
       expect(environment["PATH"], equals("/usr/bin"));
+      expect(recording.includeParentEnvironment, isFalse);
+    });
+
+    test("replaces an inherited OPENCODE_PASSWORD with the bridge password", () async {
+      final recording = _RecordingHostProcessService();
+      final host = _SpawnFakeHost(
+        processes: recording,
+        environment: const <String, String>{"OPENCODE_PASSWORD": "ambient"},
+      );
+
+      await spawnOpenCodeProcess(
+        host: host,
+        executablePath: "/bin/opencode",
+        port: 51000,
+        password: "secret",
+        bindHost: "127.0.0.1",
+      );
+
+      final environment = recording.environment ?? fail("expected a spawn environment");
+      expect(environment.containsKey("OPENCODE_PASSWORD"), isFalse);
+      expect(environment["OPENCODE_SERVER_PASSWORD"], equals("secret"));
+      expect(recording.includeParentEnvironment, isFalse);
     });
   });
 
@@ -704,6 +728,7 @@ class _RecordingHostProcessService() implements HostProcessService {
   Map<String, String>? environment;
   String? workingDirectory;
   bool? runInShell;
+  bool? includeParentEnvironment;
 
   @override
   Future<SpawnedProcess> spawn({
@@ -720,6 +745,7 @@ class _RecordingHostProcessService() implements HostProcessService {
     this.environment = environment;
     this.workingDirectory = workingDirectory;
     this.runInShell = runInShell;
+    this.includeParentEnvironment = includeParentEnvironment;
     return _FakeSpawnedProcess(pid: 4242);
   }
 

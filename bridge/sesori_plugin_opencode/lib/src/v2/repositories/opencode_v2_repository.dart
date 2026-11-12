@@ -528,7 +528,9 @@ class OpenCodeV2Repository({
         PluginPromptPartFileData() => (uri: "data:${part.mime};base64,${part.base64}", name: part.filename),
       };
       if (file != null) {
-        files.add(PromptInputFileAttachment(uri: file.uri, name: file.name, description: null, mention: null));
+        files.add(
+          PromptInputFileAttachment(uri: file.uri, source: null, name: file.name, description: null, mention: null),
+        );
       }
     }
     return files;

@@ -21,7 +21,7 @@ By default, the Bridge protects its localhost connection to the AI assistant wit
 You can change this behavior:
 
 - `--opencode-password <value>` replaces the generated password with your own.
-- `--opencode-no-password` disables authentication entirely (allowed only on loopback in managed mode).
+- `--opencode-no-password` disables authentication entirely (allowed only on loopback in managed mode). It works only with OpenCode v1: every OpenCode v2 server requires a password. With v2 the flag is ignored when the bridge uses the shared OpenCode 2 service, which brings its own password; with a private v2 server the bridge cannot authenticate and the plugin fails to start.
 
 If you configure a non-loopback `--opencode-host`, the password crosses the network as Basic auth headers, and `--opencode-no-password` is rejected in managed mode because it would expose an unauthenticated server.
 

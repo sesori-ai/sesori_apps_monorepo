@@ -1,9 +1,9 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
 import 'session_message_assistant_content.g.dart';
-import 'session_message_native_2.g.dart';
+import 'session_message_native.g.dart';
 import 'session_message_tool_state.g.dart';
 
 @immutable
@@ -22,7 +22,7 @@ class SessionMessageAssistantTool implements SessionMessageAssistantContent {
       id: json["id"] as String,
       name: json["name"] as String,
       executed: json["executed"] as bool?,
-      native: json["native"] == null ? null : SessionMessageNative2.fromJson(json["native"] as Map<String, dynamic>),
+      native: json["native"] == null ? null : SessionMessageNative.fromJson(json["native"] as Map<String, dynamic>),
       state: SessionMessageToolState.fromJson(json["state"] as Object),
       time: SessionMessageAssistantToolTime.fromJson(json["time"] as Map<String, dynamic>),
     );
@@ -47,7 +47,7 @@ class SessionMessageAssistantTool implements SessionMessageAssistantContent {
     String? id,
     String? name,
     bool? executed,
-    SessionMessageNative2? native,
+    SessionMessageNative? native,
     SessionMessageToolState? state,
     SessionMessageAssistantToolTime? time,
   }) {
@@ -78,7 +78,7 @@ class SessionMessageAssistantTool implements SessionMessageAssistantContent {
   final String id;
   final String name;
   final bool? executed;
-  final SessionMessageNative2? native;
+  final SessionMessageNative? native;
   final SessionMessageToolState state;
   final SessionMessageAssistantToolTime time;
 }

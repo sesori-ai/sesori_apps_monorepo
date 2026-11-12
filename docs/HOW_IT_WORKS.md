@@ -29,7 +29,7 @@ graph LR
 
 The Bridge talks to the AI assistant over plain HTTP on `127.0.0.1` (for OpenCode). It fetches projects and sessions via REST, and subscribes to a Server-Sent Events (SSE) stream for real-time updates (new messages, status changes, questions). Other assistants use different local transports — for example, Codex uses a loopback WebSocket and Cursor uses ACP over stdio. The plugin abstracts these details from the rest of the app.
 
-For OpenCode, a locally generated random 256-bit password protects the local connection by default. You can override this with `--opencode-password <value>` or disable it with `--opencode-no-password` (loopback only in managed mode).
+For OpenCode, a locally generated random 256-bit password protects the local connection by default. You can override this with `--opencode-password <value>` or disable it with `--opencode-no-password` (loopback only in managed mode; OpenCode v1 only, because OpenCode v2 always requires a password: the flag is ignored with the OpenCode 2 shared service and a private v2 server fails to start).
 
 ### Bridge ↔ Relay (WebSocket)
 
