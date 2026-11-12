@@ -12,7 +12,8 @@ abstract interface class ManagedRuntimePathAuthority() {
   });
 }
 
-/// PATH authority backed by a bounded `<runtime> --version` probe.
+/// PATH authority backed by a bounded version probe (`<runtime> --version`
+/// unless the manifest declares other probe arguments).
 class RuntimeVersionManagedRuntimePathAuthority({
   required final RuntimeManifest _manifest,
   required final RuntimeVersionValidator _versionValidator,

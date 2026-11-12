@@ -233,6 +233,9 @@ enum ClaudeAssistantError() {
   modelNotFound,
   serverError,
   maxOutputTokens,
+  accountOnHold,
+  verificationRequired,
+  cloudCredentialError,
   unknown;
 
   static ClaudeAssistantError parse(Object? raw) => switch (raw) {
@@ -246,6 +249,9 @@ enum ClaudeAssistantError() {
     "model_not_found" => modelNotFound,
     "server_error" => serverError,
     "max_output_tokens" => maxOutputTokens,
+    "account_on_hold" => accountOnHold,
+    "verification_required" => verificationRequired,
+    "cloud_credential_error" => cloudCredentialError,
     _ => unknown,
   };
 }
