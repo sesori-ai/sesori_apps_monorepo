@@ -932,7 +932,7 @@ on a bridge on the same computer:
 | OpenCode 2.2.6 | ✅ Quoted it. | No, on a config whose `permission.read` is `"*": "allow"`. The default agent's `external_directory: * → ask` may still ask on other configs; that is unverified. |
 | Pi 1.5.0 | ✅ Quoted it. | No. |
 | OMP 18.18.2 (ACP) | ✅ Quoted it. | No. |
-| DeepSeek runtime 0.2.1 (ACP) | ✅ Quoted it. | No. |
+| DeepSeek runtime 0.2.2 (ACP) | ✅ Quoted it. | No. |
 | Grok Build 1.0.30 | ✅ Quoted it. | No. |
 | Hermes 0.21.5 (ACP) | Unverified: the file was saved and the note delivered, but the turn never reached a model. | Unverified. |
 | Cursor (ACP) | Unverified: the installed CLI (2026.07.23) is older than the 2026.09.23 Sesori requires. | Unverified. |
@@ -1057,7 +1057,7 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.2.1 over dsh 0.2.1-rc.3 is the managed target;
+⁹ DeepSeek's published adapter 0.2.2 over dsh 0.2.2-rc.2 is the managed target;
 adapter 0.1.5 remains the minimum accepted runtime. From dsh 0.2.0 a sub-agent
 may delegate only one level by default (previously three), with at most eight
 active; users raise `subagent.config.maxDepth` in their DeepSeek profile. Provider
