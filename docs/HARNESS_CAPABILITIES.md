@@ -411,7 +411,8 @@ in the harness list, as a row on its detail page, in the new-session harness pic
 only when the plugin wrote a sentence for the user (`PluginRefusalException`, `PluginStartException.userFacing`).
 Every other failure keeps the generic wording; raw backend errors are never shown as these reasons. Harnesses not
 listed have no plugin-written reason for either failure today (⬜). "Managed process" covers the shared server start
-used by Codex and OpenCode: port in use, no free port, not ready in time, and quitting while starting.
+used by Codex and OpenCode: the configured port in use, no port it could start on, not ready in time, and the
+harness exiting while starting.
 
 | Harness | Refused send | Failed start |
 |---|---|---|

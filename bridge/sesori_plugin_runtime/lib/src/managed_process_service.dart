@@ -128,9 +128,9 @@ class ManagedProcessService<R>({
         throw PluginStartException(
           "[$_runtimeId] port $port did not free for restart within ${timeout.inMilliseconds}ms",
           cause: null,
-          userFacingReason:
-              "Port $port was still in use when this harness restarted. Close the program holding it, then restart "
-              "the harness.",
+          // Only an automatic restart waits here, and its failure reaches the
+          // user as the monitor's generic restart failure.
+          userFacingReason: null,
         );
       }
       await _clock.delay(duration: pollInterval);
@@ -200,8 +200,8 @@ class ManagedProcessService<R>({
       "[$_runtimeId] unable to start runtime on an available dynamic port after $attempts attempt(s)",
       cause: lastError,
       userFacingReason:
-          "This harness could not start on any free port. Check the bridge console for the error, then "
-          "restart the harness.",
+          "This harness could not start after trying several ports. Check the bridge console for the error, "
+          "then restart the harness.",
     );
   }
 
