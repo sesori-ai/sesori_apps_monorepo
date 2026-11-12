@@ -2985,6 +2985,60 @@ void main() {
     expect(service.managementSnapshot.plugins.single.actionHint, isNull);
   });
 
+  test("a failed start's own reason reaches its metadata and management row beside the generic hint", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+      idleTimerScheduler: const PluginIdleTimerScheduler(),
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+          mcpScopes: noMcpScopes,
+        ),
+      ],
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupReady()},
+    );
+    addTearDown(service.dispose);
+    const genericHint = "Check the bridge console and restart the bridge to retry this plugin.";
+    const reason = "Remove the flag to let the bridge generate a password.";
+
+    repository.publish(
+      state: const PluginRuntimeFailed(userFacingReason: null),
+      workState: PluginWorkState.unknown,
+      leaseCount: 0,
+    );
+    expect((await service.metadataSnapshots.first).single.failureReason, isNull);
+
+    repository.publish(
+      state: const PluginRuntimeFailed(userFacingReason: reason),
+      workState: PluginWorkState.unknown,
+      leaseCount: 0,
+    );
+    final metadata = (await service.metadataSnapshots.first).single;
+    expect(metadata.failureReason, reason);
+    expect(metadata.actionHint, genericHint);
+    expect(service.managementSnapshot.plugins.single.failureReason, reason);
+    // The new-session picker lists it, so it can say why it can't be picked.
+    final listed = service.selectableMetadataSnapshot.single;
+    expect(listed.failureReason, reason);
+    expect(listed.isDefault, isFalse);
+
+    repository.publish(state: const PluginRuntimeActive(), workState: PluginWorkState.idle, leaseCount: 0);
+    expect((await service.metadataSnapshots.first).single.failureReason, isNull);
+    expect(service.managementSnapshot.plugins.single.failureReason, isNull);
+  });
+
   test("idle suspension requires every safe-stop gate and a full timeout", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);

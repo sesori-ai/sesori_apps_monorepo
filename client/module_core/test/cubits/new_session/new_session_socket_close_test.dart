@@ -35,6 +35,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     final bridge = FakeRelayBridge(
       answer: (request) => switch (request.path) {

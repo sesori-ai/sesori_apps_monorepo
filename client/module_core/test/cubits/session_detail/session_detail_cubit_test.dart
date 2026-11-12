@@ -4293,6 +4293,7 @@ void _stubPromptAttachmentCapability({
             failureBlock: null,
             mcpScopes: null,
             supportsPromptAttachments: supportsPromptAttachments,
+            failureReason: null,
           ),
         ],
       ),

@@ -407,15 +407,19 @@ Only OMP and Codex are assessed here. Other harnesses are not assessed.
 ## Failure reasons shown to the user
 
 A refused send shows a second line under "Couldn't send", and a harness that failed to start shows one under "Failed"
-in the harness list and as a row on its detail page, only when the plugin wrote a sentence for the user
-(`PluginRefusalException`, `PluginStartException.userFacing`). Every other failure keeps the generic wording; raw
-backend errors are never shown as these reasons. Harnesses not listed have no plugin-written reason for either failure today (⬜).
+in the harness list, as a row on its detail page, in the new-session harness picker and in the desktop tray popover,
+only when the plugin wrote a sentence for the user (`PluginRefusalException`, `PluginStartException.userFacing`).
+Every other failure keeps the generic wording; raw backend errors are never shown as these reasons. Harnesses not
+listed have no plugin-written reason for either failure today (⬜). "Managed process" covers the shared server start
+used by Codex and OpenCode: the configured port in use, no port it could start on, not ready in time, and the
+harness exiting while starting.
 
 | Harness | Refused send | Failed start |
 |---|---|---|
-| Codex | ✅ Model provider mismatch, not configured, or policy conflict | ✅ No runnable `codex` binary |
-| OpenCode | ⬜ | ✅ `--opencode-no-password` with OpenCode 2; version below the v2 minimum |
+| Codex | ✅ Model provider mismatch, not configured, or policy conflict | ✅ No runnable `codex` binary; managed process |
+| OpenCode | ⬜ | ✅ `--opencode-no-password` with OpenCode 2; version below the v2 minimum; managed process |
 | GitHub Copilot | ⬜ | ✅ No supported Copilot CLI |
+| Antigravity | ⬜ | ✅ Runtime missing, rejected, unsupported, unreadable, or failing its startup check |
 
 ## External session activity
 

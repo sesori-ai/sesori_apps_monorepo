@@ -355,6 +355,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     const discovering = NewSessionState.composing(
       project: _project,

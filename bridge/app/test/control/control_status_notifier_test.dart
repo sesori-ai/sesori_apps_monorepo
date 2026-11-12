@@ -55,6 +55,7 @@ void main() {
         actionHint: null,
         failureBlock: null,
         mcpScopes: null,
+        failureReason: null,
       ),
     ]);
   }
@@ -135,6 +136,7 @@ void main() {
           actionHint: null,
           failureBlock: null,
           mcpScopes: null,
+          failureReason: null,
         ),
         const PluginMetadata(
           id: "pi",
@@ -144,6 +146,7 @@ void main() {
           actionHint: "Check the bridge console if this plugin needs attention.",
           failureBlock: null,
           mcpScopes: null,
+          failureReason: null,
         ),
         const PluginMetadata(
           id: "codex",
@@ -153,6 +156,7 @@ void main() {
           actionHint: null,
           failureBlock: null,
           mcpScopes: null,
+          failureReason: null,
         ),
       ]);
       await pump();
@@ -166,6 +170,33 @@ void main() {
             actionHint: "Check the bridge console if this plugin needs attention.",
           ),
           ControlUnhealthyPlugin(displayName: "Codex", state: ControlUnhealthyPluginState.failed, actionHint: null),
+        ]),
+      );
+    });
+
+    test("a failed plugin's own start reason replaces the generic hint", () async {
+      pluginMetadata.add([
+        const PluginMetadata(
+          id: "opencode",
+          displayName: "OpenCode",
+          isDefault: true,
+          state: PluginLifecycleState.failed,
+          actionHint: "Check the bridge console and restart the bridge to retry this plugin.",
+          failureBlock: null,
+          mcpScopes: null,
+          failureReason: "Remove the flag.",
+        ),
+      ]);
+      await pump();
+
+      expect(
+        client.sentMessages.whereType<ControlStatus>().single.unhealthyPlugins,
+        equals(const [
+          ControlUnhealthyPlugin(
+            displayName: "OpenCode",
+            state: ControlUnhealthyPluginState.failed,
+            actionHint: "Remove the flag.",
+          ),
         ]),
       );
     });

@@ -81,8 +81,13 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   management row's `failureReason`: the harness list shows it as a second line
   under "Failed" (two lines at most; the row opens the detail page), fading in
   while the row eases its height, and the detail page shows it whole as its own
-  row. Any other failure, and an older bridge, add nothing. The reason clears
-  with the failed state.
+  row. The plugin list includes an enabled harness that failed to start
+  (never as the default) and carries the same sentence as `failureReason`: the
+  new-session harness picker reads "Failed · <reason>" on one line, and the
+  desktop tray popover shows it in place of the generic hint. A failed or
+  unavailable harness in the picker is never picked, but a tap on it opens
+  harness settings instead of being ignored. Any other failure, and an older
+  bridge, add nothing. The reason clears with the failed state.
 - Only an authentication-required or unavailable block offers Check setup in a chat. It
   runs the same setup refresh command as harness settings' Check setup for the chat's
   harness, so a fix made elsewhere (a terminal login, a corrected gateway) clears the

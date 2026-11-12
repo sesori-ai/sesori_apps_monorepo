@@ -270,7 +270,14 @@ void main() {
           terminatedBridgeIdentities: const <ProcessIdentity>[],
           startAborted: StartAbortSignal.never,
         ),
-        throwsA(isA<PluginStartException>()),
+        // The user sees which port to free, without the log's runtime prefix.
+        throwsA(
+          isA<PluginStartException>().having(
+            (error) => error.userFacingReason,
+            "userFacingReason",
+            allOf(contains("Port 4096"), isNot(contains("["))),
+          ),
+        ),
       );
 
       expect(fakes.bindable.probedPorts, equals(<int>[4096]));
@@ -319,7 +326,13 @@ void main() {
           terminatedBridgeIdentities: const <ProcessIdentity>[],
           startAborted: StartAbortSignal.never,
         ),
-        throwsA(isA<PluginStartException>()),
+        throwsA(
+          isA<PluginStartException>().having(
+            (error) => error.userFacingReason,
+            "userFacingReason",
+            "This harness quit while starting. Check the bridge console for its output.",
+          ),
+        ),
       );
 
       expect(fakes.probe.probedPorts, isEmpty);

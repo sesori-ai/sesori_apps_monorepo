@@ -310,6 +310,7 @@ class PluginRepository({required final PluginApi _api}) {
               failureBlock: null,
               supportsPromptAttachments: true,
               mcpScopes: null,
+              failureReason: null,
             ),
           ],
         ),

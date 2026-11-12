@@ -36,6 +36,7 @@ const _plugins = [
     failureBlock: null,
     mcpScopes: null,
     supportsPromptAttachments: true,
+    failureReason: null,
   ),
 ];
 

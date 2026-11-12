@@ -18,6 +18,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     const otherPlugin = PluginMetadata(
       id: "plugin-b",
@@ -27,6 +28,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     const failedPlugin = PluginMetadata(
       id: "plugin-c",
@@ -36,6 +38,7 @@ void main() {
       actionHint: "Restart the bridge.",
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     const degradedPlugin = PluginMetadata(
       id: "plugin-d",
@@ -45,6 +48,7 @@ void main() {
       actionHint: "Check the bridge console.",
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     const plugins = [defaultPlugin, otherPlugin, failedPlugin, degradedPlugin];
 
