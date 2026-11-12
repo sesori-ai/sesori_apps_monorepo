@@ -15,6 +15,10 @@ sealed class PluginQuestionOption with _$PluginQuestionOption {
   const factory({
     required String label,
     required String description,
+
+    /// Whether the harness marks this option as its default answer. The client
+    /// shows it selected when the question arrives.
+    required bool isDefault,
   }) = _PluginQuestionOption;
 }
 

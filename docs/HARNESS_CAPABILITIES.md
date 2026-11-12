@@ -630,7 +630,7 @@ shows its id and the agent pill is left out.
 
 | Harness | Sesori implementation | Verification boundary |
 |---|---|---|
-| OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; separate string, number and integer properties render as separate custom-text questions (numbers parse back to JSON numbers) | Mapper, synthetic ACP plugin, shared bridge contract, and widget tests pass; live `18.19.0` built-in `ask` HTML-form (`18.18.3`+) roundtrip passed through ACP and the client on 2026-11-12; the sheet adds its "Other" question as a second step, and the form's HTML default is not preselected |
+| OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; a choice and its paired "other" text property render as one question with an "Other" field; the schema default arrives selected; other string, number and integer properties render as separate custom-text questions (numbers parse back to JSON numbers) | Mapper, OMP plugin, shared bridge contract, and widget tests pass; live `18.19.0` built-in `ask` roundtrip on 2026-11-12 through the headless iOS simulator: default accepted, another option, "Other" text and decline each reached OMP as sent |
 
 Property keys, order, independent required flags, and option/custom provenance
 are retained, including identical submitted text in separate questions.

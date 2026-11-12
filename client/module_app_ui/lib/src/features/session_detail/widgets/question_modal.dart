@@ -80,6 +80,10 @@ class _QuestionModalState() extends State<QuestionModal> {
 
   bool _confirmingRequestDecline = false;
 
+  /// Set when Submit was tapped with a question unanswered, so the reason
+  /// shows until every question is answered or declined.
+  bool _explainingUnresolved = false;
+
   void _dismissModal() {
     context.pop();
   }
@@ -96,7 +100,12 @@ class _QuestionModalState() extends State<QuestionModal> {
   void initState() {
     super.initState();
     _drafts = List.generate(_totalQuestions, (index) {
+      final info = _questions[index];
       final draft = _QuestionDraft();
+      final defaults = info.options.where((option) => option.isDefault).map((option) => option.label);
+      draft.selectedLabels.addAll(info.multiple ? defaults : defaults.take(1));
+      // A free-text-only question has no "Other" to pick: its field is the answer.
+      if (info.custom && info.options.isEmpty) draft.customSelected = true;
       draft.customFocus.addListener(() => _onCustomFocusChanged(index: index));
       draft.customController.addListener(() => _onCustomTextChanged(index: index));
       return draft;
@@ -132,9 +141,9 @@ class _QuestionModalState() extends State<QuestionModal> {
   }
 
   void _onCustomTextChanged({required int index}) {
-    // Rebuild to update submit button enabled state.
+    // Rebuild to update the answered state and clear an empty-answer reason.
     if (mounted && index == _currentIndex && _drafts[index].customSelected) {
-      setState(() {});
+      setState(() => _drafts[index].showsEmptyCustomReason = false);
     }
   }
 
@@ -143,7 +152,9 @@ class _QuestionModalState() extends State<QuestionModal> {
     if (draft.customSelected && !draft.isDeclined) {
       draft.customFocus.unfocus();
       setState(() {
-        draft.customSelected = false;
+        draft
+          ..customSelected = false
+          ..showsEmptyCustomReason = false;
       });
       return;
     }
@@ -156,7 +167,14 @@ class _QuestionModalState() extends State<QuestionModal> {
         draft.selectedLabels.clear();
       }
     });
-    draft.customFocus.requestFocus();
+    _focusCustomFieldAfterBuild(draft: draft);
+  }
+
+  /// The field grows in on the next frame, so focus it once it is built.
+  void _focusCustomFieldAfterBuild({required _QuestionDraft draft}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && draft.customSelected && !draft.isDeclined) draft.customFocus.requestFocus();
+    });
   }
 
   void _onOptionTap({required String label}) {
@@ -171,6 +189,7 @@ class _QuestionModalState() extends State<QuestionModal> {
         } else {
           draft
             ..customSelected = false
+            ..showsEmptyCustomReason = false
             ..selectedLabels.clear();
           draft.selectedLabels.add(label);
         }
@@ -183,7 +202,9 @@ class _QuestionModalState() extends State<QuestionModal> {
           draft.selectedLabels.add(label);
         }
       } else {
-        draft.customSelected = false;
+        draft
+          ..customSelected = false
+          ..showsEmptyCustomReason = false;
         // Single-select: toggle — only one at a time.
         if (draft.selectedLabels.contains(label)) {
           draft.selectedLabels.clear();
@@ -207,6 +228,7 @@ class _QuestionModalState() extends State<QuestionModal> {
       draft
         ..disposition = _QuestionDisposition.declined
         ..customSelected = false
+        ..showsEmptyCustomReason = false
         ..selectedLabels.clear();
     });
   }
@@ -226,11 +248,27 @@ class _QuestionModalState() extends State<QuestionModal> {
   }
 
   void _onSubmit() {
-    if (!_allQuestionsResolved) return;
+    final unresolvedIndex = _drafts.indexWhere((draft) => draft.resolution == _QuestionResolution.unanswered);
+    if (unresolvedIndex >= 0) {
+      _explainUnresolved(index: unresolvedIndex);
+      return;
+    }
 
     final answers = _drafts.map((draft) => ReplyAnswer(values: draft.answerValues)).toList(growable: false);
     widget.onReply(widget.question.id, answers);
     _dismissModal();
+  }
+
+  /// Answers a Submit tap that cannot send yet: shows the first unanswered
+  /// question with the reason, and puts the cursor in an empty "Other" field.
+  void _explainUnresolved({required int index}) {
+    _navigateTo(index: index);
+    final draft = _drafts[index];
+    setState(() {
+      _explainingUnresolved = true;
+      if (draft.customSelected) draft.showsEmptyCustomReason = true;
+    });
+    if (draft.customSelected) _focusCustomFieldAfterBuild(draft: draft);
   }
 
   void _onReject() {
@@ -255,6 +293,18 @@ class _QuestionModalState() extends State<QuestionModal> {
   // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
+
+  /// Why Submit cannot send yet, or null. An empty "Other" field explains
+  /// itself under the field instead.
+  String? _unresolvedReason({required bool showQuestionNavigator}) {
+    if (_allQuestionsResolved) return null;
+    final loc = context.loc;
+    if (_isMultiQuestion) {
+      return (_isLastQuestion && showQuestionNavigator) || _explainingUnresolved ? loc.questionModalResolveAll : null;
+    }
+    if (!_explainingUnresolved || _currentDraft.showsEmptyCustomReason) return null;
+    return loc.questionModalChooseAnswer;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -309,6 +359,7 @@ class _QuestionModalState() extends State<QuestionModal> {
     // navigation. Let the question content keep the limited vertical space
     // instead of overflowing fixed navigator and helper rows.
     final showQuestionNavigator = _isMultiQuestion && maxBody >= 180;
+    final unresolvedReason = _unresolvedReason(showQuestionNavigator: showQuestionNavigator);
 
     return PopScope(
       canPop: !_confirmingRequestDecline,
@@ -400,16 +451,16 @@ class _QuestionModalState() extends State<QuestionModal> {
                             ),
 
                             // Custom answer tile
-                            if (info.custom) ...[
-                              const SizedBox(height: 8),
+                            if (info.custom)
                               _CustomAnswerTile(
                                 controller: draft.customController,
                                 focusNode: draft.customFocus,
                                 isSelected: !draft.isDeclined && draft.customSelected,
                                 isMultiple: info.multiple,
+                                isFreeTextOnly: info.options.isEmpty,
+                                showsEmptyReason: draft.showsEmptyCustomReason,
                                 onTap: _onCustomTileTap,
                               ),
-                            ],
 
                             if (_isMultiQuestion) ...[
                               const SizedBox(height: 8),
@@ -423,17 +474,26 @@ class _QuestionModalState() extends State<QuestionModal> {
                       ),
                     ),
 
-                    if (_isLastQuestion && !_allQuestionsResolved && showQuestionNavigator)
-                      Padding(
-                        padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
-                        child: Text(
-                          loc.questionModalResolveAll,
-                          textAlign: TextAlign.center,
-                          style: prego.textTheme.textXs.regular.copyWith(
-                            color: prego.colors.textSecondary,
-                          ),
-                        ),
-                      ),
+                    // Grows in rather than appearing, so the actions slide
+                    // instead of jumping when the reason shows.
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: unresolvedReason != null
+                          ? Padding(
+                              padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
+                              child: Text(
+                                unresolvedReason,
+                                key: const Key("question-unresolved-reason"),
+                                textAlign: TextAlign.center,
+                                style: prego.textTheme.textXs.regular.copyWith(
+                                  color: prego.colors.textSecondary,
+                                ),
+                              ),
+                            )
+                          : const SizedBox(width: double.infinity),
+                    ),
 
                     // Request-wide decline / Submit / Next actions.
                     Padding(
@@ -457,10 +517,10 @@ class _QuestionModalState() extends State<QuestionModal> {
                           Expanded(
                             child: FilledButton(
                               key: const Key("question-primary-action"),
-                              onPressed: _isLastQuestion ? (_allQuestionsResolved ? _onSubmit : null) : _onProceed,
+                              onPressed: _isLastQuestion ? _onSubmit : _onProceed,
                               child: Text(
                                 _isLastQuestion
-                                    ? (!_allQuestionsResolved && !showQuestionNavigator
+                                    ? (_isMultiQuestion && !_allQuestionsResolved && !showQuestionNavigator
                                           ? loc.questionModalResolveAllCompact
                                           : loc.questionModalSubmit)
                                     : loc.questionModalNext,
@@ -496,6 +556,9 @@ class _QuestionDraft() {
 
   _QuestionDisposition disposition = _QuestionDisposition.answer;
   bool customSelected = false;
+
+  /// Submit was tapped with "Other" picked and its field empty.
+  bool showsEmptyCustomReason = false;
 
   bool get isDeclined => disposition == _QuestionDisposition.declined;
 
@@ -923,50 +986,105 @@ class const _CustomAnswerTile({
   required final FocusNode focusNode,
   required final bool isSelected,
   required final bool isMultiple,
+
+  /// No options to choose from: the field is shown on its own, always open.
+  required final bool isFreeTextOnly,
+  required final bool showsEmptyReason,
   required final VoidCallback onTap,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
+    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xl));
+    final expanded = isFreeTextOnly || isSelected;
 
-    return _ChoiceTile(
-      bottomSpacing: 8,
-      // bgSurface1 so the card reads as raised against the sheet's
-      // bgSecondary surface (bgSecondary here would vanish into it).
-      color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xl)),
-      onTap: onTap,
-      child: Row(
-        // The indicator stays level with the first answer line rather than the
-        // whole field, so a wrapped answer never drags it down the tile.
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final field = Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(16, isFreeTextOnly ? 12 : 0, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(
-            key: const Key("custom-answer-toggle"),
-            isMultiple
-                ? (isSelected ? TablerSolid.square_rounded_check : TablerRegular.square_rounded)
-                : (isSelected ? TablerRegular.circle_dot : TablerRegular.circle),
-            color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              minLines: 1,
-              maxLines: 5,
-              decoration: InputDecoration(
-                hintText: loc.questionModalCustomHint,
-                border: InputBorder.none,
-                // Collapsed rather than dense: a dense field centres its text
-                // inside a decoration box sized by the platform's visual
-                // density, which left the indicator below the typed answer.
-                isCollapsed: true,
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: prego.colors.bgSecondary,
+              borderRadius: BorderRadius.circular(PregoRadius.lg),
+              border: Border.all(color: showsEmptyReason ? prego.colors.borderError : prego.colors.borderSecondary),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: TextField(
+                key: const Key("custom-answer-field"),
+                controller: controller,
+                focusNode: focusNode,
+                minLines: 1,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  hintText: loc.questionModalCustomHint,
+                  border: InputBorder.none,
+                  isCollapsed: true,
+                ),
               ),
             ),
           ),
+          if (showsEmptyReason) ...[
+            const SizedBox(height: 6),
+            Text(
+              loc.questionModalCustomEmpty,
+              key: const Key("custom-answer-empty-reason"),
+              style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textErrorPrimary),
+            ),
+          ],
         ],
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: 8),
+      child: Material(
+        // bgSurface1 so the card reads as raised against the sheet's
+        // bgSecondary surface (bgSecondary here would vanish into it).
+        color: isSelected && !isFreeTextOnly ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!isFreeTextOnly)
+              InkWell(
+                mouseCursor: WidgetStateMouseCursor.clickable,
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        key: const Key("custom-answer-toggle"),
+                        isMultiple
+                            ? (isSelected ? TablerSolid.square_rounded_check : TablerRegular.square_rounded)
+                            : (isSelected ? TablerRegular.circle_dot : TablerRegular.circle),
+                        color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          loc.questionModalOther,
+                          style: prego.textTheme.textSm.bold.copyWith(fontWeight: .bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            // The field grows in below "Other", so the options above stay put.
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: expanded ? field : const SizedBox(width: double.infinity),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -104,7 +104,7 @@ class CursorApprovalRegistry({
           label = "$label ($n)";
         }
         labelToId[label] = id;
-        pluginOptions.add(PluginQuestionOption(label: label, description: ""));
+        pluginOptions.add(PluginQuestionOption(label: label, description: "", isDefault: false));
       }
       // Nothing could be picked, so the question could never be answered.
       if (pluginOptions.isEmpty) continue;
@@ -174,8 +174,8 @@ class CursorApprovalRegistry({
         question: overview,
         header: name,
         options: const [
-          PluginQuestionOption(label: "Accept", description: ""),
-          PluginQuestionOption(label: "Reject", description: ""),
+          PluginQuestionOption(label: "Accept", description: "", isDefault: false),
+          PluginQuestionOption(label: "Reject", description: "", isDefault: false),
         ],
         multiple: false,
         custom: false,

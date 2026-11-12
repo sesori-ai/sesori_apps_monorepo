@@ -33,6 +33,13 @@ sealed class QuestionOption with _$QuestionOption {
   const factory({
     required String label,
     required String description,
+
+    /// Whether the harness marks this option as its default answer; the client
+    /// shows it selected when the question arrives.
+    // COMPATIBILITY 2026-11-12 (v1.13.0): bridges before default answers omit
+    // this field; false keeps their questions unselected. Remove the default
+    // once no supported bridge omits the field.
+    @Default(false) bool isDefault,
   }) = _QuestionOption;
 
   factory fromJson(Map<String, dynamic> json) => _$QuestionOptionFromJson(json);

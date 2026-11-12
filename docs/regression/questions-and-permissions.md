@@ -19,8 +19,16 @@ reaches the backend so the turn continues.
   [MCP management](mcp-management.md#regression-levels).
 - A pending permission carries its tool, description, owning session, display
   root session, and whether an "always" answer is offered. A pending question
-  carries its header, prompt, options, and whether multiple or custom answers
-  are allowed.
+  carries its header, prompt, options, which options are the harness's default
+  answer, and whether multiple or custom answers are allowed. An older bridge
+  omits the default flag and its options arrive unselected.
+- The question sheet shows default options selected on arrival, so the user can
+  submit at once. A custom answer on an option list is a last "Other" option;
+  picking it grows a text field in below it and focuses it, and picking another
+  single-choice option collapses it. A free-text-only question shows its field
+  directly. Submit never ignores a tap: with "Other" picked and its field empty
+  the field shows the reason; with a question unanswered the sheet moves to it
+  and says why.
 - Codex synchronous `request_user_input` requests preserve every question,
   header, ordered option and description. Replies preserve the original
   question IDs and answer ordering, including custom answers and declined rows.
@@ -87,12 +95,17 @@ reaches the backend so the turn continues.
   declines the form when the property is required. OMP 18.18.3+ sends these
   from its built-in `ask` HTML forms (`<input type="number|range">`); declining
   them aborts the OMP turn, so a regression shows as a vanished question.
-- Every ACP schema property remains a separate question in property order. A
-  separate string property is its own custom-text question, even when the text
-  equals a selected option label. OMP's `qN` and `qN__other` remain distinct;
-  shared mapping never interprets that naming convention or combines their
-  answer lists. The existing shared question/reply contract carries these slots
-  without new wire fields.
+- Every ACP schema property remains a separate question in property order,
+  unless the plugin pairs a choice property with a plain string "other"
+  property: the pair is one question with a custom answer. A listed choice
+  fills the choice property; custom text fills the paired property and
+  satisfies a required choice. Only the OMP plugin pairs, by its `qN`/`qN__other`
+  (ask tool) and `name`/`name_other` (HTML form) naming; shared mapping knows no
+  naming convention. Other ACP plugins keep a separate string property as its
+  own custom-text question.
+- An ACP schema `default` marks the matching option as the default: a
+  string-choice value, the values of a choice array, `Yes`/`No` for a boolean,
+  and "Use suggested text" for a string or number.
 - In a multi-question ACP form, declining an optional question submits an empty
   answer slot and omits only that property. Each property's required flag is
   enforced independently: omitting a required property declines the form.

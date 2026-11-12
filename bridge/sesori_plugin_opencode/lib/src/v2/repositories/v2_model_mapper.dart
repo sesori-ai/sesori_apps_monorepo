@@ -208,8 +208,8 @@ class const V2ModelMapper({required final String _pluginId}) {
       title: field.title,
       description: field.description,
       options: const [
-        PluginQuestionOption(label: "true", description: "Yes"),
-        PluginQuestionOption(label: "false", description: "No"),
+        PluginQuestionOption(label: "true", description: "Yes", isDefault: false),
+        PluginQuestionOption(label: "false", description: "No", isDefault: false),
       ],
       multiple: false,
       custom: false,
@@ -225,7 +225,7 @@ class const V2ModelMapper({required final String _pluginId}) {
 
   List<PluginQuestionOption> _options({required List<FormOption> options}) => [
     for (final option in options)
-      PluginQuestionOption(label: option.label, description: option.description ?? option.label),
+      PluginQuestionOption(label: option.label, description: option.description ?? option.label, isDefault: false),
   ];
 
   PluginQuestionInfo _question({

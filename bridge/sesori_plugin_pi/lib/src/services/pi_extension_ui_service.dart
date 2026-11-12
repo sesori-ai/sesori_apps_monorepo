@@ -259,7 +259,9 @@ final class PiExtensionUiService({
             fallback: "Choose one option.",
           ),
           header: "Pi extension",
-          options: [for (final option in options) PluginQuestionOption(label: option, description: "")],
+          options: [
+            for (final option in options) PluginQuestionOption(label: option, description: "", isDefault: false),
+          ],
           multiple: false,
           custom: false,
         ),
@@ -275,8 +277,8 @@ final class PiExtensionUiService({
           question: _boundedNullable(message) ?? "Confirm this action.",
           header: _boundedNullable(title) ?? "Confirmation",
           options: const [
-            PluginQuestionOption(label: "Yes", description: ""),
-            PluginQuestionOption(label: "No", description: ""),
+            PluginQuestionOption(label: "Yes", description: "", isDefault: false),
+            PluginQuestionOption(label: "No", description: "", isDefault: false),
           ],
           multiple: false,
           custom: false,
