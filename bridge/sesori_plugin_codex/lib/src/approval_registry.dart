@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/codex_mcp_elicitation_dto.dart";
 import "api/models/codex_pending_input.dart";
+import "api/models/codex_server_request_resolved_dto.dart";
 import "api/models/codex_user_input_dto.dart";
 import "api/parsers/codex_question_parser.dart";
 import "codex_app_server_client.dart";
@@ -514,6 +515,18 @@ class ApprovalRegistry({
   /// `request_user_input_async` is delivered as an assistant message, not a
   /// server request. Both forms share the existing pending-question surface.
   void _handleNotification({required CodexServerNotification notification}) {
+    if (notification.method == "serverRequest/resolved") {
+      final CodexServerRequestResolvedDto resolved;
+      try {
+        resolved = CodexServerRequestResolvedDto.fromJson(notification.params);
+      } on Object catch (error, stackTrace) {
+        // The card stays until stop, close, delete or archive, as before.
+        Log.w("[codex] failed to decode serverRequest/resolved", error, stackTrace);
+        return;
+      }
+      _withdrawResolvedRequest(requestId: resolved.requestId);
+      return;
+    }
     final request = _questionParser.parseAsyncQuestion(notification: notification);
     if (request != null) {
       final questions = _questionMapper.mapAsyncQuestions(questions: request.questions);
@@ -530,6 +543,22 @@ class ApprovalRegistry({
         questions: questions,
       );
     }
+  }
+
+  /// Codex announces every settled server request, including one answered in
+  /// another client or abandoned by an interrupted turn. A request the bridge
+  /// answered itself is already gone, so only a withdrawn one still matches.
+  /// The id is a JSON-RPC id (int or string) and is compared exactly.
+  void _withdrawResolvedRequest({required Object requestId}) {
+    final withdrawn = withdrawWhere(
+      matches: (payload) => switch (payload) {
+        _PendingApproval(:final codexId) ||
+        _PendingUserInput(:final codexId) ||
+        _PendingMcpRequest(:final codexId) => codexId == requestId,
+        _PendingAsyncQuestion() => false,
+      },
+    );
+    withdrawn.forEach(_nativeTurnIdByPendingId.remove);
   }
 
   List<PluginPendingQuestion> pendingQuestionsForSessionTree({required String sessionId}) {

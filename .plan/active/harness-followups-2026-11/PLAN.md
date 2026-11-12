@@ -200,7 +200,12 @@ unit tests with fake frames. A live interrupted approval needs credentials.
 **Docs.** `docs/regression/questions-and-permissions.md` (what retires a card),
 Codex and Copilot rows in `HARNESS_CAPABILITIES.md`.
 
-**Estimate.** `⚙️`, about 300 lines.
+**Estimate.** `⚙️`, about 300 lines (planned). Actual: `🌿`, about 200 lines.
+
+**Outcome.** Copilot 1.0.109 sent no withdrawal when a turn with a pending
+permission request was cancelled (live probe), and its runtime has no
+`$/cancel_request`, so the ACP bullets above were dropped and recorded as a
+limitation.
 
 ### Step 6 — Codex: sub-agent model and effort, clear provider-mismatch error
 
@@ -356,7 +361,6 @@ boundary with unit and fake-transport tests, plus these cells.
 | Hermes failed turn (invalid key) shows one notice, live and after reload | headless iOS simulator | none |
 | Codex provider mismatch shows the clear error | headless iOS simulator | none |
 | Codex sub-agent messages show model and effort; withdrawn approval card disappears | headless iOS simulator | test proxy |
-| Copilot withdrawn permission card disappears (if step 5 keeps the ACP half) | headless iOS simulator | test proxy |
 | OpenCode cold project's agent picker fills once OpenCode finishes loading; v2 no-password private start fails clearly | headless iOS simulator | none |
 | Claude, Copilot probe, FORCE_COLOR | unit tests only | none |
 

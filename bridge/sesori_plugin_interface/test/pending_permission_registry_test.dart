@@ -39,6 +39,8 @@ class _Registry({
       PluginQuestionInfo(question: "Proceed?", header: "Confirm", options: [], multiple: false, custom: true),
     ],
   );
+
+  List<String> withdraw({required String payload}) => withdrawWhere(matches: (entry) => entry.value == payload);
 }
 
 void main() {
@@ -113,6 +115,32 @@ void main() {
     expect(subject.replyPermission(requestId: permissionId, reply: PluginPermissionReply.once), isTrue);
     expect(await subject.rejectQuestion(requestId: questionId), isTrue);
     expect(subject.hasAnyPendingInput, isFalse);
+  });
+
+  test("a withdrawn request retires with its clearing event and sends no backend answer", () async {
+    final events = <BridgeSseEvent>[];
+    final answered = <String>[];
+    final subject = registry(
+      events: events,
+      resolvePermission: ({required payload, required reply}) => answered.add(payload.value),
+      rejectQuestion: ({required payload}) => answered.add(payload.value),
+      cancelPending: ({required payload, required reason}) => answered.add(payload.value),
+    );
+    final permissionId = subject.addPermission(payload: "gone", sessionId: "s1");
+    final questionId = subject.addQuestion(payload: "gone", sessionId: "s1");
+    final keptId = subject.addPermission(payload: "kept", sessionId: "s1");
+    events.clear();
+
+    expect(subject.withdraw(payload: "gone"), [permissionId, questionId]);
+    expect(subject.withdraw(payload: "gone"), isEmpty);
+
+    expect(answered, isEmpty);
+    expect(events, [
+      isA<BridgeSsePermissionReplied>().having((event) => event.requestID, "requestID", permissionId),
+      isA<BridgeSseQuestionRejected>().having((event) => event.requestID, "requestID", questionId),
+    ]);
+    expect(subject.replyPermission(requestId: permissionId, reply: PluginPermissionReply.once), isFalse);
+    expect(subject.pendingPermissionsForSession(sessionId: "s1").single.id, keptId);
   });
 
   test("session cancellation logs one backend failure and settles every entry", () async {
