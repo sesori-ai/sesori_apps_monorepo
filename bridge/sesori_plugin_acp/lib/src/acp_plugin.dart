@@ -414,6 +414,9 @@ abstract class AcpPlugin({
   Future<AcpStdioClient> requireConnectedClient() => _connectedClient();
   void emitEvent(BridgeSseEvent event) => _eventBuffer.add(event);
 
+  /// Whether [sessionId] has an accepted prompt that has not settled yet.
+  bool hasPendingTurn({required String sessionId}) => (_turnStates[sessionId]?.pending ?? 0) > 0;
+
   /// Returns the normalized directory already attributed to [sessionId].
   /// Unknown sessions use the plugin's launch directory.
   String directoryForSession({required String sessionId}) =>

@@ -7,20 +7,21 @@ import "trackers/omp_compaction_tracker.dart";
 
 /// Oh My Pi's ACP mapping: OMP's own tool names and its automatic compaction
 /// notifications on top of stock ACP.
+///
+/// A compaction outside an accepted prompt (OMP's opt-in idle compaction)
+/// reports its session busy itself. `hasPendingTurn` is the plugin's turn
+/// accounting, which counts a prompt from acceptance, before its turn begins.
 class OmpEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
   required super.childSessions,
   required final OmpCompactionTracker compactionTracker,
+  required final bool Function({required String sessionId}) hasPendingTurn,
 }) extends AcpEventMapper {
   /// Sent for automatic compaction only; a manual `/compact` sends neither.
   static const String compactionStartMethod = "_omp/compaction/start";
   static const String compactionEndMethod = "_omp/compaction/end";
-
-  /// Sessions with a prompt turn running. A compaction outside one (OMP's
-  /// opt-in idle compaction) reports the session busy itself.
-  final Set<String> _turnSessions = {};
 
   /// Sessions whose compaction is still running; the harness is working.
   List<String> get compactingSessionIds => compactionTracker.runningSessionIds;
@@ -34,25 +35,17 @@ class OmpEventMapper({
     return name is String && name.isNotEmpty ? name : null;
   }
 
-  @override
-  void beginTurn({required String sessionId, required String? messageId}) {
-    _turnSessions.add(sessionId);
-    super.beginTurn(sessionId: sessionId, messageId: messageId);
-  }
-
   /// OMP finishes a prompt's compactions, and waits for a running idle one,
   /// before it answers the prompt. A compaction still recorded here lost its
   /// end, so the bridge's idle sweep settles its row.
   @override
   List<BridgeSseEvent> finalizeTurn({required String sessionId}) {
-    _turnSessions.remove(sessionId);
     compactionTracker.forgetSession(sessionId: sessionId);
     return super.finalizeTurn(sessionId: sessionId);
   }
 
   @override
   void forgetSession(String sessionId) {
-    _turnSessions.remove(sessionId);
     compactionTracker.forgetSession(sessionId: sessionId);
     super.forgetSession(sessionId);
   }
@@ -62,7 +55,7 @@ class OmpEventMapper({
   List<BridgeSseEvent> endCompactionsAfterExit() {
     final idle = [
       for (final sessionId in compactionTracker.runningSessionIds)
-        if (!_turnSessions.contains(sessionId)) BridgeSseSessionIdle(sessionID: sessionId),
+        if (!hasPendingTurn(sessionId: sessionId)) BridgeSseSessionIdle(sessionID: sessionId),
     ];
     compactionTracker.clear();
     return idle;
@@ -93,7 +86,7 @@ class OmpEventMapper({
   List<BridgeSseEvent> _mapCompactionStart(OmpCompactionStartDto start) {
     final sessionId = start.sessionId;
     return [
-      if (!_turnSessions.contains(sessionId))
+      if (!hasPendingTurn(sessionId: sessionId))
         BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy()),
       ..._compactionRow(
         sessionId: sessionId,
@@ -122,7 +115,7 @@ class OmpEventMapper({
       if (compaction != null) ..._compactionRow(sessionId: sessionId, compaction: compaction, state: state),
       if (state is PluginCompactionStateCompleted) BridgeSseSessionCompacted(sessionID: sessionId),
       // After the settled row, so the idle sweep finds nothing running.
-      if (compaction != null && !_turnSessions.contains(sessionId)) BridgeSseSessionIdle(sessionID: sessionId),
+      if (compaction != null && !hasPendingTurn(sessionId: sessionId)) BridgeSseSessionIdle(sessionID: sessionId),
     ];
   }
 

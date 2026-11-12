@@ -87,14 +87,16 @@ class OmpPlugin._({
       totalTimeout: const Duration(seconds: 20),
       maxPages: 50,
     );
+    late final OmpPlugin plugin;
     final eventMapper = OmpEventMapper(
       launchDirectory: launchDirectory,
       pluginId: OmpPluginIdentity.id,
       configurationTracker: configurationTracker,
       childSessions: childSessionTracker,
       compactionTracker: OmpCompactionTracker(clock: clock),
+      hasPendingTurn: ({required sessionId}) => plugin.hasPendingTurn(sessionId: sessionId),
     );
-    return OmpPlugin._(
+    return plugin = OmpPlugin._(
       launchSpec: launchSpec,
       launchDirectory: launchDirectory,
       childSessionTracker: childSessionTracker,

@@ -8,8 +8,10 @@ import "package:test/test.dart";
 void main() {
   late _FakeClock clock;
   late OmpEventMapper mapper;
+  late Set<String> pendingTurns;
 
   setUp(() {
+    pendingTurns = {};
     clock = _FakeClock(DateTime.fromMillisecondsSinceEpoch(5000));
     mapper = OmpEventMapper(
       launchDirectory: "/repo",
@@ -17,6 +19,7 @@ void main() {
       configurationTracker: AcpSessionConfigurationTracker(),
       childSessions: AcpChildSessionTracker(),
       compactionTracker: OmpCompactionTracker(clock: clock),
+      hasPendingTurn: ({required sessionId}) => pendingTurns.contains(sessionId),
     );
   });
 
@@ -78,7 +81,7 @@ void main() {
   });
 
   test("inside a prompt turn a compaction leaves the session status to the turn", () {
-    mapper.beginTurn(sessionId: "session-1", messageId: null);
+    pendingTurns.add("session-1");
 
     expect(
       start(),
@@ -87,8 +90,17 @@ void main() {
     expect(end({}), allOf(hasLength(3), isNot(contains(isA<BridgeSseSessionIdle>()))));
   });
 
+  test("an idle compaction that ends while an accepted prompt waits to begin leaves the session busy", () {
+    start();
+    // The plugin published busy on accepting the prompt; its turn begins
+    // only after the model and mode selection is applied.
+    pendingTurns.add("session-1");
+
+    expect(end({}), isNot(contains(isA<BridgeSseSessionIdle>())));
+  });
+
   test("a finished turn forgets a compaction whose end never came", () {
-    mapper.beginTurn(sessionId: "session-1", messageId: null);
+    pendingTurns.add("session-1");
     start();
     mapper.finalizeTurn(sessionId: "session-1");
 
