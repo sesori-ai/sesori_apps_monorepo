@@ -373,6 +373,14 @@
         { "name": "time", "ref": "ProjectTime" },
         { "name": "sandboxes", "type": "string", "list": true }
       ]
+    },
+    {
+      "type": "agent.updated",
+      "fields": []
+    },
+    {
+      "type": "command.updated",
+      "fields": []
     }
   ]
 }

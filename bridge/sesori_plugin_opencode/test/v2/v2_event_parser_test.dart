@@ -15,6 +15,21 @@ void main() {
     expect(event.data, isA<V2ServerConnected>());
   });
 
+  test("decodes the empty agent and command catalog announcements", () {
+    // Frames captured from OpenCode 2.2.7 when a cold location finishes loading.
+    for (final (type, matcher) in [
+      ("agent.updated", isA<V2AgentUpdated>()),
+      ("command.updated", isA<V2CommandUpdated>()),
+    ]) {
+      final event =
+          parser.parse(
+            rawData: '{"id":"evt_1","created":1,"type":"$type","location":{"directory":"/fixture/project"},"data":{}}',
+          ) ??
+          fail("expected $type");
+      expect(event.data, matcher);
+    }
+  });
+
   test("uses the outer event type and retains location and session identity", () {
     final event =
         parser.parse(
