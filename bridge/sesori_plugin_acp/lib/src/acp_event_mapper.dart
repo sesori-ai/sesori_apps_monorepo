@@ -13,6 +13,9 @@ import "repositories/trackers/acp_tool_content_tracker.dart";
 /// Adapter-owned command extraction shared by live mapping and history replay.
 typedef AcpShellCommandResolver = String? Function({required Map<String, dynamic> update});
 
+/// Adapter-owned tool name shared by live mapping and history replay.
+typedef AcpToolNameResolver = String? Function({required Map<String, dynamic> update});
+
 /// Pure envelope normalization shared by live mapping and history replay.
 typedef AcpSessionUpdateNormalizer = Map<String, dynamic> Function({required Map<String, dynamic> params});
 
@@ -98,6 +101,14 @@ class AcpEventMapper({
   /// Adapter-authoritative command from an already-normalized tool update.
   /// Standard ACP titles, execute kinds and arbitrary inputs are not authority.
   String? shellCommandForToolUpdate({required Map<String, dynamic> update}) => null;
+
+  /// Adapter-owned tool name from an already-normalized tool update, used
+  /// before the standard `kind`, then `title`. File-change detection still
+  /// reads `kind`.
+  String? toolNameForToolUpdate({required Map<String, dynamic> update}) => null;
+
+  String _toolName({required Map<String, dynamic> update}) =>
+      toolNameForToolUpdate(update: update) ?? _contentMapper.toolName(update: update);
 
   /// Backend extension time for a message-bearing ACP notification.
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) => null;
@@ -1124,7 +1135,7 @@ class AcpEventMapper({
       // Fail-soft like the tool name and `_toolCallUpdate`'s title: a non-string
       // title (schema drift / malformed agent data) renders as null rather than
       // throwing and aborting the notification.
-      tool: useCallTool ? _contentMapper.toolName(update: update) : prior.tool,
+      tool: useCallTool ? _toolName(update: update) : prior.tool,
       title:
           prior?.title ??
           switch (update["title"]) {
@@ -1232,9 +1243,7 @@ class AcpEventMapper({
     final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
     final messageTime = _earliestMessageTime(prior: prior?.time, next: time);
     final state = _LiveTool(
-      tool: hasKind
-          ? _contentMapper.toolName(update: update)
-          : (prior?.tool ?? _contentMapper.toolName(update: update)),
+      tool: hasKind ? _toolName(update: update) : (prior?.tool ?? _toolName(update: update)),
       title: switch (update["title"]) {
         final String title => title,
         _ => prior?.title,

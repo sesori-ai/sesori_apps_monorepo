@@ -224,6 +224,7 @@ List<PluginMessageWithParts> _build({required CursorTaskReplayTracker tracker}) 
 AcpReplayCollector _collector() => AcpReplayCollector(
   sessionUpdateNormalizer: null,
   shellCommandResolver: null,
+  toolNameResolver: null,
   sessionId: _sessionId,
   agentId: "cursor",
   initialUserMessage: null,
@@ -239,6 +240,7 @@ final class _RecordingReplayCollector() extends AcpReplayCollector {
     : super(
         sessionUpdateNormalizer: null,
         shellCommandResolver: null,
+        toolNameResolver: null,
         sessionId: _sessionId,
         agentId: "cursor",
         initialUserMessage: null,

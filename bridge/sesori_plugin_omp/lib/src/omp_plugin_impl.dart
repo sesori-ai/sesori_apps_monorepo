@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "api/omp_acp_api.dart";
 import "models/omp_catalog_models.dart";
 import "omp_binary.dart";
+import "omp_event_mapper.dart";
 import "omp_identity.dart";
 import "repositories/omp_catalog_repository.dart";
 import "repositories/omp_session_cleanup_repository.dart";
@@ -87,7 +88,7 @@ class OmpPlugin._({
       launchSpec: launchSpec,
       launchDirectory: launchDirectory,
       childSessionTracker: childSessionTracker,
-      eventMapper: AcpEventMapper(
+      eventMapper: OmpEventMapper(
         launchDirectory: launchDirectory,
         pluginId: OmpPluginIdentity.id,
         configurationTracker: configurationTracker,
@@ -118,12 +119,13 @@ class OmpPlugin._({
   /// session (https://github.com/can1357/oh-my-pi/issues/19068). An entry with
   /// zero messages and no title holds nothing to show: it is that leftover or
   /// a session never prompted, and one Sesori created keeps its bridge row.
-  /// A missing count keeps the entry.
+  /// A missing or non-int count keeps the entry.
   @override
-  bool includeListedSession(AcpSessionInfo info) {
+  bool includeListedSession({required AcpSessionInfo info}) {
     final title = info.title;
     final hasTitle = title != null && title.trim().isNotEmpty;
-    return hasTitle || info.metadata?["messageCount"] != 0;
+    final messageCount = info.metadata?["messageCount"];
+    return hasTitle || messageCount is! int || messageCount != 0;
   }
 
   /// OMP advertises `_session/steering` per process in its `initialize`

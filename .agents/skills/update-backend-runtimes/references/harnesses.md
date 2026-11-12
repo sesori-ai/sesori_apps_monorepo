@@ -350,10 +350,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
   forward. Current-host execution is the ordinary existing-platform scope.
   Run the deletion probe without credentials: `session/new`, a prompt of
   `/session delete`, then `session/list` from a fresh process. From `18.18.9`
-  OMP leaves a new empty, untitled replacement session there (upstream
-  #19068); the plugin hides entries with `_meta.messageCount` 0 and no title.
-  Confirm the leftover still has that shape, and drop the filter once
-  upstream stops persisting it.
+  the raw list holds a new empty, untitled replacement session (upstream
+  #19068); confirm it still has `_meta.messageCount` 0 and no title, so the
+  plugin's listing omits it. Keep the filter while any supported PATH version
+  (`18.18.9` up to the upstream fix) can still write that leftover.
   Also run the model-restore probe on a session whose saved model was removed.
   From `18.6.3` (still in the `18.19.0` source), `session/load` and `session/resume` fail
   closed with JSON-RPC `-32603` and `details: "Could not restore model

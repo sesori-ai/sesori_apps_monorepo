@@ -36,6 +36,7 @@ _NormalizedEventMapper _mapper() => _NormalizedEventMapper(
 AcpReplayCollector _collector({required AcpEventMapper mapper}) => AcpReplayCollector(
   sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
   shellCommandResolver: mapper.shellCommandForToolUpdate,
+  toolNameResolver: mapper.toolNameForToolUpdate,
   sessionId: "s",
   agentId: "antigravity",
   initialUserMessage: null,

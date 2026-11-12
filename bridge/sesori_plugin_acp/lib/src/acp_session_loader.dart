@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "acp_event_mapper.dart" show AcpEventMapper, AcpHaltNotice, AcpSessionUpdateNormalizer, AcpShellCommandResolver;
+import "acp_event_mapper.dart"
+    show AcpEventMapper, AcpHaltNotice, AcpSessionUpdateNormalizer, AcpShellCommandResolver, AcpToolNameResolver;
 import "acp_protocol.dart" show AcpMethods;
 import "acp_stdio_client.dart" show AcpNotification;
 import "repositories/mappers/acp_content_mapper.dart";
@@ -54,6 +55,9 @@ class AcpReplayCollector({
   /// The live mapper's pure hook. Null retains standard ACP envelopes unchanged.
   required final AcpSessionUpdateNormalizer? sessionUpdateNormalizer,
   required final AcpShellCommandResolver? shellCommandResolver,
+
+  /// The live mapper's tool-name hook. Null keeps the standard ACP name.
+  required final AcpToolNameResolver? toolNameResolver,
 
   /// Overrides a replayed user's ACP message id with backend authority.
   required final AcpReplayUserMessageIdOverride? messageIdOverride,
@@ -133,7 +137,7 @@ class AcpReplayCollector({
           _addTool(
             id: id,
             tool: _ToolDraft(
-              tool: _contentMapper.toolName(update: update),
+              tool: toolNameResolver?.call(update: update) ?? _contentMapper.toolName(update: update),
               title: _toolTitle(update),
               shellCommand: shellCommandResolver?.call(update: update),
               status: mappedStatus ?? PluginToolStatus.pending,
@@ -146,7 +150,7 @@ class AcpReplayCollector({
         } else {
           draft.suppressed = draft.suppressed || suppressed;
           if (!draft.hasExplicitKind && (hasKind || draft.tool == "tool")) {
-            draft.tool = _contentMapper.toolName(update: update);
+            draft.tool = toolNameResolver?.call(update: update) ?? _contentMapper.toolName(update: update);
           }
           draft.title ??= _toolTitle(update);
           draft.shellCommand ??= shellCommandResolver?.call(update: update);
@@ -180,7 +184,7 @@ class AcpReplayCollector({
           _addTool(
             id: id,
             tool: _ToolDraft(
-              tool: _contentMapper.toolName(update: update),
+              tool: toolNameResolver?.call(update: update) ?? _contentMapper.toolName(update: update),
               title: _toolTitle(update),
               shellCommand: shellCommandResolver?.call(update: update),
               status: mappedStatus ?? PluginToolStatus.pending,
@@ -204,7 +208,7 @@ class AcpReplayCollector({
           draft.hasExplicitStatus = true;
         }
         if (hasKind) {
-          draft.tool = _contentMapper.toolName(update: update);
+          draft.tool = toolNameResolver?.call(update: update) ?? _contentMapper.toolName(update: update);
           draft.hasExplicitKind = true;
         }
         if (update.containsKey("title")) draft.title = _toolTitle(update);

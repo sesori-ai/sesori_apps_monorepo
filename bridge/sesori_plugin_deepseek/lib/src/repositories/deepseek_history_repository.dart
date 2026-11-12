@@ -25,6 +25,7 @@ class DeepSeekHistoryRepository({
     final collector = AcpReplayCollector(
       sessionUpdateNormalizer: eventMapper.normalizeSessionUpdate,
       shellCommandResolver: eventMapper.shellCommandForToolUpdate,
+      toolNameResolver: eventMapper.toolNameForToolUpdate,
       sessionId: sessionId,
       agentId: pluginId,
       initialUserMessage: null,
