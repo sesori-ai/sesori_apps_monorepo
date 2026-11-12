@@ -21,6 +21,9 @@ class CodexRpcException({
   required final String method,
   required final int code,
   required final String message,
+
+  /// JSON-RPC `error.data`, which codex uses for structured errors.
+  required final Object? data,
 }) implements Exception {
   @override
   String toString() => "CodexRpcException($method, code=$code, $message)";
@@ -173,6 +176,7 @@ class CodexAppServerClient({
           method: "initialize",
           code: -32603,
           message: "expected object result, got ${raw.runtimeType}",
+          data: null,
         );
       }
       return CodexInitializeResult.fromJson(raw.cast<String, dynamic>());
@@ -299,6 +303,7 @@ class CodexAppServerClient({
               method: "<response>",
               code: code is int ? code : -32603,
               message: message is String ? message : "unknown error",
+              data: error is Map ? error["data"] : null,
             ),
           );
         } else {

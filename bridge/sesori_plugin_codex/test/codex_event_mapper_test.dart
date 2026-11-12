@@ -816,6 +816,8 @@ void main() {
       expect(assistant.modelID, equals("gpt-5.4-mini"));
       expect(assistant.providerID, equals("openai"));
 
+      expect(assistant.variant, isNull);
+
       // Clearing the override falls back to the config default again.
       richMapper.setThreadModel(threadId: "t-9", model: null);
       final events2 = richMapper.mapParsed(
@@ -829,6 +831,31 @@ void main() {
       );
       final assistant2 = (events2[0] as BridgeSseMessageUpdated).info as PluginMessageAssistant;
       expect(assistant2.modelID, equals("gpt-5.5"));
+    });
+
+    test("assistant and turn-error messages carry the per-thread effort as their variant", () {
+      PluginMessage agentMessage({required String itemId}) =>
+          (mapper
+                      .mapParsed(
+                        notification: CodexServerNotification(
+                          method: "item/completed",
+                          params: {
+                            "threadId": "t-1",
+                            "item": {"type": "agentMessage", "id": itemId, "text": "hello"},
+                          },
+                        ),
+                      )
+                      .first
+                  as BridgeSseMessageUpdated)
+              .info;
+
+      mapper.setThreadEffort(threadId: "t-1", effort: "high");
+      expect((agentMessage(itemId: "i-1") as PluginMessageAssistant).variant, "high");
+      final error = mapper.mapRolloutTerminalError(threadId: "t-1", turnId: "u-1", message: "boom", timestamp: null);
+      expect((error.info as PluginMessageError).variant, "high");
+
+      mapper.forgetThread(threadId: "t-1");
+      expect((agentMessage(itemId: "i-2") as PluginMessageAssistant).variant, isNull);
     });
 
     test("item reasoning → assistant message + reasoning part", () {
