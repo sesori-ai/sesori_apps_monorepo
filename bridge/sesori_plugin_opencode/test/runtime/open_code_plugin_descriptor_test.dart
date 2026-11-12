@@ -933,6 +933,27 @@ void main() {
   group("OpenCodePluginDescriptor.start (attach / --no-auto-start)", () {
     late _FakeApiRecorder apiRecorder;
 
+    test("the unreachable-server warning is version-neutral and names the password flag only when needed", () {
+      final withoutPassword = OpenCodePluginDescriptor.attachUnreachableWarning(
+        port: 4096,
+        reason: "health probe failed",
+        hasPassword: false,
+      );
+      expect(withoutPassword, contains("port 4096"));
+      expect(withoutPassword, contains("health probe failed"));
+      expect(withoutPassword, contains("OpenCode 1.x server is picked up automatically"));
+      expect(withoutPassword, contains("for OpenCode 2.x restart the bridge"));
+      expect(withoutPassword, isNot(contains("start OpenCode 1.x manually")));
+      expect(withoutPassword, contains("--opencode-password"));
+
+      final withPassword = OpenCodePluginDescriptor.attachUnreachableWarning(
+        port: 4096,
+        reason: "health probe failed",
+        hasPassword: true,
+      );
+      expect(withPassword, isNot(contains("--opencode-password")));
+    });
+
     setUp(() {
       apiRecorder = _FakeApiRecorder();
     });

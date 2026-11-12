@@ -3,6 +3,7 @@ import "dart:io" as io;
 import "dart:math";
 
 import "package:http/http.dart" as http;
+import "package:meta/meta.dart" show visibleForTesting;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
@@ -267,6 +268,20 @@ class const OpenCodePluginDescriptor({
         "network. Use a loopback host or keep authentication enabled.",
       );
     }
+  }
+
+  /// The warning for an attach-mode server that did not answer at start. The
+  /// bridge then keeps retrying with the OpenCode 1 adapter, so a 1.x server is
+  /// picked up when it appears; a 2.x server is only recognised at start.
+  @visibleForTesting
+  static String attachUnreachableWarning({required int port, required String reason, required bool hasPassword}) {
+    final passwordHint = hasPassword
+        ? ""
+        : " OpenCode 2.x always requires a password: pass it with --opencode-password.";
+    return "[opencode] cannot reach OpenCode at port $port (auto-start disabled): $reason. "
+        "The bridge starts degraded. Start the OpenCode server on that port: an OpenCode 1.x server is "
+        "picked up automatically, and for OpenCode 2.x restart the bridge afterwards so it detects the "
+        "version. Do not downgrade OpenCode.$passwordHint";
   }
 
   /// Whether [host] is a bare host or IP literal usable in a URL authority —
@@ -741,14 +756,8 @@ class const OpenCodePluginDescriptor({
       } on PluginStartAbortedException {
         rethrow;
       } on PluginStartException catch (error) {
-        final passwordHint = apiPassword == null
-            ? " OpenCode 2.x always requires a password: pass it with --opencode-password."
-            : "";
         Log.w(
-          "[opencode] cannot reach OpenCode at port $attachPort (auto-start disabled): ${error.message}. "
-          "Bridge will start anyway; start OpenCode 1.x manually to enable proxying. "
-          "For an existing OpenCode 2.x installation, restart the bridge after starting its server "
-          "to check protocol support; do not downgrade OpenCode.$passwordHint",
+          attachUnreachableWarning(port: attachPort, reason: error.message, hasPassword: apiPassword != null),
         );
         handle = null;
       }
