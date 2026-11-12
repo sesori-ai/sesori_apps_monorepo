@@ -221,8 +221,8 @@ reaches the backend so the turn continues.
 - While a session waits on the user, a pale amber needs-you card docks above
   its composer, as wide as the composer. There is one card per request type:
   questions, then permissions. Each names the pending count, shows the first
-  request's opening line in ordinary text, a command included, and its Answer or
-  Review button opens the existing modal. The card itself looks the same on phone
+  request's opening line in ordinary text, a command included, and a tap anywhere
+  on it, like its Answer or Review button, opens the existing modal. The card itself looks the same on phone
   and desktop: light uses a cream warning fill and dark a faint amber tint, each
   with a soft amber border, an amber icon and a darker amber label that clears
   4.5:1, over primary text. The buttons differ. On the phone every card's button is bright: the white secondary button
@@ -284,7 +284,7 @@ the prompt write is held, proving cancellation does not remove the later request
 ## Failure Signals
 
 - A needs-you card floats at the top of the chat, hides the composer or the
-  newest message, or its button fails to open the modal.
+  newest message, or a tap on its body or button fails to open the modal.
 - A blocked chat shows a needs-you card, opens a response dialog, or accepts a
   late answer/rejection callback. A dialog remains open through the transition,
   closes by answering, clears pending data before either an authoritative
