@@ -62,6 +62,11 @@ class CodexEventMapper({
   /// effect even though codex honoured it. Falls back to [config] when unknown.
   final Map<String, String> _threadModel = {};
 
+  /// Per-thread reasoning effort, fed alongside [_threadModel] and stamped as
+  /// the assistant message `variant`, the way history replay reads it from
+  /// `turn_context`. Unknown until codex or the user names one.
+  final Map<String, String> _threadEffort = {};
+
   /// Last-known thread times, used to turn activity notifications into a
   /// timestamp-bearing `session.updated` payload. Codex sends the activity
   /// time on the turn, not on a thread/session event.
@@ -82,6 +87,16 @@ class CodexEventMapper({
       _threadModel.remove(threadId);
     } else {
       _threadModel[threadId] = model;
+    }
+  }
+
+  /// Records the reasoning effort for [threadId]. Passing a null/empty
+  /// [effort] clears it.
+  void setThreadEffort({required String threadId, required String? effort}) {
+    if (effort == null || effort.isEmpty) {
+      _threadEffort.remove(threadId);
+    } else {
+      _threadEffort[threadId] = effort;
     }
   }
 
@@ -147,6 +162,7 @@ class CodexEventMapper({
     _threadCreatedAt.remove(threadId);
     _threadUpdatedAt.remove(threadId);
     _threadModel.remove(threadId);
+    _threadEffort.remove(threadId);
     _threadProvider.remove(threadId);
     _threadDirectory.remove(threadId);
     _threadParent.remove(threadId);
@@ -322,7 +338,7 @@ class CodexEventMapper({
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
       providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
-      variant: null,
+      variant: _threadEffort[threadId],
       errorName: "CodexError",
       errorMessage: message,
       time: _turnMessageTime(turn: turn),
@@ -341,7 +357,7 @@ class CodexEventMapper({
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
       providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
-      variant: null,
+      variant: _threadEffort[threadId],
       errorName: "CodexError",
       errorMessage: message,
       time: _rolloutMessageTime(raw: timestamp),
@@ -685,7 +701,8 @@ class CodexEventMapper({
   ///
   /// Model comes from the per-thread model the plugin recorded via
   /// [setThreadModel] (sourced from codex's `thread/start` / `turn/start`
-  /// responses), falling back to the global config model when unknown. Provider
+  /// responses), falling back to the global config model when unknown; the
+  /// variant is the per-thread effort from [setThreadEffort]. Provider
   /// comes from the thread's `thread/started.modelProvider`. The persisted
   /// rollout path is authoritative on re-fetch.
   PluginMessage _assistantMessage({
@@ -699,7 +716,7 @@ class CodexEventMapper({
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
       providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
-      variant: null,
+      variant: _threadEffort[threadId],
       sender: PluginMessageSender.agent,
       time: time,
     );

@@ -6,17 +6,20 @@ import "package:sesori_shared/sesori_shared.dart"
     show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 
 import "../api/codex_app_server_api.dart";
+import "../api/models/codex_model_provider_error_dto.dart";
 import "../api/models/codex_thread_dto.dart";
 import "../api/models/codex_turn_dto.dart";
 import "../api/models/codex_turn_input_dto.dart";
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
+import "models/codex_model_provider_exception.dart";
 import "models/codex_resumed_thread.dart";
 import "models/codex_thread_record.dart";
 
 sealed class const CodexThreadOperationException({
   required final String operation,
   required final String message,
+  required final CodexRpcException innerError,
 }) implements Exception {
   @override
   String toString() => "CodexThreadOperationException($operation: $message)";
@@ -25,11 +28,13 @@ sealed class const CodexThreadOperationException({
 final class const CodexThreadNotFoundException({
   required super.operation,
   required super.message,
+  required super.innerError,
 }) extends CodexThreadOperationException;
 
 final class const CodexThreadRequestException({
   required super.operation,
   required super.message,
+  required super.innerError,
 }) extends CodexThreadOperationException;
 
 final class const _CodexPromptAttachmentException({required final String message, required final Object? innerError})
@@ -184,7 +189,8 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       directory: cwd == null ? null : normalizeProjectDirectory(directory: cwd),
       createdAt: _milliseconds(seconds: thread.createdAt),
       updatedAt: _milliseconds(seconds: thread.updatedAt),
-      model: _usefulText(value: dto.model),
+      model: _usefulText(value: dto.model) ?? _usefulText(value: thread.model),
+      reasoningEffort: _usefulText(value: dto.reasoningEffort) ?? _usefulText(value: thread.reasoningEffort),
       modelProvider: _usefulText(value: thread.modelProvider) ?? _usefulText(value: dto.modelProvider),
       parentId: _subAgentParentId(thread: thread),
       agentNickname: _usefulText(value: thread.agentNickname),
@@ -274,17 +280,62 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     try {
       return await request();
     } on CodexRpcException catch (error, stackTrace) {
-      final exception = _isThreadNotFound(error: error)
-          ? CodexThreadNotFoundException(
-              operation: operation,
-              message: error.message,
-            )
-          : CodexThreadRequestException(
-              operation: operation,
-              message: error.message,
-            );
+      final Exception exception =
+          _modelProviderException(operation: operation, error: error) ??
+          (_isThreadNotFound(error: error)
+              ? CodexThreadNotFoundException(
+                  operation: operation,
+                  message: error.message,
+                  innerError: error,
+                )
+              : CodexThreadRequestException(
+                  operation: operation,
+                  message: error.message,
+                  innerError: error,
+                ));
       Error.throwWithStackTrace(exception, stackTrace);
     }
+  }
+
+  /// Codex rejects a thread whose stored model provider the current config
+  /// cannot serve (seen on `thread/resume`) with structured `error.data`.
+  CodexModelProviderException? _modelProviderException({
+    required String operation,
+    required CodexRpcException error,
+  }) {
+    final data = error.data;
+    if (data is! Map<String, dynamic>) return null;
+    final CodexModelProviderErrorDto dto;
+    try {
+      dto = CodexModelProviderErrorDto.fromJson(data);
+    } on Object catch (parseError, stackTrace) {
+      // A known provider `type` with an unexpected shape; the generic request
+      // failure keeps the raw data, this keeps why it was not recognised.
+      Log.w("[codex] unrecognised $operation error data; reporting a generic failure", parseError, stackTrace);
+      return null;
+    }
+    return switch (dto) {
+      CodexModelProviderMismatchDto(:final modelProvider, :final currentModelProvider) =>
+        CodexModelProviderMismatchException(
+          operation: operation,
+          threadProvider: modelProvider,
+          currentProvider: currentModelProvider,
+          cause: error,
+        ),
+      CodexModelProviderNotConfiguredDto(:final modelProvider) => CodexModelProviderNotConfiguredException(
+        operation: operation,
+        threadProvider: modelProvider,
+        cause: error,
+      ),
+      CodexModelProviderPolicyConflictDto(:final modelProvider, :final requiredModelProvider) =>
+        CodexModelProviderPolicyConflictException(
+          operation: operation,
+          threadProvider: modelProvider,
+          requiredProvider: requiredModelProvider,
+          cause: error,
+        ),
+      CodexUnknownModelProviderErrorDto() => null,
+    };
   }
 
   bool _isThreadNotFound({required CodexRpcException error}) {

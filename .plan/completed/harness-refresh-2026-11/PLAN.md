@@ -40,10 +40,10 @@
 | Pi | 1.4.0 | **1.5.2** | `v1.5.2` `b4afdddf44e059c67ccf5097e5317d913521b470`; npm latest | 0.99.0 | 6 archives, SHA256SUMS + GitHub digests |
 | OMP | 18.12.6 | **18.18.8** (H1) | `v18.18.8` `679691a78141de0dd6ba1b7a5d5c1b1d7d967a63` | 17.2.13 | 8 binaries, SHA256SUMS + GitHub digests |
 | Grok Build | 1.0.70 | **1.0.77** | `x.ai/cli/stable` | 1.0.5 | direct CLI (no published checksums) |
-| DeepSeek | adapter 0.2.1 (dsh 0.2.1-rc.3) | **adapter 0.2.2** (dsh 0.2.2-rc.2, npm `next`) | `sesori-deepseek-acp` #24 | 0.1.5 | after release (Step 4) |
+| DeepSeek | adapter 0.2.1 (dsh 0.2.1-rc.3) | **adapter 0.2.2** (dsh 0.2.2-rc.2, npm `next`) | `v0.2.2` `1d8cc61f3b5d531893c8759b5b6a289947b980fc` | 0.1.5 | 6 archives, checksums.txt + GitHub digests |
 
-All 50 managed assets were downloaded and hashed independently (42 for the first
-OMP candidate set plus 8 for `18.18.8`); every published checksum list, GitHub
+All 56 managed assets were downloaded and hashed independently (42 for the first
+OMP candidate set, 8 for `18.18.8` and 6 for DeepSeek 0.2.2); every published checksum list, GitHub
 digest, npm integrity value and registry hash agrees with the computed value.
 
 ## Findings that shape implementation
@@ -104,6 +104,7 @@ ran with network and normal reads, because they download.
 | OpenCode `serve` | Authenticated `/api/info` 2.2.7; unauthenticated reads refused, also when started without a password |
 | Codex app-server | stdio and WebSocket initialize plus `thread/list` passed; provider-mismatch probe as above |
 | Copilot, Cursor, OMP ACP initialize; Pi RPC `get_state` | Passed |
+| DeepSeek adapter 0.2.2 (Step 4) | Six archives match `checksums.txt` and the GitHub digests; production install passed; sandboxed `check`, ACP initialize (harness 0.2.2-rc.2, protocol v2), `session/new` and `session/list` passed |
 | OMP deletion probe | Leftover session on 18.19.0; none on 18.12.6 and 18.18.8 |
 | Plugin packages (Flutter 3.50.0) | `dart analyze --fatal-infos` clean; tests pass: OpenCode 777, ACP 378, Antigravity 227, Claude 515, Codex 593, Copilot 18, Cursor 176, Grok 115, Hermes 60, OMP 80, Pi 366 |
 
@@ -155,8 +156,8 @@ Grouped by harness; none is implemented.
 - **Cursor:** Windows managed install (moderate).
 - **Grok:** probe 1.0.77's undocumented `x.ai/session/turns/list` paged history.
 - **Antigravity:** switch to Google's `agy acp` (large, its own plan).
-- **DeepSeek:** re-enable the upstream read-before-edit guard that harness
-  0.2.2-rc.2 turned off (writes still need approval).
+- **DeepSeek:** keep the upstream read-before-edit guard off, as harness
+  0.2.2-rc.2 ships it (owner decision 2026-11-12; writes still need approval).
 - **Tooling:** `terminal_color_validator.dart` treats `FORCE_COLOR=0` as on.
 
 ## Follow-ups

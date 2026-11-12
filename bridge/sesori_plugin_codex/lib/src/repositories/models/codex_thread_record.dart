@@ -5,6 +5,7 @@ class const CodexThreadRecord({
   required final int? createdAt,
   required final int? updatedAt,
   required final String? model,
+  required final String? reasoningEffort,
   required final String? modelProvider,
 
   /// The direct parent thread for a sub-agent thread; `null` for a root.

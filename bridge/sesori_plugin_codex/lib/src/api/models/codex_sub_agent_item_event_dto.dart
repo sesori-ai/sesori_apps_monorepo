@@ -12,4 +12,6 @@ final class const CodexSubAgentActivity({
   required final CodexSubAgentActivityKind kind,
   required final String agentThreadId,
   required final String? agentPath,
+  required final String? model,
+  required final String? reasoningEffort,
 });

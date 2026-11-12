@@ -581,7 +581,12 @@ void main() {
   }
 
   test("a later-page native failure retains its original cause instead of partial success", () async {
-    final cause = CodexRpcException(method: "mcpServerStatus/list", code: -32000, message: "fixture native failure");
+    final cause = CodexRpcException(
+      method: "mcpServerStatus/list",
+      code: -32000,
+      message: "fixture native failure",
+      data: null,
+    );
     final transport = _Transport(
       responses: [
         {
@@ -681,6 +686,7 @@ void main() {
       method: "mcpServerStatus/list",
       code: -32600,
       message: "thread not found: original",
+      data: null,
     );
     final api = CodexAppServerApi(client: _Transport(responses: [cause]));
     await expectLater(
@@ -706,7 +712,7 @@ void main() {
     (const PluginMcpSessionScope(sessionId: "original"), -32000, "thread not found: original"),
   ]) {
     test("unrelated native error $code $message stays a typed failure for ${scope.runtimeType}", () async {
-      final cause = CodexRpcException(method: "mcpServerStatus/list", code: code, message: message);
+      final cause = CodexRpcException(method: "mcpServerStatus/list", code: code, message: message, data: null);
       final result = await _repository(
         transport: _Transport(responses: [cause]),
       ).readServers(scope: scope) as PluginMcpInventoryReadFailed;

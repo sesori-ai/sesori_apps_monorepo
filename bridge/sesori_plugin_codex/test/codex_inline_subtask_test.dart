@@ -299,6 +299,7 @@ CodexThreadRecord _child({required String id, required String parentId, required
       createdAt: null,
       updatedAt: null,
       model: null,
+      reasoningEffort: null,
       modelProvider: null,
       parentId: parentId,
       agentNickname: nickname,

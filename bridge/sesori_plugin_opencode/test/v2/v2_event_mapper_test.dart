@@ -143,6 +143,18 @@ void main() {
     });
   }
 
+  test("agent and command catalog announcements refresh session options", () {
+    for (final type in ["agent.updated", "command.updated"]) {
+      expect(
+        mapper.map(
+          envelope: frame(type: type, data: const {}),
+        ),
+        [isA<BridgeSseCommandCatalogUpdated>()],
+        reason: type,
+      );
+    }
+  });
+
   test("tool updates retain the native ID and never replay other snapshot parts", () {
     final start =
         mapper
