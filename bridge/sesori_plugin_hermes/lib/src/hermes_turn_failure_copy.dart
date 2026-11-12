@@ -140,12 +140,13 @@ const Map<String, String> _turnFailureTemplates = {
   "welcome_route_default": "Hermes couldn't reach the free model on this route.",
 };
 
-/// The rows Hermes saves in its own history to close a failed turn, in place
-/// of the failure text it sent live (which it never saves).
-const Set<String> _failedTurnRows = {
-  "Your request was not processed. Send it again if you still want me to carry it out.",
-  "This turn did not complete. Some actions may already have run; verify their effects before resending.",
-};
+/// The row Hermes saves in its own history to close a failed turn, in place
+/// of the failure text it sent live (which it never saves): `FAILED_TURN_NOTICE`.
+const String _failedTurnRow = "Your request was not processed. Send it again if you still want me to carry it out.";
+
+/// The same row when a tool already ran in the turn: `PARTIAL_FAILED_TURN_NOTICE`.
+const String _partialFailedTurnRow =
+    "This turn did not complete. Some actions may already have run; verify their effects before resending.";
 
 /// Placeholders that hold the provider's or Hermes's raw detail, always last
 /// in their template; they may span lines.
@@ -173,7 +174,12 @@ final List<RegExp> _turnFailurePatterns = [
 /// when a turn fails.
 bool isHermesTurnFailureNotice({required String text}) => _turnFailurePatterns.any((pattern) => pattern.hasMatch(text));
 
-/// Whether [text] is the row Hermes saved to close a failed turn. Hermes reads
-/// this row the same way (`untyped_failed_turn_display_kind`): the exact text
-/// and nothing else, so a reply that quotes it stays a reply.
-bool isHermesFailedTurnRow({required String text}) => _failedTurnRows.contains(text.trim());
+/// Whether [text] is the row Hermes saved to close a failed turn before any
+/// tool ran. Hermes reads its rows the same way
+/// (`untyped_failed_turn_display_kind`): the exact text and nothing else, so a
+/// reply that quotes one stays a reply.
+bool isHermesFailedTurnRow({required String text}) => text.trim() == _failedTurnRow;
+
+/// Whether [text] is the row Hermes saved to close a failed turn after a tool
+/// ran, matched like [isHermesFailedTurnRow].
+bool isHermesPartialTurnRow({required String text}) => text.trim() == _partialFailedTurnRow;

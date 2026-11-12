@@ -39,11 +39,18 @@ class HermesEventMapper({
     };
   }
 
-  // The shared mapper keeps Hermes's exact wording as the shown message.
+  // The shared mapper keeps Hermes's exact wording as the shown message. The
+  // error name is the notice's kind: the bridge keeps one notice per failed
+  // turn and adds a replayed wording to the live one only when the kinds
+  // differ. Hermes's generic saved row stands in for the live reason, so it
+  // shares the live notices' kind; the partial-turn row warns that actions
+  // may already have run, which the live reason does not say.
   @override
   AcpHaltNotice? classifyHaltNotice({required String text}) {
-    if (isHermesFailedTurnRow(text: text)) return const AcpHaltNotice(errorName: "hermes_failed_turn");
-    if (isHermesTurnFailureNotice(text: text)) return const AcpHaltNotice(errorName: "hermes_turn_failure");
+    if (isHermesPartialTurnRow(text: text)) return const AcpHaltNotice(errorName: "hermes_partial_turn");
+    if (isHermesFailedTurnRow(text: text) || isHermesTurnFailureNotice(text: text)) {
+      return const AcpHaltNotice(errorName: "hermes_failed_turn");
+    }
     return null;
   }
 }
