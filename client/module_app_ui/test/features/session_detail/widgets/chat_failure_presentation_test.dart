@@ -51,15 +51,51 @@ void main() {
         _app(child: _terminalError, brightness: brightness, disableAnimations: true, width: 320, textScale: 2),
       );
       final text = tester.widget<Text>(find.text(_errorText));
+      final style = text.textSpan?.style;
       final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
-      expect(text.style?.fontSize, 14);
-      expect(text.style?.height, closeTo(20 / 14, 0.001));
-      expect(text.style?.color, prego.colors.fgErrorPrimary);
+      expect(style?.fontSize, 14);
+      expect(style?.height, closeTo(20 / 14, 0.001));
+      expect(style?.color, prego.colors.fgErrorPrimary);
       expect(text.maxLines, isNull);
       expect(tester.getTopLeft(find.text(_errorText)).dx, 16);
       expect(find.byType(PregoAiLoader), findsNothing);
       expect(find.byType(PregoShimmer), findsNothing);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("${brightness.name} terminal failures render Markdown instead of showing its markers", (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          child: const ErrorMessageCard(
+            message: MessageError(
+              id: "error",
+              sessionID: "session",
+              agent: null,
+              modelID: null,
+              providerID: null,
+              errorName: "Request failed",
+              errorMessage: "Run `hermes setup` in a terminal.\n\nProvider said: HTTP 401",
+              time: null,
+            ),
+          ),
+          brightness: brightness,
+          disableAnimations: true,
+          width: 320,
+          textScale: 1,
+        ),
+      );
+      final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
+      expect(find.text("Run hermes setup in a terminal."), findsOneWidget);
+      expect(find.text("Provider said: HTTP 401"), findsOneWidget);
+      expect(find.textContaining("`"), findsNothing);
+      TextStyle? codeStyle;
+      tester.widget<Text>(find.text("Run hermes setup in a terminal.")).textSpan?.visitChildren((span) {
+        if (span case TextSpan(text: "hermes setup", :final style)) codeStyle = style;
+        return true;
+      });
+      expect(codeStyle?.color, prego.colors.fgErrorPrimary);
     });
 
     testWidgets("${brightness.name} retry history is neutral, not success-coloured", (tester) async {

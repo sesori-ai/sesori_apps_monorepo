@@ -3,6 +3,7 @@ import "dart:math";
 import "package:material_ui/material_ui.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../utils/markdown_plain_text.dart";
 import "transcript_motion.dart";
 
 /// A live row's trailing slot: the latest words of streaming [text] fade in
@@ -34,14 +35,20 @@ class const TranscriptLatestWords({super.key, required final String text, requir
   /// document on every flush.
   static const int _kLatestWordsChars = 160;
 
-  /// The latest words of streaming text, on one line.
+  /// The latest words of streaming Markdown [text], on one line, as they
+  /// render: emphasis markers and backticks are resolved, not shown.
   @visibleForTesting
   static String latestWords({required String text}) {
-    var start = max(0, text.length - _kLatestWordsChars);
+    // Parse from the start of a line, so the window never opens between the
+    // two markers of a pair and leaves the closing one behind as text.
+    final windowStart = max(0, text.length - _kLatestWordsChars);
+    final lineStart = windowStart == 0 ? 0 : text.lastIndexOf("\n", windowStart) + 1;
+    final plain = markdownPlainText(markdown: text.substring(lineStart), nameImage: null);
+    var start = max(0, plain.length - _kLatestWordsChars);
     // Never start on the low half of a UTF-16 surrogate pair (emoji etc.):
     // an orphaned low surrogate renders as a replacement character.
-    if (start > 0 && _isLowSurrogate(text.codeUnitAt(start))) start++;
-    return text.substring(start).replaceAll(RegExp(r"\s+"), " ").trim();
+    if (start > 0 && _isLowSurrogate(plain.codeUnitAt(start))) start++;
+    return plain.substring(start).replaceAll(RegExp(r"\s+"), " ").trim();
   }
 
   static bool _isLowSurrogate(int codeUnit) => (codeUnit & 0xFC00) == 0xDC00;

@@ -210,6 +210,22 @@ void main() {
       expect(TranscriptLatestWords.latestWords(text: text), "${"a" * 147} newest words");
     });
 
+    test("shows Markdown as it renders, not its markers", () {
+      expect(
+        TranscriptLatestWords.latestWords(text: "**Planning the reply**\n\nI will run `say hello` now"),
+        "Planning the reply I will run say hello now",
+      );
+    });
+
+    test("never leaves a closing marker behind when the window cuts into a line", () {
+      final text = "**Planning the reply**\n\n${"word " * 30}done";
+
+      final words = TranscriptLatestWords.latestWords(text: text);
+
+      expect(words, isNot(contains("*")));
+      expect(words, endsWith("word done"));
+    });
+
     test("never starts on an orphaned UTF-16 low surrogate", () {
       // The cut lands between the emoji's two code units.
       final text = "${"x" * 10}😀${"y" * 159}";

@@ -175,15 +175,17 @@ defaults and queued client sends coherent.
   transition back to idle; retry carries attempt, backend-provided message, and
   timing and returns to busy as soon as the retried request streams output again,
   and finalized messages enter durable history matching a history read. A terminal
-  provider failure appears as an inline error message and remains visible after
-  refresh or reopen. Backend-provided terminal and retry error text is forwarded
+  provider failure appears as an inline error message, rendered as Markdown with
+  its line breaks kept, and remains visible after refresh or reopen.
+  Backend-provided terminal and retry error text is forwarded
   verbatim for every harness; plugins may flatten an error envelope but synthesize
   text only when the backend supplied none. Backend-provided message timestamps
   remain present through live updates and durable-history reloads, using the
   backend's authoritative source for each path. Internal backend command records
   are not rendered as conversation messages or used as assistant model attribution.
 - Reasoning uses an unboxed activity row with 14px body text, a bounded live-tail
-  preview, and a one-line Markdown-stripped completed preview. Tap or keyboard
+  preview, and a one-line Markdown-stripped completed preview; the live tail
+  shows rendered words too, never emphasis markers or backticks. Tap or keyboard
   activation opens the same full, selectable reasoning modal; its streaming
   follow/detach behavior is unchanged. A long finished thought shows a spinner
   until the modal's entry transition ends, so the ripple and transition never
