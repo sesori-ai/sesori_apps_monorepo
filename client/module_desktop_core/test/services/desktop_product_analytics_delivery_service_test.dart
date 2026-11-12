@@ -124,7 +124,7 @@ void main() {
         "appVersion": "1.11.0",
         "name": "session_message_sent",
         "occurredAtMicros": 1793232000000000,
-        "params": {"submission_kind": "text", "input_mode": "typed"},
+        "params": {"submission_kind": "text", "input_mode": "typed", "harness": "codex"},
       });
     });
 
@@ -152,7 +152,7 @@ void main() {
           harness: AnalyticsHarness.claudeCode,
         ),
         name: "session_message_sent",
-        params: const {"submission_kind": "command", "input_mode": "typed"},
+        params: const {"submission_kind": "command", "input_mode": "typed", "harness": "claude_code"},
       ),
       (
         event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
@@ -165,6 +165,7 @@ void main() {
           "submission_kind": "text",
           "input_mode": "voice_assisted",
           "workspace_kind": "dedicated_worktree",
+          "harness": "opencode",
         },
       ),
       (
