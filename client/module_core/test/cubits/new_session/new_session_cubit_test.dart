@@ -657,6 +657,7 @@ void main() {
             event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
               submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.voiceAssisted),
               workspaceKind: AnalyticsWorkspaceKind.project,
+              harness: AnalyticsHarness.other,
             ),
             occurredAtUtc: any(named: "occurredAtUtc"),
           ),
@@ -775,6 +776,7 @@ void main() {
           event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
             submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
             workspaceKind: AnalyticsWorkspaceKind.project,
+            harness: AnalyticsHarness.other,
           ),
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),

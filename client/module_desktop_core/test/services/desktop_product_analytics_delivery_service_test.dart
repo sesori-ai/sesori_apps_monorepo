@@ -92,6 +92,7 @@ void main() {
 
   const sampleEvent = ProductAnalyticsEvent.sessionMessageSent(
     submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+    harness: AnalyticsHarness.codex,
   );
 
   void logSample() => logEvent(event: sampleEvent);
@@ -146,7 +147,10 @@ void main() {
         params: const {"activity_state": "empty"},
       ),
       (
-        event: const ProductAnalyticsEvent.sessionMessageSent(submission: AnalyticsSubmission.command()),
+        event: const ProductAnalyticsEvent.sessionMessageSent(
+          submission: AnalyticsSubmission.command(),
+          harness: AnalyticsHarness.claudeCode,
+        ),
         name: "session_message_sent",
         params: const {"submission_kind": "command", "input_mode": "typed"},
       ),
@@ -154,6 +158,7 @@ void main() {
         event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.voiceAssisted),
           workspaceKind: AnalyticsWorkspaceKind.dedicatedWorktree,
+          harness: AnalyticsHarness.opencode,
         ),
         name: "session_created_with_message",
         params: const {

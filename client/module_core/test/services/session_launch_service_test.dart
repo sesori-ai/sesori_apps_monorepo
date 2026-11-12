@@ -63,10 +63,14 @@ void main() {
     addTearDown(subscription.cancel);
   });
 
-  Future<void> launch({ProjectKind projectKind = ProjectKind.folder, String? agent}) => service.launch(
+  Future<void> launch({
+    ProjectKind projectKind = ProjectKind.folder,
+    String? agent,
+    String pluginId = "plugin-1",
+  }) => service.launch(
     launchId: "launch-1",
     projectId: "project-1",
-    pluginId: "plugin-1",
+    pluginId: pluginId,
     startedAt: DateTime.utc(2026, 9, 27),
     projectName: null,
     projectKind: projectKind,
@@ -101,6 +105,7 @@ void main() {
         event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
           workspaceKind: AnalyticsWorkspaceKind.project,
+          harness: AnalyticsHarness.other,
         ),
         occurredAtUtc: any(named: "occurredAtUtc"),
       ),
@@ -216,6 +221,7 @@ void main() {
           event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
             submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
             workspaceKind: AnalyticsWorkspaceKind.project,
+            harness: AnalyticsHarness.other,
           ),
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
@@ -294,6 +300,7 @@ void main() {
         event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
           workspaceKind: AnalyticsWorkspaceKind.noProject,
+          harness: AnalyticsHarness.other,
         ),
         occurredAtUtc: any(named: "occurredAtUtc"),
       ),
@@ -362,8 +369,8 @@ void main() {
       });
     });
 
-    Future<void> launchWithFollowUps() async {
-      final pending = launch();
+    Future<void> launchWithFollowUps({String pluginId = "plugin-1"}) async {
+      final pending = launch(pluginId: pluginId);
       service.addFollowUp(
         launchId: "launch-1",
         submission: followUp(promptId: "prm_a"),
@@ -390,6 +397,31 @@ void main() {
         () => productAnalyticsService.logEvent(
           event: const ProductAnalyticsEvent.sessionMessageSent(
             submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+            harness: AnalyticsHarness.other,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(2);
+    });
+
+    test("the creation and every follow-up report the launch's harness", () async {
+      await launchWithFollowUps(pluginId: Harness.codex.name);
+
+      verify(
+        () => productAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
+            submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+            workspaceKind: AnalyticsWorkspaceKind.project,
+            harness: AnalyticsHarness.codex,
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(1);
+      verify(
+        () => productAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionMessageSent(
+            submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+            harness: AnalyticsHarness.codex,
           ),
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
@@ -432,6 +464,7 @@ void main() {
         () => productAnalyticsService.logEvent(
           event: const ProductAnalyticsEvent.sessionMessageSent(
             submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+            harness: AnalyticsHarness.other,
           ),
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),

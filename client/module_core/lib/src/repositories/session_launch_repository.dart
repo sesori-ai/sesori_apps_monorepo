@@ -112,10 +112,11 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
   }
 
   /// Marks the next follow-up of a created launch as sending and returns it
-  /// with its session. Null while the session does not exist yet, while its
+  /// with its session and the launch's plugin. Null while the session does not
+  /// exist yet, while its
   /// follow-ups are held, when nothing is queued, or while the one ahead is
   /// still sending or failed.
-  ({String sessionId, QueuedSessionSubmission submission})? beginFollowUp({required String launchId}) {
+  ({String sessionId, String pluginId, QueuedSessionSubmission submission})? beginFollowUp({required String launchId}) {
     final launch = _storage.read(launchId: launchId);
     if (launch == null) return null;
     final session = _sessionOf(launch: launch);
@@ -128,7 +129,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
         index: index,
         followUp: LaunchFollowUp.sending(submission: submission, since: since),
       );
-      return (sessionId: session.id, submission: submission);
+      return (sessionId: session.id, pluginId: launch.pluginId, submission: submission);
     }
     return null;
   }

@@ -1867,6 +1867,7 @@ void main() {
           () => mockProductAnalyticsService.logEvent(
             event: const ProductAnalyticsEvent.sessionMessageSent(
               submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+              harness: AnalyticsHarness.other,
             ),
             occurredAtUtc: any(named: "occurredAtUtc"),
           ),
@@ -2077,6 +2078,7 @@ void main() {
               () => mockProductAnalyticsService.logEvent(
                 event: const ProductAnalyticsEvent.sessionMessageSent(
                   submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+                  harness: AnalyticsHarness.grokBuild,
                 ),
                 occurredAtUtc: any(named: "occurredAtUtc"),
               ),
@@ -2184,6 +2186,7 @@ void main() {
           () => mockProductAnalyticsService.logEvent(
             event: const ProductAnalyticsEvent.sessionMessageSent(
               submission: AnalyticsSubmission.command(),
+              harness: AnalyticsHarness.other,
             ),
             occurredAtUtc: any(named: "occurredAtUtc"),
           ),
@@ -3594,6 +3597,7 @@ void main() {
           () => mockProductAnalyticsService.logEvent(
             event: const ProductAnalyticsEvent.sessionMessageSent(
               submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.voiceAssisted),
+              harness: AnalyticsHarness.other,
             ),
             occurredAtUtc: any(named: "occurredAtUtc"),
           ),
