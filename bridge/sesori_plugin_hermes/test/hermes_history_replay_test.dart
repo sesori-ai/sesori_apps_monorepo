@@ -36,7 +36,7 @@ void main() {
       expect(messages.map((message) => message.info), [
         isA<PluginMessageUser>(),
         isA<PluginMessageAssistant>(),
-        _notice(errorName: "hermes_failed_turn", text: partialFailedTurnBoundary),
+        _notice(errorName: "hermes_partial_turn", text: partialFailedTurnBoundary),
       ]);
       expect(messages[1].parts.single, isA<PluginMessagePartTool>());
     });
@@ -51,7 +51,7 @@ void main() {
         );
         expect(
           messages.last.info,
-          _notice(errorName: "hermes_turn_failure", text: notice),
+          _notice(errorName: "hermes_failed_turn", text: notice),
           reason: family,
         );
       }

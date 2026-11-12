@@ -1852,23 +1852,30 @@ void main() {
     });
 
     // Hermes sends a failed turn's real reason live but saves only a fixed
-    // closing row, so its replay has a notice for the turn in other words.
+    // closing row, so its replay has a notice for the turn in other words. The
+    // error name says whether the replayed notice is the same kind of notice
+    // (a stand-in for the live reason) or adds something of its own.
     group("a failed turn's notice", () {
       const liveReason = "custom didn't respond in time on any of 3 attempts.\n\nProvider said: Connection error.";
       const savedRow = "Your request was not processed. Send it again if you still want me to carry it out.";
+      const partialRow =
+          "This turn did not complete. Some actions may already have run; verify their effects before resending.";
 
-      List<MessageWithParts> failedTurnReplay() => [
+      List<MessageWithParts> failedTurnReplay({required String text, required String errorName}) => [
         _messageWithText(id: "h1-user", text: "Hello", createdAt: null, promptId: null),
-        _errorMessage(id: "h2-error", text: savedRow, createdAt: null),
+        _errorMessage(id: "h2-error", errorName: errorName, text: text, createdAt: null),
       ];
 
-      Future<TestChatHistory> liveFailedTurn({required _FakeSessionRepository repository}) async {
+      Future<TestChatHistory> liveFailedTurn({
+        required _FakeSessionRepository repository,
+        required String liveText,
+      }) async {
         final history = createTestChatHistory(sessionRepository: repository);
         await _captureMessages(
           history: history,
           messages: [
             _messageWithText(id: "live-user", text: "Hello", createdAt: 100, promptId: null),
-            _errorMessage(id: "live-error", text: liveReason, createdAt: 200),
+            _errorMessage(id: "live-error", errorName: "hermes_failed_turn", text: liveText, createdAt: 200),
           ],
         );
         return history;
@@ -1879,8 +1886,13 @@ void main() {
           if (message.info case MessageError(:final errorMessage)) errorMessage,
       ];
 
-      test("is one notice after a reload, live wording first", () async {
-        final history = await liveFailedTurn(repository: _FakeSessionRepository(transcript: failedTurnReplay()));
+      test("is the live reason alone after a reload when the saved row is the same kind", () async {
+        final history = await liveFailedTurn(
+          repository: _FakeSessionRepository(
+            transcript: failedTurnReplay(text: savedRow, errorName: "hermes_failed_turn"),
+          ),
+          liveText: liveReason,
+        );
 
         await history.service.backfillSession(sessionId: "ses_a");
 
@@ -1888,41 +1900,49 @@ void main() {
           (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
           const ["h1-user", "h2-error"],
         );
-        expect(await storedNotices(history: history), const ["$liveReason\n\n$savedRow"]);
+        expect(await storedNotices(history: history), const [liveReason]);
       });
 
-      test("stays one notice with the live wording after later re-imports", () async {
-        final transcript = failedTurnReplay();
-        final history = await liveFailedTurn(repository: _FakeSessionRepository(transcript: transcript));
-        await history.service.backfillSession(sessionId: "ses_a");
-        await Future<void>.delayed(const Duration(milliseconds: 2));
-        // The session moved on outside Sesori.
-        transcript.add(_messageWithText(id: "h3-user", text: "Try again", createdAt: null, promptId: null));
-
-        await history.service.backfillSession(sessionId: "ses_a");
-        await history.service.backfillSession(sessionId: "ses_a");
-
-        expect(await storedNotices(history: history), const ["$liveReason\n\n$savedRow"]);
-      });
-
-      test("is the saved row alone for a turn that failed outside Sesori", () async {
-        final history = createTestChatHistory(
-          sessionRepository: _FakeSessionRepository(transcript: failedTurnReplay()),
+      test("adds a saved row of another kind after the live reason", () async {
+        final history = await liveFailedTurn(
+          repository: _FakeSessionRepository(
+            transcript: failedTurnReplay(text: partialRow, errorName: "hermes_partial_turn"),
+          ),
+          liveText: liveReason,
         );
 
         await history.service.backfillSession(sessionId: "ses_a");
 
-        expect(await storedNotices(history: history), const [savedRow]);
+        expect(await storedNotices(history: history), const ["$liveReason\n\n$partialRow"]);
       });
 
-      test("is one notice when live and replay word it the same", () async {
+      test("keeps its wording across later re-imports", () async {
+        for (final (replay, expected) in [
+          (failedTurnReplay(text: savedRow, errorName: "hermes_failed_turn"), liveReason),
+          (failedTurnReplay(text: partialRow, errorName: "hermes_partial_turn"), "$liveReason\n\n$partialRow"),
+        ]) {
+          final history = await liveFailedTurn(
+            repository: _FakeSessionRepository(transcript: replay),
+            liveText: liveReason,
+          );
+          await history.service.backfillSession(sessionId: "ses_a");
+          await Future<void>.delayed(const Duration(milliseconds: 2));
+          // The session moved on outside Sesori.
+          replay.add(_messageWithText(id: "h3-user", text: "Try again", createdAt: null, promptId: null));
+
+          await history.service.backfillSession(sessionId: "ses_a");
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(await storedNotices(history: history), [expected]);
+        }
+      });
+
+      test("drops a same-kind saved row an earlier reload added", () async {
         final history = await liveFailedTurn(
           repository: _FakeSessionRepository(
-            transcript: [
-              _messageWithText(id: "h1-user", text: "Hello", createdAt: null, promptId: null),
-              _errorMessage(id: "h2-error", text: liveReason, createdAt: null),
-            ],
+            transcript: failedTurnReplay(text: savedRow, errorName: "hermes_failed_turn"),
           ),
+          liveText: "$liveReason\n\n$savedRow",
         );
 
         await history.service.backfillSession(sessionId: "ses_a");
@@ -1930,14 +1950,27 @@ void main() {
         expect(await storedNotices(history: history), const [liveReason]);
       });
 
+      test("is the saved row alone for a turn that failed outside Sesori", () async {
+        final history = createTestChatHistory(
+          sessionRepository: _FakeSessionRepository(
+            transcript: failedTurnReplay(text: savedRow, errorName: "hermes_failed_turn"),
+          ),
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(await storedNotices(history: history), const [savedRow]);
+      });
+
       test("for another turn stays its own notice", () async {
         final history = await liveFailedTurn(
           repository: _FakeSessionRepository(
             transcript: [
               _messageWithText(id: "h1-user", text: "Other prompt", createdAt: null, promptId: null),
-              _errorMessage(id: "h2-error", text: savedRow, createdAt: null),
+              _errorMessage(id: "h2-error", errorName: "hermes_failed_turn", text: savedRow, createdAt: null),
             ],
           ),
+          liveText: liveReason,
         );
 
         await history.service.backfillSession(sessionId: "ses_a");
@@ -2212,14 +2245,19 @@ MessageWithParts _messageWithText({
   parts: [_part(id: "$id-part", messageId: id, text: text)],
 );
 
-MessageWithParts _errorMessage({required String id, required String text, required int? createdAt}) => MessageWithParts(
+MessageWithParts _errorMessage({
+  required String id,
+  required String errorName,
+  required String text,
+  required int? createdAt,
+}) => MessageWithParts(
   info: Message.error(
     id: id,
     sessionID: "ses_a",
     agent: "hermes",
     modelID: null,
     providerID: null,
-    errorName: "hermes_turn_failure",
+    errorName: errorName,
     errorMessage: text,
     time: createdAt == null ? null : MessageTime(created: createdAt, completed: createdAt),
   ),

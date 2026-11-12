@@ -43,7 +43,7 @@ void main() {
       expect(
         message,
         isA<PluginMessageError>()
-            .having((error) => error.errorName, "errorName", "hermes_turn_failure")
+            .having((error) => error.errorName, "errorName", "hermes_failed_turn")
             .having((error) => error.errorMessage, "errorMessage", providerTimeoutNotice),
       );
       expect(events.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
@@ -52,13 +52,21 @@ void main() {
 
     test("every family of Hermes failure copy is a notice", () {
       for (final MapEntry(key: family, value: notice) in failureNotices.entries) {
-        expect(mapper.classifyHaltNotice(text: notice)?.errorName, "hermes_turn_failure", reason: family);
+        expect(mapper.classifyHaltNotice(text: notice)?.errorName, "hermes_failed_turn", reason: family);
       }
     });
 
-    test("Hermes's saved failed-turn rows are notices", () {
-      for (final row in [failedTurnBoundary, partialFailedTurnBoundary, automationInterruptedBoundary]) {
-        expect(mapper.classifyHaltNotice(text: row)?.errorName, "hermes_failed_turn", reason: row);
+    // The bridge keeps one notice per failed turn and adds a replayed wording
+    // only when its error name differs: the generic saved row is a stand-in
+    // for the live reason, the rows warning that actions may already have run
+    // add a warning of their own.
+    test("Hermes's generic saved row is the same kind of notice as the live reason", () {
+      expect(mapper.classifyHaltNotice(text: failedTurnBoundary)?.errorName, "hermes_failed_turn");
+    });
+
+    test("Hermes's partial-turn and interrupted-automation rows are notices of their own kind", () {
+      for (final row in [partialFailedTurnBoundary, automationInterruptedBoundary]) {
+        expect(mapper.classifyHaltNotice(text: row)?.errorName, "hermes_partial_turn", reason: row);
       }
     });
 

@@ -904,12 +904,16 @@ text.
 
 The bridge's history store keeps one notice per failed turn. When the live
 notice and the replayed one are worded differently, the stored notice shows the
-live wording first and adds the replayed wording after it.
+live wording. It adds the replayed wording after it only when the replayed
+notice has another error name, that is, when it says something of its own, and
+another message id. A replayed notice under the live notice's own id is an
+update from the backend, so with another error name its wording replaces the
+live one.
 
 | Harness | Sesori availability |
 |---|---|
 | Cursor | ✅ The account/plan gate ("Check your settings to continue"), live and after history load. |
-| Hermes | ✅ Every failure copy Hermes sends as its final response, live and after history load: retries exhausted (including the stream-lifetime cap), first-attempt rate limits, usage limits, rejected credentials, unknown models, content policy, data-policy refusals, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions and shutdown. Hermes saves a different row for a failed turn ("Your request was not processed…", "This turn did not complete. Some actions may already have run…" after a tool ran, or "An automated delivery was interrupted…" for a lost cron or webhook turn); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows Hermes's live reason followed by that row. Wording read in the Hermes 0.21.5 source on 2026-11-09 and the 0.23.1 source on 2026-11-12. ⬜ `launch_credentials_unavailable` (0.22.6+, localized text) and a `pending_tool_result` notice still show as plain replies. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts. ⚠️ When the model streamed part of a reply before failing, Hermes sends no failure text live, so the notice appears only after a reload. 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
+| Hermes | ✅ Every failure copy Hermes sends as its final response, live and after history load: retries exhausted (including the stream-lifetime cap), first-attempt rate limits, usage limits, rejected credentials, unknown models, content policy, data-policy refusals, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions and shutdown. Hermes saves a different row for a failed turn ("Your request was not processed…", "This turn did not complete. Some actions may already have run…" after a tool ran, or "An automated delivery was interrupted…" for a lost cron or webhook turn); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows only Hermes's live reason, followed by the row's warning when actions may already have run. Wording read in the Hermes 0.21.5 source on 2026-11-09 and the 0.23.1 source on 2026-11-12. ⬜ `launch_credentials_unavailable` (0.22.6+, localized text) and a `pending_tool_result` notice still show as plain replies. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts. ⚠️ When the model streamed part of a reply before failing, Hermes sends no failure text live, so the notice appears only after a reload. 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
 
 ## Saved prompt files
 
