@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "api/omp_acp_api.dart";
 import "models/omp_catalog_models.dart";
 import "omp_binary.dart";
+import "omp_event_mapper.dart";
 import "omp_identity.dart";
 import "repositories/omp_catalog_repository.dart";
 import "repositories/omp_session_cleanup_repository.dart";
@@ -13,6 +14,7 @@ import "services/omp_session_cleanup_service.dart";
 import "services/omp_session_options_service.dart";
 import "services/omp_steering_service.dart";
 import "trackers/omp_catalog_tracker.dart";
+import "trackers/omp_compaction_tracker.dart";
 
 /// Oh My Pi backend over ACP.
 ///
@@ -39,6 +41,7 @@ class OmpPlugin._({
     required String launchDirectory,
     required String? scratchDirectory,
     required AcpProcessFactory processFactory,
+    required ServerClock clock,
   }) {
     final launchSpec = OmpBinary.launchSpec(
       binary: binaryPath,
@@ -87,11 +90,12 @@ class OmpPlugin._({
       launchSpec: launchSpec,
       launchDirectory: launchDirectory,
       childSessionTracker: childSessionTracker,
-      eventMapper: AcpEventMapper(
+      eventMapper: OmpEventMapper(
         launchDirectory: launchDirectory,
         pluginId: OmpPluginIdentity.id,
         configurationTracker: configurationTracker,
         childSessions: childSessionTracker,
+        compactionTracker: OmpCompactionTracker(clock: clock),
       ),
       commandTracker: commandTracker,
       catalogService: catalogService,

@@ -20,6 +20,7 @@ void main() {
         binaryPath: OmpBinary.defaultBinary,
         launchDirectory: "/repo",
         scratchDirectory: null,
+        clock: const ServerClock(),
         processFactory: (spec) async {
           launchSpec = spec;
           return fake;
@@ -149,6 +150,33 @@ void main() {
 
     test("advertises form elicitation", () {
       expect(plugin.supportsFormElicitation, isTrue);
+    });
+
+    test("shows automatic compaction from OMP's compaction notifications", () async {
+      await connect();
+      final session = await create("session-1");
+      for (final (method, params) in [
+        ("_omp/compaction/start", {"reason": "threshold", "action": "context-full"}),
+        ("_omp/compaction/end", {"action": "context-full", "aborted": false, "willRetry": false}),
+      ]) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "method": method,
+          "params": {"sessionId": session.id, ...params},
+        });
+      }
+      await settle();
+
+      final states = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartCompaction>()
+          .map((part) => part.compactionState);
+      expect(states, [
+        const PluginCompactionState.running(summary: null),
+        const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: .auto),
+      ]);
+      expect(events.whereType<BridgeSseSessionCompacted>(), hasLength(1));
     });
 
     test("returns scoped authentication guidance when option discovery has no models", () async {
@@ -1000,6 +1028,7 @@ void main() {
         binaryPath: OmpBinary.defaultBinary,
         launchDirectory: "/repo",
         scratchDirectory: null,
+        clock: const ServerClock(),
         processFactory: (spec) async {
           specs.add(spec);
           final process = FakeAcpProcess();

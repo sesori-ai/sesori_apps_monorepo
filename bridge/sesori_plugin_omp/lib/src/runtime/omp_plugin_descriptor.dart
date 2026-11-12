@@ -21,6 +21,7 @@ typedef OmpPluginFactory = OmpPlugin Function({
   required String launchDirectory,
   required String? scratchDirectory,
   required AcpProcessFactory processFactory,
+  required ServerClock clock,
 });
 
 typedef OmpRuntimeAssetServiceFactory = OmpRuntimeAssetService Function({
@@ -51,11 +52,13 @@ OmpPlugin _buildOmpPlugin({
   required String launchDirectory,
   required String? scratchDirectory,
   required AcpProcessFactory processFactory,
+  required ServerClock clock,
 }) => OmpPlugin(
   binaryPath: binaryPath,
   launchDirectory: launchDirectory,
   scratchDirectory: scratchDirectory,
   processFactory: processFactory,
+  clock: clock,
 );
 
 final class const OmpPluginDescriptor({
@@ -314,6 +317,7 @@ final class const OmpPluginDescriptor({
       launchDirectory: io.Directory.current.path,
       scratchDirectory: null,
       processFactory: hostProcessAcpFactory(processes: host.processes, environment: host.environment),
+      clock: host.clock,
     );
     return await AcpBridgePlugin.start(plugin: omp, host: host, connectBudget: _connectBudget);
   }
