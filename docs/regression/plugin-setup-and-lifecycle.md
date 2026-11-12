@@ -261,6 +261,13 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   retries the cold start in the background, because a cold start against a
   server that is not there has no bound of its own. An abort observed after the
   cold start still rolls back everything the start acquired.
+- Codex setup inspection classifies a bounded `codex login status`: "Not
+  logged in" is authentication-required; a zero exit with any "Logged in
+  using …" mode (ChatGPT, access token, personal access token, Bedrock,
+  workload identity) or the 0.167 API-key wording "API key configured - …" is
+  ready; anything else is unknown without echoing the output. Failure signal:
+  an API-key login on the managed runtime shows "Codex authentication could
+  not be determined" and blocks the plugin.
 - Grok Build is a direct-CLI ACP v1 harness with no managed install. An explicit
   `--grok-bin` path is authoritative; otherwise setup uses `grok` from PATH and
   requires version `1.0.5` or newer. Setup inspection and pre-start resolution
