@@ -794,6 +794,7 @@ void main() {
       final collector = AcpReplayCollector(
         sessionUpdateNormalizer: null,
         shellCommandResolver: null,
+        toolNameResolver: null,
         sessionId: sessionId,
         agentId: "acp",
         initialUserMessage: null,
