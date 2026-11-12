@@ -196,6 +196,10 @@ Codex and Copilot rows in `HARNESS_CAPABILITIES.md`.
 
 **Estimate.** `⚙️`, about 300 lines.
 
+**Outcome.** Copilot 1.0.109 never withdraws a pending permission request
+(live probe, no `$/cancel_request` in its runtime), so the ACP half was dropped
+and recorded as a limitation; the step became `🌿`.
+
 ### Step 6 — Codex: sub-agent model and effort, clear provider-mismatch error
 
 **Current behaviour.**
@@ -333,7 +337,6 @@ boundary with unit and fake-transport tests, plus these cells.
 | Hermes failed turn (invalid key) shows one notice, live and after reload | headless iOS simulator | none |
 | Codex provider mismatch shows the clear error | headless iOS simulator | none |
 | Codex sub-agent messages show model and effort; withdrawn approval card disappears | headless iOS simulator | needed (open question) |
-| Copilot withdrawn permission card disappears (if step 5 keeps the ACP half) | headless iOS simulator | needed (open question) |
 | OpenCode agent edit refreshes the agent picker; v2 no-password start fails clearly | headless iOS simulator | none |
 | Claude, Copilot probe, FORCE_COLOR | unit tests only | none |
 

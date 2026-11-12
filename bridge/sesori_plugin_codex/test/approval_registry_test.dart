@@ -200,6 +200,61 @@ void main() {
       );
     });
 
+    test("serverRequest/resolved retires only the exact withdrawn request without answering it", () async {
+      void resolved(Object requestId) => registry.handleRequest(
+        CodexPendingNotification(
+          notification: CodexServerNotification(
+            method: "serverRequest/resolved",
+            params: {"threadId": "t-1", "requestId": requestId},
+          ),
+        ),
+      );
+      requests
+        ..add(
+          const CodexServerRequest(
+            id: 7,
+            method: "item/commandExecution/requestApproval",
+            params: {"threadId": "t-1", "turnId": "turn-1", "itemId": "i-1", "command": "ls"},
+          ),
+        )
+        ..add(
+          const CodexServerRequest(
+            id: "req-8",
+            method: "item/tool/requestUserInput",
+            params: {
+              "threadId": "t-1",
+              "turnId": "turn-1",
+              "questions": [
+                {"id": "scope", "header": "Scope", "question": "Which scope?"},
+              ],
+            },
+          ),
+        );
+      await pump();
+      final permissionId = (emitted[0] as BridgeSsePermissionAsked).requestID;
+      final questionId = (emitted[1] as BridgeSseQuestionAsked).id;
+      emitted.clear();
+
+      // Ids compare exactly: neither a string "7" nor an int lookalike matches.
+      resolved("7");
+      resolved(8);
+      expect(emitted, isEmpty);
+      expect(registry.hasPendingInput(sessionId: "t-1"), isTrue);
+
+      resolved(7);
+      expect(emitted.single, isA<BridgeSsePermissionReplied>().having((e) => e.requestID, "requestID", permissionId));
+      expect(registry.pendingNativeTurnIdForSession(sessionId: "t-1"), "turn-1");
+
+      resolved("req-8");
+      expect(emitted.last, isA<BridgeSseQuestionRejected>().having((e) => e.requestID, "requestID", questionId));
+      expect(registry.hasPendingInput(sessionId: "t-1"), isFalse);
+      expect(registry.pendingNativeTurnIdForSession(sessionId: "t-1"), isNull);
+      expect(respondCalls, isEmpty);
+      expect(errorCalls, isEmpty);
+      expect(registry.replyPermission(requestId: permissionId, reply: PluginPermissionReply.once), isFalse);
+      expect(respondCalls, isEmpty);
+    });
+
     test("an approval request without a threadId is refused instead of surfaced", () async {
       requests.add(
         const CodexServerRequest(

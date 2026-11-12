@@ -514,6 +514,10 @@ class ApprovalRegistry({
   /// `request_user_input_async` is delivered as an assistant message, not a
   /// server request. Both forms share the existing pending-question surface.
   void _handleNotification({required CodexServerNotification notification}) {
+    if (notification.method == "serverRequest/resolved") {
+      _withdrawResolvedRequest(requestId: notification.params["requestId"]);
+      return;
+    }
     final request = _questionParser.parseAsyncQuestion(notification: notification);
     if (request != null) {
       final questions = _questionMapper.mapAsyncQuestions(questions: request.questions);
@@ -530,6 +534,22 @@ class ApprovalRegistry({
         questions: questions,
       );
     }
+  }
+
+  /// Codex announces every settled server request, including one answered in
+  /// another client or abandoned by an interrupted turn. A request the bridge
+  /// answered itself is already gone, so only a withdrawn one still matches.
+  /// The id is a JSON-RPC id (int or string) and is compared exactly.
+  void _withdrawResolvedRequest({required Object? requestId}) {
+    final withdrawn = withdrawWhere(
+      matches: (payload) => switch (payload) {
+        _PendingApproval(:final codexId) ||
+        _PendingUserInput(:final codexId) ||
+        _PendingMcpRequest(:final codexId) => codexId == requestId,
+        _PendingAsyncQuestion() => false,
+      },
+    );
+    withdrawn.forEach(_nativeTurnIdByPendingId.remove);
   }
 
   List<PluginPendingQuestion> pendingQuestionsForSessionTree({required String sessionId}) {
