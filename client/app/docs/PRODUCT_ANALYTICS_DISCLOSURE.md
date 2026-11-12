@@ -19,6 +19,14 @@ provider/model/agent/tool/command names, raw error text, OAuth identity, email,
 IP address, or raw/hashed project, session, bridge, device, notification, or
 account identifiers.
 
+The one bounded exception is the harness: `session_message_sent` and
+`session_created_with_message` carry a pinned `harness` value naming which
+built-in coding harness (for example `claude_code` or `codex`) ran the message,
+or `other` for any harness Sesori does not ship. Model, provider, agent, tool,
+and command names stay excluded. The public notice's sentence listing "coding
+provider, model, agent, tool, or command names" must name this exception before
+a release that sends it.
+
 ## Desktop app
 
 The owner approved this wording themselves on 2026-10-31, with no outside review.

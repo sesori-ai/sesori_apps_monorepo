@@ -1,5 +1,21 @@
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+const _harnessWireValues = [
+  (AnalyticsHarness.opencode, "opencode"),
+  (AnalyticsHarness.codex, "codex"),
+  (AnalyticsHarness.githubCopilot, "github_copilot"),
+  (AnalyticsHarness.cursor, "cursor"),
+  (AnalyticsHarness.claudeCode, "claude_code"),
+  (AnalyticsHarness.hermesAgent, "hermes_agent"),
+  (AnalyticsHarness.pi, "pi"),
+  (AnalyticsHarness.ohMyPi, "oh_my_pi"),
+  (AnalyticsHarness.deepseek, "deepseek"),
+  (AnalyticsHarness.grokBuild, "grok_build"),
+  (AnalyticsHarness.antigravity, "antigravity"),
+  (AnalyticsHarness.other, "other"),
+];
 
 void main() {
   group("ProductAnalyticsEvent wire contract", () {
@@ -28,25 +44,27 @@ void main() {
         "session_activity_viewed",
         const {"activity_state": "empty"},
       ),
-      (
-        const ProductAnalyticsEvent.sessionMessageSent(
-          submission: AnalyticsSubmission.command(),
+      for (final (harness, wireValue) in _harnessWireValues) ...[
+        (
+          ProductAnalyticsEvent.sessionMessageSent(submission: const AnalyticsSubmission.command(), harness: harness),
+          "session_message_sent",
+          {"submission_kind": "command", "input_mode": "typed", "harness": wireValue},
         ),
-        "session_message_sent",
-        const {"submission_kind": "command", "input_mode": "typed"},
-      ),
-      (
-        const ProductAnalyticsEvent.sessionCreatedWithMessage(
-          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.voiceAssisted),
-          workspaceKind: AnalyticsWorkspaceKind.dedicatedWorktree,
+        (
+          ProductAnalyticsEvent.sessionCreatedWithMessage(
+            submission: const AnalyticsSubmission.text(inputMode: AnalyticsInputMode.voiceAssisted),
+            workspaceKind: AnalyticsWorkspaceKind.dedicatedWorktree,
+            harness: harness,
+          ),
+          "session_created_with_message",
+          {
+            "submission_kind": "text",
+            "input_mode": "voice_assisted",
+            "workspace_kind": "dedicated_worktree",
+            "harness": wireValue,
+          },
         ),
-        "session_created_with_message",
-        const {
-          "submission_kind": "text",
-          "input_mode": "voice_assisted",
-          "workspace_kind": "dedicated_worktree",
-        },
-      ),
+      ],
       (
         const ProductAnalyticsEvent.sessionCreationFailed(
           failureReason: AnalyticsSessionCreationFailureReason.networkDown,
@@ -292,6 +310,34 @@ void main() {
         expect(event.wireName.length, lessThanOrEqualTo(40));
       });
     }
+  });
+
+  group("AnalyticsHarness", () {
+    test("pins a wire value for every member", () {
+      expect(_harnessWireValues.map((pair) => pair.$1), unorderedEquals(AnalyticsHarness.values));
+      for (final (harness, wireValue) in _harnessWireValues) {
+        expect(harness.wireValue, wireValue);
+      }
+    });
+
+    test("maps every built-in plugin ID to its own harness", () {
+      final mapped = {for (final harness in Harness.values) AnalyticsHarness.fromPluginId(pluginId: harness.name)};
+      expect(mapped, hasLength(Harness.values.length));
+      expect(mapped, isNot(contains(AnalyticsHarness.other)));
+      expect(AnalyticsHarness.fromPluginId(pluginId: Harness.claude.name), AnalyticsHarness.claudeCode);
+      expect(AnalyticsHarness.fromPluginId(pluginId: Harness.copilot.name), AnalyticsHarness.githubCopilot);
+    });
+
+    test("reports an unknown plugin ID as other without its raw value", () {
+      final harness = AnalyticsHarness.fromPluginId(pluginId: "private-fork-plugin");
+      expect(harness, AnalyticsHarness.other);
+      final event = ProductAnalyticsEvent.sessionMessageSent(
+        submission: const AnalyticsSubmission.command(),
+        harness: harness,
+      );
+      expect(event.parameters["harness"], "other");
+      expect(event.parameters.values, isNot(contains("private-fork-plugin")));
+    });
   });
 
   test("installation events stay account-less and use only bounded parameters", () {

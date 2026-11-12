@@ -185,6 +185,7 @@ class SessionLaunchService({
           event: ProductAnalyticsEvent.sessionCreatedWithMessage(
             submission: _analyticsSubmission(submission: submission),
             workspaceKind: _workspaceKind(projectKind: projectKind, dedicatedWorktree: session.hasWorktree),
+            harness: AnalyticsHarness.fromPluginId(pluginId: pluginId),
           ),
         );
         if (promptFilesSentEvent(attachments: attachments) case final filesSent?) {
@@ -215,7 +216,7 @@ class SessionLaunchService({
     while (true) {
       final next = _launchRepository.beginFollowUp(launchId: launchId);
       if (next == null) return;
-      final (:sessionId, :submission) = next;
+      final (:sessionId, :pluginId, :submission) = next;
       final context = "follow-up ${submission.promptId} of launch $launchId to session $sessionId";
       PromptSendFailure failure;
       try {
@@ -246,6 +247,7 @@ class SessionLaunchService({
                   QueuedCommandSubmission() ||
                   UnavailableQueuedCommandSubmission() => const AnalyticsSubmission.command(),
                 },
+                harness: AnalyticsHarness.fromPluginId(pluginId: pluginId),
               ),
             );
             if (promptFilesSentEvent(attachments: submission.attachments) case final filesSent?) {

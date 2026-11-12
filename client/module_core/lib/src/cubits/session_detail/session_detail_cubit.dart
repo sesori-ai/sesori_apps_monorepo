@@ -2808,7 +2808,7 @@ class SessionDetailCubit(
           // landed was marked settled and is consumed here instead.
           _promptQueue.parkAccepted(epoch: ++_parkEpoch);
           _staleOptionsRecoveryAttemptedPromptIds.remove(submission.promptId);
-          _reportAcceptedSubmission(submission: submission);
+          _reportAcceptedSubmission(submission: submission, pluginId: current.session.pluginId);
         case ErrorResponse(:final error) when sendingAtStop():
           logw("Failed to send a queued session submission a stop left in flight", error);
         case ErrorResponse(:final error) when SessionRepository.isStalePromptOptionsError(error: error):
@@ -3148,7 +3148,7 @@ class SessionDetailCubit(
     );
   }
 
-  void _reportAcceptedSubmission({required QueuedSessionSubmission submission}) {
+  void _reportAcceptedSubmission({required QueuedSessionSubmission submission, required String pluginId}) {
     final analyticsSubmission = switch (submission) {
       QueuedTextSubmission(:final inputMode) => AnalyticsSubmission.text(
         inputMode: _analyticsInputMode(inputMode),
@@ -3156,7 +3156,10 @@ class SessionDetailCubit(
       QueuedCommandSubmission() || UnavailableQueuedCommandSubmission() => const AnalyticsSubmission.command(),
     };
     _reportProductEvent(
-      event: ProductAnalyticsEvent.sessionMessageSent(submission: analyticsSubmission),
+      event: ProductAnalyticsEvent.sessionMessageSent(
+        submission: analyticsSubmission,
+        harness: AnalyticsHarness.fromPluginId(pluginId: pluginId),
+      ),
     );
     if (promptFilesSentEvent(attachments: submission.attachments) case final filesSent?) {
       _reportProductEvent(event: filesSent);

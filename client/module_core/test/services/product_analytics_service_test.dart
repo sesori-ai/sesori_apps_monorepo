@@ -361,6 +361,7 @@ void main() {
       await service.logEvent(
         event: const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
         occurredAtUtc: occurredAt,
       ),
@@ -378,6 +379,7 @@ void main() {
         const ProductAnalyticsEvent.analyticsActivationReady(),
         const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
       ],
     );
@@ -423,6 +425,7 @@ void main() {
       await service.logEvent(
         event: const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
         occurredAtUtc: DateTime.utc(2026, 7, 30),
       ),
@@ -445,6 +448,7 @@ void main() {
         const ProductAnalyticsEvent.analyticsActivationReady(),
         const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
       ],
     );
@@ -473,6 +477,7 @@ void main() {
         await service.logEvent(
           event: const ProductAnalyticsEvent.sessionMessageSent(
             submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+            harness: AnalyticsHarness.codex,
           ),
           occurredAtUtc: DateTime.utc(2026, 7, 30),
         );
@@ -507,6 +512,7 @@ void main() {
       await service.logEvent(
         event: const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
         occurredAtUtc: DateTime.utc(2026, 7, 30, 10),
       ),
@@ -545,6 +551,7 @@ void main() {
         const ProductAnalyticsEvent.analyticsActivationReady(),
         const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
         const ProductAnalyticsEvent.projectInventoryLoaded(
           inventoryState: AnalyticsInventoryState.nonEmpty,
@@ -646,6 +653,7 @@ void main() {
       await service.logEvent(
         event: const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
         occurredAtUtc: DateTime.utc(2026, 7, 30),
       ),
@@ -660,6 +668,7 @@ void main() {
         const ProductAnalyticsEvent.analyticsActivationReady(),
         const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
         const ProductAnalyticsEvent.analyticsActivationReady(),
         const ProductAnalyticsEvent.sessionDiffViewed(
@@ -693,6 +702,7 @@ void main() {
       await service.logEvent(
         event: const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
         occurredAtUtc: DateTime.utc(2026, 7, 30),
       ),
@@ -707,6 +717,7 @@ void main() {
         const ProductAnalyticsEvent.analyticsActivationReady(),
         const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
         const ProductAnalyticsEvent.analyticsActivationReady(),
       ],
@@ -739,6 +750,7 @@ void main() {
       await service.logEvent(
         event: const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
         occurredAtUtc: DateTime.utc(2026, 7, 30),
       ),
@@ -754,6 +766,7 @@ void main() {
         const ProductAnalyticsEvent.analyticsActivationReady(),
         const ProductAnalyticsEvent.sessionMessageSent(
           submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          harness: AnalyticsHarness.codex,
         ),
         const ProductAnalyticsEvent.analyticsActivationReady(),
       ],
@@ -780,6 +793,7 @@ void main() {
     expect(analyticsRepository.calls, isEmpty);
     const activationOutcome = ProductAnalyticsEvent.sessionMessageSent(
       submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+      harness: AnalyticsHarness.codex,
     );
     expect(
       await service.logEvent(
@@ -826,6 +840,7 @@ void main() {
       event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
         submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
         workspaceKind: AnalyticsWorkspaceKind.project,
+        harness: AnalyticsHarness.codex,
       ),
       occurredAtUtc: DateTime.utc(2026, 7, 30),
     );

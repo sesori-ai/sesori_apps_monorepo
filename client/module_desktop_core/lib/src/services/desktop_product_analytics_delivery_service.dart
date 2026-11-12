@@ -128,12 +128,13 @@ class DesktopProductAnalyticsDeliveryService({
     // The warehouse has no `finish` or `mode` column, and a server enum would
     // reject the next new mode.
     VoiceTranscriptionCompletedEvent() => const {},
+    // The server's strict schema and the warehouse have no `harness` yet, so
+    // sending it would get these events rejected.
+    SessionMessageSentEvent() || SessionCreatedWithMessageEvent() => {...event.parameters}..remove("harness"),
     AnalyticsSchemaReadyEvent() ||
     AnalyticsActivationReadyEvent() ||
     ProjectInventoryLoadedEvent() ||
     SessionActivityViewedEvent() ||
-    SessionMessageSentEvent() ||
-    SessionCreatedWithMessageEvent() ||
     PromptFilesSentEvent() ||
     SessionCreationFailedEvent() ||
     SessionQuestionAnsweredEvent() ||

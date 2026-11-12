@@ -110,7 +110,10 @@ Never report:
 - OAuth identity, username, email, provider user ID, IP/geography, or raw error
   text;
 - coding provider/model/agent/tool/command names unless a later approved plan
-  changes the privacy contract.
+  changes the privacy contract. The one approved exception is the pinned
+  `AnalyticsHarness` enum (`harness`) on `session_message_sent` and
+  `session_created_with_message`; unknown plugin IDs report `other`, never
+  the raw ID. It does not extend to any other event or name.
 
 Account-linked events use only the pseudonymous custom `user_key` produced in
 the repository. Never set Firebase global `user_id` for the new design.

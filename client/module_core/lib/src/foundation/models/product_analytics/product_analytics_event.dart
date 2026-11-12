@@ -1,4 +1,5 @@
 import "package:meta/meta.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 enum SupportChannel({required final String wireValue}) {
   email(wireValue: "email"),
@@ -76,6 +77,39 @@ final class const AnalyticsCommandSubmission() extends AnalyticsSubmission {
 
   @override
   AnalyticsInputMode get inputMode => AnalyticsInputMode.typed;
+}
+
+/// The harness that ran an accepted message, so reporting can see which
+/// harnesses accounts actually use. A plugin ID no built-in harness claims
+/// reports [other]; the raw ID never reaches the wire.
+enum AnalyticsHarness({required final String wireValue}) {
+  opencode(wireValue: "opencode"),
+  codex(wireValue: "codex"),
+  githubCopilot(wireValue: "github_copilot"),
+  cursor(wireValue: "cursor"),
+  claudeCode(wireValue: "claude_code"),
+  hermesAgent(wireValue: "hermes_agent"),
+  pi(wireValue: "pi"),
+  ohMyPi(wireValue: "oh_my_pi"),
+  deepseek(wireValue: "deepseek"),
+  grokBuild(wireValue: "grok_build"),
+  antigravity(wireValue: "antigravity"),
+  other(wireValue: "other");
+
+  static AnalyticsHarness fromPluginId({required String pluginId}) => switch (Harness.values.asNameMap()[pluginId]) {
+    null => AnalyticsHarness.other,
+    Harness.opencode => AnalyticsHarness.opencode,
+    Harness.codex => AnalyticsHarness.codex,
+    Harness.copilot => AnalyticsHarness.githubCopilot,
+    Harness.cursor => AnalyticsHarness.cursor,
+    Harness.claude => AnalyticsHarness.claudeCode,
+    Harness.hermes => AnalyticsHarness.hermesAgent,
+    Harness.pi => AnalyticsHarness.pi,
+    Harness.omp => AnalyticsHarness.ohMyPi,
+    Harness.deepseek => AnalyticsHarness.deepseek,
+    Harness.grok => AnalyticsHarness.grokBuild,
+    Harness.antigravity => AnalyticsHarness.antigravity,
+  };
 }
 
 enum AnalyticsWorkspaceKind({required final String wireValue}) {
@@ -205,10 +239,12 @@ sealed class const ProductAnalyticsEvent() {
   }) = SessionActivityViewedEvent;
   const factory sessionMessageSent({
     required AnalyticsSubmission submission,
+    required AnalyticsHarness harness,
   }) = SessionMessageSentEvent;
   const factory sessionCreatedWithMessage({
     required AnalyticsSubmission submission,
     required AnalyticsWorkspaceKind workspaceKind,
+    required AnalyticsHarness harness,
   }) = SessionCreatedWithMessageEvent;
   const factory promptFilesSent({
     required AnalyticsFileCountBucket fileCount,
@@ -327,8 +363,10 @@ final class const SessionActivityViewedEvent({required final AnalyticsActivitySt
   Map<String, String> get parameters => {"activity_state": activityState.wireValue};
 }
 
-final class const SessionMessageSentEvent({required final AnalyticsSubmission submission})
-    extends ProductAnalyticsEvent {
+final class const SessionMessageSentEvent({
+  required final AnalyticsSubmission submission,
+  required final AnalyticsHarness harness,
+}) extends ProductAnalyticsEvent {
   AnalyticsSubmissionKind get submissionKind => submission.kind;
   AnalyticsInputMode get inputMode => submission.inputMode;
 
@@ -339,12 +377,14 @@ final class const SessionMessageSentEvent({required final AnalyticsSubmission su
   Map<String, String> get parameters => {
     "submission_kind": submissionKind.wireValue,
     "input_mode": inputMode.wireValue,
+    "harness": harness.wireValue,
   };
 }
 
 final class const SessionCreatedWithMessageEvent({
   required final AnalyticsSubmission submission,
   required final AnalyticsWorkspaceKind workspaceKind,
+  required final AnalyticsHarness harness,
 }) extends ProductAnalyticsEvent {
   AnalyticsSubmissionKind get submissionKind => submission.kind;
   AnalyticsInputMode get inputMode => submission.inputMode;
@@ -357,6 +397,7 @@ final class const SessionCreatedWithMessageEvent({
     "submission_kind": submissionKind.wireValue,
     "input_mode": inputMode.wireValue,
     "workspace_kind": workspaceKind.wireValue,
+    "harness": harness.wireValue,
   };
 }
 
