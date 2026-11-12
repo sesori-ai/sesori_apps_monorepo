@@ -446,7 +446,7 @@ one and sends nothing back.
 
 | Harness | Status |
 |---|---|
-| Codex | ✅ `serverRequest/resolved {threadId, requestId}` retires the request with that exact JSON-RPC id. Verified live on `0.167.2` (2026-11-12): interrupting a turn with a pending command approval sends it with the approval's id. |
+| Codex | ✅ `serverRequest/resolved {threadId, requestId}` retires the request with that exact JSON-RPC id. Verified live on `0.167.2` (2026-11-12): interrupting a turn with a pending command approval sends it with the approval's id, and on `0.167.1` the app's approval sheet closed in the same run. |
 | Pi | ✅ For a select, confirm or input dialog with a timeout, Pi resolves the dialog itself when it expires; the plugin runs the same timer and retires the card without answering. Editor dialogs have no Pi timeout: the plugin's own timer answers Pi `cancelled`, which is a cancellation, not a withdrawal. |
 | Copilot | 🚫 `1.0.109` sends no withdrawal for a pending ACP permission request when its turn is cancelled. Verified live (2026-11-12): after `session/cancel` the prompt ends `cancelled` and the open `session/request_permission` gets no `$/cancel_request` or other notice. Its runtime has no `$/cancel_request` string. Sesori's own stop already retires the card; one abandoned any other way stays until stop, close, delete, archive or the connection is disposed. Other ways a Copilot turn can end were not probed. |
 | Cursor, OMP, Hermes, DeepSeek, Grok, Antigravity | ⬜ Not implemented: Sesori ignores ACP `$/cancel_request`. Whether each harness sends it is not verified. |
@@ -630,7 +630,7 @@ shows its id and the agent pill is left out.
 
 | Harness | Sesori implementation | Verification boundary |
 |---|---|---|
-| OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; separate string, number and integer properties render as separate custom-text questions (numbers parse back to JSON numbers) | Mapper, synthetic ACP plugin, shared bridge contract, and widget tests pass; a live `18.19.0` built-in `ask` HTML-form (`18.18.3`+) /ACP/client roundtrip not run |
+| OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; separate string, number and integer properties render as separate custom-text questions (numbers parse back to JSON numbers) | Mapper, synthetic ACP plugin, shared bridge contract, and widget tests pass; live `18.19.0` built-in `ask` HTML-form (`18.18.3`+) roundtrip passed through ACP and the client on 2026-11-12; the sheet adds its "Other" question as a second step, and the form's HTML default is not preselected |
 
 Property keys, order, independent required flags, and option/custom provenance
 are retained, including identical submitted text in separate questions.
@@ -1036,7 +1036,13 @@ From codex-cli 0.167 a started `subAgentActivity` carries the child's resolved
 `model` and `reasoningEffort` (schema dump, 2026-11-12); live child messages
 show them as model and effort, as replay already did from `turn_context`. Older
 Codex falls back to the child's `thread/read` model and effort, when present.
-Not verified live (needs a signed-in account).
+Live check with an API-key provider on 0.167.1 (2026-11-12): with
+`[features] multi_agent_v2 = true` the child session appears and its messages
+carry the model; the effort was not exercised because Codex sent no reasoning
+effort for the custom model. With `multi_agent_v2` off, Codex's default in
+0.167.1, sub-agents arrive as v1 `CollabAgentToolCall` items, which Sesori does
+not map: they show as generic `Spawn_agent` / `Wait_agent` tool cards with no
+child session.
 
 ⁴ Copilot CLI (plugin targets 1.0.109) runs custom agents as subagents. When
 probed on 1.0.80, inside the supported range (minimum 1.0.78), its Agent Client

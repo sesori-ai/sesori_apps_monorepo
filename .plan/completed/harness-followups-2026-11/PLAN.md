@@ -7,8 +7,9 @@ Ship the follow-ups the owner picked from the November harness refresh
 valuable, not-too-hard items, grouped by plugin seam into PRs that can run in
 parallel. Phase 2 lists bigger items that each become their own plan.
 
-The `harness-refresh-2026-11` plan stays open; its step 4 still waits on the
-DeepSeek adapter release.
+Status: complete. Steps 1-8 merged; step 9 reconciled the documents, ran the
+matrix below and retired the plan (it also covers step 10). Phase 2 and later
+items are listed under Follow-ups.
 
 ## Owner decisions (2026-11-12)
 
@@ -35,8 +36,8 @@ DeepSeek adapter release.
   phase-2 item.
 - **Final matrix:** live cells that need a model run through the local test
   proxy, not the owner's harness accounts.
-- **Pending owner answers, not in this plan:** Q1 the DeepSeek adapter release
-  (`sesori-deepseek-acp` #24 is not merged and no tag is pushed).
+- **Q1 the DeepSeek adapter release:** handled outside this plan; #2513 pinned
+  adapter `v0.2.2` and retired `harness-refresh-2026-11`.
 
 ## Phase 1
 
@@ -334,24 +335,6 @@ Claude note near "Failed-turn notices sent as text" in `HARNESS_CAPABILITIES.md`
 
 **Estimate.** `🌿`, about 150 lines.
 
-## Phase 2 (each becomes its own plan)
-
-- **OpenCode native archive sync (Q9):** archive in OpenCode too on 2.1.0+, so
-  OpenCode's own clients agree with Sesori. Plugin-side outbound only at first;
-  inbound sync needs bridge-core work.
-- **OpenCode MCP OAuth code paste (Q11):** use 2.2.7's paste completion route so
-  OAuth works when the loopback callback cannot reach the bridge machine. The
-  wire already carries the pasted URL; mostly plugin, maybe client copy.
-- **Windows (Q21 Pi exit wait, Q22 Cursor managed install):** need a Windows host
-  to verify; Pi loses an in-flight login refresh when killed early, and Cursor
-  Windows packages exist but are unmanaged.
-- **OpenCode stop only the main agent (Q10):** on OpenCode v2, use the job list
-  to tell foreground from background sub-sessions, so the stop prompt can offer
-  "stop the main agent only, keep the sub-agents". Needs a live check first that
-  the job list really separates them. OpenCode v1 gets nothing.
-- **Antigravity `agy acp` (Q24):** move to Google's ACP entry point; large,
-  touches launch, auth and the exact-pair gate.
-
 ## Verification matrix (final step)
 
 Coverage level: L2 for each touched feature document, through the plugin
@@ -369,6 +352,45 @@ boundary with unit and fake-transport tests, plus these cells.
 | Claude, Copilot probe, FORCE_COLOR | unit tests only | none |
 
 Phase 2 Windows items carry their own Windows cells in their own plans.
+
+### Matrix results (2026-11-12, `main` at `8c26051e83`)
+
+Bridge built from `main`, throwaway harness home, slot account, headless iOS
+simulator. Model cells used the local test proxy with model `test-oai`.
+
+| Cell | Result | Evidence |
+|---|---|---|
+| OMP 18.19.0 managed install | pass | Installed through the management command; snapshot shows `omp` ready at 18.19.0. |
+| OMP deletion: deleted session absent from the list | pass | After delete and a re-import, the session is not in `/sessions`. The leftover filter was not exercised: the bridge hid the session before OMP wrote a leftover. |
+| OMP ask card shows the OMP tool name | pass | Card reads "Ask · Asking color preference"; the answer reached OMP. |
+| OMP auto-compaction card | pass | "Compacting context" with a running timer, then "Context compacted · auto", then the reply. |
+| Hermes invalid key: one notice, live and after reload | pass | One notice per turn live, after reopening the session and after a bridge restart. |
+| Codex provider mismatch shows the clear error | pass (bridge) | The bridge returns the 409 "This session uses the proxy model provider, but Codex is set to proxy2…". The app shows only "Couldn't send", as step 6 shipped. |
+| Codex sub-agent model and effort | partial | With `multi_agent_v2` on, the child session appears and its messages carry the model. Effort was not exercised: Codex sent no reasoning effort for the custom model. With Codex's default (`multi_agent_v2` off) sub-agents arrive as v1 `CollabAgentToolCall` and show as generic tool cards with no child session. |
+| Codex withdrawn approval card disappears | pass | A second app-server client interrupted the turn; Codex sent `serverRequest/resolved` and the card closed. |
+| OpenCode cold project's agent picker fills | pass | The picker showed skeletons for about 30 s while OpenCode started, then listed the project agent `hf-reviewer` next to Build and Plan. |
+| OpenCode 2 private start with `--opencode-no-password` fails clearly | pass (bridge) | Start fails at once with "OpenCode 2.2.7 always requires a password, so --opencode-no-password works only with OpenCode 1…". The app shows "Failed" with the generic "Check the bridge console" hint. |
+| Account sign-out (#2506) | pass | The caption glides; a repeated "Saving your choice…" notice stays up without a new entrance; Account stays steady with the spinner until the login screen covers it. |
+| Account failed logout | not run | Making the logout call fail needs per-app network blocking on the simulator host. Covered by #2506's widget tests. |
+| Claude, Copilot probe, FORCE_COLOR | unit tests only | Covered by #2508's tests, as planned. |
+| Claude and DeepSeek model cells | not run | Needs a real account; the test proxy cannot serve them. |
+
+Findings from the run, not yet decided:
+
+- OMP 18.19.0 writes a second "Untitled session": a short-lived `omp` process
+  the bridge starts opens a session the main process holds, OMP moves it to a
+  continuation file ("open-elsewhere"), and Sesori imports that file.
+- Codex 0.167 API-key logins print "API key configured", which the setup check
+  does not recognise, so Codex shows "authentication could not be determined".
+- With Codex's default sub-agent mode, sub-agent calls show as raw
+  `Spawn_agent {…}` / `Wait_agent {…}` cards.
+- A failed send says only "Couldn't send"; tapping it gives no reason (Codex
+  provider mismatch). A failed OpenCode start shows only the generic hint.
+- The Codex approval sheet shows the justification but not the command.
+- The OMP ask form adds an "Other" question as a second step and does not
+  preselect the HTML default.
+- Thinking previews and Hermes failure notices show literal Markdown (`**…**`,
+  backticks).
 
 ## Resolved questions (2026-11-12)
 
@@ -397,3 +419,23 @@ provider mismatch, a cross-package fatal health-probe flag.
 See `TRACKER.md`. Steps 2, 4, 5, 6, 7 and 8 can run in parallel; step 3 follows
 step 2. Step 9 reconciles `docs/regression/`; step 10 runs the matrix above and
 retires the plan.
+
+## Follow-ups
+
+Each becomes its own plan when it starts.
+
+- **OpenCode native archive sync (Q9):** archive in OpenCode too on 2.1.0+, so
+  OpenCode's own clients agree with Sesori.
+- **OpenCode MCP OAuth code paste (Q11):** use 2.2.7's paste completion route so
+  OAuth works when the loopback callback cannot reach the bridge machine.
+- **OpenCode stop only the main agent (Q10):** on OpenCode v2, offer "stop the
+  main agent, keep the sub-agents"; needs a live check that the job list
+  separates them.
+- **Pi Windows exit wait (Q21):** Pi loses an in-flight login refresh when
+  killed early; needs a Windows host.
+- **Cursor Windows managed install (Q22):** Windows packages exist but are
+  unmanaged; needs a Windows host.
+- **Antigravity `agy acp` (Q24):** move to Google's ACP entry point; touches
+  launch, auth and the exact-pair gate.
+- **Later, not planned:** Hermes effort, service-tier and edit-policy pickers
+  (Q16); Grok paged-history probe (Q23).
