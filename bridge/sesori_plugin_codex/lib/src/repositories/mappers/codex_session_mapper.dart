@@ -19,6 +19,7 @@ class const CodexSessionMapper() {
     createdAt: record.createdAt?.millisecondsSinceEpoch,
     updatedAt: record.updatedAt?.millisecondsSinceEpoch,
     model: record.model,
+    reasoningEffort: null,
     modelProvider: record.modelProvider,
     parentId: record.parentId,
     agentNickname: _usefulText(value: record.agentNickname),

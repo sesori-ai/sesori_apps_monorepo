@@ -22,6 +22,7 @@ sealed class CodexThreadEnvelopeDto with _$CodexThreadEnvelopeDto {
   const factory({
     required CodexThreadDto? thread,
     required String? model,
+    required String? reasoningEffort,
     required String? modelProvider,
     required String? cwd,
   }) = _CodexThreadEnvelopeDto;
@@ -37,6 +38,11 @@ sealed class CodexThreadDto with _$CodexThreadDto {
     required String? cwd,
     required num? createdAt,
     required num? updatedAt,
+
+    /// Current model and effort when loaded, otherwise the latest persisted
+    /// ones. Absent before codex-cli 0.167 and on `thread/started`.
+    required String? model,
+    required String? reasoningEffort,
     required String? modelProvider,
     required String? parentThreadId,
     required String? agentNickname,

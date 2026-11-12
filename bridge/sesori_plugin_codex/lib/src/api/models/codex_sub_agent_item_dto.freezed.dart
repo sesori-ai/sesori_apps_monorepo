@@ -224,13 +224,17 @@ $CodexSubAgentItemDtoCopyWith(CodexSubAgentItemDto _, $Res Function(CodexSubAgen
 @JsonSerializable(createToJson: false)
 
 class CodexSubAgentActivityItemDto implements CodexSubAgentItemDto {
-  const CodexSubAgentActivityItemDto({required this.id, @JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown, defaultValue: CodexSubAgentActivityKind.unknown) required this.kind, @JsonKey(fromJson: _textFromJson) required this.agentThreadId, @JsonKey(fromJson: _textFromJson) required this.agentPath,  String? $type}): $type = $type ?? 'subAgentActivity';
+  const CodexSubAgentActivityItemDto({required this.id, @JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown, defaultValue: CodexSubAgentActivityKind.unknown) required this.kind, @JsonKey(fromJson: _textFromJson) required this.agentThreadId, @JsonKey(fromJson: _textFromJson) required this.agentPath, @JsonKey(fromJson: _textFromJson) required this.model, @JsonKey(fromJson: _textFromJson) required this.reasoningEffort,  String? $type}): $type = $type ?? 'subAgentActivity';
   factory CodexSubAgentActivityItemDto.fromJson(Map<String, dynamic> json) => _$CodexSubAgentActivityItemDtoFromJson(json);
 
  final  String? id;
 @JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown, defaultValue: CodexSubAgentActivityKind.unknown) final  CodexSubAgentActivityKind kind;
 @JsonKey(fromJson: _textFromJson) final  String? agentThreadId;
 @JsonKey(fromJson: _textFromJson) final  String? agentPath;
+/// Resolved at sub-agent creation; only `started` activities carry them,
+/// and not before codex-cli 0.167.
+@JsonKey(fromJson: _textFromJson) final  String? model;
+@JsonKey(fromJson: _textFromJson) final  String? reasoningEffort;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -246,18 +250,18 @@ $CodexSubAgentActivityItemDtoCopyWith<CodexSubAgentActivityItemDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSubAgentActivityItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.agentThreadId, agentThreadId) || other.agentThreadId == agentThreadId)&&(identical(other.agentPath, agentPath) || other.agentPath == agentPath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSubAgentActivityItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.agentThreadId, agentThreadId) || other.agentThreadId == agentThreadId)&&(identical(other.agentPath, agentPath) || other.agentPath == agentPath)&&(identical(other.model, model) || other.model == model)&&(identical(other.reasoningEffort, reasoningEffort) || other.reasoningEffort == reasoningEffort));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,kind,agentThreadId,agentPath);
+    return Object.hash(runtimeType,id,kind,agentThreadId,agentPath,model,reasoningEffort);
 }
 
 @override
 String toString() {
-    return 'CodexSubAgentItemDto.subAgentActivity(id: $id, kind: $kind, agentThreadId: $agentThreadId, agentPath: $agentPath)';
+    return 'CodexSubAgentItemDto.subAgentActivity(id: $id, kind: $kind, agentThreadId: $agentThreadId, agentPath: $agentPath, model: $model, reasoningEffort: $reasoningEffort)';
 }
 
 
@@ -268,7 +272,7 @@ abstract mixin class $CodexSubAgentActivityItemDtoCopyWith<$Res> implements $Cod
   factory $CodexSubAgentActivityItemDtoCopyWith(CodexSubAgentActivityItemDto value, $Res Function(CodexSubAgentActivityItemDto) _then) = _$CodexSubAgentActivityItemDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id,@JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown, defaultValue: CodexSubAgentActivityKind.unknown) CodexSubAgentActivityKind kind,@JsonKey(fromJson: _textFromJson) String? agentThreadId,@JsonKey(fromJson: _textFromJson) String? agentPath
+ String? id,@JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown, defaultValue: CodexSubAgentActivityKind.unknown) CodexSubAgentActivityKind kind,@JsonKey(fromJson: _textFromJson) String? agentThreadId,@JsonKey(fromJson: _textFromJson) String? agentPath,@JsonKey(fromJson: _textFromJson) String? model,@JsonKey(fromJson: _textFromJson) String? reasoningEffort
 });
 
 
@@ -285,12 +289,14 @@ class _$CodexSubAgentActivityItemDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexSubAgentItemDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? kind = null,Object? agentThreadId = freezed,Object? agentPath = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? kind = null,Object? agentThreadId = freezed,Object? agentPath = freezed,Object? model = freezed,Object? reasoningEffort = freezed,}) {
   return _then(CodexSubAgentActivityItemDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as CodexSubAgentActivityKind,agentThreadId: freezed == agentThreadId ? _self.agentThreadId : agentThreadId // ignore: cast_nullable_to_non_nullable
 as String?,agentPath: freezed == agentPath ? _self.agentPath : agentPath // ignore: cast_nullable_to_non_nullable
+as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as String?,reasoningEffort: freezed == reasoningEffort ? _self.reasoningEffort : reasoningEffort // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
