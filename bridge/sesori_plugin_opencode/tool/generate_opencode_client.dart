@@ -442,24 +442,25 @@ class Codegen({
       }
     }
 
-    final sortedSchemas = selectedSchemas.toList()..sort();
+    for (final name in selectedSchemas.intersection(skipSchemas).toList()..sort()) {
+      log('SKIP $name (dotted equivalent exists)');
+    }
+    final sortedSchemas = selectedSchemas.difference(skipSchemas).toList()..sort();
+    final emittedSchemas = sortedSchemas.toSet();
     for (final name in sortedSchemas) {
-      if (skipSchemas.contains(name)) {
-        log('SKIP $name (dotted equivalent exists)');
-        continue;
-      }
       _writeModelFile(
         rawName: name,
         schema: readObject(schemas[name]),
-        implementsClass: _unionParentFor(rawName: name, selected: selectedSchemas),
+        implementsClass: _unionParentFor(rawName: name, selected: emittedSchemas),
       );
       log('model $name');
     }
 
+    // A parent that was skipped above, or never selected, gets a stub.
     final selectedParentClasses = sortedSchemas.map(_pascalFromSnake).toSet();
     final missingParentClasses = <String>{};
     for (final name in sortedSchemas) {
-      final parent = _unionParentFor(rawName: name, selected: selectedSchemas);
+      final parent = _unionParentFor(rawName: name, selected: emittedSchemas);
       if (parent != null && !selectedParentClasses.contains(parent)) {
         missingParentClasses.add(parent);
       }

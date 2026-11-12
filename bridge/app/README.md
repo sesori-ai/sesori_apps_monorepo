@@ -79,7 +79,7 @@ to see their combined options. The OpenCode plugin adds:
 | `--opencode-host` | `127.0.0.1` | Host the OpenCode server binds to (managed mode) or is reached at (`--opencode-no-auto-start`). Use `0.0.0.0` to expose it on all interfaces, e.g. inside a Docker container. **Warning:** a non-loopback host exposes the server to your network. |
 | `--opencode-no-auto-start` | `false` | Skip spawning OpenCode; attach to an existing server on `--opencode-port` |
 | `--opencode-password` | *(auto-generated)* | Override the OpenCode server password |
-| `--opencode-no-password` | `false` | Disable OpenCode server authentication (OpenCode v1 only; every v2 server requires a password, so the v2 plugin fails to start with this flag). Rejected when combined with a non-loopback `--opencode-host` in managed mode (it would expose an unauthenticated server). |
+| `--opencode-no-password` | `false` | Disable OpenCode server authentication (OpenCode v1 only; every v2 server requires a password, so the flag is ignored when the bridge uses the OpenCode 2 shared service, and a private v2 server fails to start with it). Rejected when combined with a non-loopback `--opencode-host` in managed mode (it would expose an unauthenticated server). |
 | `--opencode-bin` | `opencode` | Path to the OpenCode binary. Setting it also turns off the shared background server. |
 | `--opencode-no-shared-service` | `false` | Do not use OpenCode 2's shared background server (`opencode serve --service`); always spawn the bridge's own server. |
 
