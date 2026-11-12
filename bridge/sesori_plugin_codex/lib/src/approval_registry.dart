@@ -588,11 +588,40 @@ class ApprovalRegistry({
   /// Human-readable description for a permission ask, shared by the
   /// `PermissionAsked` event and the pending-permission snapshot so the two
   /// never drift.
-  String _permissionDescriptionFor({required _PendingApproval entry}) => switch (entry.params["reason"]) {
-    null => _descriptionFallback(method: entry.method, params: entry.params),
-    final String reason => reason,
-    _ => throw const FormatException("Codex approval reason is not a string"),
-  };
+  ///
+  /// A command approval always shows the exact command (and its working
+  /// directory when codex sends one) ahead of codex's reason: the user must
+  /// see what they are approving. The command goes in an indented Markdown
+  /// code block so the client renders it verbatim, line breaks included, and
+  /// its first line still summarises the request in single-line surfaces.
+  String _permissionDescriptionFor({required _PendingApproval entry}) {
+    final reason = switch (entry.params["reason"]) {
+      null => null,
+      final String reason => reason,
+      _ => throw const FormatException("Codex approval reason is not a string"),
+    };
+    final command = entry.params["command"];
+    if (command is! String || command.trim().isEmpty) {
+      return reason ?? _descriptionFallback(method: entry.method, params: entry.params);
+    }
+    final cwd = entry.params["cwd"];
+    return [
+      command.split("\n").map((line) => "    $line").join("\n"),
+      if (cwd is String && cwd.isNotEmpty) "Working directory: ${_markdownCodeSpan(text: cwd)}",
+      if (reason != null && reason.isNotEmpty) reason,
+    ].join("\n\n");
+  }
+
+  /// Wraps [text] in a Markdown code span whose backtick fence is longer than
+  /// any backtick run inside it, so the text renders literally.
+  static String _markdownCodeSpan({required String text}) {
+    final longestRun = RegExp("`+").allMatches(text).fold(0, (longest, match) {
+      final run = match.end - match.start;
+      return run > longest ? run : longest;
+    });
+    final fence = "`" * (longestRun + 1);
+    return longestRun == 0 ? "$fence$text$fence" : "$fence $text $fence";
+  }
 
   /// Builds the JSON-RPC result payload for a permission reply, keyed by the
   /// request's wire method:
@@ -668,14 +697,9 @@ class ApprovalRegistry({
   }
 
   String _descriptionFallback({required String method, required Map<String, dynamic> params}) {
-    // A command/exec approval carries the command to run as a single string;
-    // file-change and permission approvals carry only an explanatory `reason`
-    // (the touched files / diff arrive on the correlated `item/*`
-    // notification, not on the approval request itself).
-    final command = params["command"];
-    if (command is String && command.isNotEmpty) return command;
-    final reason = params["reason"];
-    if (reason is String && reason.isNotEmpty) return reason;
+    // Reached only without a command or reason. File-change approvals carry
+    // their touched files / diff on the correlated `item/*` notification, not
+    // on the approval request itself.
     final message = params["message"];
     if (message is String && message.isNotEmpty) return message;
     return method;

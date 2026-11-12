@@ -50,7 +50,12 @@ reaches the backend so the turn continues.
   shows a generic action heading, the complete backend tool label and selectable,
   copyable Markdown description, then full-width stacked **Allow**, optional
   **Always approve**, and **Don’t allow** actions. **Allow** means once only.
-  Long details normally scroll above visible actions. When the viewport is
+  Code blocks in the description wrap rather than side-scroll, so no part of
+  an approved command sits off-screen. A Codex command approval shows the
+  exact command verbatim in such a block, then its working directory when
+  sent, then Codex's reason; the needs-you card and push lead with the command's
+  first line. Failure signal: a Codex approval showing only `exec` and a
+  reason. Long details normally scroll above visible actions. When the viewport is
   cramped relative to the text scale, the whole sheet scrolls so every decision
   remains reachable; enlarged text can cause this breakpoint to be crossed.
   Keyboard and safe-area insets keep the floating surface clear of system UI.
