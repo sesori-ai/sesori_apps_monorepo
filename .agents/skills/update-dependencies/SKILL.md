@@ -503,7 +503,7 @@ Update the `fastlane` gem constraint in both Gemfiles if a newer minor version i
 - `client/app/ios/Gemfile`
 - `client/app/android/Gemfile`
 
-Do NOT touch any `cocoapods` gem entry — Sesori does not use CocoaPods. If a `cocoapods` line is still present in `client/app/ios/Gemfile`, leave it alone (it's an inert holdover); do not bump it.
+Do NOT add a `cocoapods` gem — Sesori does not use CocoaPods, and neither Gemfile lists it.
 </step>
 
 <step name="5.4">Update Gemfile.lock for iOS:
@@ -587,7 +587,7 @@ Report this list at the end of the update process for visibility.
 - `(cd shared && make analyze)`, `(cd bridge && make analyze)`, `(cd client && make analyze)` all pass
 - `(cd shared && make test)`, `(cd bridge && make test)`, `(cd client && make test)` all pass
 - `(cd shared && make codegen)`, `(cd bridge && make codegen)`, `(cd client && make codegen)` all complete cleanly
-- Fastlane and Gemfile.lock updated for both iOS and Android (no `cocoapods` bumps — SPM only)
+- Fastlane and Gemfile.lock updated for both iOS and Android (no `cocoapods` gem — SPM only)
 - Conflict list documented in commit message
 - No uncommitted changes remain
 </success_criteria>

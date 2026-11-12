@@ -37,10 +37,6 @@ on:
       SINGULAR_SDK_SECRET:
         required: true
 
-# Xcode is selected by the shared setup-xcode action; CocoaPods remains pinned here.
-env:
-  COCOAPODS_VERSION: '1.16.2'
-
 jobs:
   deploy:
     name: Build and Deploy to TestFlight
@@ -74,11 +70,6 @@ jobs:
         id: xcode
         uses: ./.github/actions/setup-xcode
 
-      - name: Install specific CocoaPods version
-        run: |
-          gem install cocoapods -v ${{ env.COCOAPODS_VERSION }}
-          pod --version
-
       - name: Setup Flutter
         uses: ./.github/actions/setup-flutter
 
@@ -98,14 +89,6 @@ jobs:
         with:
           path: ~/Library/Caches/org.swift.swiftpm/artifacts/https___github_com_*
           key: swiftpm-github-artifacts-ios-${{ hashFiles('client/app/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved', 'client/pubspec.lock') }}
-
-      - name: Cache CocoaPods
-        uses: actions/cache@v5
-        with:
-          path: client/app/ios/Pods
-          key: ${{ runner.os }}-pods-${{ env.COCOAPODS_VERSION }}-${{ hashFiles('client/app/ios/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-${{ env.COCOAPODS_VERSION }}-
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -195,6 +178,5 @@ jobs:
             echo ""
             echo "- **Version**: ${VERSION} (${BUILD_NUMBER})"
             echo "- **Xcode**: ${{ steps.xcode.outputs.version }}"
-            echo "- **CocoaPods**: ${{ env.COCOAPODS_VERSION }}"
             echo "- **Commit**: \`${{ github.sha }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
