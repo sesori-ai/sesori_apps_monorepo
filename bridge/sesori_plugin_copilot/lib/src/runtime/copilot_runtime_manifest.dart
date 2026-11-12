@@ -100,6 +100,11 @@ class const CopilotRuntimeManifest() extends RuntimeManifest {
     return SemanticRuntimeVersion.tryParse(value: candidate);
   }
 
+  // The launcher can hand off to a newer package it cached; the session runs
+  // with `--no-auto-update`, so the probe must too to report the same binary.
+  @override
+  List<String> get versionProbeArguments => const ["--no-auto-update", "--version"];
+
   @override
   RuntimeAsset? assetFor({required PlatformTarget target}) => _assets[target.os]?[target.arch];
 

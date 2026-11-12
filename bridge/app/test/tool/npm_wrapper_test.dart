@@ -1477,6 +1477,14 @@ process.stdout.write(JSON.stringify({ out: chunks.join("") }));
       expect(out, contains('Next steps'));
     });
 
+    test('suppresses ANSI escapes under FORCE_COLOR=0 and FORCE_COLOR=false on a terminal', () async {
+      for (final value in ['0', 'false']) {
+        final out = await renderUi(env: {'FORCE_COLOR': value, 'TERM': 'xterm-256color', 'LANG': 'en_US.UTF-8'});
+        expect(out, isNot(contains('\u001b[')), reason: 'FORCE_COLOR=$value');
+        expect(out, contains('Downloading release'));
+      }
+    });
+
     test('falls back to ASCII glyphs in a non-UTF-8 locale', () async {
       final out = await renderUi(env: {'FORCE_COLOR': '1', 'LANG': 'C', 'LC_ALL': 'C'});
       // ASCII success marker + ASCII box, no Unicode block/check chars.
