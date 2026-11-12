@@ -280,7 +280,12 @@ void main() {
   }
 
   test("known RPC rejection settles a typed failure retaining its cause", () async {
-    final cause = CodexRpcException(method: "mcpServer/oauth/login", code: -32600, message: "fixture rejection");
+    final cause = CodexRpcException(
+      method: "mcpServer/oauth/login",
+      code: -32600,
+      message: "fixture rejection",
+      data: null,
+    );
     harness.transport.loginResponse = cause;
     final events = await (await harness.begin()).events.toList();
     final failure = events.single as PluginMcpAuthenticationFailed;

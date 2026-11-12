@@ -44,6 +44,11 @@ sealed class CodexSubAgentItemDto with _$CodexSubAgentItemDto {
     required CodexSubAgentActivityKind kind,
     @JsonKey(fromJson: _textFromJson) required String? agentThreadId,
     @JsonKey(fromJson: _textFromJson) required String? agentPath,
+
+    /// Resolved at sub-agent creation; only `started` activities carry them,
+    /// and not before codex-cli 0.167.
+    @JsonKey(fromJson: _textFromJson) required String? model,
+    @JsonKey(fromJson: _textFromJson) required String? reasoningEffort,
   }) = CodexSubAgentActivityItemDto;
 
   const factory unknown() = CodexUnknownSubAgentItemDto;

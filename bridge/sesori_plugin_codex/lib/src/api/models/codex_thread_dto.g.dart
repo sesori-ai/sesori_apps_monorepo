@@ -14,6 +14,7 @@ _CodexThreadEnvelopeDto _$CodexThreadEnvelopeDtoFromJson(Map json) =>
               Map<String, dynamic>.from(json['thread'] as Map),
             ),
       model: json['model'] as String?,
+      reasoningEffort: json['reasoningEffort'] as String?,
       modelProvider: json['modelProvider'] as String?,
       cwd: json['cwd'] as String?,
     );
@@ -24,6 +25,8 @@ _CodexThreadDto _$CodexThreadDtoFromJson(Map json) => _CodexThreadDto(
   cwd: json['cwd'] as String?,
   createdAt: json['createdAt'] as num?,
   updatedAt: json['updatedAt'] as num?,
+  model: json['model'] as String?,
+  reasoningEffort: json['reasoningEffort'] as String?,
   modelProvider: json['modelProvider'] as String?,
   parentThreadId: json['parentThreadId'] as String?,
   agentNickname: json['agentNickname'] as String?,

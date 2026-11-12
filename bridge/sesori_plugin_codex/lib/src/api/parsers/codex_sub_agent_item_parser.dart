@@ -24,7 +24,14 @@ class const CodexSubAgentItemParser() {
       final threadId = _usefulText(value: params.threadId);
       if (threadId == null) return null;
       switch (params.item) {
-        case CodexSubAgentActivityItemDto(:final id, :final kind, :final agentThreadId, :final agentPath):
+        case CodexSubAgentActivityItemDto(
+          :final id,
+          :final kind,
+          :final agentThreadId,
+          :final agentPath,
+          :final model,
+          :final reasoningEffort,
+        ):
           final itemId = _usefulText(value: id);
           final childId = _usefulText(value: agentThreadId);
           if (itemId == null || childId == null) return null;
@@ -36,6 +43,8 @@ class const CodexSubAgentItemParser() {
             kind: kind,
             agentThreadId: childId,
             agentPath: _usefulText(value: agentPath),
+            model: _usefulText(value: model),
+            reasoningEffort: _usefulText(value: reasoningEffort),
           );
         case CodexUnknownSubAgentItemDto():
           return null;

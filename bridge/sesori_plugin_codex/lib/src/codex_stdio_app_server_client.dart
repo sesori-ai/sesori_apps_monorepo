@@ -66,6 +66,7 @@ class CodexStdioAppServerClient({
           method: "initialize",
           code: -32603,
           message: "expected object result, got ${raw.runtimeType}",
+          data: null,
         );
       }
       final result = CodexInitializeResult.fromJson(raw.cast<String, dynamic>());
@@ -100,6 +101,7 @@ class CodexStdioAppServerClient({
         method: method,
         code: code is int ? code : -32603,
         message: message is String ? message : "unknown error",
+        data: error?["data"],
       );
     }
     return response["result"];
