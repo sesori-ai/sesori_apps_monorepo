@@ -206,6 +206,15 @@ void main() {
 
         expect(cleanupError, isA<TimeoutException>());
         expect(resumed, isTrue);
+        // The FID is re-sent, so the abandoned delete cannot leave a signed-in
+        // user without a server registration.
+        expect(
+          repository.registeredFids,
+          equals([
+            const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android),
+            const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android),
+          ]),
+        );
 
         unawaited(service.dispose());
         async.flushMicrotasks();

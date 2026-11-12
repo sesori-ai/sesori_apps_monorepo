@@ -1200,6 +1200,49 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets("a failed logout shows the analytics state that finished meanwhile", (tester) async {
+    _useTallSurface(tester);
+    productAnalyticsStates.add(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
+        synchronization: ProductAnalyticsEnableRequestInProgress(),
+        availability: ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.synchronizationPending),
+      ),
+    );
+    final logoutFailure = Completer<void>();
+    when(authSession.logoutCurrentDevice).thenAnswer((_) => logoutFailure.future);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Account").last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Log out"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("logout_confirm_action")));
+    await tester.pumpAndSettle();
+    // The save finishes while logout is still running.
+    productAnalyticsStates.add(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
+        synchronization: ProductAnalyticsSynchronized(),
+        availability: ProductAnalyticsActive(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("Saving preference…"), findsOneWidget);
+
+    logoutFailure.completeError(StateError("logout failed"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Saving preference…"), findsNothing);
+    await tester.tap(find.byType(PregoSwitch));
+    await tester.pump();
+    verify(
+      () => productAnalyticsService.setPreference(preference: ProductAnalyticsPreference.disabled),
+    ).called(1);
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("Log out asks first, and Cancel keeps the account signed in", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));

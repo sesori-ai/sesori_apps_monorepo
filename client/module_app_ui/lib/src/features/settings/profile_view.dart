@@ -36,7 +36,7 @@ class _ProfileViewState() extends State<ProfileView> {
   /// leaves. Logout clears the session while this screen is still visible, so
   /// the screen keeps the account captured here, and the analytics row its
   /// last state, instead of changing under the user.
-  ({AuthUser? account})? _loggingOut;
+  ({AuthUser? account, ProductAnalyticsState analytics})? _loggingOut;
 
   bool get _isLoggingOut => _loggingOut != null;
 
@@ -49,7 +49,12 @@ class _ProfileViewState() extends State<ProfileView> {
       builder: (_) => const _LogoutConfirmation(),
     );
     if (!mounted || confirmed != true || _isLoggingOut) return;
-    setState(() => _loggingOut = (account: widget.account));
+    setState(
+      () => _loggingOut = (
+        account: widget.account,
+        analytics: context.read<ProductAnalyticsPreferenceCubit>().state,
+      ),
+    );
 
     final bool succeeded;
     try {
@@ -86,7 +91,7 @@ class _ProfileViewState() extends State<ProfileView> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final account = switch (_loggingOut) {
-      (:final account) => account,
+      (:final account, analytics: _) => account,
       null => widget.account,
     };
 
@@ -111,9 +116,15 @@ class _ProfileViewState() extends State<ProfileView> {
                 ],
                 SettingsSection(
                   title: loc.settingsSectionAnalytics,
+                  // Always tracks the cubit, so a failed logout shows its current state.
                   child: BlocBuilder<ProductAnalyticsPreferenceCubit, ProductAnalyticsState>(
-                    buildWhen: (_, _) => !_isLoggingOut,
-                    builder: (_, state) => _ProductAnalyticsPreferenceRow(state: state, blocked: _isLoggingOut),
+                    builder: (_, state) => _ProductAnalyticsPreferenceRow(
+                      state: switch (_loggingOut) {
+                        (account: _, :final analytics) => analytics,
+                        null => state,
+                      },
+                      blocked: _isLoggingOut,
+                    ),
                   ),
                 ),
                 const SizedBox(height: PregoSpacing.xl),

@@ -113,9 +113,12 @@ class NotificationRegistrationService({
 
     final fid = _latestFid;
     if (fid == null) return;
+    // Cleared before the request: once the deadline passes it finishes in the
+    // background, and a failed logout's resumed registration must re-send the
+    // FID rather than skip it as already registered.
+    _registeredFid = null;
     try {
       await _repository.unregisterFid(fid: fid);
-      _registeredFid = null;
       logi("Push FID ${_fidForLog(fid)} unregistered from the server for logout");
     } catch (error, stackTrace) {
       logw("Failed to unregister push FID during logout", error, stackTrace);
