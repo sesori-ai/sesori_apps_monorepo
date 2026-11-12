@@ -439,7 +439,7 @@ void main() {
           "id": "root-permission",
           "sessionID": root.id,
           "action": "shell",
-          "resources": <String>["ls"],
+          "resources": const <String>["ls"],
         }),
       ],
       forms: [],
