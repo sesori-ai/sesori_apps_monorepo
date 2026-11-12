@@ -210,6 +210,41 @@ void main() {
       expect(TranscriptLatestWords.latestWords(text: text), "${"a" * 147} newest words");
     });
 
+    test("shows Markdown as it renders, not its markers", () {
+      expect(
+        TranscriptLatestWords.latestWords(text: "**Planning the reply**\n\nI will run `say hello` now"),
+        "Planning the reply I will run say hello now",
+      );
+    });
+
+    test("never leaves a closing marker behind when the window cuts into a line", () {
+      final text = "**Planning the reply**\n\n${"word " * 30}done";
+
+      final words = TranscriptLatestWords.latestWords(text: text);
+
+      expect(words, isNot(contains("*")));
+      expect(words, endsWith("word done"));
+    });
+
+    test("resolves an emphasis that spans lines of one paragraph", () {
+      final text = "**${"word " * 20}\n${"more " * 40}end**";
+
+      expect(TranscriptLatestWords.latestWords(text: text), allOf(isNot(contains("*")), endsWith("more end")));
+    });
+
+    test("keeps the end of a very long one-line thought", () {
+      final text = "${"long " * 2000}newest words";
+
+      expect(TranscriptLatestWords.latestWords(text: text), endsWith("long newest words"));
+    });
+
+    test("hides the opening marker of a title that is still streaming", () {
+      expect(TranscriptLatestWords.latestWords(text: "**Planning th"), "Planning th");
+      expect(TranscriptLatestWords.latestWords(text: "Done.\n\n**Next st"), "Done. Next st");
+      expect(TranscriptLatestWords.latestWords(text: "- item\n* another"), "item another");
+      expect(TranscriptLatestWords.latestWords(text: "Run `**kwargs"), "Run `**kwargs");
+    });
+
     test("never starts on an orphaned UTF-16 low surrogate", () {
       // The cut lands between the emoji's two code units.
       final text = "${"x" * 10}😀${"y" * 159}";
