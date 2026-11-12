@@ -47,22 +47,22 @@ void main() {
       routerReady: desktopRouterReady,
     );
     // Keep widget behavior isolated from real application files/native keys.
-    getIt.unregister<SecureStorageRepository>();
+    await getIt.unregister<SecureStorageRepository>();
     getIt.registerLazySingleton<SecureStorageRepository>(_InMemorySecrets.new);
     final persister = _MockPersister();
     when(() => persister.readBool(key: BoolPreferenceKey.hasRegisteredBridges)).thenAnswer((_) async => null);
     when(() => persister.writeString(key: StringPreferenceKey.appearanceMode, value: "light")).thenAnswer((_) async {});
-    getIt.unregister<PersisterRepository>();
+    await getIt.unregister<PersisterRepository>();
     getIt.registerLazySingleton<PersisterRepository>(() => persister);
     final _UnavailableSystemTray systemTray = _UnavailableSystemTray();
-    getIt.unregister<SystemTray>();
+    await getIt.unregister<SystemTray>();
     getIt.registerLazySingleton<SystemTray>(() => systemTray);
-    getIt.unregister<DesktopApplicationTerminator>();
+    await getIt.unregister<DesktopApplicationTerminator>();
     getIt.registerLazySingleton<DesktopApplicationTerminator>(_FakeApplicationTerminator.new);
     final _FakeWindowHost windowHost = _FakeWindowHost();
-    getIt.unregister<WindowHost>();
+    await getIt.unregister<WindowHost>();
     getIt.registerLazySingleton<WindowHost>(() => windowHost);
-    getIt.unregister<LaunchAtLogin>();
+    await getIt.unregister<LaunchAtLogin>();
     getIt.registerLazySingleton<LaunchAtLogin>(_FakeLaunchAtLogin.new);
 
     await tester.pumpWidget(

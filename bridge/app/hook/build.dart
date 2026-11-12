@@ -12,7 +12,7 @@ void main(List<String> args) async {
       "-dynamiclib",
       "-fblocks",
       "-O2",
-      "-mmacos-version-min=${input.config.code.macOS.targetVersion}",
+      "-mmacos-version-min=${input.config.code.macOS.deploymentVersion.major}",
       "-framework",
       "IOKit",
       "-framework",

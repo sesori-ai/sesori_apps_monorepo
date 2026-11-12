@@ -299,7 +299,9 @@ void main() {
   });
 
   test("chmod resolves through the supplied PATH instead of a fixed filesystem location", () async {
-    if (Platform.isWindows) return;
+    // Dart 3.14 spawns with posix_spawn on macOS, which resolves a bare
+    // command against the parent's PATH, so a child-PATH shim is never seen.
+    if (Platform.isWindows || Platform.isMacOS) return;
     final bin = Directory(p.join(temp.path, "coreutils"))..createSync();
     final marker = File(p.join(temp.path, "chmod-invoked"));
     final shim = File(p.join(bin.path, "chmod"));

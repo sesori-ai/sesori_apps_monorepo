@@ -974,7 +974,8 @@ void main() {
     expect(tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>(), same(cubit));
     await tester.tap(find.text("OpenCode"));
     await tester.pumpAndSettle();
-    await tester.tap(find.bySemanticsLabel("Close settings"));
+    // Flutter 3.50 also exposes the modal barrier under this label; the button is last.
+    await tester.tap(find.bySemanticsLabel("Close settings").last);
     await tester.pumpAndSettle();
     expect(router.state.uri.path, "/session");
     expect(tester.element(find.text("open")), same(opener));

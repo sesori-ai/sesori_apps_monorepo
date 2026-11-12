@@ -783,7 +783,8 @@ void main() {
         tester.widget<HarnessesSettingsView>(find.byType(HarnessesSettingsView)).onOpenHarness(pluginId: "removed");
         await tester.pumpAndSettle();
       }
-      await tester.tap(find.bySemanticsLabel("Close settings"));
+      // Flutter 3.50 also exposes the modal barrier under this label; the button is last.
+      await tester.tap(find.bySemanticsLabel("Close settings").last);
       await tester.pumpAndSettle();
       expect(tester.element(find.byType(DesktopNewSessionView)), same(opener));
       expect(tester.element(find.byType(PromptInput)), same(composer));

@@ -1,3 +1,6 @@
+// The source still wraps the token API that firebase_messaging 17 deprecates.
+// ignore_for_file: deprecated_member_use
+
 import "dart:async";
 
 import "package:firebase_messaging/firebase_messaging.dart";

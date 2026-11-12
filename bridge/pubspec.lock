@@ -5,18 +5,18 @@ packages:
     dependency: transitive
     description:
       name: _fe_analyzer_shared
-      sha256: "9bfb8122e2505aca17219018593c384a87166cfe860d11c7ae927e7f978eb05f"
+      sha256: "1c5591cc6f252d5f440d96ab87c03e43504be552a3fa49d7cb7563f04c51fb0a"
       url: "https://pub.dev"
     source: hosted
-    version: "110.0.0"
+    version: "111.0.0"
   analyzer:
     dependency: transitive
     description:
       name: analyzer
-      sha256: "74c36179c4de542efea24c9dff78324375e4b118a2c1e14e8a7659f457947f8d"
+      sha256: "6c39bd5486a310e56217bed7cb1691377959f31be4227e41750107db7e6dd55c"
       url: "https://pub.dev"
     source: hosted
-    version: "14.6.0"
+    version: "14.7.0"
   analyzer_buffer:
     dependency: transitive
     description:
@@ -29,10 +29,10 @@ packages:
     dependency: transitive
     description:
       name: archive
-      sha256: "0d58d1fa1fddf6588251ccf2819f3fb3b6d0452c1b2813ac7413a05592bfbefe"
+      sha256: de5ac590b8155e4e676088d714bd41ea620449a6adc0f7950c5073874b287ddb
       url: "https://pub.dev"
     source: hosted
-    version: "4.5.2"
+    version: "4.6.0"
   args:
     dependency: transitive
     description:
@@ -149,10 +149,10 @@ packages:
     dependency: transitive
     description:
       name: code_assets
-      sha256: "828110d598123b5ea96c00c9f3c72105bf79f8ee36c20a39b26209ade421ec57"
+      sha256: "1ef22a0be3af9370bd9481ac76db114db92bfe75d5ca2b2d7bc911764478a4d9"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "2.2.0"
   collection:
     dependency: transitive
     description:
@@ -205,18 +205,18 @@ packages:
     dependency: transitive
     description:
       name: drift
-      sha256: "3179e7323b36d1852b42997b92ac72e8abcb61b1d58cfa8c6da9b540ab02a540"
+      sha256: "3eafa443c385724806a8648129583b4b140b7472f3feb6d1f321bdcf0fc853d4"
       url: "https://pub.dev"
     source: hosted
-    version: "2.35.3"
+    version: "2.35.4"
   drift_dev:
     dependency: transitive
     description:
       name: drift_dev
-      sha256: ff4201b38dfbbbc85ffcd85597ad63c7146d2303126241623ebfce89fc4c4bfe
+      sha256: "9a0fc61d9c32f4edf7d7b239a41ef00de4dc85634aaf9bbf6fbd80b924415671"
       url: "https://pub.dev"
     source: hosted
-    version: "2.35.2"
+    version: "2.35.3"
   fake_async:
     dependency: transitive
     description:
@@ -397,10 +397,10 @@ packages:
     dependency: transitive
     description:
       name: native_toolchain_c
-      sha256: "90eaad8059ebc2004a63810a4696ea9acdb02473e47ed3b6b3bafb100ac77e31"
+      sha256: "120b6fc66acd8a5ddeaeb1e59b78836bb3ec9919bd9d9dfb1e2401985710c2c0"
       url: "https://pub.dev"
     source: hosted
-    version: "0.19.5"
+    version: "0.19.6"
   node_preamble:
     dependency: transitive
     description:
@@ -445,10 +445,10 @@ packages:
     dependency: transitive
     description:
       name: posix
-      sha256: "6312deb534ce3812a1b454143740ffe721a17dc3a33bfc978f3a6d7bc5833edf"
+      sha256: "613646d076944f3acc125830af935b48d4b8a57a388691547bbfd25b434f4d63"
       url: "https://pub.dev"
     source: hosted
-    version: "6.5.3"
+    version: "6.5.4"
   process:
     dependency: transitive
     description:
@@ -477,10 +477,10 @@ packages:
     dependency: transitive
     description:
       name: qr
-      sha256: "5adccca7f0274326125fcdbf97328f5d6b1b2d7fb8a52a01cef9f40d96a759d9"
+      sha256: f9461594b257c2ec882159fb8100db28408f6aacdba5b21f109708bce2e482b6
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.0"
+    version: "4.0.1"
   recase:
     dependency: transitive
     description:
@@ -588,10 +588,10 @@ packages:
     dependency: transitive
     description:
       name: sqlite3
-      sha256: "5340531ad17f386ae444873f643f281060b6238cc702edeee6b1e90bc4c6874e"
+      sha256: "8765980411f9b6733534efe9d014fad0750fa649590598772c04692deb34886b"
       url: "https://pub.dev"
     source: hosted
-    version: "3.8.0"
+    version: "3.9.1"
   sqlparser:
     dependency: transitive
     description:
@@ -753,4 +753,4 @@ packages:
     source: hosted
     version: "2.2.4"
 sdks:
-  dart: ">=3.13.7 <4.0.0"
+  dart: ">=3.14.0 <4.0.0"

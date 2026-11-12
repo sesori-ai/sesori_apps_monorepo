@@ -33,10 +33,15 @@ void main() {
     ]).timeout(const Duration(minutes: 2));
     expect(compiled.exitCode, 0, reason: "${compiled.stdout}\n${compiled.stderr}");
 
-    for (final executable in [binary, if (!Platform.isWindows) p.basename(binary)]) {
+    // The PATH launch goes through /bin/sh: Dart 3.14 on macOS resolves a bare
+    // command against the parent's PATH, not the one supplied to the child.
+    for (final (executable, arguments) in [
+      (binary, ["implicit"]),
+      if (!Platform.isWindows) ("/bin/sh", ["-c", r'exec "$0" "$@"', p.basename(binary), "implicit"]),
+    ]) {
       final result = await Process.run(
         executable,
-        ["implicit"],
+        arguments,
         environment: {"PATH": output.path},
       ).timeout(const Duration(seconds: 30));
       expect(result.exitCode, 0, reason: "${result.stdout}\n${result.stderr}");
