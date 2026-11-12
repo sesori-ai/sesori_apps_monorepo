@@ -109,8 +109,13 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   @override
   Future<void> register() async {
     if (_isApplePlatform()) {
-      for (var i = 0; i < 5 && await _messaging.getAPNSToken() == null; i++) {
+      var apnsToken = await _messaging.getAPNSToken();
+      for (var i = 0; i < 5; i++) {
+        if (apnsToken != null) {
+          break;
+        }
         await _delay(const Duration(seconds: 1));
+        apnsToken = await _messaging.getAPNSToken();
       }
     }
     await _messaging.register();
