@@ -152,27 +152,35 @@ void main() {
   const available = FastModeSupport.available(promptCacheTtlSeconds: 1800);
 
   _clockTestWidgets("an idle session with a warm prompt cache shows the chip", (tester) async {
-    await _pumpControls(tester: tester, state: _state(tester: tester, fastMode: available));
+    await _pumpControls(
+      tester: tester,
+      state: _state(tester: tester, fastMode: available),
+    );
 
     expect(find.byType(SessionPromptCacheChip), findsOneWidget);
+    expect(find.descendant(of: find.byType(SessionPromptCacheChip), matching: find.text("29 min")), findsOneWidget);
 
     // Disposal cancels the chip's timer.
     await tester.pumpWidget(const SizedBox());
   });
 
-  _clockTestWidgets("a busy session hides the chip", (tester) async {
+  _clockTestWidgets("a busy session keeps the chip, reading warm while the turn uses the cache", (tester) async {
     await _pumpControls(
       tester: tester,
       state: _state(tester: tester, fastMode: available).copyWith(sessionStatus: const SessionStatus.busy(since: 1)),
     );
 
-    expect(find.byType(SessionPromptCacheChip), findsNothing);
+    expect(find.byType(SessionPromptCacheChip), findsOneWidget);
+    expect(find.descendant(of: find.byType(SessionPromptCacheChip), matching: find.text("Warm")), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
   });
 
   _clockTestWidgets("a model without a known cache lifetime hides the chip", (tester) async {
-    await _pumpControls(tester: tester, state: _state(tester: tester, fastMode: null));
+    await _pumpControls(
+      tester: tester,
+      state: _state(tester: tester, fastMode: null),
+    );
 
     expect(find.byType(SessionPromptCacheChip), findsNothing);
 

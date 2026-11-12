@@ -585,20 +585,29 @@ variant, and worktree mode, and creating the session with its first input.
 ### Prompt-cache warmth chip
 
 - Session detail's composer controls show a chip with the backend's prompt-cache
-  warmth: `Cache warm · N min` while last activity plus the selected model's
-  `promptCacheTtlSeconds` is in the future, counting down by the minute and
-  showing `<1 min` in the final minute, then `Cache cold` from exactly that
-  moment. Last activity is derived as for the fast-mode confirmation.
-- The chip is hidden when the selected model has no available fast-mode support
-  with a lifetime, when the session has no history, and while the session is
-  busy or retrying; it reappears with the recomputed state once the session is
-  idle.
+  warmth: a compact label next to a flame (warm) or snowflake (cold) icon.
+  It reads `N min` (floored minutes, counting down) while last activity plus
+  the selected model's `promptCacheTtlSeconds` is in the future, `<1 min` in
+  the final minute, then `Cold` from exactly that moment. Last activity is
+  derived as for the fast-mode confirmation.
+- While the session is busy the chip stays and reads `Warm` with no countdown,
+  since the current turn is using the cache. A retrying session counts down
+  like an idle one.
+- The chip is hidden only when the selected model has no available fast-mode
+  lifetime, the session has no history, or there is no model activity yet.
+- The chip keeps one constant width in every state, so the picker row never
+  reflows as it ticks, flips to cold, or enters or leaves a turn.
+- Each state has its own tooltip, which explains that sending after the cache
+  goes cold re-reads the whole conversation.
 - Coverage: Claude (60 minutes) and Codex (30 minutes) models with available
   fast mode only; every other harness reports no lifetime and shows no chip
   (see `docs/HARNESS_CAPABILITIES.md`). The behavior is client-only with no
   transport boundary: the calculator's cold-time matrix (no lifetime, no
-  history, no activity, exact expiry boundary) runs as unit tests, and the
-  chip's warm, final-minute, cold-flip, and hidden states run as widget tests.
+  history, no activity, exact expiry boundary) runs as unit tests; the chip's
+  warm, final-minute, cold-flip, in-use, constant-width, and
+  no-pending-timer-once-cold cases run as widget tests; and composer
+  visibility (idle countdown, busy `Warm`, hidden without a lifetime) runs as
+  widget tests.
 
 ## Regression Levels
 
@@ -796,9 +805,9 @@ startup-extension file failure, retry once the filesystem is usable.
   switches without confirmation while the prompt cache is warm; the choice is
   lost on reopen or not synchronized from another surface.
 - The prompt-cache chip shows for a model without an available fast-mode
-  lifetime, a session without history, or a busy or retrying session; it
-  reads warm after the lifetime has passed or cold before it, freezes its
-  minute count, or skips the `<1 min` final minute.
+  lifetime or a session without history; it reads warm after the lifetime has
+  passed or cold before it, disappears during a turn, changes width between
+  states, freezes its minute count, or skips the `<1 min` final minute.
 
 ## Known Limitations
 

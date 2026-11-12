@@ -242,8 +242,9 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
   }
 
   /// Quiet session states beside the pickers: the session's approval mode,
-  /// auto-continuation while it is enabled but not due, and how long the
-  /// prompt cache stays warm while the session is idle.
+  /// auto-continuation while it is enabled but not due, and the prompt cache
+  /// whenever its lifetime is known: in use while busy, otherwise counting
+  /// down. It stays through every turn so the pickers never resize.
   List<Widget> _statusChips({
     required SessionDetailLoaded state,
     required PregoComposerSurfaceStyle surfaceStyle,
@@ -254,7 +255,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     final continuation = view != null && view.enabled && !sessionAutoContinuationNoticeVisible(view: view)
         ? view
         : null;
-    final promptCacheColdAt = state.sessionStatus is SessionStatusIdle ? state.promptCacheColdAt : null;
+    final promptCacheColdAt = state.promptCacheColdAt;
     return [
       // Touch status chips stay glyphs so the shared-width pickers keep their labels.
       ?switch (state.approvalControl) {
@@ -280,7 +281,12 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
           updating: state.isUpdatingAutoContinuation,
           onDisable: () => unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: false)),
         ),
-      if (promptCacheColdAt != null) SessionPromptCacheChip(surfaceStyle: surfaceStyle, coldAt: promptCacheColdAt),
+      if (promptCacheColdAt != null)
+        SessionPromptCacheChip(
+          surfaceStyle: surfaceStyle,
+          coldAt: promptCacheColdAt,
+          inUse: state.sessionStatus is SessionStatusBusy,
+        ),
     ];
   }
 }
