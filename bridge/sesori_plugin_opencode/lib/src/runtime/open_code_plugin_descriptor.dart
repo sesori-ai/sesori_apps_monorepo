@@ -3,6 +3,7 @@ import "dart:io" as io;
 import "dart:math";
 
 import "package:http/http.dart" as http;
+import "package:meta/meta.dart" show visibleForTesting;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
@@ -202,7 +203,9 @@ class const OpenCodePluginDescriptor({
     ),
     PluginFlagOption(
       name: _OpenCodeConfigKey.noPassword,
-      help: "Disable OpenCode server authentication",
+      help:
+          "Disable OpenCode server authentication (OpenCode 1 only; OpenCode 2 always requires a password, and "
+          "its shared service brings its own)",
       defaultsTo: false,
       negatable: false,
     ),
@@ -265,6 +268,20 @@ class const OpenCodePluginDescriptor({
         "network. Use a loopback host or keep authentication enabled.",
       );
     }
+  }
+
+  /// The warning for an attach-mode server that did not answer at start. The
+  /// bridge then keeps retrying with the OpenCode 1 adapter, so a 1.x server is
+  /// picked up when it appears; a 2.x server is only recognised at start.
+  @visibleForTesting
+  static String attachUnreachableWarning({required int port, required String reason, required bool hasPassword}) {
+    final passwordHint = hasPassword
+        ? ""
+        : " OpenCode 2.x always requires a password: pass it with --opencode-password.";
+    return "[opencode] cannot reach OpenCode at port $port (auto-start disabled): $reason. "
+        "The bridge starts degraded. Start the OpenCode server on that port: an OpenCode 1.x server is "
+        "picked up automatically, and for OpenCode 2.x restart the bridge afterwards so it detects the "
+        "version. Do not downgrade OpenCode.$passwordHint";
   }
 
   /// Whether [host] is a bare host or IP literal usable in a URL authority —
@@ -377,6 +394,36 @@ class const OpenCodePluginDescriptor({
         probeClientFactory: _probeClientFactory,
       ),
     ).acquire(binary: host.provisionedRuntimePath, environment: host.environment, startAborted: host.startAborted);
+  }
+
+  /// OpenCode 2 generates a password when none is set, so a private server
+  /// started for `--opencode-no-password` would reject every bridge request
+  /// until the health deadline on every port. Fails fast instead. A binary
+  /// whose version cannot be read keeps the OpenCode 1 behaviour.
+  Future<void> _rejectPasswordlessOpenCode2({required PluginHost host, required String executable}) async {
+    const manifest = OpenCodeRuntimeManifest();
+    final outcome = await RuntimeVersionValidator(
+      commandExecutor: HostProcessCommandExecutor(
+        includeParentEnvironment: true,
+        processes: host.processes,
+        runInShell: io.Platform.isWindows,
+        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+      ),
+      manifest: manifest,
+      probeTimeout: openCodeVersionProbeTimeout,
+      executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
+    ).probe(executable: executable, environment: host.environment);
+    if (host.startAborted.isAborted) {
+      throw const PluginStartAbortedException();
+    }
+    if (outcome case RuntimeProbeReady(version: final SemanticRuntimeVersion runtimeVersion)
+        when runtimeVersion.version.major >= 2) {
+      throw PluginStartException(
+        "OpenCode ${runtimeVersion.raw} always requires a password, so --opencode-no-password works only with "
+        "OpenCode 1. Remove the flag to let the bridge generate a password, or set one with --opencode-password.",
+        cause: null,
+      );
+    }
   }
 
   String? _explicitBin(PluginConfig config) {
@@ -713,10 +760,7 @@ class const OpenCodePluginDescriptor({
         rethrow;
       } on PluginStartException catch (error) {
         Log.w(
-          "[opencode] cannot reach OpenCode at port $attachPort (auto-start disabled): ${error.message}. "
-          "Bridge will start anyway; start OpenCode 1.x manually to enable proxying. "
-          "For an existing OpenCode 2.x installation, restart the bridge after starting its server "
-          "to check protocol support; do not downgrade OpenCode.",
+          attachUnreachableWarning(port: attachPort, reason: error.message, hasPassword: apiPassword != null),
         );
         handle = null;
       }
@@ -724,6 +768,12 @@ class const OpenCodePluginDescriptor({
       mode = _OpenCodeServerMode.shared;
       // Shared mode: attach to OpenCode's own background server, never own,
       // kill or restart it. Everything comes from its registration, not config.
+      if (noPassword) {
+        Log.w(
+          "[opencode] --opencode-no-password is ignored: the shared OpenCode ${sharedEndpoint.version} service "
+          "brings its own password",
+        );
+      }
       port = sharedEndpoint.port;
       serverUrl = sharedEndpoint.url;
       apiPassword = sharedEndpoint.password;
@@ -786,6 +836,9 @@ class const OpenCodePluginDescriptor({
         handle = null;
       } else {
         final executablePath = resolvedExecutable;
+        if (noPassword) {
+          await _rejectPasswordlessOpenCode2(host: host, executable: executablePath);
+        }
 
         final RuntimePortPolicy portPolicy;
         if (requestedPort != null) {

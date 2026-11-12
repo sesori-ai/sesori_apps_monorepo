@@ -69,7 +69,9 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     V2FormCreated() ||
     V2FormReplied() ||
     V2FormCancelled() ||
-    V2ProjectUpdated() => null,
+    V2ProjectUpdated() ||
+    V2AgentUpdated() ||
+    V2CommandUpdated() => null,
   };
 
   BridgeSseEvent mapStatus({required String sessionId, required PluginSessionStatus status}) => switch (status) {
@@ -91,6 +93,9 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
       ...switch (event) {
         V2ServerConnected() => [const BridgeSseServerConnected()],
         V2ProjectUpdated() => [const BridgeSseProjectUpdated()],
+        // OpenCode answers a cold location with an empty or partial catalog,
+        // then announces the loaded one here; clients reread their options.
+        V2AgentUpdated() || V2CommandUpdated() => [const BridgeSseCommandCatalogUpdated()],
         V2SessionExecutionFailed() => [
           BridgeSseSessionError(sessionID: event.sessionID),
           BridgeSseTuiToastShow(
@@ -252,7 +257,9 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     V2FormCreated() ||
     V2FormReplied() ||
     V2FormCancelled() ||
-    V2ProjectUpdated() => null,
+    V2ProjectUpdated() ||
+    V2AgentUpdated() ||
+    V2CommandUpdated() => null,
   };
 
   List<BridgeSseEvent> mapAssistantStarted({required V2SessionStepStarted event, required V2AgentNames agentNames}) => [
@@ -390,7 +397,9 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
       V2FormCreated() ||
       V2FormReplied() ||
       V2FormCancelled() ||
-      V2ProjectUpdated() => null,
+      V2ProjectUpdated() ||
+      V2AgentUpdated() ||
+      V2CommandUpdated() => null,
     };
     if (notice == null) return const [];
     final message = _messageMapper.mapMessage(
@@ -495,7 +504,9 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
           V2SessionCompactionDelta() ||
           V2SessionCompactionEnded() ||
           V2SessionCompactionFailed() ||
-          V2ProjectUpdated():
+          V2ProjectUpdated() ||
+          V2AgentUpdated() ||
+          V2CommandUpdated():
         return const [];
     }
   }

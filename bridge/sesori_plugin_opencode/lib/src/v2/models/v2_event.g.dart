@@ -262,6 +262,8 @@ sealed class V2EventData {
     required ProjectTime time,
     required List<String> sandboxes,
   }) = V2ProjectUpdated;
+  const factory V2EventData.agentUpdated() = V2AgentUpdated;
+  const factory V2EventData.commandUpdated() = V2CommandUpdated;
 
   /// Every wire-format type discriminator this hierarchy decodes.
   static const Set<String> knownTypes = {
@@ -306,6 +308,8 @@ sealed class V2EventData {
     "form.replied",
     "form.cancelled",
     "project.updated",
+    "agent.updated",
+    "command.updated",
   };
 
   /// Wire-format type discriminator for this event.
@@ -364,6 +368,8 @@ sealed class V2EventData {
       "form.replied" => V2FormReplied.fromJson(json),
       "form.cancelled" => V2FormCancelled.fromJson(json),
       "project.updated" => V2ProjectUpdated.fromJson(json),
+      "agent.updated" => V2AgentUpdated.fromJson(json),
+      "command.updated" => V2CommandUpdated.fromJson(json),
       final String unknown =>
         throw FormatException("Unknown SSE event type: $unknown"),
     };
@@ -1666,6 +1672,34 @@ class V2ProjectUpdated extends V2EventData {
       time: ProjectTime.fromJson(json["time"] as Map<String, dynamic>),
       sandboxes: (json["sandboxes"] as List<dynamic>).cast<String>(),
     );
+  }
+}
+class V2AgentUpdated extends V2EventData {
+  const V2AgentUpdated();
+
+  @override
+  String get type => "agent.updated";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{"type": type};
+
+  factory V2AgentUpdated.fromJson(Map<String, dynamic> json) {
+    assert(json["type"] == "agent.updated");
+    return const V2AgentUpdated();
+  }
+}
+class V2CommandUpdated extends V2EventData {
+  const V2CommandUpdated();
+
+  @override
+  String get type => "command.updated";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{"type": type};
+
+  factory V2CommandUpdated.fromJson(Map<String, dynamic> json) {
+    assert(json["type"] == "command.updated");
+    return const V2CommandUpdated();
   }
 }
 class V2EventEnvelope {
