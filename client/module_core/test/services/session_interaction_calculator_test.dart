@@ -189,6 +189,7 @@ PluginManagementLoadResult managementFixture({
         managementCapabilities: const {},
         mcpScopes: null,
         actionHint: null,
+        failureReason: null,
       ),
     ],
   ),

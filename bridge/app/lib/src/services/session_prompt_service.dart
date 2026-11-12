@@ -1,7 +1,8 @@
 import "dart:async";
 import "dart:math";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStaleOptionsException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show Log, PluginRefusalException, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/accepted_prompts_repository.dart";
@@ -14,6 +15,7 @@ import "prompt_part_delivery_service.dart";
 import "session_mutation_dispatcher.dart";
 import "session_operation_dispatcher.dart";
 import "session_options_service.dart";
+import "session_prompt_refused_exception.dart";
 import "session_view_service.dart";
 import "stale_session_prompt_options_exception.dart";
 
@@ -124,7 +126,7 @@ class SessionPromptService({
         inlineImages: await _sessionRepository.inlineImagesSupportedForSession(sessionId: sessionId),
         parts: parts,
       );
-      await _sendInvalidatingStaleOptionsCache(
+      await _sendMappingRejections(
         sessionId: sessionId,
         send: () => _sessionRepository.sendPrompt(
           sessionId: sessionId,
@@ -143,7 +145,7 @@ class SessionPromptService({
       // backend has accepted the command — not when its run finishes — so
       // awaiting it here never holds the phone's relay request open for the
       // duration of the command's agent run.
-      await _sendInvalidatingStaleOptionsCache(
+      await _sendMappingRejections(
         sessionId: sessionId,
         send: () => _sessionRepository.sendCommand(
           sessionId: sessionId,
@@ -174,10 +176,11 @@ class SessionPromptService({
     );
   }
 
-  /// Sends through [send]; when the plugin rejects the selection as stale,
-  /// the rejected cache row is gone before the typed failure reaches the
-  /// client and triggers forced discovery.
-  Future<void> _sendInvalidatingStaleOptionsCache({
+  /// Sends through [send], turning the plugin's typed rejections into
+  /// bridge-owned ones. When the plugin rejects the selection as stale, the
+  /// rejected cache row is gone before the typed failure reaches the client
+  /// and triggers forced discovery.
+  Future<void> _sendMappingRejections({
     required String sessionId,
     required Future<void> Function() send,
   }) async {
@@ -186,6 +189,8 @@ class SessionPromptService({
     } on PluginStaleOptionsException catch (error, stackTrace) {
       await _invalidateStaleOptionsCache(sessionId: sessionId);
       throw StaleSessionPromptOptionsException(cause: error, causeStackTrace: stackTrace);
+    } on PluginRefusalException catch (error, stackTrace) {
+      throw SessionPromptRefusedException(cause: error, causeStackTrace: stackTrace);
     }
   }
 

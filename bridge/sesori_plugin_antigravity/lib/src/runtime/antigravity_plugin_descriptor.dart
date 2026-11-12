@@ -369,7 +369,11 @@ class const AntigravityPluginDescriptor({
   }
 
   Never _throwRuntimeFailure({required AntigravityRuntimeResolution resolution}) {
-    final error = PluginStartException("No validated Antigravity runtime pair is available.", cause: resolution);
+    final error = PluginStartException(
+      "No validated Antigravity runtime pair is available.",
+      cause: resolution,
+      userFacingReason: null,
+    );
     switch (resolution) {
       case AntigravityRuntimeStorageFailed(:final stackTrace):
         Error.throwWithStackTrace(error, stackTrace);

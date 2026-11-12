@@ -1290,6 +1290,10 @@ class PluginLifecycleService({
       },
       mcpScopes: {for (final scope in plugin.mcpScopes) _mapMcpScope(scope: scope)},
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
+      failureReason: switch (snapshot.state) {
+        PluginRuntimeFailed(:final userFacingReason) => userFacingReason,
+        _ => null,
+      },
     );
   }
 

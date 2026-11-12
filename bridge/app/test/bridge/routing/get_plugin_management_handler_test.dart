@@ -53,6 +53,7 @@ const _response = PluginManagementResponse(
       },
       mcpScopes: null,
       actionHint: null,
+      failureReason: null,
     ),
   ],
 );

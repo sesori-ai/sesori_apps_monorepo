@@ -48,16 +48,47 @@ void main() {
   });
 
   for (final (error, failure) in [
-    (ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null), PromptSendFailure.rejected),
-    (ApiError.notAuthenticated(), PromptSendFailure.rejected),
-    (ApiError.nonSuccessCode(errorCode: 502, rawErrorString: null), PromptSendFailure.uncertain),
-    (ApiError.dartHttpClient(Exception("timed out")), PromptSendFailure.uncertain),
-    (ApiError.emptyResponse(), PromptSendFailure.uncertain),
+    (ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null), const PromptSendFailure.rejected(reason: null)),
+    (ApiError.notAuthenticated(), const PromptSendFailure.rejected(reason: null)),
+    (ApiError.nonSuccessCode(errorCode: 502, rawErrorString: null), const PromptSendFailure.uncertain()),
+    (ApiError.dartHttpClient(Exception("timed out")), const PromptSendFailure.uncertain()),
+    (ApiError.emptyResponse(), const PromptSendFailure.uncertain()),
   ]) {
-    test("classifies a ${error.runtimeType} send failure as ${failure.name}", () {
+    test("classifies a ${error.runtimeType} send failure as ${failure.runtimeType}", () {
       expect(SessionRepository.sendFailureFor(error: error), failure);
     });
   }
+
+  test("a refusal carries the harness's reason for the user", () {
+    final error = ApiError.nonSuccessCode(
+      errorCode: 409,
+      rawErrorString: jsonEncode(
+        const SendPromptErrorResponse(
+          code: SendPromptErrorCode.refused,
+          message: "Switch providers to continue.",
+        ).toJson(),
+      ),
+    );
+
+    expect(
+      SessionRepository.sendFailureFor(error: error),
+      const PromptSendFailure.rejected(reason: "Switch providers to continue."),
+    );
+  });
+
+  test("a rejection without a refusal body shows no reason", () {
+    for (final rawErrorString in [
+      "PluginOperationException: thread/resume failed with status 409",
+      jsonEncode(const SendPromptErrorResponse(code: SendPromptErrorCode.staleSessionOptions, message: "raw").toJson()),
+    ]) {
+      expect(
+        SessionRepository.sendFailureFor(
+          error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: rawErrorString),
+        ),
+        const PromptSendFailure.rejected(reason: null),
+      );
+    }
+  });
 
   test("session detail flows route through session api and repository", () async {
     final api = MockSessionApi();

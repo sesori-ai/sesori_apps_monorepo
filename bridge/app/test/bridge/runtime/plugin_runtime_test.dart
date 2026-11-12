@@ -2125,8 +2125,24 @@ void main() {
 
     await runtime.startEager(pluginIds: const ["one"]);
 
-    expect(runtime.snapshot.single.state, const PluginRuntimeFailed());
+    expect(runtime.snapshot.single.state, const PluginRuntimeFailed(userFacingReason: null));
     expect(runtime.activePluginIds, isEmpty);
+  });
+
+  test("a start failure the plugin explained to the user keeps that reason on the failed state", () async {
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      startError: const PluginGenerationStartFailedException(
+        pluginId: "one",
+        cause: PluginStartException.userFacing("Remove the flag to start.", cause: null),
+      ),
+    );
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await runtime.startEager(pluginIds: const ["one"]);
+
+    expect(runtime.snapshot.single.state, const PluginRuntimeFailed(userFacingReason: "Remove the flag to start."));
   });
 
   test("an invalid returned plugin is shut down and never routed", () async {
@@ -2140,7 +2156,7 @@ void main() {
     await runtime.startEager(pluginIds: const ["one"]);
 
     expect(runtime.activePluginIds, isEmpty);
-    expect(runtime.snapshot.single.state, const PluginRuntimeFailed());
+    expect(runtime.snapshot.single.state, const PluginRuntimeFailed(userFacingReason: null));
     expect(factory.plugins.single.shutdownCount, 1);
   });
 

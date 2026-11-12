@@ -69,6 +69,7 @@ class ManagedProcessService<R>({
       throw PluginStartException(
         "[$_runtimeId] existing runtime health check failed on port $port",
         cause: probe.error,
+        userFacingReason: null,
       );
     }
 
@@ -126,6 +127,7 @@ class ManagedProcessService<R>({
         throw PluginStartException(
           "[$_runtimeId] port $port did not free for restart within ${timeout.inMilliseconds}ms",
           cause: null,
+          userFacingReason: null,
         );
       }
       await _clock.delay(duration: pollInterval);
@@ -149,6 +151,7 @@ class ManagedProcessService<R>({
       throw PluginStartException(
         "[$_runtimeId] explicit port ${policy.port} is already in use",
         cause: null,
+        userFacingReason: null,
       );
     }
     _throwIfAborted(abort);
@@ -191,6 +194,7 @@ class ManagedProcessService<R>({
     throw PluginStartException(
       "[$_runtimeId] unable to start runtime on an available dynamic port after $attempts attempt(s)",
       cause: lastError,
+      userFacingReason: null,
     );
   }
 
@@ -282,6 +286,7 @@ class ManagedProcessService<R>({
         throw PluginStartException(
           "[$_runtimeId] health check failed on port $port within ${policy.deadline.inMilliseconds}ms",
           cause: probe.error,
+          userFacingReason: null,
         );
       }
     }
@@ -301,6 +306,7 @@ class ManagedProcessService<R>({
       throw PluginStartException(
         "[$_runtimeId] runtime exited before becoming healthy on port $port",
         cause: null,
+        userFacingReason: null,
       );
     }
 

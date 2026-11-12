@@ -256,12 +256,16 @@ void main() {
         submission: followUp(promptId: "prm_b"),
       );
       begin();
-      repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.rejected);
+      repository.followUpFailed(
+        launchId: "launch-1",
+        promptId: "prm_a",
+        failure: const PromptSendFailure.rejected(reason: null),
+      );
       expect(begin(), isNull);
 
       expect(repository.retryFollowUp(promptId: "prm_a"), "launch-1");
       expect(begin(), "prm_a", reason: "a retry resends under the same promptId");
-      repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.uncertain);
+      repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: const PromptSendFailure.uncertain());
 
       expect(repository.cancelFollowUp(promptId: "prm_a"), "launch-1");
       expect(begin(), "prm_b");
@@ -287,7 +291,7 @@ void main() {
       expect(current(), isA<SendingLaunchFollowUp>());
       expect(since(), sent, reason: "beginning to send is not when the user sent it");
 
-      repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.uncertain);
+      repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: const PromptSendFailure.uncertain());
       repository.retryFollowUp(promptId: "prm_a");
       expect(since().isAfter(sent), isTrue);
     });

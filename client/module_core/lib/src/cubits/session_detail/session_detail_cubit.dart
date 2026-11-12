@@ -2840,7 +2840,7 @@ class SessionDetailCubit(
       if (!sendingAtStop()) {
         sendSettledElsewhere = !_settleFailedSend(
           sendConnectionGeneration: sendConnectionGeneration,
-          failure: PromptSendFailure.uncertain,
+          failure: const PromptSendFailure.uncertain(),
         );
         if (!sendSettledElsewhere) unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
       }

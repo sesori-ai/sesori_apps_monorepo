@@ -1417,6 +1417,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                 sendingSince: _promptSentAt[entryId],
               ),
               _TransientStage.failed => QueuedMessageBubblePresentation.failed(
+                reason: switch (widget.localSend) {
+                  LocalSendFailed(failure: RejectedPromptSend(:final reason)) => reason,
+                  LocalSendIdle() || LocalSendSending() || LocalSendFailed() => null,
+                },
                 onRetry: widget.onRetryFailedSend,
                 onRemove: widget.onRemoveFailedSend,
               ),

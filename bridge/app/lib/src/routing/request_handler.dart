@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/session_archived_read_only_exception.dart";
 import "../repositories/models/project_not_found_exception.dart";
+import "../services/session_prompt_refused_exception.dart";
 import "../services/stale_session_prompt_options_exception.dart";
 import "http_method.dart";
 
@@ -184,6 +185,13 @@ abstract class const RequestHandlerBase({
     } on StaleSessionPromptOptionsException catch (error) {
       Log.w("${request.method} ${request.path}: stale session options", error.cause, error.causeStackTrace);
       return buildStaleOptionsRejectionResponse(request: request, message: error.message);
+    } on SessionPromptRefusedException catch (error) {
+      Log.w("${request.method} ${request.path}: prompt refused", error.cause, error.causeStackTrace);
+      return buildJsonErrorResponse(
+        request: request,
+        status: 409,
+        body: SendPromptErrorResponse(code: SendPromptErrorCode.refused, message: error.userFacingReason).toJson(),
+      );
     } on PluginOperationException catch (error, stackTrace) {
       Log.w("${request.method} ${request.path}: upstream failure", error, stackTrace);
       return buildErrorResponse(request: request, status: error.statusCode ?? 502, message: error.toString());

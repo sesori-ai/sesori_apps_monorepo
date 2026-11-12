@@ -156,7 +156,14 @@ defaults and queued client sends coherent.
   fallback with older bridges.
 - A client send that fails on the connection it started on (a non-stale error
   response or a thrown failure) is held under its message with "Couldn’t send",
-  Retry and Remove; later local sends wait behind it. Retry resends the same
+  Retry and Remove; later local sends wait behind it. When the harness refused
+  the send with a reason its plugin wrote for the user (a 409
+  `SendPromptErrorResponse` with code `refused`, such as Codex's model provider
+  mismatch), the reason fades in with the failure as a second line under
+  "Couldn’t send", the prompt row easing its height; a long reason stops at
+  four lines and tapping it shows the rest. Other failures, and older bridges'
+  plain-text answers, show no reason. The failed state and its reason live only
+  in this surface's memory, so a reload drops both, as before. Retry resends the same
   prompt id, so the bridge's dedup never runs it twice. A stale-options
   rejection still refreshes and retries once automatically, and a send cut off
   by a dropped connection is still re-sent after reconnect without a failure.
