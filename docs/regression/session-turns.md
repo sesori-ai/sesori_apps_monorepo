@@ -175,11 +175,12 @@ defaults and queued client sends coherent.
   transition back to idle; retry carries attempt, backend-provided message, and
   timing and returns to busy as soon as the retried request streams output again,
   and finalized messages enter durable history matching a history read. A terminal
-  provider failure appears as an inline error message, rendered as Markdown with
-  its line breaks kept, and remains visible after refresh or reopen.
-  Backend-provided terminal and retry error text is forwarded
+  provider failure appears as an inline error message and remains visible after
+  refresh or reopen. Backend-provided terminal and retry error text is forwarded
   verbatim for every harness; plugins may flatten an error envelope but synthesize
-  text only when the backend supplied none. Backend-provided message timestamps
+  text only when the backend supplied none. Error notices show as plain text, so
+  the Hermes plugin unwraps the inline code spans of its recognised failure copy
+  (the backticks go, the words stay). Backend-provided message timestamps
   remain present through live updates and durable-history reloads, using the
   backend's authoritative source for each path. Internal backend command records
   are not rendered as conversation messages or used as assistant model attribution.

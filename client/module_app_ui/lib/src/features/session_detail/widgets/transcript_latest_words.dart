@@ -43,7 +43,7 @@ class const TranscriptLatestWords({super.key, required final String text, requir
     // two markers of a pair and leaves the closing one behind as text.
     final windowStart = max(0, text.length - _kLatestWordsChars);
     final lineStart = windowStart == 0 ? 0 : text.lastIndexOf("\n", windowStart) + 1;
-    final plain = markdownPlainText(markdown: text.substring(lineStart), nameImage: null);
+    final plain = markdownPlainText(markdown: _withoutOpenEmphasis(text.substring(lineStart)), nameImage: null);
     var start = max(0, plain.length - _kLatestWordsChars);
     // Never start on the low half of a UTF-16 surrogate pair (emoji etc.):
     // an orphaned low surrogate renders as a replacement character.
@@ -52,6 +52,23 @@ class const TranscriptLatestWords({super.key, required final String text, requir
   }
 
   static bool _isLowSurrogate(int codeUnit) => (codeUnit & 0xFC00) == 0xDC00;
+
+  /// [markdown] without the opening marker of an emphasis still streaming on
+  /// its last line, such as a title arriving as `**Planning th`: until the
+  /// closing marker comes, the parser can only show the marker as text. Only a
+  /// marker that starts the line is dropped, so a code span is never touched.
+  static String _withoutOpenEmphasis(String markdown) {
+    final lastLineStart = markdown.lastIndexOf("\n") + 1;
+    final line = markdown.substring(lastLineStart);
+    final match = _openEmphasis.firstMatch(line);
+    final marker = match?[2];
+    if (match == null || marker == null || line.contains(marker, match.end)) return markdown;
+    return "${markdown.substring(0, lastLineStart)}${match[1] ?? ""}${line.substring(match.end)}";
+  }
+
+  /// An emphasis marker at the start of a line, directly before a word; a list
+  /// bullet has a space after it.
+  static final RegExp _openEmphasis = RegExp(r"^(\s*)(\*\*|__|\*|_)(?=[^\s*_])");
 
   @override
   Widget build(BuildContext context) {

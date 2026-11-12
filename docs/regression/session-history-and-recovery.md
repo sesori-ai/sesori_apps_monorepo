@@ -232,7 +232,9 @@ reconnect or restart.
   repeated generic line after a reload. An assistant message whose whole text is
   one of Hermes's notices is that notice. A reply that quotes one inside other
   text, adds to it or carries a tool or reasoning stays a reply, and so does a
-  reasoning-only stop, which carries the model's last thoughts.
+  reasoning-only stop, which carries the model's last thoughts. Live and on
+  replay, a notice shows Hermes's inline code without backticks
+  (``run `hermes setup` `` reads "run hermes setup").
 - For any harness, a live error notice and the replayed error notice in the
   same place of the transcript are one notice even when they are worded
   differently. The error name is the notice's kind. A replayed notice of the

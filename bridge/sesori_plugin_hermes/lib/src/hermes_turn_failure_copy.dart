@@ -295,7 +295,8 @@ const Set<String> _trailingDetailFields = {"summary", "detail"};
 /// start, with an optional "⚠️ " lead. A placeholder matches any text on its
 /// line, and Hermes may append guidance paragraphs after the copy
 /// (`agent/turn_recovery.py`). A reply that only quotes the copy starts with
-/// other text, so it never matches.
+/// other text, so it never matches. Backticks are optional, so a notice still
+/// matches after [withoutInlineCodeMarkers] has unwrapped its code spans.
 final List<RegExp> _turnFailurePatterns = [
   for (final template in _turnFailureTemplates.values)
     RegExp(
@@ -303,11 +304,19 @@ final List<RegExp> _turnFailurePatterns = [
       "${template.splitMapJoin(
         RegExp(r"\{(\w+)[^}]*\}"),
         onMatch: (field) => _trailingDetailFields.contains(field[1]) ? r"[\s\S]*" : r"[^\n]*?",
-        onNonMatch: RegExp.escape,
+        onNonMatch: (fixed) => RegExp.escape(fixed).replaceAll("`", "`?"),
       )}"
       r"(?:\n\n[\s\S]*)?$",
     ),
 ];
+
+/// [notice] with each inline code span unwrapped: the backticks go, the code
+/// stays. Hermes writes its failure copy as Markdown (``run `hermes setup` ``),
+/// but Sesori shows an error notice as plain text, where the backticks would
+/// read as literal characters. Only for a recognised failure notice, never a
+/// reply.
+String withoutInlineCodeMarkers({required String notice}) =>
+    notice.replaceAllMapped(RegExp(r"`([^`\n]+)`"), (match) => match[1] ?? "");
 
 /// Whether [text] is the explanation Hermes sends as its whole final response
 /// when a turn fails.

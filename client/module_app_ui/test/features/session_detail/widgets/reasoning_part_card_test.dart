@@ -226,6 +226,13 @@ void main() {
       expect(words, endsWith("word done"));
     });
 
+    test("hides the opening marker of a title that is still streaming", () {
+      expect(TranscriptLatestWords.latestWords(text: "**Planning th"), "Planning th");
+      expect(TranscriptLatestWords.latestWords(text: "Done.\n\n**Next st"), "Done. Next st");
+      expect(TranscriptLatestWords.latestWords(text: "- item\n* another"), "item another");
+      expect(TranscriptLatestWords.latestWords(text: "Run `**kwargs"), "Run `**kwargs");
+    });
+
     test("never starts on an orphaned UTF-16 low surrogate", () {
       // The cut lands between the emoji's two code units.
       final text = "${"x" * 10}😀${"y" * 159}";
