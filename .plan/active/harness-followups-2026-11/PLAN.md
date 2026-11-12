@@ -224,6 +224,13 @@ Codex and Copilot rows in `HARNESS_CAPABILITIES.md`.
   surface a `PluginOperationException` with a 4xx status and a short message
   naming both providers and the fix.
 
+**As built.** The 0.167 schema puts the resolved `model` and `reasoningEffort`
+on the started `subAgentActivity` itself (and on `Thread`), so
+`collabAgentToolCall` stays undecoded. The live probe (0.167.1) puts the
+mismatch on `thread/resume`: code `-32600`, `data` `{type, modelProvider,
+currentModelProvider}`. The app shows its generic "Couldn't send" for any 4xx
+prompt rejection, so the provider message reaches logs, not the screen.
+
 **Verification.** Fixture tests for both. Live without credentials: with an
 isolated `CODEX_HOME`, start a thread under provider A, switch to B, resume and
 send, and record whether the error lands on `thread/resume` or `turn/start` and

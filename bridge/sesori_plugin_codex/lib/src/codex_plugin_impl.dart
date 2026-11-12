@@ -482,6 +482,8 @@ class CodexPlugin._({
       :final itemId,
       :final agentThreadId,
       :final agentPath,
+      :final model,
+      :final reasoningEffort,
     )) {
       // Probe-confirmed ordering persists `spawn_agent` before this activity.
       // Drain first so its generic card and agent metadata exist; the service
@@ -492,6 +494,8 @@ class CodexPlugin._({
         childId: agentThreadId,
         callId: itemId,
         agentPath: agentPath,
+        model: model,
+        reasoningEffort: reasoningEffort,
       );
     } else if (subAgentItem case CodexSubAgentActivity(:final kind, :final agentThreadId)) {
       final status = switch (kind) {
@@ -601,6 +605,8 @@ class CodexPlugin._({
     required String childId,
     required String callId,
     required String? agentPath,
+    required String? model,
+    required String? reasoningEffort,
   }) async {
     if (_deletedThreadIds.contains(parentId) || _deletedThreadIds.contains(childId)) return false;
     // The child's `thread/status/changed` normally precedes the activity item;
@@ -612,12 +618,16 @@ class CodexPlugin._({
       callId: callId,
       parentDirectory: _directoryForSession(sessionId: parentId),
       agentPath: agentPath,
+      model: model,
+      reasoningEffort: reasoningEffort,
       status: status,
     );
     if (announcement == null) return false;
     final child = announcement.child;
     _sessionStatuses[childId] = announcement.status;
     _eventMapper.setThreadTime(record: child);
+    _eventMapper.setThreadModel(threadId: childId, model: child.model);
+    _eventMapper.setThreadEffort(threadId: childId, effort: child.reasoningEffort);
     _eventMapper.setThreadProvider(threadId: childId, provider: child.modelProvider);
     _eventMapper.setThreadParent(threadId: childId, parentId: child.parentId);
     final directory = child.directory;
@@ -1031,6 +1041,7 @@ class CodexPlugin._({
       threadId: threadId,
       model: thread.model ?? model?.modelID,
     );
+    _eventMapper.setThreadEffort(threadId: threadId, effort: thread.reasoningEffort);
     final resolvedDirectory = thread.directory ?? normalizeProjectDirectory(directory: directory);
     // Record the thread's directory BEFORE the first turn: turn/start can emit
     // notifications (e.g. a cwd-less thread/name/updated) while the rollout is
@@ -1127,6 +1138,10 @@ class CodexPlugin._({
       final resolvedModel = dispatch.resolvedModel;
       if (resolvedModel != null) {
         _eventMapper.setThreadModel(threadId: sessionId, model: resolvedModel);
+      }
+      final resolvedEffort = dispatch.resolvedEffort;
+      if (resolvedEffort != null) {
+        _eventMapper.setThreadEffort(threadId: sessionId, effort: resolvedEffort);
       }
       final turnId = dispatch.turnId;
       if (turnId != null) {
@@ -1425,6 +1440,10 @@ class CodexPlugin._({
       if (resolvedModel != null) {
         _eventMapper.setThreadModel(threadId: threadId, model: resolvedModel);
       }
+      final resolvedEffort = dispatch.resolvedEffort;
+      if (resolvedEffort != null) {
+        _eventMapper.setThreadEffort(threadId: threadId, effort: resolvedEffort);
+      }
       final turnId = dispatch.turnId;
       if (turnId != null) {
         _recordAcceptedTurn(
@@ -1525,6 +1544,7 @@ class CodexPlugin._({
     );
     _eventMapper.setThreadTime(record: thread);
     _eventMapper.setThreadModel(threadId: threadId, model: thread.model);
+    _eventMapper.setThreadEffort(threadId: threadId, effort: thread.reasoningEffort);
     _eventMapper.setThreadProvider(threadId: threadId, provider: thread.modelProvider);
     _eventMapper.setThreadParent(threadId: threadId, parentId: thread.parentId);
     // A thread resumed from a prior bridge run never re-emits `thread/started`,

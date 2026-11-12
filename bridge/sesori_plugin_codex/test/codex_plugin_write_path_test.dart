@@ -11,6 +11,7 @@ import "dart:typed_data";
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
+import "package:codex_plugin/src/repositories/models/codex_model_provider_exception.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show sesoriAgentInstructions;
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
@@ -1376,6 +1377,44 @@ void main() {
         throwsA(isA<CodexThreadRequestException>()),
       );
 
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("a resume rejected for another model provider fails the send as a 409 naming both", () async {
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.initialize();
+      // Recorded from codex-cli 0.167.1 with an isolated CODEX_HOME: a thread
+      // started under provider alpha, resumed with beta configured.
+      fake.respondInOrder([
+        const _Response(
+          error: {
+            "code": -32600,
+            "data": {"type": "modelProviderMismatch", "modelProvider": "alpha", "currentModelProvider": "beta"},
+            "message": "This chat uses alpha, but your current provider is beta. Switch to alpha to continue.",
+          },
+        ),
+      ]);
+
+      await expectLater(
+        plugin.sendPrompt(
+          fastMode: false,
+          promptId: "prompt-1",
+          sessionId: "t-other-provider",
+          parts: const [PluginPromptPart.text(text: "go on")],
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(
+          isA<CodexModelProviderMismatchException>()
+              .having((error) => error.statusCode, "statusCode", 409)
+              .having((error) => error.threadProvider, "threadProvider", "alpha")
+              .having((error) => error.currentProvider, "currentProvider", "beta")
+              .having((error) => error.message, "message", allOf(contains("alpha"), contains("beta")))
+              .having((error) => error.cause, "cause", isA<CodexRpcException>()),
+        ),
+      );
+      expect(fake.sentMethods, isNot(contains("turn/start")));
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
@@ -3482,6 +3521,63 @@ void main() {
       });
     });
 
+    test("live messages carry the resumed effort, then the effort a turn selects", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "model": "gpt-5.5",
+            "modelProvider": "openai",
+            "reasoningEffort": "medium",
+            "thread": {"id": "t-effort"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-1"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-2"},
+          },
+        ),
+      ]);
+      Future<String?> liveVariant({required String itemId}) async {
+        final reply = plugin.events
+            .where((event) => event is BridgeSseMessageUpdated && event.info.id == itemId)
+            .cast<BridgeSseMessageUpdated>()
+            .first;
+        fake.pushNotification("item/completed", {
+          "threadId": "t-effort",
+          "item": {"type": "agentMessage", "id": itemId, "text": "ok"},
+        });
+        return ((await reply.timeout(const Duration(seconds: 2))).info as PluginMessageAssistant).variant;
+      }
+
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: "t-effort",
+        parts: const [PluginPromptPart.text(text: "hi")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(await liveVariant(itemId: "i-1"), "medium");
+
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-2",
+        sessionId: "t-effort",
+        parts: const [PluginPromptPart.text(text: "think hard")],
+        variant: const PluginSessionVariant(id: "high"),
+        agent: null,
+        model: null,
+      );
+      expect(await liveVariant(itemId: "i-2"), "high");
+    });
+
     test("sendPrompt without a variant sends no effort (codex uses its default)", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
@@ -3681,6 +3777,8 @@ void main() {
           "kind": "started",
           "agentThreadId": "019a0000-1111-2222-3333-aaaaaaaaaaab",
           "agentPath": "/root/sleeper",
+          "model": "gpt-5.6-codex-mini",
+          "reasoningEffort": "low",
         },
       });
       await readRequested.future.timeout(const Duration(seconds: 1));
@@ -3761,6 +3859,20 @@ void main() {
         "turn": {"id": "u-child", "startedAt": 1700000007},
       });
       expect(shared.Session.fromJson((await childUpdated).info).parentID, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
+
+      // Live child messages carry the model and effort the activity resolved.
+      final childReply = next<BridgeSseMessageUpdated>(
+        (event) =>
+            event.info is PluginMessageAssistant && event.info.sessionID == "019a0000-1111-2222-3333-aaaaaaaaaaab",
+      );
+      fake.pushNotification("item/completed", {
+        "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaab",
+        "turnId": "u-child",
+        "item": {"type": "agentMessage", "id": "child-reply", "text": "Working on it."},
+      });
+      final childAssistant = (await childReply).info as PluginMessageAssistant;
+      expect(childAssistant.modelID, "gpt-5.6-codex-mini");
+      expect(childAssistant.variant, "low");
 
       final tileCountBeforeEncrypted = events
           .whereType<BridgeSseMessagePartUpdated>()

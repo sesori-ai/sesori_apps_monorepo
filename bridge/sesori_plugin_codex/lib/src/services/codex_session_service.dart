@@ -137,13 +137,16 @@ class CodexSessionService({
 
   /// Resolves and records a child named by `subAgentActivity started`, then
   /// maps its ordered creation/status events. A repeated activity returns
-  /// `null` and never announces the child twice.
+  /// `null` and never announces the child twice. The activity's resolved
+  /// [model] and [reasoningEffort] win over the child's `thread/read` values.
   Future<CodexSubAgentThreadAnnouncement?> handleSubAgentStarted({
     required String childThreadId,
     required String parentThreadId,
     required String callId,
     required String parentDirectory,
     required String? agentPath,
+    required String? model,
+    required String? reasoningEffort,
     required PluginSessionStatus status,
   }) async {
     if (_deletedSubAgentThreadIds.contains(parentThreadId) ||
@@ -166,7 +169,8 @@ class CodexSessionService({
           directory: parentDirectory,
           createdAt: null,
           updatedAt: null,
-          model: null,
+          model: model,
+          reasoningEffort: reasoningEffort,
           modelProvider: null,
           parentId: parentThreadId,
           agentNickname: null,
@@ -203,7 +207,8 @@ class CodexSessionService({
         directory: parentDirectory,
         createdAt: read.createdAt,
         updatedAt: read.updatedAt,
-        model: read.model,
+        model: model ?? read.model,
+        reasoningEffort: reasoningEffort ?? read.reasoningEffort,
         modelProvider: read.modelProvider,
         parentId: parentThreadId,
         agentNickname: read.agentNickname,
@@ -581,7 +586,10 @@ class CodexSessionService({
     return "$configured\n\n$sesoriAgentInstructions";
   }
 
-  Future<({CodexResumedThread? resumedThread, String? resolvedModel, String? turnId, bool started})> startTurn({
+  Future<
+    ({CodexResumedThread? resumedThread, String? resolvedModel, String? resolvedEffort, String? turnId, bool started})
+  >
+  startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
     required String? clientUserMessageId,
@@ -590,7 +598,10 @@ class CodexSessionService({
     required CodexCollaborationMode? collaborationMode,
     required bool? fastMode,
   }) async {
-    Future<({CodexResumedThread? resumedThread, String? resolvedModel, String? turnId, bool started})> start(
+    Future<
+      ({CodexResumedThread? resumedThread, String? resolvedModel, String? resolvedEffort, String? turnId, bool started})
+    >
+    start(
       _PreparedTurn prepared,
     ) async {
       final turnId = await _connectedThreadRepository.startTurn(
@@ -608,6 +619,7 @@ class CodexSessionService({
       return (
         resumedThread: prepared.resumedThread,
         resolvedModel: prepared.model,
+        resolvedEffort: prepared.effort,
         turnId: turnId,
         started: turnId != null,
       );
@@ -637,7 +649,8 @@ class CodexSessionService({
     }
   }
 
-  Future<({CodexResumedThread? resumedThread, String? resolvedModel, String? turnId})> sendCommand({
+  Future<({CodexResumedThread? resumedThread, String? resolvedModel, String? resolvedEffort, String? turnId})>
+  sendCommand({
     required String threadId,
     required String command,
     required String arguments,
@@ -686,6 +699,7 @@ class CodexSessionService({
     return (
       resumedThread: prepared.resumedThread,
       resolvedModel: command == compactionCommandName ? null : prepared.model,
+      resolvedEffort: command == compactionCommandName ? null : prepared.effort,
       turnId: turnId,
     );
   }

@@ -343,6 +343,16 @@ reconnect or restart.
   precedence and first-terminal selection; resumed turns cannot rewrite either.
   Encrypted input keeps the exact matching spawn message and never exposes its
   envelope header. Missing or mismatched activity leaves the generic card.
+- Live Codex assistant and error messages carry the thread's model and
+  reasoning effort (as the message variant), matching what replay reads from
+  `turn_context`: a root takes them from `thread/start`/`thread/resume` and the
+  effort each turn selects; a sub-agent takes the model and effort its started
+  `subAgentActivity` resolved (codex-cli 0.167+), else its `thread/read`.
+- A Codex thread started on another model provider is refused on
+  `thread/resume` with structured `error.data` (`modelProviderMismatch`,
+  `modelProviderNotConfigured`, `modelProviderPolicyConflict`). The send fails
+  as a 409 whose message names both providers and the fix, never as a generic
+  500, and no `turn/start` is sent.
 - Codex rollout replay applies each `thread_rolled_back` marker to the history
   surviving before it. `num_turns` counts user turns; each removed turn includes
   its user, assistant, reasoning, tool, and terminal records, while earlier
@@ -539,6 +549,10 @@ rules where supported.
   a root, ordinary fork, or malformed rollout loses its own first turn because
   it resembled a copied sub-agent prefix.
 - A Codex prompt sent from Sesori appears twice after a reload or reconnect.
+- A live Codex sub-agent message shows the config default model or no effort
+  while its reloaded copy shows the child's own model and effort.
+- A Codex send on a thread from another model provider fails as a 5xx or with
+  a message that does not name the providers.
 - After a Codex app-server socket drop, a session whose turn kept running
   shows idle until the user acts, or a turn that ended during the outage
   leaves its final reply missing until the page reloads.

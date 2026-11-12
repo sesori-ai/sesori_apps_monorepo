@@ -264,6 +264,7 @@ void main() {
           createdAt: 10,
           updatedAt: 20,
           model: "gpt-5.6",
+          reasoningEffort: "low",
           modelProvider: "openai",
           parentId: null,
           agentNickname: "Raman",
@@ -282,6 +283,8 @@ void main() {
         callId: "call-1",
         parentDirectory: "/repo/parent",
         agentPath: "/root/sleeper",
+        model: null,
+        reasoningEffort: null,
         status: const PluginSessionStatus.idle(),
       );
 
@@ -292,6 +295,7 @@ void main() {
       expect(child.name, "Raman");
       expect(child.directory, "/repo/parent");
       expect(child.model, "gpt-5.6");
+      expect(child.reasoningEffort, "low");
       expect(child.createdAt, 10);
       expect(announcement.status, isA<PluginSessionStatusBusy>());
       final created = announcement.events.whereType<BridgeSseSessionCreated>().single;
@@ -307,6 +311,8 @@ void main() {
           callId: "call-1",
           parentDirectory: "/repo/parent",
           agentPath: "/root/sleeper",
+          model: null,
+          reasoningEffort: null,
           status: const PluginSessionStatus.busy(),
         ),
         isNull,
@@ -330,12 +336,16 @@ void main() {
         callId: "call-1",
         parentDirectory: "/repo/parent",
         agentPath: "/root/sleeper",
+        model: "gpt-5.7",
+        reasoningEffort: "high",
         status: const PluginSessionStatus.idle(),
       );
 
       if (announcement == null) fail("child was not announced");
       final child = announcement.child;
       expect(child.parentId, "root-1");
+      expect(child.model, "gpt-5.7");
+      expect(child.reasoningEffort, "high");
       expect(child.name, "/root/sleeper");
       expect(child.directory, "/repo/parent");
       expect(child.agentNickname, isNull);
@@ -355,6 +365,8 @@ void main() {
         callId: "call-1",
         parentDirectory: "/repo/app",
         agentPath: "worker",
+        model: null,
+        reasoningEffort: null,
         status: const PluginSessionStatus.idle(),
       );
       await threadRepository.readStarted.future;
@@ -372,6 +384,8 @@ void main() {
           callId: "call-1",
           parentDirectory: "/repo/app",
           agentPath: "worker",
+          model: null,
+          reasoningEffort: null,
           status: const PluginSessionStatus.busy(),
         ),
         isNull,
@@ -391,6 +405,8 @@ void main() {
         callId: "call-1",
         parentDirectory: "/repo/app",
         agentPath: "worker",
+        model: null,
+        reasoningEffort: null,
         status: const PluginSessionStatus.idle(),
       );
       await threadRepository.readStarted.future;
@@ -461,6 +477,8 @@ void main() {
         callId: "call-1",
         parentDirectory: "/repo/app",
         agentPath: "worker",
+        model: null,
+        reasoningEffort: null,
         status: const PluginSessionStatus.idle(),
       );
       if (announcement == null) fail("child was not announced");
@@ -472,6 +490,8 @@ void main() {
           callId: "call-1",
           parentDirectory: "/repo/app",
           agentPath: "worker",
+          model: null,
+          reasoningEffort: null,
           status: const PluginSessionStatus.busy(),
         ),
         isNull,
@@ -730,6 +750,7 @@ CodexThreadRecord _liveChild({required String id, required String parentId}) => 
   createdAt: null,
   updatedAt: null,
   model: null,
+  reasoningEffort: null,
   modelProvider: null,
   parentId: parentId,
   agentNickname: "Hooke",

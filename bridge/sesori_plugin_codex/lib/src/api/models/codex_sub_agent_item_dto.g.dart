@@ -27,6 +27,8 @@ CodexSubAgentActivityItemDto _$CodexSubAgentActivityItemDtoFromJson(Map json) =>
           CodexSubAgentActivityKind.unknown,
       agentThreadId: _textFromJson(json['agentThreadId']),
       agentPath: _textFromJson(json['agentPath']),
+      model: _textFromJson(json['model']),
+      reasoningEffort: _textFromJson(json['reasoningEffort']),
       $type: json['type'] as String?,
     );
 
