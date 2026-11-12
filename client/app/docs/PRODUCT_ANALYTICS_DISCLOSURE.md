@@ -19,13 +19,15 @@ provider/model/agent/tool/command names, raw error text, OAuth identity, email,
 IP address, or raw/hashed project, session, bridge, device, notification, or
 account identifiers.
 
-The one bounded exception is the harness: `session_message_sent` and
-`session_created_with_message` carry a pinned `harness` value naming which
-built-in coding harness (for example `claude_code` or `codex`) ran the message,
-or `other` for any harness Sesori does not ship. Model, provider, agent, tool,
-and command names stay excluded. The public notice's sentence listing "coding
-provider, model, agent, tool, or command names" must name this exception before
-a release that sends it.
+The one bounded exception is the harness. On the mobile app,
+`session_message_sent` and `session_created_with_message` carry a pinned
+`harness` value naming which built-in coding harness (for example `claude_code`
+or `codex`) ran the message. Any plugin ID the app does not recognize, including
+one a newer bridge advertises, is sent as `other`; the raw ID never is. No other
+event carries it, and model, provider, agent, tool, and command names stay
+excluded. The desktop app removes `harness` before sending these events, and app
+versions from before it send none; reporting counts both as `unknown`, a value
+no client sends.
 
 ## Desktop app
 
@@ -153,3 +155,6 @@ and product decision.
       counsel approval before a production release.
 - [ ] Record product/privacy counsel approval and the first approved app version
       in the private release record.
+- [ ] Before the first release that sends `harness`, make the public notice's
+      sentence listing "coding provider, model, agent, tool, or command names"
+      name the mobile harness exception above.
