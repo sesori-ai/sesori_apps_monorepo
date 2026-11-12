@@ -396,11 +396,12 @@ They do not claim that a harness's native CLI could never implement an equivalen
 
 ## Reopening a session whose model is gone
 
-Only OMP is assessed here. Other harnesses are not assessed.
+Only OMP and Codex are assessed here. Other harnesses are not assessed.
 
 | Harness | Status |
 |---|---|
 | OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.12.6` and `18.19.0` sources, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
+| Codex | 🚫 Not supported when the thread's model provider is no longer the configured one, by upstream design (probed live on codex-cli `0.167.1` with an isolated `CODEX_HOME`, 2026-11-12): `thread/resume` answers JSON-RPC `-32600` with `data` `{"type": "modelProviderMismatch", "modelProvider": <thread's>, "currentModelProvider": <configured>}`; per the schema, `modelProviderNotConfigured` carries only the thread's provider and `modelProviderPolicyConflict` adds `requiredModelProvider`. The send fails with a 409: a mismatch names both providers and how to switch back, not-configured names the thread's provider and says to add it back to the config, and a policy conflict names both providers and says the session can't be continued. The app still shows its generic "Couldn't send" with Remove; it does not display the bridge's message. |
 
 ## External session activity
 
@@ -1015,6 +1016,11 @@ status; root `keep` stopped its own turn while effective root status remained
 busy for retained descendants. Live matrix is partial: no
 pending-input request surfaced, so that case remains automated rather than
 live-plugin coverage.
+From codex-cli 0.167 a started `subAgentActivity` carries the child's resolved
+`model` and `reasoningEffort` (schema dump, 2026-11-12); live child messages
+show them as model and effort, as replay already did from `turn_context`. Older
+Codex falls back to the child's `thread/read` model and effort, when present.
+Not verified live (needs a signed-in account).
 
 ⁴ Copilot CLI (plugin targets 1.0.109) runs custom agents as subagents. When
 probed on 1.0.80, inside the supported range (minimum 1.0.78), its Agent Client
@@ -1066,7 +1072,7 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.2.1 over dsh 0.2.1-rc.3 is the managed target;
+⁹ DeepSeek's published adapter 0.2.2 over dsh 0.2.2-rc.2 is the managed target;
 adapter 0.1.5 remains the minimum accepted runtime. From dsh 0.2.0 a sub-agent
 may delegate only one level by default (previously three), with at most eight
 active; users raise `subagent.config.maxDepth` in their DeepSeek profile. Provider

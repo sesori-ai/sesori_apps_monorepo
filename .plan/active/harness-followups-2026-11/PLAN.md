@@ -77,7 +77,7 @@ separate regions; whichever lands later merges `main` in.
 - Docs: the OMP rows in `HARNESS_CAPABILITIES.md` (tool title row, form row,
   Windows ARM64 row), the hold text in `docs/regression/plugin-setup-and-lifecycle.md`,
   the OMP section of `.agents/skills/update-backend-runtimes/references/harnesses.md`,
-  and hold H1 in `.plan/active/harness-refresh-2026-11/PLAN.md` (lifted).
+  and hold H1 in `.plan/completed/harness-refresh-2026-11/PLAN.md` (lifted).
 
 **Not handled.** Leftovers already imported from a PATH 18.18.9+ binary stay in
 the bridge database; the filter only stops new imports. Low damage, accepted.
@@ -227,6 +227,13 @@ Codex and Copilot rows in `HARNESS_CAPABILITIES.md`.
   exception carrying both provider names (keeping the original as `cause`), and
   surface a `PluginOperationException` with a 4xx status and a short message
   naming both providers and the fix.
+
+**As built.** The 0.167 schema puts the resolved `model` and `reasoningEffort`
+on the started `subAgentActivity` itself (and on `Thread`), so
+`collabAgentToolCall` stays undecoded. The live probe (0.167.1) puts the
+mismatch on `thread/resume`: code `-32600`, `data` `{type, modelProvider,
+currentModelProvider}`. The app shows its generic "Couldn't send" for any 4xx
+prompt rejection, so the provider message reaches logs, not the screen.
 
 **Verification.** Fixture tests for both. Live without credentials: with an
 isolated `CODEX_HOME`, start a thread under provider A, switch to B, resume and
