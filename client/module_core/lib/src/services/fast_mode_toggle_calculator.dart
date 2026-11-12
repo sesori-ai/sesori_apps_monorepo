@@ -53,6 +53,20 @@ class const FastModeToggleCalculator() {
     return millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis);
   }
 
+  /// The moment the backend's prompt cache goes cold. Null when the model
+  /// reports no cache lifetime, the session has no history, or there is no
+  /// model activity yet.
+  DateTime? promptCacheColdAt({
+    required FastModeSupport? support,
+    required bool hasHistory,
+    required DateTime? lastModelActivity,
+  }) => switch (support) {
+    FastModeAvailable(:final promptCacheTtlSeconds) when hasHistory && lastModelActivity != null =>
+      lastModelActivity.add(Duration(seconds: promptCacheTtlSeconds)),
+    FastModeAvailable() => null,
+    null || FastModeSupportUnknown() || FastModeUnavailable() => null,
+  };
+
   /// Switching fast mode drops the backend's prompt cache. That costs a full
   /// re-read only while the cache is still warm: the session has history and
   /// the model was last active less than the cache lifetime ago. Turning fast
@@ -65,12 +79,14 @@ class const FastModeToggleCalculator() {
     required DateTime now,
   }) {
     switch (support) {
-      case FastModeAvailable(:final promptCacheTtlSeconds):
+      case FastModeAvailable():
         final target = !fastMode;
-        final cacheIsWarm =
-            hasHistory &&
-            lastModelActivity != null &&
-            now.difference(lastModelActivity) < Duration(seconds: promptCacheTtlSeconds);
+        final coldAt = promptCacheColdAt(
+          support: support,
+          hasHistory: hasHistory,
+          lastModelActivity: lastModelActivity,
+        );
+        final cacheIsWarm = coldAt != null && now.isBefore(coldAt);
         return cacheIsWarm ? FastModeToggleConfirmCacheReset(fastMode: target) : FastModeToggleApply(fastMode: target);
       case FastModeUnavailable(:final reason):
         return FastModeToggleUnavailable(reason: reason);

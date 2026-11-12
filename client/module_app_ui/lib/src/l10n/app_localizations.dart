@@ -5491,6 +5491,30 @@ abstract class AppLocalizations {
   /// **'Auto-continue'**
   String get sessionAutoContinuationChip;
 
+  /// Label of the quiet chip beside the session's model picker while the idle session's prompt cache is still warm, with the whole minutes left before it goes cold.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache warm · {minutes} min'**
+  String sessionPromptCacheWarm(int minutes);
+
+  /// Label of the prompt cache chip during the final minute before the cache goes cold.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache warm · <1 min'**
+  String get sessionPromptCacheWarmUnderMinute;
+
+  /// Label of the prompt cache chip once the idle session's prompt cache has gone cold.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache cold'**
+  String get sessionPromptCacheCold;
+
+  /// Tooltip of the prompt cache chip explaining what warm and cold mean.
+  ///
+  /// In en, this message translates to:
+  /// **'The model\'s prompt cache stays warm for a while after its last reply; sending after it goes cold re-reads the whole conversation.'**
+  String get sessionPromptCacheTooltip;
+
   /// No description provided for @sessionAutoContinuationQuotaReached.
   ///
   /// In en, this message translates to:

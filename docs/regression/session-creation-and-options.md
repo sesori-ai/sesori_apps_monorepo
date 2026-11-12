@@ -582,6 +582,24 @@ variant, and worktree mode, and creating the session with its first input.
   coverage (L3) toggles fast mode on a live Codex and Claude session with a
   warm and a cold cache and reopens the session to confirm the choice persists.
 
+### Prompt-cache warmth chip
+
+- Session detail's composer controls show a chip with the backend's prompt-cache
+  warmth: `Cache warm · N min` while last activity plus the selected model's
+  `promptCacheTtlSeconds` is in the future, counting down by the minute and
+  showing `<1 min` in the final minute, then `Cache cold` from exactly that
+  moment. Last activity is derived as for the fast-mode confirmation.
+- The chip is hidden when the selected model has no available fast-mode support
+  with a lifetime, when the session has no history, and while the session is
+  busy or retrying; it reappears with the recomputed state once the session is
+  idle.
+- Coverage: Claude (60 minutes) and Codex (30 minutes) models with available
+  fast mode only; every other harness reports no lifetime and shows no chip
+  (see `docs/HARNESS_CAPABILITIES.md`). The behavior is client-only with no
+  transport boundary: the calculator's cold-time matrix (no lifetime, no
+  history, no activity, exact expiry boundary) runs as unit tests, and the
+  chip's warm, final-minute, cold-flip, and hidden states run as widget tests.
+
 ## Regression Levels
 
 | Level | Additional coverage |
@@ -777,6 +795,10 @@ startup-extension file failure, retry once the filesystem is usable.
   unavailable one, sends `fastMode: true` for a model that cannot run it, or
   switches without confirmation while the prompt cache is warm; the choice is
   lost on reopen or not synchronized from another surface.
+- The prompt-cache chip shows for a model without an available fast-mode
+  lifetime, a session without history, or a busy or retrying session; it
+  reads warm after the lifetime has passed or cold before it, freezes its
+  minute count, or skips the `<1 min` final minute.
 
 ## Known Limitations
 

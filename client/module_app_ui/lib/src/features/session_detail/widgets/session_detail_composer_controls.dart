@@ -17,6 +17,7 @@ import "session_approval_chip.dart";
 import "session_auto_continuation_chip.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
+import "session_prompt_cache_chip.dart";
 import "yolo_chip.dart";
 
 /// Shared session composer controls injected below the transcript view.
@@ -240,8 +241,9 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     );
   }
 
-  /// Quiet session states beside the pickers: the session's approval mode, and
-  /// auto-continuation while it is enabled but not due.
+  /// Quiet session states beside the pickers: the session's approval mode,
+  /// auto-continuation while it is enabled but not due, and how long the
+  /// prompt cache stays warm while the session is idle.
   List<Widget> _statusChips({
     required SessionDetailLoaded state,
     required PregoComposerSurfaceStyle surfaceStyle,
@@ -252,6 +254,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     final continuation = view != null && view.enabled && !sessionAutoContinuationNoticeVisible(view: view)
         ? view
         : null;
+    final promptCacheColdAt = state.sessionStatus is SessionStatusIdle ? state.promptCacheColdAt : null;
     return [
       // Touch status chips stay glyphs so the shared-width pickers keep their labels.
       ?switch (state.approvalControl) {
@@ -277,6 +280,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
           updating: state.isUpdatingAutoContinuation,
           onDisable: () => unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: false)),
         ),
+      if (promptCacheColdAt != null) SessionPromptCacheChip(surfaceStyle: surfaceStyle, coldAt: promptCacheColdAt),
     ];
   }
 }
