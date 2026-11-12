@@ -540,13 +540,11 @@ class CodexSessionService({
   Future<CodexThreadRecord> startThread({
     required String cwd,
     required String? model,
-    required String? modelProvider,
     required bool fastMode,
   }) async {
     final thread = await _connectedThreadRepository.startThread(
       cwd: cwd,
       model: model,
-      modelProvider: modelProvider,
       fastMode: fastMode,
       developerInstructions: await _developerInstructions(cwd: cwd),
     );

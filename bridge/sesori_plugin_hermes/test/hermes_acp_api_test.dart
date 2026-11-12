@@ -16,13 +16,18 @@ void main() {
     await api.deletePersistedSession(sessionId: _sessionId, timeout: _timeout);
   });
 
-  test("an unpersisted discovery session completes cleanup", () async {
-    final api = _api(
-      result: const CommandResult(exitCode: 1, stdout: "Session '$_sessionId' not found.\n", stderr: ""),
-    );
+  for (final stdout in [
+    "No session '$_sessionId'. Run: hermes sessions list to find the id.\n",
+    "Session '$_sessionId' not found.\n",
+  ]) {
+    test("an unpersisted discovery session completes cleanup: $stdout", () async {
+      final api = _api(
+        result: CommandResult(exitCode: 1, stdout: stdout, stderr: ""),
+      );
 
-    await api.deletePersistedSession(sessionId: _sessionId, timeout: _timeout);
-  });
+      await api.deletePersistedSession(sessionId: _sessionId, timeout: _timeout);
+    });
+  }
 
   test("database failures retain both diagnostic streams", () async {
     final api = _api(
@@ -47,6 +52,11 @@ void main() {
   for (final result in [
     const CommandResult(exitCode: 2, stdout: "Session '$_sessionId' not found.", stderr: ""),
     const CommandResult(exitCode: 1, stdout: "Session 'different-session' not found.", stderr: ""),
+    const CommandResult(
+      exitCode: 1,
+      stdout: "No session 'different-session'. Run: hermes sessions list to find the id.",
+      stderr: "",
+    ),
     const CommandResult(exitCode: 1, stdout: "Session '$_sessionId' not found.", stderr: "database close failed"),
   ]) {
     test("only a clean not-found response for the requested session is accepted: $result", () async {

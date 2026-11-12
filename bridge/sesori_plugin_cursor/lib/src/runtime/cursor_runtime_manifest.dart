@@ -23,7 +23,9 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 ///    files (node runtime, native modules), so the assets declare
 ///    [RuntimeArchiveLayout.packageDirectory] and the whole tree is installed.
 ///
-/// Windows is deliberately absent: Cursor publishes darwin and linux only, so
+/// Windows is not managed yet: Cursor also publishes
+/// `windows/{x64,arm64}/agent-cli-package.zip` (a `cursor-agent.exe` with
+/// `.cmd`/`.ps1` launchers), but no Windows layout has been verified, so
 /// [assetFor] returns null there and the descriptor does not advertise the
 /// install capability.
 ///
@@ -39,7 +41,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
   static final CalendarRuntimeVersion _minPathVersion = CalendarRuntimeVersion.parse(value: "2026.09.23");
 
   /// The latest official-installer Cursor build targeted by this plugin.
-  static const String targetVersion = "2026.10.22-27dcf5f";
+  static const String targetVersion = "2026.11.11-b912975";
 
   /// The exact Cursor CLI build the managed runtime installs, preserved
   /// verbatim: [CalendarRuntimeVersion] keeps the publisher's string, so the
@@ -63,7 +65,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "darwin/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "2f5b0a3dd5fb951cecffac813867d8a08d810e59837d59fd5f12d69b922398d7",
+        sha256: "2c60b58fb7d9a54c7cb9460f0cbb10d451d4af025d4451f252e5f1d956f8c66f",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -71,7 +73,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "darwin/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "7a3cfbf0fcfb979b6213feb5f9fd10fbc7cd4e51ab28c3b572bb935e0b114961",
+        sha256: "38578cf7f2a7c67679cffaf95818b58fa3e21ff95f8883ad0af012b5d5460489",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -81,7 +83,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "linux/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "22a36df9720830668ccd4d707e5190204ab9c8a0efb2f068cc914895f804d3ec",
+        sha256: "f068af64ed91b5304605976586f690579679f740a41f388091a6b3a2e776987c",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -89,7 +91,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "linux/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "85296944e4600a83c4b764f578d1502bf9c416db200d33a593e8f3ecabfdc294",
+        sha256: "be01f42ad334f81d05a9992fcf060a52cc746f52cc451e849eb652146a6e3c91",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),

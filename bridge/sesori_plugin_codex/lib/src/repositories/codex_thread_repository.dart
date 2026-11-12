@@ -51,7 +51,6 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
   Future<CodexThreadRecord> startThread({
     required String cwd,
     required String? model,
-    required String? modelProvider,
     required bool fastMode,
     required String developerInstructions,
   }) async {
@@ -60,7 +59,6 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       request: () => _appServerApi.startThread(
         cwd: cwd,
         model: model,
-        modelProvider: modelProvider,
         fastMode: fastMode,
         developerInstructions: developerInstructions,
       ),

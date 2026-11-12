@@ -58,13 +58,16 @@ void main() {
 
     // The bridge keeps one notice per failed turn and adds a replayed wording
     // only when its error name differs: the generic saved row is a stand-in
-    // for the live reason, the partial-turn row adds a warning of its own.
+    // for the live reason, the rows warning that actions may already have run
+    // add a warning of their own.
     test("Hermes's generic saved row is the same kind of notice as the live reason", () {
       expect(mapper.classifyHaltNotice(text: failedTurnBoundary)?.errorName, "hermes_failed_turn");
     });
 
-    test("Hermes's partial-turn row is a notice of its own kind", () {
-      expect(mapper.classifyHaltNotice(text: partialFailedTurnBoundary)?.errorName, "hermes_partial_turn");
+    test("Hermes's partial-turn and interrupted-automation rows are notices of their own kind", () {
+      for (final row in [partialFailedTurnBoundary, automationInterruptedBoundary]) {
+        expect(mapper.classifyHaltNotice(text: row)?.errorName, "hermes_partial_turn", reason: row);
+      }
     });
 
     test("a real reply stays assistant text", () {
@@ -75,7 +78,12 @@ void main() {
     });
 
     test("a reply that quotes a notice stays assistant text", () {
-      for (final notice in [...failureNotices.values, failedTurnBoundary, partialFailedTurnBoundary]) {
+      for (final notice in [
+        ...failureNotices.values,
+        failedTurnBoundary,
+        partialFailedTurnBoundary,
+        automationInterruptedBoundary,
+      ]) {
         final quoted = "Hermes printed this earlier:\n\n$notice\n\nI switched to a backup provider.";
         expect(mapper.classifyHaltNotice(text: quoted), isNull, reason: notice);
       }

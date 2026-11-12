@@ -23,7 +23,7 @@ void main() {
       expect(descriptor.mcpScopes, {PluginMcpScopeKind.session}, reason: "Claude answers MCP only for a live session");
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
-      expect(ClaudePluginDescriptor.targetVersion, "2.1.310");
+      expect(ClaudePluginDescriptor.targetVersion, "2.1.322");
       expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.authentication));
       const explicit = PluginConfig(values: {ClaudePluginDescriptor.binOption: "/custom/claude"});
       expect(descriptor.managementCapabilities(config: explicit), contains(PluginControlCapability.authentication));
