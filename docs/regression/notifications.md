@@ -48,8 +48,11 @@ external.
 - Mobile push targets the Firebase Installation ID (FID), not an FCM registration token. The client asks FCM to
   register when authenticated and sends every FID FCM then reports, including registrations FCM starts itself, to the
   server, replacing a previously registered FID that changed. It removes the FID from the server before logout and
-  unregisters from FCM once signed out, restores registration if logout fails, and never re-registers while logout is
-  in flight. FCM rejects FID registration unless the app opts in (`FirebaseMessagingInstallationIdEnabled` in the iOS
+  unregisters from FCM at logout (or when the session is rejected), restores registration if logout fails, and never
+  re-registers while logout is in flight. An FID FCM reports while signed out is never sent to the server. After a
+  logout in the same run the client unregisters it from FCM again; on a cold start while signed out, FCM keeps the
+  registration it made by itself until the next sign-in, which is harmless because the server sends only to FIDs it
+  stores. FCM rejects FID registration unless the app opts in (`FirebaseMessagingInstallationIdEnabled` in the iOS
   Info.plist, `firebase_messaging_installation_id_enabled` in the Android manifest); the opt-in also disables the
   token API, so the app never sends a token. On iOS, registration waits up to five seconds for the APNs token first.
 - Registration sends the same device ID the preferences are stored under, so the server can associate this FID with

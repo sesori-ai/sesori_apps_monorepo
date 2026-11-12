@@ -110,6 +110,7 @@ class NotificationRegistrationService({
     try {
       await _repository.unregisterFid(fid: fid);
       _registeredFid = null;
+      logi("Push FID ${_fidForLog(fid)} unregistered from the server for logout");
     } catch (error, stackTrace) {
       logw("Failed to unregister push FID during logout", error, stackTrace);
     }
@@ -132,6 +133,7 @@ class NotificationRegistrationService({
     try {
       await _pushMessagingSource.unregister();
       _locallyUnregistered = true;
+      logi("Unregistered this installation from FCM");
     } finally {
       _registeredFid = null;
     }
@@ -160,6 +162,7 @@ class NotificationRegistrationService({
   }
 
   Future<void> _handleRegisteredFid({required String fid}) async {
+    logi("Push FID ${_fidForLog(fid)} received from FCM");
     _latestFid = fid;
     _locallyUnregistered = false;
     final authState = _authSession.currentState;
@@ -167,17 +170,24 @@ class NotificationRegistrationService({
       return;
     }
     if (authState is! AuthAuthenticated) {
-      // Keeps a signed-out installation unregistered when the provider
-      // registers it by itself.
+      // An FID reported while not signed in never reaches the server. After a
+      // sign-out (logout or a rejected session) this unregisters it from FCM
+      // again. A cold start while signed out stays AuthInitial, so FCM keeps
+      // the registration it made by itself; the server sends only to FIDs it
+      // stores, so nothing is delivered.
       await _syncForState(state: authState);
       return;
     }
-    if (fid == _registeredFid) return;
+    if (fid == _registeredFid) {
+      logd("Push FID ${_fidForLog(fid)} is already registered with the server");
+      return;
+    }
 
     final previousFid = _registeredFid;
     if (previousFid != null) {
       try {
         await _repository.unregisterFid(fid: previousFid);
+        logi("Previous push FID ${_fidForLog(previousFid)} unregistered from the server");
       } catch (error, stackTrace) {
         logw("Failed to unregister previous push FID", error, stackTrace);
       }
@@ -186,6 +196,7 @@ class NotificationRegistrationService({
 
     await _repository.registerFid(fid: fid, platform: _pushMessagingSource.devicePlatform);
     _registeredFid = fid;
+    logi("Push FID ${_fidForLog(fid)} registered with the server");
   }
 
   // ignore: no_slop_linter/prefer_required_named_parameters
@@ -207,3 +218,7 @@ class NotificationRegistrationService({
     _registeredFidSubscription = null;
   }
 }
+
+/// An FID is this installation's push delivery address, so logs carry only a
+/// prefix: enough to match a server-side record, not enough to send to.
+String _fidForLog(String fid) => fid.length > 6 ? "${fid.substring(0, 6)}…" : fid;
