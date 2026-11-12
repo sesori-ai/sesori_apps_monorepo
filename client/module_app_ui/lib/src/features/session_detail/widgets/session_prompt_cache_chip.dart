@@ -128,9 +128,12 @@ class _SessionPromptCacheChipState() extends State<SessionPromptCacheChip> {
   }
 
   /// The widest label the chip can show, so every state has the same width.
-  /// Two-digit minutes cover any cache lifetime under 100 minutes.
+  /// Two-digit minutes cover any cache lifetime under 100 minutes. Measures the
+  /// style the `Text` actually renders, including the ambient default style,
+  /// bold-text, and spacing overrides, so the slot never clips the label.
   double _widestLabelWidth({required BuildContext context, required TextStyle style}) {
     final loc = context.loc;
+    final resolved = resolveTextStyle(context: context, style: style);
     final textScaler = MediaQuery.textScalerOf(context);
     final textDirection = Directionality.of(context);
     var widest = 0.0;
@@ -141,7 +144,7 @@ class _SessionPromptCacheChipState() extends State<SessionPromptCacheChip> {
       loc.sessionPromptCacheWarm(88),
     ]) {
       final painter = TextPainter(
-        text: TextSpan(text: label, style: style),
+        text: TextSpan(text: label, style: resolved),
         textDirection: textDirection,
         textScaler: textScaler,
         maxLines: 1,

@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:clock/clock.dart";
+import "package:flutter/rendering.dart" show RenderParagraph;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -110,5 +111,38 @@ void main() {
     expect(underMinute, warm);
     expect(cold, warm);
     expect(inUse, warm);
+  });
+
+  _clockTestWidgets("fits every label without clipping under platform text spacing", (tester) async {
+    final dispatcher = tester.platformDispatcher
+      ..letterSpacingOverrideTestValue = 2
+      ..wordSpacingOverrideTestValue = 6;
+    addTearDown(dispatcher.clearLetterSpacingOverrideTestValue);
+    addTearDown(dispatcher.clearWordSpacingOverrideTestValue);
+    final cases = [
+      (left: const Duration(minutes: 88, seconds: 30), inUse: false, label: "88 min"),
+      (left: const Duration(seconds: 40), inUse: false, label: "<1 min"),
+      (left: const Duration(seconds: -5), inUse: false, label: "Cold"),
+      (left: const Duration(minutes: 12), inUse: true, label: "Warm"),
+    ];
+    for (final c in cases) {
+      await tester.pumpWidget(
+        _harness(
+          child: SessionPromptCacheChip(
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
+            coldAt: tester.binding.clock.now().add(c.left),
+            inUse: c.inUse,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(c.label));
+      expect(
+        paragraph.size.width,
+        greaterThanOrEqualTo(paragraph.getMaxIntrinsicWidth(double.infinity) - 0.01),
+        reason: "${c.label} is clipped by its slot",
+      );
+      await tester.pumpWidget(_harness(child: const SizedBox()));
+    }
   });
 }
