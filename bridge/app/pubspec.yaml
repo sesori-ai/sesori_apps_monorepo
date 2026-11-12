@@ -49,8 +49,8 @@ dependencies:
   omp_plugin:
     path: ../sesori_plugin_omp
   meta: ^1.19.0
-  # Keep runtime and codegen on a matching release pair (drift 2.35.3 ships with
-  # drift_dev 2.35.2); skew breaks generated code and the Drift schema verifier.
+  # Keep runtime and codegen on a matching release pair (drift 2.35.4 ships with
+  # drift_dev 2.35.3); skew breaks generated code and the Drift schema verifier.
   drift: 2.35.4
   collection: ^1.19.1
   win32: ^6.4.0
