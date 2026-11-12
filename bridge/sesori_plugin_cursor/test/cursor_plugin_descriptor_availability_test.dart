@@ -111,7 +111,7 @@ void main() {
       expect(CursorPluginDescriptor.minVersion, "2026.09.23");
       // The managed runtime is the pinned build the manifest installs; the
       // floor above only gates a pre-installed CLI.
-      expect(const CursorRuntimeManifest().bundledVersion.raw, "2026.10.22-27dcf5f");
+      expect(const CursorRuntimeManifest().bundledVersion.raw, "2026.11.11-b912975");
     });
 
     test("advertises install without an explicit binary override", () {

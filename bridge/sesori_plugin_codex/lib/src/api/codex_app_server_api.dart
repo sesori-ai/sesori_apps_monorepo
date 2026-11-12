@@ -128,15 +128,14 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
   Future<CodexThreadEnvelopeDto> startThread({
     required String cwd,
     required String? model,
-    required String? modelProvider,
     required bool fastMode,
     required String developerInstructions,
   }) async {
+    // No `modelProvider`: since 0.166.0 Codex rejects input on a thread whose
+    // provider differs from the configured one, so a thread must use the
+    // provider Codex itself resolves from config and profiles.
     final params = <String, dynamic>{"cwd": cwd, "developerInstructions": developerInstructions};
-    if (model != null) {
-      params["model"] = model;
-      params["modelProvider"] = modelProvider;
-    }
+    if (model != null) params["model"] = model;
     // Only set when true: an unset thread tier lets Codex apply the model's
     // own default rather than forcing standard speed on every new thread.
     // The first turn/start (below) always carries an explicit tier, so this

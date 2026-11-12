@@ -273,6 +273,70 @@ void main() {
       expect(errors, isEmpty);
     });
 
+    test("maps number and integer fields to parsed free-text answers", () async {
+      requests.add(
+        form(
+          properties: {
+            "temperature": {"type": "number", "title": "Temperature", "minimum": 0, "maximum": 1, "default": 0.5},
+            "retries": {"type": "integer", "title": "Retries", "minimum": 1},
+            "limit": {"type": "integer", "title": "Limit"},
+          },
+          requiredKeys: ["retries"],
+        ),
+      );
+      await pump();
+
+      final asked = emitted.single as BridgeSseQuestionAsked;
+      expect(asked.questions.map((question) => question.question), [
+        "Temperature (0 to 1)",
+        "Retries (at least 1)",
+        "Limit",
+      ]);
+      expect(asked.questions.every((question) => question.custom), isTrue);
+      expect(asked.questions[0].options.single.description, "0.5");
+      expect(asked.questions[1].options, isEmpty);
+
+      expect(
+        await registry.replyQuestion(
+          requestId: asked.id,
+          answers: [
+            ["Use suggested text"],
+            [" 3 "],
+            ["many"],
+          ],
+        ),
+        isTrue,
+      );
+      expect(responses.single.$2, {
+        "action": "accept",
+        "content": {"temperature": 0.5, "retries": 3},
+      });
+    });
+
+    test("declines a form whose required number answer does not parse", () async {
+      requests.add(
+        form(
+          properties: {
+            "retries": {"type": "integer", "title": "Retries"},
+          },
+          requiredKeys: ["retries"],
+        ),
+      );
+      await pump();
+      final asked = emitted.single as BridgeSseQuestionAsked;
+
+      expect(
+        await registry.replyQuestion(
+          requestId: asked.id,
+          answers: [
+            ["2.5"],
+          ],
+        ),
+        isTrue,
+      );
+      expect(responses.single.$2, const {"action": "decline"});
+    });
+
     test("maps titled oneOf choices back to their const values", () async {
       requests.add(
         form(
@@ -396,7 +460,7 @@ void main() {
         form(
           id: 2,
           properties: {
-            "count": {"type": "integer", "default": "private-value"},
+            "nested": {"type": "object", "default": "private-value"},
           },
         ),
       );

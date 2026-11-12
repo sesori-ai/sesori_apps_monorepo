@@ -14,6 +14,12 @@ const String failedTurnBoundary = "Your request was not processed. Send it again
 const String partialFailedTurnBoundary =
     "This turn did not complete. Some actions may already have run; verify their effects before resending.";
 
+/// The row Hermes saves when an automated (cron, process or webhook) turn was
+/// lost across a gateway restart.
+const String automationInterruptedBoundary =
+    "An automated delivery was interrupted and was not run again. Some actions may already have run; verify their "
+    "effects.";
+
 /// One rendered final response per family of Hermes failure copy, filled in
 /// the way Hermes 0.21.5 fills its templates.
 const Map<String, String> failureNotices = {
@@ -42,6 +48,25 @@ const Map<String, String> failureNotices = {
       "⚠️ OpenRouter's safety filter refused this request, so the model didn't answer. Try rewording your "
       "message or removing sensitive attachments, or switch to another model with /model."
       "\n\nProvider said: content_filter",
+  "content policy (0.23.1)":
+      "⚠️ OpenRouter's safety filter refused this request, so the model didn't answer. That message has been "
+      "left out of this conversation, so you're not stuck — just ask something else and you can keep going. "
+      "Rewording it, removing any sensitive attachments, or switching models with /model can also help. If a "
+      "later message is refused too, start a new chat with /new (in a Bot Chat, Archive it from its tab menu)."
+      "\n\nProvider said: content_filter",
+  "first-attempt rate limit (0.22.6)":
+      "Nous Portal is rate-limiting requests right now — its usage limit resets in ~2m. "
+      "Send /retry after that, or switch models with /model. To avoid this in future, "
+      "add a backup provider with `hermes fallback add`.\n\nProvider said: HTTP 429",
+  "stream lifetime (0.22.6)":
+      "The response was still streaming when agent.stream_max_lifetime (900s) cut it, on all 3 attempts. "
+      "Raise agent.stream_max_lifetime, or set it to 0 to turn the cap off, if this model legitimately "
+      "streams this long.",
+  "data policy":
+      "This conversation holds a result from a connected app that may only go to a model that does not train "
+      "on your data, and 'gpt-5' on OpenRouter can't promise that. Switch models with /model, run /compress to "
+      "summarize the result away, or start fresh with /new. If you are on the free tier, no free model can take "
+      "this content: upgrade, or use /compress or /new.\n\nProvider said: HTTP 403",
   "billing": "Billing or credits exhausted: HTTP 402: insufficient credits",
   "free-tier outage":
       "The free model is having trouble responding right now. Try sending your message again in a minute.",

@@ -42,6 +42,23 @@ final class const _StringField({required super.key, required super.required, req
   }
 }
 
+final class const _NumberField({
+  required super.key,
+  required super.required,
+  required final bool integer,
+  required final String? suggestedText,
+}) extends AcpElicitationField {
+  /// Unparsable text encodes as null: the property is omitted, or the form
+  /// declined when it is required.
+  @override
+  Object? encode({required List<String> selected}) {
+    if (selected.isEmpty) return null;
+    final suggested = suggestedText;
+    final text = (selected.first == _suggestedTextLabel && suggested != null ? suggested : selected.first).trim();
+    return integer ? int.tryParse(text) : num.tryParse(text);
+  }
+}
+
 final class const _BooleanField({required super.key, required super.required}) extends AcpElicitationField {
   @override
   Object? encode({required List<String> selected}) {
@@ -222,6 +239,32 @@ class const AcpElicitationMapper() {
             custom: true,
           ),
           field: _StringField(key: key, required: required, suggestedText: suggested),
+        );
+      case "number" || "integer":
+        final defaultValue = property["default"];
+        final suggested = defaultValue is num ? "$defaultValue" : null;
+        final bounds = switch ((property["minimum"], property["maximum"])) {
+          (final num minimum, final num maximum) => " ($minimum to $maximum)",
+          (final num minimum, _) => " (at least $minimum)",
+          (_, final num maximum) => " (at most $maximum)",
+          _ => "",
+        };
+        return (
+          question: PluginQuestionInfo(
+            question: _bounded("$questionText$bounds"),
+            header: title,
+            options: [
+              if (suggested != null) PluginQuestionOption(label: _suggestedTextLabel, description: suggested),
+            ],
+            multiple: false,
+            custom: true,
+          ),
+          field: _NumberField(
+            key: key,
+            required: required,
+            integer: property["type"] == "integer",
+            suggestedText: suggested,
+          ),
         );
       default:
         return null;

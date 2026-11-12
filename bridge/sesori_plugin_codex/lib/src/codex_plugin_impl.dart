@@ -1019,7 +1019,6 @@ class CodexPlugin._({
     final thread = await _sessionService.startThread(
       cwd: directory,
       model: model?.modelID,
-      modelProvider: model?.providerID,
       fastMode: fastMode,
     );
     _eventMapper.setThreadTime(record: thread);

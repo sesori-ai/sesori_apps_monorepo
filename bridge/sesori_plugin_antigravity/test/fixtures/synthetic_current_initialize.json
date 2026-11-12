@@ -3,7 +3,7 @@
   "agentInfo": {
     "name": "antigravity-acp",
     "title": "Google Antigravity",
-    "version": "1.4.3"
+    "version": "1.4.5"
   },
   "agentCapabilities": {
     "loadSession": true,

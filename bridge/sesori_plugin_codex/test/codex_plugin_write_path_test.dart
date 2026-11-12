@@ -355,10 +355,14 @@ void main() {
         userVisibleText: "hello codex",
         variant: null,
         agent: "Agent",
-        model: null,
+        model: (providerID: "alt", modelID: "gpt-5.5"),
       );
 
       expect(fake.sentParamsFor("thread/start")["serviceTier"], equals("priority"));
+      // Codex 0.166+ rejects input on a thread whose provider differs from
+      // the configured one, so the chosen provider is never sent.
+      expect(fake.sentParamsFor("thread/start")["model"], equals("gpt-5.5"));
+      expect(fake.sentParamsFor("thread/start").containsKey("modelProvider"), isFalse);
       expect(fake.sentParamsFor("turn/start")["serviceTier"], equals("priority"));
     });
 

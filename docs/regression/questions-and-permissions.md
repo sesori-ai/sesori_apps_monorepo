@@ -79,6 +79,13 @@ reaches the backend so the turn continues.
   values. Duplicate titles remain distinguishable. Unsupported array shapes,
   including unconstrained, nested, and non-string choices, are declined without
   exposing labels or defaults in diagnostics.
+- An ACP `number` or `integer` property becomes a custom-text question whose
+  text shows its `minimum`/`maximum` bounds and whose numeric `default` is the
+  suggested text. The trimmed answer encodes as a JSON number; text that does
+  not parse (including a fraction for `integer`) omits an optional property and
+  declines the form when the property is required. OMP 18.18.3+ sends these
+  from its built-in `ask` HTML forms (`<input type="number|range">`); declining
+  them aborts the OMP turn, so a regression shows as a vanished question.
 - Every ACP schema property remains a separate question in property order. A
   separate string property is its own custom-text question, even when the text
   equals a selected option label. OMP's `qN` and `qN__other` remain distinct;

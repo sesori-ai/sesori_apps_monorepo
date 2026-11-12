@@ -8,6 +8,8 @@
 //   - `agent/conversation_loop.py`: `_billing_terminal_label`;
 //   - `hermes_cli/anon_auth.py`: `welcome_refusal_copy`,
 //     `_WELCOME_ROUTE_COPY` and `FREE_TIER_OUTAGE_COPY` (the chat forms).
+// Later additions are marked with the release they were copied from (read
+// on 2026-11-12).
 // If Hermes rewords one, that failure shows as plain assistant text again,
 // which is how it showed before these matchers existed. Paste the new
 // template here from the Hermes source.
@@ -18,13 +20,19 @@
 /// Left out on purpose: `reasoning_only`, which ends with the model's own last
 /// thoughts ("which may contain the answer"), so it stays a reply.
 const Map<String, String> _turnFailureTemplates = {
-  // exhausted_copy: every `_EXHAUSTED_LEADS` lead ends in "{attempts} attempts".
+  // exhausted_copy: `{lead}` is an `_EXHAUSTED_LEADS` lead or, since 0.22.6, a
+  // first-attempt `_EXHAUSTED_FIRST_ATTEMPT_LEADS` lead.
   "exhausted":
-      "{lead} attempts — it looks temporarily unavailable. Wait a minute and send /retry, or switch models with "
+      "{lead} — it looks temporarily unavailable. Wait a minute and send /retry, or switch models with "
       "/model. To avoid this in future, add a backup provider with `hermes fallback add`.\n\nProvider said: {summary}",
   "exhausted_until_reset":
-      "{lead} attempts — its usage limit resets in {window}. Send /retry after that, or switch models with /model. "
+      "{lead} — its usage limit resets in {window}. Send /retry after that, or switch models with /model. "
       "To avoid this in future, add a backup provider with `hermes fallback add`.\n\nProvider said: {summary}",
+  // 0.22.6: exhausted_copy for a stream cut by `agent.stream_max_lifetime`.
+  "stream_lifetime_exhausted":
+      "The response was still streaming when agent.stream_max_lifetime ({cap:g}s) cut it, on all {attempts} "
+      "attempts. Raise agent.stream_max_lifetime, or set it to 0 to turn the cap off, if this model legitimately "
+      "streams this long.",
   // nonretryable_copy: a `_NONRETRYABLE_COPY` / `_AUTH_COPY` body, then the provider's words.
   "model_not_found":
       "Model '{model}' isn't available on {label}. Pick a different model with /model (or `hermes model` in a "
@@ -47,6 +55,11 @@ const Map<String, String> _turnFailureTemplates = {
       "A firewall/CDN in front of {label} blocked the request before it reached the model, so your key is probably "
       "fine. Set a custom User-Agent via the provider's extra_headers, check the proxy/WAF rules, or switch "
       "providers with /model.\n\nProvider said: {summary}",
+  "data_policy_denied":
+      "This conversation holds a result from a connected app that may only go to a model that does not train on "
+      "your data, and '{model}' on {label} can't promise that. Switch models with /model, run /compress to "
+      "summarize the result away, or start fresh with /new. If you are on the free tier, no free model can take "
+      "this content: upgrade, or use /compress or /new.\n\nProvider said: {summary}",
   "nonretryable_default":
       "{label} rejected the request and retrying won't help. Pick another model with /model, or check the details in "
       "`{home}/logs/agent.log`.\n\nProvider said: {summary}",
@@ -60,6 +73,13 @@ const Map<String, String> _turnFailureTemplates = {
   "content_policy":
       "{label}'s safety filter refused this request, so the model didn't answer. Try rewording your message or "
       "removing sensitive attachments, or switch to another model with /model.\n\nProvider said: {summary}",
+  // 0.23.1: content_policy_copy with `CONTENT_POLICY_NEXT_STEPS`.
+  "content_policy_next_steps":
+      "{label}'s safety filter refused this request, so the model didn't answer. That message has been left out of "
+      "this conversation, so you're not stuck — just ask something else and you can keep going. Rewording it, "
+      "removing any sensitive attachments, or switching models with /model can also help. If a later message is "
+      "refused too, start a new chat with /new (in a Bot Chat, Archive it from its tab menu).\n\n"
+      "Provider said: {summary}",
   // _SITE_COPY.
   "context_overflow":
       "This conversation has grown too long for {model} to read, and Hermes couldn't shrink it enough "
@@ -145,6 +165,8 @@ const Map<String, String> _turnFailureTemplates = {
 const Set<String> _failedTurnRows = {
   "Your request was not processed. Send it again if you still want me to carry it out.",
   "This turn did not complete. Some actions may already have run; verify their effects before resending.",
+  // AUTOMATION_INTERRUPTED_NOTICE: a cron, process or webhook turn lost across a gateway restart.
+  "An automated delivery was interrupted and was not run again. Some actions may already have run; verify their effects.",
 };
 
 /// Placeholders that hold the provider's or Hermes's raw detail, always last

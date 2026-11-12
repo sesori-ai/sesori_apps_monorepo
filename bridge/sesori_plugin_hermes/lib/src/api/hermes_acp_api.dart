@@ -87,9 +87,12 @@ class HermesAcpApi({
       timeout: timeout,
     );
     if (result.exitCode == 0) return;
-    // Empty ACP discovery sessions may never be persisted by Hermes.
+    // Empty ACP discovery sessions may never be persisted by Hermes. 0.21.6
+    // through at least 0.23.1 print the "No session" form.
+    final stdout = result.stdout.trim();
     if (result.exitCode == 1 &&
-        result.stdout.trim() == "Session '$sessionId' not found." &&
+        (stdout == "No session '$sessionId'. Run: hermes sessions list to find the id." ||
+            stdout == "Session '$sessionId' not found.") &&
         result.stderr.trim().isEmpty) {
       Log.d("[hermes] Discovery session $sessionId is already absent; persisted cleanup is complete");
       return;

@@ -93,7 +93,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
   on previously accepted explicit/PATH pairs in the plan. Do not manufacture
   an independent minimum or silently change this exact-pin policy.
 - **Assets:** Sesori selects all six ZIPs from the
-  [official registry](https://github.com/agentclientprotocol/registry/blob/06229c691d24d039e2363ba12abe5c9dfae5bc66/antigravity-acp/agent.json):
+  [official registry](https://github.com/agentclientprotocol/registry/blob/02b460362cfedf4d43b03df7aad6d79a353fe064/antigravity-acp/agent.json):
   macOS arm64/x64, Linux arm64/x64 and Windows arm64/x64. Independently hash official downloads and compare them
   with the registry's published per-archive `sha256` (present since 1.4.3); neither is Google's signed provenance. Preserve sibling
   `agy_acp_server.par` + `localharness_external` (Windows `.exe` counterparts),
@@ -113,8 +113,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
   only generic parent-local subagent tool calls, not child identity/lifecycle or
   scoped-stop authority. Reassess on new evidence; do not infer support from
   native delegation or generic ACP features. Closed source limits remain explicit.
-  Inspect model selection's client-identity gates too: the official 1.3.0–1.4.3 packages
-  keep non-Gemini models only for recognized Zed/JetBrains/Android Studio/Xcode identities.
+  Inspect model selection's client-identity gates too: the official 1.3.0–1.4.5 packages
+  keep non-Gemini models only for recognized Zed/JetBrains/Android Studio/Xcode identities
+  (1.4.5 adds JetBrains Air). Antigravity CLI 1.5.1+ also ships its own `agy acp`, which
+  offers every account model to every ACP client; the registry package does not.
   Account entitlement alone does not prove what ACP advertises. Any explicitly
   approved compatibility identity stays inside the Antigravity plugin and must
   reach live, replay, login and validation initialization consistently; preserve
@@ -136,19 +138,24 @@ concrete problem can justify a documented temporary hold with a resolution path.
   - `codex-package-x86_64-pc-windows-msvc.tar.gz`
   Verify GitHub digests and `codex-package_SHA256SUMS` when present, including
   the checksum file's published digest. Windows also uses tar.gz. Keep
-  `bin/codex` / `bin/codex.exe`, `codex-code-mode-host`, and resources together.
+  `bin/codex` / `bin/codex.exe`, `codex-code-mode-host`,
+  `bin/codex-exec-server[.exe]` (new in 0.167.x) and resources together.
 - **Audit:** upstream `codex-rs/app-server-protocol/`, `codex-rs/app-server/`,
   schemas, processors and tests. Trace `thread/*`, `turn/*`, `item/*`, paging/
   rollout history, input/approval/auth requests, code mode, subagents, model
   discovery and experimental gates. Core/TUI/`exec --json` events are not
   automatically app-server notifications; `turn/completed` is not Pi's settled
   event. Prove ownership before replacing queue, retry, interrupt or history code.
+  Check provider admission (`ModelProviderError`): since 0.166.0 a turn on a
+  thread whose `modelProvider` differs from the configured one fails with
+  `modelProviderMismatch`, so Sesori sends only `model` on `thread/start`.
 - **Install:** use `ManagedRuntimeComposition.createInstaller()` with candidate
   manifest and asset resolver, then the production install/extract chain. The
   descriptor's installer hard-codes the current pin. Confirm the final
   `<stateDirectory>/codex/<version>/bin/codex[.exe]`, complete helpers/resources,
   and `.sesori-runtime-sha256` containing the bare candidate digest.
-- **Probe both current-host transports:** isolated HOME/`CODEX_HOME`, exact
+- **Probe both current-host transports:** isolated HOME/`CODEX_HOME` (create the
+  directory first; Codex exits when `CODEX_HOME` does not exist), exact
   version, 10-second response deadlines and bounded process-tree cleanup. Follow
   the owning stdio client and `codex_runtime_policy.dart` / WebSocket client;
   their envelopes and handshake policies differ.
@@ -189,8 +196,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
   `copilot-linux-{arm64,x64}.tar.gz`, `copilot-win32-{arm64,x64}.zip`, with
   GitHub digests. Current layout extracts `copilot` / `copilot.exe` as a single
   binary; verify packaging rather than imposing Pi/Codex package assumptions.
-- **Probe:** production current-host install, isolated `COPILOT_HOME`, branded
-  `GitHub Copilot CLI X.Y.Z.` version, then `--no-auto-update --acp`. Require ACP
+- **Probe:** production current-host install, isolated `COPILOT_HOME` and
+  `COPILOT_CACHE_HOME` (the loader can run a newer package cached there unless
+  auto-update is off), branded `GitHub Copilot CLI X.Y.Z.` version, then
+  `--no-auto-update --acp`. Require ACP
   v1 initialize and the `copilot-login` method, without prompting or reading the
   user's profile. Audit auth-state, models, session/history and subagent events
   through Copilot's own wire, not just shared ACP DTOs.
@@ -209,7 +218,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
   sub-agent child sessions Sesori always enables (`_meta.subagents`).
 - **Assets:** four self-hashed archives at
   `https://downloads.cursor.com/lab/<build>/<os>/<arch>/agent-cli-package.tar.gz`,
-  for `darwin`/`linux` and `arm64`/`x64`. No Windows package. Download/hash all
+  for `darwin`/`linux` and `arm64`/`x64`. Cursor also publishes
+  `windows/<arch>/agent-cli-package.zip`, which Sesori does not manage yet. Download/hash all
   four; no upstream checksum manifest is currently published. Preserve
   `dist-package/` and the `cursor-agent` entrypoint's siblings. The CDN answers 403
   to Python `urllib`'s default user agent; download with `curl`. Re-published bytes
@@ -225,8 +235,12 @@ concrete problem can justify a documented temporary hold with a resolution path.
 
 ## Claude Code
 
-- **Source:** stable `anthropics/claude-code` `vX.Y.Z`; compare
-  `npm view @anthropic-ai/claude-code version`. Inspect the associated
+- **Source:** the latest non-prerelease `anthropics/claude-code` `vX.Y.Z`, i.e.
+  npm `latest`, not the npm `stable` dist-tag (2026-10 decision D1); compare
+  `npm view @anthropic-ai/claude-code dist-tags`. npm can publish versions that
+  have no GitHub tag (2.1.315), so require both. GitHub releases ship native
+  archives with `SHASUMS256.txt` and a `.sig`, and the SDK `manifest.json` carries
+  checksums; use them when hashing a probe input. Inspect the associated
   `@anthropic-ai/claude-agent-sdk` release too; do not assume permanent version
   correspondence between CLI and SDK.
 - **Pin:** `bridge/sesori_plugin_claude/lib/src/runtime/claude_plugin_descriptor.dart`,
@@ -251,18 +265,26 @@ concrete problem can justify a documented temporary hold with a resolution path.
   `unknown`). PyPI may lag and is not the release authority.
 - **Pin:** `bridge/sesori_plugin_hermes/lib/src/runtime/hermes_plugin_descriptor.dart`,
   independent `targetVersion` / `minVersion`; direct CLI, no managed artifacts.
-- **Probe:** acquire exact tagged source under the permitted disposable boundary,
-  install its `acp` extra there, and verify `hermes acp --version`, ACP v1
-  initialize, advertised list/load capabilities and `session/list`. Do not run
-  remote installers for discovery or create a forbidden checkout. Isolate HOME;
-  a fresh profile can lack model/provider setup. Preserve the real CLI dispatch,
-  not a direct call into `acp_adapter.entry`. Build/install offline from verified
-  fetched artifacts inside the restricted boundary. Use an authorized configured
+- **Probe:** acquire exact tagged source under the permitted disposable boundary
+  and install it there with Python 3.14 and `uv sync --frozen --extra acp` (core
+  dependencies require Python 3.14, wheel/sdist builds are blocked outside Nix,
+  and resolving without the lock fails). The install fetches about 67 PyPI
+  packages, so it needs network unless a cache is seeded. Verify
+  `hermes acp --version`, ACP v1 initialize, advertised list/load capabilities and
+  `session/list`. A source tarball prints `unknown`; check the derived version
+  from a tagged git checkout or install stamp, and do not treat
+  `agentInfo.version` (an inert `0.0.0`) as a version. Do not run remote
+  installers for discovery or create a forbidden checkout. Isolate HOME; a fresh
+  profile can lack model/provider setup. Preserve the real CLI dispatch, not a
+  direct call into `acp_adapter.entry`. Since 0.22 `hermes acp` is a viewer of a
+  detached gateway daemon, so probes past initialize/list need loopback
+  networking and must clean up that daemon. Use an authorized configured
   fixture for new/load coverage; missing access or inconclusive probe results go
   into final follow-up, not an old target. Separate fixture/provider-restore
   failures from demonstrated production regressions and preserve failed state.
-- **Audit:** the actual Hermes ACP implementation, not only its CLI release
-  notes: settings, model/provider discovery, history, tools and subagents.
+- **Audit:** the actual Hermes ACP implementation (`acp_adapter/gateway_server.py`
+  since 0.22, not only `server.py`), not only its CLI release notes: settings,
+  model/provider discovery, history, tools and subagents.
 
 ## Pi
 
@@ -326,8 +348,13 @@ concrete problem can justify a documented temporary hold with a resolution path.
   roots; use an allowlist, not inherited credentials, and preserve production
   approval policy. Missing fixtures become final checks while the target moves
   forward. Current-host execution is the ordinary existing-platform scope.
+  Run the deletion probe without credentials: `session/new`, a prompt of
+  `/session delete`, then `session/list` from a fresh process must be empty.
+  From `18.18.9` OMP leaves a new empty, untitled replacement session there, so
+  the 2026-11 refresh held the target at `18.18.8`; move past it only once the
+  probe passes or the plugin hides that leftover.
   Also run the model-restore probe on a session whose saved model was removed.
-  From `18.6.3` (still in `18.12.6`), `session/load` and `session/resume` fail
+  From `18.6.3` (still in the `18.19.0` source), `session/load` and `session/resume` fail
   closed with JSON-RPC `-32603` and `details: "Could not restore model
   <provider/id>"`: ACP `#openStoredSession` calls `switchSession(path)` without
   `allowSessionModelFallback` (upstream PR #13689). The owner accepted this
@@ -343,10 +370,13 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Audit:** OMP's ACP projection, not Pi RPC. Trace auth, configuration, history,
   models, tools, subagent and cancellation behavior at that seam.
 - **Forms:** The shared ACP mapper supports finite array `items.anyOf` string
-  choices. Keep one question/encoder per property: checkbox selections and
-  separate custom text retain their keys, order, required flags and answer slots,
-  even for identical text. Do not interpret OMP's `qN`/`qN__other` naming in the
-  generic mapper or add a second wire answer shape. Live
+  choices and number/integer fields. Keep one question/encoder per property:
+  checkbox selections and separate custom text retain their keys, order, required
+  flags and answer slots, even for identical text. Since 18.18.3 the built-in
+  `ask` tool sends HTML-field keys with `<name>_other`, and may include `number`,
+  `boolean`, `required` and `default`; `qN`/`qN__other` names now come only from
+  an extension's `ui.askDialog`. Do not interpret OMP's naming in the generic
+  mapper or add a second wire answer shape. Live
   `OmpPlugin.supportsFormElicitation` remains enabled; `OmpAcpApi.open()` keeps
   scratch/catalog/cleanup form elicitation disabled. See
   `docs/regression/questions-and-permissions.md` for the focused live-client gate.
@@ -372,7 +402,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Producer work:** work in a fresh worktree of the local
   `~/sesori-ai/sesori-deepseek-acp` clone, branched from `origin/main`. Inspect its
   `release/config.json`, package/lockfile, extension protocol, packaging workflow and
-  conformance tests. Use the previous migration (PR #22, 0.2.0-rc.2) as the template:
+  conformance tests. Use the previous migration (PR #23, 0.2.1-rc.3) as the template:
   dsh pins, lockfile, `deepSeekHarnessVersion`, package version, runtime/session
   source, smoke script, README and fixtures. Audit the upstream
   `dsh-v<old>...dsh-v<new>` delta for APIs the adapter uses. Run `npm run check`
@@ -409,7 +439,13 @@ concrete problem can justify a documented temporary hold with a resolution path.
 ## Grok Build
 
 - **Source:** xAI's official `https://x.ai/cli/stable` channel; reconcile its build
-  identity with `xai-org/grok-build` source when source evidence is available.
+  identity with `xai-org/grok-build` source when source evidence is available
+  (as of 2026-11-12 that repository stops at 1.0.45). Binaries are at
+  `https://x.ai/cli/grok-<ver>-<os>-<arch>` (`.zst` and `.gz` variants) with no
+  published checksums or signatures; release notes are at
+  `https://x.ai/cli/changelogs/<ver>.external.md` (or `.json`). Release notes
+  omit ACP-visible changes, so diff strings and field counts of the candidate
+  binary against the previous target's.
   Do not execute the remote installer just to discover a release. A source-to-
   binary association is useful evidence but is not a routine pin gate for this
   direct CLI.

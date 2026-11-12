@@ -203,14 +203,13 @@ home directory: managed runtimes install under `~/.local/share/sesori/`
   installation, version, ACP initialize and teardown have not been
   exercised; they remain required coverage rather than inferred from metadata,
   simulated platform tests or macOS/x64 runs.
-- Antigravity's managed manifest uses registry package version `1.4.3` for its version directory and separately
-  validates the exact ACP runtime identity `1.4.3`. The initialize-only validator uses
+- Antigravity's managed manifest uses registry package version `1.4.5` for its version directory and separately
+  validates the exact ACP runtime identity `1.4.5`. The initialize-only validator uses
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
-  authenticates nor creates a session. All six `1.4.3` archive hashes, layouts and permissions are independently
-  verified. A 2026-10-25 network-denied macOS arm64 run of `1.4.3` (plain `unzip`, not the managed pipeline) passed
-  `--version`, initialize and teardown. The complete managed pipeline (`ProvisionReady`) and hardened extraction were
-  last run on `1.3.0` (2026-10-06) and remain unverified for this pin, as do other native targets and authenticated
-  behavior. Earlier `1.2.1` native observations do not verify this pin.
+  authenticates nor creates a session. All six `1.4.5` archive hashes, layouts and permissions are independently
+  verified. A 2026-11-12 macOS arm64 run of the complete managed pipeline (hardened extraction, initialize-only
+  validation, `ProvisionReady` and the digest sentinel) passed for `1.4.5`; other native targets and authenticated
+  behavior remain unverified. Earlier `1.2.1` and `1.3.0` native observations do not verify this pin.
 - Startup upgrade replaces only an existing Sesori-managed runtime; otherwise Install remains explicit. A PATH runtime
   preserves managed directories and suppresses automatic managed downloads.
 - There is no hot swap: a generation started on the older supported runtime keeps it until

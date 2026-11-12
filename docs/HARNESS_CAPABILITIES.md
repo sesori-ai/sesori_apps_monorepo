@@ -129,7 +129,7 @@ context the full-history index sees. See `docs/regression/transcript-turn-naviga
 | Codex | `turn/start` steers the active turn | ✅ |
 | Pi | Sent with the `steer` streaming behavior | ✅ |
 | OpenCode | Sent at once into the running turn | ✅ |
-| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. |
+| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, as does the 18.19.0 source) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. |
 | ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and none of these plugins implements the shared steering hook (checked in code on 2026-11-05). |
 
 ## Quota-reset auto continuation
@@ -184,7 +184,7 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
   or malformed resets remain unknown. Synthetic-provider RPC probes on the
   then-current managed target (0.85.1) and PATH floor (0.84.1) confirmed that
   `agent_settled` follows final retry resolution; they have not been re-run on
-  the current target (1.4.0) or floor (0.99.0). Those probes did not exhaust a real account;
+  the current target (1.5.2) or floor (0.99.0). Those probes did not exhaust a real account;
   provider-format evidence comes from local errors and pinned upstream source.
   This evidence does not establish support for Oh My Pi's ACP seam.
 - Codex local rollouts and documented app-server account limits contain reset
@@ -219,7 +219,7 @@ Pi's installed 0.85.1 RPC `clear_queue` clears **all** steering/follow-up work,
 including extension-owned input, and carries no Sesori prompt IDs. It cannot
 safely implement deletion of one row; Sesori does not clear/replay that native
 queue. This limit is verified from installed 0.85.1 native source and has not
-been re-checked on the current target (1.4.0) or floor (0.99.0). Dispatch-state and
+been re-checked on the current target (1.5.2) or floor (0.99.0). Dispatch-state and
 cancellation evidence is synthetic plugin/bridge/core/widget coverage, not a new
 live authenticated run. Older public bridge payloads without dispatch ownership
 remain explicitly unknown and retain best-effort cancellation. Only a reported
@@ -358,12 +358,13 @@ Antigravity can explicitly download Google's proprietary official runtime pair d
 choosing Install, review [Google's terms](https://antigravity.google/terms) and
 [Antigravity documentation](https://antigravity.google/docs/). Sesori independently pins and verifies six
 archives: macOS x64/arm64, Linux x64/arm64, and Windows x64/arm64. macOS x64 support is **implemented** for
-package `1.4.3`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
+package `1.4.5`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
 and local harness as siblings, uses a conservative two-minute bound for each archive listing/extraction command,
 and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install.
-A 2026-10-25 network-denied macOS arm64 run of package `1.4.3` passed `--version`, initialize and teardown; the
-production managed installation, other native targets and authenticated behavior have not been run on `1.4.3`.
+A 2026-11-12 macOS arm64 run of package `1.4.5` passed the production managed installation (including its
+initialize-only validation) and a network-denied `--version`; other native targets and authenticated behavior have
+not been run on `1.4.5`.
 Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
@@ -399,7 +400,7 @@ Only OMP is assessed here. Other harnesses are not assessed.
 
 | Harness | Status |
 |---|---|
-| OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.12.6` source, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
+| OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.12.6` and `18.19.0` sources, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
 
 ## External session activity
 
@@ -473,7 +474,7 @@ discovery use the shared five-minute transient idle residency cap.
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Effort variants listed strongest first, default declared separately | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
+| Effort variants listed strongest first, default declared separately | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⬜¹⁷ | ✅ | ✅ | ✅ | ✅ |
 | Anthropic and OpenAI models listed strongest first | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁸ | ✅ |
 
 The picker shows each plugin's declared order. Every plugin ranks through the
@@ -485,10 +486,10 @@ variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
 
-Antigravity uses the official `1.4.3` pair and a plugin-owned Zed compatibility
+Antigravity uses the official `1.4.5` pair and a plugin-owned Zed compatibility
 identity (`clientInfo.name: zed`, title `Sesori Bridge (Zed compatibility)`) for
 live, replay, personal-login and validation processes. Google's packaged model
-selection filters non-Gemini models in `1.2.1`; `1.3.0` through `1.4.3` retain them only for
+selection filters non-Gemini models in `1.2.1`; `1.3.0` through `1.4.5` retain them only for
 recognized client identities. Every account-advertised Gemini, Claude or GPT
 model is mapped under the existing Antigravity OAuth provider and dispatched
 with its exact native ID. Synthetic mixed-provider catalogs and initialize
@@ -501,7 +502,8 @@ unverified. Actual availability still depends on Google's account entitlements.
 |---|---|
 | Codex | ✅ Implemented. |
 | Claude | ✅ Implemented for the Opus models the CLI reports as supporting it; fast turns draw on the account's extra usage. |
-| OpenCode, Antigravity, Copilot, Cursor, Hermes, Pi, OMP, DeepSeek, Grok | ⬜ Not implemented (not assessed). |
+| Hermes | ⬜ Not implemented. Hermes 0.23.0+ offers a service-tier `configOptions` entry for models that support fast mode (read in the 0.23.1 source, not verified live). |
+| OpenCode, Antigravity, Copilot, Cursor, Pi, OMP, DeepSeek, Grok | ⬜ Not implemented (not assessed). |
 
 Codex advertises fast mode per model as a `model/list` service tier: a model
 offering a `serviceTiers` entry with id `"priority"` (Codex's "Fast" tier, e.g.
@@ -611,7 +613,7 @@ shows its id and the agent pill is left out.
 
 | Harness | Sesori implementation | Verification boundary |
 |---|---|---|
-| OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; separate string properties render as separate custom-text questions | Mapper, synthetic ACP plugin, shared bridge contract, and widget tests pass; live `18.1.19` `askDialog`/ACP/client roundtrip not run |
+| OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; separate string, number and integer properties render as separate custom-text questions (numbers parse back to JSON numbers) | Mapper, synthetic ACP plugin, shared bridge contract, and widget tests pass; a live `18.18.8` built-in `ask` HTML-form (`18.18.3`+) /ACP/client roundtrip not run |
 
 Property keys, order, independent required flags, and option/custom provenance
 are retained, including identical submitted text in separate questions.
@@ -674,7 +676,7 @@ harness that raises the exception.
 
 | Capability | Harness | Sesori implementation | Native verification |
 |---|---|---|---|
-| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.12.6`; install/version/ACP/teardown still needs a native ARM64 host |
+| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.18.8`; install/version/ACP/teardown still needs a native ARM64 host |
 
 OMP's eight mappings retain separate Linux glibc/musl binaries and macOS/Windows
 architecture selection. This implementation status is not a native verification
@@ -868,7 +870,7 @@ Pi 1.0.4 (npm) and managed Pi 0.85.1 and 0.84.4. Pi 1.0.4 also passed installed
 MCP adapter approvals, new/resume/fork RPC launches, and a full Sesori plugin
 session completing an authenticated GPT-6.1 request. Pi 1.0.4 awaits
 extension startup before reading stdin (not re-probed on the current target
-1.4.0 or floor 0.99.0); an unanswered startup dialog can
+1.5.2 or floor 0.99.0); an unanswered startup dialog can
 otherwise exit or hang the process. Sesori forwards startup questions before
 waiting for initial history. A runtime already reading stdin uses its own
 implementation directly.
@@ -907,7 +909,7 @@ live wording first and adds the replayed wording after it.
 | Harness | Sesori availability |
 |---|---|
 | Cursor | ✅ The account/plan gate ("Check your settings to continue"), live and after history load. |
-| Hermes | ✅ Every failure copy Hermes sends as its final response, live and after history load: retries exhausted, usage limits, rejected credentials, unknown models, content policy, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions and shutdown. Hermes saves a different row for a failed turn ("Your request was not processed…", or "This turn did not complete. Some actions may already have run…" after a tool ran); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows Hermes's live reason followed by that row. Wording read in the Hermes 0.21.5 source on 2026-11-09. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts. ⚠️ When the model streamed part of a reply before failing, Hermes sends no failure text live, so the notice appears only after a reload. 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
+| Hermes | ✅ Every failure copy Hermes sends as its final response, live and after history load: retries exhausted (including the stream-lifetime cap), first-attempt rate limits, usage limits, rejected credentials, unknown models, content policy, data-policy refusals, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions and shutdown. Hermes saves a different row for a failed turn ("Your request was not processed…", "This turn did not complete. Some actions may already have run…" after a tool ran, or "An automated delivery was interrupted…" for a lost cron or webhook turn); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows Hermes's live reason followed by that row. Wording read in the Hermes 0.21.5 source on 2026-11-09 and the 0.23.1 source on 2026-11-12. ⬜ `launch_credentials_unavailable` (0.22.6+, localized text) and a `pending_tool_result` notice still show as plain replies. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts. ⚠️ When the model streamed part of a reply before failing, Hermes sends no failure text live, so the notice appears only after a reload. 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
 
 ## Saved prompt files
 
@@ -1001,15 +1003,15 @@ busy for retained descendants. Live matrix is partial: no
 pending-input request surfaced, so that case remains automated rather than
 live-plugin coverage.
 
-⁴ Copilot CLI (plugin targets 1.0.103) runs custom agents as subagents. When
+⁴ Copilot CLI (plugin targets 1.0.109) runs custom agents as subagents. When
 probed on 1.0.80, inside the supported range (minimum 1.0.78), its Agent Client
 Protocol server exposed no subagent lifecycle, no child session, and only the
 turn-wide `session/cancel`. Copilot's changelog says ACP clients receive
-subagent IDs since 1.0.81; Sesori has not re-probed on the 1.0.103 pin and maps
+subagent IDs since 1.0.81; Sesori has not re-probed on the 1.0.109 pin and maps
 no Copilot sub-agent data, so these cells stay 🚫 until a probe confirms usable
 sub-agent identity, lifecycle and per-child stop.
 
-⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.10.22-27dcf5f`;
+⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.11.11-b912975`;
 shapes derived from the CLI bundle on 2026-10-06 and not yet confirmed on the
 wire) runs each sub-agent as a native child session once the client sends
 `clientCapabilities._meta.subagents: true`, which Sesori always does. A Task
@@ -1125,7 +1127,7 @@ history, descendant busy state, or scoped stop from call order, prompt text, or
 replay's contradictory status. Standard turn-wide `session/cancel` remains
 available, but it cannot implement any sub-agent-specific stop row above. This
 is a limitation of the ACP projection Sesori drives, not a claim that native
-Antigravity lacks delegation. Not re-probed on the current `1.4.3` pair; the
+Antigravity lacks delegation. Not re-probed on the current `1.4.5` pair; the
 plugin still maps no sub-agent data. Details:
 [completed probe record](../.plan/completed/claude-inline-subtasks/followups/antigravity-probe.md).
 
@@ -1171,9 +1173,11 @@ is the signal and the listing itself is not one. Only that line downgrades
 setup; unrecognized wording leaves setup ready rather than blocking a working
 install on a phrase a later release may change.
 
-¹⁷ Hermes (hermes-agent 0.19.0) exposes no effort or thinking levels over its
-ACP seam, so there is nothing to order. Not re-probed on the supported range
-(minimum 0.20.0).
+¹⁷ Hermes 0.19.0 exposed no effort or thinking levels over its ACP seam. From
+0.22.6, new and load results carry a reasoning-effort `configOptions` entry
+(category `thought_level`), set through `session/set_config_option` (read in
+the 0.23.1 source, 2026-11-12). Sesori does not drive it yet, and the 0.20.0
+minimum predates it.
 
 ¹⁸ DeepSeek model ids are deliberately opaque tokens with no vendor signal, so
 its models keep DeepSeek's catalog order; its efforts are ordered.

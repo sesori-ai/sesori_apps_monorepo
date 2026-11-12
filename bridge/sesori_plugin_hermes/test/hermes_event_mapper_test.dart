@@ -57,7 +57,7 @@ void main() {
     });
 
     test("Hermes's saved failed-turn rows are notices", () {
-      for (final row in [failedTurnBoundary, partialFailedTurnBoundary]) {
+      for (final row in [failedTurnBoundary, partialFailedTurnBoundary, automationInterruptedBoundary]) {
         expect(mapper.classifyHaltNotice(text: row)?.errorName, "hermes_failed_turn", reason: row);
       }
     });
@@ -70,7 +70,12 @@ void main() {
     });
 
     test("a reply that quotes a notice stays assistant text", () {
-      for (final notice in [...failureNotices.values, failedTurnBoundary, partialFailedTurnBoundary]) {
+      for (final notice in [
+        ...failureNotices.values,
+        failedTurnBoundary,
+        partialFailedTurnBoundary,
+        automationInterruptedBoundary,
+      ]) {
         final quoted = "Hermes printed this earlier:\n\n$notice\n\nI switched to a backup provider.";
         expect(mapper.classifyHaltNotice(text: quoted), isNull, reason: notice);
       }
