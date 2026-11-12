@@ -44,6 +44,9 @@ class const _StubManifest() implements RuntimeManifest {
   RuntimeVersion? parseInstalledVersion({required String value}) => parseVersion(value: value);
 
   @override
+  List<String> get versionProbeArguments => const ["--version"];
+
+  @override
   RuntimeAsset? assetFor({required PlatformTarget target}) => _asset;
 
   @override

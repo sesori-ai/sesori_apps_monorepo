@@ -931,6 +931,14 @@ live one.
 | Cursor | ✅ The account/plan gate ("Check your settings to continue"), live and after history load. |
 | Hermes | ✅ Every failure copy Hermes sends as its final response, live and after history load: retries exhausted (including the stream-lifetime cap), first-attempt rate limits, usage limits, rejected credentials, unknown models, content policy, data-policy refusals, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions and shutdown. Hermes saves a different row for a failed turn ("Your request was not processed…", "This turn did not complete. Some actions may already have run…" after a tool ran, or "An automated delivery was interrupted…" for a lost cron or webhook turn); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows only Hermes's live reason, followed by the row's warning when actions may already have run. Wording read in the Hermes 0.21.5 source on 2026-11-09 and the 0.23.1 source on 2026-11-12. ⬜ `launch_credentials_unavailable` (0.22.6+, localized text) and a `pending_tool_result` notice still show as plain replies. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts. ⚠️ When the model streamed part of a reply before failing, Hermes sends no failure text live, so the notice appears only after a reload. 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
 
+Claude Code does not need text matching: it tags a failed turn's assistant
+message with an error code, and every code shows as an error notice with Claude
+Code's own text. `authentication_failed` also asks for a login (or, behind a
+custom base URL, for the gateway's configuration), and `cloud_credential_error`
+(2.1.322+) asks the user to fix the cloud provider's credentials on the bridge
+machine. `account_on_hold` and `verification_required` (2.1.322+) stay notices,
+since neither a login nor setup can clear them.
+
 ## Saved prompt files
 
 The bridge core saves every prompt file that doesn't reach the plugin as an

@@ -14,6 +14,10 @@ void main() {
       expect(manifest.bundledVersion.raw, "1.0.109");
     });
 
+    test("probes the version with auto-update off, as the session launches", () {
+      expect(manifest.versionProbeArguments, ["--no-auto-update", "--version"]);
+    });
+
     test("pins all six official single-binary release archives", () {
       final expected =
           <PlatformTarget, ({String assetName, ArchiveFormat format, String sha256, String archiveBinaryName})>{
