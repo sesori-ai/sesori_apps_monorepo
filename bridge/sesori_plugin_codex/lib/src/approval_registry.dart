@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/codex_mcp_elicitation_dto.dart";
 import "api/models/codex_pending_input.dart";
+import "api/models/codex_server_request_resolved_dto.dart";
 import "api/models/codex_user_input_dto.dart";
 import "api/parsers/codex_question_parser.dart";
 import "codex_app_server_client.dart";
@@ -515,7 +516,15 @@ class ApprovalRegistry({
   /// server request. Both forms share the existing pending-question surface.
   void _handleNotification({required CodexServerNotification notification}) {
     if (notification.method == "serverRequest/resolved") {
-      _withdrawResolvedRequest(requestId: notification.params["requestId"]);
+      final CodexServerRequestResolvedDto resolved;
+      try {
+        resolved = CodexServerRequestResolvedDto.fromJson(notification.params);
+      } on Object catch (error, stackTrace) {
+        // The card stays until stop, close, delete or archive, as before.
+        Log.w("[codex] failed to decode serverRequest/resolved", error, stackTrace);
+        return;
+      }
+      _withdrawResolvedRequest(requestId: resolved.requestId);
       return;
     }
     final request = _questionParser.parseAsyncQuestion(notification: notification);
@@ -540,7 +549,7 @@ class ApprovalRegistry({
   /// another client or abandoned by an interrupted turn. A request the bridge
   /// answered itself is already gone, so only a withdrawn one still matches.
   /// The id is a JSON-RPC id (int or string) and is compared exactly.
-  void _withdrawResolvedRequest({required Object? requestId}) {
+  void _withdrawResolvedRequest({required Object requestId}) {
     final withdrawn = withdrawWhere(
       matches: (payload) => switch (payload) {
         _PendingApproval(:final codexId) ||

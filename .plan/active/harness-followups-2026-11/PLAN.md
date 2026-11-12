@@ -194,11 +194,12 @@ unit tests with fake frames. A live interrupted approval needs credentials.
 **Docs.** `docs/regression/questions-and-permissions.md` (what retires a card),
 Codex and Copilot rows in `HARNESS_CAPABILITIES.md`.
 
-**Estimate.** `⚙️`, about 300 lines.
+**Estimate.** `⚙️`, about 300 lines (planned). Actual: `🌿`, about 200 lines.
 
-**Outcome.** Copilot 1.0.109 never withdraws a pending permission request
-(live probe, no `$/cancel_request` in its runtime), so the ACP half was dropped
-and recorded as a limitation; the step became `🌿`.
+**Outcome.** Copilot 1.0.109 sent no withdrawal when a turn with a pending
+permission request was cancelled (live probe), and its runtime has no
+`$/cancel_request`, so the ACP bullets above were dropped and recorded as a
+limitation.
 
 ### Step 6 — Codex: sub-agent model and effort, clear provider-mismatch error
 

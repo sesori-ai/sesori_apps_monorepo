@@ -446,8 +446,8 @@ one and sends nothing back.
 | Harness | Status |
 |---|---|
 | Codex | ✅ `serverRequest/resolved {threadId, requestId}` retires the request with that exact JSON-RPC id. Verified live on `0.167.2` (2026-11-12): interrupting a turn with a pending command approval sends it with the approval's id. |
-| Pi | ✅ Pi's own dialog expiry retires the card. |
-| Copilot | 🚫 `1.0.109` never withdraws a pending ACP permission request. Verified live (2026-11-12): after `session/cancel` the prompt ends `cancelled` and the open `session/request_permission` gets no `$/cancel_request` or other notice. Its runtime has no `$/cancel_request` string. Sesori's own stop already retires the card; one abandoned any other way stays until stop, close, delete or archive. |
+| Pi | ✅ For a select, confirm or input dialog with a timeout, Pi resolves the dialog itself when it expires; the plugin runs the same timer and retires the card without answering. Editor dialogs have no Pi timeout: the plugin's own timer answers Pi `cancelled`, which is a cancellation, not a withdrawal. |
+| Copilot | 🚫 `1.0.109` sends no withdrawal for a pending ACP permission request when its turn is cancelled. Verified live (2026-11-12): after `session/cancel` the prompt ends `cancelled` and the open `session/request_permission` gets no `$/cancel_request` or other notice. Its runtime has no `$/cancel_request` string. Sesori's own stop already retires the card; one abandoned any other way stays until stop, close, delete, archive or the connection is disposed. Other ways a Copilot turn can end were not probed. |
 | Cursor, OMP, Hermes, DeepSeek, Grok, Antigravity | ⬜ Not implemented: Sesori ignores ACP `$/cancel_request`. Whether each harness sends it is not verified. |
 | Claude Code | ⬜ Not implemented: the CLI protocol has `control_cancel_request`, which the plugin ignores. When the CLI sends it for a `can_use_tool` ask is not verified. |
 | OpenCode | Not verified: OpenCode announces each reply through its own events, whichever client answered. |

@@ -235,6 +235,12 @@ void main() {
       final questionId = (emitted[1] as BridgeSseQuestionAsked).id;
       emitted.clear();
 
+      // A notice without a request id fails to decode and retires nothing.
+      registry.handleRequest(
+        const CodexPendingNotification(
+          notification: CodexServerNotification(method: "serverRequest/resolved", params: {"threadId": "t-1"}),
+        ),
+      );
       // Ids compare exactly: neither a string "7" nor an int lookalike matches.
       resolved("7");
       resolved(8);
