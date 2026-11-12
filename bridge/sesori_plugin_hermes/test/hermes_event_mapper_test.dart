@@ -125,6 +125,20 @@ void main() {
       );
     });
 
+    test("a reply that only ends with Hermes's launch-credentials details line stays a reply", () {
+      for (final reply in const {
+        "plain text first": "Your key was rejected earlier.\n\nDetails: launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
+        "a paragraph between":
+            "⚠️ Hermes said this before (OPENROUTER_API_KEY: unavailable).\n\nThen I retried.\n\n"
+            "Details: launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
+        "another key named":
+            "⚠️ Hermes refused the key (ANTHROPIC_API_KEY: unavailable).\n\n"
+            "Details: launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
+      }.values) {
+        expect(mapper.classifyHaltNotice(text: reply), isNull, reason: reply);
+      }
+    });
+
     test("a no-reply explanation for an exit that does not fail the turn stays a reply", () {
       for (final text in advisoryNoReplyTexts.values) {
         expect(mapper.classifyHaltNotice(text: text), isNull, reason: text);

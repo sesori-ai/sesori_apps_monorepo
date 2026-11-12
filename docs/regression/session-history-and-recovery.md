@@ -217,7 +217,8 @@ reconnect or restart.
   reads the same before and after a reload. After a streamed partial reply it sends no failure
   text, so the failed prompt shows live as Hermes's own "Your request was not
   processed…" notice. Hermes saves a different fixed row ("Your request was not processed…", or "This turn
-  did not complete. Some actions may already have run…" after a tool ran) in
+  did not complete. Some actions may already have run…" after a tool ran, or
+  "An automated delivery was interrupted…" for a lost cron or webhook turn) in
   its own history, or "This message was refused by the model's safety
   filter…" for a refused turn. That row replays as the turn's notice, so a turn that failed
   outside Sesori, or whose live notice an earlier re-import dropped, still shows

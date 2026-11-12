@@ -164,7 +164,7 @@ const Map<String, String> _turnFailureTemplates = {
   "welcome_route_default": "Hermes couldn't reach the free model on this route.",
   // 0.23.1 `locales/en.yaml` `gateway.errors` (sent with a leading "⚠️ "). In
   // other languages only launch_credentials_unavailable is recognized, by its
-  // untranslated details line (see [_launchCredentialsDetails]).
+  // shape and untranslated details line (see [_launchCredentialsDetails]).
   "launch_credentials_unavailable":
       "This chat can't use the API key it was started with any more{detail}, so nothing can run in it. An open chat "
       "never switches to a different key on its own, so /retry fails the same way. Use /new to start a new chat on "
@@ -251,10 +251,15 @@ const Map<String, String> _turnFailureTemplates = {
       "windows, run `hermes {profile_arg}doctor` to check storage, then send your message again.",
 };
 
-/// The last paragraph of launch_credentials_unavailable when Hermes names the
-/// refused key: `Details: launch_credentials_unavailable (<field>: <detail>)`,
-/// left untranslated in every language (`launch_credentials_copy`).
-final RegExp _launchCredentialsDetails = RegExp(r"\n\nDetails: launch_credentials_unavailable \([^\n]*\)$");
+/// launch_credentials_unavailable in any language when Hermes names the
+/// refused key (`launch_credentials_copy`): the translated copy, one line
+/// starting with "⚠️ " and naming ` (<field>: <detail>)`, then the untranslated
+/// `Details: launch_credentials_unavailable (<field>: <detail>)` with the same
+/// key, and nothing else. A reply that only ends with the details line does
+/// not have this shape.
+final RegExp _launchCredentialsDetails = RegExp(
+  r"^⚠️ [^\n]*?( \([^\n]*?\))[^\n]*\n\nDetails: launch_credentials_unavailable\1$",
+);
 
 /// The row Hermes saves in its own history to close a failed turn, in place
 /// of the failure text it sent live (which it never saves): `FAILED_TURN_NOTICE`.
