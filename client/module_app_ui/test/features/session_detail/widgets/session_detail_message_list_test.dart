@@ -1944,11 +1944,19 @@ void main() {
     await tester.pumpAndSettle();
     harnessKey.harness.beginSending();
     await tester.pump();
-    harnessKey.harness.failSending(reason: "Switch Codex back to proxy to continue it.");
+    final reason = List.filled(3, "Switch Codex back to proxy to continue it.").join(" ");
+    harnessKey.harness.failSending(reason: reason);
     await tester.pumpAndSettle();
 
     expect(find.text("Couldn’t send"), findsOneWidget);
-    expect(find.text("Switch Codex back to proxy to continue it."), findsOneWidget);
+    expect(find.text(reason), findsOneWidget);
+    // It reads as part of the message: no wider than a bubble's text, and ending
+    // where the status line ends rather than running across the pane.
+    final row = tester.getSize(find.byType(UserMessageBubble).last);
+    final line = tester.getRect(find.text(reason));
+    final remove = tester.getRect(find.widgetWithText(TextButton, "Remove"));
+    expect(line.width, lessThanOrEqualTo(UserMessageBubble.maxContentWidth(rowWidth: row.width)));
+    expect(line.right, moreOrLessEquals(remove.right, epsilon: 0.01));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

@@ -442,19 +442,26 @@ class _FailureReasonState() extends State<_FailureReason> {
       padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xs),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          // As wide as the message bubble at most, so the line reads as part of
+          // the message instead of running across the pane.
+          final maxWidth = UserMessageBubble.maxContentWidth(rowWidth: constraints.maxWidth);
           final painter = TextPainter(
             text: TextSpan(text: widget.reason, style: style),
             textDirection: Directionality.of(context),
             textScaler: MediaQuery.textScalerOf(context),
             maxLines: _collapsedLines,
-          )..layout(maxWidth: constraints.maxWidth);
+          )..layout(maxWidth: maxWidth);
           final truncated = painter.didExceedMaxLines;
           painter.dispose();
-          final text = Text(
-            widget.reason,
-            style: style,
-            maxLines: _expanded ? null : _collapsedLines,
-            overflow: _expanded ? null : TextOverflow.ellipsis,
+          final text = ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: Text(
+              widget.reason,
+              style: style,
+              textAlign: TextAlign.end,
+              maxLines: _expanded ? null : _collapsedLines,
+              overflow: _expanded ? null : TextOverflow.ellipsis,
+            ),
           );
           if (!truncated) return text;
           return Semantics(
