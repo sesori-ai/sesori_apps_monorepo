@@ -171,7 +171,9 @@ class OpenCodeV2ActivityTracker() {
           V2SessionCompactionDelta() ||
           V2SessionCompactionEnded() ||
           V2SessionCompactionFailed() ||
-          V2ProjectUpdated():
+          V2ProjectUpdated() ||
+          V2AgentUpdated() ||
+          V2CommandUpdated():
         return false;
     }
   }

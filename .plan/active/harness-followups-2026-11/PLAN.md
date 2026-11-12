@@ -14,7 +14,7 @@ DeepSeek adapter release.
 
 - **Do now:** Q3 hide empty untitled OMP sessions and move OMP to 18.19.0,
   Q4 file the leftover-session issue upstream (public issue approved), Q6 OMP
-  tool name, Q7 `--opencode-no-password` fails clearly on v2, Q8 OpenCode agent
+  tool name, Q7 `--opencode-no-password` fails clearly on a private v2 server, Q8 OpenCode agent
   refresh on a partial list, Q12 Codex sub-agent model and effort, Q13 Codex
   stale approval cards, Q14 Codex provider rejection on resume, Q15 Hermes
   duplicate failure notice, Q17 Hermes unrecognised failure messages, Q18 Claude
@@ -28,9 +28,15 @@ DeepSeek adapter release.
 - **Later (not planned):** Q16 Hermes effort/service-tier/edit-policy pickers,
   Q23 Grok paged-history probe.
 - **No change:** Q2 the DeepSeek read-before-edit guard stays off.
-- **Pending owner answers, not in this plan:** Q10 OpenCode stop only the main
-  session; Q1 the DeepSeek adapter release (`sesori-deepseek-acp` #24 is not
-  merged and no tag is pushed).
+- **Q7 with the shared OpenCode 2 service:** `--opencode-no-password` is logged
+  as a warning and ignored; that setup works and its authentication is stronger.
+  A private OpenCode 2 server started by the bridge still fails clearly.
+- **Q10 OpenCode stop only the main session:** approved for this series, as a
+  phase-2 item.
+- **Final matrix:** live cells that need a model run through the local test
+  proxy, not the owner's harness accounts.
+- **Pending owner answers, not in this plan:** Q1 the DeepSeek adapter release
+  (`sesori-deepseek-acp` #24 is not merged and no tag is pushed).
 
 ## Phase 1
 
@@ -110,7 +116,7 @@ for "nothing to compact"; otherwise completed with trigger `auto` and
 OMP's stored summary as OMP sends it. Record both as limits.
 
 **Verification.** Mapper and tracker unit tests. A live auto-compaction needs
-credentials (see the open question on live checks).
+a model; it runs through the local test proxy in the final matrix.
 
 **Docs.** OMP compaction row in `HARNESS_CAPABILITIES.md`, the compaction
 entries in `docs/regression/tools-and-file-changes.md`, the OMP section of
@@ -257,16 +263,17 @@ section of `HARNESS_CAPABILITIES.md`; `docs/regression/session-history-and-recov
   warning says "cannot reach OpenCode".
 - Agents are read from `/api/agent` on every request
   (`opencode_v2_repository.dart`) and reported as complete, but OpenCode 2.2.7
-  may return a partial list on a cold location and announces changes with
-  `agent.updated` / `command.updated` (empty data), which the plugin does not
-  subscribe to (`tool/opencode_events_v2.json`).
+  returns an empty or partial list on a cold location and announces the loaded
+  catalog with `agent.updated` / `command.updated` (empty data) once loading
+  finishes, which the plugin does not subscribe to
+  (`tool/opencode_events_v2.json`). Edits made while the server runs emit nothing.
 
 **Change.**
 - Private managed start with the flag: probe the resolved binary's version
   first (existing `RuntimeVersionValidator.probe`) and fail with a clear
-  `PluginStartException` on major version 2+. Shared mode: log once that the
-  flag is ignored because the shared service brings its own password (see open
-  question). Attach mode: name `--opencode-password` in the warning. CLI help
+  `PluginStartException` on major version 2+. Shared mode: log a warning that
+  the flag is ignored because the shared service brings its own password (owner
+  decision). Attach mode: name `--opencode-password` in the warning. CLI help
   says v1 only.
 - Add `agent.updated` and `command.updated` to the v2 event manifest,
   regenerate `v2_event.g.dart`, and map both to the existing
@@ -274,9 +281,14 @@ section of `HARNESS_CAPABILITIES.md`; `docs/regression/session-history-and-recov
   options. No debounce: the options service coalesces per key.
 
 **Verification.** Descriptor tests (v1 fake keeps working, v2 rejection,
-shared-mode log); parser and mapper tests. Live without model calls: `opencode
-serve` 2.2.7 with a password on a temp project, edit `.opencode/agent/*.md`,
-confirm `agent.updated` frames.
+shared-mode attach with the service password); parser and mapper tests. Live
+without model calls: `opencode serve` 2.2.7 with a password on a temp project.
+Result (2026-11-12): the first `/api/agent` on a cold location returns `[]`,
+then `agent.updated` and `command.updated` (empty `data`, with `location`)
+arrive when loading finishes. Editing `.opencode/agent/*.md` or
+`.opencode/command/*.md` while the server runs emits nothing and the lists do not
+change, so an edit needs an OpenCode restart. Without a password, `serve` prints
+a generated one and `/api/info` answers 401.
 
 **Docs.** `bridge/app/README.md`, `docs/HOW_IT_WORKS.md`, `docs/SECURITY.md`,
 one sentence in `docs/regression/plugin-setup-and-lifecycle.md`, the catalog
@@ -329,6 +341,10 @@ Claude note near "Failed-turn notices sent as text" in `HARNESS_CAPABILITIES.md`
 - **Windows (Q21 Pi exit wait, Q22 Cursor managed install):** need a Windows host
   to verify; Pi loses an in-flight login refresh when killed early, and Cursor
   Windows packages exist but are unmanaged.
+- **OpenCode stop only the main agent (Q10):** on OpenCode v2, use the job list
+  to tell foreground from background sub-sessions, so the stop prompt can offer
+  "stop the main agent only, keep the sub-agents". Needs a live check first that
+  the job list really separates them. OpenCode v1 gets nothing.
 - **Antigravity `agy acp` (Q24):** move to Google's ACP entry point; large,
   touches launch, auth and the exact-pair gate.
 
@@ -340,25 +356,21 @@ boundary with unit and fake-transport tests, plus these cells.
 | Cell | Platform | Credentials |
 |---|---|---|
 | OMP 18.19.0 managed install and deletion probe; deleted session absent from the list | macOS bridge + headless iOS simulator | none |
-| OMP task/ask card shows the OMP tool name | headless iOS simulator | needed (open question) |
-| OMP auto-compaction card | headless iOS simulator | needed (open question) |
+| OMP task/ask card shows the OMP tool name | headless iOS simulator | test proxy |
+| OMP auto-compaction card | headless iOS simulator | test proxy |
 | Hermes failed turn (invalid key) shows one notice, live and after reload | headless iOS simulator | none |
 | Codex provider mismatch shows the clear error | headless iOS simulator | none |
-| Codex sub-agent messages show model and effort; withdrawn approval card disappears | headless iOS simulator | needed (open question) |
-| OpenCode agent edit refreshes the agent picker; v2 no-password start fails clearly | headless iOS simulator | none |
+| Codex sub-agent messages show model and effort; withdrawn approval card disappears | headless iOS simulator | test proxy |
+| OpenCode cold project's agent picker fills once OpenCode finishes loading; v2 no-password private start fails clearly | headless iOS simulator | none |
 | Claude, Copilot probe, FORCE_COLOR | unit tests only | none |
 
 Phase 2 Windows items carry their own Windows cells in their own plans.
 
-## Open questions (asked on a review page)
+## Resolved questions (2026-11-12)
 
-- **Live checks with credentials:** may the final matrix use the owner's
-  harness accounts for the cells marked "needed"? Without them those behaviours
-  are proven only through unit and fake-transport tests, which needs explicit
-  acceptance before retirement.
-- **`--opencode-no-password` with the OpenCode 2 shared service:** log and
-  ignore (recommended; the setup works and auth is stronger), or fail the
-  start as for a private server.
+- **Live checks that need a model:** approved through the local test proxy
+  (an OpenAI-compatible endpoint on localhost with a throwaway harness home), not
+  the owner's harness accounts. Cells marked "test proxy" run that way.
 
 ## Complexity budget
 
