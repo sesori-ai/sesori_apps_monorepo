@@ -202,6 +202,8 @@ void main() {
       expect(mapper.toolName(update: {"kind": "read", "title": "Read file"}), "read");
       expect(mapper.toolName(update: {"kind": "", "title": "Read file"}), "Read file");
       expect(mapper.toolName(update: {"kind": 42, "title": null}), "tool");
+      expect(mapper.toolName(update: {"name": "task", "kind": "other", "title": "Explore"}), "task");
+      expect(mapper.toolName(update: {"name": "", "kind": "other"}), "other");
 
       expect(mapper.toolStatus(status: "pending"), PluginToolStatus.pending);
       expect(mapper.toolStatus(status: "in_progress"), PluginToolStatus.running);

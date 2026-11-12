@@ -934,7 +934,7 @@ abstract class AcpPlugin({
         );
         break;
       }
-      infos.addAll(result.sessions);
+      infos.addAll(result.sessions.where(includeListedSession));
       final next = result.nextCursor;
       if (next == null || next.isEmpty) break;
       cursor = next;
@@ -943,6 +943,10 @@ abstract class AcpPlugin({
   }
 
   String? sessionParentId(AcpSessionInfo info) => null;
+
+  /// Whether a `session/list` entry is a real session the bridge should list;
+  /// a harness overrides this to drop entries it knows are not.
+  bool includeListedSession(AcpSessionInfo info) => true;
 
   int? sessionCreatedAtMs(AcpSessionInfo info) => info.updatedAtMs;
 

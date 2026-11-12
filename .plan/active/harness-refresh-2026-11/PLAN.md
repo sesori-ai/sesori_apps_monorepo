@@ -16,15 +16,10 @@
 
 - **D1 (reused from 2026-10):** Claude Code follows the latest non-prerelease
   release, which is npm `latest`, not the npm `stable` dist-tag.
-- **H1 (temporary hold, 2026-11-12):** OMP targets `18.18.8`, not the latest
-  `18.19.0`. From `18.18.9` (upstream #18665), ACP `/session delete` starts a
-  replacement session before deleting the old file and writes it to disk, so
-  every Sesori deletion leaves an empty, untitled session in that project's list.
-  A sandboxed probe confirmed it on `18.19.0`; `18.12.6` and `18.18.8` leave
-  nothing. **Resolution:** move to the latest release once upstream stops
-  persisting the replacement, or once the owner approves an OMP-side filter that
-  hides it (see owner decisions). PATH `18.18.9`+ builds already show the
-  leftover today.
+- **H1 (lifted 2026-11-12):** OMP was held at `18.18.8` because from
+  `18.18.9` ACP `/session delete` leaves an empty, untitled replacement session
+  in `session/list` (upstream #19068). `harness-followups-2026-11` step 2 hides
+  such entries in the OMP plugin and moves the target to `18.19.0`.
 
 ## Harness inventory
 

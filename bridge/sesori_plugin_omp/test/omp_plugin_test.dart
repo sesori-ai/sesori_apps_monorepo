@@ -274,6 +274,46 @@ void main() {
       expect(await project, isEmpty);
     });
 
+    test("hides listed sessions with zero messages and no title", () async {
+      await connect(
+        capabilities: const {
+          "sessionCapabilities": {
+            "list": <String, dynamic>{},
+          },
+        },
+      );
+      final project = plugin.getSessions(projectId: "/repo");
+      respond(await waitForFrame(AcpMethods.sessionList), {
+        "sessions": [
+          {
+            "sessionId": "leftover",
+            "cwd": "/repo",
+            "_meta": {"messageCount": 0, "size": 793},
+          },
+          {
+            "sessionId": "blank-title",
+            "cwd": "/repo",
+            "title": " ",
+            "_meta": {"messageCount": 0},
+          },
+          {
+            "sessionId": "titled",
+            "cwd": "/repo",
+            "title": "Fix the build",
+            "_meta": {"messageCount": 0},
+          },
+          {
+            "sessionId": "untitled-with-messages",
+            "cwd": "/repo",
+            "_meta": {"messageCount": 2},
+          },
+          {"sessionId": "no-meta", "cwd": "/repo"},
+        ],
+      });
+
+      expect((await project).map((session) => session.id), ["titled", "untitled-with-messages", "no-meta"]);
+    });
+
     test("runs sessions concurrently and routes forms by explicit session id", () async {
       await connect();
       final first = await create("first");

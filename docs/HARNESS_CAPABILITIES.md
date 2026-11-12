@@ -273,7 +273,7 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 | Pi | ✅ Tool-call arguments `pattern`, then `path`; live from `toolcall_end`/`message_end` and replay. `toolcall_start` carries no arguments, so the title first appears with the running or terminal update. |
 | OpenCode | ✅ Native tool part `title`. |
 | Codex | ✅ Argument-derived title (`cmd`, `command`, `path`, `filePath`, `query`, else bounded raw arguments). |
-| Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ Agent-supplied ACP `tool_call` title, when the agent sends one; Sesori does not derive titles from ACP inputs. A call without `kind` uses its title as the tool name and drops the title, so the card does not say it twice. |
+| Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ Agent-supplied ACP `tool_call` title, when the agent sends one; Sesori does not derive titles from ACP inputs. A call without `kind` uses its title as the tool name and drops the title, so the card does not say it twice. A top-level `name` outside the ACP schema names the card before `kind`; only OMP sends one (its own tool name, from `18.18.8`), so its task, wait and ask cards no longer read "Other". |
 
 ## Live timers
 
@@ -613,7 +613,7 @@ shows its id and the agent pill is left out.
 
 | Harness | Sesori implementation | Verification boundary |
 |---|---|---|
-| OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; separate string, number and integer properties render as separate custom-text questions (numbers parse back to JSON numbers) | Mapper, synthetic ACP plugin, shared bridge contract, and widget tests pass; a live `18.18.8` built-in `ask` HTML-form (`18.18.3`+) /ACP/client roundtrip not run |
+| OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; separate string, number and integer properties render as separate custom-text questions (numbers parse back to JSON numbers) | Mapper, synthetic ACP plugin, shared bridge contract, and widget tests pass; a live `18.19.0` built-in `ask` HTML-form (`18.18.3`+) /ACP/client roundtrip not run |
 
 Property keys, order, independent required flags, and option/custom provenance
 are retained, including identical submitted text in separate questions.
@@ -676,7 +676,7 @@ harness that raises the exception.
 
 | Capability | Harness | Sesori implementation | Native verification |
 |---|---|---|---|
-| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.18.8`; install/version/ACP/teardown still needs a native ARM64 host |
+| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.19.0`; install/version/ACP/teardown still needs a native ARM64 host |
 
 OMP's eight mappings retain separate Linux glibc/musl binaries and macOS/Windows
 architecture selection. This implementation status is not a native verification

@@ -114,6 +114,18 @@ class OmpPlugin._({
   @override
   bool get supportsFormElicitation => true;
 
+  /// From 18.18.9, ACP session deletion persists an empty untitled replacement
+  /// session (https://github.com/can1357/oh-my-pi/issues/19068). An entry with
+  /// zero messages and no title holds nothing to show: it is that leftover or
+  /// a session never prompted, and one Sesori created keeps its bridge row.
+  /// A missing count keeps the entry.
+  @override
+  bool includeListedSession(AcpSessionInfo info) {
+    final title = info.title;
+    final hasTitle = title != null && title.trim().isNotEmpty;
+    return hasTitle || info.metadata?["messageCount"] != 0;
+  }
+
   /// OMP advertises `_session/steering` per process in its `initialize`
   /// result. Without it, follow-ups keep the shared stop-and-send.
   @override

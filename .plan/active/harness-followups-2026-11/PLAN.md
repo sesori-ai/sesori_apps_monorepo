@@ -49,9 +49,10 @@ separate regions; whichever lands later merges `main` in.
 - OMP sends `title` and `_meta: {messageCount, size}` per session, and
   `AcpSessionInfo` already parses `_meta` (`acp_protocol.dart`). The 18.18.9+
   deletion leftover has no title and zero messages.
-- OMP writes a session file only after an assistant message, so a session
-  Sesori created but never prompted is already absent from `session/list`; the
-  filter cannot hide it. The bridge store keeps its own row.
+- `session/new` writes an empty untitled session file at once (probed on
+  `18.18.8` and `18.19.0`), so the filter also hides never-prompted sessions
+  from import. One Sesori created keeps its bridge row (the import only
+  upserts what the listing returns).
 - Tool cards are named by `AcpContentMapper.toolName`
   (`acp_content_mapper.dart`): `kind`, then `title`. OMP's `mapToolKind` sends
   `other` for task, wait and ask, so those cards read "Other". OMP 18.18.8
@@ -359,9 +360,9 @@ provider mismatch, a cross-package fatal health-probe flag.
 
 ## Risks
 
-- OMP filter hides a session with zero messages and no title that a user
-  wanted: only the deletion leftover produces that shape (OMP never writes an
-  unprompted session).
+- OMP filter hides a session with zero messages and no title: the deletion
+  leftover or a never-prompted session from another client, neither of which
+  has anything to show.
 - Copilot may never send `$/cancel_request`; step 5 checks before building.
 - Codex field locations are inferred from binary strings until the schema dump.
 
