@@ -69,8 +69,12 @@ USE_COLOR=false
 USE_UNICODE=false
 
 # Detect whether color should be emitted. Honors NO_COLOR (disable), FORCE_COLOR
-# (force on), a non-TTY stdout (disable), and TERM=dumb/unset (disable).
+# (0/false disable, any other value forces on), a non-TTY stdout (disable), and
+# TERM=dumb/unset (disable).
 should_use_color() {
+    case "${FORCE_COLOR:-}" in
+        0 | false) return 1 ;;
+    esac
     if [ -n "${FORCE_COLOR:-}" ]; then
         return 0
     fi

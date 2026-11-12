@@ -80,6 +80,11 @@ class const _SemverManifest() extends RuntimeManifest {
   String downloadUrlFor({required RuntimeAsset asset}) => "https://example.test/${asset.assetName}";
 }
 
+class const _FlaggedManifest() extends _SemverManifest {
+  @override
+  List<String> get versionProbeArguments => const ["--no-auto-update", "--version"];
+}
+
 void main() {
   group("RuntimeVersionValidator.probe version parsing", () {
     Future<RuntimeVersion?> detect(_FakeCommandExecutor executor) async {
@@ -129,6 +134,18 @@ void main() {
       await detect(executor);
       expect(executor.ranExecutable, equals("opencode"));
       expect(executor.ranArguments, equals(const ["--version"]));
+    });
+
+    test("runs the manifest's version probe arguments when it overrides them", () async {
+      final executor = _FakeCommandExecutor(
+        result: const CommandResult(exitCode: 0, stdout: "1.0.0", stderr: ""),
+      );
+      await RuntimeVersionValidator(
+        commandExecutor: executor,
+        manifest: const _FlaggedManifest(),
+        executableLocator: _presentLocator,
+      ).probe(executable: "opencode", environment: null);
+      expect(executor.ranArguments, equals(const ["--no-auto-update", "--version"]));
     });
 
     for (final (isWindows, expected) in [(false, 10), (true, 30)]) {
