@@ -72,6 +72,13 @@ String _status({
   };
 }
 
+/// Why a failed harness could not start, when its plugin gave a reason. Null
+/// whenever the status line says something other than Failed.
+String? _failureReason({required PluginManagementMetadata plugin, required PluginInstallState? install}) =>
+    install == null && plugin.setup.state == PluginSetupState.ready && plugin.runtimeState == PluginRuntimeState.failed
+    ? plugin.failureReason
+    : null;
+
 class const _HarnessStatus({
   required final PluginManagementMetadata plugin,
   required final PluginInstallState? install,
@@ -87,7 +94,7 @@ class const _HarnessStatus({
         : group == _HarnessGroup.enabled && plugin.workState == PluginManagementWorkState.busy
         ? context.prego.colors.fgSuccessPrimary
         : context.prego.colors.textTertiary;
-    return Row(
+    final status = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
@@ -104,6 +111,36 @@ class const _HarnessStatus({
           ),
         ),
       ],
+    );
+    // The detail page gives the reason a row of its own.
+    if (!overview) return status;
+    // The reason fades in under Failed as a second line, and the row eases to
+    // its new height so the harnesses below glide rather than jump. The whole
+    // reason is on the detail page the row opens.
+    final reason = _failureReason(plugin: plugin, install: install);
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        status,
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 240),
+          child: reason == null
+              ? const SizedBox.shrink()
+              : Padding(
+                  key: ValueKey(reason),
+                  padding: const EdgeInsetsDirectional.only(start: 6 + PregoSpacing.md, top: PregoSpacing.xxs),
+                  child: Text(reason, maxLines: 2, overflow: TextOverflow.ellipsis),
+                ),
+        ),
+      ],
+    );
+    if (context.isReducedMotion) return column;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeInOutCubic,
+      alignment: AlignmentDirectional.topStart,
+      child: column,
     );
   }
 }

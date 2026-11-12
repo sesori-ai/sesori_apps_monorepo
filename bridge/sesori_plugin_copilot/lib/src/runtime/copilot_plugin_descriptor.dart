@@ -284,7 +284,7 @@ final class const CopilotPluginDescriptor({
     if (host.startAborted.isAborted) throw const PluginStartAbortedException();
     final binaryPath = host.provisionedRuntimePath;
     if (binaryPath == null) {
-      throw const PluginStartException(
+      throw const PluginStartException.userFacing(
         "No supported GitHub Copilot CLI is available. Install or update Copilot CLI, then restart the bridge.",
         cause: null,
       );

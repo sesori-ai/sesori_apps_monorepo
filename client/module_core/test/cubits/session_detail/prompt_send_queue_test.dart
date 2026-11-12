@@ -306,7 +306,7 @@ void main() {
       queue.enqueue(_existing);
       queue.beginSend();
 
-      expect(queue.holdFailedSend(failure: PromptSendFailure.rejected), isTrue);
+      expect(queue.holdFailedSend(failure: const PromptSendFailure.rejected(reason: null)), isTrue);
 
       expect(queue.active, isNull);
       expect(queue.failed?.submission.displayText, "retried");
@@ -318,7 +318,7 @@ void main() {
       queue.enqueue(_retried);
       queue.enqueue(_existing);
       final first = queue.beginSend();
-      queue.holdFailedSend(failure: PromptSendFailure.rejected);
+      queue.holdFailedSend(failure: const PromptSendFailure.rejected(reason: null));
 
       queue.retryFailedSend();
 
@@ -334,13 +334,13 @@ void main() {
       queue.enqueue(_retried);
       queue.enqueue(_existing);
       queue.beginSend();
-      queue.holdFailedSend(failure: PromptSendFailure.rejected);
+      queue.holdFailedSend(failure: const PromptSendFailure.rejected(reason: null));
 
       expect(queue.removeFailedSend()?.displayText, "retried");
       expect(queue.failed, isNull);
 
       queue.beginSend();
-      queue.holdFailedSend(failure: PromptSendFailure.rejected);
+      queue.holdFailedSend(failure: const PromptSendFailure.rejected(reason: null));
       queue.removeByPromptId(_existing.promptId);
       expect(queue.failed, isNull);
     });

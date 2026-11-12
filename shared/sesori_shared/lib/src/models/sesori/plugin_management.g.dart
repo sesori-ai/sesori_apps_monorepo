@@ -49,6 +49,7 @@ _PluginManagementMetadata _$PluginManagementMetadataFromJson(Map json) =>
           )
           .toSet(),
       actionHint: json['actionHint'] as String?,
+      failureReason: json['failureReason'] as String?,
     );
 
 Map<String, dynamic> _$PluginManagementMetadataToJson(
@@ -68,6 +69,7 @@ Map<String, dynamic> _$PluginManagementMetadataToJson(
       ?.map((e) => _$McpScopeKindEnumMap[e]!)
       .toList(),
   'actionHint': ?instance.actionHint,
+  'failureReason': ?instance.failureReason,
 };
 
 const _$PluginRuntimeStateEnumMap = {

@@ -93,6 +93,7 @@ const _plugin = PluginManagementMetadata(
   },
   mcpScopes: null,
   actionHint: null,
+  failureReason: null,
 );
 
 const _response = PluginManagementResponse(

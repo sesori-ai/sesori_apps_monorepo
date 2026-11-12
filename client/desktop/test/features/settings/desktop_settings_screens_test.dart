@@ -88,6 +88,7 @@ const PluginManagementMetadata _plugin = PluginManagementMetadata(
   managementCapabilities: {PluginManagementCapability.setupRefresh},
   mcpScopes: null,
   actionHint: null,
+  failureReason: null,
 );
 const PluginManagementResponse _pluginResponse = PluginManagementResponse(
   snapshotToken: "snapshot-1",

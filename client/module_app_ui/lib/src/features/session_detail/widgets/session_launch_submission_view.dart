@@ -189,8 +189,12 @@ QueuedMessageBubblePresentation launchFollowUpPresentation({
     // authoritative rejection can be removed; Retry is safe either way,
     // since the bridge drops a promptId it already took.
     FailedLaunchFollowUp(:final failure) => QueuedMessageBubblePresentation.failed(
+      reason: switch (failure) {
+        RejectedPromptSend(:final reason) => reason,
+        UncertainPromptSend() => null,
+      },
       onRetry: onRetry == null ? null : () => onRetry(promptId: promptId),
-      onRemove: onRemove == null || failure != PromptSendFailure.rejected ? null : () => onRemove(promptId: promptId),
+      onRemove: onRemove == null || failure is! RejectedPromptSend ? null : () => onRemove(promptId: promptId),
     ),
   };
 }

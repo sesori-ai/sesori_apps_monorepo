@@ -75,7 +75,14 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   row (setup hints still win in the row). It clears on any status other than that
   degradation (restarting, ready, failed, stopping) and on a degradation that does
   not need the user. A failed runtime keeps the generic failed hint, because a
-  plugin's failure reason is a diagnostic for the log, not an instruction.
+  plugin's failure message is a diagnostic for the log, not an instruction. Only
+  a start failure the plugin explained in a sentence written for the user
+  (`PluginStartException.userFacing`) also reports that sentence as the
+  management row's `failureReason`: the harness list shows it as a second line
+  under "Failed" (two lines at most; the row opens the detail page), fading in
+  while the row eases its height, and the detail page shows it whole as its own
+  row. Any other failure, and an older bridge, add nothing. The reason clears
+  with the failed state.
 - Only an authentication-required or unavailable block offers Check setup in a chat. It
   runs the same setup refresh command as harness settings' Check setup for the chat's
   harness, so a fix made elsewhere (a terminal login, a corrected gateway) clears the
@@ -241,7 +248,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
     `--opencode-no-password` is logged and ignored when the shared service is
     used; a private OpenCode 2 server whose `--version` is readable fails at
     once, before spawning, with an error naming the flag, because OpenCode 2
-    always requires a password. An unreadable version keeps the OpenCode 1 path.
+    always requires a password; the app shows that error under "Failed". An unreadable version keeps the OpenCode 1 path.
   - **Rediscovery:** the next plugin start looks for the service again.
 - Pi and Claude Code report degraded when their binary fails to spawn and ready
   on the next successful spawn. A spawn that fails because the session's

@@ -140,6 +140,7 @@ class _FixtureService() implements PluginManagementService {
             managementCapabilities: {PluginManagementCapability.authentication},
             mcpScopes: null,
             actionHint: null,
+            failureReason: null,
           ),
         ],
       ),

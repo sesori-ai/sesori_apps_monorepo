@@ -260,7 +260,7 @@ class SessionLaunchService({
         }
       } on Object catch (error, stackTrace) {
         logw("Failed to send $context", error, stackTrace);
-        failure = PromptSendFailure.uncertain;
+        failure = const PromptSendFailure.uncertain();
       }
       if (!_launchRepository.followUpFailed(launchId: launchId, promptId: submission.promptId, failure: failure)) {
         continue;

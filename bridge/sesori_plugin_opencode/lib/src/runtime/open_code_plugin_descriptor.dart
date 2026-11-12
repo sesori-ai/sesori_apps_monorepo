@@ -418,7 +418,7 @@ class const OpenCodePluginDescriptor({
     }
     if (outcome case RuntimeProbeReady(version: final SemanticRuntimeVersion runtimeVersion)
         when runtimeVersion.version.major >= 2) {
-      throw PluginStartException(
+      throw PluginStartException.userFacing(
         "OpenCode ${runtimeVersion.raw} always requires a password, so --opencode-no-password works only with "
         "OpenCode 1. Remove the flag to let the bridge generate a password, or set one with --opencode-password.",
         cause: null,
@@ -907,7 +907,7 @@ class const OpenCodePluginDescriptor({
       if (handle case OwnedRuntimeHandle(:final record)) {
         await service.stopOwnedRuntime(record: record);
       }
-      throw PluginStartException(
+      throw PluginStartException.userFacing(
         "OpenCode ${version.raw} requires an update to $openCodeMinimumV2Version or newer; "
         "do not downgrade OpenCode because its database has already migrated",
         cause: null,

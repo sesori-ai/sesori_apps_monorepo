@@ -625,6 +625,7 @@ const _managementPlugin = PluginManagementMetadata(
   },
   mcpScopes: null,
   actionHint: null,
+  failureReason: null,
 );
 
 const _managementResponse = PluginManagementResponse(

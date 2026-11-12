@@ -22,6 +22,7 @@ void main() {
     },
     mcpScopes: {McpScopeKind.project, McpScopeKind.session},
     actionHint: null,
+    failureReason: null,
   );
 
   test("management response round-trips only read snapshot fields", () {

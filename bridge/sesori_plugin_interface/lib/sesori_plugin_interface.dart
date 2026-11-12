@@ -66,6 +66,7 @@ export "src/persisted_session_cleanup_api.dart";
 export "src/plugin_api_exception.dart";
 export "src/plugin_operation_exception.dart";
 export "src/plugin_permission_reply.dart";
+export "src/plugin_refusal_exception.dart";
 export "src/plugin_session_unrestorable_exception.dart";
 export "src/plugin_stale_options_exception.dart";
 export "src/plugin_working_directory_missing_exception.dart";

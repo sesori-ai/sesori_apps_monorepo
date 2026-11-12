@@ -125,6 +125,11 @@ sealed class PluginManagementMetadata with _$PluginManagementMetadata {
     // supported bridge sends it.
     @JsonKey(unknownEnumValue: McpScopeKind.unknown) required Set<McpScopeKind>? mcpScopes,
     required String? actionHint,
+
+    /// Why a failed harness could not start, in words its plugin wrote for the
+    /// user. Null when the harness has not failed or gave no such reason; older
+    /// bridges omit it, which reads the same.
+    required String? failureReason,
   }) = _PluginManagementMetadata;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginManagementMetadataFromJson(json);

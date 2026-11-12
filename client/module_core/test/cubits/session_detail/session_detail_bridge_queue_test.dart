@@ -3359,7 +3359,7 @@ void main() {
             followUps: [
               LaunchFollowUp.failed(
                 submission: first ?? followUp(promptId: "prm_a"),
-                failure: PromptSendFailure.uncertain,
+                failure: const PromptSendFailure.uncertain(),
               ),
               ...queuedBehind,
             ],
@@ -3649,7 +3649,7 @@ void main() {
             followUps: [
               LaunchFollowUp.failed(
                 submission: withImage(promptId: "prm_a", text: "and then prm_a"),
-                failure: PromptSendFailure.uncertain,
+                failure: const PromptSendFailure.uncertain(),
               ),
             ],
           );
@@ -4110,7 +4110,11 @@ void main() {
           attachments: const [],
         );
         repository.beginFollowUp(launchId: "launch-1");
-        repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.uncertain);
+        repository.followUpFailed(
+          launchId: "launch-1",
+          promptId: "prm_a",
+          failure: const PromptSendFailure.uncertain(),
+        );
         await Future<void>.delayed(Duration.zero);
         expect(sentTexts, isEmpty);
 
@@ -4170,7 +4174,11 @@ void main() {
         expect(shown().map((followUp) => followUp.submission.promptId), ["prm_a", "prm_b"]);
 
         repository.beginFollowUp(launchId: "launch-1");
-        repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.rejected);
+        repository.followUpFailed(
+          launchId: "launch-1",
+          promptId: "prm_a",
+          failure: const PromptSendFailure.rejected(reason: null),
+        );
         await Future<void>.delayed(Duration.zero);
         expect(shown().first, isA<FailedLaunchFollowUp>());
 

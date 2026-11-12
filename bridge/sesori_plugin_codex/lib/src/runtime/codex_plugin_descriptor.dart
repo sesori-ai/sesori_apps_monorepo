@@ -578,7 +578,7 @@ class const CodexPluginDescriptor({
       // no attach/degraded mode (its WebSocket client cannot reconnect), so it
       // needs a real binary to run — fail the start with actionable guidance
       // rather than spawning an empty command.
-      throw const PluginStartException(
+      throw const PluginStartException.userFacing(
         "No runnable codex binary is available. Install codex "
         "(https://github.com/openai/codex) or pass --codex-bin, then restart.",
         cause: null,

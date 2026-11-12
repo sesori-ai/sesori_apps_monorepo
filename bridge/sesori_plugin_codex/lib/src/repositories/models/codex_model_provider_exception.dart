@@ -4,8 +4,8 @@ import "../../codex_app_server_client.dart";
 
 /// Codex refused a stored thread because the model provider it was started
 /// with cannot be used under the current Codex configuration. A conflict with
-/// the user's setup, not a bridge failure, so clients receive a 409 with a
-/// short message naming the providers and the fix.
+/// the user's setup, not a bridge failure, so clients show the short message
+/// naming the providers and the fix.
 sealed class CodexModelProviderException({
   required String operation,
 
@@ -13,8 +13,8 @@ sealed class CodexModelProviderException({
   required final String threadProvider,
   required String message,
   required CodexRpcException cause,
-}) extends PluginOperationException {
-  this : super(operation, statusCode: 409, message: message, cause: cause);
+}) extends PluginRefusalException {
+  this : super(operation, userFacingReason: message, cause: cause);
 }
 
 final class CodexModelProviderMismatchException({

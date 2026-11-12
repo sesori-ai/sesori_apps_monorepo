@@ -229,6 +229,8 @@ class const _HarnessControlCard({
                   title: loc.harnessesStatusLabel,
                   value: _HarnessStatus(plugin: plugin, install: install, overview: false),
                 ),
+                if (_failureReason(plugin: plugin, install: install) case final reason?)
+                  PregoGroupedRow(key: Key("harness_management_failure_reason_$pluginId"), title: Text(reason)),
                 if (runtimeVersion != null) _FactRow(title: loc.harnessesVersionLabel, value: Text(runtimeVersion)),
                 if (showWork)
                   _FactRow(

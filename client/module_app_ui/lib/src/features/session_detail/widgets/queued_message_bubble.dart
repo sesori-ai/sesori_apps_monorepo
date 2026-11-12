@@ -23,9 +23,13 @@ sealed class const QueuedMessageBubblePresentation() {
   const factory pendingReadOnly({required DateTime? sentAt}) = ReadOnlyPendingMessageBubblePresentation;
   const factory commandUnavailable({required VoidCallback? onRemove}) = UnavailableCommandBubblePresentation;
 
-  /// A send that failed. The callbacks are null on a read-only surface.
-  const factory failed({required VoidCallback? onRetry, required VoidCallback? onRemove}) =
-      FailedMessageBubblePresentation;
+  /// A send that failed. [reason] is the harness's explanation, written for
+  /// the user, when it gave one. The callbacks are null on a read-only surface.
+  const factory failed({
+    required String? reason,
+    required VoidCallback? onRetry,
+    required VoidCallback? onRemove,
+  }) = FailedMessageBubblePresentation;
 
   /// A message that has arrived: [message] takes the bubble's place, under the
   /// line it had while it waited, if any, on its way out, and fades its outline.
@@ -50,6 +54,7 @@ final class const UnavailableCommandBubblePresentation({required final VoidCallb
     extends QueuedMessageBubblePresentation;
 
 final class const FailedMessageBubblePresentation({
+  required final String? reason,
   required final VoidCallback? onRetry,
   required final VoidCallback? onRemove,
 }) extends QueuedMessageBubblePresentation;
@@ -262,30 +267,39 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         ],
       ),
       // Wraps so both actions stay reachable in a narrow pane or at large text.
-      FailedMessageBubblePresentation(:final onRetry, :final onRemove) => Wrap(
-        alignment: WrapAlignment.end,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: PregoSpacing.xs,
-        runSpacing: PregoSpacing.xs,
+      // The harness's reason, when it gave one, reads as a second line under
+      // the failure and fades in with it.
+      FailedMessageBubblePresentation(:final reason, :final onRetry, :final onRemove) => Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Inside the Wrap the label is bounded, so it may wrap itself.
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: PregoSpacing.xs,
+            runSpacing: PregoSpacing.xs,
             children: [
-              Icon(TablerRegular.alert_circle, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
-              const SizedBox(width: PregoSpacing.xs),
-              Flexible(
-                child: Text(
-                  loc.sessionDetailSendFailed,
-                  style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textErrorPrimary),
-                ),
+              // Inside the Wrap the label is bounded, so it may wrap itself.
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(TablerRegular.alert_circle, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
+                  const SizedBox(width: PregoSpacing.xs),
+                  Flexible(
+                    child: Text(
+                      loc.sessionDetailSendFailed,
+                      style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textErrorPrimary),
+                    ),
+                  ),
+                ],
               ),
+              if (onRetry != null)
+                _action(prego: prego, icon: TablerRegular.refresh, label: loc.sessionDetailRetry, onPressed: onRetry),
+              if (onRemove != null)
+                _action(prego: prego, icon: TablerRegular.x, label: loc.sessionDetailRemoveQueued, onPressed: onRemove),
             ],
           ),
-          if (onRetry != null)
-            _action(prego: prego, icon: TablerRegular.refresh, label: loc.sessionDetailRetry, onPressed: onRetry),
-          if (onRemove != null)
-            _action(prego: prego, icon: TablerRegular.x, label: loc.sessionDetailRemoveQueued, onPressed: onRemove),
+          if (reason != null) _FailureReason(reason: reason),
         ],
       ),
       DeliveredMessageBubblePresentation() => null,
@@ -404,6 +418,56 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A failed send's reason. A long one stops at a few lines; tapping it shows
+/// the rest, and the enclosing prompt row eases the height change.
+class const _FailureReason({required final String reason}) extends StatefulWidget {
+  @override
+  State<_FailureReason> createState() => _FailureReasonState();
+}
+
+class _FailureReasonState() extends State<_FailureReason> {
+  static const _collapsedLines = 4;
+
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final style = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary);
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xs),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final painter = TextPainter(
+            text: TextSpan(text: widget.reason, style: style),
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+            maxLines: _collapsedLines,
+          )..layout(maxWidth: constraints.maxWidth);
+          final truncated = painter.didExceedMaxLines;
+          painter.dispose();
+          final text = Text(
+            widget.reason,
+            style: style,
+            maxLines: _expanded ? null : _collapsedLines,
+            overflow: _expanded ? null : TextOverflow.ellipsis,
+          );
+          if (!truncated) return text;
+          return Semantics(
+            button: true,
+            expanded: _expanded,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: text,
+            ),
+          );
+        },
+      ),
     );
   }
 }

@@ -142,7 +142,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     final canRemoveFailedSend =
         !readOnly &&
         switch (state.localSend) {
-          LocalSendFailed(:final failure) => failure == PromptSendFailure.rejected,
+          LocalSendFailed(:final failure) => failure is RejectedPromptSend,
           LocalSendIdle() || LocalSendSending() => false,
         };
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);

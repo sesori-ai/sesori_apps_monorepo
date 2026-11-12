@@ -3254,10 +3254,14 @@ void main() {
     );
 
     for (final (label, error, failure) in [
-      ("a bridge rejection", ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null), PromptSendFailure.rejected),
-      ("a lost response", ApiError.dartHttpClient(Exception("timed out")), PromptSendFailure.uncertain),
+      (
+        "a bridge rejection",
+        ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null),
+        const PromptSendFailure.rejected(reason: null),
+      ),
+      ("a lost response", ApiError.dartHttpClient(Exception("timed out")), const PromptSendFailure.uncertain()),
     ]) {
-      test("$label marks the failed send ${failure.name}", () async {
+      test("$label marks the failed send ${failure.runtimeType}", () async {
         when(
           () => mockSourceRepository.sendMessage(
             promptId: any(named: "promptId"),

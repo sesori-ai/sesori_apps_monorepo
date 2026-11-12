@@ -2952,6 +2952,7 @@ PluginLifecycleConflict _conflict(List<PluginLifecycleConflictReason> reasons) {
       },
       mcpScopes: null,
       actionHint: null,
+      failureReason: null,
     ),
   );
 }

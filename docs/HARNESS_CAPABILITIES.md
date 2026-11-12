@@ -401,7 +401,20 @@ Only OMP and Codex are assessed here. Other harnesses are not assessed.
 | Harness | Status |
 |---|---|
 | OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.12.6` and `18.19.0` sources, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
-| Codex | 🚫 Not supported when the thread's model provider is no longer the configured one, by upstream design (probed live on codex-cli `0.167.1` with an isolated `CODEX_HOME`, 2026-11-12): `thread/resume` answers JSON-RPC `-32600` with `data` `{"type": "modelProviderMismatch", "modelProvider": <thread's>, "currentModelProvider": <configured>}`; per the schema, `modelProviderNotConfigured` carries only the thread's provider and `modelProviderPolicyConflict` adds `requiredModelProvider`. The send fails with a 409: a mismatch names both providers and how to switch back, not-configured names the thread's provider and says to add it back to the config, and a policy conflict names both providers and says the session can't be continued. The app still shows its generic "Couldn't send" with Remove; it does not display the bridge's message. |
+| Codex | 🚫 Not supported when the thread's model provider is no longer the configured one, by upstream design (probed live on codex-cli `0.167.1` with an isolated `CODEX_HOME`, 2026-11-12): `thread/resume` answers JSON-RPC `-32600` with `data` `{"type": "modelProviderMismatch", "modelProvider": <thread's>, "currentModelProvider": <configured>}`; per the schema, `modelProviderNotConfigured` carries only the thread's provider and `modelProviderPolicyConflict` adds `requiredModelProvider`. The send fails with a 409: a mismatch names both providers and how to switch back, not-configured names the thread's provider and says to add it back to the config, and a policy conflict names both providers and says the session can't be continued. The app shows that message as a second line under "Couldn't send", with Retry and Remove. |
+
+## Failure reasons shown to the user
+
+A refused send shows a second line under "Couldn't send", and a harness that failed to start shows one under "Failed"
+in the harness list and as a row on its detail page, only when the plugin wrote a sentence for the user
+(`PluginRefusalException`, `PluginStartException.userFacing`). Every other failure keeps the generic wording; raw
+backend errors never reach the app. Harnesses not listed have no plugin-written reason for either failure today (⬜).
+
+| Harness | Refused send | Failed start |
+|---|---|---|
+| Codex | ✅ Model provider mismatch, not configured, or policy conflict | ✅ No runnable `codex` binary |
+| OpenCode | ⬜ | ✅ `--opencode-no-password` with OpenCode 2; version below the v2 minimum |
+| GitHub Copilot | ⬜ | ✅ No supported Copilot CLI |
 
 ## External session activity
 
