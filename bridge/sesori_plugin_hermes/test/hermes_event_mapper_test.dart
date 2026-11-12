@@ -22,8 +22,8 @@ void main() {
     });
 
     // Hermes sends the final response as one `agent_message_chunk` carrying a
-    // fresh UUID message id (acp_adapter/server.py::_finish_turn), then ends
-    // the turn with `stopReason: end_turn`.
+    // fresh UUID message id (acp_adapter/server.py::_finish_turn); for a failed
+    // turn it then fails `session/prompt` with `admitted_turn_failed`.
     AcpNotification finalResponse({required String text}) => AcpNotification(
       method: "session/update",
       params: {
@@ -60,8 +60,30 @@ void main() {
     // only when its error name differs: the generic saved row is a stand-in
     // for the live reason, the rows warning that actions may already have run
     // add a warning of their own.
-    test("Hermes's generic saved row is the same kind of notice as the live reason", () {
-      expect(mapper.classifyHaltNotice(text: failedTurnBoundary)?.errorName, "hermes_failed_turn");
+    test("Hermes's generic saved row and its content-refused row are the same kind of notice as the live reason", () {
+      for (final row in [failedTurnBoundary, contentRefusedRow]) {
+        expect(mapper.classifyHaltNotice(text: row)?.errorName, "hermes_failed_turn", reason: row);
+      }
+    });
+
+    // With part of the reply already streamed, Hermes sends no explanation and
+    // only fails the prompt.
+    test("a failed prompt with no explanation shows Hermes's saved-row wording as the same kind of notice", () {
+      expect(
+        mapper.mapPromptError(sessionId: "s1", message: "admitted_turn_failed").info,
+        isA<PluginMessageError>()
+            .having((error) => error.errorName, "errorName", "hermes_failed_turn")
+            .having((error) => error.errorMessage, "errorMessage", failedTurnBoundary),
+      );
+    });
+
+    test("any other prompt failure keeps the shared notice", () {
+      expect(
+        mapper.mapPromptError(sessionId: "s1", message: "Connection closed").info,
+        isA<PluginMessageError>()
+            .having((error) => error.errorName, "errorName", "ACP prompt failed")
+            .having((error) => error.errorMessage, "errorMessage", "Connection closed"),
+      );
     });
 
     test("Hermes's partial-turn and interrupted-automation rows are notices of their own kind", () {
@@ -83,6 +105,7 @@ void main() {
         failedTurnBoundary,
         partialFailedTurnBoundary,
         automationInterruptedBoundary,
+        contentRefusedRow,
       ]) {
         final quoted = "Hermes printed this earlier:\n\n$notice\n\nI switched to a backup provider.";
         expect(mapper.classifyHaltNotice(text: quoted), isNull, reason: notice);

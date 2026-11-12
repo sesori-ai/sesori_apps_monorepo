@@ -29,7 +29,7 @@ void main() {
         launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         childSessionTracker: childSessionTracker,
-        eventMapper: AcpEventMapper(
+        eventMapper: _HaltMapper(
           launchDirectory: cwd,
           pluginId: "acp",
           configurationTracker: configurationTracker,
@@ -490,6 +490,75 @@ void main() {
       );
     });
 
+    // Hermes explains a failed turn in the turn itself, then fails the prompt.
+    test("a prompt that fails after a halt notice shows only that notice", () async {
+      await connect();
+      final creating = plugin.createSession(
+        fastMode: false,
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond("session/new", {"sessionId": "s1"});
+      await creating;
+
+      final events = <BridgeSseEvent>[];
+      final sub = plugin.events.listen(events.add);
+      addTearDown(sub.cancel);
+
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: "s1",
+        parts: const [PluginPromptPart.text(text: "hi")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final promptFrame = await waitForFrame("session/prompt");
+      fake()
+        ..emit({
+          "jsonrpc": "2.0",
+          "method": "session/update",
+          "params": {
+            "sessionId": "s1",
+            "update": {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": "HALT: the provider is unreachable."},
+            },
+          },
+        })
+        ..emit({
+          "jsonrpc": "2.0",
+          "id": promptFrame["id"],
+          "error": {
+            "code": -32603,
+            "message": "Internal error",
+            "data": {"details": "admitted_turn_failed"},
+          },
+        });
+      await pump();
+      await pump();
+
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).whereType<PluginMessageError>(),
+        [
+          isA<PluginMessageError>()
+              .having((error) => error.errorName, "errorName", "test_halt")
+              .having((error) => error.errorMessage, "errorMessage", "HALT: the provider is unreachable."),
+        ],
+      );
+      expect(
+        events.whereType<BridgeSseSessionError>(),
+        isNotEmpty,
+        reason: "the turn still fails for lifecycle consumers",
+      );
+    });
+
     test("a session created in an opened directory is attributed to that project", () async {
       await connect();
       const opened = "/Users/x/kustos";
@@ -819,4 +888,16 @@ void main() {
 
 Future<AcpProcessHandle> _throwReplayProcess(AcpLaunchSpec _) async {
   throw StateError("replay process failed to start");
+}
+
+/// Test double: classifies a message starting with "HALT:" as a halt notice.
+class _HaltMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+  required super.childSessions,
+}) extends AcpEventMapper {
+  @override
+  AcpHaltNotice? classifyHaltNotice({required String text}) =>
+      text.startsWith("HALT:") ? const AcpHaltNotice(errorName: "test_halt") : null;
 }

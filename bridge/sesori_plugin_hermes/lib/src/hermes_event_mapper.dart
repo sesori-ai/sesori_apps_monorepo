@@ -1,15 +1,19 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "hermes_turn_failure_copy.dart";
 
 /// Hermes's event mapper: the standard ACP mapping from [AcpEventMapper], plus
 /// Hermes's notices for a failed turn.
 ///
-/// Live, Hermes reports a failure as its ordinary final response and ends the
-/// turn with `stopReason: end_turn`, so on the wire the notice looks like a
-/// reply. Its own history saves a fixed closing row instead, which replays as
-/// a reply too. Both are recognized by their text and shown as error notices;
-/// the bridge's history store keeps one notice per failed turn.
+/// Live, Hermes sends a failure's explanation as its ordinary final response,
+/// so on the wire the notice looks like a reply, and then fails
+/// `session/prompt` with `admitted_turn_failed`
+/// (`acp_adapter/gateway_server.py`). Its own history saves a fixed closing
+/// row instead, which replays as a reply too. Both are recognized by their
+/// text and shown as error notices; the shared plugin adds no second notice
+/// for the failed prompt, and the bridge's history store keeps one notice per
+/// failed turn.
 class HermesEventMapper({
   required super.launchDirectory,
   required super.pluginId,
@@ -43,14 +47,29 @@ class HermesEventMapper({
   // error name is the notice's kind: the bridge keeps one notice per failed
   // turn and adds a replayed wording to the live one only when the kinds
   // differ. Hermes's generic saved row stands in for the live reason, so it
-  // shares the live notices' kind; the partial-turn row warns that actions
-  // may already have run, which the live reason does not say.
+  // shares the live notices' kind, and so does the content-refused row, which
+  // stands in for the live content-policy reason. The partial-turn row warns
+  // that actions may already have run, which the live reason does not say.
   @override
   AcpHaltNotice? classifyHaltNotice({required String text}) {
     if (isHermesPartialTurnRow(text: text)) return const AcpHaltNotice(errorName: "hermes_partial_turn");
-    if (isHermesFailedTurnRow(text: text) || isHermesTurnFailureNotice(text: text)) {
-      return const AcpHaltNotice(errorName: "hermes_failed_turn");
+    if (isHermesFailedTurnRow(text: text) ||
+        isHermesContentRefusedRow(text: text) ||
+        isHermesTurnFailureNotice(text: text)) {
+      return const AcpHaltNotice(errorName: _failedTurnKind);
     }
     return null;
   }
+
+  /// Hermes sends no explanation when the model had already streamed part of
+  /// its reply, so the failed prompt is the only sign. It is shown in the words
+  /// of the row Hermes saves for the turn, as the same kind of notice, so a
+  /// reload keeps one notice.
+  @override
+  BridgeSseMessageUpdated mapPromptError({required String sessionId, required String message}) {
+    if (message != "admitted_turn_failed") return super.mapPromptError(sessionId: sessionId, message: message);
+    return promptErrorEvent(sessionId: sessionId, errorName: _failedTurnKind, message: hermesFailedTurnRow);
+  }
+
+  static const String _failedTurnKind = "hermes_failed_turn";
 }

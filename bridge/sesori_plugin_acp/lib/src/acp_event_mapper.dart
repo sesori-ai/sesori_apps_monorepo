@@ -323,11 +323,25 @@ class AcpEventMapper({
     _spawnToolCalls.remove(sessionId);
   }
 
+  /// Whether the current turn of [sessionId] already showed a halt notice (see
+  /// [classifyHaltNotice]). That notice already explains a turn the agent then
+  /// fails, so the prompt error needs no second one.
+  bool showedHaltNotice({required String sessionId}) =>
+      _startedParts[sessionId]?.contains(_haltNoticeId(sessionId: sessionId)) ?? false;
+
   /// Maps a rejected `session/prompt` into a durable inline error. A session
   /// error event carries no diagnostic text, so emitting only that event would
   /// make an accepted prompt appear to finish silently.
   BridgeSseMessageUpdated mapPromptError({
     required String sessionId,
+    required String message,
+  }) => promptErrorEvent(sessionId: sessionId, errorName: "ACP prompt failed", message: message);
+
+  /// The inline error [mapPromptError] emits, for an override that names a
+  /// failure its backend reports in its own words.
+  BridgeSseMessageUpdated promptErrorEvent({
+    required String sessionId,
+    required String errorName,
     required String message,
   }) => BridgeSseMessageUpdated(
     info: PluginMessage.error(
@@ -337,7 +351,7 @@ class AcpEventMapper({
       modelID: modelForSession(sessionId: sessionId),
       providerID: providerForSession(sessionId: sessionId),
       variant: variantForSession(sessionId: sessionId),
-      errorName: "ACP prompt failed",
+      errorName: errorName,
       errorMessage: message,
       time: null,
     ),
@@ -1042,6 +1056,8 @@ class AcpEventMapper({
     );
   }
 
+  String _haltNoticeId({required String sessionId}) => "${_fallbackTurnMessageId(sessionId)}-halt";
+
   /// Emits a backend halt [notice] (see [classifyHaltNotice]) as a single
   /// error message so the client renders it with its explicit error card
   /// instead of quiet assistant prose. The notice text rides in the error
@@ -1053,7 +1069,7 @@ class AcpEventMapper({
     required String message,
     required PluginMessageTime? time,
   }) {
-    final messageId = "${_fallbackTurnMessageId(sessionId)}-halt";
+    final messageId = _haltNoticeId(sessionId: sessionId);
     final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
     if (!started.add(messageId)) return const [];
     // Any id-less assistant envelope opened earlier this turn is abandoned: the

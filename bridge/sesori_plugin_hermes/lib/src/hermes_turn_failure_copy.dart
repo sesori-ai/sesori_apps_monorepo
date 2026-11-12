@@ -158,11 +158,40 @@ const Map<String, String> _turnFailureTemplates = {
   "tier_disabled":
       "Using Hermes without signing in is switched off right now. Sign in to keep chatting, it's free.{signin}",
   "welcome_route_default": "Hermes couldn't reach the free model on this route.",
+  // 0.23.1 `locales/en.yaml` `gateway.errors` (sent with a leading "⚠️ "). In
+  // other languages only launch_credentials_unavailable is recognized, by its
+  // untranslated details line (see [_launchCredentialsDetails]).
+  "launch_credentials_unavailable":
+      "This chat can't use the API key it was started with any more{detail}, so nothing can run in it. An open chat "
+      "never switches to a different key on its own, so /retry fails the same way. Use /new to start a new chat on "
+      "your current key.",
+  "cron_session_read_only":
+      "This chat belongs to a scheduled job and only runs that job, so your message was not run. Start a new chat to "
+      "send it.",
+  "workspace_unavailable":
+      "This chat's working folder no longer exists ({path}), so your message was not run. Recreate the folder, or move "
+      "the chat to another one (`/worktree new` in the CLI, Move to project in the desktop app), then send your "
+      "message again.",
+  // 0.23.1 `agent/turn_finalizer.py`: the turn stopped on a tool result. With
+  // Hermes's turn explainer on, `explainer.no_reply_prefix` +
+  // `explainer.exit.pending_tool_result` ("⚠️ No reply: …"); with it off, a
+  // fixed fallback.
+  "pending_tool_result":
+      "No reply: the turn stopped while a tool result was still pending and the model produced no follow-up text. "
+      "Send `continue` to let it summarize.",
+  "pending_tool_result_fallback":
+      "No reply: the turn stopped while a tool result was still pending. Send `continue` to let the model summarize.",
 };
+
+/// The last paragraph of launch_credentials_unavailable when Hermes names the
+/// refused key: `Details: launch_credentials_unavailable (<field>: <detail>)`,
+/// left untranslated in every language (`launch_credentials_copy`).
+final RegExp _launchCredentialsDetails = RegExp(r"\n\nDetails: launch_credentials_unavailable \([^\n]*\)$");
 
 /// The row Hermes saves in its own history to close a failed turn, in place
 /// of the failure text it sent live (which it never saves): `FAILED_TURN_NOTICE`.
-const String _failedTurnRow = "Your request was not processed. Send it again if you still want me to carry it out.";
+const String hermesFailedTurnRow =
+    "Your request was not processed. Send it again if you still want me to carry it out.";
 
 /// The rows Hermes saves instead when actions may already have run, a warning
 /// the live reason does not carry.
@@ -173,8 +202,8 @@ const Set<String> _partialTurnRows = {
   "An automated delivery was interrupted and was not run again. Some actions may already have run; verify their effects.",
 };
 
-/// Placeholders that hold the provider's or Hermes's raw detail, always last
-/// in their template; they may span lines.
+/// Placeholders that hold the provider's or Hermes's raw detail, which may
+/// span lines.
 const Set<String> _trailingDetailFields = {"summary", "detail"};
 
 /// Each template as a pattern: its fixed text must match exactly, from the
@@ -197,14 +226,21 @@ final List<RegExp> _turnFailurePatterns = [
 
 /// Whether [text] is the explanation Hermes sends as its whole final response
 /// when a turn fails.
-bool isHermesTurnFailureNotice({required String text}) => _turnFailurePatterns.any((pattern) => pattern.hasMatch(text));
+bool isHermesTurnFailureNotice({required String text}) =>
+    _turnFailurePatterns.any((pattern) => pattern.hasMatch(text)) ||
+    _launchCredentialsDetails.hasMatch(text.trimRight());
 
 /// Whether [text] is the row Hermes saved to close a failed turn before any
 /// tool ran. Hermes reads its rows the same way
 /// (`untyped_failed_turn_display_kind`): the exact text and nothing else, so a
 /// reply that quotes one stays a reply.
-bool isHermesFailedTurnRow({required String text}) => text.trim() == _failedTurnRow;
+bool isHermesFailedTurnRow({required String text}) => text.trim() == hermesFailedTurnRow;
 
 /// Whether [text] is a row Hermes saved to close a turn whose actions may
 /// already have run, matched like [isHermesFailedTurnRow].
 bool isHermesPartialTurnRow({required String text}) => _partialTurnRows.contains(text.trim());
+
+/// The row Hermes keeps in place of a turn its model's safety filter refused
+/// (0.23.1 `CONTENT_REFUSED_NOTICE`), matched like [isHermesFailedTurnRow].
+bool isHermesContentRefusedRow({required String text}) =>
+    text.trim() == "This message was refused by the model's safety filter — try a different query.";

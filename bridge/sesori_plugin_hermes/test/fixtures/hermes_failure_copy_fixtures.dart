@@ -84,4 +84,34 @@ const Map<String, String> failureNotices = {
   "shutdown":
       "Hermes was shutting down and stopped this turn. Your conversation is saved — reopen it and send "
       "your message again.",
+  "launch credentials (0.23.1)":
+      "⚠️ This chat can't use the API key it was started with any more (OPENROUTER_API_KEY: unavailable), so "
+      "nothing can run in it. An open chat never switches to a different key on its own, so /retry fails the same "
+      "way. Use /new to start a new chat on your current key.\n\nDetails: launch_credentials_unavailable "
+      "(OPENROUTER_API_KEY: unavailable)",
+  "launch credentials without a named key (0.23.1)":
+      "⚠️ This chat can't use the API key it was started with any more, so nothing can run in it. An open chat "
+      "never switches to a different key on its own, so /retry fails the same way. Use /new to start a new chat on "
+      "your current key.",
+  // Only the details line stays in English.
+  "launch credentials in another language (0.23.1)":
+      "⚠️ Dieser Chat kann den API-Schlüssel, mit dem er gestartet wurde, nicht mehr verwenden "
+      "(OPENROUTER_API_KEY: unavailable). Starte mit /new einen neuen Chat.\n\nDetails: "
+      "launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
+  "scheduled-job chat (0.23.1)":
+      "⚠️ This chat belongs to a scheduled job and only runs that job, so your message was not run. Start a new "
+      "chat to send it.",
+  "missing working folder (0.23.1)":
+      "⚠️ This chat's working folder no longer exists (/repo/gone), so your message was not run. Recreate the "
+      "folder, or move the chat to another one (`/worktree new` in the CLI, Move to project in the desktop app), "
+      "then send your message again.",
+  "pending tool result (0.23.1)":
+      "⚠️ No reply: the turn stopped while a tool result was still pending and the model produced no follow-up "
+      "text. Send `continue` to let it summarize.",
+  "pending tool result with the explainer off (0.23.1)":
+      "No reply: the turn stopped while a tool result was still pending. Send `continue` to let the model "
+      "summarize.",
 };
+
+/// The row Hermes 0.23.1 replays for a turn its model's safety filter refused.
+const String contentRefusedRow = "This message was refused by the model's safety filter — try a different query.";

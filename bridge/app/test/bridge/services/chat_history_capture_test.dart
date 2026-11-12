@@ -1950,6 +1950,32 @@ void main() {
         expect(await storedNotices(history: history), const [liveReason]);
       });
 
+      // With part of the reply streamed, Hermes sends no reason and the live
+      // notice already uses the saved row's words.
+      test("stays one notice after a reload when part of the reply streamed first", () async {
+        final history = createTestChatHistory(
+          sessionRepository: _FakeSessionRepository(
+            transcript: [
+              _messageWithText(id: "h1-user", text: "Hello", createdAt: null, promptId: null),
+              _assistantMessageWithText(id: "h2-reply", text: "Starting on it", reasoning: null, createdAt: null),
+              _errorMessage(id: "h3-error", errorName: "hermes_failed_turn", text: savedRow, createdAt: null),
+            ],
+          ),
+        );
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-user", text: "Hello", createdAt: 100, promptId: null),
+            _assistantMessageWithText(id: "live-reply", text: "Starting on it", reasoning: null, createdAt: 150),
+            _errorMessage(id: "live-error", errorName: "hermes_failed_turn", text: savedRow, createdAt: 200),
+          ],
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(await storedNotices(history: history), const [savedRow]);
+      });
+
       test("is the saved row alone for a turn that failed outside Sesori", () async {
         final history = createTestChatHistory(
           sessionRepository: _FakeSessionRepository(
