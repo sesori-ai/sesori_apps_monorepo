@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
@@ -12,6 +12,7 @@ class FileDiffInfo {
     required this.additions,
     required this.deletions,
     required this.status,
+    required this.more,
   });
 
   factory FileDiffInfo.fromJson(Map<String, dynamic> json) {
@@ -21,6 +22,7 @@ class FileDiffInfo {
       additions: (json["additions"] as num).toInt(),
       deletions: (json["deletions"] as num).toInt(),
       status: FileDiffInfoStatus.fromJson(json["status"] as String),
+      more: json["more"] as bool?,
     );
   }
 
@@ -31,6 +33,7 @@ class FileDiffInfo {
       "additions": additions,
       "deletions": deletions,
       "status": status.toJson(),
+      "more": ?more,
     };
   }
 
@@ -42,6 +45,7 @@ class FileDiffInfo {
     int? additions,
     int? deletions,
     FileDiffInfoStatus? status,
+    bool? more,
   }) {
     return FileDiffInfo(
       file: file ?? this.file,
@@ -49,6 +53,7 @@ class FileDiffInfo {
       additions: additions ?? this.additions,
       deletions: deletions ?? this.deletions,
       status: status ?? this.status,
+      more: more ?? this.more,
     );
   }
 
@@ -60,16 +65,18 @@ class FileDiffInfo {
           other.patch == patch &&
           other.additions == additions &&
           other.deletions == deletions &&
-          other.status == status);
+          other.status == status &&
+          other.more == more);
 
   @override
-  int get hashCode => Object.hash(file, patch, additions, deletions, status);
+  int get hashCode => Object.hash(file, patch, additions, deletions, status, more);
 
   final String file;
   final String patch;
   final int additions;
   final int deletions;
   final FileDiffInfoStatus status;
+  final bool? more;
 }
 
 enum FileDiffInfoStatus {

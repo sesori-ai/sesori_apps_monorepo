@@ -210,15 +210,18 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
   final environment = <String, String>{
     ...host.environment,
   };
-  if (password == null || password.isEmpty) {
-    environment.removeWhere(
-      (key, _) => key.toUpperCase() == "OPENCODE_SERVER_PASSWORD",
-    );
-  } else {
+  // OpenCode v2 reads OPENCODE_PASSWORD before OPENCODE_SERVER_PASSWORD, so an
+  // inherited value of either would override the bridge's password.
+  environment.removeWhere(
+    (key, _) => const {"OPENCODE_SERVER_PASSWORD", "OPENCODE_PASSWORD"}.contains(key.toUpperCase()),
+  );
+  if (password != null && password.isNotEmpty) {
     environment["OPENCODE_SERVER_PASSWORD"] = password;
   }
   final process = await host.processes.spawn(
-    includeParentEnvironment: true,
+    // [environment] already copies the bridge environment; inheriting it again
+    // would restore the password variables removed above.
+    includeParentEnvironment: false,
     executable: executablePath,
     arguments: <String>["serve", "--port", "$port", "--hostname", bindHost],
     environment: environment,

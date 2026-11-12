@@ -356,7 +356,9 @@ class OpenCodeV2Service({
   Future<void> deleteSession({required String sessionId}) => _repository.deleteSession(sessionId: sessionId);
   Future<void> deleteWorkspace({required String projectId, required String worktreePath}) =>
       _repository.deleteWorktree(directory: projectId, worktreePath: worktreePath, force: false);
-  // The bridge database owns archival; OpenCode v2 has no archive operation.
+  // The bridge database owns archival. OpenCode 2.1.0+ can archive natively
+  // (`PATCH /api/session/{id}` with `archived`), but the 2.0.11 minimum cannot,
+  // so Sesori does not sync it.
   Future<void> archiveSession({required String sessionId}) async {}
 
   Future<PluginAbortResult> abortSession({

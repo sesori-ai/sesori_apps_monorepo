@@ -1,9 +1,9 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-import 'model_settings.g.dart';
+import 'model_variant_settings.g.dart';
 
 @immutable
 class ModelVariant {
@@ -17,7 +17,7 @@ class ModelVariant {
   factory ModelVariant.fromJson(Map<String, dynamic> json) {
     return ModelVariant(
       id: json["id"] as String,
-      settings: json["settings"] == null ? null : ModelSettings.fromJson(json["settings"] as Map<String, dynamic>),
+      settings: json["settings"] == null ? null : ModelVariantSettings.fromJson(json["settings"] as Map<String, dynamic>),
       headers: (json["headers"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
       body: json["body"] as Map<String, dynamic>?,
     );
@@ -36,7 +36,7 @@ class ModelVariant {
   /// Nullable fields cannot be set to null through this helper; null means keep.
   ModelVariant copyWith({
     String? id,
-    ModelSettings? settings,
+    ModelVariantSettings? settings,
     Map<String, String>? headers,
     Map<String, dynamic>? body,
   }) {
@@ -61,7 +61,7 @@ class ModelVariant {
   int get hashCode => Object.hash(id, settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body));
 
   final String id;
-  final ModelSettings? settings;
+  final ModelVariantSettings? settings;
   final Map<String, String>? headers;
   final Map<String, dynamic>? body;
 }

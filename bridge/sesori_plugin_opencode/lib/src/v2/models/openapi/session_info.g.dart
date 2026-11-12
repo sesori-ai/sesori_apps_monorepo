@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
@@ -208,6 +208,7 @@ class SessionInfoTime {
   const SessionInfoTime({
     required this.created,
     required this.updated,
+    required this.busy,
     required this.idle,
     required this.viewed,
     required this.archived,
@@ -217,6 +218,7 @@ class SessionInfoTime {
     return SessionInfoTime(
       created: (json["created"] as num).toDouble(),
       updated: (json["updated"] as num).toDouble(),
+      busy: (json["busy"] as num?)?.toDouble(),
       idle: (json["idle"] as num?)?.toDouble(),
       viewed: (json["viewed"] as num?)?.toDouble(),
       archived: (json["archived"] as num?)?.toDouble(),
@@ -227,6 +229,7 @@ class SessionInfoTime {
     return <String, dynamic>{
       "created": created,
       "updated": updated,
+      "busy": ?busy,
       "idle": ?idle,
       "viewed": ?viewed,
       "archived": ?archived,
@@ -238,6 +241,7 @@ class SessionInfoTime {
   SessionInfoTime copyWith({
     double? created,
     double? updated,
+    double? busy,
     double? idle,
     double? viewed,
     double? archived,
@@ -245,6 +249,7 @@ class SessionInfoTime {
     return SessionInfoTime(
       created: created ?? this.created,
       updated: updated ?? this.updated,
+      busy: busy ?? this.busy,
       idle: idle ?? this.idle,
       viewed: viewed ?? this.viewed,
       archived: archived ?? this.archived,
@@ -257,15 +262,17 @@ class SessionInfoTime {
       (other is SessionInfoTime &&
           other.created == created &&
           other.updated == updated &&
+          other.busy == busy &&
           other.idle == idle &&
           other.viewed == viewed &&
           other.archived == archived);
 
   @override
-  int get hashCode => Object.hash(created, updated, idle, viewed, archived);
+  int get hashCode => Object.hash(created, updated, busy, idle, viewed, archived);
 
   final double created;
   final double updated;
+  final double? busy;
   final double? idle;
   final double? viewed;
   final double? archived;

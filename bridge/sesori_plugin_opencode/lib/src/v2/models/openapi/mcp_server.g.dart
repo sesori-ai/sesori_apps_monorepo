@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
 import 'mcp_server_status.g.dart';
@@ -9,6 +9,7 @@ class McpServer {
   const McpServer({
     required this.name,
     required this.status,
+    required this.title,
     required this.integrationID,
   });
 
@@ -16,6 +17,7 @@ class McpServer {
     return McpServer(
       name: json["name"] as String,
       status: McpServerStatus.fromJson(json["status"] as Object),
+      title: json["title"] as String?,
       integrationID: json["integrationID"] as String?,
     );
   }
@@ -24,6 +26,7 @@ class McpServer {
     return <String, dynamic>{
       "name": name,
       "status": status.toJson(),
+      "title": ?title,
       "integrationID": ?integrationID,
     };
   }
@@ -33,11 +36,13 @@ class McpServer {
   McpServer copyWith({
     String? name,
     McpServerStatus? status,
+    String? title,
     String? integrationID,
   }) {
     return McpServer(
       name: name ?? this.name,
       status: status ?? this.status,
+      title: title ?? this.title,
       integrationID: integrationID ?? this.integrationID,
     );
   }
@@ -48,12 +53,14 @@ class McpServer {
       (other is McpServer &&
           other.name == name &&
           other.status == status &&
+          other.title == title &&
           other.integrationID == integrationID);
 
   @override
-  int get hashCode => Object.hash(name, status, integrationID);
+  int get hashCode => Object.hash(name, status, title, integrationID);
 
   final String name;
   final McpServerStatus status;
+  final String? title;
   final String? integrationID;
 }

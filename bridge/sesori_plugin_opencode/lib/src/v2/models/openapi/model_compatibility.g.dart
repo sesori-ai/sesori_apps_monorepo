@@ -1,9 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
 import 'model_cache_format.g.dart';
 import 'model_max_tokens_field.g.dart';
+import 'model_media_input.g.dart';
 
 @immutable
 class ModelCompatibility {
@@ -18,6 +19,7 @@ class ModelCompatibility {
     required this.cacheFormat,
     required this.supportsThinkingBlockBinding,
     required this.supportsEffortUpdates,
+    required this.mediaInput,
   });
 
   factory ModelCompatibility.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class ModelCompatibility {
       cacheFormat: json["cacheFormat"] == null ? null : ModelCacheFormat.fromJson(json["cacheFormat"] as String),
       supportsThinkingBlockBinding: json["supportsThinkingBlockBinding"] as bool?,
       supportsEffortUpdates: json["supportsEffortUpdates"] as bool?,
+      mediaInput: json["mediaInput"] == null ? null : ModelMediaInput.fromJson(json["mediaInput"] as String),
     );
   }
 
@@ -47,6 +50,7 @@ class ModelCompatibility {
       "cacheFormat": ?cacheFormat?.toJson(),
       "supportsThinkingBlockBinding": ?supportsThinkingBlockBinding,
       "supportsEffortUpdates": ?supportsEffortUpdates,
+      "mediaInput": ?mediaInput?.toJson(),
     };
   }
 
@@ -63,6 +67,7 @@ class ModelCompatibility {
     ModelCacheFormat? cacheFormat,
     bool? supportsThinkingBlockBinding,
     bool? supportsEffortUpdates,
+    ModelMediaInput? mediaInput,
   }) {
     return ModelCompatibility(
       reasoningField: reasoningField ?? this.reasoningField,
@@ -75,6 +80,7 @@ class ModelCompatibility {
       cacheFormat: cacheFormat ?? this.cacheFormat,
       supportsThinkingBlockBinding: supportsThinkingBlockBinding ?? this.supportsThinkingBlockBinding,
       supportsEffortUpdates: supportsEffortUpdates ?? this.supportsEffortUpdates,
+      mediaInput: mediaInput ?? this.mediaInput,
     );
   }
 
@@ -91,10 +97,11 @@ class ModelCompatibility {
           other.streamUsage == streamUsage &&
           other.cacheFormat == cacheFormat &&
           other.supportsThinkingBlockBinding == supportsThinkingBlockBinding &&
-          other.supportsEffortUpdates == supportsEffortUpdates);
+          other.supportsEffortUpdates == supportsEffortUpdates &&
+          other.mediaInput == mediaInput);
 
   @override
-  int get hashCode => Object.hash(reasoningField, requireReasoning, maxTokensField, requireFinishReason, requireAssistantAfterTool, supportsPromptCacheKey, streamUsage, cacheFormat, supportsThinkingBlockBinding, supportsEffortUpdates);
+  int get hashCode => Object.hash(reasoningField, requireReasoning, maxTokensField, requireFinishReason, requireAssistantAfterTool, supportsPromptCacheKey, streamUsage, cacheFormat, supportsThinkingBlockBinding, supportsEffortUpdates, mediaInput);
 
   final String? reasoningField;
   final bool? requireReasoning;
@@ -106,4 +113,5 @@ class ModelCompatibility {
   final ModelCacheFormat? cacheFormat;
   final bool? supportsThinkingBlockBinding;
   final bool? supportsEffortUpdates;
+  final ModelMediaInput? mediaInput;
 }

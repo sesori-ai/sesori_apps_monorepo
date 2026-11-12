@@ -1,11 +1,9 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-import 'form_fields_1.g.dart';
-import 'form_fields_2.g.dart';
-import 'form_fields_3.g.dart';
+import 'form_fields.g.dart';
 
 @immutable
 sealed class IntegrationMethod {
@@ -52,7 +50,7 @@ final class IntegrationOAuthMethod implements IntegrationMethod {
     return IntegrationOAuthMethod(
       id: json["id"] as String,
       label: json["label"] as String,
-      form: json["form"] == null ? null : FormFields1.fromJson(json["form"] as List<dynamic>),
+      form: json["form"] == null ? null : FormFields.fromJson(json["form"] as List<dynamic>),
     );
   }
 
@@ -71,7 +69,7 @@ final class IntegrationOAuthMethod implements IntegrationMethod {
   IntegrationOAuthMethod copyWith({
     String? id,
     String? label,
-    FormFields1? form,
+    FormFields? form,
   }) {
     return IntegrationOAuthMethod(
       id: id ?? this.id,
@@ -93,7 +91,7 @@ final class IntegrationOAuthMethod implements IntegrationMethod {
 
   final String id;
   final String label;
-  final FormFields1? form;
+  final FormFields? form;
 }
 
 
@@ -164,7 +162,7 @@ final class IntegrationKeyMethod implements IntegrationMethod {
   factory IntegrationKeyMethod.fromJson(Map<String, dynamic> json) {
     return IntegrationKeyMethod(
       label: json["label"] as String?,
-      form: json["form"] == null ? null : FormFields2.fromJson(json["form"] as List<dynamic>),
+      form: json["form"] == null ? null : FormFields.fromJson(json["form"] as List<dynamic>),
     );
   }
 
@@ -181,7 +179,7 @@ final class IntegrationKeyMethod implements IntegrationMethod {
   /// Nullable fields cannot be set to null through this helper; null means keep.
   IntegrationKeyMethod copyWith({
     String? label,
-    FormFields2? form,
+    FormFields? form,
   }) {
     return IntegrationKeyMethod(
       label: label ?? this.label,
@@ -200,7 +198,7 @@ final class IntegrationKeyMethod implements IntegrationMethod {
   int get hashCode => Object.hash(label, form);
 
   final String? label;
-  final FormFields2? form;
+  final FormFields? form;
 }
 
 
@@ -216,7 +214,7 @@ final class IntegrationExternalMethod implements IntegrationMethod {
     return IntegrationExternalMethod(
       id: json["id"] as String,
       label: json["label"] as String,
-      form: json["form"] == null ? null : FormFields3.fromJson(json["form"] as List<dynamic>),
+      form: json["form"] == null ? null : FormFields.fromJson(json["form"] as List<dynamic>),
     );
   }
 
@@ -235,7 +233,7 @@ final class IntegrationExternalMethod implements IntegrationMethod {
   IntegrationExternalMethod copyWith({
     String? id,
     String? label,
-    FormFields3? form,
+    FormFields? form,
   }) {
     return IntegrationExternalMethod(
       id: id ?? this.id,
@@ -257,7 +255,7 @@ final class IntegrationExternalMethod implements IntegrationMethod {
 
   final String id;
   final String label;
-  final FormFields3? form;
+  final FormFields? form;
 }
 
 

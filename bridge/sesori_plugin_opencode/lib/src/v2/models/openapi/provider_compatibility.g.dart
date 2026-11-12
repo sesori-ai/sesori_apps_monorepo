@@ -1,9 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
 import 'model_cache_format.g.dart';
 import 'model_max_tokens_field.g.dart';
+import 'model_media_input.g.dart';
 
 @immutable
 class ProviderCompatibility {
@@ -16,6 +17,7 @@ class ProviderCompatibility {
     required this.supportsPromptCacheKey,
     required this.streamUsage,
     required this.cacheFormat,
+    required this.mediaInput,
   });
 
   factory ProviderCompatibility.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,7 @@ class ProviderCompatibility {
       supportsPromptCacheKey: json["supportsPromptCacheKey"] as bool?,
       streamUsage: json["streamUsage"] as bool?,
       cacheFormat: json["cacheFormat"] == null ? null : ModelCacheFormat.fromJson(json["cacheFormat"] as String),
+      mediaInput: json["mediaInput"] == null ? null : ModelMediaInput.fromJson(json["mediaInput"] as String),
     );
   }
 
@@ -41,6 +44,7 @@ class ProviderCompatibility {
       "supportsPromptCacheKey": ?supportsPromptCacheKey,
       "streamUsage": ?streamUsage,
       "cacheFormat": ?cacheFormat?.toJson(),
+      "mediaInput": ?mediaInput?.toJson(),
     };
   }
 
@@ -55,6 +59,7 @@ class ProviderCompatibility {
     bool? supportsPromptCacheKey,
     bool? streamUsage,
     ModelCacheFormat? cacheFormat,
+    ModelMediaInput? mediaInput,
   }) {
     return ProviderCompatibility(
       reasoningField: reasoningField ?? this.reasoningField,
@@ -65,6 +70,7 @@ class ProviderCompatibility {
       supportsPromptCacheKey: supportsPromptCacheKey ?? this.supportsPromptCacheKey,
       streamUsage: streamUsage ?? this.streamUsage,
       cacheFormat: cacheFormat ?? this.cacheFormat,
+      mediaInput: mediaInput ?? this.mediaInput,
     );
   }
 
@@ -79,10 +85,11 @@ class ProviderCompatibility {
           other.requireAssistantAfterTool == requireAssistantAfterTool &&
           other.supportsPromptCacheKey == supportsPromptCacheKey &&
           other.streamUsage == streamUsage &&
-          other.cacheFormat == cacheFormat);
+          other.cacheFormat == cacheFormat &&
+          other.mediaInput == mediaInput);
 
   @override
-  int get hashCode => Object.hash(reasoningField, requireReasoning, maxTokensField, requireFinishReason, requireAssistantAfterTool, supportsPromptCacheKey, streamUsage, cacheFormat);
+  int get hashCode => Object.hash(reasoningField, requireReasoning, maxTokensField, requireFinishReason, requireAssistantAfterTool, supportsPromptCacheKey, streamUsage, cacheFormat, mediaInput);
 
   final String? reasoningField;
   final bool? requireReasoning;
@@ -92,4 +99,5 @@ class ProviderCompatibility {
   final bool? supportsPromptCacheKey;
   final bool? streamUsage;
   final ModelCacheFormat? cacheFormat;
+  final ModelMediaInput? mediaInput;
 }

@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
+// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -17,6 +17,7 @@ class ModelInfo {
     required this.modelID,
     required this.providerID,
     required this.canonical,
+    required this.type,
     required this.family,
     required this.name,
     required this.compatibility,
@@ -39,6 +40,7 @@ class ModelInfo {
       modelID: json["modelID"] as String,
       providerID: json["providerID"] as String,
       canonical: json["canonical"] as String?,
+      type: json["type"] as String?,
       family: json["family"] as String?,
       name: json["name"] as String,
       compatibility: json["compatibility"] == null ? null : ModelCompatibility.fromJson(json["compatibility"] as Map<String, dynamic>),
@@ -62,6 +64,7 @@ class ModelInfo {
       "modelID": modelID,
       "providerID": providerID,
       "canonical": ?canonical,
+      "type": ?type,
       "family": ?family,
       "name": name,
       "compatibility": ?compatibility?.toJson(),
@@ -86,6 +89,7 @@ class ModelInfo {
     String? modelID,
     String? providerID,
     String? canonical,
+    String? type,
     String? family,
     String? name,
     ModelCompatibility? compatibility,
@@ -106,6 +110,7 @@ class ModelInfo {
       modelID: modelID ?? this.modelID,
       providerID: providerID ?? this.providerID,
       canonical: canonical ?? this.canonical,
+      type: type ?? this.type,
       family: family ?? this.family,
       name: name ?? this.name,
       compatibility: compatibility ?? this.compatibility,
@@ -131,6 +136,7 @@ class ModelInfo {
           other.modelID == modelID &&
           other.providerID == providerID &&
           other.canonical == canonical &&
+          other.type == type &&
           other.family == family &&
           other.name == name &&
           other.compatibility == compatibility &&
@@ -147,12 +153,13 @@ class ModelInfo {
           other.limit == limit);
 
   @override
-  int get hashCode => Object.hash(id, modelID, providerID, canonical, family, name, compatibility, package, settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body), capabilities, const DeepCollectionEquality().hash(variants), time, const DeepCollectionEquality().hash(cost), status, enabled, limit);
+  int get hashCode => Object.hash(id, modelID, providerID, canonical, type, family, name, compatibility, package, settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body), capabilities, const DeepCollectionEquality().hash(variants), time, const DeepCollectionEquality().hash(cost), status, enabled, limit);
 
   final String id;
   final String modelID;
   final String providerID;
   final String? canonical;
+  final String? type;
   final String? family;
   final String name;
   final ModelCompatibility? compatibility;

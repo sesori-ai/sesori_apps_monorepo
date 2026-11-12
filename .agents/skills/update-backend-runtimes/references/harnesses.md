@@ -15,23 +15,27 @@ concrete problem can justify a documented temporary hold with a resolution path.
 ## OpenCode
 
 - **Source:** stable `@opencode/cli` npm version and matching `anomalyco/opencode`
-  source tag, resolved to an immutable commit. As verified 2026-09-26, v2 is
-  published through npm while GitHub latest and `opencode-ai` still select v1;
+  source tag, resolved to an immutable commit. As verified 2026-11-12, v2 tags
+  get GitHub releases too, but GitHub latest and `opencode-ai` still select v1;
   recheck both channels rather than assuming they identify the same protocol.
 - **Pin:** `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_runtime_manifest.dart`.
   Preserve `minPathVersion`; `targetVersion` drives `bundledVersion`. PATH v1
-  remains supported; managed v1 upgrades migrate the native database one-way.
+  remains supported. Every managed upgrade (v1 to v2, and between v2 releases
+  that add migrations) migrates the native database one-way.
 - **Assets:** six npm packages `@opencode/cli-{darwin,linux,windows}-{arm64,x64}`.
   Fetch exact-version registry metadata, verify each downloaded `.tgz` against
   published integrity, and independently compute its manifest SHA-256. URLs are
   `https://registry.npmjs.org/@opencode/cli-<target>/-/cli-<target>-<version>.tgz`.
   All use `ArchiveFormat.tarGz` with `package/bin/opencode[.exe]`, normalized by
-  `RuntimeArchiveLayout.singleBinary`. Verify members; do not assume helpers
-  are unnecessary if a future release changes the layout.
+  `RuntimeArchiveLayout.singleBinary`. As of 2.2.7 the darwin and windows
+  tarballs also carry `package/` and `package/bin/` directory entries, which the
+  extractor accepts. Verify members; do not assume helpers are unnecessary if a
+  future release changes the layout.
 - **Audit:** REST/SSE schemas and serialization, sessions/messages, permission and
   question replies, models, subagents, cancellation, and database/history shape.
-  Inspect `bridge/sesori_plugin_opencode/tool/opencode_v1_surface.json` and the
-  plugin's DB-first import before promising that a new API can replace it. Keep
+  For v1 changes, inspect `bridge/sesori_plugin_opencode/tool/opencode_v1_surface.json`
+  and the plugin's DB-first import before promising that a new API can replace
+  it; v2 audits use `tool/opencode_v2_surface.json` instead. Keep
   minimum-surface metadata aligned only if a floor increase is approved.
 - **Regenerate models on every target update:** from
   `bridge/sesori_plugin_opencode/`, run the matching commands below with the
@@ -66,6 +70,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   loopback `opencode serve`, and the REST/SSE startup paths the plugin actually
   drives. Read the current runtime policy/client and use disposable database and
   profile roots. Never boot against or migrate the user's OpenCode database.
+  v2 `serve` always requires auth (it generates a password when none is set),
+  and reads `OPENCODE_PASSWORD` before `OPENCODE_SERVER_PASSWORD`, so strip both
+  from the probe environment and pass only the one you set.
 - **Verify:** owning manifest/runtime-policy and affected API/import tests plus
   package analyzer. Preserve attach/no-auto-start behavior and PATH precedence.
 

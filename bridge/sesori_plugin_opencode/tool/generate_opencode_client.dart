@@ -354,9 +354,19 @@ class Codegen({
   );
   late final Map<String, dynamic> paths = readObjectOrNull(spec['paths']) ?? const {};
 
-  /// Maps a schema name → name of the union (sealed/interface) class it
-  /// implements. Built from anyOf / oneOf in the schema registry.
-  late final Map<String, String> _unionParents = _buildUnionParents();
+  /// Maps a schema name → raw names of the unions (anyOf / oneOf) that
+  /// list it, in spec order. A schema can belong to several unions
+  /// (OpenCode 2.2 lists `Form.ExternalField` in `Form.Field` and
+  /// `Form.Field_1`); see [_unionParentFor].
+  late final Map<String, List<String>> _unionParents = _buildUnionParents();
+
+  /// The union class [rawName] implements: its first union that is
+  /// generated, else its first union (which then gets a stub).
+  String? _unionParentFor({required String rawName, required Set<String> selected}) {
+    final parents = _unionParents[rawName];
+    if (parents == null) return null;
+    return _pascalFromSnake(parents.firstWhere(selected.contains, orElse: () => parents.first));
+  }
 
   /// Header block describing the upstream source the code was
   /// generated from: the upstream ref and resolved commit SHA when
@@ -374,13 +384,12 @@ class Codegen({
     _run();
   }
 
-  Map<String, String> _buildUnionParents() {
-    final out = <String, String>{};
+  Map<String, List<String>> _buildUnionParents() {
+    final out = <String, List<String>>{};
     schemas.forEach((rawName, schema) {
       if (schema is! Map<String, dynamic>) return;
       final variants = readListOrNull(schema['anyOf']) ?? readListOrNull(schema['oneOf']);
       if (variants == null) return;
-      final cleanParent = _pascalFromSnake(rawName);
       for (final v in variants) {
         if (v is! Map<String, dynamic>) continue;
         final r = v[r'$ref'];
@@ -390,7 +399,7 @@ class Codegen({
           // abstract interface class with abstract members, so treating
           // an enum as a union variant would generate broken code.
           if (_isEnum(schemas[childRaw])) continue;
-          out[childRaw] = cleanParent;
+          (out[childRaw] ??= []).add(rawName);
         }
       }
     });
@@ -439,14 +448,18 @@ class Codegen({
         log('SKIP $name (dotted equivalent exists)');
         continue;
       }
-      _writeModelFile(rawName: name, schema: readObject(schemas[name]));
+      _writeModelFile(
+        rawName: name,
+        schema: readObject(schemas[name]),
+        implementsClass: _unionParentFor(rawName: name, selected: selectedSchemas),
+      );
       log('model $name');
     }
 
     final selectedParentClasses = sortedSchemas.map(_pascalFromSnake).toSet();
     final missingParentClasses = <String>{};
     for (final name in sortedSchemas) {
-      final parent = _unionParents[name];
+      final parent = _unionParentFor(rawName: name, selected: selectedSchemas);
       if (parent != null && !selectedParentClasses.contains(parent)) {
         missingParentClasses.add(parent);
       }
@@ -593,7 +606,11 @@ class Codegen({
   // File emission
   // ---------------------------------------------------------------------------
 
-  void _writeModelFile({required String rawName, required Map<String, dynamic> schema}) {
+  void _writeModelFile({
+    required String rawName,
+    required Map<String, dynamic> schema,
+    required String? implementsClass,
+  }) {
     final cleanName = _pascalFromSnake(rawName);
     final fileName = _snakeFromCamel(rawName);
     final relPath = 'models/openapi/$fileName.g.dart';
@@ -602,7 +619,7 @@ class Codegen({
       rawName: rawName,
       schema: schema,
       schemas: schemas,
-      implementsClass: _unionParents[rawName],
+      implementsClass: implementsClass,
       sourceHeader: sourceHeader(),
     );
     var body = writer.emit();
@@ -1210,10 +1227,16 @@ class ModelWriter({
       // best-effort decode. The first match wins; a final throw
       // covers the truly unknown case.
       var inlineIndex = 0;
+      // A later variant with an already-emitted guard is unreachable (the
+      // first match wins), e.g. a string enum after a plain string; skip it
+      // rather than emit a dead branch and its variant class.
+      final emittedGuards = <String>{};
       for (final v in variants) {
         final guard = _unionTypeGuard(v);
+        if (guard == null || emittedGuards.contains(guard)) continue;
         final decode = _unionTypeDecode(variant: v, inlineIndex: inlineIndex);
-        if (guard == null || decode == null) continue;
+        if (decode == null) continue;
+        emittedGuards.add(guard);
         b.writeln('    if ($guard) {');
         b.writeln('      return $decode;');
         b.writeln('    }');
