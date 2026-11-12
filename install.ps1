@@ -51,9 +51,11 @@ $Script:UseUnicode = $false
 $Script:PanelWidth = 56
 
 # Color is emitted unless NO_COLOR is set, output is redirected, or TERM=dumb.
-# FORCE_COLOR forces it on. On Windows a console host generally supports ANSI
+# FORCE_COLOR=0 or FORCE_COLOR=false turns it off; any other FORCE_COLOR forces
+# it on. On Windows a console host generally supports ANSI
 # (Windows Terminal, PowerShell 5.1+, conhost on Win10+), so a TTY is the signal.
 function Test-ShouldUseColor {
+    if ($env:FORCE_COLOR -ceq '0' -or $env:FORCE_COLOR -ceq 'false') { return $false }
     if ($env:FORCE_COLOR) { return $true }
     if ($env:NO_COLOR) { return $false }
     if ($env:TERM -eq 'dumb') { return $false }
