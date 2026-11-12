@@ -23,6 +23,20 @@ void main() {
       ]);
     });
 
+    test("a refused turn replays as the user's prompt and one error notice", () {
+      final messages = _replay(
+        frames: [
+          _userChunk(text: "Hello"),
+          _assistantChunk(text: contentRefusedRow),
+        ],
+      );
+
+      expect(messages.map((message) => message.info), [
+        isA<PluginMessageUser>(),
+        _notice(errorName: "hermes_failed_turn", text: contentRefusedRow),
+      ]);
+    });
+
     test("a partial turn keeps the tool that ran and shows its warning as the notice", () {
       final messages = _replay(
         frames: [

@@ -1706,13 +1706,16 @@ abstract class AcpPlugin({
       // backend failure must remain observable rather than silently dropping
       // the accepted prompt.
       Log.w("[$id] accepted session/prompt for $sessionId failed", error, stack);
-      final failureMessage = _promptFailureMessage(error: error);
-      _eventBuffer.add(
-        eventMapper.mapPromptError(
-          sessionId: sessionId,
-          message: failureMessage,
-        ),
-      );
+      // An agent can explain the failure in the turn itself before failing the
+      // prompt (Hermes does); that halt notice is the turn's one notice.
+      if (!eventMapper.showedHaltNotice(sessionId: sessionId)) {
+        _eventBuffer.add(
+          eventMapper.mapPromptError(
+            sessionId: sessionId,
+            message: _promptFailureMessage(error: error),
+          ),
+        );
+      }
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
     }

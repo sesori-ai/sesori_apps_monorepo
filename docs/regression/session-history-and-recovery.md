@@ -211,11 +211,16 @@ reconnect or restart.
 - A failed Hermes turn shows exactly one error notice after any number of
   reloads, never none and never two, for every Hermes failure kind. Unless the
   model already streamed part of a reply, Hermes also sends its reason live, as
-  its final text, and ends the turn normally; after a streamed partial reply it
-  sends no failure text live, so the notice first appears on reload. Hermes
-  saves a different fixed row ("Your request was not processed…", or "This turn
-  did not complete. Some actions may already have run…" after a tool ran) in
-  its own history. That row replays as the turn's notice, so a turn that failed
+  its final text, and then fails the prompt with `admitted_turn_failed`, which
+  adds no second notice. Hermes closes that live reason with its generic "Your
+  request was not processed…" row; the live notice drops it, so the notice
+  reads the same before and after a reload. After a streamed partial reply it sends no failure
+  text, so the failed prompt shows live as Hermes's own "Your request was not
+  processed…" notice. Hermes saves a different fixed row ("Your request was not processed…", or "This turn
+  did not complete. Some actions may already have run…" after a tool ran, or
+  "An automated delivery was interrupted…" for a lost cron or webhook turn) in
+  its own history, or "This message was refused by the model's safety
+  filter…" for a refused turn. That row replays as the turn's notice, so a turn that failed
   outside Sesori, or whose live notice an earlier re-import dropped, still shows
   one. When the live notice was seen, the reloaded notice shows only Hermes's
   live reason in place of the generic "Your request was not processed…" row,

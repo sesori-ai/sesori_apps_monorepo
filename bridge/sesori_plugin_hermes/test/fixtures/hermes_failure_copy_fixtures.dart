@@ -84,4 +84,84 @@ const Map<String, String> failureNotices = {
   "shutdown":
       "Hermes was shutting down and stopped this turn. Your conversation is saved — reopen it and send "
       "your message again.",
+  "launch credentials (0.23.1)":
+      "⚠️ This chat can't use the API key it was started with any more (OPENROUTER_API_KEY: unavailable), so "
+      "nothing can run in it. An open chat never switches to a different key on its own, so /retry fails the same "
+      "way. Use /new to start a new chat on your current key.\n\nDetails: launch_credentials_unavailable "
+      "(OPENROUTER_API_KEY: unavailable)",
+  "launch credentials without a named key (0.23.1)":
+      "⚠️ This chat can't use the API key it was started with any more, so nothing can run in it. An open chat "
+      "never switches to a different key on its own, so /retry fails the same way. Use /new to start a new chat on "
+      "your current key.",
+  // Only the details line stays in English.
+  // Hermes 0.23.1 `locales/{de,ja,ar}.yaml`, filled by `launch_credentials_copy`.
+  "launch credentials in German (0.23.1)":
+      "⚠️ Dieser Chat kann den API-Schlüssel, mit dem er gestartet wurde, nicht mehr verwenden "
+      "(OPENROUTER_API_KEY: unavailable), daher kann darin nichts mehr ausgeführt werden. Ein offener Chat wechselt "
+      "nie von selbst zu einem anderen Schlüssel, deshalb scheitert /retry genauso. Starte mit /new einen neuen Chat "
+      "mit deinem aktuellen Schlüssel.\n\nDetails: launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
+  "launch credentials in Japanese (0.23.1)": "⚠️ このチャットは開始時の API キーをもう使えないため (OPENROUTER_API_KEY: unavailable)、このチャットでは何も実行できません。開いているチャットが自動で別のキーに切り替わることはないので、/retry でも同じように失敗します。/new で現在のキーを使う新しいチャットを始めてください。\n\nDetails: launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
+  "launch credentials in Arabic (0.23.1)":
+      "⚠️ لم تعد هذه المحادثة قادرة على استخدام مفتاح API الذي بدأت به (OPENROUTER_API_KEY: unavailable)، لذلك لا "
+      "يمكن تشغيل أي شيء فيها. المحادثة المفتوحة لا تنتقل أبدًا إلى مفتاح مختلف من تلقاء نفسها، لذا سيفشل /retry "
+      "بالطريقة نفسها. استخدم /new لبدء محادثة جديدة بمفتاحك الحالي.\n\n"
+      "Details: launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
+  "scheduled-job chat (0.23.1)":
+      "⚠️ This chat belongs to a scheduled job and only runs that job, so your message was not run. Start a new "
+      "chat to send it.",
+  "missing working folder (0.23.1)":
+      "⚠️ This chat's working folder no longer exists (/repo/gone), so your message was not run. Recreate the "
+      "folder, or move the chat to another one (`/worktree new` in the CLI, Move to project in the desktop app), "
+      "then send your message again.",
+  "pending tool result (0.23.1)":
+      "⚠️ No reply: the turn stopped while a tool result was still pending and the model produced no follow-up "
+      "text. Send `continue` to let it summarize.",
+  "pending tool result with the explainer off (0.23.1)":
+      "No reply: the turn stopped while a tool result was still pending. Send `continue` to let the model "
+      "summarize.",
+  "retries exhausted with no reply (0.23.1)":
+      "⚠️ No reply: the model provider didn't answer after all retries. Send /retry, or switch models with /model.",
+  "local context too small (0.23.1)":
+      "⚠️ No reply: the local model's context window was too small to finish. Increase the context size or use a "
+      "larger model.",
+  "error near the iteration limit (0.23.1)":
+      "⚠️ No reply: an error occurred near the iteration limit before a final answer. Check the tool output above, "
+      "then send `continue`.",
+  "repeated errors (0.23.1)":
+      "⚠️ No reply: the turn kept failing with repeated errors and was stopped early instead of retrying forever. "
+      "Check the errors above, then send `continue` to retry.",
+  "session storage busy (0.23.1)":
+      "⚠️ No reply: the turn was stopped because session storage was busy (another Hermes process was writing to "
+      "the state database). Your message should already be saved — please send it again in a moment.",
+  "session storage corrupt (0.23.1)":
+      "⚠️ No reply: the turn was stopped because the state database reported structural corruption (the "
+      "transcript would have been lost on restart). Freeing disk space will not help. Recovery options:\n1. Run "
+      "`hermes doctor --fix`\n2. Stop the gateway, then recover with:\n   hermes sessions recover --source "
+      "/home/u/.hermes/state.db --inspect-only\n   (if it reports recoverable) hermes sessions recover --source "
+      "/home/u/.hermes/state.db --output recovered-state.db\n   — recovery snapshots the damaged file first; do "
+      'NOT run `sqlite3 ... ".recover"` against the live state.db, a vulnerable sqlite3 CLI can corrupt it '
+      "further\n3. Restore from a backup in /home/u/.hermes/backups/\nThen send your message again.",
+  "session storage unsaved (0.23.1)":
+      "⚠️ No reply: Hermes couldn't save this conversation, so it stopped rather than lose your messages. Possible "
+      "causes: the drive is out of room, or another Hermes process is holding the database. Close other Hermes "
+      "windows, run `hermes -p work doctor` to check storage, then send your message again.",
+};
+
+/// The row Hermes 0.23.1 replays for a turn its model's safety filter refused.
+const String contentRefusedRow = "This message was refused by the model's safety filter — try a different query.";
+
+/// "No reply:" explanations Hermes 0.23.1 gives for exits that do not fail the
+/// turn, which stay replies.
+const Map<String, String> advisoryNoReplyTexts = {
+  "empty response":
+      "⚠️ No reply: gpt-5 didn't produce a reply this time, even after retries. Send `continue` to try again, or switch "
+      "models with /model.",
+  "budget exhausted":
+      "⚠️ No reply: the per-turn iteration/cost budget was exhausted before a final answer. Send `continue` to keep "
+      "going.",
+  "iteration limit":
+      "⚠️ No reply: the maximum tool-iteration limit was reached before a final answer. Send `continue` to keep going, "
+      "or raise `max_iterations`.",
+  "interrupted call":
+      "⚠️ No reply: the request was interrupted mid-call before a reply was received. Send `continue` to retry.",
 };

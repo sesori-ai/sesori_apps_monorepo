@@ -18,7 +18,11 @@
 /// name for it.
 ///
 /// Left out on purpose: `reasoning_only`, which ends with the model's own last
-/// thoughts ("which may contain the answer"), so it stays a reply.
+/// thoughts ("which may contain the answer"), so it stays a reply, and the
+/// "No reply:" explanations for exits that do not fail the turn
+/// (`empty_response`, `partial_stream_recovery`, `fallback_prior_turn_content`,
+/// `redirect_restart_limit_exceeded`, `rebuilt_restart_limit_exceeded`,
+/// `budget_exhausted`, `interrupted_during_api_call`, `max_iterations_reached`).
 const Map<String, String> _turnFailureTemplates = {
   // exhausted_copy: `{lead}` is an `_EXHAUSTED_LEADS` lead or, since 0.22.6, a
   // first-attempt `_EXHAUSTED_FIRST_ATTEMPT_LEADS` lead.
@@ -158,11 +162,121 @@ const Map<String, String> _turnFailureTemplates = {
   "tier_disabled":
       "Using Hermes without signing in is switched off right now. Sign in to keep chatting, it's free.{signin}",
   "welcome_route_default": "Hermes couldn't reach the free model on this route.",
+  // 0.23.1 `locales/en.yaml` `gateway.errors` (sent with a leading "⚠️ "). In
+  // other languages only launch_credentials_unavailable is recognized, by its
+  // shape and untranslated details line (see [_isLaunchCredentialsNotice]).
+  "launch_credentials_unavailable":
+      "This chat can't use the API key it was started with any more{detail}, so nothing can run in it. An open chat "
+      "never switches to a different key on its own, so /retry fails the same way. Use /new to start a new chat on "
+      "your current key.",
+  "cron_session_read_only":
+      "This chat belongs to a scheduled job and only runs that job, so your message was not run. Start a new chat to "
+      "send it.",
+  "workspace_unavailable":
+      "This chat's working folder no longer exists ({path}), so your message was not run. Recreate the folder, or move "
+      "the chat to another one (`/worktree new` in the CLI, Move to project in the desktop app), then send your "
+      "message again.",
+  // 0.23.1 `agent/turn_finalizer.py`: the turn stopped on a tool result. With
+  // Hermes's turn explainer on, `explainer.no_reply_prefix` +
+  // `explainer.exit.pending_tool_result` ("⚠️ No reply: …"); with it off, a
+  // fixed fallback.
+  "pending_tool_result":
+      "No reply: the turn stopped while a tool result was still pending and the model produced no follow-up text. "
+      "Send `continue` to let it summarize.",
+  "pending_tool_result_fallback":
+      "No reply: the turn stopped while a tool result was still pending. Send `continue` to let the model summarize.",
+  // 0.23.1 `agent/turn_explainers.py`: the other "⚠️ No reply: …" explanations
+  // for exits that fail the turn (`_EXIT_REASON_FAILURES` with fails_turn).
+  "all_retries_exhausted_no_response":
+      "No reply: the model provider didn't answer after all retries. Send /retry, or switch models with /model.",
+  "ollama_runtime_context_too_small":
+      "No reply: the local model's context window was too small to finish. Increase the context size or use a "
+      "larger model.",
+  "error_near_max_iterations":
+      "No reply: an error occurred near the iteration limit before a final answer. Check the tool output above, "
+      "then send `continue`.",
+  "repeated_outer_errors":
+      "No reply: the turn kept failing with repeated errors and was stopped early instead of retrying forever. "
+      "Check the errors above, then send `continue` to retry.",
+  // The same for `session_persistence_failed`, by cause (`explainer.persistence`).
+  "persistence_compression":
+      "No reply: the turn was stopped because another process was compressing this session. Your message should "
+      "already be saved — please send it again after compression completes.",
+  "persistence_compression_closed":
+      "No reply: the turn was stopped because this session was rotated by context compression and its live "
+      "continuation could not be adopted. The storage itself is healthy — refresh the client (or start a new turn) "
+      "so it picks up the new session id, then send your message again.",
+  "persistence_turn_lease":
+      "No reply: the turn was stopped because another Hermes process took over this session. Your reply was not "
+      "saved — wait for the other process to finish, then send your message again.",
+  "persistence_session_row_missing":
+      "No reply: this session was deleted from storage while the chat was still open, and Hermes could not "
+      "recreate it, so this message was not saved. Send your message again; if it keeps failing, run `hermes "
+      "{profile_arg}doctor`.",
+  "persistence_locked":
+      "No reply: the turn was stopped because session storage was busy (another Hermes process was writing to the "
+      "state database). Your message should already be saved — please send it again in a moment.",
+  "persistence_replaced":
+      "No reply: the session database file was replaced while Hermes was running, so this message was not saved (a "
+      "copy is kept in {home}/sessions/). Stop Hermes (`hermes {profile_arg}gateway stop`), run `hermes "
+      "{profile_arg}doctor` — not `hermes {profile_arg}doctor --fix`, which would repair the wrong file in place — "
+      "then start it again and send your message once more. Advanced recovery steps are in the log.",
+  "persistence_deleted_wal":
+      "No reply: another Hermes process still holds an old copy of the session database's write-ahead log, so "
+      "Hermes stopped writing to keep the file safe and this message was not saved (a copy is kept in "
+      "{home}/sessions/). Nothing is lost. Quit every Hermes process on this profile (Desktop app, `hermes "
+      "{profile_arg}gateway stop`, dashboard, cron), run `hermes {profile_arg}doctor` — it names any process still "
+      "holding the log — then start Hermes again and send your message once more. Do not run `doctor --fix` or "
+      "delete any state.db files while they run. Guide: {recovery_docs}",
+  "persistence_corrupt":
+      "No reply: the turn was stopped because the state database reported structural corruption (the transcript "
+      "would have been lost on restart). Freeing disk space will not help. Recovery options:\n1. Run `hermes "
+      "{profile_arg}doctor --fix`\n2. Stop the gateway, then recover with:\n   hermes {profile_arg}sessions "
+      "recover --source {db_path} --inspect-only\n   (if it reports recoverable) hermes {profile_arg}sessions "
+      "recover --source {db_path} --output recovered-state.db\n   — recovery snapshots the damaged file first; do "
+      'NOT run `sqlite3 ... ".recover"` against the live state.db, a vulnerable sqlite3 CLI can corrupt it '
+      "further\n3. Restore from a backup in {backups_dir}/\nThen send your message again.",
+  "persistence_fts_index":
+      "No reply: the turn was stopped because the session search index (FTS5) is corrupt and could not be "
+      "detached, so this message was not saved. The message store itself is not damaged: do not run recovery tools "
+      "or restore a backup. Run `hermes {profile_arg}doctor --fix` (or restart Hermes, which repairs the index on "
+      "open), then send your message again.",
+  "persistence_disk":
+      "No reply: Hermes couldn't save this conversation to disk, so it stopped rather than lose your messages. The "
+      "disk is probably full: free some space (or fix the permissions on {home}/state.db), then send your message "
+      "again.",
+  "persistence_default":
+      "No reply: Hermes couldn't save this conversation, so it stopped rather than lose your messages. Possible "
+      "causes: the drive is out of room, or another Hermes process is holding the database. Close other Hermes "
+      "windows, run `hermes {profile_arg}doctor` to check storage, then send your message again.",
 };
+
+/// Whether [text] is launch_credentials_unavailable in any language with the
+/// refused key named (`launch_credentials_copy`): the translated copy, one
+/// line starting with "⚠️ " and naming ` (<field>: <detail>)`, then the
+/// untranslated `Details: launch_credentials_unavailable (<field>: <detail>)`
+/// with the same key, and nothing else. A reply that only ends with the
+/// details line does not have this shape. Checked with string operations so a
+/// long reply costs one scan.
+bool _isLaunchCredentialsNotice({required String text}) {
+  const details = "\n\nDetails: launch_credentials_unavailable";
+  final trimmed = text.trimRight();
+  if (!trimmed.startsWith("⚠️ ")) return false;
+  final at = trimmed.indexOf(details);
+  if (at < 0) return false;
+  final notice = trimmed.substring(0, at);
+  final key = trimmed.substring(at + details.length);
+  return key.startsWith(" (") &&
+      key.endsWith(")") &&
+      !key.contains("\n") &&
+      !notice.contains("\n") &&
+      notice.contains(key);
+}
 
 /// The row Hermes saves in its own history to close a failed turn, in place
 /// of the failure text it sent live (which it never saves): `FAILED_TURN_NOTICE`.
-const String _failedTurnRow = "Your request was not processed. Send it again if you still want me to carry it out.";
+const String hermesFailedTurnRow =
+    "Your request was not processed. Send it again if you still want me to carry it out.";
 
 /// The rows Hermes saves instead when actions may already have run, a warning
 /// the live reason does not carry.
@@ -173,8 +287,8 @@ const Set<String> _partialTurnRows = {
   "An automated delivery was interrupted and was not run again. Some actions may already have run; verify their effects.",
 };
 
-/// Placeholders that hold the provider's or Hermes's raw detail, always last
-/// in their template; they may span lines.
+/// Placeholders that hold the provider's or Hermes's raw detail, which may
+/// span lines.
 const Set<String> _trailingDetailFields = {"summary", "detail"};
 
 /// Each template as a pattern: its fixed text must match exactly, from the
@@ -197,14 +311,31 @@ final List<RegExp> _turnFailurePatterns = [
 
 /// Whether [text] is the explanation Hermes sends as its whole final response
 /// when a turn fails.
-bool isHermesTurnFailureNotice({required String text}) => _turnFailurePatterns.any((pattern) => pattern.hasMatch(text));
+bool isHermesTurnFailureNotice({required String text}) =>
+    _turnFailurePatterns.any((pattern) => pattern.hasMatch(text)) || _isLaunchCredentialsNotice(text: text);
 
 /// Whether [text] is the row Hermes saved to close a failed turn before any
 /// tool ran. Hermes reads its rows the same way
 /// (`untyped_failed_turn_display_kind`): the exact text and nothing else, so a
 /// reply that quotes one stays a reply.
-bool isHermesFailedTurnRow({required String text}) => text.trim() == _failedTurnRow;
+bool isHermesFailedTurnRow({required String text}) => text.trim() == hermesFailedTurnRow;
+
+/// [text] without the generic saved row Hermes appends as its last paragraph
+/// after a live reason; the row alone stays. The bridge's history store drops
+/// the row from a notice the same way when the replayed row is the same kind.
+String withoutTrailingFailedTurnRow({required String text}) {
+  final trimmed = text.trimRight();
+  const appended = "\n\n$hermesFailedTurnRow";
+  if (!trimmed.endsWith(appended)) return text;
+  final reason = trimmed.substring(0, trimmed.length - appended.length);
+  return reason.trim().isEmpty ? text : reason;
+}
 
 /// Whether [text] is a row Hermes saved to close a turn whose actions may
 /// already have run, matched like [isHermesFailedTurnRow].
 bool isHermesPartialTurnRow({required String text}) => _partialTurnRows.contains(text.trim());
+
+/// The row Hermes keeps in place of a turn its model's safety filter refused
+/// (0.23.1 `CONTENT_REFUSED_NOTICE`), matched like [isHermesFailedTurnRow].
+bool isHermesContentRefusedRow({required String text}) =>
+    text.trim() == "This message was refused by the model's safety filter — try a different query.";
