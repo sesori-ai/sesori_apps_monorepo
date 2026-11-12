@@ -6,18 +6,19 @@ part of 'antigravity_tool_update_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_AntigravityToolUpdateDto _$AntigravityToolUpdateDtoFromJson(Map json) => _AntigravityToolUpdateDto(
-  sessionUpdate: $enumDecode(
-    _$AntigravityUpdateKindEnumMap,
-    json['sessionUpdate'],
-    unknownValue: AntigravityUpdateKind.unknown,
-  ),
-  title: json['title'] as String?,
-  kind: json['kind'] as String?,
-  rawInput: json['rawInput'],
-  rawOutput: json['rawOutput'],
-  metadata: json['_meta'],
-);
+_AntigravityToolUpdateDto _$AntigravityToolUpdateDtoFromJson(Map json) =>
+    _AntigravityToolUpdateDto(
+      sessionUpdate: $enumDecode(
+        _$AntigravityUpdateKindEnumMap,
+        json['sessionUpdate'],
+        unknownValue: AntigravityUpdateKind.unknown,
+      ),
+      title: json['title'] as String?,
+      kind: json['kind'] as String?,
+      rawInput: json['rawInput'],
+      rawOutput: json['rawOutput'],
+      metadata: json['_meta'],
+    );
 
 const _$AntigravityUpdateKindEnumMap = {
   AntigravityUpdateKind.toolCall: 'tool_call',
