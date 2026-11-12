@@ -1079,6 +1079,50 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets("Account keeps its content while logout clears the session", (tester) async {
+    _useTallSurface(tester);
+    final logoutFinished = Completer<void>();
+    when(authSession.logoutCurrentDevice).thenAnswer((_) async {
+      // Clearing the session resets the account and analytics state while
+      // Account is still on screen.
+      authSession._authState.add(const AuthState.unauthenticated());
+      productAnalyticsStates.add(ProductAnalyticsState.initial);
+      await logoutFinished.future;
+    });
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Account").last);
+    await tester.pumpAndSettle();
+    authSession._authState.add(
+      const AuthState.authenticated(
+        user: AuthUser(id: "u1", provider: AuthProvider.github, providerUserId: "gh1", providerUsername: "octocat"),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("octocat"), findsOneWidget);
+
+    await tester.tap(find.text("Log out"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("logout_confirm_action")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("octocat"), findsOneWidget);
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isTrue);
+    expect(find.text("Loading preference…"), findsNothing);
+
+    // Logout succeeding leaves the screen without changing it first.
+    logoutFinished.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text("octocat"), findsOneWidget);
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isTrue);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
+
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("Log out asks first, and Cancel keeps the account signed in", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));

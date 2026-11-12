@@ -32,7 +32,13 @@ class const ProfileView({
 }
 
 class _ProfileViewState() extends State<ProfileView> {
-  bool _isLoggingOut = false;
+  /// Set from the confirmed Log out tap until logout fails or the screen
+  /// leaves. Logout clears the session while this screen is still visible, so
+  /// the screen keeps the account captured here, and the analytics row its
+  /// last state, instead of changing under the user.
+  ({AuthUser? account})? _loggingOut;
+
+  bool get _isLoggingOut => _loggingOut != null;
 
   Future<void> _logout() async {
     if (_isLoggingOut) return;
@@ -43,7 +49,7 @@ class _ProfileViewState() extends State<ProfileView> {
       builder: (_) => const _LogoutConfirmation(),
     );
     if (!mounted || confirmed != true || _isLoggingOut) return;
-    setState(() => _isLoggingOut = true);
+    setState(() => _loggingOut = (account: widget.account));
 
     final bool succeeded;
     try {
@@ -51,14 +57,15 @@ class _ProfileViewState() extends State<ProfileView> {
     } on Object catch (error, stackTrace) {
       loge("Settings logout strategy failed", error, stackTrace);
       if (!mounted) return;
-      setState(() => _isLoggingOut = false);
+      setState(() => _loggingOut = null);
       _showLogoutFailure();
       return;
     }
 
-    if (!mounted) return;
-    setState(() => _isLoggingOut = false);
-    if (!succeeded) _showLogoutFailure();
+    // A successful logout leaves this screen; it stays as it is until then.
+    if (succeeded || !mounted) return;
+    setState(() => _loggingOut = null);
+    _showLogoutFailure();
   }
 
   void _showLogoutFailure() {
@@ -71,7 +78,10 @@ class _ProfileViewState() extends State<ProfileView> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final account = widget.account;
+    final account = switch (_loggingOut) {
+      (:final account) => account,
+      null => widget.account,
+    };
 
     return SettingsChromePage(
       chrome: widget.chrome,
@@ -94,7 +104,10 @@ class _ProfileViewState() extends State<ProfileView> {
                 ],
                 SettingsSection(
                   title: loc.settingsSectionAnalytics,
-                  child: _ProductAnalyticsPreferenceRow(blocked: _isLoggingOut),
+                  child: BlocBuilder<ProductAnalyticsPreferenceCubit, ProductAnalyticsState>(
+                    buildWhen: (_, _) => !_isLoggingOut,
+                    builder: (_, state) => _ProductAnalyticsPreferenceRow(state: state, blocked: _isLoggingOut),
+                  ),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 PregoGroupedRows(
@@ -167,11 +180,13 @@ class const _LogoutConfirmation() extends StatelessWidget {
   }
 }
 
-class const _ProductAnalyticsPreferenceRow({required final bool blocked}) extends StatelessWidget {
+class const _ProductAnalyticsPreferenceRow({
+  required final ProductAnalyticsState state,
+  required final bool blocked,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final state = context.watch<ProductAnalyticsPreferenceCubit>().state;
     final preference = state.displayedPreference;
     final isBusy =
         state.synchronization is ProductAnalyticsSynchronizationInProgress ||
