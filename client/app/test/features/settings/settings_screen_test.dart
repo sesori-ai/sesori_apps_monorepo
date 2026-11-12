@@ -11,6 +11,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/platform/package_info_client.dart";
 import "package:sesori_mobile/features/settings/computers_screen.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
@@ -174,6 +175,8 @@ void main() {
     );
 
     await GetIt.instance.reset();
+    // Reads the mock package info set above.
+    GetIt.instance.registerSingleton<PackageInfoClient>(PackageInfoClient());
     connectionStatuses = BehaviorSubject.seeded(_connected);
     connectionService = MockConnectionService();
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatuses.value);
@@ -1012,10 +1015,69 @@ void main() {
     expect(find.bySemanticsLabel("Retry preference sync"), findsOneWidget);
     expect(find.text("Refresh analytics preference"), findsNothing);
 
+    await tester.tap(find.text("Basic usage analytics"));
+    await tester.pump();
+    expect(find.text("This setting didn't load. Tap Retry."), findsOneWidget);
+
     await tester.tap(find.byKey(const Key("analytics_preference_retry")));
     await tester.pump();
 
     verify(productAnalyticsService.refreshPreference).called(1);
+  });
+
+  for (final (synchronization, notice) in [
+    (const ProductAnalyticsSynchronizationInProgress(), "Still loading this setting."),
+    (const ProductAnalyticsEnableRequestInProgress(), "Saving your choice…"),
+  ]) {
+    testWidgets("a disabled analytics switch says why on tap: $notice", (tester) async {
+      _useTallSurface(tester);
+      productAnalyticsStates.add(
+        ProductAnalyticsState(
+          preference: const ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
+          synchronization: synchronization,
+          availability: const ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.synchronizationPending),
+        ),
+      );
+      await tester.pumpWidget(_app(appearance: appearance));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Account").last);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNull);
+      await tester.tap(find.byType(PregoSwitch));
+      await tester.pump();
+
+      expect(find.text(notice), findsOneWidget);
+      verifyNever(() => productAnalyticsService.setPreference(preference: any(named: "preference")));
+      await tester.pumpAndSettle();
+    });
+  }
+
+  testWidgets("the analytics caption glides the Log out card instead of jumping it", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Account").last);
+    await tester.pumpAndSettle();
+    final before = tester.getTopLeft(find.text("Log out")).dy;
+
+    productAnalyticsStates.add(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
+        synchronization: ProductAnalyticsEnableRequestInProgress(),
+        availability: ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.synchronizationPending),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final midway = tester.getTopLeft(find.text("Log out")).dy;
+    await tester.pumpAndSettle();
+    final after = tester.getTopLeft(find.text("Log out")).dy;
+
+    expect(after, greaterThan(before));
+    expect(midway, greaterThan(before));
+    expect(midway, lessThan(after));
   });
 
   testWidgets("a known preference remains editable when synchronization fails", (tester) async {
@@ -1068,14 +1130,116 @@ void main() {
     await tester.tap(find.byKey(const Key("logout_confirm_action")));
     await tester.pumpAndSettle();
 
-    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNull);
+    await tester.tap(find.byType(PregoSwitch));
+    await tester.pump();
+    expect(find.text("Can't change this while signing out."), findsOneWidget);
     await tester.tap(find.text("Basic usage analytics"));
     await tester.pump();
     verifyNever(
       () => productAnalyticsService.setPreference(preference: any(named: "preference")),
     );
 
+    await tester.tap(find.text("Log out"));
+    await tester.pump();
+    expect(find.text("Already signing out…"), findsOneWidget);
+    verify(productAnalyticsService.prepareForLogout).called(1);
+
     logoutPreparation.complete();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("Account keeps its content while logout clears the session", (tester) async {
+    _useTallSurface(tester);
+    final logoutFinished = Completer<void>();
+    when(authSession.logoutCurrentDevice).thenAnswer((_) async {
+      // Clearing the session resets the account and analytics state while
+      // Account is still on screen.
+      authSession._authState.add(const AuthState.unauthenticated());
+      productAnalyticsStates.add(ProductAnalyticsState.initial);
+      await logoutFinished.future;
+    });
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Account").last);
+    await tester.pumpAndSettle();
+    authSession._authState.add(
+      const AuthState.authenticated(
+        user: AuthUser(id: "u1", provider: AuthProvider.github, providerUserId: "gh1", providerUsername: "octocat"),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("octocat"), findsOneWidget);
+
+    await tester.tap(find.text("Log out"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("logout_confirm_action")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("octocat"), findsOneWidget);
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isTrue);
+    // The switch keeps its enabled look, and a tap says why nothing changes.
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNotNull);
+    expect(find.text("Loading preference…"), findsNothing);
+    await tester.tap(find.byType(PregoSwitch));
+    await tester.pump();
+    expect(find.text("Can't change this while signing out."), findsOneWidget);
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isTrue);
+    verifyNever(() => productAnalyticsService.setPreference(preference: any(named: "preference")));
+
+    // Logout succeeding leaves the screen without changing it first.
+    logoutFinished.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text("octocat"), findsOneWidget);
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isTrue);
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNotNull);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
+
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("a failed logout shows the analytics state that finished meanwhile", (tester) async {
+    _useTallSurface(tester);
+    productAnalyticsStates.add(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
+        synchronization: ProductAnalyticsEnableRequestInProgress(),
+        availability: ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.synchronizationPending),
+      ),
+    );
+    final logoutFailure = Completer<void>();
+    when(authSession.logoutCurrentDevice).thenAnswer((_) => logoutFailure.future);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Account").last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Log out"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("logout_confirm_action")));
+    await tester.pumpAndSettle();
+    // The save finishes while logout is still running.
+    productAnalyticsStates.add(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
+        synchronization: ProductAnalyticsSynchronized(),
+        availability: ProductAnalyticsActive(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("Saving preference…"), findsOneWidget);
+
+    logoutFailure.completeError(StateError("logout failed"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Saving preference…"), findsNothing);
+    await tester.tap(find.byType(PregoSwitch));
+    await tester.pump();
+    verify(
+      () => productAnalyticsService.setPreference(preference: ProductAnalyticsPreference.disabled),
+    ).called(1);
     await tester.pumpAndSettle();
   });
 

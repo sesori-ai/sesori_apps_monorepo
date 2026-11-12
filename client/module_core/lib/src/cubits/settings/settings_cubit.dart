@@ -9,6 +9,8 @@ import "../../services/notification_registration_service.dart";
 import "../../services/product_analytics_service.dart";
 import "settings_state.dart";
 
+const _pushCleanupDeadline = Duration(seconds: 5);
+
 class SettingsCubit({
   required final AuthSession _authSession,
   required final NotificationRegistrationService _notificationRegistrationService,
@@ -46,7 +48,10 @@ class SettingsCubit({
         logw("Failed to prepare product analytics for logout", error, stackTrace);
       }
       try {
-        await _notificationRegistrationService.unregisterCurrentDevice();
+        // The service bounds the cleanup itself, but it can also wait behind
+        // earlier push work whose requests have no timeout; logout never waits
+        // longer than the deadline.
+        await _notificationRegistrationService.unregisterCurrentDevice().timeout(_pushCleanupDeadline);
       } catch (error, stackTrace) {
         logw("Failed to clean up push notifications during logout", error, stackTrace);
       }

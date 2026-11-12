@@ -568,6 +568,40 @@ void main() {
     expect(find.text("Second"), findsNothing);
   });
 
+  testWidgets("repeating the visible alert keeps it on screen and restarts its timer", (tester) async {
+    late PregoPopupAlertPresenter presenter;
+    await tester.pumpWidget(
+      _harness(
+        Builder(
+          builder: (context) {
+            presenter = PregoPopupAlertPresenter.of(context);
+            return const SizedBox.expand();
+          },
+        ),
+      ),
+    );
+
+    presenter.show(title: "Busy");
+    await tester.pumpAndSettle();
+    final card = find.text("Busy");
+    final element = tester.element(card);
+
+    await tester.pump(const Duration(seconds: 2));
+    presenter.show(title: "Busy");
+    await tester.pump();
+
+    // The same card stays, fully shown, with no new entrance.
+    expect(tester.element(card), same(element));
+    expect(tester.hasRunningAnimations, isFalse);
+
+    // The timer restarted: still up past the first alert's 3 seconds.
+    await tester.pump(const Duration(seconds: 2));
+    expect(card, findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(card, findsNothing);
+  });
+
   testWidgets("replacement remains safe while the first alert is dismissing", (tester) async {
     late PregoPopupAlertPresenter presenter;
     await tester.pumpWidget(

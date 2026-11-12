@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -116,6 +117,35 @@ void main() {
       expect(await futureStatuses, [SettingsLogoutStatus.inProgress, SettingsLogoutStatus.success]);
       verify(() => notificationRegistrationService.unregisterCurrentDevice()).called(1);
       verify(() => authSession.logoutCurrentDevice()).called(1);
+    });
+
+    test("logs out without waiting on a stalled push notification cleanup", () {
+      fakeAsync((async) {
+        when(
+          () => notificationRegistrationService.unregisterCurrentDevice(),
+        ).thenAnswer((_) => Completer<void>().future);
+        when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
+
+        final cubit = SettingsCubit(
+          authSession: authSession,
+          notificationRegistrationService: notificationRegistrationService,
+          productAnalyticsService: productAnalyticsService,
+        );
+
+        var finished = false;
+        unawaited(cubit.logout().then((_) => finished = true));
+        async.elapse(const Duration(seconds: 4));
+        expect(finished, isFalse);
+        verifyNever(() => authSession.logoutCurrentDevice());
+
+        async.elapse(const Duration(seconds: 1));
+        expect(finished, isTrue);
+        verify(() => authSession.logoutCurrentDevice()).called(1);
+        expect(cubit.state.logoutStatus, SettingsLogoutStatus.success);
+
+        unawaited(cubit.close());
+        async.flushMicrotasks();
+      });
     });
 
     test("still unregisters notifications and logs out when analytics preparation fails", () async {

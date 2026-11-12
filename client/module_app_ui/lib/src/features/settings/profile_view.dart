@@ -32,7 +32,13 @@ class const ProfileView({
 }
 
 class _ProfileViewState() extends State<ProfileView> {
-  bool _isLoggingOut = false;
+  /// Set from the confirmed Log out tap until logout fails or the screen
+  /// leaves. Logout clears the session while this screen is still visible, so
+  /// the screen keeps the account captured here, and the analytics row its
+  /// last state, instead of changing under the user.
+  ({AuthUser? account, ProductAnalyticsState analytics})? _loggingOut;
+
+  bool get _isLoggingOut => _loggingOut != null;
 
   Future<void> _logout() async {
     if (_isLoggingOut) return;
@@ -43,7 +49,12 @@ class _ProfileViewState() extends State<ProfileView> {
       builder: (_) => const _LogoutConfirmation(),
     );
     if (!mounted || confirmed != true || _isLoggingOut) return;
-    setState(() => _isLoggingOut = true);
+    setState(
+      () => _loggingOut = (
+        account: widget.account,
+        analytics: context.read<ProductAnalyticsPreferenceCubit>().state,
+      ),
+    );
 
     final bool succeeded;
     try {
@@ -51,14 +62,22 @@ class _ProfileViewState() extends State<ProfileView> {
     } on Object catch (error, stackTrace) {
       loge("Settings logout strategy failed", error, stackTrace);
       if (!mounted) return;
-      setState(() => _isLoggingOut = false);
+      setState(() => _loggingOut = null);
       _showLogoutFailure();
       return;
     }
 
-    if (!mounted) return;
-    setState(() => _isLoggingOut = false);
-    if (!succeeded) _showLogoutFailure();
+    // A successful logout leaves this screen; it stays as it is until then.
+    if (succeeded || !mounted) return;
+    setState(() => _loggingOut = null);
+    _showLogoutFailure();
+  }
+
+  void _showAlreadyLoggingOut() {
+    PregoPopupAlertPresenter.of(context).show(
+      title: context.loc.settingsLogoutInProgress,
+      variant: PregoPopupAlertsNotificationsVariant.info,
+    );
   }
 
   void _showLogoutFailure() {
@@ -71,7 +90,10 @@ class _ProfileViewState() extends State<ProfileView> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final account = widget.account;
+    final account = switch (_loggingOut) {
+      (:final account, analytics: _) => account,
+      null => widget.account,
+    };
 
     return SettingsChromePage(
       chrome: widget.chrome,
@@ -94,7 +116,16 @@ class _ProfileViewState() extends State<ProfileView> {
                 ],
                 SettingsSection(
                   title: loc.settingsSectionAnalytics,
-                  child: _ProductAnalyticsPreferenceRow(blocked: _isLoggingOut),
+                  // Always tracks the cubit, so a failed logout shows its current state.
+                  child: BlocBuilder<ProductAnalyticsPreferenceCubit, ProductAnalyticsState>(
+                    builder: (_, state) => _ProductAnalyticsPreferenceRow(
+                      state: switch (_loggingOut) {
+                        (account: _, :final analytics) => analytics,
+                        null => state,
+                      },
+                      blocked: _isLoggingOut,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 PregoGroupedRows(
@@ -109,7 +140,7 @@ class _ProfileViewState() extends State<ProfileView> {
                               child: PregoActivityIndicator(color: null),
                             )
                           : null,
-                      onTap: _isLoggingOut ? null : () => unawaited(_logout()),
+                      onTap: _isLoggingOut ? _showAlreadyLoggingOut : () => unawaited(_logout()),
                     ),
                   ],
                 ),
@@ -167,11 +198,13 @@ class const _LogoutConfirmation() extends StatelessWidget {
   }
 }
 
-class const _ProductAnalyticsPreferenceRow({required final bool blocked}) extends StatelessWidget {
+class const _ProductAnalyticsPreferenceRow({
+  required final ProductAnalyticsState state,
+  required final bool blocked,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final state = context.watch<ProductAnalyticsPreferenceCubit>().state;
     final preference = state.displayedPreference;
     final isBusy =
         state.synchronization is ProductAnalyticsSynchronizationInProgress ||
@@ -199,15 +232,46 @@ class const _ProductAnalyticsPreferenceRow({required final bool blocked}) extend
       ProductAnalyticsSynchronized() => null,
     };
     final hasFailure = status?.isFailure ?? false;
-    final canToggle = preference != null && !isBusy && !blocked;
+    final canToggle = preference != null && !isBusy;
+
+    // A tap that cannot change the preference says why instead of doing
+    // nothing. While signing out the row also keeps its look.
+    String? unavailableNotice() {
+      if (blocked) return loc.settingsBasicUsageAnalyticsSigningOut;
+      if (canToggle) return null;
+      return switch (state.synchronization) {
+        ProductAnalyticsDisableRequestInProgress() ||
+        ProductAnalyticsEnableRequestInProgress() => loc.settingsBasicUsageAnalyticsSavingNotice,
+        ProductAnalyticsSynchronizationInProgress() ||
+        ProductAnalyticsNotSynchronized() ||
+        ProductAnalyticsSynchronized() => loc.settingsBasicUsageAnalyticsLoadingNotice,
+        ProductAnalyticsDisablePending() ||
+        ProductAnalyticsEnablePending() ||
+        ProductAnalyticsDisableRetryRequired() ||
+        ProductAnalyticsSynchronizationFailed() => loc.settingsBasicUsageAnalyticsLoadFailedNotice,
+      };
+    }
+
+    void showNotice({required String notice}) {
+      PregoPopupAlertPresenter.of(context).show(
+        title: notice,
+        variant: PregoPopupAlertsNotificationsVariant.info,
+      );
+    }
 
     void toggle({required bool enabled}) {
+      final notice = unavailableNotice();
+      if (notice != null) {
+        showNotice(notice: notice);
+        return;
+      }
       unawaited(context.read<ProductAnalyticsPreferenceCubit>().setEnabled(enabled: enabled));
     }
 
+    // Loading and saving keep the disabled switch; its taps reach the row.
     final preferenceSwitch = PregoSwitch(
       value: preference == ProductAnalyticsPreference.enabled,
-      onChanged: canToggle ? (enabled) => toggle(enabled: enabled) : null,
+      onChanged: canToggle || blocked ? (enabled) => toggle(enabled: enabled) : null,
     );
     final retryButton = PregoButtonsSolid.iconOnly(
       key: const Key("analytics_preference_retry"),
@@ -215,7 +279,9 @@ class const _ProductAnalyticsPreferenceRow({required final bool blocked}) extend
       hierarchy: PregoButtonsSolidHierarchy.link,
       size: PregoButtonsSolidSize.sm,
       leadingIcon: TablerRegular.refresh,
-      onPressed: blocked ? null : () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
+      onPressed: blocked
+          ? () => showNotice(notice: loc.settingsBasicUsageAnalyticsSigningOut)
+          : () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
     );
     final Widget trailing;
     if (!hasFailure) {
@@ -238,7 +304,7 @@ class const _ProductAnalyticsPreferenceRow({required final bool blocked}) extend
         statusIsFailure: hasFailure,
       ),
       trailing: trailing,
-      onTap: canToggle ? () => toggle(enabled: preference != ProductAnalyticsPreference.enabled) : null,
+      onTap: () => toggle(enabled: preference != ProductAnalyticsPreference.enabled),
     );
     return PregoGroupedRows(
       children: [hasFailure ? row : MergeSemantics(child: row)],
@@ -253,7 +319,7 @@ class const _ProductAnalyticsPreferenceSubtitle({
   @override
   Widget build(BuildContext context) {
     final status = this.status;
-    return Column(
+    final subtitle = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -270,6 +336,16 @@ class const _ProductAnalyticsPreferenceSubtitle({
           ),
         ],
       ],
+    );
+    // The status line grows and shrinks the card instead of jumping the rows
+    // below it. Under reduced motion no wrapper at all: a zero-length
+    // AnimatedSize would re-dirty itself mid-layout.
+    if (context.isReducedMotion) return subtitle;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      alignment: AlignmentDirectional.topStart,
+      child: subtitle,
     );
   }
 }

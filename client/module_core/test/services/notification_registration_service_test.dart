@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:fake_async/fake_async.dart";
 import "package:meta/meta.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/logging/logging.dart";
@@ -185,6 +186,41 @@ void main() {
       expect(repository.unregisteredFids, equals(["fid-1"]));
     });
 
+    test("a stalled logout cleanup does not block later push work", () {
+      fakeAsync((async) {
+        // Built inside the fake zone so its queue runs on fake time.
+        final service = NotificationRegistrationService(
+          repository: repository,
+          authSession: authSession,
+          pushMessagingSource: pushMessagingSource,
+        );
+        unawaited(service.start());
+        async.flushMicrotasks();
+        repository.stallNextUnregisterFid = true;
+
+        Object? cleanupError;
+        unawaited(service.unregisterCurrentDevice().catchError((Object error) => cleanupError = error));
+        var resumed = false;
+        unawaited(service.resumeRegistrationAfterFailedLogout().then((_) => resumed = true));
+        async.elapse(const Duration(seconds: 5));
+
+        expect(cleanupError, isA<TimeoutException>());
+        expect(resumed, isTrue);
+        // The FID is re-sent, so the abandoned delete cannot leave a signed-in
+        // user without a server registration.
+        expect(
+          repository.registeredFids,
+          equals([
+            const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android),
+            const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android),
+          ]),
+        );
+
+        unawaited(service.dispose());
+        async.flushMicrotasks();
+      });
+    });
+
     test("failed logout resumes registration for the authenticated user", () async {
       await service.start();
       await _settle();
@@ -339,6 +375,7 @@ class RecordingNotificationRepository({required final List<String> operations}) 
   final List<String> unregisteredFids = <String>[];
   bool failNextRegisterFid = false;
   bool failNextUnregisterFid = false;
+  bool stallNextUnregisterFid = false;
 
   @override
   Future<void> registerFid({required String fid, required DevicePlatform platform}) async {
@@ -354,6 +391,10 @@ class RecordingNotificationRepository({required final List<String> operations}) 
   Future<void> unregisterFid({required String fid}) async {
     unregisteredFids.add(fid);
     operations.add("unregister:$fid");
+    if (stallNextUnregisterFid) {
+      stallNextUnregisterFid = false;
+      return await Completer<void>().future;
+    }
     if (failNextUnregisterFid) {
       failNextUnregisterFid = false;
       throw StateError("unregister FID failed");

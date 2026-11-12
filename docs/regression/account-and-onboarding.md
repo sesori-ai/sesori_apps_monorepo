@@ -69,7 +69,13 @@ participates.
   denial can still reject login writes. Development leaves that source untouched. See
   [client persistence](client-persistence.md) for the complete upgrade/restore matrix.
 - Log out asks first on both apps; only its confirmation starts logout, and
-  Cancel or dismissal leaves the session untouched.
+  Cancel or dismissal leaves the session untouched. Once confirmed, Account
+  keeps showing what it showed (account row, analytics switch, Log out spinner)
+  until a successful logout leaves it; a failed logout brings it back to life
+  and shows an error. A tap on a control that can't act (Log out while it
+  runs, the analytics preference while signing out, loading or saving) shows a
+  notice saying why. On the phone, removing this device's push registration
+  holds logout for at most 5 seconds and never blocks later push work.
 - Mobile Settings runs Account, Bridge, Preferences, Appearance, Support,
   Legal. Bridge opens with the current computer's entry (platform,
   name, presence), in a card of its own under the caption, as on desktop, above
@@ -187,6 +193,9 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
 - Deleting the bridge id file and restarting the bridge adding a second entry
   for the same computer, or a registration body carrying the raw machine id.
 - One tap on Log out signing the user out without the confirmation.
+- Account changing while logout clears the session (the account row vanishing,
+  the analytics switch turning off, "Loading preference…"), or a stalled push
+  unregistration keeping the Log out spinner past its deadline.
 - A Settings computer switch leaving Settings on top of the old computer's
   pages, the entry naming a computer other than the target, or the Bridge
   section jumping when the entry appears.
