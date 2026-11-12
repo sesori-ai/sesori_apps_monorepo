@@ -133,7 +133,7 @@ class NotificationRegistrationService({
     try {
       await _pushMessagingSource.unregister();
       _locallyUnregistered = true;
-      logi("Unregistered this installation from FCM");
+      logi("Unregistered from FCM and retired this installation's FID");
     } finally {
       _registeredFid = null;
     }
@@ -171,11 +171,12 @@ class NotificationRegistrationService({
     }
     if (authState is! AuthAuthenticated) {
       // An FID reported while not signed in never reaches the server. After a
-      // sign-out (logout or a rejected session) this unregisters it from FCM
-      // again. A cold start while signed out stays AuthInitial, so FCM keeps
-      // the registration it made by itself: nothing is delivered unless the
-      // server still holds this FID from a logout whose DELETE failed or a
-      // rejected session (see docs/regression/notifications.md).
+      // sign-out (logout or a rejected session) this unregisters it again and
+      // retires it. A cold start while signed out stays AuthInitial, so FCM
+      // keeps the registration it made by itself, but that FID is new since
+      // the sign-out and the server never stored it. Only a retire that failed
+      // (offline) leaves an FID the server may still hold; see
+      // docs/regression/notifications.md.
       await _syncForState(state: authState);
       return;
     }

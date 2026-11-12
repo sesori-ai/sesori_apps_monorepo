@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:firebase_app_installations/firebase_app_installations.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter/foundation.dart";
 import "package:injectable/injectable.dart";
@@ -15,6 +16,7 @@ import "firebase/firebase_messaging_static_adapter.dart";
 @LazySingleton(as: PushMessagingSource)
 class FirebasePushMessagingSource implements PushMessagingSource {
   final FirebaseMessaging _messaging;
+  final FirebaseInstallations _installations;
   final FirebaseMessagingStaticAdapter _staticAdapter;
   final bool Function() _isApplePlatform;
 
@@ -36,8 +38,10 @@ class FirebasePushMessagingSource implements PushMessagingSource {
 
   new({
     required FirebaseMessaging messaging,
+    required FirebaseInstallations installations,
     required FirebaseMessagingStaticAdapter staticAdapter,
   }) : _messaging = messaging,
+       _installations = installations,
        _staticAdapter = staticAdapter,
        _isApplePlatform = _defaultIsApplePlatform,
        _requestsPermission = !sesoriTestMode,
@@ -46,11 +50,13 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   @visibleForTesting
   new test({
     required FirebaseMessaging messaging,
+    required FirebaseInstallations installations,
     FirebaseMessagingStaticAdapter staticAdapter = const FirebaseMessagingStaticAdapter.disabled(),
     bool Function()? isApplePlatform,
     bool requestsPermission = true,
     Future<void> Function(Duration)? delay,
   }) : _messaging = messaging,
+       _installations = installations,
        _staticAdapter = staticAdapter,
        _isApplePlatform = isApplePlatform ?? _defaultIsApplePlatform,
        _requestsPermission = requestsPermission,
@@ -122,8 +128,15 @@ class FirebasePushMessagingSource implements PushMessagingSource {
     await _messaging.register();
   }
 
+  /// Unregisters from FCM, then deletes the Firebase Installation, so the next
+  /// registration gets a new FID and a row the server still holds for this one
+  /// can never deliver. The order matters: both SDKs re-register with a rotated
+  /// FID while an FCM registration is still cached, and unregistering clears it.
   @override
-  Future<void> unregister() => _messaging.unregister();
+  Future<void> unregister() async {
+    await _messaging.unregister();
+    await _installations.delete();
+  }
 
   @override
   Future<NotificationOpenRequest?> getInitialNotificationOpen() async {

@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:meta/meta.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/logging/logging.dart";
 import "package:sesori_dart_core/src/platform/notification_open_request.dart";
 import "package:sesori_dart_core/src/platform/push_messaging_source.dart";
 import "package:sesori_dart_core/src/platform/push_notification_message.dart";
@@ -236,6 +237,51 @@ void main() {
       );
     });
 
+    // A registration the repository refuses (for example an unreadable device
+    // id) must leave the FID unregistered, so the next report of it retries.
+    test("retries a failed server registration on the next report of the same FID", () async {
+      repository.failNextRegisterFid = true;
+      await service.start();
+      await _settle();
+
+      expect(repository.registeredFids, isEmpty);
+
+      pushMessagingSource.emitRegisteredFid("fid-1");
+      await _settle();
+
+      expect(
+        repository.registeredFids,
+        equals([const RegisteredFid(fid: "fid-1", platform: DevicePlatform.android)]),
+      );
+    });
+
+    // Retiring the installation needs the network and runs only after auth was
+    // cleared, so an offline failure must be logged without failing logout.
+    test("a failed local unregister at logout is logged and logout still completes", () async {
+      final sink = _RecordingLogSink();
+      setLogSink(sink: sink);
+      addTearDown(() => setLogSink(sink: const StdoutLogSink()));
+      await service.start();
+      await _settle();
+      pushMessagingSource.failNextUnregister = true;
+
+      await service.unregisterCurrentDevice();
+      authSession.emit(const AuthState.unauthenticated());
+      await _settle();
+
+      expect(repository.unregisteredFids, equals(["fid-1"]));
+      expect(pushMessagingSource.unregisterCalls, 1);
+      expect(
+        sink.records.where((record) => record.level == LogLevel.warning).map((record) => record.message),
+        contains("Failed to sync push registration for auth state change"),
+      );
+
+      authSession.emit(_authenticatedState());
+      await _settle();
+
+      expect(pushMessagingSource.registerCalls, 2);
+    });
+
     test("does not register an FID that arrives after sign-out during the initial sync", () async {
       final registerGate = Completer<void>();
       pushMessagingSource.registerGate = registerGate.future;
@@ -278,14 +324,21 @@ void main() {
 /// Lets queued registration events and the work they enqueue finish.
 Future<void> _settle() => Future<void>.delayed(Duration.zero);
 
+class _RecordingLogSink() implements LogSink {
+  final records = <LogRecord>[];
+
+  @override
+  void write({required LogRecord record}) => records.add(record);
+
+  @override
+  Future<void> flush() async {}
+}
+
 class RecordingNotificationRepository({required final List<String> operations}) implements NotificationRepository {
   final List<RegisteredFid> registeredFids = <RegisteredFid>[];
   final List<String> unregisteredFids = <String>[];
   bool failNextRegisterFid = false;
   bool failNextUnregisterFid = false;
-
-  @override
-  Future<String?> readDeviceId() async => null;
 
   @override
   Future<void> registerFid({required String fid, required DevicePlatform platform}) async {

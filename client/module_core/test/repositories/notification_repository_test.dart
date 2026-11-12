@@ -17,7 +17,7 @@ void main() {
   late NotificationRepository repository;
 
   setUpAll(() {
-    registerFallbackValue(const RegisterFidRequest(fid: _fid, platform: DevicePlatform.ios, deviceId: null));
+    registerFallbackValue(const RegisterFidRequest(fid: _fid, platform: DevicePlatform.ios, deviceId: _deviceId));
   });
 
   setUp(() {
@@ -43,17 +43,15 @@ void main() {
       expect(captured.deviceId, _deviceId);
     });
 
-    // Losing the device id costs filtering; failing the registration would cost
-    // push entirely, so the FID still has to reach the server.
-    test("registerFid still registers when the device id cannot be read", () async {
+    // An FID row without a device id could not replace this device's old token
+    // row, so the install would get each push twice; sending nothing lets a
+    // later report, login or launch retry with the id.
+    test("registerFid fails without sending when the device id cannot be read", () async {
       when(() => deviceIdStorage.getOrCreate()).thenThrow(Exception("secure storage unavailable"));
 
-      await repository.registerFid(fid: _fid, platform: DevicePlatform.android);
+      await expectLater(repository.registerFid(fid: _fid, platform: DevicePlatform.android), throwsException);
 
-      final captured =
-          verify(() => api.registerFid(request: captureAny(named: "request"))).captured.single as RegisterFidRequest;
-      expect(captured.fid, _fid);
-      expect(captured.deviceId, isNull);
+      verifyNever(() => api.registerFid(request: any(named: "request")));
     });
 
     test("unregisterFid delegates to the api without touching device id storage", () async {

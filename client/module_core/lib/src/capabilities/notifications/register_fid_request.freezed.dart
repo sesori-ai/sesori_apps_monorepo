@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RegisterFidRequest {
 
- String get fid; DevicePlatform get platform; String? get deviceId;
+ String get fid; DevicePlatform get platform; String get deviceId;
 /// Create a copy of RegisterFidRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -54,7 +54,7 @@ abstract mixin class $RegisterFidRequestCopyWith<$Res>  {
   factory $RegisterFidRequestCopyWith(RegisterFidRequest value, $Res Function(RegisterFidRequest) _then) = _$RegisterFidRequestCopyWithImpl;
 @useResult
 $Res call({
- String fid, DevicePlatform platform, String? deviceId
+ String fid, DevicePlatform platform, String deviceId
 });
 
 
@@ -71,12 +71,12 @@ class _$RegisterFidRequestCopyWithImpl<$Res>
 
 /// Create a copy of RegisterFidRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? fid = null,Object? platform = null,Object? deviceId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? fid = null,Object? platform = null,Object? deviceId = null,}) {
   return _then(RegisterFidRequest(
 fid: null == fid ? _self.fid : fid // ignore: cast_nullable_to_non_nullable
 as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
-as DevicePlatform,deviceId: freezed == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
-as String?,
+as DevicePlatform,deviceId: null == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -93,7 +93,7 @@ class _RegisterFidRequest implements RegisterFidRequest {
 
 @override final  String fid;
 @override final  DevicePlatform platform;
-@override final  String? deviceId;
+@override final  String deviceId;
 
 /// Create a copy of RegisterFidRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -130,7 +130,7 @@ abstract mixin class _$RegisterFidRequestCopyWith<$Res> implements $RegisterFidR
   factory _$RegisterFidRequestCopyWith(_RegisterFidRequest value, $Res Function(_RegisterFidRequest) _then) = __$RegisterFidRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String fid, DevicePlatform platform, String? deviceId
+ String fid, DevicePlatform platform, String deviceId
 });
 
 
@@ -147,12 +147,12 @@ class __$RegisterFidRequestCopyWithImpl<$Res>
 
 /// Create a copy of RegisterFidRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? fid = null,Object? platform = null,Object? deviceId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? fid = null,Object? platform = null,Object? deviceId = null,}) {
   return _then(_RegisterFidRequest(
 fid: null == fid ? _self.fid : fid // ignore: cast_nullable_to_non_nullable
 as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
-as DevicePlatform,deviceId: freezed == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
-as String?,
+as DevicePlatform,deviceId: null == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

@@ -13,7 +13,9 @@ abstract interface class PushMessagingSource() {
   /// than as a return value.
   Future<void> register();
 
-  /// Stops the messaging provider delivering to this installation's FID.
+  /// Stops the messaging provider delivering to this installation's FID and
+  /// retires that FID, so the next [register] reports a different one and the
+  /// old FID can no longer receive pushes anywhere.
   Future<void> unregister();
 
   /// Emits the FID each time this installation is registered, whether a

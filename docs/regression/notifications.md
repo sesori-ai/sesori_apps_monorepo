@@ -45,25 +45,26 @@ external.
 - Connection-status pushes come from the auth server and name the computer: "<name> is online" or "<name> went
   offline" with "AI sessions there are paused.". Each computer's status push replaces only that computer's earlier one
   in the tray.
-- Mobile push targets the Firebase Installation ID (FID), not an FCM registration token. The client asks FCM to
-  register when authenticated and sends every FID FCM then reports, including registrations FCM starts itself, to the
-  server, replacing a previously registered FID that changed. It removes the FID from the server before logout and
-  unregisters from FCM at logout (or when the session is rejected), restores registration if logout fails, and never
-  re-registers while logout is in flight. An FID FCM reports while signed out is never sent to the server, and after a
-  sign-out in the same run the client unregisters it from FCM again. FCM keeps the FID across an unregister and its
-  auto-initialization can register it again on a later start, which a signed-out cold start (auth still initial) does
-  not undo. That is harmless when the server holds no row for the FID. When the logout DELETE failed (server
-  unreachable) or the session was rejected for a reason other than signing out everywhere (which deletes every row),
-  the row survives: unless a push sent while the FID was unregistered already pruned it, that signed-out device
-  receives the account's pushes again until a sign-in on it moves the row. FCM rejects FID registration unless the
-  app opts in (`FirebaseMessagingInstallationIdEnabled` in the iOS Info.plist,
-  `firebase_messaging_installation_id_enabled` in the Android manifest); the opt-in also disables the token API, so
-  the app never sends a token. On iOS, registration waits up to five seconds for the APNs token first.
-- Registration sends the same device ID the preferences are stored under, so the server can associate this FID with
-  this device, suppress a disabled category before it reaches the delivery provider, and delete that device's older
-  registration-token rows so an upgraded install does not receive each push twice. A device ID that cannot be read
-  registers the FID without one: rather than losing push, that install stays unfiltered and keeps its old token row,
-  so it can receive each push twice, until a later registration reads the device ID.
+- Mobile push targets the Firebase Installation ID (FID), not an FCM registration token. The client asks FCM to register
+  when authenticated and sends every FID FCM then reports, including registrations FCM starts itself, to the server,
+  replacing a previously registered FID that changed. It removes the FID from the server before logout, restores
+  registration if logout fails, and never re-registers while logout is in flight. Once signed out (logout or a rejected
+  session) it unregisters from FCM and then deletes the Firebase Installation, so the next start gets a new FID and any
+  row the server still holds for the old one (a logout DELETE that failed, or a rejection other than signing out
+  everywhere, which deletes every row) can never deliver. An FID FCM reports while signed out is never sent to the
+  server; on a signed-out cold start FCM may register the new FID by itself, which the server never stored. The deletion
+  needs the network: when it fails (offline) the failure is logged, logout still completes, and the old FID survives, so
+  FCM can register it again on a later start and, if the server still holds its row, that signed-out device receives the
+  account's pushes until a sign-in on it moves the row or a push sent while it was unregistered prunes it. Deleting the
+  installation also gives Remote Config and Crashlytics a new installation after each sign-out. FCM rejects FID
+  registration unless the app opts in (`FirebaseMessagingInstallationIdEnabled` in the iOS Info.plist,
+  `firebase_messaging_installation_id_enabled` in the Android manifest); the opt-in also disables the token API, so the
+  app never sends a token. On iOS, registration waits up to five seconds for the APNs token first.
+- Registration sends the same device ID the preferences are stored under, so the server can associate this FID with this
+  device, suppress a disabled category before it reaches the delivery provider, and delete that device's older
+  registration-token rows so an upgraded install does not receive each push twice. When the device ID cannot be read the
+  FID is not registered at all, since a row without one could not replace the old token row: the failure is logged and
+  the next FID report, login or launch retries.
 - Foreground rendering needs the category enabled plus title and body; an unknown category and a preference read
   failure both default to enabled. Preferences are per account and cleared on account switch.
 - A notification opened while unauthenticated defers until authentication, then routes to its session; viewing a
