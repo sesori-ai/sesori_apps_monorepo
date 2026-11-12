@@ -44,6 +44,7 @@ void main() {
       isA<PluginMessageAssistant>()
           .having((info) => info.id, "id", id)
           .having((info) => info.sender, "sender", PluginMessageSender.agent)
+          .having((info) => info.agent, "agent", OmpPluginIdentity.id)
           .having((info) => info.time, "time", PluginMessageTime(created: created, completed: null)),
     ),
     isA<BridgeSseMessagePartUpdated>().having(

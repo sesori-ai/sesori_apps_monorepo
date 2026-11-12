@@ -132,7 +132,7 @@ class OmpEventMapper({
       info: PluginMessage.assistant(
         id: compaction.messageId,
         sessionID: sessionId,
-        agent: null,
+        agent: pluginId,
         modelID: null,
         providerID: null,
         variant: null,
