@@ -155,17 +155,21 @@ void main() {
     test("shows automatic compaction from OMP's compaction notifications", () async {
       await connect();
       final session = await create("session-1");
-      for (final (method, params) in [
-        ("_omp/compaction/start", {"reason": "threshold", "action": "context-full"}),
-        ("_omp/compaction/end", {"action": "context-full", "aborted": false, "willRetry": false}),
-      ]) {
-        fake.emit({
-          "jsonrpc": "2.0",
-          "method": method,
-          "params": {"sessionId": session.id, ...params},
-        });
-      }
+      void emit(String method, Map<String, dynamic> params) => fake.emit({
+        "jsonrpc": "2.0",
+        "method": method,
+        "params": {"sessionId": session.id, ...params},
+      });
+
+      emit("_omp/compaction/start", {"reason": "threshold", "action": "context-full"});
       await settle();
+      // OMP's idle compaction runs outside a prompt turn: the session reads as
+      // working, so a history read leaves the running row alone.
+      expect((await plugin.getSessionStatuses())[session.id], const PluginSessionStatus.busy());
+
+      emit("_omp/compaction/end", {"action": "context-full", "aborted": false, "willRetry": false});
+      await settle();
+      expect((await plugin.getSessionStatuses())[session.id], isNot(const PluginSessionStatus.busy()));
 
       final states = events
           .whereType<BridgeSseMessagePartUpdated>()
@@ -841,6 +845,45 @@ void main() {
       expect(image, isA<PluginMessageAttachmentInlineImage>());
       expect(image.toString(), isNot(contains("/private/")));
       expect(parts.whereType<PluginMessagePartText>().last.text, "Finished");
+    });
+
+    test("names live tool cards with OMP's own tool name", () async {
+      await connect();
+      final session = await create("session-1");
+      await send(session.id, "explore it");
+      final prompt = await waitForFrame(AcpMethods.sessionPrompt);
+      events.clear();
+
+      for (final update in <Map<String, dynamic>>[
+        {
+          "sessionUpdate": "tool_call",
+          "toolCallId": "tool-1",
+          "name": "task",
+          "kind": "other",
+          "title": "Explore the repo",
+          "status": "pending",
+        },
+        {"sessionUpdate": "tool_call_update", "toolCallId": "tool-1", "status": "completed"},
+      ]) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {"sessionId": session.id, "update": update},
+        });
+      }
+      respond(prompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 200 && events.whereType<BridgeSseSessionIdle>().isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      final tools = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartTool>()
+          .toList();
+      expect(tools, isNotEmpty);
+      expect(tools.map((part) => part.tool), everyElement("task"));
+      expect(tools.last.state.status, PluginToolStatus.completed);
     });
 
     const unrestorableMessage = "Oh My Pi can no longer restore this session's model (anthropic/claude-old).";

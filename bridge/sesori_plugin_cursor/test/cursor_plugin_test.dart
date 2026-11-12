@@ -249,6 +249,7 @@ void main() {
           return AcpReplayCollector(
             sessionUpdateNormalizer: null,
             shellCommandResolver: null,
+            toolNameResolver: null,
             sessionId: "replay-root",
             agentId: CursorPlugin.pluginId,
             initialUserMessage: null,

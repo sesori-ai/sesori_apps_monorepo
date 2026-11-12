@@ -45,6 +45,12 @@ void main() {
       expect(message.apiErrorStatus, 429);
     });
 
+    test("parses the Claude Code 2.1.322 assistant error codes", () {
+      expect(ClaudeAssistantError.parse("account_on_hold"), ClaudeAssistantError.accountOnHold);
+      expect(ClaudeAssistantError.parse("verification_required"), ClaudeAssistantError.verificationRequired);
+      expect(ClaudeAssistantError.parse("cloud_credential_error"), ClaudeAssistantError.cloudCredentialError);
+    });
+
     test("marks subagent traffic by parent tool use id", () {
       final message = ClaudeStreamMessage.parse({
         "type": "assistant",

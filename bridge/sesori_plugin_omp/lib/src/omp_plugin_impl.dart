@@ -34,6 +34,7 @@ class OmpPlugin._({
   required final OmpSessionOptionsService _ompSessionOptionsService,
   required final OmpSessionCleanupService _cleanupService,
   required final OmpSteeringService _steeringService,
+  required final OmpEventMapper _ompEventMapper,
   required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   factory({
@@ -86,17 +87,19 @@ class OmpPlugin._({
       totalTimeout: const Duration(seconds: 20),
       maxPages: 50,
     );
+    final eventMapper = OmpEventMapper(
+      launchDirectory: launchDirectory,
+      pluginId: OmpPluginIdentity.id,
+      configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
+      compactionTracker: OmpCompactionTracker(clock: clock),
+    );
     return OmpPlugin._(
       launchSpec: launchSpec,
       launchDirectory: launchDirectory,
       childSessionTracker: childSessionTracker,
-      eventMapper: OmpEventMapper(
-        launchDirectory: launchDirectory,
-        pluginId: OmpPluginIdentity.id,
-        configurationTracker: configurationTracker,
-        childSessions: childSessionTracker,
-        compactionTracker: OmpCompactionTracker(clock: clock),
-      ),
+      eventMapper: eventMapper,
+      ompEventMapper: eventMapper,
       commandTracker: commandTracker,
       catalogService: catalogService,
       ompSessionOptionsService: ompSessionOptionsService,
@@ -122,12 +125,13 @@ class OmpPlugin._({
   /// session (https://github.com/can1357/oh-my-pi/issues/19068). An entry with
   /// zero messages and no title holds nothing to show: it is that leftover or
   /// a session never prompted, and one Sesori created keeps its bridge row.
-  /// A missing count keeps the entry.
+  /// A missing or non-int count keeps the entry.
   @override
-  bool includeListedSession(AcpSessionInfo info) {
+  bool includeListedSession({required AcpSessionInfo info}) {
     final title = info.title;
     final hasTitle = title != null && title.trim().isNotEmpty;
-    return hasTitle || info.metadata?["messageCount"] != 0;
+    final messageCount = info.metadata?["messageCount"];
+    return hasTitle || messageCount is! int || messageCount != 0;
   }
 
   /// OMP advertises `_session/steering` per process in its `initialize`
@@ -215,7 +219,23 @@ class OmpPlugin._({
   }
 
   @override
-  void onConnectionReset() => _ompSessionOptionsService.resetConnection();
+  void onConnectionReset() {
+    _ompSessionOptionsService.resetConnection();
+    _ompEventMapper.endCompactionsAfterExit().forEach(emitEvent);
+  }
+
+  /// A running automatic compaction keeps its session busy: OMP is working,
+  /// and holds a prompt sent meanwhile until the compaction ends.
+  @override
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async {
+    final statuses = await super.getSessionStatuses();
+    final compacting = _ompEventMapper.compactingSessionIds;
+    if (compacting.isEmpty) return statuses;
+    return Map.unmodifiable({
+      ...statuses,
+      for (final sessionId in compacting) sessionId: const PluginSessionStatus.busy(),
+    });
+  }
 
   @override
   Iterable<BridgeSseEvent> mapPromptFailure({

@@ -1,13 +1,12 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "models/omp_compaction_models.dart";
 import "omp_identity.dart";
 import "trackers/omp_compaction_tracker.dart";
 
-/// Stock ACP mapping plus OMP's automatic compaction notifications.
-///
-/// OMP sends `_omp/compaction/start` and `_omp/compaction/end` for automatic
-/// compaction only; a manual `/compact` sends neither.
+/// Oh My Pi's ACP mapping: OMP's own tool names and its automatic compaction
+/// notifications on top of stock ACP.
 class OmpEventMapper({
   required super.launchDirectory,
   required super.pluginId,
@@ -15,13 +14,58 @@ class OmpEventMapper({
   required super.childSessions,
   required final OmpCompactionTracker compactionTracker,
 }) extends AcpEventMapper {
+  /// Sent for automatic compaction only; a manual `/compact` sends neither.
   static const String compactionStartMethod = "_omp/compaction/start";
   static const String compactionEndMethod = "_omp/compaction/end";
 
+  /// Sessions with a prompt turn running. A compaction outside one (OMP's
+  /// opt-in idle compaction) reports the session busy itself.
+  final Set<String> _turnSessions = {};
+
+  /// Sessions whose compaction is still running; the harness is working.
+  List<String> get compactingSessionIds => compactionTracker.runningSessionIds;
+
+  /// OMP sends its own tool name as a top-level `name` on `tool_call` (outside
+  /// the ACP schema, from 18.18.8); its `kind` buckets task, wait and ask as
+  /// `other`, so the name labels the card instead.
+  @override
+  String? toolNameForToolUpdate({required Map<String, dynamic> update}) {
+    final name = update["name"];
+    return name is String && name.isNotEmpty ? name : null;
+  }
+
+  @override
+  void beginTurn({required String sessionId, required String? messageId}) {
+    _turnSessions.add(sessionId);
+    super.beginTurn(sessionId: sessionId, messageId: messageId);
+  }
+
+  /// OMP finishes a prompt's compactions, and waits for a running idle one,
+  /// before it answers the prompt. A compaction still recorded here lost its
+  /// end, so the bridge's idle sweep settles its row.
+  @override
+  List<BridgeSseEvent> finalizeTurn({required String sessionId}) {
+    _turnSessions.remove(sessionId);
+    compactionTracker.forgetSession(sessionId: sessionId);
+    return super.finalizeTurn(sessionId: sessionId);
+  }
+
   @override
   void forgetSession(String sessionId) {
+    _turnSessions.remove(sessionId);
     compactionTracker.forgetSession(sessionId: sessionId);
     super.forgetSession(sessionId);
+  }
+
+  /// Drops the compactions that died with the OMP process and returns the
+  /// idle events for those that held their session busy outside a turn.
+  List<BridgeSseEvent> endCompactionsAfterExit() {
+    final idle = [
+      for (final sessionId in compactionTracker.runningSessionIds)
+        if (!_turnSessions.contains(sessionId)) BridgeSseSessionIdle(sessionID: sessionId),
+    ];
+    compactionTracker.clear();
+    return idle;
   }
 
   @override
@@ -34,44 +78,51 @@ class OmpEventMapper({
 
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
-    final params = notification.params;
-    final sessionId = params["sessionId"];
-    switch (notification.method) {
-      case compactionStartMethod when sessionId is String && sessionId.isNotEmpty:
-        return _compactionRow(
-          sessionId: sessionId,
-          compaction: compactionTracker.start(sessionId: sessionId),
-          state: const .running(summary: null),
-        );
-      case compactionEndMethod when sessionId is String && sessionId.isNotEmpty:
-        return _mapCompactionEnd(sessionId: sessionId, params: params);
+    try {
+      return switch (notification.method) {
+        compactionStartMethod => _mapCompactionStart(OmpCompactionStartDto.fromJson(notification.params)),
+        compactionEndMethod => _mapCompactionEnd(OmpCompactionEndDto.fromJson(notification.params)),
+        _ => super.mapExtension(notification),
+      };
+    } on Object catch (error, stackTrace) {
+      Log.w("[${OmpPluginIdentity.id}] ignored malformed ${notification.method} notification", error, stackTrace);
+      return const [];
     }
-    return super.mapExtension(notification);
   }
 
-  /// `willRetry` is not read: OMP sets it on a successful compaction when it
-  /// will re-send the overflowed turn, never on a failed one. A fallback to
-  /// the next preferred method is a new start/end pair.
-  List<BridgeSseEvent> _mapCompactionEnd({
-    required String sessionId,
-    required Map<String, dynamic> params,
-  }) {
-    final errorMessage = params["errorMessage"];
-    if (errorMessage is String) {
+  List<BridgeSseEvent> _mapCompactionStart(OmpCompactionStartDto start) {
+    final sessionId = start.sessionId;
+    return [
+      if (!_turnSessions.contains(sessionId))
+        BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy()),
+      ..._compactionRow(
+        sessionId: sessionId,
+        compaction: compactionTracker.start(sessionId: sessionId),
+        state: const .running(summary: null),
+      ),
+    ];
+  }
+
+  /// A failed method's fallback to the next preferred one arrives as a new
+  /// start/end pair.
+  List<BridgeSseEvent> _mapCompactionEnd(OmpCompactionEndDto end) {
+    final sessionId = end.sessionId;
+    if (end.errorMessage case final errorMessage?) {
       Log.w("[${OmpPluginIdentity.id}] automatic compaction in $sessionId ended with: $errorMessage");
     }
-    final PluginCompactionState state = switch (params) {
-      {"aborted": true} => const .failed(reason: .cancelled),
-      // OMP's benign skip: nothing to compact yet, or no model to compact with.
-      {"skipped": true} => const .failed(reason: .nothingToCompact),
-      _ when errorMessage is String => const .failed(reason: null),
+    final PluginCompactionState state = switch (end) {
+      OmpCompactionEndDto(aborted: true) => const .failed(reason: .cancelled),
+      OmpCompactionEndDto(skipped: true) => const .failed(reason: .nothingToCompact),
+      OmpCompactionEndDto(errorMessage: String()) => const .failed(reason: null),
       // OMP reports no summary or freed-token count over ACP.
       _ => const .completed(summary: null, freedTokens: null, trigger: .auto),
     };
+    final compaction = compactionTracker.finish(sessionId: sessionId);
     return [
-      if (compactionTracker.finish(sessionId: sessionId) case final compaction?)
-        ..._compactionRow(sessionId: sessionId, compaction: compaction, state: state),
+      if (compaction != null) ..._compactionRow(sessionId: sessionId, compaction: compaction, state: state),
       if (state is PluginCompactionStateCompleted) BridgeSseSessionCompacted(sessionID: sessionId),
+      // After the settled row, so the idle sweep finds nothing running.
+      if (compaction != null && !_turnSessions.contains(sessionId)) BridgeSseSessionIdle(sessionID: sessionId),
     ];
   }
 

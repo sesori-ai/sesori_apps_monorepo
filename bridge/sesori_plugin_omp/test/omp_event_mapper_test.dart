@@ -59,18 +59,56 @@ void main() {
     // compaction itself is done.
     final ended = end({"willRetry": true, "tokensBefore": 120000});
 
-    expect(started, hasLength(2));
-    expect(started, row(id: "session-1-compaction-5000", created: 5000, state: const .running(summary: null)));
-    expect(ended, hasLength(3));
+    // Outside a prompt turn the session reads as working until the end.
+    expect(started, hasLength(3));
+    expect(started.first, isA<BridgeSseSessionStatus>());
+    expect(started, row(id: "session-1-compaction-5000-0", created: 5000, state: const .running(summary: null)));
+    expect(ended, hasLength(4));
     expect(
       ended,
       row(
-        id: "session-1-compaction-5000",
+        id: "session-1-compaction-5000-0",
         created: 5000,
         state: const .completed(summary: null, freedTokens: null, trigger: .auto),
       ),
     );
-    expect(ended.last, isA<BridgeSseSessionCompacted>());
+    expect(ended[2], isA<BridgeSseSessionCompacted>());
+    // Idle comes after the settled row, so the idle cleanup finds nothing running.
+    expect(ended.last, isA<BridgeSseSessionIdle>());
+  });
+
+  test("inside a prompt turn a compaction leaves the session status to the turn", () {
+    mapper.beginTurn(sessionId: "session-1", messageId: null);
+
+    expect(
+      start(),
+      allOf(hasLength(2), row(id: "session-1-compaction-5000-0", created: 5000, state: const .running(summary: null))),
+    );
+    expect(end({}), allOf(hasLength(3), isNot(contains(isA<BridgeSseSessionIdle>()))));
+  });
+
+  test("a finished turn forgets a compaction whose end never came", () {
+    mapper.beginTurn(sessionId: "session-1", messageId: null);
+    start();
+    mapper.finalizeTurn(sessionId: "session-1");
+
+    expect(mapper.compactingSessionIds, isEmpty);
+    expect(end({"aborted": true}), isEmpty);
+  });
+
+  test("an OMP exit ends a compaction running outside a turn", () {
+    start();
+
+    expect(mapper.endCompactionsAfterExit(), [isA<BridgeSseSessionIdle>()]);
+    expect(mapper.compactingSessionIds, isEmpty);
+  });
+
+  test("a malformed compaction notification maps to nothing", () {
+    expect(
+      mapper.map(const AcpNotification(method: OmpEventMapper.compactionStartMethod, params: {"reason": "threshold"})),
+      isEmpty,
+    );
+    expect(mapper.compactingSessionIds, isEmpty);
   });
 
   test("an aborted end settles the row as cancelled", () {
@@ -78,9 +116,9 @@ void main() {
     expect(
       end({"aborted": true}),
       allOf(
-        hasLength(2),
+        hasLength(3),
         row(
-          id: "session-1-compaction-5000",
+          id: "session-1-compaction-5000-0",
           created: 5000,
           state: const .failed(reason: .cancelled),
         ),
@@ -93,9 +131,9 @@ void main() {
     expect(
       end({"skipped": true, "errorMessage": "Auto-shake found nothing eligible to drop."}),
       allOf(
-        hasLength(2),
+        hasLength(3),
         row(
-          id: "session-1-compaction-5000",
+          id: "session-1-compaction-5000-0",
           created: 5000,
           state: const .failed(reason: .nothingToCompact),
         ),
@@ -109,8 +147,8 @@ void main() {
     expect(
       end({"errorMessage": "Auto-compaction failed: provider unavailable"}),
       allOf(
-        hasLength(2),
-        row(id: "session-1-compaction-5000", created: 5000, state: const .failed(reason: null)),
+        hasLength(3),
+        row(id: "session-1-compaction-5000-0", created: 5000, state: const .failed(reason: null)),
       ),
     );
   });
@@ -120,7 +158,7 @@ void main() {
     end({"errorMessage": "Auto-handoff returned no document; trying the next preferred compaction method."});
     clock.current = DateTime.fromMillisecondsSinceEpoch(6000);
 
-    expect(start(), row(id: "session-1-compaction-6000", created: 6000, state: const .running(summary: null)));
+    expect(start(), row(id: "session-1-compaction-6000-1", created: 6000, state: const .running(summary: null)));
   });
 
   test("an end without a recorded start reports only a successful compaction", () {

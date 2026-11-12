@@ -91,6 +91,12 @@ abstract class const RuntimeManifest() {
   /// one scheme per runtime.
   RuntimeVersion? parseVersion({required String value});
 
+  /// Arguments the version probe passes to the runtime binary. Override when
+  /// the runtime needs extra flags so the probe reports the binary itself, for
+  /// example to keep a self-updating launcher from answering with a newer
+  /// cached package.
+  List<String> get versionProbeArguments => const ["--version"];
+
   /// Parses a managed version directory name under the runtime's state root.
   ///
   /// The installer names those directories with [RuntimeVersion.raw], so the

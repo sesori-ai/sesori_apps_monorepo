@@ -15,6 +15,7 @@ void main() {
       final collector = AcpReplayCollector(
         sessionUpdateNormalizer: null,
         shellCommandResolver: null,
+        toolNameResolver: null,
         sessionId: "s1",
         agentId: "ACP",
         initialUserMessage: null,
@@ -62,6 +63,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "ACP",
               initialUserMessage: (id: "s1-initial-user", time: initialTime),
@@ -172,6 +174,7 @@ void main() {
         final collector = AcpReplayCollector(
           sessionUpdateNormalizer: null,
           shellCommandResolver: null,
+          toolNameResolver: null,
           sessionId: "s1",
           agentId: "ACP",
           initialUserMessage: null,
@@ -221,6 +224,7 @@ void main() {
               AcpReplayCollector(
                   sessionUpdateNormalizer: null,
                   shellCommandResolver: null,
+                  toolNameResolver: null,
                   sessionId: "s1",
                   agentId: "Cursor",
                   initialUserMessage: (
@@ -271,6 +275,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -335,6 +340,7 @@ void main() {
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
             shellCommandResolver: null,
+            toolNameResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessage: null,
@@ -370,6 +376,33 @@ void main() {
       expect(tool.state.attachments, isEmpty);
     });
 
+    test("replays the adapter's tool name before the standard kind", () {
+      final collector =
+          AcpReplayCollector(
+            sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
+            toolNameResolver: ({required update}) => update["name"] == "task" ? "task" : null,
+            sessionId: "s1",
+            agentId: "omp",
+            initialUserMessage: null,
+            messageIdOverride: null,
+            messageTimeResolver: null,
+            haltClassifier: null,
+            toolPartReplacement: null,
+            toolPartSuppression: null,
+          )..consume(
+            upd({
+              "sessionUpdate": "tool_call",
+              "toolCallId": "t1",
+              "name": "task",
+              "kind": "other",
+              "status": "completed",
+            }),
+          );
+
+      expect(collector.build().single.parts.single.tool, "task");
+    });
+
     test("standalone tool identity matches live mapping for an opaque typed key", () {
       const sessionId = "s1";
       const toolCallId = "opaque tool:/?[]{}";
@@ -383,6 +416,7 @@ void main() {
       final collector = AcpReplayCollector(
         sessionUpdateNormalizer: null,
         shellCommandResolver: null,
+        toolNameResolver: null,
         sessionId: sessionId,
         agentId: "ACP",
         initialUserMessage: null,
@@ -426,6 +460,7 @@ void main() {
       final collector = AcpReplayCollector(
         sessionUpdateNormalizer: null,
         shellCommandResolver: null,
+        toolNameResolver: null,
         sessionId: sessionId,
         agentId: "ACP",
         initialUserMessage: null,
@@ -466,6 +501,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: sessionId,
               agentId: "ACP",
               initialUserMessage: null,
@@ -502,6 +538,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -544,6 +581,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -601,6 +639,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -638,6 +677,7 @@ void main() {
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
             shellCommandResolver: null,
+            toolNameResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessage: null,
@@ -666,6 +706,7 @@ void main() {
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
             shellCommandResolver: null,
+            toolNameResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessage: null,
@@ -702,6 +743,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -745,6 +787,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -774,6 +817,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -803,6 +847,7 @@ void main() {
       final collector = AcpReplayCollector(
         sessionUpdateNormalizer: null,
         shellCommandResolver: null,
+        toolNameResolver: null,
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessage: null,
@@ -824,6 +869,7 @@ void main() {
       final collector = AcpReplayCollector(
         sessionUpdateNormalizer: null,
         shellCommandResolver: null,
+        toolNameResolver: null,
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessage: null,
@@ -855,6 +901,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -970,6 +1017,7 @@ void main() {
             AcpReplayCollector(
                 sessionUpdateNormalizer: null,
                 shellCommandResolver: null,
+                toolNameResolver: null,
                 sessionId: "s1",
                 agentId: "Cursor",
                 initialUserMessage: null,
@@ -1027,6 +1075,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -1071,6 +1120,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -1105,6 +1155,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -1139,6 +1190,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessage: null,
@@ -1187,6 +1239,7 @@ void main() {
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
             shellCommandResolver: null,
+            toolNameResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessage: null,
@@ -1220,6 +1273,7 @@ void main() {
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
             shellCommandResolver: null,
+            toolNameResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessage: null,
@@ -1244,6 +1298,7 @@ void main() {
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
             shellCommandResolver: null,
+            toolNameResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessage: null,
@@ -1281,6 +1336,7 @@ void main() {
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
             shellCommandResolver: null,
+            toolNameResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessage: null,
@@ -1309,6 +1365,7 @@ void main() {
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
             shellCommandResolver: null,
+            toolNameResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessage: null,
@@ -1333,6 +1390,7 @@ void main() {
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
             shellCommandResolver: null,
+            toolNameResolver: null,
             sessionId: "s1",
             agentId: "ACP",
             initialUserMessage: null,
@@ -1384,6 +1442,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "ACP",
               initialUserMessage: null,
@@ -1420,6 +1479,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "ACP",
               initialUserMessage: null,
@@ -1477,6 +1537,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "ACP",
               initialUserMessage: null,
@@ -1521,6 +1582,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "ACP",
               initialUserMessage: null,
@@ -1565,6 +1627,7 @@ void main() {
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
               shellCommandResolver: null,
+              toolNameResolver: null,
               sessionId: "s1",
               agentId: "ACP",
               initialUserMessage: (

@@ -26,6 +26,7 @@ void main() {
     collector = AcpReplayCollector(
       sessionUpdateNormalizer: null,
       shellCommandResolver: null,
+      toolNameResolver: null,
       sessionId: "root",
       agentId: "grok",
       initialUserMessage: null,

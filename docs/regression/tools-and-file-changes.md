@@ -19,10 +19,11 @@ sub-agent parts, plus the signal that a tool changed files.
   (`skill`, `file_path`, `notebook_path`, `pattern`, `path`, `url`, `query`), Pi from the
   tool-call arguments (`pattern`, then `path`), Codex from its argument-derived
   title, and OpenCode and ACP harnesses pass the harness-supplied title through.
-  An ACP call without `kind` uses its title as the tool name and drops the
-  title, so the card never repeats it. A top-level `name` on an ACP tool call
-  (Oh My Pi sends its own tool name there) names the card before `kind`, so
-  OMP task, wait and ask cards do not read "Other".
+  An adapter may name the tool before `kind`: Oh My Pi uses the top-level
+  `name` it sends on `tool_call`, so its task, wait and ask cards do not read
+  "Other" and keep their title as the detail. Otherwise an ACP call without
+  `kind` uses its title as the tool name and drops the title, so the card
+  never repeats it.
   Skills that load through a file read of `SKILL.md` are visible by that path.
   Pi learns the title at `toolcall_end`, so a card announced by `toolcall_start`
   shows it from the running or terminal update onward, live and after replay.
@@ -142,6 +143,9 @@ sub-agent parts, plus the signal that a tool changed files.
   next attempt gets a new row. An Oh My Pi compaction method that fails
   settles as the failure note, and the method OMP falls back to gets its own
   row below it; a manual Oh My Pi `/compact` sends no signal and shows no row.
+  An Oh My Pi compaction outside a prompt (its opt-in idle compaction) shows
+  the session as working until it ends, so the idle sweep cannot end the row
+  early; a prompt sent meanwhile is held by OMP until the compaction ends.
   An unfinished compaction elsewhere (Stop or a
   lost process on Claude or Pi, any Codex, DeepSeek or Oh My Pi compaction
   without a completion)

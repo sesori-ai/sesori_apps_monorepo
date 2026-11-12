@@ -356,6 +356,36 @@ void main() {
       expect(_stateOf(served.single.parts.single).status, ToolStatus.running);
     });
 
+    test("a read mid-compaction keeps the running row while the plugin reports busy, then it settles once", () async {
+      // A plugin whose harness compacts outside a prompt turn (Oh My Pi's idle
+      // compaction) reports the session busy until the compaction ends.
+      final repository = _FakeSessionRepository(transcript: const [], status: const SessionStatus.busy(since: null));
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _compactionPart(id: "c1", messageId: "m1", state: const CompactionState.running(summary: null)),
+      );
+
+      final midway = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
+      expect((midway.single.parts.single as MessagePartCompaction).state, const CompactionState.running(summary: null));
+
+      const completed = CompactionState.completed(summary: null, freedTokens: null, trigger: CompactionTrigger.auto);
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _compactionPart(id: "c1", messageId: "m1", state: completed),
+      );
+      repository.status = const SessionStatus.idle();
+      expect(await history.service.finalizeOpenToolParts(sessionId: "ses_a"), isEmpty);
+
+      final settled = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
+      expect((settled.single.parts.single as MessagePartCompaction).state, completed);
+    });
+
     test("a fresh store without open tool parts is served without a status read", () async {
       final repository = _FakeSessionRepository(transcript: const [], status: null);
       final history = createTestChatHistory(sessionRepository: repository);
@@ -465,7 +495,7 @@ ToolStateFull _stateOf(MessagePart part) => (part as MessagePartTool).state as T
 
 class _FakeSessionRepository({
   required final List<MessageWithParts> transcript,
-  required final SessionStatus? status,
+  required var SessionStatus? status,
 }) implements SessionRepository {
   int statusReads = 0;
 

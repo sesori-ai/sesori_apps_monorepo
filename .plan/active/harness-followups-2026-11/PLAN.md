@@ -66,7 +66,9 @@ separate regions; whichever lands later merges `main` in.
 - Move the OMP target to 18.19.0: `omp_runtime_manifest.dart` (version, the
   hold comment, 8 hashes) and its test. Download every asset and check it
   against `SHA256SUMS.txt` and the GitHub digests; never copy hashes.
-- `toolName` prefers a non-empty top-level `name` before `kind`. Only OMP sends
+- OMP's event mapper names tool cards from a non-empty top-level `name`
+  before `kind`, through an adapter tool-name hook shared by live mapping and
+  replay (other ACP harnesses keep `kind`). Only OMP sends
   it in practice (Grok's lives under `_meta`). File-mutation detection reads
   `kind` and is unaffected.
 - File the public upstream issue on `can1357/oh-my-pi` describing the

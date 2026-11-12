@@ -118,6 +118,7 @@ List<PluginMessageWithParts> _replay({required List<Map<String, dynamic>> frames
   final collector = AcpReplayCollector(
     sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
     shellCommandResolver: null,
+    toolNameResolver: null,
     sessionId: _sessionId,
     agentId: "hermes",
     initialUserMessage: null,

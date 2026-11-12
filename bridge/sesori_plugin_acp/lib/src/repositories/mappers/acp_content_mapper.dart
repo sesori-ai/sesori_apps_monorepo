@@ -97,11 +97,7 @@ final class const AcpContentMapper() {
     ).toList(growable: false);
   }
 
-  /// A top-level `name` (outside the ACP schema; Oh My Pi sends its own tool
-  /// name there) wins over `kind`, which buckets task, wait and ask as `other`.
   String toolName({required Map<String, dynamic> update}) {
-    final name = update["name"];
-    if (name is String && name.isNotEmpty) return name;
     final kind = update["kind"];
     if (kind is String && kind.isNotEmpty) return kind;
     final title = update["title"];
