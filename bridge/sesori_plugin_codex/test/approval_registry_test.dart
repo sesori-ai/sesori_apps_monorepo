@@ -63,6 +63,7 @@ void main() {
               "itemId": "i-1",
               "startedAtMs": 0,
               "command": "rm -rf /tmp/scratch",
+              "cwd": "/work/my_repo",
               "reason": "delete scratch dir",
             },
           ),
@@ -73,13 +74,16 @@ void main() {
         final event = emitted.single as BridgeSsePermissionAsked;
         expect(event.tool, equals("exec"));
         expect(event.sessionID, equals("t-1"));
-        expect(event.description, equals("delete scratch dir"));
+        expect(
+          event.description,
+          equals("    rm -rf /tmp/scratch\n\nWorking directory: `/work/my_repo`\n\ndelete scratch dir"),
+        );
         expect(event.requestID, isNotEmpty);
       },
     );
 
     test(
-      "command approval falls back to the command string when reason is absent",
+      "command approval shows the command alone when reason and cwd are absent",
       () async {
         requests.add(
           const CodexServerRequest(
@@ -97,7 +101,32 @@ void main() {
         await pump();
         expect(
           (emitted.single as BridgeSsePermissionAsked).description,
-          equals("ls -la"),
+          equals("    ls -la"),
+        );
+      },
+    );
+
+    test(
+      "command approval keeps every line of a multi-line command verbatim",
+      () async {
+        requests.add(
+          const CodexServerRequest(
+            id: 45,
+            method: "item/commandExecution/requestApproval",
+            params: {
+              "threadId": "t-1",
+              "turnId": "turn-1",
+              "itemId": "i-1",
+              "startedAtMs": 0,
+              "command": "cat <<'EOF' > *notes*.md\n# heading `x`\nEOF",
+              "cwd": "/work/a`b",
+            },
+          ),
+        );
+        await pump();
+        expect(
+          (emitted.single as BridgeSsePermissionAsked).description,
+          equals("    cat <<'EOF' > *notes*.md\n    # heading `x`\n    EOF\n\nWorking directory: `` /work/a`b ``"),
         );
       },
     );
@@ -152,7 +181,7 @@ void main() {
         expect(pending.single.sessionID, equals("t-7"));
         expect(pending.single.displaySessionId, equals("t-7"));
         expect(pending.single.tool, equals("exec"));
-        expect(pending.single.description, equals("clean build dir"));
+        expect(pending.single.description, equals("    rm -rf build\n\nclean build dir"));
         expect(registry.hasPendingInput(sessionId: "t-7"), isTrue);
         // Questions and permissions are disjoint: a permission is never a
         // pending question.

@@ -47,7 +47,9 @@ class const PushNotificationContentBuilder() {
         category: NotificationCategory.aiInteraction,
         eventType: NotificationEventType.permissionAsked,
         title: "Permission requested",
-        body: description.isNotEmpty ? description : "The assistant requested permission to run $tool.",
+        body: description.isNotEmpty
+            ? _markdownToPlainText(markdown: description)
+            : "The assistant requested permission to run $tool.",
         session: (displaySessionId: displaySessionId ?? sessionID, ownerSessionId: sessionID),
       ),
       SesoriInstallationUpdateAvailable(:final version) => (
@@ -125,5 +127,23 @@ class const PushNotificationContentBuilder() {
       collapseKey: collapseKey,
       data: data,
     );
+  }
+
+  /// A permission description is Markdown rendered by the app; the OS shows
+  /// the push body verbatim. Drop the code-block indentation and fences and
+  /// inline code-span backticks the descriptions use, plus blank lines.
+  // ponytail: covers the code constructs plugins emit, not general Markdown.
+  String _markdownToPlainText({required String markdown}) {
+    // CommonMark drops one padding space each side of a code span's text.
+    final codeSpan = RegExp(r"(`+) ?(.+?) ?\1");
+    return markdown
+        .split("\n")
+        .where((line) => line.trim().isNotEmpty && !line.trimLeft().startsWith("```"))
+        .map(
+          (line) => line.startsWith("    ") || line.startsWith("\t")
+              ? line.trim()
+              : line.replaceAllMapped(codeSpan, (match) => match[2] ?? "").trim(),
+        )
+        .join("\n");
   }
 }
