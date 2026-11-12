@@ -408,7 +408,7 @@ Only OMP and Codex are assessed here. Other harnesses are not assessed.
 A refused send shows a second line under "Couldn't send", and a harness that failed to start shows one under "Failed"
 in the harness list and as a row on its detail page, only when the plugin wrote a sentence for the user
 (`PluginRefusalException`, `PluginStartException.userFacing`). Every other failure keeps the generic wording; raw
-backend errors never reach the app. Harnesses not listed have no plugin-written reason for either failure today (⬜).
+backend errors are never shown as these reasons. Harnesses not listed have no plugin-written reason for either failure today (⬜).
 
 | Harness | Refused send | Failed start |
 |---|---|---|

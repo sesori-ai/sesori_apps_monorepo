@@ -1,7 +1,8 @@
 import "dart:async";
 import "dart:math";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginRefusalException, PluginStaleOptionsException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show Log, PluginRefusalException, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/accepted_prompts_repository.dart";
