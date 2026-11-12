@@ -7,6 +7,11 @@ import "../logging/logging.dart";
 import "../platform/push_messaging_source.dart";
 import "../repositories/notification_repository.dart";
 
+/// How long logout cleanup may hold the sync queue. The unregister request has
+/// no timeout of its own; past this, later push work runs while the request
+/// finishes or fails in the background.
+const _logoutCleanupDeadline = Duration(seconds: 5);
+
 @lazySingleton
 class NotificationRegistrationService({
   required final NotificationRepository _repository,
@@ -65,9 +70,10 @@ class NotificationRegistrationService({
   }
 
   /// Stops push delivery for this installation before local auth is cleared.
-  /// Cleanup is best-effort so a failure cannot prevent local logout.
+  /// Cleanup is best-effort so a failure cannot prevent local logout, and it
+  /// is bounded so a stalled request cannot block later push work.
   Future<void> unregisterCurrentDevice() {
-    return _enqueueSync(_unregisterCurrentDevice);
+    return _enqueueSync(() => _unregisterCurrentDevice().timeout(_logoutCleanupDeadline));
   }
 
   /// Restores push registration when local auth remains after logout fails.

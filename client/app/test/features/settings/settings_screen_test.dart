@@ -1053,6 +1053,33 @@ void main() {
     });
   }
 
+  testWidgets("the analytics caption glides the Log out card instead of jumping it", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Account").last);
+    await tester.pumpAndSettle();
+    final before = tester.getTopLeft(find.text("Log out")).dy;
+
+    productAnalyticsStates.add(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
+        synchronization: ProductAnalyticsEnableRequestInProgress(),
+        availability: ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.synchronizationPending),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final midway = tester.getTopLeft(find.text("Log out")).dy;
+    await tester.pumpAndSettle();
+    final after = tester.getTopLeft(find.text("Log out")).dy;
+
+    expect(after, greaterThan(before));
+    expect(midway, greaterThan(before));
+    expect(midway, lessThan(after));
+  });
+
   testWidgets("a known preference remains editable when synchronization fails", (tester) async {
     _useTallSurface(tester);
     productAnalyticsStates.add(

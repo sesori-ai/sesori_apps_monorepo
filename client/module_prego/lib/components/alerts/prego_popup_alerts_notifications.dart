@@ -313,7 +313,16 @@ final class PregoPopupAlertPresenter._({
   }) {
     if (!_overlay.mounted) return;
 
-    _presentations[_overlay]?.dismiss(immediately: true);
+    // Repeating the alert that is already up keeps it on screen and restarts
+    // its timer, so quick repeated taps do not make it blink. Alerts with
+    // actions always replace, since their callbacks may differ.
+    final current = _presentations[_overlay];
+    final alert = content.primaryAction == null && content.secondaryAction == null
+        ? (title: title, message: content.message, variant: variant, showCloseButton: showCloseButton)
+        : null;
+    if (alert != null && current != null && current.alert == alert && current.restart(duration: duration)) return;
+
+    current?.dismiss(immediately: true);
     final topBar = _currentTopBar();
     late final _PregoPopupAlertPresentation presentation;
     final entry = OverlayEntry(
@@ -335,7 +344,7 @@ final class PregoPopupAlertPresenter._({
         topBar: topBar,
       ),
     );
-    presentation = _PregoPopupAlertPresentation(entry: entry);
+    presentation = _PregoPopupAlertPresentation(entry: entry, alert: alert);
     _presentations[_overlay] = presentation;
     _overlay.insert(entry);
   }
@@ -345,9 +354,23 @@ final class PregoPopupAlertPresenter._({
   }
 }
 
-final class _PregoPopupAlertPresentation({required final OverlayEntry entry}) {
+typedef _PregoPopupAlertIdentity = ({
+  String title,
+  String? message,
+  PregoPopupAlertsNotificationsVariant variant,
+  bool showCloseButton,
+});
+
+final class _PregoPopupAlertPresentation({
+  required final OverlayEntry entry,
+  required final _PregoPopupAlertIdentity? alert,
+}) {
   VoidCallback? dismissAnimated;
+  bool Function({required Duration? duration})? restartTimer;
   bool _removed = false;
+
+  /// Restarts the visible alert's timer; false when it is already leaving.
+  bool restart({required Duration? duration}) => !_removed && (restartTimer?.call(duration: duration) ?? false);
 
   void dismiss({required bool immediately}) {
     if (_removed) return;
@@ -415,9 +438,19 @@ class _PregoPopupAlertOverlayState()
     );
     _controller.animateTo(1, curve: _motionCurve);
     widget.presentation.dismissAnimated = _dismiss;
-    if (widget.duration case final duration?) {
-      _timer = Timer(duration, _dismiss);
-    }
+    widget.presentation.restartTimer = _restartTimer;
+    _startTimer(duration: widget.duration);
+  }
+
+  void _startTimer({required Duration? duration}) {
+    _timer?.cancel();
+    _timer = duration == null ? null : Timer(duration, _dismiss);
+  }
+
+  bool _restartTimer({required Duration? duration}) {
+    if (_dismissing || !mounted) return false;
+    _startTimer(duration: duration);
+    return true;
   }
 
   @override
@@ -431,6 +464,7 @@ class _PregoPopupAlertOverlayState()
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     widget.presentation.dismissAnimated = null;
+    widget.presentation.restartTimer = null;
     _opacity.dispose();
     _controller.dispose();
     super.dispose();

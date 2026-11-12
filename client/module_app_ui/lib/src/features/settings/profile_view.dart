@@ -308,7 +308,7 @@ class const _ProductAnalyticsPreferenceSubtitle({
   @override
   Widget build(BuildContext context) {
     final status = this.status;
-    return Column(
+    final subtitle = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -325,6 +325,16 @@ class const _ProductAnalyticsPreferenceSubtitle({
           ),
         ],
       ],
+    );
+    // The status line grows and shrinks the card instead of jumping the rows
+    // below it. Under reduced motion no wrapper at all: a zero-length
+    // AnimatedSize would re-dirty itself mid-layout.
+    if (context.isReducedMotion) return subtitle;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      alignment: AlignmentDirectional.topStart,
+      child: subtitle,
     );
   }
 }

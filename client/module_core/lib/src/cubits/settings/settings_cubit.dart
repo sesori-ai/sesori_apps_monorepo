@@ -48,9 +48,9 @@ class SettingsCubit({
         logw("Failed to prepare product analytics for logout", error, stackTrace);
       }
       try {
-        // The unregister request has no timeout of its own, so a stalled
-        // connection would hold logout; past the deadline logout proceeds and
-        // the cleanup carries on in the background.
+        // The service bounds the cleanup itself, but it can also wait behind
+        // earlier push work whose requests have no timeout; logout never waits
+        // longer than the deadline.
         await _notificationRegistrationService.unregisterCurrentDevice().timeout(_pushCleanupDeadline);
       } catch (error, stackTrace) {
         logw("Failed to clean up push notifications during logout", error, stackTrace);

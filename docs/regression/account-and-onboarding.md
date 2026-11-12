@@ -71,8 +71,11 @@ participates.
 - Log out asks first on both apps; only its confirmation starts logout, and
   Cancel or dismissal leaves the session untouched. Once confirmed, Account
   keeps showing what it showed (account row, analytics switch, Log out spinner)
-  until it leaves. On the phone, removing this device's push registration
-  holds logout for at most 5 seconds.
+  until a successful logout leaves it; a failed logout brings it back to life
+  and shows an error. A tap on a control that can't act (Log out while it
+  runs, the analytics preference while signing out, loading or saving) shows a
+  notice saying why. On the phone, removing this device's push registration
+  holds logout for at most 5 seconds and never blocks later push work.
 - Mobile Settings runs Account, Bridge, Preferences, Appearance, Support,
   Legal. Bridge opens with the current computer's entry (platform,
   name, presence), in a card of its own under the caption, as on desktop, above
