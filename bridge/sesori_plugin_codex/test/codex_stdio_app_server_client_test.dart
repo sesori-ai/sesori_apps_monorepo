@@ -142,7 +142,11 @@ void main() {
       await process.waitForFrames(3);
       process.send({
         "id": process.frames.last["id"],
-        "error": {"code": -32600, "message": "private policy detail"},
+        "error": {
+          "code": -32600,
+          "message": "private policy detail",
+          "data": {"type": "fixture"},
+        },
       });
 
       await expectLater(
@@ -154,7 +158,8 @@ void main() {
                 "method",
                 "account/login/start",
               )
-              .having((error) => error.code, "code", -32600),
+              .having((error) => error.code, "code", -32600)
+              .having((error) => error.data, "data", {"type": "fixture"}),
         ),
       );
       await appServerClient.dispose();

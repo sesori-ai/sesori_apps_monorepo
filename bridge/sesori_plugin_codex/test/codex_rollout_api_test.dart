@@ -1271,6 +1271,7 @@ void main() {
             createdAt: null,
             updatedAt: null,
             model: null,
+            reasoningEffort: null,
             modelProvider: null,
             parentId: sessionId,
             agentNickname: null,
