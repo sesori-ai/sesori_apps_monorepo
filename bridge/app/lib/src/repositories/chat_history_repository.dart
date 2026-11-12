@@ -1216,16 +1216,29 @@ class ChatHistoryRepository({
   /// A backend can send a failed turn's real reason live and save only a fixed
   /// closing row for it (Hermes does), so the two copies of one notice can be
   /// worded differently. The stored wording leads, since it is what the user
-  /// saw live, and the replayed wording follows when it adds something. A
-  /// stored copy that already holds the replayed wording, as an earlier
-  /// reconciliation leaves it, keeps it. A different wording under the same
-  /// message id is an update from the backend and replaces it.
+  /// saw live. The error name is the notice's kind:
+  /// - The same kind is the same notice, so the replayed wording is a stand-in
+  ///   and the stored wording stands alone. A replayed wording an earlier
+  ///   reconciliation added after it is dropped again.
+  /// - Another kind says something of its own, so its wording follows the
+  ///   stored one, under the stored kind; a stored copy that already holds it
+  ///   keeps it. A different wording under the same message id is an update
+  ///   from the backend and replaces it.
   MessageError? _reconciledNotice({required Message imported, required Message stored, required bool sameIdentity}) {
     if ((imported, stored) case (final MessageError imported, final MessageError stored)
         when stored.errorMessage != imported.errorMessage) {
+      final added = "\n\n${imported.errorMessage}";
+      if (stored.errorName == imported.errorName) {
+        final wording = stored.errorMessage.endsWith(added)
+            ? stored.errorMessage.substring(0, stored.errorMessage.length - added.length)
+            : stored.errorMessage;
+        return imported.copyWith(errorMessage: wording);
+      }
       final kept = stored.errorMessage.contains(imported.errorMessage);
-      if (kept) return imported.copyWith(errorMessage: stored.errorMessage);
-      if (!sameIdentity) return imported.copyWith(errorMessage: "${stored.errorMessage}\n\n${imported.errorMessage}");
+      if (kept) return imported.copyWith(errorName: stored.errorName, errorMessage: stored.errorMessage);
+      if (!sameIdentity) {
+        return imported.copyWith(errorName: stored.errorName, errorMessage: "${stored.errorMessage}$added");
+      }
     }
     return null;
   }
