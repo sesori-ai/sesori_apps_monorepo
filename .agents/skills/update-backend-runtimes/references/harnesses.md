@@ -403,7 +403,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Producer work:** work in a fresh worktree of the local
   `~/sesori-ai/sesori-deepseek-acp` clone, branched from `origin/main`. Inspect its
   `release/config.json`, package/lockfile, extension protocol, packaging workflow and
-  conformance tests. Use the previous migration (PR #23, 0.2.1-rc.3) as the template:
+  conformance tests. Use the previous migration (PR #24, adapter v0.2.2 over dsh 0.2.2-rc.2) as the template:
   dsh pins, lockfile, `deepSeekHarnessVersion`, package version, runtime/session
   source, smoke script, README and fixtures. Audit the upstream
   `dsh-v<old>...dsh-v<new>` delta for APIs the adapter uses. Run `npm run check`

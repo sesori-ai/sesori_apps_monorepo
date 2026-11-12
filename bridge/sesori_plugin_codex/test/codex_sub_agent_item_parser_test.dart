@@ -41,6 +41,33 @@ void main() {
       expect(activity.kind, CodexSubAgentActivityKind.started);
       expect(activity.agentThreadId, "child-1");
       expect(activity.agentPath, "/root/reply_done");
+      expect(activity.model, isNull);
+      expect(activity.reasoningEffort, isNull);
+    });
+
+    test("reads the resolved model and effort codex-cli 0.167 adds to a started activity", () {
+      final event = parser.parse(
+        notification: const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "item": {
+              "type": "subAgentActivity",
+              "id": "call_spawn",
+              "kind": "started",
+              "agentThreadId": "child-1",
+              "agentPath": "/root/reply_done",
+              "model": "gpt-5.6-codex-mini",
+              "reasoningEffort": "low",
+            },
+            "threadId": "parent-1",
+            "turnId": "turn-1",
+          },
+        ),
+      );
+
+      final activity = activityOf(event);
+      expect(activity.model, "gpt-5.6-codex-mini");
+      expect(activity.reasoningEffort, "low");
     });
 
     test("falls back to an unknown kind and drops an activity without a child id", () {
