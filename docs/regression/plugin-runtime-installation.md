@@ -58,6 +58,9 @@ from the app or management API, or at bridge start when Sesori manages an older 
   checksum verification, archive traversal/symlink checks, extraction and executable hardening, then invokes the
   harness's required backend-neutral validator. Existing harnesses retain their exact bundled `--version` check through
   an explicit adapter; a rejected candidate cannot replace the prior package or sentinel.
+- The version probe (PATH, managed, and install candidates alike) runs with the arguments the harness's manifest
+  declares. GitHub Copilot probes with `--no-auto-update --version`, matching its `--no-auto-update --acp` launch, so a
+  newer package cached by the launcher cannot answer for the pinned or PATH binary.
 - Validation uses disposable cwd and state directories beneath an owner-only managed-staging parent. Archive extraction
   receives a child of that parent because the extractor recreates its supplied directory. Cached candidates use the
   same private context. Validation and context cleanup are awaited; the cwd/state are removed before placement, and

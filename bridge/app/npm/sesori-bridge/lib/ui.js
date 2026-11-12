@@ -7,7 +7,8 @@
 //
 // Color and Unicode are opt-out: we degrade to plain ASCII whenever the
 // environment can't be trusted to render them (NO_COLOR, redirected output,
-// TERM=dumb, non-UTF-8 locale). FORCE_COLOR forces color on.
+// TERM=dumb, non-UTF-8 locale, FORCE_COLOR=0/false). Any other FORCE_COLOR
+// forces color on.
 
 var TOTAL_STEPS = 4;
 var PANEL_WIDTH = 56;
@@ -95,8 +96,12 @@ function emptyPalette() {
 }
 
 // Color is emitted unless NO_COLOR is set, output is not a TTY, or TERM=dumb.
+// FORCE_COLOR=0 or FORCE_COLOR=false turns it off, as in Node; any other
 // FORCE_COLOR forces it on.
 function detectColor(stream, env) {
+  if (env.FORCE_COLOR === "0" || env.FORCE_COLOR === "false") {
+    return false;
+  }
   if (env.FORCE_COLOR) {
     return true;
   }

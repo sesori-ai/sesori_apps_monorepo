@@ -826,6 +826,20 @@ final class ClaudePlugin({
                 ),
         );
       }
+      // Cloud provider credentials (Bedrock, Vertex, Foundry) live outside
+      // Claude Code, so a Claude login would not fix them.
+      if (message case ClaudeAssistantMessage(error: ClaudeAssistantError.cloudCredentialError)) {
+        _eventBuffer.addError(
+          const PluginAuthenticationRequiredException(
+            "claude session",
+            actionHint:
+                "The cloud provider configured for Claude Code rejected its credentials. "
+                "Refresh the provider credentials on this machine, then refresh setup.",
+            recovery: PluginAuthenticationRecovery.externalConfiguration,
+            message: "Claude Code cloud credentials failed",
+          ),
+        );
+      }
     }
   }
 

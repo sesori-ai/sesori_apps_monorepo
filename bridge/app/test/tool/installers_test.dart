@@ -645,6 +645,30 @@ cat "\$HOME/.zprofile"
       expect(out, contains('Installing the Sesori Bridge'));
     });
 
+    test('FORCE_COLOR=0 and FORCE_COLOR=false turn color off', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-forcecolor-off-');
+      addTearDown(() => tempDir.delete(recursive: true));
+
+      for (final value in ['0', 'false']) {
+        final result = await _runBashSnippet(
+          script: 'source ${jsonEncode(libraryPath)}; init_style; step 1 "Downloading release"; ok "done"',
+          environment: {
+            'PATH': Platform.environment['PATH'] ?? '',
+            'HOME': tempDir.path,
+            'FORCE_COLOR': value,
+            'TERM': 'xterm-256color',
+            'LANG': 'en_US.UTF-8',
+          },
+        );
+
+        expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+        final out = result.stdout as String;
+        expect(out, isNot(contains('\u001b[')), reason: 'FORCE_COLOR=$value');
+        expect(out, contains('[1/4] Downloading release'));
+      }
+    });
+
     test('falls back to ASCII glyphs in a non-UTF-8 locale', () async {
       final libraryPath = await _createInstallShLibrary();
       final tempDir = await Directory.systemTemp.createTemp('install-sh-ascii-');
@@ -869,6 +893,7 @@ Write-Output \$ReleasesApiUrl
     test('degrades gracefully: color/unicode detection and ASCII fallback', () {
       // Honors NO_COLOR / FORCE_COLOR / TERM=dumb / redirected output.
       expect(script, contains('function Test-ShouldUseColor'));
+      expect(script, contains(r"if ($env:FORCE_COLOR -ceq '0' -or $env:FORCE_COLOR -ceq 'false') { return $false }"));
       expect(script, contains(r'if ($env:FORCE_COLOR)'));
       expect(script, contains(r'if ($env:NO_COLOR)'));
       expect(script, contains(r"if ($env:TERM -eq 'dumb')"));
