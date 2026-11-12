@@ -8,11 +8,11 @@ final class const CodexSubAgentSpawnFact({
   required final String message,
 }) extends CodexSubAgentRolloutFact;
 
-/// Persisted child identity for a completed `SubAgentActivity` start item.
+/// Persisted child identity for a completed `SubAgentActivity` start item, or
+/// a completed `multi_agent_v1` `spawn_agent` call.
 final class const CodexSubAgentStartedActivityFact({
   required final String callId,
   required final String childThreadId,
-  required final String agentPath,
 }) extends CodexSubAgentRolloutFact;
 
 /// Initial child input associated with its owning child turn.

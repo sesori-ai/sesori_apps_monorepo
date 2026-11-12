@@ -65,7 +65,7 @@ void main() {
         );
         expect(
           messages.last.info,
-          _notice(errorName: "hermes_failed_turn", text: notice),
+          _notice(errorName: "hermes_failed_turn", text: notice.replaceAll("`", "")),
           reason: family,
         );
       }

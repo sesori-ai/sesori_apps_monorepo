@@ -19,8 +19,16 @@ reaches the backend so the turn continues.
   [MCP management](mcp-management.md#regression-levels).
 - A pending permission carries its tool, description, owning session, display
   root session, and whether an "always" answer is offered. A pending question
-  carries its header, prompt, options, and whether multiple or custom answers
-  are allowed.
+  carries its header, prompt, options, which options are the harness's default
+  answer, and whether multiple or custom answers are allowed. An older bridge
+  omits the default flag and its options arrive unselected.
+- The question sheet shows default options selected on arrival, so the user can
+  submit at once. A custom answer on an option list is a last "Other" option;
+  picking it grows a text field below it and focuses it, and picking another
+  single-choice option collapses it. A free-text-only question shows its field
+  directly. Submit never ignores a tap: with "Other" picked and its field empty
+  the field shows the reason; with a question unanswered the sheet moves to it
+  and says why.
 - Codex synchronous `request_user_input` requests preserve every question,
   header, ordered option and description. Replies preserve the original
   question IDs and answer ordering, including custom answers and declined rows.
@@ -50,7 +58,13 @@ reaches the backend so the turn continues.
   shows a generic action heading, the complete backend tool label and selectable,
   copyable Markdown description, then full-width stacked **Allow**, optional
   **Always approve**, and **Don’t allow** actions. **Allow** means once only.
-  Long details normally scroll above visible actions. When the viewport is
+  Code blocks in the description wrap rather than side-scroll, so no part of
+  an approved command sits off-screen. A Codex command approval shows the
+  exact command verbatim in such a block, then its working directory when
+  sent, then Codex's reason; the needs-you card and push lead with the command's
+  first line. The push body is plain text, without code-block indentation,
+  fences or code-span backticks. Failure signal: a Codex approval showing only
+  `exec` and a reason. Long details normally scroll above visible actions. When the viewport is
   cramped relative to the text scale, the whole sheet scrolls so every decision
   remains reachable; enlarged text can cause this breakpoint to be crossed.
   Keyboard and safe-area insets keep the floating surface clear of system UI.
@@ -87,12 +101,19 @@ reaches the backend so the turn continues.
   declines the form when the property is required. OMP 18.18.3+ sends these
   from its built-in `ask` HTML forms (`<input type="number|range">`); declining
   them aborts the OMP turn, so a regression shows as a vanished question.
-- Every ACP schema property remains a separate question in property order. A
-  separate string property is its own custom-text question, even when the text
-  equals a selected option label. OMP's `qN` and `qN__other` remain distinct;
-  shared mapping never interprets that naming convention or combines their
-  answer lists. The existing shared question/reply contract carries these slots
-  without new wire fields.
+- Every ACP schema property remains a separate question in property order,
+  unless the plugin pairs a choice property with a plain string "other"
+  property: the pair is one question with a custom answer. A listed choice
+  fills the choice property; custom text fills the paired property and
+  satisfies a required choice. Only the OMP plugin pairs, by its `qN`/`qN__other`
+  (ask tool) and `name`/`name_other` (HTML form) naming; shared mapping knows no
+  naming convention. Other ACP plugins keep a separate string property as its
+  own custom-text question.
+- An ACP schema `default` marks the matching option as the default: a
+  string-choice value, the values of a choice array, `Yes`/`No` for a boolean,
+  and "Use suggested text" for a string or number. OpenCode v2 form fields
+  mark their native `default` the same way (choice values, multiselect values,
+  boolean).
 - In a multi-question ACP form, declining an optional question submits an empty
   answer slot and omits only that property. Each property's required flag is
   enforced independently: omitting a required property declines the form.
@@ -181,11 +202,15 @@ reaches the backend so the turn continues.
   and clears without waiting for the turn to end. Each resolution is announced
   once; OpenCode v1 announces a reply the bridge cleared at once, even when
   OpenCode's own event never arrives, and drops that event when it does.
-- A request the harness withdrew itself (Codex `serverRequest/resolved` after
-  another client answered it or a turn interrupt abandoned it) retires through
-  the same clearing event as a cancellation, sends the harness nothing, and a
-  late Sesori answer to it is refused. Only the request with that exact
-  JSON-RPC id (int or string) retires. Other harnesses are listed in
+- A request the harness withdrew itself retires through the same clearing event
+  as a cancellation, sends the harness nothing, and a late Sesori answer to it
+  is refused. Codex `serverRequest/resolved`, ACP `$/cancel_request` (sent by
+  OMP when steering supersedes a pending approval) and Claude
+  `control_cancel_request` each retire only the request with that exact id; a
+  JSON-RPC id may be an int or a string. OpenCode v2 sends no reply event when
+  an interrupt drops a pending permission, so its `session.execution.interrupted`
+  (reason user, superseded or inactivity) retires every pending permission of
+  that session, including after Sesori's own Stop. Every harness is listed in
   [Requests the harness withdrew](../HARNESS_CAPABILITIES.md#requests-the-harness-withdrew).
 - ACP and Codex teardown attempts every pending backend resolution independently,
   logs responder or request-subscription failures, and still clears each stale
@@ -221,8 +246,8 @@ reaches the backend so the turn continues.
 - While a session waits on the user, a pale amber needs-you card docks above
   its composer, as wide as the composer. There is one card per request type:
   questions, then permissions. Each names the pending count, shows the first
-  request's opening line in ordinary text, a command included, and its Answer or
-  Review button opens the existing modal. The card itself looks the same on phone
+  request's opening line in ordinary text, a command included, and a tap anywhere
+  on it, like its Answer or Review button, opens the existing modal. The card itself looks the same on phone
   and desktop: light uses a cream warning fill and dark a faint amber tint, each
   with a soft amber border, an amber icon and a darker amber label that clears
   4.5:1, over primary text. The buttons differ. On the phone every card's button is bright: the white secondary button
@@ -252,10 +277,10 @@ reaches the backend so the turn continues.
 ### OMP ACP multi-select focus
 
 For L2, exercise a live OMP `askDialog` through at least one supported client:
-select two options, answer the separate custom-text question with text identical
-to an option, and confirm the original keys retain the array and string. Also
-exercise optional omission, required-field omission/rejection, cancellation,
-and unchanged single-choice behavior. Mapper, fake-ACP plugin, bridge shared
+each question is one choice with an "Other" option. Select two options plus
+"Other" text and confirm `qN` carries the array and `qN__other` the text; answer
+a single choice with a listed option and with "Other" text. Also exercise
+optional omission, required-field omission/rejection, and cancellation. Mapper, fake-ACP plugin, bridge shared
 mapping/serialization, and widget tests cover the constituent paths; they do
 not replace this live roundtrip.
 
@@ -284,7 +309,7 @@ the prompt write is held, proving cancellation does not remove the later request
 ## Failure Signals
 
 - A needs-you card floats at the top of the chat, hides the composer or the
-  newest message, or its button fails to open the modal.
+  newest message, or a tap on its body or button fails to open the modal.
 - A blocked chat shows a needs-you card, opens a response dialog, or accepts a
   late answer/rejection callback. A dialog remains open through the transition,
   closes by answering, clears pending data before either an authoritative
@@ -354,10 +379,10 @@ the prompt write is held, proving cancellation does not remove the later request
   validation remains authoritative; a form needing those native interactions
   may need to be completed in OpenCode's own interface. A form with no supported
   visible fields is logged and not presented as an empty answerable card.
-- OMP multi-select has automated mapper/plugin/bridge/widget coverage, but no
-  live `18.1.19` `askDialog`/ACP/client roundtrip has been run. That check remains
-  required before claiming complete L2 coverage; it does not hold delivery of
-  the implemented mapping.
+- A live OMP 18.19.0 single-choice `askDialog` roundtrip (default, listed
+  option, "Other" text, decline) has run on the iOS simulator. OMP multi-select
+  has automated mapper/plugin/bridge/widget coverage but no live roundtrip yet;
+  that check remains required before claiming complete L2 coverage.
 - Plugin scope follows currently registered plugins and their declared
   capabilities, not a fixed list. A plugin that does not expose a request kind
   is not a failure.

@@ -32,10 +32,12 @@ Map<String, dynamic> _$QuestionInfoToJson(_QuestionInfo instance) =>
 _QuestionOption _$QuestionOptionFromJson(Map json) => _QuestionOption(
   label: json['label'] as String,
   description: json['description'] as String,
+  isDefault: json['isDefault'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$QuestionOptionToJson(_QuestionOption instance) =>
     <String, dynamic>{
       'label': instance.label,
       'description': instance.description,
+      'isDefault': instance.isDefault,
     };

@@ -106,28 +106,68 @@ void main() {
     });
   });
 
-  test("ignores collabAgentToolCall items, which have no consumer", () {
-    expect(
-      parser.parse(
-        notification: const CodexServerNotification(
-          method: "item/started",
-          params: {
-            "item": {
-              "type": "collabAgentToolCall",
-              "id": "call_wait",
-              "tool": "wait",
-              "status": "inProgress",
-              "senderThreadId": "parent-1",
-              "receiverThreadIds": <String>[],
-              "agentsStates": <String, Object?>{},
-            },
-            "threadId": "parent-1",
-            "turnId": "turn-1",
-          },
-        ),
-      ),
-      isNull,
+  group("collabAgentToolCall (multi_agent_v1)", () {
+    CodexServerNotification collab({
+      required String method,
+      required String tool,
+      required List<String> receiverThreadIds,
+    }) => CodexServerNotification(
+      method: method,
+      params: {
+        "item": {
+          "type": "collabAgentToolCall",
+          "id": "call_spawn",
+          "tool": tool,
+          "status": "completed",
+          "senderThreadId": "parent-1",
+          "receiverThreadIds": receiverThreadIds,
+          "prompt": "Reply with exactly: done",
+          "model": "test-oai",
+          "reasoningEffort": "low",
+          "agentsStates": <String, Object?>{},
+        },
+        "threadId": "parent-1",
+        "turnId": "turn-1",
+      },
     );
+
+    test("treats a completed spawnAgent call as the child's start", () {
+      final activity = activityOf(
+        parser.parse(
+          notification: collab(method: "item/completed", tool: "spawnAgent", receiverThreadIds: ["child-1"]),
+        ),
+      );
+      expect(activity.lifecycle, CodexCorrelatableItemLifecycle.started);
+      expect(activity.kind, CodexSubAgentActivityKind.started);
+      expect(activity.threadId, "parent-1");
+      expect(activity.turnId, "turn-1");
+      expect(activity.itemId, "call_spawn");
+      expect(activity.agentThreadId, "child-1");
+      expect(activity.agentPath, isNull);
+      expect(activity.model, "test-oai");
+      expect(activity.reasoningEffort, "low");
+    });
+
+    test("ignores a started spawn, wait calls, and spawns without a child", () {
+      expect(
+        parser.parse(
+          notification: collab(method: "item/started", tool: "spawnAgent", receiverThreadIds: []),
+        ),
+        isNull,
+      );
+      expect(
+        parser.parse(
+          notification: collab(method: "item/completed", tool: "wait", receiverThreadIds: ["child-1"]),
+        ),
+        isNull,
+      );
+      expect(
+        parser.parse(
+          notification: collab(method: "item/completed", tool: "spawnAgent", receiverThreadIds: []),
+        ),
+        isNull,
+      );
+    });
   });
 
   test("ignores other methods, other item types, and missing identities", () {

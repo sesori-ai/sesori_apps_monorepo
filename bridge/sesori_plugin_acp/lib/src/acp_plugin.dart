@@ -453,6 +453,13 @@ abstract class AcpPlugin({
   /// re-injected by an approval registry's `handleExtensionRequest` override
   /// (see `CursorApprovalRegistry`), so both wire shapes share one mapping path.
   void handleAgentNotification(AcpNotification notification) {
+    if (notification.method == AcpMethods.cancelRequest) {
+      // OMP sends this when steering supersedes a pending approval.
+      if (notification.params["requestId"] case final Object requestId) {
+        _approvalRegistry?.withdrawServerRequest(requestId: requestId);
+      }
+      return;
+    }
     final sid = notification.params["sessionId"];
     if (sid is String && childSessionTracker.isDeleted(sessionId: sid)) return;
     if (sid is String && _suppressedSessions.contains(sid) && isResumeReplayNotification(notification)) {

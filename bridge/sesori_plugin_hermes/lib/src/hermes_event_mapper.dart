@@ -20,7 +20,7 @@ class HermesEventMapper({
   required super.configurationTracker,
   required super.childSessions,
 }) extends AcpEventMapper {
-  /// Drops the message id from a failure-notice chunk.
+  /// Drops the message id from a live failure-notice chunk.
   ///
   /// The shared mapper reads only id-less chunks as halt notices, because an
   /// identified message may still grow. Hermes sends this notice as its whole,
@@ -32,21 +32,24 @@ class HermesEventMapper({
   /// (`gateway/run_turn_persistence.py::_hmwa_add_failed_turn_notice`). The
   /// history store drops that same-kind row from the notice on reload, so it
   /// is dropped live too and the notice reads the same before and after.
+  ///
+  /// Live and on replay, the notice's inline code spans are unwrapped, because
+  /// an error notice shows as plain text (see [withoutInlineCodeMarkers]).
   @override
   Map<String, dynamic> normalizeSessionUpdate({required Map<String, dynamic> params}) {
     final update = params["update"];
-    if (update is! Map || update["sessionUpdate"] != "agent_message_chunk" || !update.containsKey("messageId")) {
-      return params;
-    }
+    if (update is! Map || update["sessionUpdate"] != "agent_message_chunk") return params;
     final content = update["content"];
     if (content is! Map || content["type"] != "text") return params;
     final text = content["text"];
     if (text is! String || classifyHaltNotice(text: text) == null) return params;
+    final live = update.containsKey("messageId");
+    final notice = live ? withoutTrailingFailedTurnRow(text: text) : text;
     return {
       ...params,
       "update": Map<String, dynamic>.of(update.cast<String, dynamic>())
         ..remove("messageId")
-        ..["content"] = {...content, "text": withoutTrailingFailedTurnRow(text: text)},
+        ..["content"] = {...content, "text": withoutInlineCodeMarkers(notice: notice)},
     };
   }
 

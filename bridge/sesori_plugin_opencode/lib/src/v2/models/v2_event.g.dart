@@ -264,6 +264,8 @@ sealed class V2EventData {
   }) = V2ProjectUpdated;
   const factory V2EventData.agentUpdated() = V2AgentUpdated;
   const factory V2EventData.commandUpdated() = V2CommandUpdated;
+  const factory V2EventData.providerUpdated() = V2ProviderUpdated;
+  const factory V2EventData.modelUpdated() = V2ModelUpdated;
 
   /// Every wire-format type discriminator this hierarchy decodes.
   static const Set<String> knownTypes = {
@@ -310,6 +312,8 @@ sealed class V2EventData {
     "project.updated",
     "agent.updated",
     "command.updated",
+    "provider.updated",
+    "model.updated",
   };
 
   /// Wire-format type discriminator for this event.
@@ -370,6 +374,8 @@ sealed class V2EventData {
       "project.updated" => V2ProjectUpdated.fromJson(json),
       "agent.updated" => V2AgentUpdated.fromJson(json),
       "command.updated" => V2CommandUpdated.fromJson(json),
+      "provider.updated" => V2ProviderUpdated.fromJson(json),
+      "model.updated" => V2ModelUpdated.fromJson(json),
       final String unknown =>
         throw FormatException("Unknown SSE event type: $unknown"),
     };
@@ -1700,6 +1706,34 @@ class V2CommandUpdated extends V2EventData {
   factory V2CommandUpdated.fromJson(Map<String, dynamic> json) {
     assert(json["type"] == "command.updated");
     return const V2CommandUpdated();
+  }
+}
+class V2ProviderUpdated extends V2EventData {
+  const V2ProviderUpdated();
+
+  @override
+  String get type => "provider.updated";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{"type": type};
+
+  factory V2ProviderUpdated.fromJson(Map<String, dynamic> json) {
+    assert(json["type"] == "provider.updated");
+    return const V2ProviderUpdated();
+  }
+}
+class V2ModelUpdated extends V2EventData {
+  const V2ModelUpdated();
+
+  @override
+  String get type => "model.updated";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{"type": type};
+
+  factory V2ModelUpdated.fromJson(Map<String, dynamic> json) {
+    assert(json["type"] == "model.updated");
+    return const V2ModelUpdated();
   }
 }
 class V2EventEnvelope {

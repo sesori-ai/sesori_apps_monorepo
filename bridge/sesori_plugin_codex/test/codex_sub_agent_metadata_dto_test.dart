@@ -88,7 +88,6 @@ void main() {
       expect(item.id, "call-spawn");
       expect(item.kind, CodexSubAgentActivityKind.started);
       expect(item.agentThreadId, "child-1");
-      expect(item.agentPath, "/root/worker");
     });
 
     test("decodes communication marker and plaintext plus encrypted agent content", () {

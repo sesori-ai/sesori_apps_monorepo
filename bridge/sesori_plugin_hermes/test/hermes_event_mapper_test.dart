@@ -44,7 +44,7 @@ void main() {
         message,
         isA<PluginMessageError>()
             .having((error) => error.errorName, "errorName", "hermes_failed_turn")
-            .having((error) => error.errorMessage, "errorMessage", providerTimeoutNotice),
+            .having((error) => error.errorMessage, "errorMessage", _providerTimeoutPlain),
       );
       expect(events.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
@@ -53,6 +53,25 @@ void main() {
     test("every family of Hermes failure copy is a notice", () {
       for (final MapEntry(key: family, value: notice) in failureNotices.entries) {
         expect(mapper.classifyHaltNotice(text: notice)?.errorName, "hermes_failed_turn", reason: family);
+      }
+    });
+
+    // An error notice shows as plain text, so the Markdown code spans Hermes
+    // writes in its copy would read as literal backticks.
+    test("every family of Hermes failure copy shows its code spans without backticks", () {
+      for (final MapEntry(key: family, value: notice) in failureNotices.entries) {
+        mapper.beginTurn(sessionId: "s1", messageId: null);
+        final events = mapper.map(finalResponse(text: notice));
+
+        expect(
+          events.whereType<BridgeSseMessageUpdated>().single.info,
+          isA<PluginMessageError>().having(
+            (error) => error.errorMessage,
+            "errorMessage",
+            allOf(isNot(contains("`")), notice.replaceAll("`", "")),
+          ),
+          reason: family,
+        );
       }
     });
 
@@ -99,7 +118,7 @@ void main() {
 
       expect(
         events.whereType<BridgeSseMessageUpdated>().single.info,
-        isA<PluginMessageError>().having((error) => error.errorMessage, "errorMessage", providerTimeoutNotice),
+        isA<PluginMessageError>().having((error) => error.errorMessage, "errorMessage", _providerTimeoutPlain),
       );
     });
 
@@ -120,7 +139,7 @@ void main() {
         isA<PluginMessageError>().having(
           (error) => error.errorMessage,
           "errorMessage",
-          "$providerTimeoutNotice\n\n$partialFailedTurnBoundary",
+          "$_providerTimeoutPlain\n\n$partialFailedTurnBoundary",
         ),
       );
     });
@@ -203,3 +222,9 @@ void main() {
     });
   });
 }
+
+/// [providerTimeoutNotice] as shown: its `hermes fallback add` code span unwrapped.
+const String _providerTimeoutPlain =
+    "custom didn't respond in time on any of 3 attempts — it looks temporarily unavailable. "
+    "Wait a minute and send /retry, or switch models with /model. To avoid this in future, "
+    "add a backup provider with hermes fallback add.\n\nProvider said: Connection error.";

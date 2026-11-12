@@ -3,6 +3,7 @@ import "dart:math";
 import "package:material_ui/material_ui.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../utils/markdown_plain_text.dart";
 import "transcript_motion.dart";
 
 /// A live row's trailing slot: the latest words of streaming [text] fade in
@@ -34,17 +35,60 @@ class const TranscriptLatestWords({super.key, required final String text, requir
   /// document on every flush.
   static const int _kLatestWordsChars = 160;
 
-  /// The latest words of streaming text, on one line.
+  /// How much of the end of the text is parsed at most, so a long paragraph
+  /// costs the same on every flush however much has streamed before it.
+  static const int _kParsedChars = 2000;
+
+  /// The latest words of streaming Markdown [text], on one line, as they
+  /// render: emphasis markers and backticks are resolved, not shown.
   @visibleForTesting
   static String latestWords({required String text}) {
-    var start = max(0, text.length - _kLatestWordsChars);
+    final plain = markdownPlainText(
+      markdown: _withoutOpenEmphasis(text.substring(_parseStart(text: text))),
+      nameImage: null,
+    );
+    var start = max(0, plain.length - _kLatestWordsChars);
     // Never start on the low half of a UTF-16 surrogate pair (emoji etc.):
     // an orphaned low surrogate renders as a replacement character.
-    if (start > 0 && _isLowSurrogate(text.codeUnitAt(start))) start++;
-    return text.substring(start).replaceAll(RegExp(r"\s+"), " ").trim();
+    if (start > 0 && _isLowSurrogate(plain.codeUnitAt(start))) start++;
+    return plain.substring(start).replaceAll(RegExp(r"\s+"), " ").trim();
   }
 
   static bool _isLowSurrogate(int codeUnit) => (codeUnit & 0xFC00) == 0xDC00;
+
+  /// Where parsing starts: at the paragraph holding the shown window, so the
+  /// window never opens between the two markers of a pair and leaves the
+  /// closing one behind as text, or else at its line. Never further back than
+  /// [_kParsedChars].
+  static int _parseStart({required String text}) {
+    final windowStart = max(0, text.length - _kLatestWordsChars);
+    if (windowStart == 0) return 0;
+    var budgetStart = max(0, text.length - _kParsedChars);
+    if (budgetStart > 0 && _isLowSurrogate(text.codeUnitAt(budgetStart))) budgetStart++;
+    // A missing separator puts the paragraph or line at the text's start.
+    final paragraphStart = text.lastIndexOf("\n\n", windowStart) + 2;
+    if (paragraphStart >= max(budgetStart, 2)) return paragraphStart;
+    if (budgetStart == 0) return 0;
+    final lineStart = text.lastIndexOf("\n", windowStart) + 1;
+    return max(lineStart, budgetStart);
+  }
+
+  /// [markdown] without the opening marker of an emphasis still streaming on
+  /// its last line, such as a title arriving as `**Planning th`: until the
+  /// closing marker comes, the parser can only show the marker as text. Only a
+  /// marker that starts the line is dropped, so a code span is never touched.
+  static String _withoutOpenEmphasis(String markdown) {
+    final lastLineStart = markdown.lastIndexOf("\n") + 1;
+    final line = markdown.substring(lastLineStart);
+    final match = _openEmphasis.firstMatch(line);
+    final marker = match?[2];
+    if (match == null || marker == null || line.contains(marker, match.end)) return markdown;
+    return "${markdown.substring(0, lastLineStart)}${match[1] ?? ""}${line.substring(match.end)}";
+  }
+
+  /// An emphasis marker at the start of a line, directly before a word; a list
+  /// bullet has a space after it.
+  static final RegExp _openEmphasis = RegExp(r"^(\s*)(\*\*|__|\*|_)(?=[^\s*_])");
 
   @override
   Widget build(BuildContext context) {

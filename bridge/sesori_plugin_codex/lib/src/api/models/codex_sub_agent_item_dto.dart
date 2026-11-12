@@ -24,9 +24,10 @@ sealed class CodexSubAgentItemParamsDto with _$CodexSubAgentItemParamsDto {
   factory fromJson(Map<String, dynamic> json) => _$CodexSubAgentItemParamsDtoFromJson(json);
 }
 
-/// The multi-agent item the pinned codex-cli app-server emits on the parent
-/// thread, discriminated by `type`. Other multi-agent items, such as
-/// `collabAgentToolCall`, have no consumer and fall to [unknown].
+/// The multi-agent items the pinned codex-cli app-server emits on the parent
+/// thread, discriminated by `type`: `subAgentActivity` with `multi_agent_v2`
+/// on, `collabAgentToolCall` for the default `multi_agent_v1` tools (and for
+/// v2's `wait_agent`, which has no consumer).
 @Freezed(
   unionKey: "type",
   fallbackUnion: "unknown",
@@ -50,6 +51,17 @@ sealed class CodexSubAgentItemDto with _$CodexSubAgentItemDto {
     @JsonKey(fromJson: _textFromJson) required String? model,
     @JsonKey(fromJson: _textFromJson) required String? reasoningEffort,
   }) = CodexSubAgentActivityItemDto;
+
+  /// A `multi_agent_v1` call. A completed `spawnAgent` names the spawned
+  /// child in [receiverThreadIds]; its started frame names none yet.
+  @FreezedUnionValue("collabAgentToolCall")
+  const factory collabAgentToolCall({
+    required String? id,
+    @JsonKey(fromJson: _textFromJson) required String? tool,
+    @Default(<String>[]) List<String> receiverThreadIds,
+    @JsonKey(fromJson: _textFromJson) required String? model,
+    @JsonKey(fromJson: _textFromJson) required String? reasoningEffort,
+  }) = CodexCollabAgentToolCallItemDto;
 
   const factory unknown() = CodexUnknownSubAgentItemDto;
 

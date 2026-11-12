@@ -34,12 +34,7 @@ final class const ClaudeSessionProcessMessage({
   required final ClaudeStreamMessage message,
   required final bool interrupted,
   required final String? promptId,
-}) extends ClaudeSessionProcessEvent {
-  ClaudeControlRequestMessage? get controlRequest {
-    if (message case final ClaudeControlRequestMessage request) return request;
-    return null;
-  }
-}
+}) extends ClaudeSessionProcessEvent;
 
 final class const ClaudeSessionProcessExited({required super.sessionId, required final bool interrupted})
     extends ClaudeSessionProcessEvent;
@@ -653,6 +648,7 @@ final class ClaudeSessionProcessRepository({
           ClaudeTaskNotificationMessage() ||
           ClaudeApiRetryMessage() ||
           ClaudeUserMessage() ||
+          ClaudeControlCancelRequestMessage() ||
           ClaudeControlResponseMessage() ||
           ClaudeIgnoredMessage() ||
           ClaudeUnknownMessage():
@@ -761,6 +757,7 @@ bool _startsNewTurn(ClaudeStreamMessage message) => switch (message) {
   ClaudeTaskStartedMessage() ||
   ClaudeApiRetryMessage() ||
   ClaudeResultMessage() ||
+  ClaudeControlCancelRequestMessage() ||
   ClaudeControlResponseMessage() ||
   ClaudeIgnoredMessage() ||
   ClaudeUnknownMessage() => false,

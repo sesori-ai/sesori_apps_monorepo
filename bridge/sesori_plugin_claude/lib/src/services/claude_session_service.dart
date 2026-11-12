@@ -761,8 +761,14 @@ final class ClaudeSessionService({
         _trackRunningTasks(sessionId: event.sessionId, message: event.message);
         _trackWakeupSchedule(sessionId: event.sessionId, message: event.message);
         _settleRetry(sessionId: event.sessionId, message: event.message);
-        final request = event.controlRequest;
-        if (request != null) _approvals.handle(sessionId: event.sessionId, message: request);
+        switch (event.message) {
+          case final ClaudeControlRequestMessage request:
+            _approvals.handle(sessionId: event.sessionId, message: request);
+          case ClaudeControlCancelRequestMessage(:final requestId?):
+            _approvals.withdraw(sessionId: event.sessionId, requestId: requestId);
+          default:
+            break;
+        }
       case ClaudeSessionProcessExited():
         final state = _turns[event.sessionId];
         if (state != null) {
@@ -825,6 +831,7 @@ final class ClaudeSessionService({
           ClaudeStreamEventMessage() ||
           ClaudeResultMessage() ||
           ClaudeControlRequestMessage() ||
+          ClaudeControlCancelRequestMessage() ||
           ClaudeControlResponseMessage() ||
           ClaudeIgnoredMessage() ||
           ClaudeUnknownMessage():
@@ -883,6 +890,7 @@ final class ClaudeSessionService({
           ClaudeApiRetryMessage() ||
           ClaudeStreamEventMessage() ||
           ClaudeControlRequestMessage() ||
+          ClaudeControlCancelRequestMessage() ||
           ClaudeControlResponseMessage() ||
           ClaudeIgnoredMessage() ||
           ClaudeUnknownMessage():
@@ -947,6 +955,7 @@ final class ClaudeSessionService({
           ClaudeTaskStartedMessage() ||
           ClaudeApiRetryMessage() ||
           ClaudeControlRequestMessage() ||
+          ClaudeControlCancelRequestMessage() ||
           ClaudeControlResponseMessage() ||
           ClaudeIgnoredMessage() ||
           ClaudeUnknownMessage():

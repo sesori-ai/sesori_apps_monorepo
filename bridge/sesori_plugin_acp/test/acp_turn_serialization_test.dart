@@ -1133,6 +1133,43 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
+    test(r"an agent $/cancel_request retires only that permission and sends no answer", () async {
+      await connect();
+      const sessionId = "steered-session";
+      for (final id in [601, 602]) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "id": id,
+          "method": "session/request_permission",
+          "params": {
+            "sessionId": sessionId,
+            "toolCall": {"toolCallId": "tc-$id", "title": "Run", "kind": "execute"},
+            "options": [
+              {"optionId": "allow", "name": "Allow", "kind": "allow_once"},
+            ],
+          },
+        });
+      }
+      await pump();
+      final pending = await plugin.getPendingPermissions(sessionId: sessionId);
+      expect(pending, hasLength(2));
+      emitted.clear();
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": r"$/cancel_request",
+        "params": {"requestId": 601},
+      });
+      await pump();
+
+      final remaining = await plugin.getPendingPermissions(sessionId: sessionId);
+      expect(remaining.map((permission) => permission.id), [pending.last.id]);
+      final clearingEvent = emitted.whereType<BridgeSsePermissionReplied>().single;
+      expect(clearingEvent.requestID, pending.first.id);
+      expect(clearingEvent.sessionID, sessionId);
+      expect(fake.written.where((frame) => frame["id"] == 601), isEmpty);
+    });
+
     test("an abort landing during turn selection still drops the turn", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();

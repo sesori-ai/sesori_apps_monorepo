@@ -450,7 +450,11 @@ class const CodexPluginDescriptor({
         runtimeVersion: runtimeVersion,
       );
     }
-    if (loginResult.exitCode == 0 && statusOutput.contains("logged in")) {
+    // Every signed-in mode prints "Logged in using …", except API-key auth,
+    // which codex 0.167 reports as "API key configured - sk-…" (older
+    // releases printed "Logged in using an API key - …").
+    final signedIn = statusOutput.contains("logged in") || statusOutput.contains("api key configured");
+    if (loginResult.exitCode == 0 && signedIn) {
       return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
     }
     return PluginSetupUnknown.versioned(

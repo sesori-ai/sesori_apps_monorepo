@@ -538,6 +538,34 @@ void main() {
       expect(processes.spawnedArguments, isNot(contains(const ["login"])));
     });
 
+    test("reports ready when codex has an API key configured", () async {
+      final processes = _ProbeProcessService(
+        processSequence: [
+          _ProbeProcess(
+            pid: 3,
+            stdoutBytes: utf8.encode("codex 0.167.2\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 4,
+            stdoutBytes: utf8.encode(
+              "API key configured - sk-a1b2***c3d4\nAuthentication is checked when you send a request.\n",
+            ),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+
+      final result = await descriptor.inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.167.2"));
+    });
+
     test("reports unknown without exposing ambiguous authentication output", () async {
       final processes = _ProbeProcessService(
         processSequence: [

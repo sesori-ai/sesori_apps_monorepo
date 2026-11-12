@@ -40,5 +40,20 @@ const _$CodexSubAgentActivityKindEnumMap = {
   CodexSubAgentActivityKind.unknown: 'unknown',
 };
 
+CodexCollabAgentToolCallItemDto _$CodexCollabAgentToolCallItemDtoFromJson(
+  Map json,
+) => CodexCollabAgentToolCallItemDto(
+  id: json['id'] as String?,
+  tool: _textFromJson(json['tool']),
+  receiverThreadIds:
+      (json['receiverThreadIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const <String>[],
+  model: _textFromJson(json['model']),
+  reasoningEffort: _textFromJson(json['reasoningEffort']),
+  $type: json['type'] as String?,
+);
+
 CodexUnknownSubAgentItemDto _$CodexUnknownSubAgentItemDtoFromJson(Map json) =>
     CodexUnknownSubAgentItemDto($type: json['type'] as String?);

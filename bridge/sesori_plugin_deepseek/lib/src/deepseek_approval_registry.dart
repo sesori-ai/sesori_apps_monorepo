@@ -103,7 +103,7 @@ class DeepSeekApprovalRegistry({
     header: question.header ?? "Question",
     options: [
       for (final label in question.options ?? const <String>[])
-        PluginQuestionOption(label: label, description: question.detail ?? ""),
+        PluginQuestionOption(label: label, description: question.detail ?? "", isDefault: false),
     ],
     multiple: question.multiSelect ?? false,
     custom: question is DeepSeekOrdinaryQuestionDto,

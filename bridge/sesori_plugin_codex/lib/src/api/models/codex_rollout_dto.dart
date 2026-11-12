@@ -161,8 +161,17 @@ sealed class CodexRolloutCompletedItemDto with _$CodexRolloutCompletedItemDto {
     required String id,
     @JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown) required CodexSubAgentActivityKind kind,
     @JsonKey(name: "agent_thread_id") required String agentThreadId,
-    @JsonKey(name: "agent_path") required String agentPath,
   }) = CodexRolloutCompletedSubAgentActivityDto;
+
+  /// A `multi_agent_v1` collaboration call (Codex's default while
+  /// `multi_agent_v2` is off). [id] is the parent's tool call id; a completed
+  /// `spawn_agent` names the spawned child in [receiverThreadIds].
+  @FreezedUnionValue("CollabAgentToolCall")
+  const factory collabAgentToolCall({
+    required String id,
+    required String tool,
+    @JsonKey(name: "receiver_thread_ids") @Default(<String>[]) List<String> receiverThreadIds,
+  }) = CodexRolloutCompletedCollabAgentToolCallDto;
 
   /// Written after the `compacted` line. [id] is the live
   /// `contextCompaction` item id.

@@ -359,6 +359,36 @@ void main() {
       expect(harness.events.whereType<BridgeSseSessionError>(), hasLength(1));
     });
 
+    test("retires an ask the CLI withdraws without answering it", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit({
+        "type": "control_request",
+        "request_id": "permission-1",
+        "request": {
+          "subtype": "can_use_tool",
+          "tool_name": "Write",
+          "input": {"file_path": "a.dart"},
+        },
+      });
+      await pump();
+      final pending = harness.approvals.pendingPermissionsForSession(sessionId: testSessionId).single;
+
+      process.emit({"type": "control_cancel_request", "request_id": "permission-1"});
+      await pump();
+
+      expect(harness.approvals.pendingPermissionsForSession(sessionId: testSessionId), isEmpty);
+      expect(
+        harness.events.whereType<BridgeSsePermissionReplied>().single.requestID,
+        pending.id,
+      );
+      expect(
+        process.written.where((frame) => frame["type"] == "control_response"),
+        isEmpty,
+      );
+    });
+
     test("reaps an idle process and transparently resumes the next turn", () async {
       unawaited(harness.enqueue("first", model: "haiku"));
       final first = await harness.firstProcess;

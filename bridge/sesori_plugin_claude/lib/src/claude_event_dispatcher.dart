@@ -202,6 +202,7 @@ final class ClaudeEventDispatcher({
           ClaudeCompactBoundaryMessage() ||
           ClaudeInitMessage() ||
           ClaudeControlRequestMessage() ||
+          ClaudeControlCancelRequestMessage() ||
           ClaudeControlResponseMessage() ||
           ClaudeIgnoredMessage() ||
           ClaudeUnknownMessage() => const [],
@@ -219,6 +220,7 @@ final class ClaudeEventDispatcher({
         ClaudeCompactBoundaryMessage() => _mapCompactBoundary(sessionId: sessionId, message: message),
         ClaudeInitMessage() ||
         ClaudeControlRequestMessage() ||
+        ClaudeControlCancelRequestMessage() ||
         ClaudeControlResponseMessage() ||
         ClaudeIgnoredMessage() ||
         ClaudeUnknownMessage() => const [],
