@@ -161,21 +161,36 @@ class CodexSessionService({
     // child hydrated from disk is known but has not yet been announced on
     // this connection, so preserve its metadata and continue.
     final trackedChild = _subAgentTracker.child(sessionId: childThreadId);
-    var child =
-        trackedChild ??
-        CodexThreadRecord(
-          id: childThreadId,
-          name: agentPath,
-          directory: parentDirectory,
-          createdAt: null,
-          updatedAt: null,
-          model: model,
-          reasoningEffort: reasoningEffort,
-          modelProvider: null,
-          parentId: parentThreadId,
-          agentNickname: null,
-          agentPath: agentPath,
-        );
+    var child = switch (trackedChild) {
+      null => CodexThreadRecord(
+        id: childThreadId,
+        name: agentPath,
+        directory: parentDirectory,
+        createdAt: null,
+        updatedAt: null,
+        model: model,
+        reasoningEffort: reasoningEffort,
+        modelProvider: null,
+        parentId: parentThreadId,
+        agentNickname: null,
+        agentPath: agentPath,
+      ),
+      // The activity's resolved model and effort also win when `thread/read`
+      // below fails for a child already known from disk.
+      final tracked => CodexThreadRecord(
+        id: tracked.id,
+        name: tracked.name,
+        directory: tracked.directory,
+        createdAt: tracked.createdAt,
+        updatedAt: tracked.updatedAt,
+        model: model ?? tracked.model,
+        reasoningEffort: reasoningEffort ?? tracked.reasoningEffort,
+        modelProvider: tracked.modelProvider,
+        parentId: tracked.parentId,
+        agentNickname: tracked.agentNickname,
+        agentPath: tracked.agentPath,
+      ),
+    };
     if (trackedChild == null && !_subAgentTracker.record(child: child)) {
       _announcedSubAgentThreadIds.remove(childThreadId);
       return null;

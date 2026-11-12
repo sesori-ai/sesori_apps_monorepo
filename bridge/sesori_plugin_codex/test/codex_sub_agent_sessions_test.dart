@@ -352,6 +352,37 @@ void main() {
       expect(announcement.status, isA<PluginSessionStatusBusy>());
     });
 
+    test("applies the activity's model and effort to a child known from disk when its read fails", () async {
+      final tracker = CodexSubAgentTracker();
+      tracker.record(
+        child: _liveChild(id: "child-1", parentId: "root-1"),
+      );
+      final service = _newService(
+        threadRepository: _ReadingThreadRepository(
+          read: null,
+          error: TimeoutException("thread/read timed out"),
+        ),
+        catalogRepository: null,
+        subAgentTracker: tracker,
+      );
+
+      final announcement = await service.handleSubAgentStarted(
+        childThreadId: "child-1",
+        parentThreadId: "root-1",
+        callId: "call-1",
+        parentDirectory: "/repo/parent",
+        agentPath: "/root/sleeper",
+        model: "gpt-5.7",
+        reasoningEffort: "high",
+        status: const PluginSessionStatus.idle(),
+      );
+
+      if (announcement == null) fail("child was not announced");
+      expect(announcement.child.parentId, "root-1");
+      expect(announcement.child.model, "gpt-5.7");
+      expect(announcement.child.reasoningEffort, "high");
+    });
+
     test("suppresses in-flight and delayed announcements for a deleted child", () async {
       final threadRepository = _GatedThreadRepository();
       final service = _newService(

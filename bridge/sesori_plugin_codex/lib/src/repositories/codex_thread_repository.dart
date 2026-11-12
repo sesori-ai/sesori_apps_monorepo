@@ -308,8 +308,10 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     final CodexModelProviderErrorDto dto;
     try {
       dto = CodexModelProviderErrorDto.fromJson(data);
-    } on Object {
-      // Other structured data; the generic request failure keeps it.
+    } on Object catch (parseError, stackTrace) {
+      // A known provider `type` with an unexpected shape; the generic request
+      // failure keeps the raw data, this keeps why it was not recognised.
+      Log.w("[codex] unrecognised $operation error data; reporting a generic failure", parseError, stackTrace);
       return null;
     }
     return switch (dto) {
