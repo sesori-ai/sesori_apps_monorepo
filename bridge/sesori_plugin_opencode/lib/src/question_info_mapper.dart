@@ -13,7 +13,7 @@ class const QuestionInfoMapper() {
     question: info.question,
     header: info.header,
     options: info.options
-        .map((option) => PluginQuestionOption(label: option.label, description: option.description))
+        .map((option) => PluginQuestionOption(label: option.label, description: option.description, isDefault: false))
         .toList(),
     multiple: info.multiple ?? false,
     custom: info.custom ?? true,

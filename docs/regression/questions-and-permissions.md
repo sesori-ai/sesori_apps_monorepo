@@ -19,8 +19,16 @@ reaches the backend so the turn continues.
   [MCP management](mcp-management.md#regression-levels).
 - A pending permission carries its tool, description, owning session, display
   root session, and whether an "always" answer is offered. A pending question
-  carries its header, prompt, options, and whether multiple or custom answers
-  are allowed.
+  carries its header, prompt, options, which options are the harness's default
+  answer, and whether multiple or custom answers are allowed. An older bridge
+  omits the default flag and its options arrive unselected.
+- The question sheet shows default options selected on arrival, so the user can
+  submit at once. A custom answer on an option list is a last "Other" option;
+  picking it grows a text field below it and focuses it, and picking another
+  single-choice option collapses it. A free-text-only question shows its field
+  directly. Submit never ignores a tap: with "Other" picked and its field empty
+  the field shows the reason; with a question unanswered the sheet moves to it
+  and says why.
 - Codex synchronous `request_user_input` requests preserve every question,
   header, ordered option and description. Replies preserve the original
   question IDs and answer ordering, including custom answers and declined rows.
@@ -87,12 +95,19 @@ reaches the backend so the turn continues.
   declines the form when the property is required. OMP 18.18.3+ sends these
   from its built-in `ask` HTML forms (`<input type="number|range">`); declining
   them aborts the OMP turn, so a regression shows as a vanished question.
-- Every ACP schema property remains a separate question in property order. A
-  separate string property is its own custom-text question, even when the text
-  equals a selected option label. OMP's `qN` and `qN__other` remain distinct;
-  shared mapping never interprets that naming convention or combines their
-  answer lists. The existing shared question/reply contract carries these slots
-  without new wire fields.
+- Every ACP schema property remains a separate question in property order,
+  unless the plugin pairs a choice property with a plain string "other"
+  property: the pair is one question with a custom answer. A listed choice
+  fills the choice property; custom text fills the paired property and
+  satisfies a required choice. Only the OMP plugin pairs, by its `qN`/`qN__other`
+  (ask tool) and `name`/`name_other` (HTML form) naming; shared mapping knows no
+  naming convention. Other ACP plugins keep a separate string property as its
+  own custom-text question.
+- An ACP schema `default` marks the matching option as the default: a
+  string-choice value, the values of a choice array, `Yes`/`No` for a boolean,
+  and "Use suggested text" for a string or number. OpenCode v2 form fields
+  mark their native `default` the same way (choice values, multiselect values,
+  boolean).
 - In a multi-question ACP form, declining an optional question submits an empty
   answer slot and omits only that property. Each property's required flag is
   enforced independently: omitting a required property declines the form.
@@ -252,10 +267,10 @@ reaches the backend so the turn continues.
 ### OMP ACP multi-select focus
 
 For L2, exercise a live OMP `askDialog` through at least one supported client:
-select two options, answer the separate custom-text question with text identical
-to an option, and confirm the original keys retain the array and string. Also
-exercise optional omission, required-field omission/rejection, cancellation,
-and unchanged single-choice behavior. Mapper, fake-ACP plugin, bridge shared
+each question is one choice with an "Other" option. Select two options plus
+"Other" text and confirm `qN` carries the array and `qN__other` the text; answer
+a single choice with a listed option and with "Other" text. Also exercise
+optional omission, required-field omission/rejection, and cancellation. Mapper, fake-ACP plugin, bridge shared
 mapping/serialization, and widget tests cover the constituent paths; they do
 not replace this live roundtrip.
 
@@ -354,10 +369,10 @@ the prompt write is held, proving cancellation does not remove the later request
   validation remains authoritative; a form needing those native interactions
   may need to be completed in OpenCode's own interface. A form with no supported
   visible fields is logged and not presented as an empty answerable card.
-- OMP multi-select has automated mapper/plugin/bridge/widget coverage, but no
-  live `18.1.19` `askDialog`/ACP/client roundtrip has been run. That check remains
-  required before claiming complete L2 coverage; it does not hold delivery of
-  the implemented mapping.
+- A live OMP 18.19.0 single-choice `askDialog` roundtrip (default, listed
+  option, "Other" text, decline) has run on the iOS simulator. OMP multi-select
+  has automated mapper/plugin/bridge/widget coverage but no live roundtrip yet;
+  that check remains required before claiming complete L2 coverage.
 - Plugin scope follows currently registered plugins and their declared
   capabilities, not a fixed list. A plugin that does not expose a request kind
   is not a failure.

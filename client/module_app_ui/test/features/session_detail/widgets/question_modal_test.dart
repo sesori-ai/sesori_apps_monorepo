@@ -77,6 +77,15 @@ Future<void> _openQuestionModal(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Types a custom answer, first picking "Other" when its field is not open yet.
+Future<void> _enterCustomAnswer({required WidgetTester tester, required String text}) async {
+  if (find.byType(TextField).evaluate().isEmpty) {
+    await tester.tap(find.byKey(const Key("custom-answer-toggle")));
+    await tester.pumpAndSettle();
+  }
+  await tester.enterText(find.byType(TextField), text);
+}
+
 SesoriQuestionAsked _questionAsked({required List<QuestionInfo> questions}) {
   return SesoriQuestionAsked(
     id: "question-1",
@@ -157,7 +166,7 @@ void main() {
       if (omitCustom) {
         await tester.tap(find.byKey(const Key("decline-current-question")));
       } else {
-        await tester.enterText(find.byType(TextField), "iOS");
+        await _enterCustomAnswer(tester: tester, text: "iOS");
       }
       await tester.pump();
       await tester.tap(find.byKey(const Key("question-primary-action")));
@@ -197,7 +206,7 @@ void main() {
 
     await tester.tap(find.text("iOS"));
     await tester.pump();
-    await tester.enterText(find.byType(TextField), "Web preview");
+    await _enterCustomAnswer(tester: tester, text: "Web preview");
     await tester.pump();
 
     await tester.tap(find.byType(FilledButton).last);
@@ -232,7 +241,7 @@ void main() {
     await tester.pumpWidget(_buildApp(router: router));
     await _openQuestionModal(tester);
 
-    await tester.enterText(find.byType(TextField), "Web preview");
+    await _enterCustomAnswer(tester: tester, text: "Web preview");
     await tester.pump();
     await tester.tap(find.text("iOS"));
     await tester.pump();
@@ -270,7 +279,7 @@ void main() {
 
     await tester.tap(find.text("iOS"));
     await tester.pump();
-    await tester.enterText(find.byType(TextField), "   ");
+    await _enterCustomAnswer(tester: tester, text: "   ");
     await tester.pump();
 
     await tester.tap(find.byType(FilledButton).last);
@@ -306,12 +315,12 @@ void main() {
 
     await tester.tap(find.text("iOS"));
     await tester.pump();
-    await tester.enterText(find.byType(TextField), "Web preview");
+    await _enterCustomAnswer(tester: tester, text: "Web preview");
     await tester.pump();
     await tester.tap(find.byKey(const Key("custom-answer-toggle")));
     await tester.pumpAndSettle();
 
-    expect(find.text("Web preview"), findsOneWidget);
+    expect(find.text("Web preview"), findsNothing);
 
     await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
@@ -346,7 +355,7 @@ void main() {
 
     await tester.tap(find.text("Approve"));
     await tester.pump();
-    await tester.enterText(find.byType(TextField), "Need a follow-up pass");
+    await _enterCustomAnswer(tester: tester, text: "Need a follow-up pass");
     await tester.pump();
 
     await tester.tap(find.byType(FilledButton).last);
@@ -382,13 +391,16 @@ void main() {
     await tester.pumpWidget(_buildApp(router: router));
     await _openQuestionModal(tester);
 
-    await tester.enterText(find.byType(TextField), "Need a follow-up pass");
+    await _enterCustomAnswer(tester: tester, text: "Need a follow-up pass");
     await tester.pump();
     await tester.tap(find.byKey(const Key("custom-answer-toggle")));
     await tester.pumpAndSettle();
 
-    expect(find.text("Need a follow-up pass"), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.byType(FilledButton).last).onPressed, isNull);
+    expect(find.text("Need a follow-up pass"), findsNothing);
+    await tester.tap(find.byType(FilledButton).last);
+    await tester.pumpAndSettle();
+    expect(capture.answers, isNull);
+    expect(find.text("Choose an answer to submit."), findsOneWidget);
 
     await tester.tap(find.text("Approve"));
     await tester.pump();
@@ -420,7 +432,7 @@ void main() {
     await tester.pumpWidget(_buildApp(router: router));
     await _openQuestionModal(tester);
 
-    await tester.enterText(find.byType(TextField), "  Include the changelog.  ");
+    await _enterCustomAnswer(tester: tester, text: "  Include the changelog.  ");
     await tester.pump();
 
     await tester.tap(find.byType(FilledButton).last);
@@ -463,14 +475,13 @@ void main() {
 
     await tester.tap(find.text("Mobile"));
     await tester.pump();
-    await tester.enterText(find.byType(TextField), "Also notify QA");
+    await _enterCustomAnswer(tester: tester, text: "Also notify QA");
     await tester.pump();
 
     await tester.tap(find.byType(FilledButton).last);
     await tester.pumpAndSettle();
 
     expect(find.text("Choose rollout speed"), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.byType(FilledButton).last).onPressed, isNull);
     expect(find.text("Also notify QA"), findsNothing);
 
     await tester.tap(find.text("Gradual"));
@@ -525,7 +536,7 @@ void main() {
     await _openQuestionModal(tester);
 
     await tester.tap(find.text("Mobile"));
-    await tester.enterText(find.byType(TextField), "Notify QA");
+    await _enterCustomAnswer(tester: tester, text: "Notify QA");
     await tester.pump();
     await tester.tap(find.byKey(const Key("question-primary-action")));
     await tester.pumpAndSettle();
@@ -550,7 +561,7 @@ void main() {
     expect(find.text("Notify QA"), findsOneWidget);
 
     await tester.tap(find.text("Mobile"));
-    await tester.enterText(find.byType(TextField), "Notify QA and Docs");
+    await _enterCustomAnswer(tester: tester, text: "Notify QA and Docs");
     await tester.pump();
 
     await tester.tap(find.byKey(const Key("question-step-1")));
@@ -560,7 +571,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key("question-step-2")));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), "Include the migration guide");
+    await _enterCustomAnswer(tester: tester, text: "Include the migration guide");
     await tester.pump();
 
     await tester.tap(find.byKey(const Key("question-primary-action")));
@@ -617,13 +628,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Answer or decline every question to submit."), findsOneWidget);
-    expect(
-      tester.widget<FilledButton>(find.byKey(const Key("question-primary-action"))).onPressed,
-      isNull,
-    );
 
-    await tester.tap(find.byKey(const Key("question-step-0")));
+    // Submitting early answers the tap: it returns to the first open question.
+    await tester.tap(find.byKey(const Key("question-primary-action")));
     await tester.pumpAndSettle();
+    expect(capture.answers, isNull);
+    expect(find.text("Choose a language"), findsOneWidget);
+    expect(find.text("Answer or decline every question to submit."), findsOneWidget);
+
     await tester.tap(find.text("Dart"));
     await tester.pump();
 
@@ -686,7 +698,7 @@ void main() {
     await _openQuestionModal(tester);
 
     await tester.tap(find.text("Mobile"));
-    await tester.enterText(find.byType(TextField), "Web preview");
+    await _enterCustomAnswer(tester: tester, text: "Web preview");
     await tester.pump();
     await tester.tap(find.byKey(const Key("decline-current-question")));
     await tester.pump();
@@ -990,41 +1002,118 @@ void main() {
     expect(find.byType(PregoBottomSheet), findsNothing);
   });
 
-  testWidgets("custom answer keeps its indicator level with the first answer line", (tester) async {
-    final capture = _ReplyCapture();
-    final router = _createRouter(
-      question: _questionAsked(
-        questions: const [
-          QuestionInfo(
-            question: "Split the work across worktrees?",
-            header: "Worktrees",
-            custom: true,
-            options: [],
-          ),
-        ],
-      ),
-      capture: capture,
+  group("Other answer", () {
+    const colorQuestion = QuestionInfo(
+      question: "Pick a color",
+      header: "Color",
+      custom: true,
+      options: [
+        QuestionOption(label: "Red", description: ""),
+        QuestionOption(label: "Blue", description: "", isDefault: true),
+      ],
     );
-    addTearDown(router.dispose);
 
-    await tester.pumpWidget(_buildApp(router: router));
-    await _openQuestionModal(tester);
+    Future<_ReplyCapture> open(WidgetTester tester) async {
+      final capture = _ReplyCapture();
+      final router = _createRouter(
+        question: _questionAsked(questions: const [colorQuestion]),
+        capture: capture,
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(_buildApp(router: router));
+      await _openQuestionModal(tester);
+      return capture;
+    }
 
-    double indicatorTop() => tester.getTopLeft(find.byKey(const Key("custom-answer-toggle"))).dy;
-    double answerTop() => tester.getTopLeft(find.byType(TextField)).dy;
+    testWidgets("the default arrives selected and submits at once", (tester) async {
+      final capture = await open(tester);
 
-    await tester.enterText(find.byType(TextField), "For the server");
-    await tester.pump();
-    expect(indicatorTop(), moreOrLessEquals(answerTop(), epsilon: 1));
+      expect(find.byType(TextField), findsNothing);
+      await tester.tap(find.byKey(const Key("question-primary-action")));
+      await tester.pumpAndSettle();
 
-    // A wrapped answer must keep the indicator on its first line instead of
-    // centring it against the whole field.
-    await tester.enterText(
-      find.byType(TextField),
-      "Create the relay worktree first, then the auth-server one, and keep the bridge worktree untouched.",
-    );
-    await tester.pump();
-    expect(tester.getSize(find.byType(TextField)).height, greaterThan(20));
-    expect(indicatorTop(), moreOrLessEquals(answerTop(), epsilon: 1));
+      expect(capture.answers, [
+        const ReplyAnswer(values: ["Blue"]),
+      ]);
+    });
+
+    testWidgets("picking Other grows its field in below the options and focuses it", (tester) async {
+      await open(tester);
+      final redTop = tester.getTopLeft(find.text("Red")).dy;
+      final otherTop = tester.getTopLeft(find.text("Other")).dy;
+
+      await tester.tap(find.byKey(const Key("custom-answer-toggle")));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final midHeight = tester.getSize(find.byType(AnimatedSize).first).height;
+      await tester.pumpAndSettle();
+
+      expect(midHeight, lessThan(tester.getSize(find.byType(AnimatedSize).first).height));
+      // The sheet is anchored to the bottom, so it rises as the field grows;
+      // inside it, the options keep their places and the field opens below.
+      final otherTopAfter = tester.getTopLeft(find.text("Other")).dy;
+      expect(tester.getTopLeft(find.byType(TextField)).dy, greaterThan(otherTopAfter));
+      expect(otherTopAfter - tester.getTopLeft(find.text("Red")).dy, otherTop - redTop);
+      expect(tester.widget<TextField>(find.byType(TextField)).focusNode?.hasFocus, isTrue);
+
+      await tester.tap(find.text("Red"));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsNothing);
+    });
+
+    testWidgets("submitting Other with an empty field explains why", (tester) async {
+      final capture = await open(tester);
+      await tester.tap(find.byKey(const Key("custom-answer-toggle")));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key("question-primary-action")));
+      await tester.pumpAndSettle();
+
+      expect(capture.answers, isNull);
+      expect(find.byKey(const Key("custom-answer-empty-reason")), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), "Green");
+      await tester.pump();
+      expect(find.byKey(const Key("custom-answer-empty-reason")), findsNothing);
+      await tester.tap(find.byKey(const Key("question-primary-action")));
+      await tester.pumpAndSettle();
+      expect(capture.answers, [
+        const ReplyAnswer(values: ["Green"]),
+      ]);
+    });
+
+    testWidgets("picking an option clears the empty-Other reason in multi-select", (tester) async {
+      final capture = _ReplyCapture();
+      final router = _createRouter(
+        question: _questionAsked(
+          questions: const [
+            QuestionInfo(
+              question: "Pick colors",
+              header: "Colors",
+              custom: true,
+              multiple: true,
+              options: [
+                QuestionOption(label: "Red", description: ""),
+                QuestionOption(label: "Blue", description: ""),
+              ],
+            ),
+          ],
+        ),
+        capture: capture,
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(_buildApp(router: router));
+      await _openQuestionModal(tester);
+      await tester.tap(find.byKey(const Key("custom-answer-toggle")));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("question-primary-action")));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("custom-answer-empty-reason")), findsOneWidget);
+
+      await tester.tap(find.text("Red"));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key("custom-answer-empty-reason")), findsNothing);
+    });
   });
 }

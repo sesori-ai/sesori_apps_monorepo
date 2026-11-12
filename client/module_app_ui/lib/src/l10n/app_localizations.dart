@@ -3265,6 +3265,24 @@ abstract class AppLocalizations {
   /// **'Type your own answer'**
   String get questionModalCustomHint;
 
+  /// No description provided for @questionModalOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get questionModalOther;
+
+  /// No description provided for @questionModalCustomEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your answer, or choose an option.'**
+  String get questionModalCustomEmpty;
+
+  /// No description provided for @questionModalChooseAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an answer to submit.'**
+  String get questionModalChooseAnswer;
+
   /// No description provided for @questionModalSubmit.
   ///
   /// In en, this message translates to:

@@ -11,6 +11,7 @@ Map<String, dynamic> _$PluginQuestionOptionToJson(
 ) => <String, dynamic>{
   'label': instance.label,
   'description': instance.description,
+  'isDefault': instance.isDefault,
 };
 
 Map<String, dynamic> _$PluginQuestionInfoToJson(_PluginQuestionInfo instance) =>

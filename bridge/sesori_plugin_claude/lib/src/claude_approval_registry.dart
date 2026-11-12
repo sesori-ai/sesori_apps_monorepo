@@ -50,7 +50,7 @@ final class const _PendingForm({
 const _formNotice = PluginQuestionInfo(
   header: "MCP form",
   question: "This native request needs a form. Open it in an updated Sesori client, or cancel it.",
-  options: [PluginQuestionOption(label: "Cancel", description: "Cancel this native request.")],
+  options: [PluginQuestionOption(label: "Cancel", description: "Cancel this native request.", isDefault: false)],
   multiple: false,
   custom: false,
 );
@@ -60,7 +60,7 @@ const _formNotice = PluginQuestionInfo(
 const _externalActionNotice = PluginQuestionInfo(
   header: "MCP authorization",
   question: "This native request needs an external action. Open it in an updated Sesori client, or cancel it.",
-  options: [PluginQuestionOption(label: "Cancel", description: "Cancel this native request.")],
+  options: [PluginQuestionOption(label: "Cancel", description: "Cancel this native request.", isDefault: false)],
   multiple: false,
   custom: false,
 );
@@ -611,6 +611,7 @@ List<PluginQuestionInfo> _askUserQuestions({required Map<String, Object?> input}
               PluginQuestionOption(
                 label: label,
                 description: _nonEmptyString(option["description"]) ?? "",
+                isDefault: false,
               ),
         ],
         multiple: question["multiSelect"] == true,
@@ -622,7 +623,9 @@ List<PluginQuestionInfo> _planApprovalQuestions({required Map<String, Object?> i
   PluginQuestionInfo(
     question: _nonEmptyString(input["plan"]) ?? "Claude Code is ready to implement the plan.",
     header: "Plan approval",
-    options: const [PluginQuestionOption(label: "Approve", description: "Start implementing this plan.")],
+    options: const [
+      PluginQuestionOption(label: "Approve", description: "Start implementing this plan.", isDefault: false),
+    ],
     multiple: false,
     custom: false,
   ),

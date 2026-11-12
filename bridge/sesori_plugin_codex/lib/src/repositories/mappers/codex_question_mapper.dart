@@ -11,7 +11,7 @@ class const CodexQuestionMapper() {
         header: item.header,
         options: [
           for (final option in item.options ?? const <CodexUserInputOptionDto>[])
-            PluginQuestionOption(label: option.label, description: option.description),
+            PluginQuestionOption(label: option.label, description: option.description, isDefault: false),
         ],
         multiple: false,
         custom: item.isOther || (item.options?.isEmpty ?? true),
@@ -26,7 +26,8 @@ class const CodexQuestionMapper() {
         options: [
           // Async choices supply labels only. The existing question wire
           // contract uses blank description text for label-only choices.
-          for (final option in item.options ?? const <String>[]) PluginQuestionOption(label: option, description: ""),
+          for (final option in item.options ?? const <String>[])
+            PluginQuestionOption(label: option, description: "", isDefault: false),
         ],
         multiple: false,
         custom: true,

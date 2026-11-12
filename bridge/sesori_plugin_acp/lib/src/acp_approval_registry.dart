@@ -211,6 +211,11 @@ class AcpApprovalRegistry({
     );
   }
 
+  /// Override when the agent pairs an elicitation choice property with a
+  /// free-text "other" property, so the two map to one question. Returns the
+  /// paired key for [choiceKey], or null; the base pairs none.
+  String? elicitationCustomAnswerKey({required String choiceKey, required Set<String> propertyKeys}) => null;
+
   /// Override to handle harness-specific server requests. Returns true when
   /// handled; the base handles none.
   bool handleExtensionRequest(AcpServerRequest request) => false;
@@ -256,7 +261,7 @@ class AcpApprovalRegistry({
       _respond(request.id, const {"action": "cancel"});
       return;
     }
-    final form = const AcpElicitationMapper().parse(params: request.params);
+    final form = AcpElicitationMapper(customAnswerKeyFor: elicitationCustomAnswerKey).parse(params: request.params);
     switch (form) {
       case AcpUnsupportedElicitationForm(:final reason):
         Log.w("[acp] declining elicitation: $reason");

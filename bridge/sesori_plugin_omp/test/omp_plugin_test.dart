@@ -393,7 +393,7 @@ void main() {
       respond(secondPrompt, {"stopReason": "end_turn"});
     });
 
-    test("roundtrips an upstream-shaped askDialog array and separate custom property", () async {
+    test("maps an upstream-shaped askDialog array and its custom property to one question", () async {
       await connect();
       final session = await create("dialog-session");
       fake.emit({
@@ -424,29 +424,98 @@ void main() {
       });
       await Future<void>.delayed(Duration.zero);
       final pending = (await plugin.getPendingQuestions(sessionId: session.id)).single;
-      expect(pending.questions, hasLength(2));
-      expect(pending.questions[0].multiple, isTrue);
-      expect(pending.questions[0].custom, isFalse);
-      expect(pending.questions[1].multiple, isFalse);
-      expect(pending.questions[1].custom, isTrue);
+      final question = pending.questions.single;
+      expect(question.multiple, isTrue);
+      expect(question.custom, isTrue);
 
       await plugin.replyToQuestion(
         questionId: pending.id,
         sessionId: session.id,
         answers: const [
-          ["iOS", "Android"],
-          ["iOS"],
+          ["iOS", "watchOS"],
         ],
       );
 
       expect(fake.written.where((frame) => frame["id"] == 41).single["result"], {
         "action": "accept",
         "content": {
-          "q0": ["iOS", "Android"],
-          "q0__other": "iOS",
+          "q0": ["iOS"],
+          "q0__other": "watchOS",
         },
       });
       expect(await plugin.getPendingQuestions(sessionId: session.id), isEmpty);
+    });
+
+    group("a single-choice HTML form with a default and an Other field", () {
+      Future<PluginPendingQuestion> ask() async {
+        await connect();
+        final session = await create("form-session");
+        fake.emit({
+          "jsonrpc": "2.0",
+          "id": 42,
+          "method": AcpMethods.elicitationCreate,
+          "params": {
+            "sessionId": session.id,
+            "mode": "form",
+            "message": "Choose one",
+            "requestedSchema": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "type": "string",
+                  "title": "Choose one",
+                  "oneOf": [
+                    {"const": "red", "title": "Red"},
+                    {"const": "blue", "title": "Blue"},
+                  ],
+                  "default": "blue",
+                },
+                "color_other": {
+                  "type": "string",
+                  "title": "Choose one \u2014 Other",
+                  "description": "Your own answer instead",
+                },
+              },
+              "required": ["color"],
+            },
+          },
+        });
+        await Future<void>.delayed(Duration.zero);
+        return (await plugin.getPendingQuestions(sessionId: session.id)).single;
+      }
+
+      Future<Object?> reply({required List<String> answer}) async {
+        final pending = await ask();
+        await plugin.replyToQuestion(questionId: pending.id, sessionId: pending.sessionID, answers: [answer]);
+        return fake.written.where((frame) => frame["id"] == 42).single["result"];
+      }
+
+      test("arrives as one question with the default marked", () async {
+        final question = (await ask()).questions.single;
+        expect(question.custom, isTrue);
+        expect(question.options.map((option) => (option.label, option.isDefault)), [("Red", false), ("Blue", true)]);
+      });
+
+      test("sends the default when accepted", () async {
+        expect(await reply(answer: ["Blue"]), {
+          "action": "accept",
+          "content": {"color": "blue"},
+        });
+      });
+
+      test("sends another option", () async {
+        expect(await reply(answer: ["Red"]), {
+          "action": "accept",
+          "content": {"color": "red"},
+        });
+      });
+
+      test("sends an Other answer through the paired property", () async {
+        expect(await reply(answer: ["Green"]), {
+          "action": "accept",
+          "content": {"color_other": "Green"},
+        });
+      });
     });
 
     test("without advertised steering, a prompt queued on the active session cancels that turn first", () async {

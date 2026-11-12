@@ -91,7 +91,7 @@ final class _PendingMcpExternalAction({
 const _mcpNotice = PluginQuestionInfo(
   header: "MCP request",
   question: "Open this native request in an updated Sesori client, or cancel it.",
-  options: [PluginQuestionOption(label: "Cancel", description: "Cancel this native request.")],
+  options: [PluginQuestionOption(label: "Cancel", description: "Cancel this native request.", isDefault: false)],
   multiple: false,
   custom: false,
 );

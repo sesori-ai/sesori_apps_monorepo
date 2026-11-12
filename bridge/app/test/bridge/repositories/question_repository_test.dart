@@ -79,8 +79,8 @@ void main() {
                   question: "Choose targets",
                   header: "Targets",
                   options: [
-                    PluginQuestionOption(label: "iOS", description: "iPhone"),
-                    PluginQuestionOption(label: "Android", description: "Android phone"),
+                    PluginQuestionOption(label: "iOS", description: "iPhone", isDefault: false),
+                    PluginQuestionOption(label: "Android", description: "Android phone", isDefault: false),
                   ],
                   multiple: true,
                   custom: false,
