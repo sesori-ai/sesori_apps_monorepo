@@ -139,6 +139,16 @@ void main() {
       }
     });
 
+    // Every assistant text starting with "⚠️ " reaches this check, so a long
+    // first line full of parentheses must not take seconds to classify.
+    test("a long warning reply with many parentheses is classified in one scan", () {
+      final reply = "⚠️ ${List.filled(2000, "word (note) more").join(" ")}\n\nA second paragraph.";
+      final stopwatch = Stopwatch()..start();
+
+      expect(mapper.classifyHaltNotice(text: reply), isNull);
+      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 200)));
+    });
+
     test("a no-reply explanation for an exit that does not fail the turn stays a reply", () {
       for (final text in advisoryNoReplyTexts.values) {
         expect(mapper.classifyHaltNotice(text: text), isNull, reason: text);

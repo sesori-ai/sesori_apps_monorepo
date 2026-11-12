@@ -94,10 +94,18 @@ const Map<String, String> failureNotices = {
       "never switches to a different key on its own, so /retry fails the same way. Use /new to start a new chat on "
       "your current key.",
   // Only the details line stays in English.
-  "launch credentials in another language (0.23.1)":
+  // Hermes 0.23.1 `locales/{de,ja,ar}.yaml`, filled by `launch_credentials_copy`.
+  "launch credentials in German (0.23.1)":
       "⚠️ Dieser Chat kann den API-Schlüssel, mit dem er gestartet wurde, nicht mehr verwenden "
-      "(OPENROUTER_API_KEY: unavailable). Starte mit /new einen neuen Chat.\n\nDetails: "
-      "launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
+      "(OPENROUTER_API_KEY: unavailable), daher kann darin nichts mehr ausgeführt werden. Ein offener Chat wechselt "
+      "nie von selbst zu einem anderen Schlüssel, deshalb scheitert /retry genauso. Starte mit /new einen neuen Chat "
+      "mit deinem aktuellen Schlüssel.\n\nDetails: launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
+  "launch credentials in Japanese (0.23.1)": "⚠️ このチャットは開始時の API キーをもう使えないため (OPENROUTER_API_KEY: unavailable)、このチャットでは何も実行できません。開いているチャットが自動で別のキーに切り替わることはないので、/retry でも同じように失敗します。/new で現在のキーを使う新しいチャットを始めてください。\n\nDetails: launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
+  "launch credentials in Arabic (0.23.1)":
+      "⚠️ لم تعد هذه المحادثة قادرة على استخدام مفتاح API الذي بدأت به (OPENROUTER_API_KEY: unavailable)، لذلك لا "
+      "يمكن تشغيل أي شيء فيها. المحادثة المفتوحة لا تنتقل أبدًا إلى مفتاح مختلف من تلقاء نفسها، لذا سيفشل /retry "
+      "بالطريقة نفسها. استخدم /new لبدء محادثة جديدة بمفتاحك الحالي.\n\n"
+      "Details: launch_credentials_unavailable (OPENROUTER_API_KEY: unavailable)",
   "scheduled-job chat (0.23.1)":
       "⚠️ This chat belongs to a scheduled job and only runs that job, so your message was not run. Start a new "
       "chat to send it.",

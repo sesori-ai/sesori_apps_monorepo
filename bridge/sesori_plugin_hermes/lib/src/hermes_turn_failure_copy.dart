@@ -164,7 +164,7 @@ const Map<String, String> _turnFailureTemplates = {
   "welcome_route_default": "Hermes couldn't reach the free model on this route.",
   // 0.23.1 `locales/en.yaml` `gateway.errors` (sent with a leading "⚠️ "). In
   // other languages only launch_credentials_unavailable is recognized, by its
-  // shape and untranslated details line (see [_launchCredentialsDetails]).
+  // shape and untranslated details line (see [_isLaunchCredentialsNotice]).
   "launch_credentials_unavailable":
       "This chat can't use the API key it was started with any more{detail}, so nothing can run in it. An open chat "
       "never switches to a different key on its own, so /retry fails the same way. Use /new to start a new chat on "
@@ -251,15 +251,27 @@ const Map<String, String> _turnFailureTemplates = {
       "windows, run `hermes {profile_arg}doctor` to check storage, then send your message again.",
 };
 
-/// launch_credentials_unavailable in any language when Hermes names the
-/// refused key (`launch_credentials_copy`): the translated copy, one line
-/// starting with "⚠️ " and naming ` (<field>: <detail>)`, then the untranslated
-/// `Details: launch_credentials_unavailable (<field>: <detail>)` with the same
-/// key, and nothing else. A reply that only ends with the details line does
-/// not have this shape.
-final RegExp _launchCredentialsDetails = RegExp(
-  r"^⚠️ [^\n]*?( \([^\n]*?\))[^\n]*\n\nDetails: launch_credentials_unavailable\1$",
-);
+/// Whether [text] is launch_credentials_unavailable in any language with the
+/// refused key named (`launch_credentials_copy`): the translated copy, one
+/// line starting with "⚠️ " and naming ` (<field>: <detail>)`, then the
+/// untranslated `Details: launch_credentials_unavailable (<field>: <detail>)`
+/// with the same key, and nothing else. A reply that only ends with the
+/// details line does not have this shape. Checked with string operations so a
+/// long reply costs one scan.
+bool _isLaunchCredentialsNotice({required String text}) {
+  const details = "\n\nDetails: launch_credentials_unavailable";
+  final trimmed = text.trimRight();
+  if (!trimmed.startsWith("⚠️ ")) return false;
+  final at = trimmed.indexOf(details);
+  if (at < 0) return false;
+  final notice = trimmed.substring(0, at);
+  final key = trimmed.substring(at + details.length);
+  return key.startsWith(" (") &&
+      key.endsWith(")") &&
+      !key.contains("\n") &&
+      !notice.contains("\n") &&
+      notice.contains(key);
+}
 
 /// The row Hermes saves in its own history to close a failed turn, in place
 /// of the failure text it sent live (which it never saves): `FAILED_TURN_NOTICE`.
@@ -300,8 +312,7 @@ final List<RegExp> _turnFailurePatterns = [
 /// Whether [text] is the explanation Hermes sends as its whole final response
 /// when a turn fails.
 bool isHermesTurnFailureNotice({required String text}) =>
-    _turnFailurePatterns.any((pattern) => pattern.hasMatch(text)) ||
-    _launchCredentialsDetails.hasMatch(text.trimRight());
+    _turnFailurePatterns.any((pattern) => pattern.hasMatch(text)) || _isLaunchCredentialsNotice(text: text);
 
 /// Whether [text] is the row Hermes saved to close a failed turn before any
 /// tool ran. Hermes reads its rows the same way
