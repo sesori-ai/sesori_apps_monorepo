@@ -1015,11 +1015,43 @@ void main() {
     expect(find.bySemanticsLabel("Retry preference sync"), findsOneWidget);
     expect(find.text("Refresh analytics preference"), findsNothing);
 
+    await tester.tap(find.text("Basic usage analytics"));
+    await tester.pump();
+    expect(find.text("This setting didn't load. Tap Retry."), findsOneWidget);
+
     await tester.tap(find.byKey(const Key("analytics_preference_retry")));
     await tester.pump();
 
     verify(productAnalyticsService.refreshPreference).called(1);
   });
+
+  for (final (synchronization, notice) in [
+    (const ProductAnalyticsSynchronizationInProgress(), "Still loading this setting."),
+    (const ProductAnalyticsEnableRequestInProgress(), "Saving your choice…"),
+  ]) {
+    testWidgets("a disabled analytics switch says why on tap: $notice", (tester) async {
+      _useTallSurface(tester);
+      productAnalyticsStates.add(
+        ProductAnalyticsState(
+          preference: const ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
+          synchronization: synchronization,
+          availability: const ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.synchronizationPending),
+        ),
+      );
+      await tester.pumpWidget(_app(appearance: appearance));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Account").last);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNull);
+      await tester.tap(find.byType(PregoSwitch));
+      await tester.pump();
+
+      expect(find.text(notice), findsOneWidget);
+      verifyNever(() => productAnalyticsService.setPreference(preference: any(named: "preference")));
+      await tester.pumpAndSettle();
+    });
+  }
 
   testWidgets("a known preference remains editable when synchronization fails", (tester) async {
     _useTallSurface(tester);
@@ -1079,6 +1111,11 @@ void main() {
     verifyNever(
       () => productAnalyticsService.setPreference(preference: any(named: "preference")),
     );
+
+    await tester.tap(find.text("Log out"));
+    await tester.pump();
+    expect(find.text("Already signing out…"), findsOneWidget);
+    verify(productAnalyticsService.prepareForLogout).called(1);
 
     logoutPreparation.complete();
     await tester.pumpAndSettle();

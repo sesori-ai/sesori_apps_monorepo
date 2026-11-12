@@ -1079,6 +1079,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsBasicUsageAnalyticsSigningOut => 'Can\'t change this while signing out.';
 
   @override
+  String get settingsBasicUsageAnalyticsLoadingNotice => 'Still loading this setting.';
+
+  @override
+  String get settingsBasicUsageAnalyticsSavingNotice => 'Saving your choice…';
+
+  @override
+  String get settingsBasicUsageAnalyticsLoadFailedNotice => 'This setting didn\'t load. Tap Retry.';
+
+  @override
+  String get settingsLogoutInProgress => 'Already signing out…';
+
+  @override
   String get settingsAppearanceLight => 'Light';
 
   @override

@@ -68,6 +68,13 @@ class _ProfileViewState() extends State<ProfileView> {
     _showLogoutFailure();
   }
 
+  void _showAlreadyLoggingOut() {
+    PregoPopupAlertPresenter.of(context).show(
+      title: context.loc.settingsLogoutInProgress,
+      variant: PregoPopupAlertsNotificationsVariant.info,
+    );
+  }
+
   void _showLogoutFailure() {
     PregoPopupAlertPresenter.of(context).show(
       title: context.loc.connectErrorUnknown,
@@ -122,7 +129,7 @@ class _ProfileViewState() extends State<ProfileView> {
                               child: PregoActivityIndicator(color: null),
                             )
                           : null,
-                      onTap: _isLoggingOut ? null : () => unawaited(_logout()),
+                      onTap: _isLoggingOut ? _showAlreadyLoggingOut : () => unawaited(_logout()),
                     ),
                   ],
                 ),
@@ -216,23 +223,44 @@ class const _ProductAnalyticsPreferenceRow({
     final hasFailure = status?.isFailure ?? false;
     final canToggle = preference != null && !isBusy;
 
-    // While signing out the row keeps its look, so a tap answers why nothing
-    // changes instead of acting.
-    void showBlockedNotice() {
+    // A tap that cannot change the preference says why instead of doing
+    // nothing. While signing out the row also keeps its look.
+    String? unavailableNotice() {
+      if (blocked) return loc.settingsBasicUsageAnalyticsSigningOut;
+      if (canToggle) return null;
+      return switch (state.synchronization) {
+        ProductAnalyticsDisableRequestInProgress() ||
+        ProductAnalyticsEnableRequestInProgress() => loc.settingsBasicUsageAnalyticsSavingNotice,
+        ProductAnalyticsSynchronizationInProgress() ||
+        ProductAnalyticsNotSynchronized() ||
+        ProductAnalyticsSynchronized() => loc.settingsBasicUsageAnalyticsLoadingNotice,
+        ProductAnalyticsDisablePending() ||
+        ProductAnalyticsEnablePending() ||
+        ProductAnalyticsDisableRetryRequired() ||
+        ProductAnalyticsSynchronizationFailed() => loc.settingsBasicUsageAnalyticsLoadFailedNotice,
+      };
+    }
+
+    void showNotice({required String notice}) {
       PregoPopupAlertPresenter.of(context).show(
-        title: loc.settingsBasicUsageAnalyticsSigningOut,
+        title: notice,
         variant: PregoPopupAlertsNotificationsVariant.info,
       );
     }
 
     void toggle({required bool enabled}) {
-      if (blocked) return showBlockedNotice();
+      final notice = unavailableNotice();
+      if (notice != null) {
+        showNotice(notice: notice);
+        return;
+      }
       unawaited(context.read<ProductAnalyticsPreferenceCubit>().setEnabled(enabled: enabled));
     }
 
+    // Loading and saving keep the disabled switch; its taps reach the row.
     final preferenceSwitch = PregoSwitch(
       value: preference == ProductAnalyticsPreference.enabled,
-      onChanged: canToggle ? (enabled) => toggle(enabled: enabled) : null,
+      onChanged: canToggle || blocked ? (enabled) => toggle(enabled: enabled) : null,
     );
     final retryButton = PregoButtonsSolid.iconOnly(
       key: const Key("analytics_preference_retry"),
@@ -241,7 +269,7 @@ class const _ProductAnalyticsPreferenceRow({
       size: PregoButtonsSolidSize.sm,
       leadingIcon: TablerRegular.refresh,
       onPressed: blocked
-          ? showBlockedNotice
+          ? () => showNotice(notice: loc.settingsBasicUsageAnalyticsSigningOut)
           : () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
     );
     final Widget trailing;
@@ -265,7 +293,7 @@ class const _ProductAnalyticsPreferenceRow({
         statusIsFailure: hasFailure,
       ),
       trailing: trailing,
-      onTap: canToggle ? () => toggle(enabled: preference != ProductAnalyticsPreference.enabled) : null,
+      onTap: () => toggle(enabled: preference != ProductAnalyticsPreference.enabled),
     );
     return PregoGroupedRows(
       children: [hasFailure ? row : MergeSemantics(child: row)],

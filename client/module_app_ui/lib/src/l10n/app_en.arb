@@ -788,6 +788,22 @@
   "settingsBasicUsageAnalyticsSyncFailed": "Couldn't sync preference.",
   "settingsBasicUsageAnalyticsRetry": "Retry preference sync",
   "settingsBasicUsageAnalyticsSigningOut": "Can't change this while signing out.",
+  "settingsBasicUsageAnalyticsLoadingNotice": "Still loading this setting.",
+  "@settingsBasicUsageAnalyticsLoadingNotice": {
+    "description": "Notice shown when the user taps the analytics preference while it is still loading"
+  },
+  "settingsBasicUsageAnalyticsSavingNotice": "Saving your choice…",
+  "@settingsBasicUsageAnalyticsSavingNotice": {
+    "description": "Notice shown when the user taps the analytics preference while the previous change is still saving"
+  },
+  "settingsBasicUsageAnalyticsLoadFailedNotice": "This setting didn't load. Tap Retry.",
+  "@settingsBasicUsageAnalyticsLoadFailedNotice": {
+    "description": "Notice shown when the user taps the analytics preference after it failed to load; Retry is the button in the same row"
+  },
+  "settingsLogoutInProgress": "Already signing out…",
+  "@settingsLogoutInProgress": {
+    "description": "Notice shown when the user taps Log out while logout is already in progress"
+  },
   "@settingsBasicUsageAnalyticsSigningOut": {
     "description": "Notice shown when the user taps the analytics preference or its retry button while logout is in progress"
   },
