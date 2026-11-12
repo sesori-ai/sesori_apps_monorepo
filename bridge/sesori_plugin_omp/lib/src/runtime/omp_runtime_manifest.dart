@@ -9,7 +9,9 @@ import "../omp_identity.dart";
 class const OmpRuntimeManifest() extends RuntimeManifest {
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "17.2.13");
 
-  /// The latest stable Oh My Pi release targeted by this plugin.
+  /// The Oh My Pi release targeted by this plugin, held below the latest
+  /// stable: from 18.18.9, ACP session deletion leaves a replacement empty
+  /// session in the project's list (upstream #18665).
   static const String targetVersion = "18.18.8";
 
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);

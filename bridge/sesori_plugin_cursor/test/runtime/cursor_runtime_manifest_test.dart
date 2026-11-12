@@ -38,7 +38,7 @@ void main() {
           target: PlatformTarget(os: PlatformOs.windows, arch: arch),
         ),
         isNull,
-        reason: "Cursor publishes no Windows package",
+        reason: "Windows packages exist but stay unmanaged until their layout is verified",
       );
     }
   });

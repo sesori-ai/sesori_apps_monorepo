@@ -254,7 +254,8 @@ class const AcpElicitationMapper() {
         };
         return (
           question: PluginQuestionInfo(
-            question: _bounded("$questionText$bounds"),
+            // questionText is already bounded; re-bounding could cut the bounds.
+            question: "$questionText$bounds",
             header: title,
             options: [
               if (suggested != null) PluginQuestionOption(label: _suggestedTextLabel, description: suggested),
