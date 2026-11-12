@@ -950,7 +950,7 @@ void main() {
       await subscription.cancel();
     });
 
-    Future<List<Object>> failTurnAuthentication() async {
+    Future<List<Object>> failTurnAuthentication({String error = "authentication_failed"}) async {
       await harness.createSession();
       final errors = <Object>[];
       final subscription = harness.plugin.events.listen((_) {}, onError: errors.add);
@@ -959,7 +959,7 @@ void main() {
         "session_id": testSessionId,
         "uuid": "auth-1",
         "parent_tool_use_id": null,
-        "error": "authentication_failed",
+        "error": error,
         "message": {
           "id": "msg-auth",
           "model": "<synthetic>",
@@ -1004,6 +1004,27 @@ void main() {
             .having((e) => e.message, "message", "Claude Code gateway authentication failed"),
       ]);
     });
+
+    test("points a cloud credential failure at the provider credentials instead of a Claude login", () async {
+      final errors = await failTurnAuthentication(error: "cloud_credential_error");
+
+      expect(errors, [
+        isA<PluginAuthenticationRequiredException>()
+            .having(
+              (e) => e.actionHint,
+              "actionHint",
+              allOf(contains("cloud provider"), isNot(matches(RegExp("log ?in", caseSensitive: false)))),
+            )
+            .having((e) => e.recovery, "recovery", PluginAuthenticationRecovery.externalConfiguration)
+            .having((e) => e.message, "message", "Claude Code cloud credentials failed"),
+      ]);
+    });
+
+    for (final error in ["account_on_hold", "verification_required"]) {
+      test("$error stays a notice without an authentication error", () async {
+        expect(await failTurnAuthentication(error: error), isEmpty);
+      });
+    }
 
     test("a hook-denied tool fails its step and leaves a successful turn without an error", () async {
       final events = <BridgeSseEvent>[];

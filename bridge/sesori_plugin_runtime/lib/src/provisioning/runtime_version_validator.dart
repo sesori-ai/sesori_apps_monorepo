@@ -27,7 +27,9 @@ final class const RuntimeProbeUnrecognized() extends RuntimeProbeFailure;
 final class RuntimeProbeFailed({required final Object innerError, required final StackTrace stackTrace})
     extends RuntimeProbeFailure;
 
-/// Probes a candidate runtime binary's version by running `<bin> --version`.
+/// Probes a candidate runtime binary's version by running it with the
+/// manifest's [RuntimeManifest.versionProbeArguments] (`<bin> --version` by
+/// default).
 ///
 /// Used to decide whether a pre-installed PATH runtime is recent enough to use
 /// as-is, whether the PATH command is genuinely absent so managed fallback is
@@ -45,7 +47,8 @@ class RuntimeVersionValidator({
   // while antivirus scans it, although later launches take under a second.
   static const Duration _windowsMinimumProbeTimeout = Duration(seconds: 30);
 
-  /// Runs `<executable> --version` and classifies the result without throwing.
+  /// Runs the version probe on [executable] and classifies the result without
+  /// throwing.
   Future<RuntimeProbeOutcome> probe({
     required String executable,
     required Map<String, String>? environment,
@@ -56,11 +59,13 @@ class RuntimeVersionValidator({
     required Map<String, String>? environment,
     required String? workingDirectory,
   }) async {
+    final arguments = _manifest.versionProbeArguments;
+    final command = "$executable ${arguments.join(" ")}";
     final CommandResult result;
     try {
       result = await _commandExecutor.run(
         executable: executable,
-        arguments: const ["--version"],
+        arguments: arguments,
         workingDirectory: workingDirectory,
         environment: environment,
         timeout: _executableLocator.isWindows && _probeTimeout < _windowsMinimumProbeTimeout
@@ -77,16 +82,16 @@ class RuntimeVersionValidator({
         return RuntimeProbeMissing(innerError: error, stackTrace: stackTrace);
       }
       Log.w(
-        "[${_manifest.runtimeId}] runtime version probe could not launch '$executable --version'",
+        "[${_manifest.runtimeId}] runtime version probe could not launch '$command'",
         error,
         stackTrace,
       );
       return RuntimeProbeFailed(innerError: error, stackTrace: stackTrace);
     } on TimeoutException catch (error, stackTrace) {
-      Log.w("[${_manifest.runtimeId}] runtime version probe timed out for '$executable --version'", error, stackTrace);
+      Log.w("[${_manifest.runtimeId}] runtime version probe timed out for '$command'", error, stackTrace);
       return RuntimeProbeTimedOut(innerError: error, stackTrace: stackTrace);
     } on Object catch (error, stackTrace) {
-      Log.w("[${_manifest.runtimeId}] runtime version probe failed for '$executable --version'", error, stackTrace);
+      Log.w("[${_manifest.runtimeId}] runtime version probe failed for '$command'", error, stackTrace);
       return RuntimeProbeFailed(innerError: error, stackTrace: stackTrace);
     }
 
@@ -100,19 +105,19 @@ class RuntimeVersionValidator({
         return RuntimeProbeMissing(
           innerError: ProcessException(
             executable,
-            const ["--version"],
+            arguments,
             "${result.stdout}\n${result.stderr}".trim(),
             result.exitCode,
           ),
           stackTrace: StackTrace.empty,
         );
       }
-      Log.d("[${_manifest.runtimeId}] runtime version probe '$executable --version' exited ${result.exitCode}");
+      Log.d("[${_manifest.runtimeId}] runtime version probe '$command' exited ${result.exitCode}");
       return RuntimeProbeNonZeroExit(exitCode: result.exitCode);
     }
     final version = parseVersionOutput(output: result.stdout);
     if (version == null) {
-      Log.d("[${_manifest.runtimeId}] runtime version probe '$executable --version' returned an unrecognized version");
+      Log.d("[${_manifest.runtimeId}] runtime version probe '$command' returned an unrecognized version");
       return const RuntimeProbeUnrecognized();
     }
     return RuntimeProbeReady(version: version);

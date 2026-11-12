@@ -57,6 +57,19 @@ void main() {
       );
     });
 
+    test("FORCE_COLOR=0 and FORCE_COLOR=false turn color off on a terminal", () {
+      for (final value in const ["0", "false"]) {
+        expect(
+          TerminalColorValidator.isSupported(
+            out: _FakeStdout(supportsAnsiEscapes: true),
+            environment: {"FORCE_COLOR": value},
+          ),
+          isFalse,
+          reason: "Node treats FORCE_COLOR=$value as color off",
+        );
+      }
+    });
+
     test("an empty FORCE_COLOR is treated as unset and falls through", () {
       expect(
         TerminalColorValidator.isSupported(
