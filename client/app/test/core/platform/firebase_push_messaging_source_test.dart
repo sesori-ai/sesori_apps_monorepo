@@ -1,6 +1,3 @@
-// The source still wraps the token API that firebase_messaging 17 deprecates.
-// ignore_for_file: deprecated_member_use
-
 import "dart:async";
 
 import "package:firebase_messaging/firebase_messaging.dart";
@@ -214,28 +211,66 @@ void main() {
     expect(request.sessionTitle, "Session title");
   });
 
-  test("getToken returns null when APNS token never becomes available", () async {
-    when(() => messaging.getAPNSToken()).thenAnswer((_) async => null);
+  group("register", () {
+    setUp(() {
+      when(() => messaging.register()).thenAnswer((_) async {});
+    });
 
-    final appleSource = FirebasePushMessagingSource.test(
-      messaging: messaging,
-      isApplePlatform: () => true,
-      delay: (_) async {},
-    );
+    test("waits for the APNs token on Apple platforms before registering", () async {
+      final apnsTokens = <String?>[null, null, "apns-token"];
+      when(() => messaging.getAPNSToken()).thenAnswer((_) async => apnsTokens.removeAt(0));
+      final delays = <Duration>[];
+      final appleSource = FirebasePushMessagingSource.test(
+        messaging: messaging,
+        isApplePlatform: () => true,
+        delay: (duration) async => delays.add(duration),
+      );
 
-    final token = await appleSource.getToken();
+      await appleSource.register();
 
-    expect(token, isNull);
-    verifyNever(() => messaging.getToken());
-    await appleSource.dispose();
+      expect(delays, hasLength(2));
+      verify(() => messaging.register()).called(1);
+      await appleSource.dispose();
+    });
+
+    // Registering anyway lets the SDK report the missing APNs token instead of
+    // the registration silently never happening.
+    test("still registers when the APNs token never arrives", () async {
+      when(() => messaging.getAPNSToken()).thenAnswer((_) async => null);
+      final delays = <Duration>[];
+      final appleSource = FirebasePushMessagingSource.test(
+        messaging: messaging,
+        isApplePlatform: () => true,
+        delay: (duration) async => delays.add(duration),
+      );
+
+      await appleSource.register();
+
+      expect(delays, hasLength(5));
+      verify(() => messaging.register()).called(1);
+      await appleSource.dispose();
+    });
+
+    test("registers without reading an APNs token off Apple platforms", () async {
+      final androidSource = FirebasePushMessagingSource.test(
+        messaging: messaging,
+        isApplePlatform: () => false,
+      );
+
+      await androidSource.register();
+
+      verifyNever(() => messaging.getAPNSToken());
+      verify(() => messaging.register()).called(1);
+      await androidSource.dispose();
+    });
   });
 
-  test("deleteToken delegates to Firebase Messaging", () async {
-    when(() => messaging.deleteToken()).thenAnswer((_) async {});
+  test("unregister delegates to Firebase Messaging", () async {
+    when(() => messaging.unregister()).thenAnswer((_) async {});
 
-    await source.deleteToken();
+    await source.unregister();
 
-    verify(() => messaging.deleteToken()).called(1);
+    verify(() => messaging.unregister()).called(1);
   });
 }
 

@@ -45,11 +45,17 @@ external.
 - Connection-status pushes come from the auth server and name the computer: "<name> is online" or "<name> went
   offline" with "AI sessions there are paused.". Each computer's status push replaces only that computer's earlier one
   in the tray.
-- The client registers when authenticated, re-registers on token refresh, unregisters before logout, restores
-  registration if logout fails, and never re-registers while logout is in flight.
-- Registration sends the same device ID the preferences are stored under, so the server can associate this push token
-  with this device and suppress a disabled category before it reaches the delivery provider. A device ID that cannot be
-  read registers the token without one: that install stays unfiltered rather than losing push, and recovers on the next
+- Mobile push targets the Firebase Installation ID (FID), not an FCM registration token. The client asks FCM to
+  register when authenticated and sends every FID FCM then reports, including registrations FCM starts itself, to the
+  server, replacing a previously registered FID that changed. It removes the FID from the server before logout and
+  unregisters from FCM once signed out, restores registration if logout fails, and never re-registers while logout is
+  in flight. FCM rejects FID registration unless the app opts in (`FirebaseMessagingInstallationIdEnabled` in the iOS
+  Info.plist, `firebase_messaging_installation_id_enabled` in the Android manifest); the opt-in also disables the
+  token API, so the app never sends a token. On iOS, registration waits up to five seconds for the APNs token first.
+- Registration sends the same device ID the preferences are stored under, so the server can associate this FID with
+  this device, suppress a disabled category before it reaches the delivery provider, and delete that device's older
+  registration-token rows so an upgraded install does not receive each push twice. A device ID that cannot be read
+  registers the FID without one: that install stays unfiltered rather than losing push, and recovers on the next
   registration.
 - Foreground rendering needs the category enabled plus title and body; an unknown category and a preference read
   failure both default to enabled. Preferences are per account and cleared on account switch.
@@ -97,7 +103,7 @@ external.
 |---|---|
 | L1 Smoke | Not included because external notification delivery is not a product heartbeat. |
 | L2 Routine | Bridge-push, Codex lifecycle, and desktop attention coverage detailed below. |
-| L3 Release | Mobile client end to end on the release-target platform with a fake messaging source: registration including the device ID, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral and a switch to another computer, cancellation on open. Desktop automated coverage: hidden/unfocused local alert, click-to-focus/session navigation, resolve cancellation, toggle silence, logout isolation, and no push registration. |
+| L3 Release | Mobile client end to end on the release-target platform with a fake messaging source: FID registration including the device ID, a changed FID, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral and a switch to another computer, cancellation on open. Desktop automated coverage: hidden/unfocused local alert, click-to-focus/session navigation, resolve cancellation, toggle silence, logout isolation, and no push registration. |
 | L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, disabling a category on one device suppressing its remote delivery there while another device still receives it, completion from another production plugin, account switch and logout isolation, a child prompt opening its root, a tap on another computer's push opening that computer and its session. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |
 
@@ -145,8 +151,9 @@ provider because current payload content leaves the encrypted channel.
 - A tap on another computer's push opens the session on the current computer, fails to load it because the session
   screen started before the switch, or a push without a computer id switches computers.
 - A question or permission is suppressed by an earlier interaction or completion cooldown.
-- Delivery continues after logout, or a new account receives the prior account's notifications. Desktop registers a
-  push token, alerts while focused or disabled, fails to reconsider still-pending attention after a gate opens, leaks
+- Delivery continues after logout, or a new account receives the prior account's notifications. A mobile FID never
+  reaches the server (a missing platform opt-in or APNs token), or an upgraded install receives each push twice through
+  its old token and its FID. Desktop registers for push, alerts while focused or disabled, fails to reconsider still-pending attention after a gate opens, leaks
   request payload content, lets an older concurrent write replace newer attention, keeps or recreates a resolved alert,
   cancels while another display-session request remains pending, accepts a missing or mismatched account binding,
   carries alerts across an account-ending auth transition, loses a Linux launch callback during initialization, never

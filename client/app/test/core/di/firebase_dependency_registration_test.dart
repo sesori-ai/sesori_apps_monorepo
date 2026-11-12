@@ -93,13 +93,13 @@ void main() {
     await expectLater(staticAdapter.notificationOpenedStream, emitsDone);
   });
 
-  test("the no-op push source yields no token and no events", () async {
+  test("the no-op push source yields no FID and no events", () async {
     final pushMessagingSource = getIt<PushMessagingSource>();
     await pushMessagingSource.initialize();
-    expect(await pushMessagingSource.getToken(), isNull);
-    await pushMessagingSource.deleteToken();
+    await pushMessagingSource.register();
+    await pushMessagingSource.unregister();
     expect(await pushMessagingSource.getInitialNotificationOpen(), isNull);
-    await expectLater(pushMessagingSource.tokenRefreshStream, emitsDone);
+    await expectLater(pushMessagingSource.registeredFidStream, emitsDone);
     await expectLater(pushMessagingSource.foregroundMessageStream, emitsDone);
     await expectLater(pushMessagingSource.notificationOpenedStream, emitsDone);
   });

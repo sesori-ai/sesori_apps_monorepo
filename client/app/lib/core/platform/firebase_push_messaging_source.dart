@@ -67,12 +67,8 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   @override
   Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
 
-  // firebase_messaging 17 deprecates the token API in favour of
-  // register()/onRegistered; migrating changes the push-token lifecycle and
-  // is done separately from the dependency bump.
   @override
-  // ignore: deprecated_member_use
-  Stream<String> get tokenRefreshStream => _messaging.onTokenRefresh;
+  Stream<String> get registeredFidStream => _messaging.onRegistered;
 
   @override
   Future<void> initialize() async {
@@ -106,29 +102,22 @@ class FirebasePushMessagingSource implements PushMessagingSource {
     );
   }
 
+  /// On iOS, waits briefly for the APNs token first: registering without one
+  /// fails, and the SDK retries by itself when the token arrives only if it
+  /// holds no earlier registration, which an upgraded install does. When the
+  /// token never arrives this still registers, so the SDK's error is logged.
   @override
-  Future<String?> getToken() async {
+  Future<void> register() async {
     if (_isApplePlatform()) {
-      var apnsToken = await _messaging.getAPNSToken();
-      for (var i = 0; i < 5; i++) {
-        if (apnsToken != null) {
-          break;
-        }
+      for (var i = 0; i < 5 && await _messaging.getAPNSToken() == null; i++) {
         await _delay(const Duration(seconds: 1));
-        apnsToken = await _messaging.getAPNSToken();
-      }
-      if (apnsToken == null) {
-        return null;
       }
     }
-
-    // ignore: deprecated_member_use
-    return await _messaging.getToken();
+    await _messaging.register();
   }
 
   @override
-  // ignore: deprecated_member_use
-  Future<void> deleteToken() => _messaging.deleteToken();
+  Future<void> unregister() => _messaging.unregister();
 
   @override
   Future<NotificationOpenRequest?> getInitialNotificationOpen() async {

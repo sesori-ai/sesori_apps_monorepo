@@ -8,11 +8,17 @@ abstract interface class PushMessagingSource() {
 
   DevicePlatform get devicePlatform;
 
-  Future<String?> getToken();
+  /// Asks the messaging provider to register this installation. The resulting
+  /// Firebase Installation ID (FID) arrives on [registeredFidStream] rather
+  /// than as a return value.
+  Future<void> register();
 
-  Future<void> deleteToken();
+  /// Stops the messaging provider delivering to this installation's FID.
+  Future<void> unregister();
 
-  Stream<String> get tokenRefreshStream;
+  /// Emits the FID each time this installation is registered, whether a
+  /// [register] call or the provider itself started the registration.
+  Stream<String> get registeredFidStream;
 
   Stream<PushNotificationMessage> get foregroundMessageStream;
 
