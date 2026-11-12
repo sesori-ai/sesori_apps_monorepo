@@ -251,9 +251,10 @@ section of `HARNESS_CAPABILITIES.md`; `docs/regression/session-history-and-recov
   warning says "cannot reach OpenCode".
 - Agents are read from `/api/agent` on every request
   (`opencode_v2_repository.dart`) and reported as complete, but OpenCode 2.2.7
-  may return a partial list on a cold location and announces changes with
-  `agent.updated` / `command.updated` (empty data), which the plugin does not
-  subscribe to (`tool/opencode_events_v2.json`).
+  returns an empty or partial list on a cold location and announces the loaded
+  catalog with `agent.updated` / `command.updated` (empty data) once loading
+  finishes, which the plugin does not subscribe to
+  (`tool/opencode_events_v2.json`). Edits made while the server runs emit nothing.
 
 **Change.**
 - Private managed start with the flag: probe the resolved binary's version

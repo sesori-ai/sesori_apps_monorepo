@@ -413,6 +413,9 @@ class const OpenCodePluginDescriptor({
       probeTimeout: openCodeVersionProbeTimeout,
       executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
     ).probe(executable: executable, environment: host.environment);
+    if (host.startAborted.isAborted) {
+      throw const PluginStartAbortedException();
+    }
     if (outcome case RuntimeProbeReady(version: final SemanticRuntimeVersion runtimeVersion)
         when runtimeVersion.version.major >= 2) {
       throw PluginStartException(
