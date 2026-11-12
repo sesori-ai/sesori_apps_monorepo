@@ -274,6 +274,46 @@ void main() {
       expect(await project, isEmpty);
     });
 
+    test("hides listed sessions with zero messages and no title", () async {
+      await connect(
+        capabilities: const {
+          "sessionCapabilities": {
+            "list": <String, dynamic>{},
+          },
+        },
+      );
+      final project = plugin.getSessions(projectId: "/repo");
+      respond(await waitForFrame(AcpMethods.sessionList), {
+        "sessions": [
+          {
+            "sessionId": "leftover",
+            "cwd": "/repo",
+            "_meta": {"messageCount": 0, "size": 793},
+          },
+          {
+            "sessionId": "blank-title",
+            "cwd": "/repo",
+            "title": " ",
+            "_meta": {"messageCount": 0},
+          },
+          {
+            "sessionId": "titled",
+            "cwd": "/repo",
+            "title": "Fix the build",
+            "_meta": {"messageCount": 0},
+          },
+          {
+            "sessionId": "untitled-with-messages",
+            "cwd": "/repo",
+            "_meta": {"messageCount": 2},
+          },
+          {"sessionId": "no-meta", "cwd": "/repo"},
+        ],
+      });
+
+      expect((await project).map((session) => session.id), ["titled", "untitled-with-messages", "no-meta"]);
+    });
+
     test("runs sessions concurrently and routes forms by explicit session id", () async {
       await connect();
       final first = await create("first");
@@ -773,6 +813,45 @@ void main() {
       expect(image, isA<PluginMessageAttachmentInlineImage>());
       expect(image.toString(), isNot(contains("/private/")));
       expect(parts.whereType<PluginMessagePartText>().last.text, "Finished");
+    });
+
+    test("names live tool cards with OMP's own tool name", () async {
+      await connect();
+      final session = await create("session-1");
+      await send(session.id, "explore it");
+      final prompt = await waitForFrame(AcpMethods.sessionPrompt);
+      events.clear();
+
+      for (final update in <Map<String, dynamic>>[
+        {
+          "sessionUpdate": "tool_call",
+          "toolCallId": "tool-1",
+          "name": "task",
+          "kind": "other",
+          "title": "Explore the repo",
+          "status": "pending",
+        },
+        {"sessionUpdate": "tool_call_update", "toolCallId": "tool-1", "status": "completed"},
+      ]) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {"sessionId": session.id, "update": update},
+        });
+      }
+      respond(prompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 200 && events.whereType<BridgeSseSessionIdle>().isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      final tools = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartTool>()
+          .toList();
+      expect(tools, isNotEmpty);
+      expect(tools.map((part) => part.tool), everyElement("task"));
+      expect(tools.last.state.status, PluginToolStatus.completed);
     });
 
     const unrestorableMessage = "Oh My Pi can no longer restore this session's model (anthropic/claude-old).";

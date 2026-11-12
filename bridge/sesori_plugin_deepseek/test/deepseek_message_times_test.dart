@@ -93,6 +93,7 @@ void main() {
     final collector = AcpReplayCollector(
       sessionUpdateNormalizer: null,
       shellCommandResolver: null,
+      toolNameResolver: null,
       sessionId: "s1",
       agentId: "deepseek",
       initialUserMessage: null,
@@ -146,6 +147,7 @@ void main() {
     AcpReplayCollector collector(AcpHaltNotice? Function({required String text})? classifier) => AcpReplayCollector(
       sessionUpdateNormalizer: null,
       shellCommandResolver: null,
+      toolNameResolver: null,
       sessionId: "s1",
       agentId: "deepseek",
       initialUserMessage: null,
