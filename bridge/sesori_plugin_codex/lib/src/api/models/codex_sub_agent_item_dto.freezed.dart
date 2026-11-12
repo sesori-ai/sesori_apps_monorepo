@@ -180,6 +180,10 @@ CodexSubAgentItemDto _$CodexSubAgentItemDtoFromJson(
           return CodexSubAgentActivityItemDto.fromJson(
             json
           );
+                case 'collabAgentToolCall':
+          return CodexCollabAgentToolCallItemDto.fromJson(
+            json
+          );
         
           default:
             return CodexUnknownSubAgentItemDto.fromJson(
@@ -296,6 +300,92 @@ as String?,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_no
 as CodexSubAgentActivityKind,agentThreadId: freezed == agentThreadId ? _self.agentThreadId : agentThreadId // ignore: cast_nullable_to_non_nullable
 as String?,agentPath: freezed == agentPath ? _self.agentPath : agentPath // ignore: cast_nullable_to_non_nullable
 as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
+as String?,reasoningEffort: freezed == reasoningEffort ? _self.reasoningEffort : reasoningEffort // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexCollabAgentToolCallItemDto implements CodexSubAgentItemDto {
+  const CodexCollabAgentToolCallItemDto({required this.id, @JsonKey(fromJson: _textFromJson) required this.tool,  List<String> receiverThreadIds = const <String>[], @JsonKey(fromJson: _textFromJson) required this.model, @JsonKey(fromJson: _textFromJson) required this.reasoningEffort,  String? $type}): _receiverThreadIds = receiverThreadIds,$type = $type ?? 'collabAgentToolCall';
+  factory CodexCollabAgentToolCallItemDto.fromJson(Map<String, dynamic> json) => _$CodexCollabAgentToolCallItemDtoFromJson(json);
+
+ final  String? id;
+@JsonKey(fromJson: _textFromJson) final  String? tool;
+ final  List<String> _receiverThreadIds;
+@JsonKey() List<String> get receiverThreadIds {
+  if (_receiverThreadIds is EqualUnmodifiableListView) return _receiverThreadIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_receiverThreadIds);
+}
+
+@JsonKey(fromJson: _textFromJson) final  String? model;
+@JsonKey(fromJson: _textFromJson) final  String? reasoningEffort;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexSubAgentItemDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexCollabAgentToolCallItemDtoCopyWith<CodexCollabAgentToolCallItemDto> get copyWith => _$CodexCollabAgentToolCallItemDtoCopyWithImpl<CodexCollabAgentToolCallItemDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCollabAgentToolCallItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.tool, tool) || other.tool == tool)&&const DeepCollectionEquality().equals(other.receiverThreadIds, _receiverThreadIds)&&(identical(other.model, model) || other.model == model)&&(identical(other.reasoningEffort, reasoningEffort) || other.reasoningEffort == reasoningEffort));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,id,tool,const DeepCollectionEquality().hash(_receiverThreadIds),model,reasoningEffort);
+}
+
+@override
+String toString() {
+    return 'CodexSubAgentItemDto.collabAgentToolCall(id: $id, tool: $tool, receiverThreadIds: $receiverThreadIds, model: $model, reasoningEffort: $reasoningEffort)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexCollabAgentToolCallItemDtoCopyWith<$Res> implements $CodexSubAgentItemDtoCopyWith<$Res> {
+  factory $CodexCollabAgentToolCallItemDtoCopyWith(CodexCollabAgentToolCallItemDto value, $Res Function(CodexCollabAgentToolCallItemDto) _then) = _$CodexCollabAgentToolCallItemDtoCopyWithImpl;
+@useResult
+$Res call({
+ String? id,@JsonKey(fromJson: _textFromJson) String? tool, List<String> receiverThreadIds,@JsonKey(fromJson: _textFromJson) String? model,@JsonKey(fromJson: _textFromJson) String? reasoningEffort
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexCollabAgentToolCallItemDtoCopyWithImpl<$Res>
+    implements $CodexCollabAgentToolCallItemDtoCopyWith<$Res> {
+  _$CodexCollabAgentToolCallItemDtoCopyWithImpl(this._self, this._then);
+
+  final CodexCollabAgentToolCallItemDto _self;
+  final $Res Function(CodexCollabAgentToolCallItemDto) _then;
+
+/// Create a copy of CodexSubAgentItemDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? tool = freezed,Object? receiverThreadIds = null,Object? model = freezed,Object? reasoningEffort = freezed,}) {
+  return _then(CodexCollabAgentToolCallItemDto(
+id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,tool: freezed == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
+as String?,receiverThreadIds: null == receiverThreadIds ? _self._receiverThreadIds : receiverThreadIds // ignore: cast_nullable_to_non_nullable
+as List<String>,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String?,reasoningEffort: freezed == reasoningEffort ? _self.reasoningEffort : reasoningEffort // ignore: cast_nullable_to_non_nullable
 as String?,
   ));

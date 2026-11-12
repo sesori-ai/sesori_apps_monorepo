@@ -209,21 +209,29 @@ class CodexMessageRepository({
         return _initialChildInputFact(message: payload, previousLine: previousLine);
       }
     }
-    if (line case CodexRolloutEventMessageLineDto(
-      payload: CodexRolloutItemCompletedEventDto(
-        item: CodexRolloutCompletedSubAgentActivityDto(
+    if (line case CodexRolloutEventMessageLineDto(payload: CodexRolloutItemCompletedEventDto(:final item))) {
+      switch (item) {
+        case CodexRolloutCompletedSubAgentActivityDto(
           kind: CodexSubAgentActivityKind.started,
           :final id,
           :final agentThreadId,
-          :final agentPath,
-        ),
-      ),
-    )) {
-      return CodexSubAgentStartedActivityFact(
-        callId: id,
-        childThreadId: agentThreadId,
-        agentPath: agentPath,
-      );
+        ):
+          return CodexSubAgentStartedActivityFact(callId: id, childThreadId: agentThreadId);
+        // `multi_agent_v1` has no activity item: its completed spawn call is
+        // the only record naming the child.
+        case CodexRolloutCompletedCollabAgentToolCallDto(
+          tool: "spawn_agent",
+          :final id,
+          receiverThreadIds: [final childThreadId],
+        ):
+          return CodexSubAgentStartedActivityFact(callId: id, childThreadId: childThreadId);
+        case CodexRolloutCompletedSubAgentActivityDto() ||
+            CodexRolloutCompletedCollabAgentToolCallDto() ||
+            CodexRolloutCompletedContextCompactionDto() ||
+            CodexRolloutCompletedUserMessageDto() ||
+            CodexRolloutUnknownCompletedItemDto():
+          break;
+      }
     }
     return null;
   }

@@ -169,7 +169,6 @@ _$CodexRolloutCompletedSubAgentActivityDtoFromJson(Map json) =>
         unknownValue: CodexSubAgentActivityKind.unknown,
       ),
       agentThreadId: json['agent_thread_id'] as String,
-      agentPath: json['agent_path'] as String,
       $type: json['type'] as String?,
     );
 
@@ -180,6 +179,19 @@ const _$CodexSubAgentActivityKindEnumMap = {
   CodexSubAgentActivityKind.completed: 'completed',
   CodexSubAgentActivityKind.unknown: 'unknown',
 };
+
+CodexRolloutCompletedCollabAgentToolCallDto
+_$CodexRolloutCompletedCollabAgentToolCallDtoFromJson(Map json) =>
+    CodexRolloutCompletedCollabAgentToolCallDto(
+      id: json['id'] as String,
+      tool: json['tool'] as String,
+      receiverThreadIds:
+          (json['receiver_thread_ids'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const <String>[],
+      $type: json['type'] as String?,
+    );
 
 CodexRolloutCompletedContextCompactionDto
 _$CodexRolloutCompletedContextCompactionDtoFromJson(Map json) =>
