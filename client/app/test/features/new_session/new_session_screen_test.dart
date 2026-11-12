@@ -1190,9 +1190,8 @@ void main() {
       when(() => service.authenticationBrowserStates).thenAnswer((_) => browserStates.stream);
       when(() => service.authenticationTerminal)
           .thenAnswer((_) => const Stream<PluginAuthenticationTerminalUpdate>.empty());
-      GetIt.instance
-        ..unregister<PluginManagementService>()
-        ..registerSingleton<PluginManagementService>(service);
+      await GetIt.instance.unregister<PluginManagementService>();
+      GetIt.instance.registerSingleton<PluginManagementService>(service);
       GetIt.instance.registerSingleton<UrlLauncher>(_MockUrlLauncher());
       addTearDown(snapshots.close);
       await tester.pumpWidget(_buildApp(useHarnessFlow: true));

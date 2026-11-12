@@ -33,14 +33,14 @@ void main() {
       const ConnectionDisconnected(),
     );
     if (getIt.isRegistered<ConnectionService>()) {
-      getIt.unregister<ConnectionService>();
+      await getIt.unregister<ConnectionService>();
     }
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
 
     final mockAuthSession = MockAuthSession();
     when(mockAuthSession.restoreSession).thenAnswer((_) async => false);
     if (getIt.isRegistered<AuthSession>()) {
-      getIt.unregister<AuthSession>();
+      await getIt.unregister<AuthSession>();
     }
     getIt.registerLazySingleton<AuthSession>(() => mockAuthSession);
   });

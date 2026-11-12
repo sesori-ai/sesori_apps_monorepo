@@ -116,13 +116,24 @@ android {
 
         getByName("profile") {
             signingConfig = signingConfigs.getByName("debugTeam")
-            applicationIdSuffix = ".profile"
-            resValue("string", "app_name", "Sesori PROFILE")
+            // The ".profile" application id suffix and app name are set in
+            // androidComponents below: Flutter 3.50 copies this build type into
+            // every plugin library project, where neither is allowed.
 
             proguardFiles.add(getDefaultProguardFile("proguard-android-optimize.txt"))
 //            proguardFiles.add(getDefaultProguardFile("proguard-rules.pro"))
             isMinifyEnabled = false
         }
+    }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("profile")) { variant ->
+        variant.applicationId.set(variant.applicationId.get() + ".profile")
+        variant.resValues.put(
+            variant.makeResValueKey("string", "app_name"),
+            com.android.build.api.variant.ResValue("Sesori PROFILE"),
+        )
     }
 }
 

@@ -4,13 +4,13 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.13.7
-  flutter: ">=3.47.8 <3.48.0"
+  sdk: ^3.14.0
+  flutter: ">=3.50.0 <3.51.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  material_ui: ^1.8.0
+  material_ui: ^1.11.0
   theme_prego:
     path: ../module_prego
   widgetbook: 3.25.0

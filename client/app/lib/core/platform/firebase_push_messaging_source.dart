@@ -67,7 +67,11 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   @override
   Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
 
+  // firebase_messaging 17 deprecates the token API in favour of
+  // register()/onRegistered; migrating changes the push-token lifecycle and
+  // is done separately from the dependency bump.
   @override
+  // ignore: deprecated_member_use
   Stream<String> get tokenRefreshStream => _messaging.onTokenRefresh;
 
   @override
@@ -118,10 +122,12 @@ class FirebasePushMessagingSource implements PushMessagingSource {
       }
     }
 
+    // ignore: deprecated_member_use
     return await _messaging.getToken();
   }
 
   @override
+  // ignore: deprecated_member_use
   Future<void> deleteToken() => _messaging.deleteToken();
 
   @override

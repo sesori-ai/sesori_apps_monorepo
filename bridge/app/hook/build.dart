@@ -6,13 +6,14 @@ import "package:hooks/hooks.dart";
 void main(List<String> args) async {
   await build(args, (input, output) async {
     if (!input.config.buildCodeAssets || input.config.code.targetOS != OS.macOS) return;
+    final minimum = input.config.code.macOS.deploymentVersion;
     final source = input.packageRoot.resolve("native/macos_power_observer.c");
     final library = input.outputDirectory.resolve("macos_power_observer.dylib");
     final result = await Process.run("clang", [
       "-dynamiclib",
       "-fblocks",
       "-O2",
-      "-mmacos-version-min=${input.config.code.macOS.targetVersion}",
+      "-mmacos-version-min=${minimum.major}.${minimum.minor}.${minimum.patch}",
       "-framework",
       "IOKit",
       "-framework",
