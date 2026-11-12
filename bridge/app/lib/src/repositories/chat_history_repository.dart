@@ -1228,25 +1228,20 @@ class ChatHistoryRepository({
     if ((imported, stored) case (final MessageError imported, final MessageError stored)
         when stored.errorMessage != imported.errorMessage) {
       final added = "\n\n${imported.errorMessage}";
-      final storedKind = _renamedNoticeKinds[stored.errorName] ?? stored.errorName;
-      if (storedKind == imported.errorName) {
+      if (stored.errorName == imported.errorName) {
         final wording = stored.errorMessage.endsWith(added)
             ? stored.errorMessage.substring(0, stored.errorMessage.length - added.length)
             : stored.errorMessage;
         return imported.copyWith(errorMessage: wording);
       }
       final kept = stored.errorMessage.contains(imported.errorMessage);
-      if (kept) return imported.copyWith(errorName: storedKind, errorMessage: stored.errorMessage);
+      if (kept) return imported.copyWith(errorName: stored.errorName, errorMessage: stored.errorMessage);
       if (!sameIdentity) {
-        return imported.copyWith(errorName: storedKind, errorMessage: "${stored.errorMessage}$added");
+        return imported.copyWith(errorName: stored.errorName, errorMessage: "${stored.errorMessage}$added");
       }
     }
     return null;
   }
-
-  // COMPATIBILITY 2026-11-12 (v1.12.0): Released bridges stored Hermes's live
-  // failure notices as hermes_turn_failure before the plugin renamed that kind.
-  static const _renamedNoticeKinds = {"hermes_turn_failure": "hermes_failed_turn"};
 
   bool _knownTimesAgree({
     required _SemanticMessageFingerprints imported,

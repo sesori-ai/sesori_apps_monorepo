@@ -220,12 +220,11 @@ reconnect or restart.
   one. When the live notice was seen, the reloaded notice shows only Hermes's
   live reason in place of the generic "Your request was not processed…" row,
   which says nothing more; the partial-turn warning still follows the live
-  reason, because it says that actions may already have run. Notices stored by
-  an older bridge show the same after the next reload or re-import: a notice
-  stored with the generic row appended after the live reason loses that
-  appended row, and a live notice stored under Hermes's old kind name
-  (`hermes_turn_failure`) gets no generic row appended but still gets the
-  partial-turn warning. An assistant message whose whole text is
+  reason, because it says that actions may already have run. A notice an older
+  bridge stored with the generic row appended after the live reason loses that
+  appended row on the next reload or re-import. Accepted limit: live Hermes
+  notices saved by v1.12.0 under the old name `hermes_turn_failure` keep the
+  repeated generic line after a reload. An assistant message whose whole text is
   one of Hermes's notices is that notice. A reply that quotes one inside other
   text, adds to it or carries a tool or reasoning stays a reply, and so does a
   reasoning-only stop, which carries the model's last thoughts.
