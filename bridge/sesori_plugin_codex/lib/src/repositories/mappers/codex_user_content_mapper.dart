@@ -28,7 +28,11 @@ final class const CodexUserContentMapper() {
 enum _GeneratedContextTag(final String wireName) {
   recommendedPlugins("recommended_plugins"),
   environmentContext("environment_context"),
-  turnAborted("turn_aborted");
+  turnAborted("turn_aborted"),
+
+  /// A `multi_agent_v1` child's completion, which Codex hands the parent as a
+  /// user message; the child's subtask tile already shows it.
+  subagentNotification("subagent_notification");
 
   bool wraps({required String text}) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
 }

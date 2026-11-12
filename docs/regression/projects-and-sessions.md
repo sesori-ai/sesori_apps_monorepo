@@ -696,7 +696,8 @@ state.
   direct parent with the parent's project directory and Codex nickname (or agent
   path), and never depends on a missing
   child `thread/started`. Later child activity and title updates retain that
-  parent. Connection startup restores persisted lifecycle ancestry before
+  parent. The `<subagent_notification>` user message a finished v1 child leaves
+  in the parent's history is not shown. Connection startup restores persisted lifecycle ancestry before
   pending-input routing, and resuming a child restores the same mapper context.
   Catalog reads expose `thread_source == subagent` rollouts as children,
   keep project session lists root-only, preserve children in full

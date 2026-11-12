@@ -1041,9 +1041,11 @@ Live check with an API-key provider on 0.167.1 (2026-11-12): with
 carry the model; the effort was not exercised because Codex sent no reasoning
 effort for the custom model. With `multi_agent_v2` off, Codex's default in
 0.167.1, sub-agents arrive as v1 `collabAgentToolCall` items; a completed
-`spawnAgent` call names the child thread, so the child session and its subtask
-tile appear live and in replay (live check on 0.167.2, 2026-11-12). In both
-modes `wait_agent` stays a generic tool card. Sessions whose v1 sub-agents ran before
+`spawnAgent` call with exactly one receiver names the child thread, so the
+child session and its subtask tile appear live and in replay (live check on
+0.167.2, 2026-11-12). The `<subagent_notification>` user message Codex adds to
+the parent when a v1 child finishes is hidden, as the tile already shows it; v2
+sends none. In both modes `wait_agent` stays a generic tool card. Sessions whose v1 sub-agents ran before
 this mapping keep their generic `Spawn_agent` card, because their child was
 never registered.
 
