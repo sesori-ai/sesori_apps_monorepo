@@ -343,6 +343,10 @@ variant, and worktree mode, and creating the session with its first input.
   changes remain MCP-tool events. A backend change that names a session refreshes
   that session's catalog; one that names none refreshes every project the plugin
   already holds a snapshot for, and never discovers for a project it does not.
+  OpenCode 2's `agent.updated` and `command.updated` refresh the same way: on a
+  cold location OpenCode first answers an empty or partial agent list, then
+  announces the loaded catalog. OpenCode 2.2.7 does not announce or reload
+  agent or command files edited while it runs.
 - A plugin may declare start warm-up work that makes later requests faster.
   The bridge runs it once a generation becomes routable and never waits on it,
   so a slow or failing warm-up neither delays the request that triggered the

@@ -649,15 +649,47 @@ void main() {
         ),
       );
       host.ports.defaultBindable = true;
+      host.processes.commandOutputs["--version"] = "1.17.11";
       final plugin = await descriptor().start(host);
 
       expect(plugin.currentStatus, isA<PluginReady>());
+      expect(host.processes.commands, equals(["--version"]));
       expect((apiRecorder.last ?? fail("expected an OpenCode API")).password, isNull);
       expect(host.processes.spawnedProcesses, hasLength(1));
       final environment = host.processes.spawnEnvironments.single ?? fail("expected a spawn environment");
       expect(environment.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
 
       await plugin.shutdown(budget: null);
+    });
+
+    test("--no-password fails clearly before spawning a private OpenCode 2 server", () async {
+      host = _FakeHost(
+        config: const PluginConfig(
+          values: {
+            "port": null,
+            "host": "127.0.0.1",
+            "no-auto-start": false,
+            "no-shared-service": false,
+            "password": null,
+            "bin": "/bin/opencode",
+            "no-password": true,
+          },
+        ),
+      );
+      host.processes.commandOutputs["--version"] = "opencode v2.2.7";
+
+      await expectLater(
+        descriptor().start(host),
+        throwsA(
+          isA<PluginStartException>().having(
+            (error) => error.message,
+            "message",
+            allOf(contains("OpenCode 2.2.7"), contains("--opencode-no-password"), contains("--opencode-password")),
+          ),
+        ),
+      );
+      expect(host.processes.spawnedProcesses, isEmpty);
+      expect(host.ownershipRecord("owner-current"), isNull);
     });
 
     test("maps a cold-start failure to Degraded without failing the bridge", () async {
@@ -1202,7 +1234,7 @@ void main() {
         );
     }
 
-    _FakeHost sharedHost({bool noSharedService = false, String? bin}) {
+    _FakeHost sharedHost({bool noSharedService = false, String? bin, bool noPassword = false}) {
       final host = _FakeHost(
         config: PluginConfig(
           values: {
@@ -1211,7 +1243,7 @@ void main() {
             "no-auto-start": false,
             "password": null,
             "bin": bin,
-            "no-password": false,
+            "no-password": noPassword,
             "no-shared-service": noSharedService,
           },
         ),
@@ -1261,6 +1293,19 @@ void main() {
       expect(await plugin.interruptActiveWork(budget: const Duration(seconds: 1)), isEmpty);
       await plugin.shutdown(budget: null);
       expect(host.processes.signals, isEmpty);
+    });
+
+    test("ignores --no-password and authenticates with the service's own password", () async {
+      registerService();
+      final host = sharedHost(noPassword: true);
+
+      final plugin = await descriptor().start(host);
+
+      expect(plugin.currentStatus, isA<PluginReady>());
+      expect(plugin.describe().details["mode"], equals("shared"));
+      expect((apiRecorder.last ?? fail("expected an OpenCode API")).password, equals(sharedPassword));
+      expect(host.processes.spawnedProcesses, isEmpty);
+      await plugin.shutdown(budget: null);
     });
 
     void scriptCli({required _FakeHost host, required String version, required bool startSucceeds}) {

@@ -202,7 +202,9 @@ class const OpenCodePluginDescriptor({
     ),
     PluginFlagOption(
       name: _OpenCodeConfigKey.noPassword,
-      help: "Disable OpenCode server authentication",
+      help:
+          "Disable OpenCode server authentication (OpenCode 1 only; OpenCode 2 always requires a password, and "
+          "its shared service brings its own)",
       defaultsTo: false,
       negatable: false,
     ),
@@ -377,6 +379,33 @@ class const OpenCodePluginDescriptor({
         probeClientFactory: _probeClientFactory,
       ),
     ).acquire(binary: host.provisionedRuntimePath, environment: host.environment, startAborted: host.startAborted);
+  }
+
+  /// OpenCode 2 generates a password when none is set, so a private server
+  /// started for `--opencode-no-password` would reject every bridge request
+  /// until the health deadline on every port. Fails fast instead. A binary
+  /// whose version cannot be read keeps the OpenCode 1 behaviour.
+  Future<void> _rejectPasswordlessOpenCode2({required PluginHost host, required String executable}) async {
+    const manifest = OpenCodeRuntimeManifest();
+    final outcome = await RuntimeVersionValidator(
+      commandExecutor: HostProcessCommandExecutor(
+        includeParentEnvironment: true,
+        processes: host.processes,
+        runInShell: io.Platform.isWindows,
+        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+      ),
+      manifest: manifest,
+      probeTimeout: openCodeVersionProbeTimeout,
+      executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
+    ).probe(executable: executable, environment: host.environment);
+    if (outcome case RuntimeProbeReady(version: final SemanticRuntimeVersion runtimeVersion)
+        when runtimeVersion.version.major >= 2) {
+      throw PluginStartException(
+        "OpenCode ${runtimeVersion.raw} always requires a password, so --opencode-no-password works only with "
+        "OpenCode 1. Remove the flag to let the bridge generate a password, or set one with --opencode-password.",
+        cause: null,
+      );
+    }
   }
 
   String? _explicitBin(PluginConfig config) {
@@ -712,11 +741,14 @@ class const OpenCodePluginDescriptor({
       } on PluginStartAbortedException {
         rethrow;
       } on PluginStartException catch (error) {
+        final passwordHint = apiPassword == null
+            ? " OpenCode 2.x always requires a password: pass it with --opencode-password."
+            : "";
         Log.w(
           "[opencode] cannot reach OpenCode at port $attachPort (auto-start disabled): ${error.message}. "
           "Bridge will start anyway; start OpenCode 1.x manually to enable proxying. "
           "For an existing OpenCode 2.x installation, restart the bridge after starting its server "
-          "to check protocol support; do not downgrade OpenCode.",
+          "to check protocol support; do not downgrade OpenCode.$passwordHint",
         );
         handle = null;
       }
@@ -724,6 +756,12 @@ class const OpenCodePluginDescriptor({
       mode = _OpenCodeServerMode.shared;
       // Shared mode: attach to OpenCode's own background server, never own,
       // kill or restart it. Everything comes from its registration, not config.
+      if (noPassword) {
+        Log.w(
+          "[opencode] --opencode-no-password is ignored: the shared OpenCode ${sharedEndpoint.version} service "
+          "brings its own password",
+        );
+      }
       port = sharedEndpoint.port;
       serverUrl = sharedEndpoint.url;
       apiPassword = sharedEndpoint.password;
@@ -786,6 +824,9 @@ class const OpenCodePluginDescriptor({
         handle = null;
       } else {
         final executablePath = resolvedExecutable;
+        if (noPassword) {
+          await _rejectPasswordlessOpenCode2(host: host, executable: executablePath);
+        }
 
         final RuntimePortPolicy portPolicy;
         if (requestedPort != null) {

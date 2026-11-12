@@ -239,6 +239,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
     command. `--opencode-port`, `--opencode-host` and
     the password flags do not turn sharing off; they shape only the private
     fallback server, and a degraded private start reports `mode: managed`.
+    `--opencode-no-password` is logged and ignored when the shared service is
+    used; a private OpenCode 2 server fails at once, before spawning, with an
+    error naming the flag, because OpenCode 2 always requires a password.
   - **Rediscovery:** the next plugin start looks for the service again.
 - Pi and Claude Code report degraded when their binary fails to spawn and ready
   on the next successful spawn. A spawn that fails because the session's
