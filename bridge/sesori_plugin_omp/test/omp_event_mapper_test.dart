@@ -62,9 +62,10 @@ void main() {
     // compaction itself is done.
     final ended = end({"willRetry": true, "tokensBefore": 120000});
 
-    // Outside a prompt turn the session reads as working until the end.
-    expect(started, hasLength(3));
-    expect(started.first, isA<BridgeSseSessionStatus>());
+    // No live busy status: with the idle at the end, the bridge would push a
+    // completion notification for a turn the user never ran.
+    expect(started, hasLength(2));
+    expect(started, isNot(contains(isA<BridgeSseSessionStatus>())));
     expect(started, row(id: "session-1-compaction-5000-0", created: 5000, state: const .running(summary: null)));
     expect(ended, hasLength(4));
     expect(

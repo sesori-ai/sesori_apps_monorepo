@@ -143,9 +143,10 @@ sub-agent parts, plus the signal that a tool changed files.
   next attempt gets a new row. An Oh My Pi compaction method that fails
   settles as the failure note, and the method OMP falls back to gets its own
   row below it; a manual Oh My Pi `/compact` sends no signal and shows no row.
-  An Oh My Pi compaction outside a prompt (its opt-in idle compaction) shows
-  the session as working until it ends, so the idle sweep cannot end the row
-  early; a prompt sent meanwhile is held by OMP until the compaction ends.
+  An Oh My Pi compaction outside a prompt (its opt-in idle compaction) reports
+  the session busy to status reads until it ends, so the idle sweep cannot end
+  the row early. It sends no live busy status, so it raises no completion
+  notification; a prompt sent meanwhile is held by OMP until it ends.
   An unfinished compaction elsewhere (Stop or a
   lost process on Claude or Pi, any Codex, DeepSeek or Oh My Pi compaction
   without a completion)

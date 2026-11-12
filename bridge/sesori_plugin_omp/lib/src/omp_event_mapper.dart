@@ -9,8 +9,11 @@ import "trackers/omp_compaction_tracker.dart";
 /// notifications on top of stock ACP.
 ///
 /// A compaction outside an accepted prompt (OMP's opt-in idle compaction)
-/// reports its session busy itself. `hasPendingTurn` is the plugin's turn
-/// accounting, which counts a prompt from acceptance, before its turn begins.
+/// reads as busy only through the plugin's status query, so a history read
+/// leaves its row running. It sends no live busy status: the bridge would
+/// take the busy-to-idle pair for a finished turn and push a completion
+/// notification for a turn the user never ran. `hasPendingTurn` is the
+/// plugin's turn accounting, which counts a prompt from acceptance.
 class OmpEventMapper({
   required super.launchDirectory,
   required super.pluginId,
@@ -85,15 +88,11 @@ class OmpEventMapper({
 
   List<BridgeSseEvent> _mapCompactionStart(OmpCompactionStartDto start) {
     final sessionId = start.sessionId;
-    return [
-      if (!hasPendingTurn(sessionId: sessionId))
-        BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy()),
-      ..._compactionRow(
-        sessionId: sessionId,
-        compaction: compactionTracker.start(sessionId: sessionId),
-        state: const .running(summary: null),
-      ),
-    ];
+    return _compactionRow(
+      sessionId: sessionId,
+      compaction: compactionTracker.start(sessionId: sessionId),
+      state: const .running(summary: null),
+    );
   }
 
   /// A failed method's fallback to the next preferred one arrives as a new
@@ -114,7 +113,9 @@ class OmpEventMapper({
     return [
       if (compaction != null) ..._compactionRow(sessionId: sessionId, compaction: compaction, state: state),
       if (state is PluginCompactionStateCompleted) BridgeSseSessionCompacted(sessionID: sessionId),
-      // After the settled row, so the idle sweep finds nothing running.
+      // Clears a busy status read mid-compaction. After the settled row, so
+      // the idle sweep finds nothing running. With no live busy before it,
+      // this idle sends no completion notification.
       if (compaction != null && !hasPendingTurn(sessionId: sessionId)) BridgeSseSessionIdle(sessionID: sessionId),
     ];
   }
