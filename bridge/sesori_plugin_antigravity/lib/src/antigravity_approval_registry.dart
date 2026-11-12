@@ -24,6 +24,10 @@ class AntigravityApprovalRegistry({
       _interactionService.rejectAmbiguousServerRequest(request: request);
 
   @override
+  void withdrawServerRequest({required Object requestId}) =>
+      withdrawWhere(matches: (payload) => payload.requestId == requestId);
+
+  @override
   void handleRequest(AcpServerRequest request) {
     switch (_interactionService.classify(request: request)) {
       case final AntigravityPermission permission:

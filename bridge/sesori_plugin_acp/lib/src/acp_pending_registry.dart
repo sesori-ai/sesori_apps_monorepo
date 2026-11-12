@@ -17,4 +17,8 @@ abstract class AcpPendingRegistry<TPayload extends Object>({
 
   /// No active-turn fallback may approve an ambiguously attributed request.
   void rejectAmbiguousServerRequest({required AcpServerRequest request});
+
+  /// Retires the entry for the agent request [requestId] that the agent
+  /// withdrew with `$/cancel_request`.
+  void withdrawServerRequest({required Object requestId});
 }

@@ -45,6 +45,10 @@ abstract final class AcpMethods() {
   static const String sessionSetConfigOption = "session/set_config_option";
   static const String sessionSetMode = "session/set_mode";
   static const String elicitationCreate = "elicitation/create";
+
+  /// Agent notification `{requestId}` withdrawing a request it sent and no
+  /// longer waits on.
+  static const String cancelRequest = r"$/cancel_request";
 }
 
 @Freezed(fromJson: false, toJson: true, copyWith: false, equal: false, toStringOverride: false)

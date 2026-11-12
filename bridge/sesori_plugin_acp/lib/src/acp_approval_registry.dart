@@ -170,6 +170,10 @@ class AcpApprovalRegistry({
     }
   }
 
+  @override
+  void withdrawServerRequest({required Object requestId}) =>
+      withdrawWhere(matches: (payload) => payload.acpId == requestId);
+
   /// Responds to a server request with a result payload.
   void respond({required Object acpId, required Object? result}) => _respond(acpId, result);
 
