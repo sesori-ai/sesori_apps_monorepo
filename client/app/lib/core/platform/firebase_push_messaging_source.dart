@@ -103,9 +103,10 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   }
 
   /// On iOS, waits briefly for the APNs token first: registering without one
-  /// fails, and the SDK retries by itself when the token arrives only if it
-  /// holds no earlier registration, which an upgraded install does. When the
-  /// token never arrives this still registers, so the SDK's error is logged.
+  /// fails. The SDK retries by itself when the token arrives only if it caches
+  /// no token at all, and an upgraded install still caches its legacy FCM
+  /// registration token, so it would not retry. When the APNs token never
+  /// arrives this still registers, so the SDK's error is logged.
   @override
   Future<void> register() async {
     if (_isApplePlatform()) {

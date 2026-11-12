@@ -173,8 +173,9 @@ class NotificationRegistrationService({
       // An FID reported while not signed in never reaches the server. After a
       // sign-out (logout or a rejected session) this unregisters it from FCM
       // again. A cold start while signed out stays AuthInitial, so FCM keeps
-      // the registration it made by itself; the server sends only to FIDs it
-      // stores, so nothing is delivered.
+      // the registration it made by itself: nothing is delivered unless the
+      // server still holds this FID from a logout whose DELETE failed or a
+      // rejected session (see docs/regression/notifications.md).
       await _syncForState(state: authState);
       return;
     }

@@ -49,17 +49,21 @@ external.
   register when authenticated and sends every FID FCM then reports, including registrations FCM starts itself, to the
   server, replacing a previously registered FID that changed. It removes the FID from the server before logout and
   unregisters from FCM at logout (or when the session is rejected), restores registration if logout fails, and never
-  re-registers while logout is in flight. An FID FCM reports while signed out is never sent to the server. After a
-  logout in the same run the client unregisters it from FCM again; on a cold start while signed out, FCM keeps the
-  registration it made by itself until the next sign-in, which is harmless because the server sends only to FIDs it
-  stores. FCM rejects FID registration unless the app opts in (`FirebaseMessagingInstallationIdEnabled` in the iOS
-  Info.plist, `firebase_messaging_installation_id_enabled` in the Android manifest); the opt-in also disables the
-  token API, so the app never sends a token. On iOS, registration waits up to five seconds for the APNs token first.
+  re-registers while logout is in flight. An FID FCM reports while signed out is never sent to the server, and after a
+  sign-out in the same run the client unregisters it from FCM again. FCM keeps the FID across an unregister and its
+  auto-initialization can register it again on a later start, which a signed-out cold start (auth still initial) does
+  not undo. That is harmless when the server holds no row for the FID. When the logout DELETE failed (server
+  unreachable) or the session was rejected for a reason other than signing out everywhere (which deletes every row),
+  the row survives: unless a push sent while the FID was unregistered already pruned it, that signed-out device
+  receives the account's pushes again until a sign-in on it moves the row. FCM rejects FID registration unless the
+  app opts in (`FirebaseMessagingInstallationIdEnabled` in the iOS Info.plist,
+  `firebase_messaging_installation_id_enabled` in the Android manifest); the opt-in also disables the token API, so
+  the app never sends a token. On iOS, registration waits up to five seconds for the APNs token first.
 - Registration sends the same device ID the preferences are stored under, so the server can associate this FID with
   this device, suppress a disabled category before it reaches the delivery provider, and delete that device's older
   registration-token rows so an upgraded install does not receive each push twice. A device ID that cannot be read
-  registers the FID without one: that install stays unfiltered rather than losing push, and recovers on the next
-  registration.
+  registers the FID without one: rather than losing push, that install stays unfiltered and keeps its old token row,
+  so it can receive each push twice, until a later registration reads the device ID.
 - Foreground rendering needs the category enabled plus title and body; an unknown category and a preference read
   failure both default to enabled. Preferences are per account and cleared on account switch.
 - A notification opened while unauthenticated defers until authentication, then routes to its session; viewing a
@@ -156,11 +160,12 @@ provider because current payload content leaves the encrypted channel.
 - A question or permission is suppressed by an earlier interaction or completion cooldown.
 - Delivery continues after logout, or a new account receives the prior account's notifications. A mobile FID never
   reaches the server (a missing platform opt-in or APNs token), or an upgraded install receives each push twice through
-  its old token and its FID. Desktop registers for push, alerts while focused or disabled, fails to reconsider still-pending attention after a gate opens, leaks
-  request payload content, lets an older concurrent write replace newer attention, keeps or recreates a resolved alert,
-  cancels while another display-session request remains pending, accepts a missing or mismatched account binding,
-  carries alerts across an account-ending auth transition, loses a Linux launch callback during initialization, never
-  retries a transient initialization failure, or fails to focus and open the display session when clicked.
+  its old token and its FID. Desktop registers for push, alerts while focused or disabled, fails to reconsider
+  still-pending attention after a gate opens, leaks request payload content, lets an older concurrent write replace
+  newer attention, keeps or recreates a resolved alert, cancels while another display-session request remains pending,
+  accepts a missing or mismatched account binding, carries alerts across an account-ending auth transition, loses a
+  Linux launch callback during initialization, never retries a transient initialization failure, or fails to focus and
+  open the display session when clicked.
 - A disabled category renders in the foreground, an unknown category is dropped, or a send failure surfaces as a
   failed session action.
 - Payload content or routing metadata differs from the current mapping.
