@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:firebase_app_installations/firebase_app_installations.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter/foundation.dart";
 import "package:injectable/injectable.dart";
@@ -15,6 +16,7 @@ import "firebase/firebase_messaging_static_adapter.dart";
 @LazySingleton(as: PushMessagingSource)
 class FirebasePushMessagingSource implements PushMessagingSource {
   final FirebaseMessaging _messaging;
+  final FirebaseInstallations _installations;
   final FirebaseMessagingStaticAdapter _staticAdapter;
   final bool Function() _isApplePlatform;
 
@@ -36,8 +38,10 @@ class FirebasePushMessagingSource implements PushMessagingSource {
 
   new({
     required FirebaseMessaging messaging,
+    required FirebaseInstallations installations,
     required FirebaseMessagingStaticAdapter staticAdapter,
   }) : _messaging = messaging,
+       _installations = installations,
        _staticAdapter = staticAdapter,
        _isApplePlatform = _defaultIsApplePlatform,
        _requestsPermission = !sesoriTestMode,
@@ -46,11 +50,13 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   @visibleForTesting
   new test({
     required FirebaseMessaging messaging,
+    required FirebaseInstallations installations,
     FirebaseMessagingStaticAdapter staticAdapter = const FirebaseMessagingStaticAdapter.disabled(),
     bool Function()? isApplePlatform,
     bool requestsPermission = true,
     Future<void> Function(Duration)? delay,
   }) : _messaging = messaging,
+       _installations = installations,
        _staticAdapter = staticAdapter,
        _isApplePlatform = isApplePlatform ?? _defaultIsApplePlatform,
        _requestsPermission = requestsPermission,
@@ -67,12 +73,8 @@ class FirebasePushMessagingSource implements PushMessagingSource {
   @override
   Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
 
-  // firebase_messaging 17 deprecates the token API in favour of
-  // register()/onRegistered; migrating changes the push-token lifecycle and
-  // is done separately from the dependency bump.
   @override
-  // ignore: deprecated_member_use
-  Stream<String> get tokenRefreshStream => _messaging.onTokenRefresh;
+  Stream<String> get registeredFidStream => _messaging.onRegistered;
 
   @override
   Future<void> initialize() async {
@@ -106,8 +108,13 @@ class FirebasePushMessagingSource implements PushMessagingSource {
     );
   }
 
+  /// On iOS, waits briefly for the APNs token first: registering without one
+  /// fails. The SDK retries by itself when the token arrives only if it caches
+  /// no token at all, and an upgraded install still caches its legacy FCM
+  /// registration token, so it would not retry. When the APNs token never
+  /// arrives this still registers, so the SDK's error is logged.
   @override
-  Future<String?> getToken() async {
+  Future<void> register() async {
     if (_isApplePlatform()) {
       var apnsToken = await _messaging.getAPNSToken();
       for (var i = 0; i < 5; i++) {
@@ -117,18 +124,19 @@ class FirebasePushMessagingSource implements PushMessagingSource {
         await _delay(const Duration(seconds: 1));
         apnsToken = await _messaging.getAPNSToken();
       }
-      if (apnsToken == null) {
-        return null;
-      }
     }
-
-    // ignore: deprecated_member_use
-    return await _messaging.getToken();
+    await _messaging.register();
   }
 
+  /// Unregisters from FCM, then deletes the Firebase Installation, so the next
+  /// registration gets a new FID and a row the server still holds for this one
+  /// can never deliver. The order matters: both SDKs re-register with a rotated
+  /// FID while an FCM registration is still cached, and unregistering clears it.
   @override
-  // ignore: deprecated_member_use
-  Future<void> deleteToken() => _messaging.deleteToken();
+  Future<void> unregister() async {
+    await _messaging.unregister();
+    await _installations.delete();
+  }
 
   @override
   Future<NotificationOpenRequest?> getInitialNotificationOpen() async {

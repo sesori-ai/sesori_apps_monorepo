@@ -58,7 +58,7 @@ export "src/api/storage/product_analytics_preference_storage.dart";
 export "src/api/storage/session_launch_storage.dart";
 export "src/api/voice_mode_config_api.dart";
 export "src/capabilities/feedback/feedback_submit_request.dart";
-export "src/capabilities/notifications/register_token_request.dart";
+export "src/capabilities/notifications/register_fid_request.dart";
 export "src/capabilities/relay/relay_client.dart";
 export "src/capabilities/relay/room_key_storage.dart";
 export "src/capabilities/relay/target_bridge_storage.dart";

@@ -274,7 +274,6 @@ class FakePushMessagingSource() implements PushMessagingSource {
       StreamController<PushNotificationMessage>.broadcast();
   final StreamController<NotificationOpenRequest> _notificationOpenedController =
       StreamController<NotificationOpenRequest>.broadcast();
-  final StreamController<String> _tokenRefreshController = StreamController<String>.broadcast();
   NotificationOpenRequest? initialOpenRequest;
   Future<NotificationOpenRequest?>? initialOpenRequestFuture;
 
@@ -285,10 +284,10 @@ class FakePushMessagingSource() implements PushMessagingSource {
   Stream<PushNotificationMessage> get foregroundMessageStream => _foregroundMessageController.stream;
 
   @override
-  Future<String?> getToken() async => null;
+  Future<void> register() async {}
 
   @override
-  Future<void> deleteToken() async {}
+  Future<void> unregister() async {}
 
   @override
   Future<void> initialize() async {}
@@ -302,14 +301,13 @@ class FakePushMessagingSource() implements PushMessagingSource {
   Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
 
   @override
-  Stream<String> get tokenRefreshStream => _tokenRefreshController.stream;
+  Stream<String> get registeredFidStream => const Stream<String>.empty();
 
   void emitOpen(NotificationOpenRequest request) => _notificationOpenedController.add(request);
 
   Future<void> dispose() async {
     await _foregroundMessageController.close();
     await _notificationOpenedController.close();
-    await _tokenRefreshController.close();
   }
 }
 
