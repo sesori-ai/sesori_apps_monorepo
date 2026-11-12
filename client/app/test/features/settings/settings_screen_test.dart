@@ -11,6 +11,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/platform/package_info_client.dart";
 import "package:sesori_mobile/features/settings/computers_screen.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
@@ -174,6 +175,8 @@ void main() {
     );
 
     await GetIt.instance.reset();
+    // Reads the mock package info set above.
+    GetIt.instance.registerSingleton<PackageInfoClient>(PackageInfoClient());
     connectionStatuses = BehaviorSubject.seeded(_connected);
     connectionService = MockConnectionService();
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatuses.value);
@@ -1068,7 +1071,7 @@ void main() {
     await tester.tap(find.byKey(const Key("logout_confirm_action")));
     await tester.pumpAndSettle();
 
-    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNull);
+    await tester.tap(find.byType(PregoSwitch));
     await tester.tap(find.text("Basic usage analytics"));
     await tester.pump();
     verifyNever(
@@ -1109,6 +1112,8 @@ void main() {
 
     expect(find.text("octocat"), findsOneWidget);
     expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isTrue);
+    // The switch keeps its enabled look; logout only makes it ignore taps.
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNotNull);
     expect(find.text("Loading preference…"), findsNothing);
 
     // Logout succeeding leaves the screen without changing it first.
@@ -1118,6 +1123,7 @@ void main() {
 
     expect(find.text("octocat"), findsOneWidget);
     expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isTrue);
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNotNull);
     expect(find.byType(PregoActivityIndicator), findsOneWidget);
 
     await tester.pumpAndSettle();

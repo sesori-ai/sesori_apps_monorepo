@@ -214,7 +214,7 @@ class const _ProductAnalyticsPreferenceRow({
       ProductAnalyticsSynchronized() => null,
     };
     final hasFailure = status?.isFailure ?? false;
-    final canToggle = preference != null && !isBusy && !blocked;
+    final canToggle = preference != null && !isBusy;
 
     void toggle({required bool enabled}) {
       unawaited(context.read<ProductAnalyticsPreferenceCubit>().setEnabled(enabled: enabled));
@@ -230,7 +230,7 @@ class const _ProductAnalyticsPreferenceRow({
       hierarchy: PregoButtonsSolidHierarchy.link,
       size: PregoButtonsSolidSize.sm,
       leadingIcon: TablerRegular.refresh,
-      onPressed: blocked ? null : () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
+      onPressed: () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
     );
     final Widget trailing;
     if (!hasFailure) {
@@ -255,8 +255,13 @@ class const _ProductAnalyticsPreferenceRow({
       trailing: trailing,
       onTap: canToggle ? () => toggle(enabled: preference != ProductAnalyticsPreference.enabled) : null,
     );
-    return PregoGroupedRows(
-      children: [hasFailure ? row : MergeSemantics(child: row)],
+    // Logging out ignores taps without the disabled look, so the row does not
+    // change under the user while the screen leaves.
+    return IgnorePointer(
+      ignoring: blocked,
+      child: PregoGroupedRows(
+        children: [hasFailure ? row : MergeSemantics(child: row)],
+      ),
     );
   }
 }
