@@ -200,6 +200,20 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
     }
   }
 
+  /// Retires entries the backend withdrew itself, such as a request answered
+  /// in another client or abandoned by an interrupted turn. The backend no
+  /// longer waits for an answer, so none is sent; clients get the same event as
+  /// a cancellation. Returns the retired request ids.
+  @protected
+  List<String> withdrawWhere({required bool Function(TPayload payload) matches}) {
+    final entries = _pending.values.where((entry) => matches(entry.payload)).toList(growable: false);
+    for (final entry in entries) {
+      _pending.remove(entry.id);
+      _emit(entry.cancellationEvent);
+    }
+    return [for (final entry in entries) entry.id];
+  }
+
   bool replyPermission({required String requestId, required PluginPermissionReply reply}) {
     // Peek before removing: a question id routed here must stay pending so the
     // agent still gets an answer instead of blocking on a destroyed entry.
