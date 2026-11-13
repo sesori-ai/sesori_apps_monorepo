@@ -1,21 +1,13 @@
 import "dart:async";
 
-import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart"
-    show
-        FastModeControl,
-        FastModeToggleApply,
-        FastModeToggleConfirmCacheReset,
-        FastModeToggleDecision,
-        FastModeToggleUnavailable,
-        ModelPickerSection,
-        ModelPickerSectionBuilder;
+    show FastModeControl, FastModeToggleDecision, ModelPickerSection, ModelPickerSectionBuilder;
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "fast_mode_toggle.dart";
 import "model_picker.dart";
 
 /// Composer header exposing the available agent / model / variant selections
@@ -450,72 +442,8 @@ class const _FastModeButton({
     );
   }
 
-  Future<void> _onTap(BuildContext context) async {
-    switch (decide()) {
-      case null:
-        return;
-      case FastModeToggleApply(:final fastMode):
-        onFastModeChanged(fastMode);
-      case FastModeToggleUnavailable(:final reason):
-        final loc = context.loc;
-        PregoPopupAlertPresenter.of(context).show(
-          title: loc.sessionDetailFastModeUnavailableTitle,
-          variant: PregoPopupAlertsNotificationsVariant.error,
-          content: PregoPopupAlertContent(
-            message: switch (reason) {
-              FastModeUnavailableReason.extraUsageDisabled => loc.sessionDetailFastModeUnavailableExtraUsageDisabled,
-              FastModeUnavailableReason.notOnPlan => loc.sessionDetailFastModeUnavailableNotOnPlan,
-              FastModeUnavailableReason.disabledByOrganization =>
-                loc.sessionDetailFastModeUnavailableDisabledByOrganization,
-              FastModeUnavailableReason.unknown => loc.sessionDetailFastModeUnavailableUnknown,
-            },
-          ),
-        );
-      case FastModeToggleConfirmCacheReset(:final fastMode):
-        final confirmed = await _confirmCacheReset(context: context, fastMode: fastMode);
-        if (confirmed ?? false) onFastModeChanged(fastMode);
-    }
-  }
-
-  Future<bool?> _confirmCacheReset({required BuildContext context, required bool fastMode}) {
-    final loc = context.loc;
-    final prego = context.prego;
-    return showPregoModal<bool>(
-      context: context,
-      title: loc.sessionDetailFastModeConfirmTitle,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              fastMode ? loc.sessionDetailFastModeConfirmEnableBody : loc.sessionDetailFastModeConfirmDisableBody,
-              style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-            ),
-            const SizedBox(height: PregoSpacing.x2l),
-            PregoButtonsSolid(
-              key: const Key("fast_mode_confirm"),
-              label: loc.sessionDetailFastModeConfirmAction,
-              hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-              size: PregoButtonsSolidSize.xl,
-              fullWidth: true,
-              onPressed: () => sheetContext.pop(true),
-            ),
-            const SizedBox(height: PregoSpacing.md),
-            PregoButtonsSolid(
-              key: const Key("fast_mode_cancel"),
-              label: loc.sessionDetailFastModeCancel,
-              hierarchy: PregoButtonsSolidHierarchy.tertiary,
-              size: PregoButtonsSolidSize.xl,
-              fullWidth: true,
-              onPressed: () => sheetContext.pop(false),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Future<void> _onTap(BuildContext context) =>
+      toggleFastMode(context: context, decide: decide, onFastModeChanged: onFastModeChanged);
 }
 
 // ── Shared menu pieces ─────────────────────────────────────────────────────
