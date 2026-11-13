@@ -48,9 +48,9 @@ reconnect or restart.
   open view runs its silent refresh, so the new turns are appended at the end
   of the transcript without a loading state. An agent or model the re-read
   found the outside turn used is sent first as `session.prompt-defaults-changed`,
-  so the composer follows it as it would after a blocking read. A view whose
-  reader has paged back skips that refresh, leaving the older history in place;
-  the next refresh or open shows the new turns. A failed re-read is logged, and the
+  so the composer follows it as it would after a blocking read. A reader
+  scrolled back from the newest message keeps the frozen transcript they are
+  reading, and sees the new turns on returning to it. A failed re-read is logged, and the
   session stays behind, so the next read retries it. A backend that cannot
   restore the session is announced once, and its stored pages then carry the
   plugin's `cannotContinueMessage`. A first open with nothing stored still waits

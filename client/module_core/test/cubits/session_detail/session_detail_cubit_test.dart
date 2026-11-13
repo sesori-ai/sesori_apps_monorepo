@@ -3214,7 +3214,10 @@ void main() {
       );
     });
 
-    test("session.history-refreshed leaves paged-back history in place", () async {
+    // A short transcript pages back on its own to fill the viewport, so an
+    // older page alone says nothing about where the reader is. The message list
+    // freezes what a reader scrolled away from the newest message sees.
+    test("session.history-refreshed appends the re-read turns after an older page was loaded", () async {
       var newestPageReads = 0;
       when(
         () => mockSessionRepository.getMessages(
@@ -3228,7 +3231,10 @@ void main() {
         if (!isOlderPage) newestPageReads += 1;
         return ApiResponse.success(
           MessageWithPartsResponse(
-            messages: [testMessageWithParts(id: isOlderPage ? "older" : "newest")],
+            messages: [
+              testMessageWithParts(id: isOlderPage ? "older" : "newest"),
+              if (!isOlderPage && newestPageReads > 1) testMessageWithParts(id: "outside"),
+            ],
             nextCursor: isOlderPage ? null : 5,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
@@ -3253,12 +3259,15 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id), ["older", "newest"]);
 
       sessionEvents.add(const SesoriSessionHistoryRefreshed(sessionID: sessionId));
-      await pumpEventQueue();
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.isRefreshing,
+        description: "silent refresh started",
+      );
+      await _awaitNotRefreshing(cubit);
 
-      final state = cubit.state as SessionDetailLoaded;
-      expect(state.isRefreshing, isFalse);
-      expect(state.messages.map((message) => message.info.id), ["older", "newest"]);
-      expect(newestPageReads, 1, reason: "a refresh would reload the newest page and drop the older one");
+      expect(newestPageReads, 2);
+      expect((cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id), contains("outside"));
     });
 
     blocTest<SessionDetailCubit, SessionDetailState>(

@@ -46,7 +46,9 @@ final class const CapturedPartShapes({
 /// fallback is bounded to the released inline-wire budget.
 final class const CapturedPartUnavailable({required final MessagePart inlineFallbackPart}) extends CapturedPartDelivery;
 
-/// A session whose background re-read landed in the store.
+/// A session whose stored pages changed after a background re-read: the
+/// re-read transcript landed, the backend newly refused to restore the
+/// session, or finalizing dead tool parts rewrote the store.
 typedef SessionHistoryRefresh = ({
   String sessionId,
 
@@ -97,7 +99,9 @@ class ChatHistoryService({
   final Set<Future<void>> _backgroundRefreshes = {};
 
   /// Each session re-read in the background after a read served it behind its
-  /// harness, once the store holds the re-read transcript.
+  /// harness, once its stored pages changed: the re-read transcript landed,
+  /// the backend newly reported it cannot restore the session, or dead tool
+  /// parts were finalized.
   Stream<SessionHistoryRefresh> get historyRefreshes => _historyRefreshes.stream;
 
   /// The [window] of the session's messages, served from the store whenever

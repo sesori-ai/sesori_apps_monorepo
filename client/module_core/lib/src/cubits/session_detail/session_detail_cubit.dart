@@ -159,11 +159,6 @@ class SessionDetailCubit(
   /// reload), so an older-page request that started before it can tell its
   /// result no longer joins onto what is shown.
   int _transcriptGeneration = 0;
-
-  /// The [_transcriptGeneration] in which the reader last paged back, so a
-  /// bridge re-read announced meanwhile leaves the older history they are
-  /// reading in place.
-  int? _pagedBackGeneration;
   final SessionRepository _sessionRepository = promptDispatcher;
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
@@ -1129,7 +1124,6 @@ class SessionDetailCubit(
       messageIds: page.messages.map((message) => message.info.id),
       sequence: deferredPartEventSequence,
     );
-    _pagedBackGeneration = _transcriptGeneration;
     final pageIsFarther = switch ((page.olderMessagesCursor, latest.olderMessagesCursor)) {
       (null, _) => true,
       (_, null) => false,
@@ -1686,7 +1680,7 @@ class SessionDetailCubit(
           _onDataMayBeStale(trigger: _SessionRefreshTrigger.commandExecuted);
         // The bridge re-read a transcript it had served behind the harness.
         case SesoriSessionHistoryRefreshed():
-          _onHistoryRefreshed();
+          _onDataMayBeStale(trigger: _SessionRefreshTrigger.historyRefreshed);
         case SesoriSessionPromptDefaultsChanged(:final promptDefaults):
           _onPromptDefaultsChanged(promptDefaults);
         case SesoriSessionQueuedPrompts(:final prompts):
@@ -2485,19 +2479,6 @@ class SessionDetailCubit(
   // ---------------------------------------------------------------------------
 
   bool get _isConnected => _connectionService.currentStatus is ConnectionConnected;
-
-  void _onHistoryRefreshed() {
-    const trigger = _SessionRefreshTrigger.historyRefreshed;
-    // A refresh reloads the newest page, dropping the older history the reader
-    // paged back to. The bridge store already holds the re-read, so the next
-    // refresh or open shows the new turns instead.
-    if (_pagedBackGeneration == _transcriptGeneration) {
-      _logRefresh(action: _SessionRefreshAction.observed, trigger: trigger);
-      _logRefresh(action: _SessionRefreshAction.ignored, trigger: trigger);
-      return;
-    }
-    _onDataMayBeStale(trigger: trigger);
-  }
 
   void _onDataMayBeStale({required _SessionRefreshTrigger trigger}) {
     if (state is! SessionDetailLoaded) {
