@@ -241,7 +241,11 @@ void main() {
   test("skills are listed as skill commands and run as a prompt with the skill attached", () async {
     const skill = PluginCommand(name: "fixture-skill", provider: null, source: PluginCommandSource.skill);
     repository.commands = [const PluginCommand(name: "review", provider: null)];
-    repository.skills = [skill, const PluginCommand(name: "review", provider: null, source: PluginCommandSource.skill)];
+    repository.skills = [
+      skill,
+      const PluginCommand(name: "review", provider: null, source: PluginCommandSource.skill),
+      const PluginCommand(name: "compact", provider: null, source: PluginCommandSource.skill),
+    ];
     expect(
       [for (final command in await service.getCommands(projectId: null)) (command.name, command.source)],
       [("review", null), ("compact", PluginCommandSource.command), ("fixture-skill", PluginCommandSource.skill)],

@@ -221,9 +221,10 @@ class OpenCodeV2Service({
     return [
       ...commands,
       if (!names.contains(compactionCommandName)) PluginCommand.compaction(name: compactionCommandName),
-      // A native command keeps its name; sendCommand runs the command for it.
+      // sendCommand runs a native command or compaction for a name it shares
+      // with a skill, so such a skill is not offered.
       for (final skill in skills)
-        if (!names.contains(skill.name)) skill,
+        if (!names.contains(skill.name) && skill.name != compactionCommandName) skill,
     ];
   }
 

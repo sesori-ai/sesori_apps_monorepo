@@ -358,8 +358,8 @@ variant, and worktree mode, and creating the session with its first input.
   symlink still show. Sessions created through the symlink before this still
   list under the project, which OpenCode keys by its id, not the directory.
 - OpenCode 2 lists its skills (`GET /api/skill`) in the command picker labelled
-  Skill, after the native commands; a skill named like a native command is
-  hidden and the command runs. Picking a skill and sending sends the typed text
+  Skill, after the native commands; a skill named like a native command or
+  `compact` is hidden and the command runs. Picking a skill and sending sends the typed text
   as the prompt with the skill attached, and the reply follows the skill's
   instructions. A skill that disappeared before sending fails with the stale
   options error instead of sending a plain prompt.
