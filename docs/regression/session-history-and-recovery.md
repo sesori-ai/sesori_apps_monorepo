@@ -358,8 +358,10 @@ reconnect or restart.
   retained rows. Other retained rows rejoin at their recorded creation time
   while preserving relative order, so a
   catalog re-import cannot move old rows to the newest edge. A retained row
-  with no creation time on either side (a live row the harness streamed
-  untimed and later recorded under another identity) keeps its stored place
+  the import cannot order by time, because it has no usable creation time
+  (for example a live row the harness streamed untimed and later recorded
+  under another identity) or the imported row it meets has none, keeps its
+  stored place
   before the closest stored row the import holds below it; only a row with no
   such row below it stays at the newest edge. Failure signal: old automation or
   peer rows appear after the latest reply once a restart forces a re-import.
