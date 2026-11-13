@@ -2000,6 +2000,21 @@
   "commandSourceMcp": "MCP",
   "commandSourceSkill": "Skill",
   "commandSourceCustom": "Custom",
+  "invocationCardRan": "You ran /{name}",
+  "@invocationCardRan": {
+    "description": "Body of the transcript card for a command, skill or MCP prompt the user ran; name is the command's name without the slash.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "invocationCardSemantics": "{source, select, command{You ran command {name}} skill{You ran skill {name}} mcp{You ran MCP prompt {name}} other{You ran {name}}}",
+  "@invocationCardSemantics": {
+    "description": "Screen reader label for the transcript card of a command, skill or MCP prompt the user ran.",
+    "placeholders": {
+      "source": {"type": "String"},
+      "name": {"type": "String"}
+    }
+  },
   "diffBinaryFileChanged": "Binary file changed",
   "diffFileTooLarge": "File diff too large to display",
   "diffCouldNotReadFile": "Could not read file",

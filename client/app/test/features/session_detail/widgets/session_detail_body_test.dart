@@ -224,6 +224,7 @@ SessionDetailLoaded _loadedState({
       SessionVariant(id: "low"),
     ],
     cannotContinueMessage: null,
+    namesCommandInvocations: false,
   );
 }
 
@@ -796,6 +797,7 @@ void main() {
       supportsFileUploads: true,
       hadFocus: true,
       unsent: null,
+      namesCommandInvocations: false,
     );
     final handoff = SessionLaunchHandoff(
       submission: NewSessionSubmissionSnapshot.text(
@@ -928,6 +930,7 @@ void main() {
         supportsFileUploads: false,
         hadFocus: false,
         unsent: null,
+        namesCommandInvocations: false,
       );
       handoff = SessionLaunchHandoff(
         submission: NewSessionSubmissionSnapshot.text(
@@ -1682,6 +1685,7 @@ void main() {
         SessionVariant(id: "low"),
       ],
       cannotContinueMessage: null,
+      namesCommandInvocations: false,
     );
 
     final controller = StreamController<SessionDetailState>.broadcast();
@@ -6308,6 +6312,7 @@ void main() {
           agent: null,
           agentModel: null,
           fastMode: false,
+          commandSource: null,
         ),
       ],
     );

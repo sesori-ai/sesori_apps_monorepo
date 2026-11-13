@@ -83,6 +83,7 @@ const _emptyState = SessionDetailState.loaded(
   stagedCommand: null,
   isRefreshing: false,
   cannotContinueMessage: null,
+  namesCommandInvocations: false,
 );
 
 const _nonEmptyState = SessionDetailState.loaded(
@@ -120,6 +121,7 @@ const _nonEmptyState = SessionDetailState.loaded(
   stagedCommand: null,
   isRefreshing: false,
   cannotContinueMessage: null,
+  namesCommandInvocations: false,
 );
 
 void main() {

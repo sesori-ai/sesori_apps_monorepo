@@ -387,6 +387,7 @@ class SessionRepository({
     required SessionVariant? variant,
     required bool fastMode,
     required String? command,
+    required CommandSource? commandSource,
     required bool dedicatedWorktree,
   }) {
     return _api.createSessionWithMessage(
@@ -399,6 +400,7 @@ class SessionRepository({
       variant: variant,
       fastMode: fastMode,
       command: command?.normalize(),
+      commandSource: commandSource,
       dedicatedWorktree: dedicatedWorktree,
     );
   }
@@ -413,6 +415,7 @@ class SessionRepository({
     required SessionVariant? variant,
     required bool fastMode,
     required String? command,
+    required CommandSource? commandSource,
   }) {
     return _api.sendMessage(
       sessionId: sessionId,
@@ -424,6 +427,7 @@ class SessionRepository({
       variant: variant,
       fastMode: fastMode,
       command: command?.normalize(),
+      commandSource: commandSource,
     );
   }
 

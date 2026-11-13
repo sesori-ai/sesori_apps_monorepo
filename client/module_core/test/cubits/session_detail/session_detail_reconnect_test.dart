@@ -188,6 +188,7 @@ void main() {
           isRootSession: true,
           isArchived: false,
           cannotContinueMessage: null,
+          namesCommandInvocations: false,
         ),
       ),
     );
@@ -356,6 +357,7 @@ const _emptySnapshot = SessionDetailSnapshot(
   isRootSession: true,
   isArchived: false,
   cannotContinueMessage: null,
+  namesCommandInvocations: false,
 );
 
 void _stubLoadApis(MockSessionRepository sourceRepository, {required MockSessionApi optionsApi}) {

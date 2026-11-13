@@ -42,6 +42,7 @@ Future<AppLocalizations> _pump(
               onRemoveLaunchFollowUp: null,
               onCancelQueuedMessage: null,
               bottomInset: null,
+              promptTurnShapes: const PromptTurnShapes(),
             ),
           ),
         ),
@@ -110,6 +111,7 @@ void main() {
                     onRemoveLaunchFollowUp: null,
                     onCancelQueuedMessage: null,
                     bottomInset: null,
+                    promptTurnShapes: const PromptTurnShapes(),
                   ),
                 ),
               );
@@ -255,6 +257,7 @@ void main() {
       submission: NewSessionSubmissionSnapshot.command(
         draft: ComposerDraft.typed(text: "the diff"),
         command: "review",
+        commandSource: null,
       ),
       transcriptWidth: null,
     );

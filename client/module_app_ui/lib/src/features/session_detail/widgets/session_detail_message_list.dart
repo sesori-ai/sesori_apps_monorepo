@@ -67,6 +67,9 @@ class const SessionDetailMessageList({
   /// delivered yet, shown after the ones already accepted.
   required final List<LaunchFollowUp> launchFollowUps,
 
+  /// Whether each user turn renders as an invocation card or a bubble.
+  required final PromptTurnShapes promptTurnShapes,
+
   /// Null on a read-only surface, which shows the follow-ups without actions.
   required final void Function({required String promptId})? onRetryLaunchFollowUp,
   required final void Function({required String promptId})? onRemoveLaunchFollowUp,
@@ -1320,6 +1323,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           child: QueuedMessageBubble(
             displayText: submission.displayText,
             isCommand: submission is NewSessionCommandSubmissionSnapshot,
+            shape: widget.promptTurnShapes.launch,
             attachmentCount: attachments.length,
             localAttachments: attachments,
             presentation: QueuedMessageBubblePresentation.sending(
@@ -1354,6 +1358,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             child: QueuedMessageBubble(
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
+              shape: widget.promptTurnShapes.ofPrompt(promptId: prompt.id),
               attachmentCount: prompt.attachmentCount,
               localAttachments: widget.bridgePromptAttachments[prompt.id] ?? const [],
               presentation: switch (prompt.dispatchState) {
@@ -1385,6 +1390,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           child: QueuedMessageBubble(
             displayText: submission.displayText,
             isCommand: submission.isCommand,
+            shape: widget.promptTurnShapes.ofPrompt(promptId: submission.promptId),
             attachmentCount: submission.attachments.length,
             localAttachments: submission.attachments,
             presentation: launchFollowUpPresentation(
@@ -1407,6 +1413,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           child: QueuedMessageBubble(
             displayText: submission.displayText,
             isCommand: submission.isCommand,
+            shape: widget.promptTurnShapes.ofPrompt(promptId: submission.promptId),
             attachmentCount: submission.attachments.length,
             localAttachments: submission.attachments,
             presentation: switch (transientSubmission.stage) {
@@ -1479,7 +1486,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   Widget _userMessage({required MessageWithParts message, required Duration? outlineFade}) => TranscriptPromptSlot(
     openerId: message.info.id,
     registry: _promptSlots,
-    child: UserMessageCard(message: message, outlineFade: outlineFade),
+    child: UserMessageCard(
+      message: message,
+      shape: widget.promptTurnShapes.ofMessage(messageId: message.info.id),
+      outlineFade: outlineFade,
+    ),
   );
 
   /// A delivered prompt's row. It carries on from the bubble that waited, the row's
@@ -1489,6 +1500,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     child: QueuedMessageBubble(
       displayText: null,
       isCommand: false,
+      shape: widget.promptTurnShapes.ofMessage(messageId: message.info.id),
       attachmentCount: 0,
       localAttachments: const [],
       presentation: QueuedMessageBubblePresentation.delivered(

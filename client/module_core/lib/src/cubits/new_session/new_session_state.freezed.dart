@@ -993,7 +993,7 @@ String toString() {
 
 
 class NewSessionPhaseSending implements NewSessionPhase {
-  const NewSessionPhaseSending({required this.submission, required this.launchId, required this.startedAt, required  List<LaunchFollowUp> followUps}): _followUps = followUps;
+  const NewSessionPhaseSending({required this.submission, required this.launchId, required this.startedAt, required  List<LaunchFollowUp> followUps, required this.promptTurnShapes}): _followUps = followUps;
   
 
  final  NewSessionSubmissionSnapshot submission;
@@ -1010,6 +1010,9 @@ class NewSessionPhaseSending implements NewSessionPhase {
   return EqualUnmodifiableListView(_followUps);
 }
 
+/// Whether [submission] and each of [followUps] shows as a card or a
+/// bubble, as the cubit resolved it.
+ final  PromptTurnShapes promptTurnShapes;
 
 /// Create a copy of NewSessionPhase
 /// with the given fields replaced by the non-null parameter values.
@@ -1021,18 +1024,18 @@ $NewSessionPhaseSendingCopyWith<NewSessionPhaseSending> get copyWith => _$NewSes
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseSending&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUps, _followUps));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseSending&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUps, _followUps)&&(identical(other.promptTurnShapes, promptTurnShapes) || other.promptTurnShapes == promptTurnShapes));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,submission,launchId,startedAt,const DeepCollectionEquality().hash(_followUps));
+    return Object.hash(runtimeType,submission,launchId,startedAt,const DeepCollectionEquality().hash(_followUps),promptTurnShapes);
 }
 
 @override
 String toString() {
-    return 'NewSessionPhase.sending(submission: $submission, launchId: $launchId, startedAt: $startedAt, followUps: $followUps)';
+    return 'NewSessionPhase.sending(submission: $submission, launchId: $launchId, startedAt: $startedAt, followUps: $followUps, promptTurnShapes: $promptTurnShapes)';
 }
 
 
@@ -1043,11 +1046,11 @@ abstract mixin class $NewSessionPhaseSendingCopyWith<$Res> implements $NewSessio
   factory $NewSessionPhaseSendingCopyWith(NewSessionPhaseSending value, $Res Function(NewSessionPhaseSending) _then) = _$NewSessionPhaseSendingCopyWithImpl;
 @useResult
 $Res call({
- NewSessionSubmissionSnapshot submission, String launchId, DateTime startedAt, List<LaunchFollowUp> followUps
+ NewSessionSubmissionSnapshot submission, String launchId, DateTime startedAt, List<LaunchFollowUp> followUps, PromptTurnShapes promptTurnShapes
 });
 
 
-$NewSessionSubmissionSnapshotCopyWith<$Res> get submission;
+$NewSessionSubmissionSnapshotCopyWith<$Res> get submission;$PromptTurnShapesCopyWith<$Res> get promptTurnShapes;
 
 }
 /// @nodoc
@@ -1060,13 +1063,14 @@ class _$NewSessionPhaseSendingCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionPhase
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? launchId = null,Object? startedAt = null,Object? followUps = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? launchId = null,Object? startedAt = null,Object? followUps = null,Object? promptTurnShapes = null,}) {
   return _then(NewSessionPhaseSending(
 submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
 as NewSessionSubmissionSnapshot,launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,followUps: null == followUps ? _self._followUps : followUps // ignore: cast_nullable_to_non_nullable
-as List<LaunchFollowUp>,
+as List<LaunchFollowUp>,promptTurnShapes: null == promptTurnShapes ? _self.promptTurnShapes : promptTurnShapes // ignore: cast_nullable_to_non_nullable
+as PromptTurnShapes,
   ));
 }
 
@@ -1078,6 +1082,15 @@ $NewSessionSubmissionSnapshotCopyWith<$Res> get submission {
   
   return $NewSessionSubmissionSnapshotCopyWith<$Res>(_self.submission, (value) {
     return _then(_self.copyWith(submission: value));
+  });
+}/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PromptTurnShapesCopyWith<$Res> get promptTurnShapes {
+  
+  return $PromptTurnShapesCopyWith<$Res>(_self.promptTurnShapes, (value) {
+    return _then(_self.copyWith(promptTurnShapes: value));
   });
 }
 }

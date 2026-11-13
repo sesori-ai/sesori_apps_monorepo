@@ -91,6 +91,7 @@ SessionDetailLoadResult _loadedResult({required bool isArchived, required bool o
       isRootSession: true,
       isArchived: isArchived,
       cannotContinueMessage: null,
+      namesCommandInvocations: false,
     ),
   );
 }
@@ -120,6 +121,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       isRootSession: true,
       isArchived: false,
       cannotContinueMessage: null,
+      namesCommandInvocations: false,
     ),
   );
 }
@@ -156,6 +158,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       isRootSession: true,
       isArchived: false,
       cannotContinueMessage: null,
+      namesCommandInvocations: false,
     ),
   );
 }

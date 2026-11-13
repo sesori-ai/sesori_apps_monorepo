@@ -223,6 +223,7 @@ void main() {
             isRootSession: true,
             isArchived: isArchived,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         );
       });
@@ -257,6 +258,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         );
       });
@@ -308,6 +310,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         );
       });
@@ -583,6 +586,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) async {
         sendCount++;
@@ -623,6 +627,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).called(1);
       verify(
@@ -636,6 +641,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).called(1);
       final state = cubit.state as SessionDetailLoaded;
@@ -675,6 +681,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) async {
         final command = invocation.namedArguments[#command] as String?;
@@ -688,7 +695,7 @@ void main() {
 
       await cubit.sendMessage(
         text: "src",
-        command: "review",
+        command: testCommandInfo(name: "review"),
         inputMode: ComposerInputMode.typed,
         attachments: const [],
       );
@@ -763,6 +770,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) async {
         final command = invocation.namedArguments[#command] as String?;
@@ -776,7 +784,7 @@ void main() {
 
       final sending = cubit.sendMessage(
         text: "src",
-        command: "review",
+        command: testCommandInfo(name: "review"),
         inputMode: ComposerInputMode.typed,
         attachments: const [],
       );
@@ -863,6 +871,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async {
         sendCount++;
@@ -909,6 +918,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).called(1);
       // The user was told their rejected selection was corrected, even though
@@ -945,6 +955,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async {
         sendCount++;
@@ -1020,6 +1031,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async {
         sendCount++;
@@ -1092,6 +1104,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.error(staleError));
       final cubit = await createLoadedCubit(
@@ -1157,6 +1170,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) async {
         sendCount++;
@@ -1205,6 +1219,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
       final cubit = await createLoadedCubit();
@@ -1253,6 +1268,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) async {
         sentTexts.add(invocation.namedArguments[#text] as String);
@@ -1357,6 +1373,7 @@ void main() {
               variant: any(named: "variant"),
               fastMode: any(named: "fastMode"),
               command: any(named: "command"),
+              commandSource: any(named: "commandSource"),
             ),
           ).thenAnswer((_) => send.future);
           final cubit = await createLoadedCubit(supportsPromptAttachments: true);
@@ -1433,6 +1450,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => send.future);
       final cubit = await createLoadedCubit();
@@ -1498,12 +1516,13 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
       final cubit = await createLoadedCubit();
       await cubit.sendMessage(
         text: "/fast",
-        command: "fast",
+        command: testCommandInfo(name: "fast"),
         inputMode: ComposerInputMode.typed,
         attachments: const [],
       );
@@ -1534,6 +1553,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) {
         final send = Completer<ApiResponse<void>>();
@@ -1544,7 +1564,7 @@ void main() {
       unawaited(
         cubit.sendMessage(
           text: "/fast",
-          command: "fast",
+          command: testCommandInfo(name: "fast"),
           inputMode: ComposerInputMode.typed,
           attachments: const [],
         ),
@@ -1624,6 +1644,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => send.future);
       final cubit = await createLoadedCubit();
@@ -1681,6 +1702,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
       final cubit = await createLoadedCubit();
@@ -1729,6 +1751,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
       final cubit = await createLoadedCubit();
@@ -1775,6 +1798,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
       final cubit = await createLoadedCubit();
@@ -1819,6 +1843,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => send.future);
       final cubit = await createLoadedCubit();
@@ -1865,6 +1890,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
       final cubit = await createLoadedCubit();
@@ -1892,6 +1918,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
       final cubit = await createLoadedCubit();
@@ -1972,6 +1999,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
       final cubit = await createLoadedCubit();
@@ -2015,6 +2043,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
       when(
@@ -2048,6 +2077,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
       const rejection = SessionAbortRejection(runningSubAgentCount: 2, mainAgentRunning: true);
@@ -2084,6 +2114,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
       final cubit = await createLoadedCubit();
@@ -2400,6 +2431,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
       final cubit = await createLoadedCubit();
@@ -2451,6 +2483,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) {
         sendCalls++;
@@ -2506,6 +2539,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
       when(
@@ -2565,6 +2599,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).called(1);
     });
@@ -2584,6 +2619,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) {
         sendCalls++;
@@ -2648,6 +2684,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
       final cubit = await createLoadedCubit();
@@ -2691,6 +2728,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((invocation) {
           final text = invocation.namedArguments[#text] as String;
@@ -2916,6 +2954,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(null));
       });
@@ -2967,6 +3006,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) => accepted.future);
         final cubit = await createLoadedCubit(managementSnapshots: snapshots);
@@ -3016,6 +3056,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) => ++sends == 1 ? Future.value(ApiResponse.success(null)) : secondAccepted.future);
         final cubit = await createLoadedCubit(managementSnapshots: snapshots, supportsPromptAttachments: true);
@@ -3389,6 +3430,7 @@ void main() {
               variant: any(named: "variant"),
               fastMode: any(named: "fastMode"),
               command: any(named: "command"),
+              commandSource: any(named: "commandSource"),
             ),
           ).thenAnswer((invocation) {
             final promptId = invocation.namedArguments[#promptId] as String;
@@ -4057,6 +4099,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((invocation) async {
           sentTexts.add(invocation.namedArguments[#text] as String);
@@ -4313,6 +4356,7 @@ void main() {
                     variant: any(named: "variant"),
                     fastMode: any(named: "fastMode"),
                     command: any(named: "command"),
+                    commandSource: any(named: "commandSource"),
                   ),
                 ).captured.single
                 as String;
@@ -4354,6 +4398,7 @@ void main() {
           supportsFileUploads: false,
           hadFocus: true,
           unsent: unsent,
+          namesCommandInvocations: false,
         );
 
         Future<void> send(SessionDetailCubit cubit, {required String text}) =>

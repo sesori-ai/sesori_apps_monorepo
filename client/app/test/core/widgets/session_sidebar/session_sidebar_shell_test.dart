@@ -155,6 +155,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(adaptiveTestSession(projectId: "p1", id: "s-new", title: "New")));
       final pane = inContent(find.byType(NewSessionView));
@@ -390,6 +391,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => createCompleter.future);
       final loc = tester.element(inSidebar(find.text("Session Two"))).loc;

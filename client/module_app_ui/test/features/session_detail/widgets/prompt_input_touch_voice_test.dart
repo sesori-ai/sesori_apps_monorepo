@@ -3493,7 +3493,7 @@ Future<_Composer> _pumpComposer({
                     hasMessages: true,
                     canSend: canSend,
                     onSend: ({required draft, required command, required attachments}) {
-                      composer.sent.add((text: draft.text, command: command));
+                      composer.sent.add((text: draft.text, command: command?.name));
                     },
                     onVoiceTranscriptionFinished: ({required finish, required mode}) {
                       composer.finishes.add(finish);

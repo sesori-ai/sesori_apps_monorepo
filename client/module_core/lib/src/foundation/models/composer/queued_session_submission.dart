@@ -23,6 +23,9 @@ sealed class const QueuedSessionSubmission() {
     required String promptId,
     required String text,
     required String command,
+
+    /// The command's source as the picker listed it; null when it listed none.
+    required CommandSource? commandSource,
     required String? agent,
     required AgentModel? agentModel,
     required bool fastMode,
@@ -35,6 +38,7 @@ sealed class const QueuedSessionSubmission() {
     required String promptId,
     required String text,
     required String command,
+    required CommandSource? commandSource,
     required String? agent,
     required AgentModel? agentModel,
     required bool fastMode,
@@ -45,6 +49,10 @@ sealed class const QueuedSessionSubmission() {
   String get promptId;
   String get text;
   String? get command;
+
+  /// The source of [command] as the picker listed it, or null for a prompt
+  /// and for a command the picker listed none for.
+  CommandSource? get commandSource;
   ComposerInputMode get inputMode;
   List<ComposerAttachment> get attachments;
   String? get agent;
@@ -93,19 +101,22 @@ sealed class const QueuedSessionSubmission() {
         agentModel: agentModel,
         fastMode: fastMode,
       ),
-    QueuedCommandSubmission(:final promptId, :final text, :final command) => QueuedSessionSubmission.command(
-      promptId: promptId,
-      text: text,
-      command: command,
-      agent: agent,
-      agentModel: agentModel,
-      fastMode: fastMode,
-    ),
-    UnavailableQueuedCommandSubmission(:final promptId, :final text, :final command) =>
+    QueuedCommandSubmission(:final promptId, :final text, :final command, :final commandSource) =>
+      QueuedSessionSubmission.command(
+        promptId: promptId,
+        text: text,
+        command: command,
+        commandSource: commandSource,
+        agent: agent,
+        agentModel: agentModel,
+        fastMode: fastMode,
+      ),
+    UnavailableQueuedCommandSubmission(:final promptId, :final text, :final command, :final commandSource) =>
       QueuedSessionSubmission.unavailableCommand(
         promptId: promptId,
         text: text,
         command: command,
+        commandSource: commandSource,
         agent: agent,
         agentModel: agentModel,
         fastMode: fastMode,
@@ -124,12 +135,16 @@ final class const QueuedTextSubmission({
 }) extends QueuedSessionSubmission {
   @override
   String? get command => null;
+
+  @override
+  CommandSource? get commandSource => null;
 }
 
 final class const QueuedCommandSubmission({
   @override required final String promptId,
   @override required final String text,
   @override required final String command,
+  @override required final CommandSource? commandSource,
   @override required final String? agent,
   @override required final AgentModel? agentModel,
   @override required final bool fastMode,
@@ -148,6 +163,7 @@ final class const UnavailableQueuedCommandSubmission({
   @override required final String promptId,
   @override required final String text,
   @override required final String command,
+  @override required final CommandSource? commandSource,
   @override required final String? agent,
   @override required final AgentModel? agentModel,
   @override required final bool fastMode,

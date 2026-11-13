@@ -56,6 +56,7 @@ void main() {
         agent: null,
         agentModel: null,
         fastMode: false,
+        commandSource: null,
       ),
       "unavailable": ({required text}) => QueuedSessionSubmission.unavailableCommand(
         promptId: "prm_a",
@@ -64,6 +65,7 @@ void main() {
         agent: null,
         agentModel: null,
         fastMode: false,
+        commandSource: null,
       ),
     };
 

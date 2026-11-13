@@ -1,5 +1,6 @@
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -8,12 +9,16 @@ import "../../../widgets/markdown_styles.dart";
 import "../file_preview/file_reference_code_syntax.dart";
 import "../session_detail_markdown_link_handler.dart";
 import "attachment_collection_widget.dart";
+import "invocation_card.dart";
 import "sent_bubble_landing.dart";
 import "user_prompt_markdown_image.dart";
 
 class const UserMessageCard({
   super.key,
   required final MessageWithParts message,
+
+  /// Whether the message is an invocation card or a bubble.
+  required final PromptTurnShape shape,
 
   /// How long to fade the outline this message's bubble had while it waited, or
   /// null when it had none.
@@ -31,12 +36,11 @@ class const UserMessageCard({
   /// The message's attachments, as its bubble shows them.
   static Widget attachmentsOf({required MessageWithParts message}) => AttachmentCollectionWidget(
     sessionId: message.info.sessionID,
-    attachments: message.parts
-        .whereType<MessagePartFile>()
-        .map((part) => part.attachment)
-        .whereType<MessageAttachment>()
-        .toList(),
+    attachments: _attachments(message: message),
   );
+
+  static List<MessageAttachment> _attachments({required MessageWithParts message}) =>
+      message.parts.whereType<MessagePartFile>().map((part) => part.attachment).whereType<MessageAttachment>().toList();
 }
 
 class _UserMessageCardState() extends State<UserMessageCard> {
@@ -57,6 +61,19 @@ class _UserMessageCardState() extends State<UserMessageCard> {
   @override
   Widget build(BuildContext context) {
     final message = widget.message;
+    if (widget.shape case InvocationPromptTurnShape(:final name, :final source, :final arguments)) {
+      return InvocationCard(
+        name: name,
+        source: source,
+        arguments: arguments,
+        attachments: [
+          if (UserMessageCard._attachments(message: message) case final attachments when attachments.isNotEmpty)
+            AttachmentCollectionWidget(sessionId: message.info.sessionID, attachments: attachments),
+        ],
+        outlined: _outlined,
+        transitionDuration: _transitionDuration,
+      );
+    }
     return UserMessageBubble(
       markdown: UserMessageCard.markdownOf(message: message),
       attachments: [UserMessageCard.attachmentsOf(message: message)],
@@ -116,7 +133,7 @@ class const UserMessageBubble({
                 color: prego.colors.borderBrand.withValues(alpha: outlined ? 0.55 : 0),
               ),
             ),
-            child: UserMessageBubbleContent(markdown: markdown, attachments: attachments),
+            child: UserMessageBubbleContent(markdown: markdown, attachments: attachments, alignment: .end),
           ),
         ),
       ),
@@ -131,13 +148,16 @@ class const UserMessageBubbleContent({
   super.key,
   required final String? markdown,
   required final List<Widget> attachments,
+
+  /// Where the content sits: a bubble's at its end, a card's at its start.
+  required final CrossAxisAlignment alignment,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final markdown = this.markdown;
     final onTapLink = buildSessionDetailMarkdownLinkTapHandler(context: context);
     return Column(
-      crossAxisAlignment: .end,
+      crossAxisAlignment: alignment,
       mainAxisSize: MainAxisSize.min,
       children: [
         ...attachments,

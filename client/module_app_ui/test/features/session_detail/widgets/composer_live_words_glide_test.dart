@@ -1063,6 +1063,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
     isRefreshing: false,
     availableVariants: const [SessionVariant(id: "xhigh")],
     cannotContinueMessage: null,
+    namesCommandInvocations: false,
   );
 
   final detailStates = StreamController<SessionDetailState>();

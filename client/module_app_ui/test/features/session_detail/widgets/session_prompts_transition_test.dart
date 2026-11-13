@@ -142,6 +142,7 @@ SessionDetailLoaded _loadedState({required List<MessageWithParts> messages}) {
     isRefreshing: false,
     availableVariants: const [],
     cannotContinueMessage: null,
+    namesCommandInvocations: false,
   );
 }
 

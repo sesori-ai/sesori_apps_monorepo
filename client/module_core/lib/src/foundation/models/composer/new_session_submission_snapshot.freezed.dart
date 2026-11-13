@@ -159,11 +159,13 @@ as List<ComposerAttachment>,
 
 
 class NewSessionCommandSubmissionSnapshot extends NewSessionSubmissionSnapshot {
-  const NewSessionCommandSubmissionSnapshot({required this.draft, required this.command}): super._();
+  const NewSessionCommandSubmissionSnapshot({required this.draft, required this.command, required this.commandSource}): super._();
   
 
 @override final  ComposerDraft draft;
  final  String command;
+/// The command's source as the picker listed it; null when it listed none.
+ final  CommandSource? commandSource;
 
 /// Create a copy of NewSessionSubmissionSnapshot
 /// with the given fields replaced by the non-null parameter values.
@@ -175,18 +177,18 @@ $NewSessionCommandSubmissionSnapshotCopyWith<NewSessionCommandSubmissionSnapshot
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCommandSubmissionSnapshot&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.command, command) || other.command == command));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCommandSubmissionSnapshot&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.command, command) || other.command == command)&&(identical(other.commandSource, commandSource) || other.commandSource == commandSource));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,draft,command);
+    return Object.hash(runtimeType,draft,command,commandSource);
 }
 
 @override
 String toString() {
-    return 'NewSessionSubmissionSnapshot.command(draft: $draft, command: $command)';
+    return 'NewSessionSubmissionSnapshot.command(draft: $draft, command: $command, commandSource: $commandSource)';
 }
 
 
@@ -197,7 +199,7 @@ abstract mixin class $NewSessionCommandSubmissionSnapshotCopyWith<$Res> implemen
   factory $NewSessionCommandSubmissionSnapshotCopyWith(NewSessionCommandSubmissionSnapshot value, $Res Function(NewSessionCommandSubmissionSnapshot) _then) = _$NewSessionCommandSubmissionSnapshotCopyWithImpl;
 @override @useResult
 $Res call({
- ComposerDraft draft, String command
+ ComposerDraft draft, String command, CommandSource? commandSource
 });
 
 
@@ -214,11 +216,12 @@ class _$NewSessionCommandSubmissionSnapshotCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionSubmissionSnapshot
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? draft = null,Object? command = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? draft = null,Object? command = null,Object? commandSource = freezed,}) {
   return _then(NewSessionCommandSubmissionSnapshot(
 draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
 as ComposerDraft,command: null == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
-as String,
+as String,commandSource: freezed == commandSource ? _self.commandSource : commandSource // ignore: cast_nullable_to_non_nullable
+as CommandSource?,
   ));
 }
 

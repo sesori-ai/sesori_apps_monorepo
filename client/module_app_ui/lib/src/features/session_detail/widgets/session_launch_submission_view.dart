@@ -43,6 +43,9 @@ class const SessionLaunchSubmissionView({
   required final LaunchFollowUpAction? onRemoveLaunchFollowUp,
   required final ValueChanged<int>? onCancelQueuedMessage,
 
+  /// Whether each of these messages is an invocation card or a bubble.
+  required final PromptTurnShapes promptTurnShapes,
+
   /// What covers the bottom of the pane: the composer floating over it, or
   /// null for the device's own inset when nothing does.
   required final double? bottomInset,
@@ -53,12 +56,14 @@ class const SessionLaunchSubmissionView({
       required Key key,
       required String? displayText,
       required bool isCommand,
+      required PromptTurnShape shape,
       required List<ComposerAttachment> attachments,
       required QueuedMessageBubblePresentation presentation,
     }) => QueuedMessageBubble(
       key: key,
       displayText: displayText,
       isCommand: isCommand,
+      shape: shape,
       attachmentCount: attachments.length,
       localAttachments: attachments,
       presentation: presentation,
@@ -70,6 +75,7 @@ class const SessionLaunchSubmissionView({
       key: ValueKey(submission.promptId),
       displayText: submission.displayText,
       isCommand: submission.isCommand,
+      shape: promptTurnShapes.ofPrompt(promptId: submission.promptId),
       attachments: submission.attachments,
       presentation: presentation,
     );
@@ -81,6 +87,7 @@ class const SessionLaunchSubmissionView({
           key: const ValueKey("session-launch-first"),
           displayText: submission.displayText,
           isCommand: submission is NewSessionCommandSubmissionSnapshot,
+          shape: promptTurnShapes.launch,
           attachments: switch (submission) {
             NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
             NewSessionCommandSubmissionSnapshot() => const <ComposerAttachment>[],

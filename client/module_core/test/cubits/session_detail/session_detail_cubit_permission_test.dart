@@ -782,6 +782,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       );
       verifyNever(

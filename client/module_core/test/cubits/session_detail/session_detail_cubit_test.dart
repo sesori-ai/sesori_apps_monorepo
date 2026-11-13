@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/prompt_turn_shape.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
@@ -701,6 +702,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: true,
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).called(1);
 
@@ -757,6 +759,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: false,
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).called(1);
       });
@@ -827,6 +830,7 @@ void main() {
               variant: any(named: "variant"),
               fastMode: any(named: "fastMode"),
               command: null,
+              commandSource: any(named: "commandSource"),
             ),
           ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
           await cubit.sendMessage(
@@ -910,6 +914,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
+            commandSource: any(named: "commandSource"),
           ),
         );
         verifyNever(
@@ -1861,6 +1866,7 @@ void main() {
             variant: const SessionVariant(id: "xhigh"),
             fastMode: false,
             command: null,
+            commandSource: null,
           ),
         ).called(1);
         verify(
@@ -1907,6 +1913,7 @@ void main() {
             variant: const SessionVariant(id: "xhigh"),
             fastMode: false,
             command: null,
+            commandSource: null,
           ),
         ).called(1);
       },
@@ -1961,6 +1968,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).called(1);
         // An inline image is not a saved file.
@@ -2021,6 +2029,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
+            commandSource: any(named: "commandSource"),
           ),
         );
       },
@@ -2072,6 +2081,7 @@ void main() {
                 variant: any(named: "variant"),
                 fastMode: any(named: "fastMode"),
                 command: any(named: "command"),
+                commandSource: any(named: "commandSource"),
               ),
             ).called(1);
             verifyInOrder([
@@ -2102,6 +2112,7 @@ void main() {
                 variant: any(named: "variant"),
                 fastMode: any(named: "fastMode"),
                 command: any(named: "command"),
+                commandSource: any(named: "commandSource"),
               ),
             );
           }
@@ -2116,7 +2127,7 @@ void main() {
         await _awaitLoaded(cubit);
         await cubit.sendMessage(
           text: "look at this",
-          command: "review",
+          command: testCommandInfo(name: "review"),
           inputMode: ComposerInputMode.typed,
           attachments: [
             ComposerImageAttachment(
@@ -2145,10 +2156,52 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
+            commandSource: any(named: "commandSource"),
           ),
         );
       },
     );
+
+    for (final namesCommandInvocations in [true, false]) {
+      test("a sent command's turn shape follows namesCommandInvocations=$namesCommandInvocations", () async {
+        _stubPromptAttachmentCapability(
+          repository: mockPluginRepository,
+          pluginId: "plugin-1",
+          supportsPromptAttachments: false,
+          supportsFileUploads: false,
+          namesCommandInvocations: namesCommandInvocations,
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+        final shapes = <InvocationPromptTurnShape>[];
+        final subscription = cubit.stream.listen(
+          (state) => shapes.addAll(state.promptTurnShapes.prompts.values),
+        );
+        addTearDown(subscription.cancel);
+
+        await cubit.sendMessage(
+          attachments: const [],
+          text: " lib/main.dart ",
+          command: testCommandInfo(name: "review"),
+          inputMode: ComposerInputMode.typed,
+        );
+
+        // Only invocations are listed; a turn missing from the map is a bubble.
+        expect(
+          shapes.toSet(),
+          namesCommandInvocations
+              ? {
+                  const PromptTurnShape.invocation(
+                    name: "review",
+                    source: CommandSource.command,
+                    arguments: "lib/main.dart",
+                  ),
+                }
+              : isEmpty,
+        );
+      });
+    }
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "sendMessage with command when connected delegates to service",
@@ -2158,7 +2211,7 @@ void main() {
         await cubit.sendMessage(
           attachments: const [],
           text: "lib/main.dart",
-          command: "review",
+          command: testCommandInfo(name: "review"),
           inputMode: ComposerInputMode.voiceAssisted,
         );
       },
@@ -2180,6 +2233,7 @@ void main() {
             variant: const SessionVariant(id: "xhigh"),
             fastMode: false,
             command: "review",
+            commandSource: CommandSource.command,
           ),
         ).called(1);
         verify(
@@ -2263,6 +2317,7 @@ void main() {
             variant: const SessionVariant(id: "xhigh"),
             fastMode: false,
             command: null,
+            commandSource: null,
           ),
         ).called(1);
       },
@@ -3206,6 +3261,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         );
       },
@@ -3249,6 +3305,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         );
       },
@@ -3274,6 +3331,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(error));
         final cubit = buildCubit();
@@ -3307,6 +3365,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) async {
         sentPromptIds.add(invocation.namedArguments[#promptId] as String);
@@ -3362,6 +3421,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         return buildCubit();
@@ -3389,6 +3449,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).called(1);
         verifyNever(
@@ -3414,6 +3475,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
@@ -3447,6 +3509,7 @@ void main() {
             variant: const SessionVariant(id: "xhigh"),
             fastMode: false,
             command: null,
+            commandSource: null,
           ),
         ).called(1);
         verifyNever(
@@ -3531,6 +3594,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         );
       },
@@ -3596,6 +3660,7 @@ void main() {
             variant: const SessionVariant(id: "xhigh"),
             fastMode: false,
             command: null,
+            commandSource: null,
           ),
         ).called(1);
         verify(
@@ -3624,7 +3689,7 @@ void main() {
       await cubit.sendMessage(
         attachments: const [],
         text: "hello",
-        command: "   ",
+        command: testCommandInfo(name: "   "),
         inputMode: ComposerInputMode.typed,
       );
 
@@ -3658,6 +3723,7 @@ void main() {
           variant: const SessionVariant(id: "xhigh"),
           fastMode: false,
           command: null,
+          commandSource: null,
         ),
       ).called(1);
     });
@@ -3723,7 +3789,7 @@ void main() {
       await cubit.sendMessage(
         attachments: const [],
         text: "lib/main.dart",
-        command: "review",
+        command: testCommandInfo(name: "review"),
         inputMode: ComposerInputMode.typed,
       );
       expect(
@@ -3760,6 +3826,7 @@ void main() {
           variant: const SessionVariant(id: "xhigh"),
           fastMode: false,
           command: "review",
+          commandSource: CommandSource.command,
         ),
       ).called(1);
     });
@@ -3780,6 +3847,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) async {
         final text = invocation.namedArguments[#text] as String;
@@ -3874,6 +3942,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) async {
         if (invocation.namedArguments[#text] == "first") {
@@ -3918,6 +3987,7 @@ void main() {
           variant: const SessionVariant(id: "xhigh"),
           fastMode: false,
           command: null,
+          commandSource: null,
         ),
       ).called(1);
     });
@@ -3978,6 +4048,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).called(1);
         verify(
@@ -3991,6 +4062,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).called(1);
       },
@@ -4012,6 +4084,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
@@ -4082,6 +4155,7 @@ void main() {
             variant: any(named: "variant"),
             fastMode: any(named: "fastMode"),
             command: null,
+            commandSource: any(named: "commandSource"),
           ),
         ).called(1);
       },
@@ -4277,6 +4351,7 @@ void _stubPromptAttachmentCapability({
   required String pluginId,
   required bool supportsPromptAttachments,
   required bool supportsFileUploads,
+  bool namesCommandInvocations = false,
 }) {
   when(() => repository.listPlugins()).thenAnswer(
     (_) async => ApiResponse.success(
@@ -4295,6 +4370,7 @@ void _stubPromptAttachmentCapability({
             mcpScopes: null,
             supportsPromptAttachments: supportsPromptAttachments,
             failureReason: null,
+            namesCommandInvocations: namesCommandInvocations,
           ),
         ],
       ),
@@ -4486,6 +4562,7 @@ void _stubAllDefaults(
       variant: any(named: "variant"),
       fastMode: any(named: "fastMode"),
       command: any(named: "command"),
+      commandSource: any(named: "commandSource"),
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
   when(

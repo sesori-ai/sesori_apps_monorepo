@@ -18,6 +18,9 @@ sealed class const NewSessionSubmissionSnapshot._() with _$NewSessionSubmissionS
   const factory command({
     required ComposerDraft draft,
     required String command,
+
+    /// The command's source as the picker listed it; null when it listed none.
+    required CommandSource? commandSource,
   }) = NewSessionCommandSubmissionSnapshot;
 
   /// The text this submission sends. Only dictated prompt text is marked: a
@@ -97,10 +100,12 @@ sealed class const NewSessionSubmissionSnapshot._() with _$NewSessionSubmissionS
         draft: merged(first: draft),
         attachments: [...attachments, ...followUpAttachments],
       ),
-      NewSessionCommandSubmissionSnapshot(:final draft, :final command) when followUpAttachments.isEmpty =>
+      NewSessionCommandSubmissionSnapshot(:final draft, :final command, :final commandSource)
+          when followUpAttachments.isEmpty =>
         NewSessionSubmissionSnapshot.command(
           draft: merged(first: draft),
           command: command,
+          commandSource: commandSource,
         ),
       NewSessionCommandSubmissionSnapshot(:final draft, :final command) => NewSessionSubmissionSnapshot.text(
         draft: merged(first: ComposerDraft.typed(text: "/$command ${draft.text}".trim())),

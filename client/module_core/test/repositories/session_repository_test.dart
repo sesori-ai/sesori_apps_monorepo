@@ -135,6 +135,7 @@ void main() {
         variant: const SessionVariant(id: "xhigh"),
         fastMode: false,
         command: "review",
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
     when(
@@ -172,6 +173,7 @@ void main() {
       variant: const SessionVariant(id: "xhigh"),
       fastMode: false,
       command: "review",
+      commandSource: null,
     );
     final abortResult = await repository.abortSession(
       sessionId: "session-1",
@@ -209,6 +211,7 @@ void main() {
         variant: const SessionVariant(id: "xhigh"),
         fastMode: false,
         command: "review",
+        commandSource: null,
       ),
     ).called(1);
     verify(() => api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop)).called(1);

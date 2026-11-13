@@ -12,6 +12,7 @@ import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "local_send_phase.dart";
+import "prompt_turn_shape.dart";
 import "seeded_composer.dart";
 import "tool_output_fetch.dart";
 
@@ -35,6 +36,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     @Default([]) List<LaunchFollowUp> launchFollowUps,
     @Default([]) List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
     @Default([]) List<QueuedSessionSubmission> queuedMessages,
+
+    /// Whether each user turn this state renders is a card or a bubble, as
+    /// the cubit resolved it.
+    @Default(PromptTurnShapes()) PromptTurnShapes promptTurnShapes,
   }) = SessionDetailLoading;
 
   const factory loaded({
@@ -88,6 +93,9 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Whether the session menu offers MCP; false only when the bridge reports
     // that the harness answers no MCP for a session.
     required bool offersSessionMcp,
+    // Whether the session's plugin names the command a user turn ran, so a
+    // command not confirmed yet shows as the card it will be confirmed as.
+    required bool namesCommandInvocations,
     // Model from the latest assistant message.
     required AgentModel? assistantAgentModel,
     // Background tasks (child sessions).
@@ -163,6 +171,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// The taken launch's first message, kept until [SessionDetailLoadedLaunch.showsLaunchReplacement]
     /// holds; see [SessionDetailLoading.launchHandoff].
     required SessionLaunchHandoff? launchHandoff,
+
+    /// Whether each user turn this state renders is a card or a bubble, as
+    /// the cubit resolved it.
+    @Default(PromptTurnShapes()) PromptTurnShapes promptTurnShapes,
   }) = SessionDetailLoaded;
 
   /// The harness is blocked *and* the bridge's store holds nothing for this
@@ -179,6 +191,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     @Default([]) List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
     @Default([]) List<LaunchFollowUp> launchFollowUps,
     @Default([]) List<QueuedSessionSubmission> queuedMessages,
+
+    /// Whether each user turn this state renders is a card or a bubble, as
+    /// the cubit resolved it.
+    @Default(PromptTurnShapes()) PromptTurnShapes promptTurnShapes,
   }) = SessionDetailHarnessUnavailable;
 
   const factory failed({
@@ -195,6 +211,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// Prompts sent before the first load that are still waiting for it, so
     /// a failed load never hides them. Retry sends them once it loads.
     @Default([]) List<QueuedSessionSubmission> queuedMessages,
+
+    /// Whether each user turn this state renders is a card or a bubble, as
+    /// the cubit resolved it.
+    @Default(PromptTurnShapes()) PromptTurnShapes promptTurnShapes,
   }) = SessionDetailFailed;
 }
 

@@ -413,5 +413,6 @@ SessionDetailSnapshot _buildDetailSnapshot({
     isRootSession: true,
     isArchived: false,
     cannotContinueMessage: null,
+    namesCommandInvocations: false,
   );
 }

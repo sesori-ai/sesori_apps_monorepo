@@ -66,6 +66,7 @@ void main() {
       stagedCommand: null,
       isRefreshing: false,
       cannotContinueMessage: null,
+      namesCommandInvocations: false,
     );
 
     final detailStates = StreamController<SessionDetailState>();

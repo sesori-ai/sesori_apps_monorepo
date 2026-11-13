@@ -37,6 +37,8 @@ import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/session_launch_service.dart";
 import "../../services/session_selection_calculator.dart";
+import "../session_detail/prompt_turn_shape.dart";
+import "../session_detail/prompt_turn_shape_calculator.dart";
 import "new_session_composer_presentation.dart";
 import "new_session_state.dart";
 
@@ -83,6 +85,7 @@ class NewSessionCubit({
 
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
   static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
+  static const PromptTurnShapeCalculator _promptTurnShapes = PromptTurnShapeCalculator();
 
   ComposerDraft _composerDraft = _composerDraftRepository.readForNewSession();
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
@@ -1176,7 +1179,7 @@ class NewSessionCubit({
   Future<void> submit({
     required ComposerDraft draft,
     required bool dedicatedWorktree,
-    required String? command,
+    required CommandInfo? command,
     required List<ComposerAttachment> attachments,
   }) async {
     if (state.phase case final NewSessionPhaseSending phase) {
@@ -1194,7 +1197,7 @@ class NewSessionCubit({
   Future<void> _createSession({
     required ComposerDraft draft,
     required bool dedicatedWorktree,
-    required String? command,
+    required CommandInfo? command,
     required List<ComposerAttachment> attachments,
   }) async {
     if (!canCreateSession) return;
@@ -1202,7 +1205,7 @@ class NewSessionCubit({
     final selectedPlugin = config?.plugin;
     if (config == null || selectedPlugin == null) return;
 
-    final normalizedCommand = command?.trim();
+    final normalizedCommand = command?.name.trim();
     final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
     if (draft.text.trim() != draft.text) {
       throw ArgumentError.value(draft, "draft", "must be trimmed");
@@ -1223,7 +1226,11 @@ class NewSessionCubit({
     }
 
     final submission = hasCommand
-        ? NewSessionCommandSubmissionSnapshot(draft: draft, command: normalizedCommand)
+        ? NewSessionCommandSubmissionSnapshot(
+            draft: draft,
+            command: normalizedCommand,
+            commandSource: command?.source,
+          )
         : NewSessionTextSubmissionSnapshot(draft: draft, attachments: List.unmodifiable(attachments));
     final usesDedicatedWorktree =
         dedicatedWorktree && config.projectWorktreeCapability == NewSessionProjectWorktreeCapability.supported;
@@ -1248,6 +1255,7 @@ class NewSessionCubit({
           launchId: launchId,
           startedAt: startedAt,
           followUps: const [],
+          promptTurnShapes: _sendingShapes(plugin: selectedPlugin, submission: submission, followUps: const []),
         ),
       ),
     );
@@ -1291,12 +1299,12 @@ class NewSessionCubit({
   void _queueFollowUp({
     required NewSessionPhaseSending phase,
     required ComposerDraft draft,
-    required String? command,
+    required CommandInfo? command,
     required List<ComposerAttachment> attachments,
   }) {
     final current = state;
     if (current is! NewSessionComposing) return;
-    final normalizedCommand = command?.trim();
+    final normalizedCommand = command?.name.trim();
     final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
     final text = draft.text.trim();
     if (text.isEmpty && !hasCommand && attachments.isEmpty) return;
@@ -1318,6 +1326,7 @@ class NewSessionCubit({
             promptId: generatePromptId(),
             text: text,
             command: normalizedCommand,
+            commandSource: command?.source,
             agent: data.agent,
             agentModel: data.agentModel,
             fastMode: data.runsFastMode,
@@ -1348,9 +1357,34 @@ class NewSessionCubit({
     final current = state;
     if (current is! NewSessionComposing) return;
     if (current.phase case final NewSessionPhaseSending phase) {
-      emit(current.copyWith(phase: phase.copyWith(followUps: followUps)));
+      emit(
+        current.copyWith(
+          phase: phase.copyWith(
+            followUps: followUps,
+            promptTurnShapes: _sendingShapes(
+              plugin: current.config.agentModelData.plugin,
+              submission: phase.submission,
+              followUps: followUps,
+            ),
+          ),
+        ),
+      );
     }
   }
+
+  /// The shapes of the launch's first message and its follow-ups, which the
+  /// session screen resolves the same way once it takes them over.
+  PromptTurnShapes _sendingShapes({
+    required PluginMetadata? plugin,
+    required NewSessionSubmissionSnapshot submission,
+    required List<LaunchFollowUp> followUps,
+  }) => _promptTurnShapes.shapes(
+    namesCommandInvocations: plugin?.namesCommandInvocations ?? false,
+    launch: submission,
+    messages: const [],
+    bridgeQueuedPrompts: const [],
+    submissions: [for (final followUp in followUps) followUp.submission],
+  );
 
   /// What the composer holds that nobody sent, or null when it holds nothing.
   UnsentComposer? get _unsentComposer {
@@ -1380,6 +1414,7 @@ class NewSessionCubit({
         fastMode: data.runsFastMode,
         supportsPromptAttachments: data.plugin?.supportsPromptAttachments ?? false,
         supportsFileUploads: data.supportsFileUploads,
+        namesCommandInvocations: data.plugin?.namesCommandInvocations ?? false,
         hadFocus: _composerFocused,
         unsent: _unsentComposer,
       ),

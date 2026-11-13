@@ -324,6 +324,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           mainAgentRunning: _mainAgentRunning,
           retryErrorMessage: _retryErrorMessage,
           onCancelQueuedMessage: cancelQueuedMessage,
+          promptTurnShapes: const PromptTurnShapes(),
         ),
       ),
     );
@@ -1907,6 +1908,7 @@ void main() {
             agent: "coder",
             agentModel: null,
             fastMode: false,
+            commandSource: null,
           ),
         ],
       ),
@@ -2005,6 +2007,7 @@ void main() {
                 attachmentCount: 0,
                 localAttachments: const [],
                 presentation: QueuedMessageBubblePresentation.failed(reason: reason, onRetry: () {}, onRemove: null),
+                shape: const PromptTurnShape.bubble(),
               ),
             ),
           ),
@@ -2047,6 +2050,7 @@ void main() {
                   attachmentCount: 0,
                   localAttachments: const [],
                   presentation: presentation,
+                  shape: const PromptTurnShape.bubble(),
                 ),
               ),
             ),
@@ -4007,6 +4011,7 @@ void main() {
       agent: "coder",
       agentModel: null,
       fastMode: false,
+      commandSource: null,
     );
     const unavailable = QueuedSessionSubmission.unavailableCommand(
       promptId: "prompt-1",
@@ -4015,6 +4020,7 @@ void main() {
       agent: "coder",
       agentModel: null,
       fastMode: false,
+      commandSource: null,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(

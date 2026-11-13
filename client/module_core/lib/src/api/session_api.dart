@@ -97,6 +97,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required SessionVariant? variant,
     required bool fastMode,
     required String? command,
+    required CommandSource? commandSource,
     required bool dedicatedWorktree,
   }) {
     if (attachments.isEmpty) {
@@ -104,7 +105,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         "/session/create",
         fromJson: Session.fromJson,
         body: CreateSessionRequest(
-          commandSource: null,
+          commandSource: commandSource,
           projectId: projectId,
           pluginId: pluginId,
           parts: _buildParts(text: text, attachments: attachments),
@@ -129,6 +130,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       variant: variant,
       fastMode: fastMode,
       command: command,
+      commandSource: commandSource,
       dedicatedWorktree: dedicatedWorktree,
     );
   }
@@ -143,11 +145,12 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required SessionVariant? variant,
     required bool fastMode,
     required String? command,
+    required CommandSource? commandSource,
     required bool dedicatedWorktree,
   }) async {
     await BoundedJsonEncoder.eventLoopTurn();
     final request = CreateSessionRequest(
-      commandSource: null,
+      commandSource: commandSource,
       projectId: projectId,
       pluginId: pluginId,
       parts: [if (text.isNotEmpty) PromptPart.text(text: text)],
@@ -178,12 +181,13 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required SessionVariant? variant,
     required bool fastMode,
     required String? command,
+    required CommandSource? commandSource,
   }) {
     return _client.post(
       "/session/prompt_async",
       fromJson: SuccessEmptyResponse.fromJson,
       body: SendPromptRequest(
-        commandSource: null,
+        commandSource: commandSource,
         sessionId: sessionId,
         parts: _buildParts(text: text, attachments: attachments),
         agent: agent,
