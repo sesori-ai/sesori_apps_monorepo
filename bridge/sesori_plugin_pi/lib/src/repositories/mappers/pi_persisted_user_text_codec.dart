@@ -30,12 +30,19 @@ final class const PiPersistedUserTextCodec() {
     return _decodeVisibleText(persistedText: stripImageHints(text: persistedText));
   }
 
+  /// The skill run Pi stored as [persistedText], named as Pi's command list
+  /// names it (`skill:name`), or null when the text is not an expanded skill.
+  ({String command, String? arguments})? decodeSkillRun({required String persistedText}) {
+    final skill = _expandedSkill.firstMatch(stripImageHints(text: persistedText));
+    final name = skill?.group(1);
+    if (skill == null || name == null) return null;
+    return (command: "skill:$name", arguments: skill.group(2));
+  }
+
   String _decodeVisibleText({required String persistedText}) {
     if (!persistedText.startsWith(marker)) {
-      final skill = _expandedSkill.firstMatch(persistedText);
-      if (skill != null) {
-        final arguments = skill.group(2);
-        return arguments == null ? "/skill:${skill.group(1)}" : "/skill:${skill.group(1)} $arguments";
+      if (decodeSkillRun(persistedText: persistedText) case (:final command, :final arguments)) {
+        return arguments == null ? "/$command" : "/$command $arguments";
       }
       if (persistedText.startsWith("/")) {
         final separator = persistedText.indexOf(RegExp(r"\s"));

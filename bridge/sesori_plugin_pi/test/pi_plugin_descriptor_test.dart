@@ -77,6 +77,7 @@ void main() {
       expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(descriptor.supportsPromptAttachments, isTrue);
+      expect(descriptor.namesCommandInvocations, isTrue);
       expect(descriptor.residencyPolicy(config: config), PluginResidencyPolicy.resident);
       expect(
         descriptor.managementCapabilities(config: config),

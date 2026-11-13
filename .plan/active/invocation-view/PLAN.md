@@ -363,12 +363,6 @@ Client (`client/module_core`, `client/module_app_ui`):
     opt-in holds (verified live with Codex 0.167.2).
   - `/compact` is Codex's only command and adds no user turn, so there is no
     command to name.
-- **Pi** (after #2542).
-  - Correlate the echo of expanded templates and skills, so the live stamp
-    and the capability work.
-  - Name skills from the `<skill name=…>` envelope. Templates rely on the
-    stored stamp, since Pi ids are stable.
-  - Opt in.
 - **Claude Code.**
   - Name commands from `<command-name>`/`<command-args>` in history (today
     dropped). Resolve the kind from the plugin's own command list, else
@@ -491,7 +485,7 @@ Deliberately not added:
 | 4 | ⚙️ [invocation-view] Pin and list command and skill runs as their card [step 4/12] | ≤ 900 | 3 |
 | 5 | ⚙️ [invocation-view] Name OpenCode command and skill runs [step 5/12] | ≤ 700 | 2, #2541, #2542 merged |
 | 6 | Codex naming from history | rough | 5 |
-| 7 | Pi correlation and naming | rough | 5 |
+| 7 | 🌿 [invocation-view] Name Pi command and skill runs [step 7/12] | ≤ 200 | 5 |
 | 8 | Claude Code naming from history | rough | 5 |
 | 9 | ACP-family naming and the DeepSeek/Hermes argument turn | rough | 5 |
 | 10 | Oh My Pi findings | rough | 9 |
