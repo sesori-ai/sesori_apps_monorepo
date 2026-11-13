@@ -28,6 +28,12 @@ void main() {
       final configDirectory = p.join(temporary.path, "config");
       _writeSkill(root: p.join(projectA, ".claude", "skills"), folder: "deploy", frontmatterName: "ship-it");
       _writeSkill(root: p.join(configDirectory, "skills"), folder: "user-skill", frontmatterName: null);
+      File(p.join(projectA, ".claude", "commands", "project-command.md"))
+        ..createSync(recursive: true)
+        ..writeAsStringSync("Run the fixture.\n");
+      File(p.join(projectA, ".claude", "commands", "tools", "lint.md"))
+        ..createSync(recursive: true)
+        ..writeAsStringSync("---\ndescription: Lint the fixture\nargument-hint: <path>\n---\nLint it.\n");
       spawned = [];
       specs = [];
       processes = ClaudeSessionProcessRepository(
@@ -44,14 +50,8 @@ void main() {
           specs.add(spec);
           spawned.add(process);
           unawaited(
-            _answerCatalogControls(
-              process,
-              commandNames: [
-                "review",
-                "user-skill",
-                if (spec.workingDirectory == projectA) ...["project-command", "ship-it"],
-              ],
-            ),
+            // A probe loads only user settings, so it lists no project entries.
+            _answerCatalogControls(process, commandNames: ["review", "user-skill"]),
           );
           return process;
         },
@@ -61,7 +61,7 @@ void main() {
       var probeCount = 0;
       service = ClaudeCatalogService(
         catalog: ClaudeBackendCatalogRepository(
-          skills: ClaudeSkillsApi(environment: {"CLAUDE_CONFIG_DIR": configDirectory}),
+          commandFiles: ClaudeCommandFilesApi(environment: {"CLAUDE_CONFIG_DIR": configDirectory}),
         ),
         processes: processes,
         generateProbeSessionId: () => _probeSessionId(++probeCount),
@@ -86,7 +86,7 @@ void main() {
       expect(spawned.single.killed, isTrue);
     });
 
-    test("starts the probe with hooks and MCP servers off", () async {
+    test("starts the probe without project settings, hooks or MCP servers", () async {
       await service.getCatalog(directory: projectA, refresh: false);
 
       expect(specs.single.purpose, ClaudeProcessPurpose.catalogProbe);
@@ -98,7 +98,7 @@ void main() {
       final second = await service.getCatalog(directory: projectB, refresh: false);
 
       expect(specs.map((spec) => spec.workingDirectory), [projectA, projectB]);
-      expect(first.commands.map((command) => command.name), containsAll(["project-command", "ship-it"]));
+      expect(first.commands.map((command) => command.name), containsAll(["project-command", "ship-it", "tools:lint"]));
       expect(second.commands.map((command) => command.name), ["review", "user-skill"]);
     });
 
@@ -109,7 +109,7 @@ void main() {
       expect(catalog.commands.map((command) => command.name), ["review", "user-skill"]);
     });
 
-    test("labels the project's and the user's skills as skills", () async {
+    test("adds the project's commands and skills from disk and labels skills", () async {
       final catalog = await service.getCatalog(directory: projectA, refresh: false);
 
       expect(
@@ -117,9 +117,17 @@ void main() {
         {
           "review": PluginCommandSource.command,
           "user-skill": PluginCommandSource.skill,
-          "project-command": PluginCommandSource.command,
           "ship-it": PluginCommandSource.skill,
+          "project-command": PluginCommandSource.command,
+          "tools:lint": PluginCommandSource.command,
         },
+      );
+      final lint = catalog.commands.singleWhere((command) => command.name == "tools:lint");
+      expect(lint.description, "Lint the fixture (project)");
+      expect(lint.hints, ["<path>"]);
+      expect(
+        catalog.commands.singleWhere((command) => command.name == "project-command").description,
+        "Run the fixture. (project)",
       );
     });
 
@@ -181,7 +189,7 @@ void main() {
         environment: const {},
       );
       return ClaudeCatalogService(
-        catalog: ClaudeBackendCatalogRepository(skills: ClaudeSkillsApi(environment: const {})),
+        catalog: ClaudeBackendCatalogRepository(commandFiles: ClaudeCommandFilesApi(environment: const {})),
         processes: processes,
         generateProbeSessionId: () => otherTestSessionId,
         discoveryDirectory: "/tmp/claude-state",

@@ -100,10 +100,9 @@ final class ClaudeCatalogService({
         fastMode: false,
         allowedTools: const [],
       );
-      final catalog = await _readCatalog(
-        sessionId: probeSessionId,
-        refresh: refresh,
-        skillNames: await _catalogRepository.readSkillNames(directory: directory),
+      final catalog = _catalogRepository.map(
+        handshake: await _readHandshake(sessionId: probeSessionId, refresh: refresh),
+        files: await _catalogRepository.readCommandFiles(directory: directory),
       );
       _catalogs[directory] = catalog;
       _latest = catalog;
@@ -120,22 +119,18 @@ final class ClaudeCatalogService({
     }
   }
 
-  Future<ClaudeBackendCatalog> _readCatalog({
-    required String sessionId,
-    required bool refresh,
-    required Set<String> skillNames,
-  }) async {
+  Future<Map<String, Object?>> _readHandshake({required String sessionId, required bool refresh}) async {
     final handshake = _processes.handshake(sessionId: sessionId);
     if (handshake == null) throw StateError("Claude session has no catalog: $sessionId");
     final accountHandshake = await _unmaskFastMode(sessionId: sessionId, handshake: handshake);
-    if (!refresh) return _catalogRepository.map(handshake: accountHandshake, skillNames: skillNames);
+    if (!refresh) return accountHandshake;
 
     final refreshed = await _processes.sendControlRequest(
       sessionId: sessionId,
       subtype: "list_models",
       params: const {},
     );
-    return _catalogRepository.map(handshake: {...accountHandshake, ...refreshed}, skillNames: skillNames);
+    return {...accountHandshake, ...refreshed};
   }
 
   /// Opts the probe into fast mode and re-reads the handshake, which then

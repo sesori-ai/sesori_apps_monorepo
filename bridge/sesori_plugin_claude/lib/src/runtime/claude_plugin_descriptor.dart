@@ -6,9 +6,9 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "../api/claude_command_files_api.dart";
 import "../api/claude_process_factory.dart";
 import "../api/claude_settings_api.dart";
-import "../api/claude_skills_api.dart";
 import "../api/claude_transcript_api.dart";
 import "../api/models/claude_auth_status_dto.dart";
 import "../claude_approval_registry.dart";
@@ -308,7 +308,7 @@ final class const ClaudePluginDescriptor({
     );
     const content = ClaudeContentMapper();
     final catalogService = ClaudeCatalogService(
-      catalog: ClaudeBackendCatalogRepository(skills: ClaudeSkillsApi(environment: host.environment)),
+      catalog: ClaudeBackendCatalogRepository(commandFiles: ClaudeCommandFilesApi(environment: host.environment)),
       processes: processes,
       generateProbeSessionId: _generateUuidV4,
       discoveryDirectory: host.stateDirectory,

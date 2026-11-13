@@ -130,14 +130,24 @@ void main() {
       expect(arguments, containsAllInOrder(["--allowedTools", "Write", "Bash(git status:*)"]));
     });
 
-    test("turns hooks and MCP servers off only for a catalog probe", () {
+    test("turns project settings, hooks and MCP servers off only for a catalog probe", () {
       final probe = specFor(
         ClaudeNewSession(sessionId: _newSessionId),
         purpose: ClaudeProcessPurpose.catalogProbe,
       ).arguments;
       final session = specFor(ClaudeNewSession(sessionId: _newSessionId)).arguments;
 
-      expect(probe, containsAllInOrder(["--settings", '{"disableAllHooks":true}', "--strict-mcp-config"]));
+      expect(
+        probe,
+        containsAllInOrder([
+          "--setting-sources",
+          "user",
+          "--settings",
+          '{"disableAllHooks":true}',
+          "--strict-mcp-config",
+        ]),
+      );
+      expect(session, isNot(contains("--setting-sources")));
       expect(session, isNot(contains("--strict-mcp-config")));
       expect(session, isNot(contains("--settings")));
     });

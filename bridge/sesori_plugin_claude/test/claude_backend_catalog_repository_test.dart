@@ -6,11 +6,11 @@ import "package:test/test.dart";
 
 void main() {
   group("ClaudeBackendCatalogRepository", () {
-    final repository = ClaudeBackendCatalogRepository(skills: ClaudeSkillsApi(environment: const {}));
+    final repository = ClaudeBackendCatalogRepository(commandFiles: ClaudeCommandFilesApi(environment: const {}));
 
     test("maps models, effort variants, commands, and the default agent", () {
       final catalog = repository.map(
-        skillNames: const {},
+        files: _noFiles,
         handshake: {
           "commands": [
             {"name": "review", "description": "Review changes", "argumentHint": "<scope>"},
@@ -80,7 +80,7 @@ void main() {
     group("fast mode availability", () {
       PluginFastModeSupport? fastModeFor({required Object? disabledReason}) => repository
           .map(
-            skillNames: const {},
+            files: _noFiles,
             handshake: {
               "models": [
                 {"value": "opus", "supportsFastMode": true},
@@ -158,7 +158,7 @@ void main() {
 
     test("declares no default effort when effort support is off, even with levels listed", () {
       final catalog = repository.map(
-        skillNames: const {},
+        files: _noFiles,
         handshake: {
           "models": [
             {
@@ -177,7 +177,7 @@ void main() {
 
     test("maps resolved and short API model names back to picker ids", () {
       final catalog = repository.map(
-        skillNames: const {},
+        files: _noFiles,
         handshake: {
           "models": [
             {"value": "default", "resolvedModel": "claude-opus-5[1m]"},
@@ -204,7 +204,7 @@ void main() {
     test("offers only each family's newest model, ranked by what it resolves to", () {
       // Claude CLI 2.1.283's catalog: family aliases beside pinned older versions.
       final catalog = repository.map(
-        skillNames: const {},
+        files: _noFiles,
         handshake: {
           "models": [
             {"value": "default", "resolvedModel": "claude-opus-5-5"},
@@ -237,7 +237,7 @@ void main() {
 
     test("filters malformed entries and falls back to the first model", () {
       final catalog = repository.map(
-        skillNames: const {},
+        files: _noFiles,
         handshake: {
           "commands": [
             {"description": "missing name"},
@@ -257,7 +257,7 @@ void main() {
 
     test("omits the native /fast command owned by the fast-mode selection", () {
       final catalog = repository.map(
-        skillNames: const {},
+        files: _noFiles,
         handshake: {
           "commands": [
             {"name": "fast", "description": "Toggle fast mode", "argumentHint": "[on|off]"},
@@ -270,7 +270,7 @@ void main() {
     });
 
     test("returns agents but no provider for an empty model catalog", () {
-      final catalog = repository.map(handshake: const {}, skillNames: const {});
+      final catalog = repository.map(handshake: const {}, files: _noFiles);
 
       expect(catalog.agents.map((agent) => agent.name), ["Agent"]);
       expect(catalog.agents.every((agent) => agent.model == null), isTrue);
@@ -278,16 +278,19 @@ void main() {
       expect(catalog.commands, isEmpty);
     });
 
-    test("an unreadable skill folder throws from the API and leaves the list unlabelled", () async {
+    test("an unreadable skill folder throws from the API and adds no entries", () async {
       final project = Directory.systemTemp.createTempSync("claude-skills-");
       addTearDown(() => project.deleteSync(recursive: true));
       // A file where the skills folder belongs fails to list without being missing.
       Directory("${project.path}/.claude").createSync();
       File("${project.path}/.claude/skills").writeAsStringSync("not a folder");
 
-      final api = ClaudeSkillsApi(environment: const {});
-      await expectLater(api.readSkillNames(projectDirectory: project.path), throwsA(isA<FileSystemException>()));
-      expect(await repository.readSkillNames(directory: project.path), isEmpty);
+      final api = ClaudeCommandFilesApi(environment: const {});
+      await expectLater(api.read(projectDirectory: project.path), throwsA(isA<FileSystemException>()));
+      final files = await repository.readCommandFiles(directory: project.path);
+      expect([...files.projectCommands, ...files.projectSkills, ...files.userSkillNames], isEmpty);
     });
   });
 }
+
+const _noFiles = ClaudeCommandFiles(projectCommands: [], projectSkills: [], userSkillNames: {});

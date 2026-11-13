@@ -1743,7 +1743,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       transcripts: transcripts,
       sessions: sessionService,
       catalogService: ClaudeCatalogService(
-        catalog: ClaudeBackendCatalogRepository(skills: ClaudeSkillsApi(environment: const {})),
+        catalog: ClaudeBackendCatalogRepository(commandFiles: ClaudeCommandFilesApi(environment: const {})),
         processes: processRepository,
         generateProbeSessionId: () => "99999999-8888-4777-8666-${(++_probeIndex).toString().padLeft(12, "0")}",
         discoveryDirectory: temporary.path,
