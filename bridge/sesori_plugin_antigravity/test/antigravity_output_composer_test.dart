@@ -99,7 +99,7 @@ void main() {
       composer.mapInitializationFailure(
         error: const AcpOutputInterceptionException(
           cause: PluginAuthenticationRequiredException(
-            "authenticate",
+            operation: "authenticate",
             actionHint: null,
             recovery: PluginAuthenticationRecovery.login,
           ),

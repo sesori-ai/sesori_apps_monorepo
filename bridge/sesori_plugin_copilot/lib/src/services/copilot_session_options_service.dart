@@ -98,7 +98,7 @@ class CopilotSessionOptionsService({
     } on PluginAuthenticationRequiredException catch (error, stack) {
       Error.throwWithStackTrace(
         PluginAuthenticationRequiredException(
-          error.operation,
+          operation: error.operation,
           actionHint: CopilotBinary.loginActionHint,
           recovery: PluginAuthenticationRecovery.login,
           message: error.message,
@@ -109,7 +109,7 @@ class CopilotSessionOptionsService({
     } on Object catch (error, stack) {
       _lastDiscoveryFailure = (
         error: PluginOperationException(
-          "session/options",
+          operation: "session/options",
           message: "GitHub Copilot session options could not be discovered",
           cause: error,
         ),
@@ -179,13 +179,19 @@ class CopilotSessionOptionsService({
         (model?.providerID != _providerId ||
             snapshot?.modelConfigId == null ||
             !(snapshot?.models.any((option) => option.value == requestedModel) ?? false))) {
-      throw PluginStaleOptionsException(operation, message: "GitHub Copilot no longer offers the selected model");
+      throw PluginStaleOptionsException(
+        operation: operation,
+        message: "GitHub Copilot no longer offers the selected model",
+      );
     }
     if (agent != null &&
         agent.isNotEmpty &&
         !fallbackAgent &&
         (snapshot?.modeConfigId == null || _resolveOption(valueOrName: agent, options: modes) == null)) {
-      throw PluginStaleOptionsException(operation, message: "GitHub Copilot no longer offers the selected mode");
+      throw PluginStaleOptionsException(
+        operation: operation,
+        message: "GitHub Copilot no longer offers the selected mode",
+      );
     }
     final requestedVariant = variant?.id;
     final reasoning = _reasoningByModel[requestedModel ?? snapshot?.currentModelValue];
@@ -194,7 +200,7 @@ class CopilotSessionOptionsService({
         (reasoning?.configId == null ||
             !(reasoning?.options.any((option) => option.value == requestedVariant) ?? false))) {
       throw PluginStaleOptionsException(
-        operation,
+        operation: operation,
         message: "GitHub Copilot no longer offers the selected reasoning level",
       );
     }
@@ -298,7 +304,7 @@ class CopilotSessionOptionsService({
     } on Object catch (error, stack) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          "session/set_config_option",
+          operation: "session/set_config_option",
           message: "GitHub Copilot rejected the requested session option",
           cause: error,
         ),

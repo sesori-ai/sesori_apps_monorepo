@@ -581,7 +581,10 @@ void main() {
     });
 
     test("stale options rejection returns 409 with the recognizable error body", () async {
-      plugin.sendPromptError = const PluginStaleOptionsException("sendPrompt", message: "unsupported Claude agent");
+      plugin.sendPromptError = const PluginStaleOptionsException(
+        operation: "sendPrompt",
+        message: "unsupported Claude agent",
+      );
 
       final response = await handler.routeForTest(
         makeRequest(
@@ -612,7 +615,7 @@ void main() {
 
     test("a refusal returns 409 carrying only the plugin's user-facing reason", () async {
       plugin.sendPromptError = PluginRefusalException(
-        "thread/resume",
+        operation: "thread/resume",
         userFacingReason: "This session uses another provider. Switch back to continue it.",
         cause: StateError("raw backend text"),
       );

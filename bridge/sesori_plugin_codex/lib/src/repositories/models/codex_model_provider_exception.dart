@@ -7,14 +7,14 @@ import "../../codex_app_server_client.dart";
 /// the user's setup, not a bridge failure, so clients show the short message
 /// naming the providers and the fix.
 sealed class CodexModelProviderException({
-  required String operation,
+  required super.operation,
 
   /// The provider the thread was started with.
   required final String threadProvider,
   required String message,
   required CodexRpcException cause,
 }) extends PluginRefusalException {
-  this : super(operation, userFacingReason: message, cause: cause);
+  this : super(userFacingReason: message, cause: cause);
 }
 
 final class CodexModelProviderMismatchException({

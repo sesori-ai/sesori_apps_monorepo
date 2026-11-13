@@ -187,7 +187,7 @@ class OpenCodePlugin._({
     try {
       return await fn();
     } on OpenCodeApiException catch (e) {
-      throw PluginApiException(e.endpoint, e.statusCode, message: e.responseBody);
+      throw PluginApiException(endpoint: e.endpoint, statusCode: e.statusCode, message: e.responseBody);
     }
   }
 
@@ -237,7 +237,7 @@ class OpenCodePlugin._({
       if (staleOption == null) Error.throwWithStackTrace(error, stackTrace);
       Error.throwWithStackTrace(
         PluginStaleOptionsException(
-          operation,
+          operation: operation,
           message: switch (staleOption) {
             _StaleSessionOption.agent => "OpenCode no longer offers the selected agent.",
             _StaleSessionOption.model => "OpenCode no longer offers the selected model.",
@@ -579,7 +579,7 @@ class OpenCodePlugin._({
   }) async {
     final staleOption = await _findStaleSessionOption(sessionId: sessionId, agent: agent, variant: null, model: null);
     if (staleOption == null) return;
-    throw PluginStaleOptionsException(operation, message: "OpenCode no longer offers the selected agent.");
+    throw PluginStaleOptionsException(operation: operation, message: "OpenCode no longer offers the selected agent.");
   }
 
   /// Names the user message on the bridge so its echoes can be stamped with

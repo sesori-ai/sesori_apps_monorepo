@@ -149,7 +149,7 @@ void main() {
             method: HttpMethod.get,
             path: "/plugin-failure",
             handle: ({required request, required targetParams}) {
-              throw const PluginOperationException.notFound("test");
+              throw const PluginOperationException.notFound(operation: "test");
             },
           ),
         ],

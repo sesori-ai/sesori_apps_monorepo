@@ -14,8 +14,8 @@ enum PluginAuthenticationRecovery() {
 
 /// Authoritative plugin-owned signal that backend authentication is no longer
 /// usable. Bridge core reacts to this type without parsing backend error text.
-class const PluginAuthenticationRequiredException(
-  super.operation, {
+class const PluginAuthenticationRequiredException({
+  required super.operation,
   required final String? actionHint,
   required final PluginAuthenticationRecovery recovery,
   super.message,

@@ -551,7 +551,7 @@ class CatalogImportRepository({
       );
       if (observation.cancellation.isCancelled) {
         throw PluginOperationException(
-          _CatalogOperation.importCatalog.name,
+          operation: _CatalogOperation.importCatalog.name,
           statusCode: 503,
           message: "catalog import was cancelled during durable commit",
         );

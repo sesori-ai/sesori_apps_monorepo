@@ -642,7 +642,7 @@ class FakeSessionRepository({
     final stored = await getStoredSession(sessionId: sessionId);
     if (stored == null) {
       throw PluginOperationException.notFound(
-        operation.name,
+        operation: operation.name,
         message: "session $sessionId was not found",
       );
     }
@@ -691,7 +691,7 @@ class FakeSessionRepository({
   Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {
     if (pluginId == _plugin.id) return;
     throw PluginOperationException(
-      operation.name,
+      operation: operation.name,
       statusCode: 503,
       message: "plugin $pluginId is not running",
     );

@@ -152,7 +152,7 @@ final class PiExtensionUiService({
     final reply = _replyFor(dialog: dialog, answers: answers);
     if (reply == null) {
       throw const PluginOperationException(
-        "reply to Pi extension question",
+        operation: "reply to Pi extension question",
         statusCode: 400,
         message: "The question response is invalid.",
       );
@@ -356,7 +356,7 @@ final class PiExtensionUiService({
     if (dialog == null ||
         (sessionId != null && dialog.ownerSessionId != sessionId && dialog.displaySessionId != sessionId)) {
       throw const PluginOperationException.notFound(
-        "Pi extension question",
+        operation: "Pi extension question",
         message: "Question not found.",
       );
     }
@@ -387,7 +387,7 @@ final class PiExtensionUiService({
     _take(questionId: dialog.questionId);
     _rejected(dialog);
     throw PluginOperationException.notFound(
-      operation,
+      operation: operation,
       message: "The Pi dialog is no longer available.",
     );
   }

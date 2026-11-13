@@ -36,7 +36,7 @@ class const DeepSeekSessionRepository({required final DeepSeekAcpApi api}) {
       };
       Error.throwWithStackTrace(
         PluginOperationException(
-          DeepSeekAcpApi.sessionStopMethod,
+          operation: DeepSeekAcpApi.sessionStopMethod,
           message: "DeepSeek scoped stop failed for $targetContext",
           cause: error,
         ),
@@ -76,7 +76,7 @@ class const DeepSeekSessionRepository({required final DeepSeekAcpApi api}) {
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          DeepSeekAcpApi.renameMethod,
+          operation: DeepSeekAcpApi.renameMethod,
           message: "DeepSeek session rename failed",
           cause: error,
         ),

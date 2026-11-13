@@ -93,7 +93,7 @@ class OmpSessionOptionsService({
       };
       if (configId == null || !models.any((entry) => entry.value == requestedModel)) {
         throw const PluginOperationException(
-          "session/set_config_option",
+          operation: "session/set_config_option",
           message: "Requested OMP model is unavailable",
         );
       }
@@ -110,7 +110,7 @@ class OmpSessionOptionsService({
       final configId = current?.modeConfigId ?? catalog?.modeConfigId;
       if (mode == null || configId == null) {
         throw const PluginOperationException(
-          "session/set_config_option",
+          operation: "session/set_config_option",
           message: "Requested OMP mode is unavailable",
         );
       }
@@ -128,7 +128,7 @@ class OmpSessionOptionsService({
       final thinking = current?.thinking ?? (selectedModel == null ? null : catalog?.thinkingByModel[selectedModel]);
       if (thinking == null || !thinking.variants.contains(requestedVariant)) {
         throw const PluginOperationException(
-          "session/set_config_option",
+          operation: "session/set_config_option",
           message: "Requested OMP thinking level is unavailable",
         );
       }
@@ -181,7 +181,7 @@ class OmpSessionOptionsService({
     } on Object catch (error, stack) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          "session/set_config_option",
+          operation: "session/set_config_option",
           message: "OMP rejected the requested session option",
           cause: error,
         ),

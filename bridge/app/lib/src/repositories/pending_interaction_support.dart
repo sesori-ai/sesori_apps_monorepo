@@ -18,7 +18,7 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
     final binding = await _sessionDao.getSession(sessionId: sessionId);
     if (binding == null) {
       throw PluginOperationException.notFound(
-        operation.name,
+        operation: operation.name,
         message: "session $sessionId was not found",
       );
     }
@@ -50,16 +50,22 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
     if (plugin is! BridgeDerivedProjectsPluginApi) return;
     final tombstones = await _sessionDao.getTombstonedSessionIds(pluginId: plugin.id);
     if (tombstones.contains(backendSessionId)) {
-      throw PluginOperationException.notFound(operation.name, message: "session $backendSessionId was deleted");
+      throw PluginOperationException.notFound(
+        operation: operation.name,
+        message: "session $backendSessionId was deleted",
+      );
     }
     for (final pending in await readPending()) {
       if (pending.id != interactionId) continue;
       if (tombstones.contains(pending.sessionID)) {
-        throw PluginOperationException.notFound(operation.name, message: "session ${pending.sessionID} was deleted");
+        throw PluginOperationException.notFound(
+          operation: operation.name,
+          message: "session ${pending.sessionID} was deleted",
+        );
       }
       if (pending.displaySessionId case final displaySessionId? when tombstones.contains(displaySessionId)) {
         throw PluginOperationException.notFound(
-          operation.name,
+          operation: operation.name,
           message: "display session $displaySessionId was deleted",
         );
       }

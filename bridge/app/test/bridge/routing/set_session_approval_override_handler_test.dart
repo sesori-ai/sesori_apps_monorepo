@@ -55,7 +55,7 @@ void main() {
     });
 
     test("a missing session is a 404 with a body, unlike an unknown route", () async {
-      yoloSettingsService.error = const PluginOperationException.notFound("setApprovalOverride");
+      yoloSettingsService.error = const PluginOperationException.notFound(operation: "setApprovalOverride");
 
       final response = await handler.routeForTest(
         makeRequest("PATCH", "/session/approval-override", body: body(approvalOverride: SessionApprovalMode.ask)),

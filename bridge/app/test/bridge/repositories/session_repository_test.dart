@@ -2314,7 +2314,7 @@ void main() {
       expect(childDetail?.parentID, "stable-parent");
 
       plugin.getChildSessionsError = const PluginOperationException(
-        "getChildSessions",
+        operation: "getChildSessions",
         statusCode: 503,
         message: "backend unavailable",
       );

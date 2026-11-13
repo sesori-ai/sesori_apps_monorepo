@@ -100,7 +100,11 @@ class TestPluginRuntime({
   Set<PluginMcpCapability> mcpCapabilities({required String pluginId, required Enum operation}) {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is unknown");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is unknown",
+      );
     }
     return {
       if (plugin is McpManagementPluginApi) PluginMcpCapability.management,
@@ -136,7 +140,7 @@ class TestPluginRuntime({
   }) {
     if (!isCurrentGeneration(pluginId: pluginId, generation: generation)) {
       throw PluginOperationException(
-        operation.name,
+        operation: operation.name,
         statusCode: 503,
         message: "plugin generation changed during operation",
       );
@@ -219,7 +223,11 @@ class TestPluginRuntime({
     if (useGate case final gate?) await gate;
     final plugin = _plugins[pluginId];
     if (plugin == null) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is not running",
+      );
     }
     final result = await body(plugin);
     requireCurrentGeneration(pluginId: pluginId, generation: currentGeneration, operation: operation);
@@ -235,7 +243,11 @@ class TestPluginRuntime({
   }) async {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is not running",
+      );
     }
     final generation = currentGeneration;
     final value = await body(plugin);
@@ -252,7 +264,11 @@ class TestPluginRuntime({
   }) async {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is not running",
+      );
     }
     final prepared = await prepare(plugin);
     requireCurrentGeneration(pluginId: pluginId, generation: currentGeneration, operation: operation);
@@ -284,7 +300,11 @@ class TestPluginRuntime({
     final plugin = _plugins[pluginId];
     if (plugin == null) {
       return Stream.error(
-        PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running"),
+        PluginOperationException(
+          operation: operation.name,
+          statusCode: 503,
+          message: "plugin $pluginId is not running",
+        ),
       );
     }
     return body(
@@ -338,7 +358,11 @@ class TestPluginRuntime({
     final plugin = _plugins[pluginId];
     if (plugin == null) {
       return Stream.error(
-        PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running"),
+        PluginOperationException(
+          operation: operation.name,
+          statusCode: 503,
+          message: "plugin $pluginId is not running",
+        ),
       );
     }
     return body(plugin, currentGeneration);

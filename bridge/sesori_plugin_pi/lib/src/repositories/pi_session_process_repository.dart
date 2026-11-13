@@ -267,7 +267,7 @@ final class PiSessionProcessRepository({
         cwd,
       ),
       (null, null) => throw PluginOperationException.notFound(
-        "connect Pi session",
+        operation: "connect Pi session",
         message: "Pi session was not found.",
         cause: PiSessionHistoryNotFoundException(sessionId: sessionId),
       ),
@@ -575,7 +575,7 @@ final class PiSessionProcessRepository({
           } on FormatException catch (error, stack) {
             Error.throwWithStackTrace(
               PluginOperationException(
-                "send Pi prompt",
+                operation: "send Pi prompt",
                 statusCode: 400,
                 message: "Pi supports valid inline image data only.",
                 cause: PiInvalidPromptImageException(reason: error.message),
@@ -588,7 +588,7 @@ final class PiSessionProcessRepository({
           } on FormatException catch (error, stack) {
             Error.throwWithStackTrace(
               PluginOperationException(
-                "send Pi prompt",
+                operation: "send Pi prompt",
                 statusCode: 400,
                 message: "Pi supports valid inline image data only.",
                 cause: PiInvalidPromptImageException(reason: error.message),
@@ -614,7 +614,7 @@ final class PiSessionProcessRepository({
   }
 
   Never _throwAttachmentFailure({required Object cause}) => throw PluginOperationException(
-    "send Pi prompt",
+    operation: "send Pi prompt",
     statusCode: 400,
     message: "Pi supports inline image data only.",
     cause: cause,
@@ -626,7 +626,7 @@ final class PiSessionProcessRepository({
         error is PiSessionAuthenticationException ||
         (resident?.client.stderrDiagnostics.contains(PiRpcClient.noModelsDiagnosticPrefix) ?? false);
     return PluginOperationException(
-      "run Pi session turn",
+      operation: "run Pi session turn",
       message: authUnavailable
           ? "Pi has no model available. Run Pi locally and use /login, then try again."
           : "Pi could not run this turn.",
@@ -692,7 +692,7 @@ final class PiSessionProcessRepository({
   }) async {
     if (resolved == null) {
       throw PluginOperationException.notFound(
-        "open Pi session",
+        operation: "open Pi session",
         message: "Pi session was not found.",
         cause: PiSessionHistoryNotFoundException(sessionId: sessionId),
       );
@@ -874,7 +874,7 @@ final class PiSessionProcessRepository({
       final cause = PiSessionHistoryNotFoundException(sessionId: sessionId);
       Error.throwWithStackTrace(
         PluginOperationException.notFound(
-          "load Pi session history",
+          operation: "load Pi session history",
           message: "Pi session was not found.",
           cause: cause,
         ),
@@ -999,7 +999,7 @@ final class PiSessionProcessRepository({
     Log.w("[pi] failed to load session history at '$path'", localError, stack);
     Error.throwWithStackTrace(
       PluginOperationException(
-        "load Pi session history",
+        operation: "load Pi session history",
         message: "Pi session history could not be loaded.",
         cause: PiSessionHistoryLoadException(innerError: error),
       ),

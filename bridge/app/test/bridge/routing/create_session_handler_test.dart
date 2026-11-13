@@ -503,7 +503,7 @@ void main() {
 
     test("stale plugin selection invalidates options and no session row is inserted", () async {
       final failingPlugin = _ThrowingCreateSessionPlugin(
-        error: const PluginStaleOptionsException("createSession"),
+        error: const PluginStaleOptionsException(operation: "createSession"),
       );
       final localRepository = singlePluginSessionRepository(
         plugin: failingPlugin,

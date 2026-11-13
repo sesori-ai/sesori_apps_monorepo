@@ -109,7 +109,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
         authMethodId ?? _firstNonTerminalAuthMethod(init: initializeResult, allowlist: authMethodAllowlist);
     if (methodId == null) {
       throw PluginAuthenticationRequiredException(
-        AcpMethods.authenticate,
+        operation: AcpMethods.authenticate,
         actionHint: "Authenticate the configured agent locally, then retry.",
         recovery: PluginAuthenticationRecovery.login,
         message: "${client.logTag} requires an authentication method the bridge cannot complete",
@@ -127,7 +127,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     } on AcpRpcException catch (error) {
       if (error.method != "<response>") rethrow;
       throw PluginAuthenticationRequiredException(
-        AcpMethods.authenticate,
+        operation: AcpMethods.authenticate,
         actionHint: "Authenticate the configured agent locally, then retry.",
         recovery: PluginAuthenticationRecovery.login,
         message: "${client.logTag} authentication failed",

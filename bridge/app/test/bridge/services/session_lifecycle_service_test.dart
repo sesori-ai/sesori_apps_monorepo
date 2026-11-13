@@ -559,7 +559,7 @@ void main() {
       });
 
       test("is archived when its stop fails", () async {
-        plugin.abortError = const PluginOperationException("abortSession", message: "fixture stop failure");
+        plugin.abortError = const PluginOperationException(operation: "abortSession", message: "fixture stop failure");
 
         final update = await archive();
 
@@ -705,7 +705,7 @@ class _FakeSessionRepository() implements SessionRepository {
     final session = storedSession;
     if (session == null) {
       throw PluginOperationException.notFound(
-        operation.name,
+        operation: operation.name,
         message: "session $sessionId was not found",
       );
     }
@@ -730,7 +730,7 @@ class _FakeSessionRepository() implements SessionRepository {
     final session = storedSession;
     if (session == null) {
       throw PluginOperationException.notFound(
-        operation.name,
+        operation: operation.name,
         message: "session $sessionId was not found",
       );
     }
@@ -741,7 +741,7 @@ class _FakeSessionRepository() implements SessionRepository {
   Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {
     if (pluginId == "fake") return;
     throw PluginOperationException(
-      operation.name,
+      operation: operation.name,
       statusCode: 503,
       message: "plugin $pluginId is not running",
     );

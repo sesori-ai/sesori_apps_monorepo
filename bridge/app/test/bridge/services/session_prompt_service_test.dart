@@ -423,7 +423,7 @@ void main() {
 
     test("invalidates the options cache when a command leaves the plugin catalog", () async {
       plugin.sendCommandError = const PluginStaleOptionsException(
-        "sendCommand",
+        operation: "sendCommand",
         message: "command unavailable",
       );
 
@@ -442,7 +442,7 @@ void main() {
     });
 
     test("invalidates the options cache and rethrows when the plugin reports stale options", () async {
-      plugin.sendPromptError = const PluginStaleOptionsException("sendPrompt", message: "unsupported agent");
+      plugin.sendPromptError = const PluginStaleOptionsException(operation: "sendPrompt", message: "unsupported agent");
 
       await expectLater(
         service.sendPrompt(

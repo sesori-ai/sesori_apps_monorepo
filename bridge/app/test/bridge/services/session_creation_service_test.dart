@@ -351,7 +351,7 @@ void main() {
 
     test("maps stale command selections during creation to a typed rejection", () async {
       plugin.sendCommandError = const PluginStaleOptionsException(
-        "sendCommand",
+        operation: "sendCommand",
         message: "unsupported command model",
       );
 

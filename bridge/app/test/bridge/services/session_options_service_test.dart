@@ -2075,7 +2075,7 @@ class _FakeSessionOptionsRepository() implements SessionOptionsRepository {
   }) async {
     if (generation != currentGeneration) {
       throw PluginOperationException(
-        SessionOptionsRuntimeOperation.commit.name,
+        operation: SessionOptionsRuntimeOperation.commit.name,
         statusCode: 503,
         message: "stale generation",
       );

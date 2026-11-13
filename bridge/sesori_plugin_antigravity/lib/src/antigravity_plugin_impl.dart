@@ -108,7 +108,7 @@ class AntigravityPlugin({
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
     final result = await _discover(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
     if (result case PluginSessionOptionsDiscoveryObserved(:final options)) return options.providers;
-    throw const PluginOperationException("getProviders", message: "Antigravity model discovery failed");
+    throw const PluginOperationException(operation: "getProviders", message: "Antigravity model discovery failed");
   }
 
   Future<PluginSessionOptionsDiscoveryResult> _discover({

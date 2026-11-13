@@ -132,6 +132,10 @@ class FormRepository({
 
   Never _replyUnavailable({required String requestId, required String sessionId, required SessionOperation operation}) {
     Log.w("Native form response unavailable for $requestId in $sessionId (${operation.name})");
-    throw PluginOperationException(operation.name, statusCode: 503, message: "native form response is unavailable");
+    throw PluginOperationException(
+      operation: operation.name,
+      statusCode: 503,
+      message: "native form response is unavailable",
+    );
   }
 }

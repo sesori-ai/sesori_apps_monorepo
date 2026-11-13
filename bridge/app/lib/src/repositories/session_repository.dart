@@ -134,7 +134,7 @@ class SessionRepository({
     for (var depth = 0; depth < maxDepth; depth++) {
       if (!visited.add(currentSessionId)) {
         throw PluginOperationException(
-          operation.name,
+          operation: operation.name,
           statusCode: 409,
           message: "session $sessionId has cyclic ancestry at $currentSessionId",
         );
@@ -142,14 +142,14 @@ class SessionRepository({
       final binding = await _sessionDao.getSession(sessionId: currentSessionId);
       if (binding == null) {
         throw PluginOperationException.notFound(
-          operation.name,
+          operation: operation.name,
           message: "session $currentSessionId was not found while resolving family for $sessionId",
         );
       }
       pluginId ??= binding.pluginId;
       if (binding.pluginId != pluginId) {
         throw PluginOperationException(
-          operation.name,
+          operation: operation.name,
           statusCode: 409,
           message: "session $sessionId has cross-plugin ancestry at $currentSessionId",
         );
@@ -161,7 +161,7 @@ class SessionRepository({
       currentSessionId = parentSessionId;
     }
     throw PluginOperationException(
-      operation.name,
+      operation: operation.name,
       statusCode: 409,
       message: "session $sessionId ancestry exceeds $maxDepth entries",
     );
@@ -280,7 +280,7 @@ class SessionRepository({
           );
     if (parentBinding != null && parentBinding.pluginId != pluginId) {
       throw PluginOperationException(
-        SessionOperation.createSession.name,
+        operation: SessionOperation.createSession.name,
         statusCode: 409,
         message: "parent session $parentSessionId belongs to another plugin",
       );
@@ -314,7 +314,7 @@ class SessionRepository({
           );
           if (existingBinding?.parentSessionId != null) {
             throw PluginOperationException(
-              SessionOperation.createSession.name,
+              operation: SessionOperation.createSession.name,
               statusCode: 409,
               message: "backend session ${created.id} is already bound as a child session",
             );
@@ -1326,7 +1326,7 @@ class SessionRepository({
   Future<List<Session>> getChildSessions({required String sessionId}) async {
     if (await _sessionDao.getSession(sessionId: sessionId) == null) {
       throw PluginOperationException.notFound(
-        SessionOperation.getChildSessions.name,
+        operation: SessionOperation.getChildSessions.name,
         message: "session $sessionId was not found",
       );
     }
@@ -1715,7 +1715,7 @@ class SessionRepository({
     final binding = await _sessionDao.getSession(sessionId: sessionId);
     if (binding == null) {
       throw PluginOperationException.notFound(
-        operation.name,
+        operation: operation.name,
         message: "session $sessionId was not found",
       );
     }
