@@ -447,6 +447,56 @@ void main() {
       expect((events[1] as BridgeSseMessagePartUpdated).part.text, "Read this exactly.\n\n$note");
     });
 
+    test("item userMessage shows a picked skill as the slash command the user typed", () {
+      // Codex 0.167.2's live item for `$fixture-greeter hello` sent with a
+      // structured `skill` input.
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
+          method: "item/started",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "clientId": "prm_1",
+              "content": [
+                {"type": "text", "text": r"$fixture-greeter hello", "text_elements": <Object?>[]},
+                {
+                  "type": "skill",
+                  "name": "fixture-greeter",
+                  "path": "/repo/.agents/skills/fixture-greeter/SKILL.md",
+                },
+              ],
+            },
+          },
+        ),
+      );
+
+      expect((events[1] as BridgeSseMessagePartUpdated).part.text, "/fixture-greeter hello");
+    });
+
+    test("item userMessage keeps a dollar word that names no picked skill", () {
+      final events = mapper.mapParsed(
+        notification: const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": "t-1",
+            "turnId": "u-1",
+            "item": {
+              "type": "userMessage",
+              "id": "i-user",
+              "content": [
+                {"type": "text", "text": r"$fixture-greeter hello", "text_elements": <Object?>[]},
+              ],
+            },
+          },
+        ),
+      );
+
+      expect((events[1] as BridgeSseMessagePartUpdated).part.text, r"$fixture-greeter hello");
+    });
+
     test("item userMessage keeps typed text that looks like a generated context envelope", () {
       const typed = "<environment_context>user-authored text</environment_context>";
       final events = mapper.mapParsed(

@@ -204,12 +204,30 @@ CodexRolloutCompletedUserMessageDto
 _$CodexRolloutCompletedUserMessageDtoFromJson(Map json) =>
     CodexRolloutCompletedUserMessageDto(
       id: json['id'] as String,
+      content:
+          (json['content'] as List<dynamic>?)
+              ?.map(
+                (e) => CodexUserInputDto.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
+              .toList() ??
+          const <CodexUserInputDto>[],
       $type: json['type'] as String?,
     );
 
 CodexRolloutUnknownCompletedItemDto
 _$CodexRolloutUnknownCompletedItemDtoFromJson(Map json) =>
     CodexRolloutUnknownCompletedItemDto($type: json['type'] as String?);
+
+CodexSkillUserInputDto _$CodexSkillUserInputDtoFromJson(Map json) =>
+    CodexSkillUserInputDto(
+      name: json['name'] as String,
+      $type: json['type'] as String?,
+    );
+
+CodexUnknownUserInputDto _$CodexUnknownUserInputDtoFromJson(Map json) =>
+    CodexUnknownUserInputDto($type: json['type'] as String?);
 
 _CodexRolloutErrorDto _$CodexRolloutErrorDtoFromJson(Map json) =>
     _CodexRolloutErrorDto(message: json['message'] as String);
