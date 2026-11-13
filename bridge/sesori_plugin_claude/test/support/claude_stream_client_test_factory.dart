@@ -47,6 +47,7 @@ ClaudeLaunchSpec testLaunchSpec({String sessionId = testSessionId}) {
     binaryPath: "claude",
     workingDirectory: "/tmp/project",
     launch: ClaudeNewSession(sessionId: sessionId),
+    purpose: ClaudeProcessPurpose.session,
     model: null,
     effort: null,
     permissionMode: null,

@@ -14,11 +14,13 @@ void main() {
       ClaudeEffortLevel? effort,
       ClaudePermissionMode? permissionMode,
       List<String> allowedTools = const [],
+      ClaudeProcessPurpose purpose = ClaudeProcessPurpose.session,
     }) {
       return ClaudeLaunchSpec(
         binaryPath: "claude",
         workingDirectory: "/tmp/project",
         launch: launch,
+        purpose: purpose,
         model: model,
         effort: effort,
         permissionMode: permissionMode,
@@ -128,11 +130,24 @@ void main() {
       expect(arguments, containsAllInOrder(["--allowedTools", "Write", "Bash(git status:*)"]));
     });
 
+    test("turns hooks and MCP servers off only for a catalog probe", () {
+      final probe = specFor(
+        ClaudeNewSession(sessionId: _newSessionId),
+        purpose: ClaudeProcessPurpose.catalogProbe,
+      ).arguments;
+      final session = specFor(ClaudeNewSession(sessionId: _newSessionId)).arguments;
+
+      expect(probe, containsAllInOrder(["--settings", '{"disableAllHooks":true}', "--strict-mcp-config"]));
+      expect(session, isNot(contains("--strict-mcp-config")));
+      expect(session, isNot(contains("--settings")));
+    });
+
     test("rejects a HOME override when describing its child process", () {
       final spec = ClaudeLaunchSpec(
         binaryPath: "claude",
         workingDirectory: "/tmp/project",
         launch: ClaudeNewSession(sessionId: _newSessionId),
+        purpose: ClaudeProcessPurpose.session,
         model: null,
         effort: null,
         permissionMode: null,
@@ -149,6 +164,7 @@ void main() {
         binaryPath: "claude",
         workingDirectory: "/tmp/project",
         launch: ClaudeNewSession(sessionId: _newSessionId),
+        purpose: ClaudeProcessPurpose.session,
         model: null,
         effort: null,
         permissionMode: null,
