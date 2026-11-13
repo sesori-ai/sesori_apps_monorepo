@@ -348,8 +348,15 @@ variant, and worktree mode, and creating the session with its first input.
   answers an empty or partial catalog, then announces the loaded one, and it
   announces again after an edited `opencode.json`, agent or command file
   (credential changes too, per its source; not probed live). A provider or model added to `opencode.json` while the bridge runs
-  appears the next time the picker opens. OpenCode 2.2.7 misses file edits in a
-  location opened through a symlinked path until that location reloads.
+  appears the next time the picker opens. OpenCode 2.2.7 watches only a
+  location's real path, so the bridge opens an OpenCode 2 project and its new
+  sessions by the project's existing real path; an agent file added to a
+  project opened through a symlink still appears without a restart, and the
+  project keeps the path the user opened. A missing path is sent unchanged.
+  Directories OpenCode reports (a session's, a loaded location's) are used as
+  reported, so pending permissions and forms of a location opened through a
+  symlink still show. Sessions created through the symlink before this still
+  list under the project, which OpenCode keys by its id, not the directory.
 - A plugin may declare start warm-up work that makes later requests faster.
   The bridge runs it once a generation becomes routable and never waits on it,
   so a slow or failing warm-up neither delays the request that triggered the
