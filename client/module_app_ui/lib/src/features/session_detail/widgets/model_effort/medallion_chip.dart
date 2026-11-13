@@ -73,11 +73,10 @@ class _MedallionChipState() extends State<MedallionChip> with SingleTickerProvid
   }
 
   void _relayText() {
-    final prego = context.prego;
     _fromText?.dispose();
     _toText?.dispose();
-    _fromText = _ChipText(face: _from, prego: prego);
-    _toText = _ChipText(face: _to, prego: prego);
+    _fromText = _ChipText(face: _from, context: context);
+    _toText = _ChipText(face: _to, context: context);
   }
 
   @override
@@ -120,29 +119,38 @@ class _MedallionChipState() extends State<MedallionChip> with SingleTickerProvid
   }
 }
 
-/// The chip's text for one face, laid out once.
-final class _ChipText({required _Face face, required PregoDesignSystem prego}) {
+/// The chip's text for one face, laid out once, following the reader's text
+/// size, bold text and spacing settings like the pills it replaces.
+final class _ChipText({required _Face face, required BuildContext context}) {
   static const double textStart = 45;
   static const double endSpace = 22;
+  static const double _centre = MedallionChip.height / 2;
+
+  /// Two lines share the fixed pill height, so the text grows only this far.
+  static const double _maxScale = 1.3;
+
+  final TextScaler _scaler = _scalerOf(context);
 
   final TextPainter name = _painter(
+    context: context,
     text: face.name,
-    style: prego.textTheme.textXs.medium.copyWith(
+    style: context.prego.textTheme.textXs.medium.copyWith(
       fontSize: face.word == null ? 15 : 13.5,
       height: 1,
       letterSpacing: 0,
-      color: prego.colors.textPrimary,
+      color: context.prego.colors.textPrimary,
     ),
   );
   final TextPainter? word = switch (face.word) {
     null => null,
     final word => _painter(
+      context: context,
       text: word,
-      style: prego.textTheme.textXs.bold.copyWith(
+      style: context.prego.textTheme.textXs.bold.copyWith(
         fontSize: 7.5,
         height: 1,
         letterSpacing: 1,
-        color: prego.colors.textTertiary,
+        color: context.prego.colors.textTertiary,
       ),
     ),
   };
@@ -151,12 +159,20 @@ final class _ChipText({required _Face face, required PregoDesignSystem prego}) {
   /// which may lay the text out narrower.
   late final double naturalWidth = textStart + math.max(name.width, word?.width ?? 0) + endSpace;
 
-  static TextPainter _painter({required String text, required TextStyle style}) => TextPainter(
-    text: TextSpan(text: text, style: style),
-    textDirection: TextDirection.ltr,
-    maxLines: 1,
-    ellipsis: "…",
-  )..layout();
+  static TextScaler _scalerOf(BuildContext context) =>
+      MediaQuery.textScalerOf(context).clamp(maxScaleFactor: _maxScale);
+
+  static TextPainter _painter({required BuildContext context, required String text, required TextStyle style}) =>
+      TextPainter(
+        text: TextSpan(
+          text: text,
+          style: resolveTextStyle(context: context, style: style),
+        ),
+        textDirection: TextDirection.ltr,
+        textScaler: _scalerOf(context),
+        maxLines: 1,
+        ellipsis: "…",
+      )..layout();
 
   /// Paints the text left-aligned in a chip of [width], ellipsized to fit.
   void paint({required Canvas canvas, required double width}) {
@@ -165,13 +181,19 @@ final class _ChipText({required _Face face, required PregoDesignSystem prego}) {
     final word = this.word;
     name.layout(maxWidth: maxWidth);
     // Baselines from the agreed mock: the name above the small-caps level, or
-    // the name alone, larger, on the plate's centre line.
-    final nameBaseline = word == null ? 23.4 : 17.4;
+    // the name alone, larger, on the plate's centre line. Larger text spreads
+    // them from the centre line in step.
+    final spread = _scaler.scale(_centre) / _centre;
+    double baseline(double atMockSize) => _centre + (atMockSize - _centre) * spread;
+    final nameBaseline = baseline(word == null ? 23.4 : 17.4);
     name.paint(canvas, Offset(textStart, nameBaseline - name.computeDistanceToActualBaseline(TextBaseline.alphabetic)));
     if (word == null) return;
     word
       ..layout(maxWidth: maxWidth)
-      ..paint(canvas, Offset(textStart + .3, 28 - word.computeDistanceToActualBaseline(TextBaseline.alphabetic)));
+      ..paint(
+        canvas,
+        Offset(textStart + .3, baseline(28) - word.computeDistanceToActualBaseline(TextBaseline.alphabetic)),
+      );
   }
 
   void dispose() {

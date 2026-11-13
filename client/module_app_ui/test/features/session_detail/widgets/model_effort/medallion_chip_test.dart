@@ -42,6 +42,7 @@ Future<List<_Pick>> _pump(
   PregoInteractionMode mode = PregoInteractionMode.touch,
   bool readOnly = false,
   bool settle = true,
+  double textScale = 1,
 }) async {
   tester.view
     ..physicalSize = _screen
@@ -59,27 +60,32 @@ Future<List<_Pick>> _pump(
           body: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              AgentModelButtons(
-                surfaceStyle: PregoComposerSurfaceStyle.subtle,
-                agents: const [],
-                selectedAgent: null,
-                onAgentSelected: (_) {},
-                providers: _providers,
-                selectedAgentModel: const AgentModel(providerID: "anthropic", modelID: "opus", variant: "high"),
-                onModelSelected: ({required providerID, required modelID, required variant}) =>
-                    picks.add((providerID: providerID, modelID: modelID, variant: variant)),
-                availableVariants: const [
-                  SessionVariant(id: "high"),
-                  SessionVariant(id: "low"),
-                ],
-                onVariantSelected: (_) {},
-                modelOrbits: orbits,
-                fastModeControl: FastModeControl.off,
-                decideFastModeToggle: () => null,
-                onFastModeChanged: (_) {},
-                compact: mode == PregoInteractionMode.pointer,
-                readOnly: readOnly,
-                trailing: const [],
+              Builder(
+                builder: (context) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+                  child: AgentModelButtons(
+                    surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                    agents: const [],
+                    selectedAgent: null,
+                    onAgentSelected: (_) {},
+                    providers: _providers,
+                    selectedAgentModel: const AgentModel(providerID: "anthropic", modelID: "opus", variant: "high"),
+                    onModelSelected: ({required providerID, required modelID, required variant}) =>
+                        picks.add((providerID: providerID, modelID: modelID, variant: variant)),
+                    availableVariants: const [
+                      SessionVariant(id: "high"),
+                      SessionVariant(id: "low"),
+                    ],
+                    onVariantSelected: (_) {},
+                    modelOrbits: orbits,
+                    fastModeControl: FastModeControl.off,
+                    decideFastModeToggle: () => null,
+                    onFastModeChanged: (_) {},
+                    compact: mode == PregoInteractionMode.pointer,
+                    readOnly: readOnly,
+                    trailing: const [],
+                  ),
+                ),
               ),
               const SizedBox(height: 40),
             ],
@@ -203,6 +209,18 @@ void main() {
 
     expect(picker, findsNothing);
     expect(find.byType(ModelPicker), findsOneWidget);
+  });
+
+  testWidgets("larger reader text grows the chip's text, up to what fits the pill height", (tester) async {
+    await _pump(tester, orbits: orbits);
+    final standard = tester.getSize(chip).width;
+
+    await _pump(tester, orbits: orbits, textScale: 1.3);
+    final larger = tester.getSize(chip).width;
+    await _pump(tester, orbits: orbits, textScale: 2);
+
+    expect(larger, greaterThan(standard));
+    expect(tester.getSize(chip), Size(larger, 36));
   });
 
   testWidgets("a new model eases the plate to its width rather than snapping", (tester) async {

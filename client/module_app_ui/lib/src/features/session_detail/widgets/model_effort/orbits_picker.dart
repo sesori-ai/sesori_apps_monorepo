@@ -106,17 +106,34 @@ final class const OrbitsHandoffCancelled() extends OrbitsHandoffPhase;
 final class OrbitsPointerHandoff({required final int pointer, required final Offset start}) {
   OrbitsHandoffPhase _phase = OrbitsHandoffPressing(position: start);
   VoidCallback? _follower;
+  bool _travelled = false;
 
   /// Where the finger is now.
   OrbitsHandoffPhase get phase => _phase;
+
+  /// Whether the finger has ever moved past touch slop from [start]. A
+  /// release before that was a tap, which leaves the picker open for a
+  /// second one. Tracked here, because the picker may attach after the
+  /// finger has already moved.
+  bool get travelled => _travelled;
 
   /// Calls [follower] whenever the finger moves, lifts or is cancelled; null
   /// stops following.
   void follow({required VoidCallback? follower}) => _follower = follower;
 
-  void move({required Offset position}) => _report(OrbitsHandoffPressing(position: position));
+  void move({required Offset position}) {
+    _track(position);
+    _report(OrbitsHandoffPressing(position: position));
+  }
 
-  void release({required Offset position}) => _report(OrbitsHandoffReleased(position: position));
+  void release({required Offset position}) {
+    _track(position);
+    _report(OrbitsHandoffReleased(position: position));
+  }
+
+  void _track(Offset position) {
+    if ((position - start).distance > kTouchSlop) _travelled = true;
+  }
 
   void cancel() => _report(const OrbitsHandoffCancelled());
 
@@ -170,10 +187,6 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
   OrbitTarget? _hot;
   OrbitTarget? _previousHot;
   bool _done = false;
-
-  /// Whether the finger carried over from the chip has left it: a release
-  /// before that was a tap, which leaves the picker open for a second one.
-  bool _handoffTravelled = false;
 
   Offset get _origin => Offset(widget.anchorRect.left + widget.anchorRect.height / 2, widget.anchorRect.center.dy);
 
@@ -312,10 +325,7 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
     final box = context.findRenderObject();
     if (handoff == null || handoff.pointer != _pointer || box is! RenderBox || !box.hasSize) return;
     final geometry = _geometry(box.size);
-    OrbitTarget? targetAt(Offset position) {
-      if ((position - handoff.start).distance > kTouchSlop) _handoffTravelled = true;
-      return _hitTest(geometry: geometry, position: box.globalToLocal(position));
-    }
+    OrbitTarget? targetAt(Offset position) => _hitTest(geometry: geometry, position: box.globalToLocal(position));
 
     switch (handoff.phase) {
       case OrbitsHandoffPressing(:final position):
@@ -323,7 +333,7 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
       case OrbitsHandoffReleased(:final position):
         final target = targetAt(position);
         // A tap on the chip opens the picker and leaves it open.
-        if (_handoffTravelled) {
+        if (handoff.travelled) {
           _release(target: target);
         } else {
           _endGesture();
