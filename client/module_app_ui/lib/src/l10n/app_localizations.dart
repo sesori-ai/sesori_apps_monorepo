@@ -3397,6 +3397,12 @@ abstract class AppLocalizations {
   /// **'Couldn’t send'**
   String get sessionDetailSendFailed;
 
+  /// Reason under a message sent while a new session was starting, refused because an agent, model or command it uses is no longer available; only Remove follows it.
+  ///
+  /// In en, this message translates to:
+  /// **'An option this message uses is no longer available. Remove it and send it again.'**
+  String get sessionDetailSendFailedOptionsChanged;
+
   /// Reason under a message the harness refused because it can't run the session's model; Retry sends it with the model picked in the composer.
   ///
   /// In en, this message translates to:

@@ -5,6 +5,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../l10n/app_localizations.dart";
 import "queued_message_bubble.dart";
 import "sent_bubble_landing.dart";
 import "transcript_motion.dart";
@@ -104,6 +105,7 @@ class const SessionLaunchSubmissionView({
           submission: followUp.submission,
           presentation: launchFollowUpPresentation(
             followUp: followUp,
+            loc: context.loc,
             harnessName: harnessName,
             onRetry: onRetryLaunchFollowUp,
             onRemove: onRemoveLaunchFollowUp,
@@ -172,6 +174,7 @@ class const SessionLaunchSubmissionView({
 /// How a launch follow-up's bubble reads in each of its states.
 QueuedMessageBubblePresentation launchFollowUpPresentation({
   required LaunchFollowUp followUp,
+  required AppLocalizations loc,
   required String? harnessName,
   required LaunchFollowUpAction? onRetry,
   required LaunchFollowUpAction? onRemove,
@@ -194,14 +197,17 @@ QueuedMessageBubblePresentation launchFollowUpPresentation({
     ),
     // A lost response may already have reached the bridge, so only an
     // authoritative rejection can be removed; Retry is safe either way,
-    // since the bridge drops a promptId it already took.
+    // since the bridge drops a promptId it already took. A launch resends
+    // with the options it was refused for, so a stale-options refusal offers
+    // only Remove.
     FailedLaunchFollowUp(:final failure) => QueuedMessageBubblePresentation.failed(
       reason: switch (failure) {
         RejectedPromptSend(:final reason) => reason,
+        OptionsChangedPromptSend() => loc.sessionDetailSendFailedOptionsChanged,
         // Only the session screen's stale-options recovery holds a model refusal.
         UncertainPromptSend() || ModelUnavailablePromptSend() => null,
       },
-      onRetry: onRetry == null ? null : () => onRetry(promptId: promptId),
+      onRetry: onRetry == null || failure is OptionsChangedPromptSend ? null : () => onRetry(promptId: promptId),
       onRemove: onRemove == null || !failure.provesNotRun ? null : () => onRemove(promptId: promptId),
     ),
   };

@@ -445,12 +445,14 @@ class SessionRepository({
   /// OpenCode 502 can still run the prompt), a transport error or a timeout
   /// may have reached the harness anyway.
   static PromptSendFailure sendFailureFor({required ApiError error}) => switch (error) {
-    NonSuccessCodeError(errorCode: >= 400 && < 500) => PromptSendFailure.rejected(
-      reason: switch (_sendPromptErrorResponse(error: error)) {
-        SendPromptErrorResponse(code: SendPromptErrorCode.refused, :final message) => message,
-        _ => null,
-      },
-    ),
+    NonSuccessCodeError(errorCode: >= 400 && < 500) => switch (_sendPromptErrorResponse(error: error)) {
+      SendPromptErrorResponse(code: SendPromptErrorCode.staleSessionOptions) =>
+        const PromptSendFailure.optionsChanged(),
+      SendPromptErrorResponse(code: SendPromptErrorCode.refused, :final message) => PromptSendFailure.rejected(
+        reason: message,
+      ),
+      _ => const PromptSendFailure.rejected(reason: null),
+    },
     NotAuthenticatedError() => const PromptSendFailure.rejected(reason: null),
     NonSuccessCodeError() ||
     DartHttpClientError() ||
