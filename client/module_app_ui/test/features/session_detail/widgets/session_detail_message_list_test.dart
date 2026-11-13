@@ -62,6 +62,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late List<SessionPromptIndexEntry>? _promptIndex = widget.initialPromptIndex;
   int? lastCancelledQueuedMessageIndex;
 
+  PromptTurnShapes _promptTurnShapes = const PromptTurnShapes();
+
+  void setPromptTurnShapes(PromptTurnShapes shapes) => setState(() => _promptTurnShapes = shapes);
+
   void setPromptIndex(List<SessionPromptIndexEntry>? index) {
     setState(() => _promptIndex = index);
   }
@@ -324,7 +328,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           mainAgentRunning: _mainAgentRunning,
           retryErrorMessage: _retryErrorMessage,
           onCancelQueuedMessage: cancelQueuedMessage,
-          promptTurnShapes: const PromptTurnShapes(),
+          promptTurnShapes: _promptTurnShapes,
         ),
       ),
     );
@@ -3132,6 +3136,36 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(800, 1200));
     await tester.pumpAndSettle();
     expect(requested, 1);
+  });
+
+  testWidgets("a detached row keeps its card while the live shapes change", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+      ),
+    );
+    harnessKey.harness.setPromptTurnShapes(
+      const PromptTurnShapes(
+        messages: {
+          "user-7": InvocationPromptTurnShape(name: "fixture-check", source: CommandSource.command, arguments: null),
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _detachViewport(tester);
+    expect(find.text("You ran /fixture-check"), findsOneWidget);
+
+    harnessKey.harness.setPromptTurnShapes(const PromptTurnShapes());
+    await _pumpListUpdate(tester);
+
+    expect(find.text("You ran /fixture-check"), findsOneWidget);
   });
 
   testWidgets("detached viewport stays stable when a new newest message arrives", (tester) async {
