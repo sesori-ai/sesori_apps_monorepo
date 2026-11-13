@@ -291,7 +291,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     final canRemoveFailedSend =
         !readOnly &&
         switch (state.localSend) {
-          LocalSendFailed(:final failure) => failure is RejectedPromptSend,
+          LocalSendFailed(:final failure) => failure.provesNotRun,
           LocalSendIdle() || LocalSendSending() => false,
         };
     return SessionDetailMessageList(

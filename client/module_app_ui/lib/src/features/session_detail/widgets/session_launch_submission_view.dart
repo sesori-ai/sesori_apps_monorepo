@@ -198,10 +198,11 @@ QueuedMessageBubblePresentation launchFollowUpPresentation({
     FailedLaunchFollowUp(:final failure) => QueuedMessageBubblePresentation.failed(
       reason: switch (failure) {
         RejectedPromptSend(:final reason) => reason,
-        UncertainPromptSend() => null,
+        // Only the session screen's stale-options recovery holds a model refusal.
+        UncertainPromptSend() || ModelUnavailablePromptSend() => null,
       },
       onRetry: onRetry == null ? null : () => onRetry(promptId: promptId),
-      onRemove: onRemove == null || failure is! RejectedPromptSend ? null : () => onRemove(promptId: promptId),
+      onRemove: onRemove == null || !failure.provesNotRun ? null : () => onRemove(promptId: promptId),
     ),
   };
 }

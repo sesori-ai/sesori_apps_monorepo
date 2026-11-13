@@ -1932,6 +1932,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailSendFailed => 'Couldn’t send';
 
   @override
+  String get sessionDetailSendFailedModelUnavailable =>
+      'This model isn’t available on this harness. Pick another model, then retry.';
+
+  @override
   String get sessionDetailPromptOptionsUpdated => 'Prompt options changed. Updated settings and retrying your message.';
 
   @override

@@ -321,7 +321,7 @@ void main() {
       final first = queue.beginSend();
       queue.holdFailedSend(failure: const PromptSendFailure.rejected(reason: null));
 
-      queue.retryFailedSend();
+      queue.retryFailedSend(resend: (failed) => failed.submission);
 
       expect(queue.failed, isNull);
       final resent = queue.beginSend();

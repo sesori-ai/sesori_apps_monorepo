@@ -2997,10 +2997,22 @@ class SessionDetailCubit(
       ? _promptQueue.holdFailedSend(failure: failure)
       : _promptQueue.failSend();
 
-  /// Sends the failed head again under its original prompt id.
+  /// Sends the failed head again under its original prompt id. A head refused
+  /// for its model goes with the composer's current selection, which is how
+  /// the user answers that refusal; any other goes unchanged.
   void retryFailedSend() {
     if (_promptQueue.failed == null) return;
-    _promptQueue.retryFailedSend();
+    final composer = state;
+    _promptQueue.retryFailedSend(
+      resend: (failed) => switch ((failed.failure, composer)) {
+        (ModelUnavailablePromptSend(), final SessionDetailLoaded loaded) => failed.submission.withSelection(
+          agent: loaded.selectedAgent,
+          agentModel: loaded.selectedAgentModel,
+          fastMode: loaded.runsFastMode,
+        ),
+        _ => failed.submission,
+      },
+    );
     _emitQueueUpdate();
     _tryDrainQueue();
   }
@@ -3040,6 +3052,17 @@ class SessionDetailCubit(
         rejectedCommand != null && !latest.availableCommands.any((command) => command.name == rejectedCommand);
     if (commandUnavailable) {
       _promptQueue.markCommandUnavailable(promptId: rejectedSubmission.promptId);
+    } else if (_isRefusedForRetainedModel(rejected: rejectedSubmission, state: latest)) {
+      // The resend would be identical and refused again. It fails like any
+      // other send instead, until the user picks another model or removes it;
+      // a later Retry starts its recovery afresh.
+      _promptQueue.holdPendingHead(
+        promptId: rejectedSubmission.promptId,
+        failure: const PromptSendFailure.modelUnavailable(),
+      );
+      _staleOptionsRecoveryAttemptedPromptIds.remove(rejectedSubmission.promptId);
+      unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
+      return false;
     }
     _noticeStream.add(
       commandUnavailable ? const SessionDetailCommandUnavailable() : const SessionDetailPromptOptionsUpdated(),
@@ -3215,6 +3238,23 @@ class SessionDetailCubit(
       if (notify && !isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
       return _OptionsReloadResult.failed;
     }
+  }
+
+  /// Whether the model is what a stale-options refusal of [rejected] can only
+  /// mean: the refresh left its whole selection as it was, so nothing else it
+  /// names went stale, and its model is the session's own one the catalog
+  /// does not offer, which the refresh keeps rather than replaces.
+  bool _isRefusedForRetainedModel({
+    required QueuedSessionSubmission rejected,
+    required SessionDetailLoaded state,
+  }) {
+    final requeued = _promptQueue.items.firstOrNull;
+    return requeued != null &&
+        requeued.promptId == rejected.promptId &&
+        requeued.agent == rejected.agent &&
+        requeued.agentModel == rejected.agentModel &&
+        requeued.fastMode == rejected.fastMode &&
+        _keepsUnofferedSessionModel(state: state, model: requeued.agentModel, providers: state.availableProviders);
   }
 
   /// A queued submission's agent, revalidated against the current catalog.

@@ -203,7 +203,14 @@ defaults and queued client sends coherent.
   plain-text answers, show no reason. The failed state and its reason live only
   in this surface's memory, so a reload drops both, as before. Retry resends the same
   prompt id, so the bridge's dedup never runs it twice. A stale-options
-  rejection still refreshes and retries once automatically, and a send cut off
+  rejection still refreshes and retries once automatically, except when the
+  refreshed catalog still lacks the session's own model, which the refresh
+  keeps: that send fails at once with "Couldn’t send", the reason "This model
+  isn’t available on this harness. Pick another model, then retry.", Retry and
+  Remove, and no "Prompt options changed" notice. Its Retry sends with the
+  composer's current agent, model, and fast mode, so picking another model and
+  tapping Retry sends with that model under the same prompt id; a Retry with
+  the same model fails the same way again. A send cut off
   by a dropped connection is still re-sent after reconnect without a failure.
   A send shows no status line for its first two seconds, its row as tall as the
   delivered message's, so that a normal send never moves the chat when it lands.
