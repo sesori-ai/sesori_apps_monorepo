@@ -334,7 +334,11 @@ class ChatHistoryService({
     } on PluginSessionUnrestorableException catch (error, stackTrace) {
       Log.w("Backend cannot restore session $sessionId; serving stored history", error, stackTrace);
       // No backfill will finalize a dead turn's open tool parts meanwhile.
-      await _sweepUnlessTurnRunning(sessionId: sessionId);
+      try {
+        await _sweepUnlessTurnRunning(sessionId: sessionId);
+      } on Object catch (sweepError, sweepStackTrace) {
+        Log.w("Failed to finalize open tool parts for session $sessionId", sweepError, sweepStackTrace);
+      }
       final message = error.message;
       if (message == null || _cannotContinueMessages[sessionId] == message) return;
       _cannotContinueMessages[sessionId] = message;
