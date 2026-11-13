@@ -90,7 +90,10 @@ harness receives its own invocation.
 | Harness | Native evidence | Sesori availability |
 |---|---|---|
 | OpenCode 2 skill | The prompt's user message keeps only the typed text and lists the skill under `skills` without a `mention` | ✅ `/skill args`, live and after history load. Verified live on 2026-11-12 with OpenCode 2.2.6. |
-| OpenCode 2 native command | `POST /api/session/{id}/command` takes no id or metadata, and the stored user message holds only the expanded template | ⬜ Not supported: the bubble shows the expanded template, live and after history load, because nothing in the message names the command. Verified live on 2026-11-12 with OpenCode 2.2.6. |
+| OpenCode 2 native command | `POST /api/session/{id}/command` takes no id or metadata, and the stored user message holds only the expanded template | ⬜ Not supported: the bubble shows the expanded template, live and after history load, because nothing in the message names the command. Verified live on 2026-11-12 with OpenCode 2.2.6 and 2.2.7. |
+| Claude Code | Commands and skills both run as `/name args` | ✅ `/name args`, live and after a bridge restart. Verified live on 2026-11-12 with Claude Code 2.1.323. |
+| DeepSeek, Hermes | Built-in commands only; no user commands or skills over ACP | ✅ `/name args`, live and after a bridge restart. A built-in that runs its arguments as a turn (DeepSeek `/plan <text>`, Hermes `/queue <text>`) adds that turn as its own bubble. Verified live on 2026-11-12 with the DeepSeek adapter 0.2.2 and Hermes 0.21.5. |
+| Grok, Cursor, Copilot, Antigravity | Not checked | Unverified: on 2026-11-12 Grok needed `grok login`, the Cursor CLI was older than the supported minimum, and the Copilot and Antigravity runtimes were not installed on the test machine. |
 
 ## Bridge worktree note
 
