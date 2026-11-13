@@ -357,7 +357,13 @@ reconnect or restart.
   ambiguity, a reverse prefix, changed reasoning/parts, or unrelated text keeps
   retained rows. Other retained rows rejoin at their recorded creation time
   while preserving relative order, so a
-  catalog re-import cannot move old rows to the newest edge. A message a backend
+  catalog re-import cannot move old rows to the newest edge. A retained row
+  with no creation time on either side (a live row the harness streamed
+  untimed and later recorded under another identity) keeps its stored place
+  before the closest stored row the import holds below it; only a row with no
+  such row below it stays at the newest edge. Failure signal: old automation or
+  peer rows appear after the latest reply once a restart forces a re-import.
+  A message a backend
   replay once contained is the opposite case: its later absence is a removal,
   so a re-read drops it. That is how a session rolled back outside Sesori — an
   edited message in the backend's own client, with no removal events reaching

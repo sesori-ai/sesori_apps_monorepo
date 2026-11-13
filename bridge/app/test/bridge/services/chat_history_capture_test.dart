@@ -1183,13 +1183,13 @@ void main() {
         [
           "replay-user",
           "replay-a",
+          "live-a",
           "tool-1",
           "replay-shared",
-          "tool-2",
-          "replay-b",
-          "live-a",
           "live-middle-partial",
           "live-middle-exact",
+          "tool-2",
+          "replay-b",
           "live-b",
         ],
       );
@@ -1261,13 +1261,13 @@ void main() {
         [
           "replay-user",
           "replay-a",
+          "live-a",
           "tool-1",
           "replay-middle-complete",
           "replay-middle-exact",
+          "live-shared",
           "tool-2",
           "replay-b",
-          "live-a",
-          "live-shared",
           "live-b",
         ],
       );
@@ -2506,6 +2506,51 @@ void main() {
       expect(await _storedMessages(history: history, sessionId: "ses_a"), isEmpty);
       expect((await _syncState(history: history, sessionId: "ses_a")).syncedAt, isNotNull);
     });
+
+    // A harness can record a live row under an identity its replay never
+    // reports (Claude Code folds queued peer sends into one turn under another
+    // id) and stream it without a creation time. When the replay doesn't hold
+    // the row, the import keeps it but cannot order it by time.
+    test("a retained untimed live row keeps its place instead of moving to the end", () async {
+      final transcript = <MessageWithParts>[
+        _messageWithText(id: "u1", text: "first prompt", createdAt: 100, promptId: null),
+        _assistantMessageWithText(id: "a1", text: "first reply", reasoning: null, createdAt: 110),
+      ];
+      final repository = _FakeSessionRepository(
+        transcript: transcript,
+        pluginSessionIds: const {
+          "opencode": {"ses_a"},
+        },
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      final mergedTurn = _automationMessage(id: "auto-merged", text: "notice one\nnotice two", createdAt: 200);
+      final laterTurns = [
+        _assistantMessageWithText(id: "a2", text: "handled both", reasoning: null, createdAt: 210),
+        _messageWithText(id: "u3", text: "next prompt", createdAt: 300, promptId: null),
+        _assistantMessageWithText(id: "a3", text: "latest reply", reasoning: null, createdAt: 310),
+      ];
+      await _captureMessages(
+        history: history,
+        messages: [
+          _automationMessage(id: "auto-first-send", text: "notice one", createdAt: null),
+          mergedTurn,
+          ...laterTurns,
+        ],
+      );
+      // A bridge restart drops the sync marker, so the next import keeps
+      // every stored row its replay doesn't hold.
+      await history.service.invalidatePluginHistory(pluginId: "opencode");
+      transcript.addAll([mergedTurn, ...laterTurns]);
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["u1", "a1", "auto-first-send", "auto-merged", "a2", "u3", "a3"],
+      );
+    });
   });
 
   group("chat history reconcile", () {
@@ -2659,6 +2704,23 @@ MessageWithParts _assistantMessageWithText({
       MessagePart.reasoning(id: "$id-reasoning", sessionID: "ses_a", messageID: id, text: reasoning),
     _part(id: "$id-part", messageId: id, text: text),
   ],
+);
+
+MessageWithParts _automationMessage({
+  required String id,
+  required String text,
+  required int? createdAt,
+}) => MessageWithParts(
+  info: Message.assistant(
+    id: id,
+    sessionID: "ses_a",
+    agent: null,
+    modelID: null,
+    providerID: null,
+    sender: MessageSender.system,
+    time: createdAt == null ? null : MessageTime(created: createdAt, completed: null),
+  ),
+  parts: [_part(id: "$id-part", messageId: id, text: text)],
 );
 
 MessageWithParts _assistantToolMessage({
