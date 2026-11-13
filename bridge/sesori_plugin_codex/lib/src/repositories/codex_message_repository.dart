@@ -642,7 +642,7 @@ class CodexMessageRepository({
               time: startedAtMs == null ? pending.time : PluginMessageTime(created: startedAtMs, completed: null),
               skillNames: [
                 for (final input in content)
-                  if (input case CodexRolloutSkillUserInputDto(:final name)) name,
+                  if (input case CodexSkillUserInputDto(:final name)) name,
               ],
             );
             unkeyedUserMessage = null;

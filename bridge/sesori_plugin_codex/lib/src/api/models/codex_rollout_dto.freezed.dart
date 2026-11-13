@@ -1900,12 +1900,12 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutCompletedUserMessageDto implements CodexRolloutCompletedItemDto {
-  const CodexRolloutCompletedUserMessageDto({required this.id,  List<CodexRolloutUserInputDto> content = const <CodexRolloutUserInputDto>[],  String? $type}): _content = content,$type = $type ?? 'UserMessage';
+  const CodexRolloutCompletedUserMessageDto({required this.id,  List<CodexUserInputDto> content = const <CodexUserInputDto>[],  String? $type}): _content = content,$type = $type ?? 'UserMessage';
   factory CodexRolloutCompletedUserMessageDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCompletedUserMessageDtoFromJson(json);
 
  final  String id;
- final  List<CodexRolloutUserInputDto> _content;
-@JsonKey() List<CodexRolloutUserInputDto> get content {
+ final  List<CodexUserInputDto> _content;
+@JsonKey() List<CodexUserInputDto> get content {
   if (_content is EqualUnmodifiableListView) return _content;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_content);
@@ -1948,7 +1948,7 @@ abstract mixin class $CodexRolloutCompletedUserMessageDtoCopyWith<$Res> implemen
   factory $CodexRolloutCompletedUserMessageDtoCopyWith(CodexRolloutCompletedUserMessageDto value, $Res Function(CodexRolloutCompletedUserMessageDto) _then) = _$CodexRolloutCompletedUserMessageDtoCopyWithImpl;
 @useResult
 $Res call({
- String id, List<CodexRolloutUserInputDto> content
+ String id, List<CodexUserInputDto> content
 });
 
 
@@ -1969,7 +1969,7 @@ class _$CodexRolloutCompletedUserMessageDtoCopyWithImpl<$Res>
   return _then(CodexRolloutCompletedUserMessageDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,content: null == content ? _self._content : content // ignore: cast_nullable_to_non_nullable
-as List<CodexRolloutUserInputDto>,
+as List<CodexUserInputDto>,
   ));
 }
 
@@ -2012,17 +2012,17 @@ String toString() {
 
 
 
-CodexRolloutUserInputDto _$CodexRolloutUserInputDtoFromJson(
+CodexUserInputDto _$CodexUserInputDtoFromJson(
   Map<String, dynamic> json
 ) {
         switch (json['type']) {
                   case 'skill':
-          return CodexRolloutSkillUserInputDto.fromJson(
+          return CodexSkillUserInputDto.fromJson(
             json
           );
         
           default:
-            return CodexRolloutUnknownUserInputDto.fromJson(
+            return CodexUnknownUserInputDto.fromJson(
   json
 );
         }
@@ -2030,7 +2030,7 @@ CodexRolloutUserInputDto _$CodexRolloutUserInputDtoFromJson(
 }
 
 /// @nodoc
-mixin _$CodexRolloutUserInputDto {
+mixin _$CodexUserInputDto {
 
 
 
@@ -2038,7 +2038,7 @@ mixin _$CodexRolloutUserInputDto {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUserInputDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUserInputDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2047,15 +2047,15 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-    return 'CodexRolloutUserInputDto()';
+    return 'CodexUserInputDto()';
 }
 
 
 }
 
 /// @nodoc
-class $CodexRolloutUserInputDtoCopyWith<$Res>  {
-$CodexRolloutUserInputDtoCopyWith(CodexRolloutUserInputDto _, $Res Function(CodexRolloutUserInputDto) __);
+class $CodexUserInputDtoCopyWith<$Res>  {
+$CodexUserInputDtoCopyWith(CodexUserInputDto _, $Res Function(CodexUserInputDto) __);
 }
 
 
@@ -2063,9 +2063,9 @@ $CodexRolloutUserInputDtoCopyWith(CodexRolloutUserInputDto _, $Res Function(Code
 /// @nodoc
 @JsonSerializable(createToJson: false)
 
-class CodexRolloutSkillUserInputDto implements CodexRolloutUserInputDto {
-  const CodexRolloutSkillUserInputDto({required this.name,  String? $type}): $type = $type ?? 'skill';
-  factory CodexRolloutSkillUserInputDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutSkillUserInputDtoFromJson(json);
+class CodexSkillUserInputDto implements CodexUserInputDto {
+  const CodexSkillUserInputDto({required this.name,  String? $type}): $type = $type ?? 'skill';
+  factory CodexSkillUserInputDto.fromJson(Map<String, dynamic> json) => _$CodexSkillUserInputDtoFromJson(json);
 
  final  String name;
 
@@ -2073,17 +2073,17 @@ class CodexRolloutSkillUserInputDto implements CodexRolloutUserInputDto {
 final String $type;
 
 
-/// Create a copy of CodexRolloutUserInputDto
+/// Create a copy of CodexUserInputDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$CodexRolloutSkillUserInputDtoCopyWith<CodexRolloutSkillUserInputDto> get copyWith => _$CodexRolloutSkillUserInputDtoCopyWithImpl<CodexRolloutSkillUserInputDto>(this, _$identity);
+$CodexSkillUserInputDtoCopyWith<CodexSkillUserInputDto> get copyWith => _$CodexSkillUserInputDtoCopyWithImpl<CodexSkillUserInputDto>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutSkillUserInputDto&&(identical(other.name, name) || other.name == name));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillUserInputDto&&(identical(other.name, name) || other.name == name));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2094,15 +2094,15 @@ int get hashCode {
 
 @override
 String toString() {
-    return 'CodexRolloutUserInputDto.skill(name: $name)';
+    return 'CodexUserInputDto.skill(name: $name)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $CodexRolloutSkillUserInputDtoCopyWith<$Res> implements $CodexRolloutUserInputDtoCopyWith<$Res> {
-  factory $CodexRolloutSkillUserInputDtoCopyWith(CodexRolloutSkillUserInputDto value, $Res Function(CodexRolloutSkillUserInputDto) _then) = _$CodexRolloutSkillUserInputDtoCopyWithImpl;
+abstract mixin class $CodexSkillUserInputDtoCopyWith<$Res> implements $CodexUserInputDtoCopyWith<$Res> {
+  factory $CodexSkillUserInputDtoCopyWith(CodexSkillUserInputDto value, $Res Function(CodexSkillUserInputDto) _then) = _$CodexSkillUserInputDtoCopyWithImpl;
 @useResult
 $Res call({
  String name
@@ -2113,17 +2113,17 @@ $Res call({
 
 }
 /// @nodoc
-class _$CodexRolloutSkillUserInputDtoCopyWithImpl<$Res>
-    implements $CodexRolloutSkillUserInputDtoCopyWith<$Res> {
-  _$CodexRolloutSkillUserInputDtoCopyWithImpl(this._self, this._then);
+class _$CodexSkillUserInputDtoCopyWithImpl<$Res>
+    implements $CodexSkillUserInputDtoCopyWith<$Res> {
+  _$CodexSkillUserInputDtoCopyWithImpl(this._self, this._then);
 
-  final CodexRolloutSkillUserInputDto _self;
-  final $Res Function(CodexRolloutSkillUserInputDto) _then;
+  final CodexSkillUserInputDto _self;
+  final $Res Function(CodexSkillUserInputDto) _then;
 
-/// Create a copy of CodexRolloutUserInputDto
+/// Create a copy of CodexUserInputDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? name = null,}) {
-  return _then(CodexRolloutSkillUserInputDto(
+  return _then(CodexSkillUserInputDto(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -2135,9 +2135,9 @@ as String,
 /// @nodoc
 @JsonSerializable(createToJson: false)
 
-class CodexRolloutUnknownUserInputDto implements CodexRolloutUserInputDto {
-  const CodexRolloutUnknownUserInputDto({ String? $type}): $type = $type ?? 'unknown';
-  factory CodexRolloutUnknownUserInputDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutUnknownUserInputDtoFromJson(json);
+class CodexUnknownUserInputDto implements CodexUserInputDto {
+  const CodexUnknownUserInputDto({ String? $type}): $type = $type ?? 'unknown';
+  factory CodexUnknownUserInputDto.fromJson(Map<String, dynamic> json) => _$CodexUnknownUserInputDtoFromJson(json);
 
 
 
@@ -2150,7 +2150,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownUserInputDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUnknownUserInputDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2159,7 +2159,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-    return 'CodexRolloutUserInputDto.unknown()';
+    return 'CodexUserInputDto.unknown()';
 }
 
 

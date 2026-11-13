@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 import "api/models/codex_correlatable_item_event_dto.dart";
 import "api/models/codex_file_change_dto.dart";
 import "api/models/codex_image_bearing_item_dto.dart";
+import "api/models/codex_rollout_dto.dart";
 import "api/parsers/codex_image_bearing_item_parser.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
@@ -979,8 +980,8 @@ class CodexEventMapper({
     if (content is! List) return const [];
     return [
       for (final entry in content)
-        if (_asMap(value: entry) case final map? when _optionalString(map: map, key: "type") == "skill")
-          ?_optionalString(map: map, key: "name"),
+        if (_asMap(value: entry) case final map?)
+          if (CodexUserInputDto.fromJson(map) case CodexSkillUserInputDto(:final name)) name,
     ];
   }
 
