@@ -96,6 +96,7 @@ void main() {
         sessionId: _child,
         agentId: _agentId,
         records: records,
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: null,
       );

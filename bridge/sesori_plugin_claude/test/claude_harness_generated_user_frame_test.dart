@@ -56,6 +56,7 @@ void main() {
       sessionId: _sessionId,
       agentId: null,
       records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+      commands: const [],
       residentTaskToolUseIds: const {},
       catalogModelId: null,
     );

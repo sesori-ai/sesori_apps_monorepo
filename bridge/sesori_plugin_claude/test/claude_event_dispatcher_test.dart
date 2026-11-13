@@ -935,6 +935,7 @@ void main() {
                 sessionId: "session-1",
               ),
             ],
+            commands: const [],
             residentTaskToolUseIds: const {},
             catalogModelId: null,
           )
