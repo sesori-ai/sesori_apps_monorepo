@@ -494,7 +494,11 @@ variant, and worktree mode, and creating the session with its first input.
   The follow-ups follow it in the same rows, sent in press order once the session
   exists, whether or not any screen is open, each saying "Queued" or "Sending"
   only two seconds after it was sent; a failed one offers Retry, and Remove after
-  an authoritative rejection. A Stop pressed while they wait, during
+  an authoritative rejection. A follow-up the bridge refused for stale options (a
+  command, agent, model, variant, or fast mode it no longer offers) would be
+  resent with the same options, so it offers only Remove, with the reason "An
+  option this message uses is no longer available. Remove it and send it
+  again." A Stop pressed while they wait, during
   creation, holds them until the stop is decided. An accepted Stop returns
   every one the bridge has not accepted to the composer, in order, instead of
   sending it; one still sending finishes, counting as sent if the bridge accepts

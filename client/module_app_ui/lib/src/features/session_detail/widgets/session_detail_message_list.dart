@@ -1417,6 +1417,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             localAttachments: submission.attachments,
             presentation: launchFollowUpPresentation(
               followUp: launchFollowUp,
+              loc: context.loc,
               harnessName: widget.harnessName,
               onRetry: widget.onRetryLaunchFollowUp,
               onRemove: widget.onRemoveLaunchFollowUp,

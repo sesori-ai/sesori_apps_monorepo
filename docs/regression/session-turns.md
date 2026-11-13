@@ -204,6 +204,7 @@ defaults and queued client sends coherent.
   in this surface's memory, so a reload drops both, as before. Retry resends the same
   prompt id, so the bridge's dedup never runs it twice. A stale-options
   rejection still refreshes and retries once automatically, except when the
+  refresh left the prompt's command, agent, and fast mode unchanged and the
   refreshed catalog still lacks the session's own model, which the refresh
   keeps: that send fails at once with "Couldn’t send", the reason "This model
   isn’t available on this harness. Pick another model, then retry.", Retry and

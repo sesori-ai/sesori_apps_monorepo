@@ -77,17 +77,26 @@ void main() {
   });
 
   test("a rejection without a refusal body shows no reason", () {
-    for (final rawErrorString in [
-      "PluginOperationException: thread/resume failed with status 409",
-      jsonEncode(const SendPromptErrorResponse(code: SendPromptErrorCode.staleSessionOptions, message: "raw").toJson()),
-    ]) {
-      expect(
-        SessionRepository.sendFailureFor(
-          error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: rawErrorString),
+    expect(
+      SessionRepository.sendFailureFor(
+        error: ApiError.nonSuccessCode(
+          errorCode: 409,
+          rawErrorString: "PluginOperationException: thread/resume failed with status 409",
         ),
-        const PromptSendFailure.rejected(reason: null),
-      );
-    }
+      ),
+      const PromptSendFailure.rejected(reason: null),
+    );
+  });
+
+  test("a stale-options refusal is told apart, without the plugin's raw message", () {
+    final error = ApiError.nonSuccessCode(
+      errorCode: 409,
+      rawErrorString: jsonEncode(
+        const SendPromptErrorResponse(code: SendPromptErrorCode.staleSessionOptions, message: "raw").toJson(),
+      ),
+    );
+
+    expect(SessionRepository.sendFailureFor(error: error), const PromptSendFailure.optionsChanged());
   });
 
   test("session detail flows route through session api and repository", () async {

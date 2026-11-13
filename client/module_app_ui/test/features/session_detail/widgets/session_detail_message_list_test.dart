@@ -2459,6 +2459,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(inBubble("refused", "Retry"), findsOneWidget);
     expect(inBubble("refused", "Remove"), findsNothing);
+
+    // Refused for options it no longer has: a resend would repeat them, so it
+    // says why and offers only Remove.
+    state.setLaunchFollowUps([
+      LaunchFollowUp.failed(
+        submission: _textSubmission(promptId: "prm_refused", text: "refused"),
+        failure: const PromptSendFailure.optionsChanged(),
+      ),
+    ]);
+    await tester.pumpAndSettle();
+    expect(
+      inBubble("refused", AppLocalizationsEn().sessionDetailSendFailedOptionsChanged),
+      findsOneWidget,
+    );
+    expect(inBubble("refused", "Retry"), findsNothing);
+    expect(inBubble("refused", "Remove"), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

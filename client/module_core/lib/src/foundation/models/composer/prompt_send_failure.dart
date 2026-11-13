@@ -18,9 +18,15 @@ sealed class const PromptSendFailure() {
   /// pick.
   const factory modelUnavailable() = ModelUnavailablePromptSend;
 
+  /// The bridge refused an option the prompt names (agent, model, variant,
+  /// fast mode or command) as one it no longer offers, so the prompt did not
+  /// run. Only launch follow-ups receive it, and they resend their stored
+  /// options, so a retry would be refused again and Remove is the only action.
+  const factory optionsChanged() = OptionsChangedPromptSend;
+
   /// Whether the bridge proved the prompt did not run, so removing it is safe.
   bool get provesNotRun => switch (this) {
-    RejectedPromptSend() || ModelUnavailablePromptSend() => true,
+    RejectedPromptSend() || ModelUnavailablePromptSend() || OptionsChangedPromptSend() => true,
     UncertainPromptSend() => false,
   };
 }
@@ -44,6 +50,14 @@ final class const UncertainPromptSend() extends PromptSendFailure {
 final class const ModelUnavailablePromptSend() extends PromptSendFailure {
   @override
   bool operator ==(Object other) => other is ModelUnavailablePromptSend;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+}
+
+final class const OptionsChangedPromptSend() extends PromptSendFailure {
+  @override
+  bool operator ==(Object other) => other is OptionsChangedPromptSend;
 
   @override
   int get hashCode => runtimeType.hashCode;

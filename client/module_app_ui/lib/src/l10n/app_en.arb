@@ -1479,6 +1479,10 @@
   "@sessionDetailSendFailed": {
     "description": "Status under a message whose send failed; Retry and Remove buttons follow it."
   },
+  "sessionDetailSendFailedOptionsChanged": "An option this message uses is no longer available. Remove it and send it again.",
+  "@sessionDetailSendFailedOptionsChanged": {
+    "description": "Reason under a message sent while a new session was starting, refused because an agent, model or command it uses is no longer available; only Remove follows it."
+  },
   "sessionDetailSendFailedModelUnavailable": "This model isn’t available on this harness. Pick another model, then retry.",
   "@sessionDetailSendFailedModelUnavailable": {
     "description": "Reason under a message the harness refused because it can't run the session's model; Retry sends it with the model picked in the composer."
