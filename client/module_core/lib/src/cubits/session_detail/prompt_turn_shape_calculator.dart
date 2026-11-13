@@ -20,13 +20,18 @@ class const PromptTurnShapeCalculator() {
     null => const PromptTurnShape.bubble(),
   };
 
+  /// The bridge gives a queued command a source only when it sent it and will
+  /// name its turn, so one without a source stays a bubble to the end.
   PromptTurnShape ofQueuedPrompt({required QueuedSessionPrompt prompt, required bool namesCommandInvocations}) =>
-      _pending(
-        command: prompt.command,
-        source: prompt.commandSource,
-        text: prompt.text,
-        namesCommandInvocations: namesCommandInvocations,
-      );
+      switch (prompt.commandSource) {
+        null => const PromptTurnShape.bubble(),
+        final source => _pending(
+          command: prompt.command,
+          source: source,
+          text: prompt.text,
+          namesCommandInvocations: namesCommandInvocations,
+        ),
+      };
 
   PromptTurnShape ofSubmission({required QueuedSessionSubmission submission, required bool namesCommandInvocations}) =>
       switch (submission) {
@@ -83,19 +88,20 @@ class const PromptTurnShapeCalculator() {
     },
   );
 
-  /// A command not confirmed yet. Its source must be known, and the plugin
-  /// must name invocations, for the confirmed turn to come back as a card.
+  /// A command not confirmed yet. It is a card when the plugin names
+  /// invocations, so the confirmed turn comes back as a card too. A command
+  /// without a known source is "Custom" from the start, as the bridge names it.
   PromptTurnShape _pending({
     required String? command,
     required CommandSource? source,
     required String? text,
     required bool namesCommandInvocations,
   }) {
-    if (!namesCommandInvocations || command == null || source == null) return const PromptTurnShape.bubble();
+    if (!namesCommandInvocations || command == null) return const PromptTurnShape.bubble();
     final arguments = text?.trim();
     return PromptTurnShape.invocation(
       name: command,
-      source: source,
+      source: source ?? CommandSource.unknown,
       arguments: arguments == null || arguments.isEmpty ? null : arguments,
     );
   }

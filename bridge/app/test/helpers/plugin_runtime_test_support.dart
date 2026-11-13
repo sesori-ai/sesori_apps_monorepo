@@ -68,6 +68,7 @@ class TestPluginRuntime({
   /// Plugin ids whose descriptor takes image parts inline: all of them unless
   /// a test removes one, as nearly every production plugin takes them.
   late final Set<String> promptAttachmentPluginIds = {..._plugins.keys};
+  late final Set<String> invocationNamingPluginIds = {..._plugins.keys};
   Completer<void>? useStarted;
   Future<void>? useGate;
   bool generationCurrent = true;
@@ -93,6 +94,9 @@ class TestPluginRuntime({
 
   @override
   bool supportsPromptAttachments({required String pluginId}) => promptAttachmentPluginIds.contains(pluginId);
+
+  @override
+  bool namesCommandInvocations({required String pluginId}) => invocationNamingPluginIds.contains(pluginId);
 
   /// Mirrors a descriptor that declares exactly the MCP interfaces its plugin
   /// implements, so declared support holds while the plugin is stopped.

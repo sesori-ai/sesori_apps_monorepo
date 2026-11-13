@@ -374,6 +374,49 @@ void main() {
       expect(plugin.lastRenameSessionTitle, equals("Renamed"));
     });
 
+    test("sendCommand names nothing for a plugin that does not name its runs", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final runtime = createTestPluginRuntime(plugins: [plugin])..invocationNamingPluginIds.clear();
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        runtime: runtime,
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        fastMode: false,
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "p1",
+        isDedicated: true,
+        createdAt: 10,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      await repository.sendCommand(
+        sessionId: "s1",
+        promptId: "sent",
+        command: "review",
+        commandSource: CommandSource.skill,
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+      );
+      const echo = Message.user(id: "m1", sessionID: "s1", agent: null, time: null, promptId: "sent", invocation: null);
+
+      expect(repository.stampLiveInvocation(message: echo), echo);
+    });
+
     test("getQueuedPrompts names the source of each command this bridge sent, not a refused one", () async {
       final db = createTestDatabase();
       addTearDown(db.close);

@@ -270,6 +270,9 @@ class PluginRuntime({
   bool supportsPromptAttachments({required String pluginId}) =>
       _slots[pluginId]?.registration.descriptor.supportsPromptAttachments ?? false;
 
+  bool namesCommandInvocations({required String pluginId}) =>
+      _slots[pluginId]?.registration.descriptor.namesCommandInvocations ?? false;
+
   /// Declared MCP support, readable whether or not the plugin is running.
   Set<PluginMcpCapability> mcpCapabilities({required String pluginId, required Enum operation}) =>
       _requireOperationSlot(pluginId: pluginId, operation: operation).registration.descriptor.mcpCapabilities;

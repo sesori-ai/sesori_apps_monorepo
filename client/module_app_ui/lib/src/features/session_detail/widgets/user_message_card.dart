@@ -67,7 +67,8 @@ class _UserMessageCardState() extends State<UserMessageCard> {
         source: source,
         arguments: arguments,
         attachments: [
-          if (UserMessageCard._attachments(message: message) case final attachments when attachments.isNotEmpty)
+          if (UserMessageCard._attachments(message: message) case final attachments
+              when attachments.any((attachment) => attachment is! MessageAttachmentUnknown))
             AttachmentCollectionWidget(sessionId: message.info.sessionID, attachments: attachments),
         ],
         outlined: _outlined,

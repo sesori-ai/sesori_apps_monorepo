@@ -127,11 +127,15 @@ Planning decisions from code evidence (P1–P9):
   command echo carries the command's prompt id. Step 2 opts in Codex, Claude
   and every ACP-family descriptor. OpenCode and Pi wait for their own steps.
   The app renders the card if and only if:
-  - local sending: the plugin capability is set and the staged command's
-    source is known;
-  - bridge-queued: `commandSource != null`;
+  - local sending: the plugin capability is set and a command is staged. A
+    command without a known source is a "Custom" card from the start, as the
+    bridge names it (user, round 2 Q3 C: never a bubble that turns into a
+    card);
+  - bridge-queued: the plugin capability is set and the bridge gave the
+    entry a `commandSource`, which it does only for a command it sent and
+    will name;
   - confirmed: `invocation != null`.
-  Otherwise it renders today's bubble.
+  Otherwise it renders today's bubble, for the whole turn.
 - **P8 Card content.** The card shows `invocation.arguments`, not the
   message's text parts. The text parts still hold `/name args` or, on
   OpenCode 2 native commands, the expanded template, for older apps.
@@ -218,7 +222,9 @@ Bridge core (`bridge/app`, `bridge/sesori_plugin_interface`):
   `SessionRepository.sendCommand` gains `required CommandSource? commandSource`
   and registers the entry before the plugin call. It registers before the call
   because the echo can arrive before acceptance returns. A send that throws
-  leaves a harmless entry that nothing will match. The tracker has no
+  removes its entry again. It registers only when the session's plugin
+  declares `namesCommandInvocations`, so a plugin that does not name its runs
+  never has a turn turn from a bubble into a card. The tracker has no
   lifecycle hooks and no timers.
 - `SessionPromptService.sendPrompt`, `SessionCreationService` and their
   route handlers pass `commandSource` through.

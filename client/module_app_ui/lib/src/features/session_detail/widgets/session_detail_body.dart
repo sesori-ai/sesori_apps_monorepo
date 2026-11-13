@@ -1169,6 +1169,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       messages: const [],
       bridgeQueuedPrompts: const [],
       awaitingBridgeSubmissions: launchView.awaitingBridgeSubmissions,
+      // The launch view's shapes, so the first message keeps its card or bubble from its first frame.
+      promptTurnShapes: launchView.promptTurnShapes,
       sessionStatus: const SessionStatus.idle(),
       childStatuses: const {},
       children: const [],
