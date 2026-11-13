@@ -271,7 +271,8 @@ reaches the backend so the turn continues.
   the card folds or the sheet leaves (200 ms) and then applies the change, so
   the two motions run one after the other rather than stacking. While the card
   folds, the transcript follows by its bottom inset alone and its rows are not
-  rebuilt.
+  rebuilt. With reduced motion, the card goes and the change applies at once,
+  with no glide and no hold.
 - When management blocks the session's harness, needs-you cards and new response
   dialogs are hidden. A dialog already open on either surface closes without
   answering or rejecting; its pending model remains until an authoritative
