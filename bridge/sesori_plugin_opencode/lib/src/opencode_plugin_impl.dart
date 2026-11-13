@@ -187,7 +187,7 @@ class OpenCodePlugin._({
     try {
       return await fn();
     } on OpenCodeApiException catch (e) {
-      throw PluginApiException(e.endpoint, e.statusCode, message: e.responseBody);
+      throw PluginApiException(endpoint: e.endpoint, statusCode: e.statusCode, message: e.responseBody);
     }
   }
 

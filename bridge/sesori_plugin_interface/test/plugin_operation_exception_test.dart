@@ -24,7 +24,7 @@ void main() {
 
   group('PluginApiException', () {
     test('is a PluginOperationException with a non-null status', () {
-      final exception = PluginApiException('/session/abc', 502);
+      final exception = PluginApiException(endpoint: '/session/abc', statusCode: 502);
       expect(exception, isA<PluginOperationException>());
       expect(exception.statusCode, 502);
       expect(exception.operation, '/session/abc');
@@ -32,13 +32,18 @@ void main() {
     });
 
     test('keeps its historical toString format', () {
-      final exception = PluginApiException('/session/abc', 404);
+      final exception = PluginApiException(endpoint: '/session/abc', statusCode: 404);
       expect(exception.toString(), 'PluginApiException: /session/abc failed with status 404');
       expect(exception.isNotFound, isTrue);
     });
 
     test('forwards message and cause for detailed error context', () {
-      final exception = PluginApiException('/session/abc', 500, message: 'upstream body', cause: 'timeout');
+      final exception = PluginApiException(
+        endpoint: '/session/abc',
+        statusCode: 500,
+        message: 'upstream body',
+        cause: 'timeout',
+      );
       expect(exception.message, 'upstream body');
       expect(
         exception.toString(),

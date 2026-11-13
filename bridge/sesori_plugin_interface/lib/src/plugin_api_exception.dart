@@ -4,8 +4,12 @@ import "plugin_operation_exception.dart";
 ///
 /// Handlers and routers can catch this to forward the real HTTP status
 /// instead of collapsing every failure to 502.
-class PluginApiException(String endpoint, int statusCode, {super.message, super.cause})
-    extends PluginOperationException {
+class PluginApiException({
+  required String endpoint,
+  required int statusCode,
+  super.message,
+  super.cause,
+}) extends PluginOperationException {
   this : super(operation: endpoint, statusCode: statusCode);
 
   /// The endpoint that failed; alias of [operation] for HTTP-backed plugins.

@@ -156,7 +156,7 @@ void main() {
     }
 
     test("PluginApiException keeps its upstream status", () async {
-      final response = await respond(PluginApiException("/session/abc", 404));
+      final response = await respond(PluginApiException(endpoint: "/session/abc", statusCode: 404));
       expect(response.status, 404);
     });
 

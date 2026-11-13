@@ -253,8 +253,8 @@ class OpenCodeService(
       // dropping a prompt that may still exist upstream. Fail loudly instead,
       // consistent with `rejectQuestion`.
       throw PluginApiException(
-        "GET /session/$sessionId/question",
-        502,
+        endpoint: "GET /session/$sessionId/question",
+        statusCode: 502,
         message: "could not resolve session directory",
       );
     }
@@ -279,8 +279,8 @@ class OpenCodeService(
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
     if (directory == null) {
       throw PluginApiException(
-        "GET /session/$sessionId/permission",
-        502,
+        endpoint: "GET /session/$sessionId/permission",
+        statusCode: 502,
         message: "could not resolve session directory",
       );
     }
@@ -387,7 +387,7 @@ class OpenCodeService(
         rethrow;
       }
       Log.w("Failed to decode messages for session $sessionId", error, stackTrace);
-      throw PluginApiException("GET /session/$sessionId/message", 502);
+      throw PluginApiException(endpoint: "GET /session/$sessionId/message", statusCode: 502);
     }
   }
 
@@ -622,8 +622,8 @@ class OpenCodeService(
   }) {
     if (model == null) {
       throw PluginApiException(
-        "POST /session/$sessionId/message",
-        400,
+        endpoint: "POST /session/$sessionId/message",
+        statusCode: 400,
         message: "compaction requires a model selection",
       );
     }
@@ -638,8 +638,8 @@ class OpenCodeService(
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
     if (directory == null) {
       throw PluginApiException(
-        "POST /question/$questionId/reply",
-        502,
+        endpoint: "POST /question/$questionId/reply",
+        statusCode: 502,
         message: "could not resolve session directory",
       );
     }
@@ -671,8 +671,8 @@ class OpenCodeService(
     final directory = await _resolveSessionDirectory(sessionId: resolvedSessionId);
     if (directory == null) {
       throw PluginApiException(
-        "POST /question/$questionId/reject",
-        502,
+        endpoint: "POST /question/$questionId/reject",
+        statusCode: 502,
         message: "could not resolve session directory",
       );
     }
@@ -699,8 +699,8 @@ class OpenCodeService(
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
     if (directory == null) {
       throw PluginApiException(
-        "POST /permission/$requestId/reply",
-        502,
+        endpoint: "POST /permission/$requestId/reply",
+        statusCode: 502,
         message: "could not resolve session directory",
       );
     }
