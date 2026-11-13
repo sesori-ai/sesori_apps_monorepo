@@ -20,8 +20,8 @@ sealed class const PromptSendFailure() {
 
   /// The bridge refused an option the prompt names (agent, model, variant,
   /// fast mode or command) as one it no longer offers, so the prompt did not
-  /// run. A resend with the same options would be refused again, so only
-  /// Remove helps where no options refresh precedes the resend.
+  /// run. Only launch follow-ups receive it, and they resend their stored
+  /// options, so a retry would be refused again and Remove is the only action.
   const factory optionsChanged() = OptionsChangedPromptSend;
 
   /// Whether the bridge proved the prompt did not run, so removing it is safe.
