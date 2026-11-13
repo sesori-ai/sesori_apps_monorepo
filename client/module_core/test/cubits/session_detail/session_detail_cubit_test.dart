@@ -3164,6 +3164,55 @@ void main() {
       );
     });
 
+    test("session.history-refreshed refetches the open page and appends the re-read turns", () async {
+      var getMessagesCallCount = 0;
+      when(
+        () => mockSessionRepository.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer((_) async {
+        getMessagesCallCount += 1;
+        return ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [
+              testMessageWithParts(id: "stored"),
+              if (getMessagesCallCount > 1) testMessageWithParts(id: "outside"),
+            ],
+            nextCursor: null,
+            userMessagesBefore: null,
+            replayedPromptDefaults: null,
+            cannotContinueMessage: null,
+          ),
+        );
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      connectionStatus.add(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
+          health: testHealthResponse(),
+        ),
+      );
+
+      sessionEvents.add(const SesoriSessionHistoryRefreshed(sessionID: sessionId));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.isRefreshing,
+        description: "silent refresh started",
+      );
+      await _awaitNotRefreshing(cubit);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id),
+        ["stored", "outside"],
+      );
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "session.updated SSE re-sorts children by updated descending",
       build: () {

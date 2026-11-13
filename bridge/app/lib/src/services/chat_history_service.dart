@@ -78,6 +78,15 @@ class ChatHistoryService({
   final KeyedParallelLock<String> _writeLock = KeyedParallelLock<String>();
   final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
   final ParallelLock _thumbnailGenerationLock = ParallelLock(maxParallelOperations: 1);
+  final StreamController<String> _historyRefreshes = StreamController<String>.broadcast();
+
+  /// The plugin's explanation for each session a background re-read found it
+  /// cannot restore, served with its stored pages until a re-read succeeds.
+  final Map<String, String> _cannotContinueMessages = {};
+
+  /// The id of each session re-read in the background after a read served it
+  /// behind its harness, once the store holds the re-read transcript.
+  Stream<String> get historyRefreshes => _historyRefreshes.stream;
 
   /// The [window] of the session's messages, served from the store whenever
   /// it is known to be current and falling back to the backend otherwise.
@@ -90,12 +99,19 @@ class ChatHistoryService({
   /// answers from the store alone. Callers that cannot wake the harness —
   /// because it is disabled, needs authentication, or is slow right after a
   /// start — ask for that instead of a page they may never receive.
+  ///
+  /// [backgroundRefresh] callers refetch on [historyRefreshes]. A session
+  /// that is behind its harness but was read before is served from the store
+  /// at once for them, and re-read in the background; opening one also asks
+  /// the harness, without starting it, whether it moved on. Other callers
+  /// wait for the re-read, and opening does not ask.
   Future<SessionMessagesPage> getSessionMessages({
     required String sessionId,
     required HistoryWindow window,
     required MessageAttachmentDelivery attachmentDelivery,
     required ToolOutputDelivery toolOutputDelivery,
     required bool storedOnly,
+    required bool backgroundRefresh,
   }) async {
     final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
     if (storedOnly) {
@@ -113,13 +129,26 @@ class ChatHistoryService({
       HistoryWindowNewest(:final before) => before == null,
       HistoryWindowThrough() => false,
     };
-    if (opensSession) await _noticeBackendActivity(sessionId: sessionId);
+    if (opensSession && backgroundRefresh) await _noticeBackendActivity(sessionId: sessionId);
     // The archive check, the freshness decision, and the read all run inside
     // the session queue, so they observe one state. Deciding outside it would
     // let queued work — an observed import, or a failed capture clearing
     // `syncedAt` — commit in between, and the caller would receive a
     // transcript the store already knew was stale.
     final activeBackfill = _inFlightBackfills[sessionId];
+    // A re-read runs inside the session queue, so a queued read would wait out
+    // its harness start. A session read before is served from the store.
+    if (backgroundRefresh && activeBackfill != null) {
+      final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+      if (state?.syncedAt != null) {
+        return await _storedOnlyPage(
+          sessionId: sessionId,
+          window: window,
+          attachmentProjection: attachmentProjection,
+          toolOutputDelivery: toolOutputDelivery,
+        );
+      }
+    }
     final decided = await _enqueueRead(
       sessionId: sessionId,
       read: () async {
@@ -138,36 +167,50 @@ class ChatHistoryService({
             attachmentProjection: attachmentProjection,
             toolOutputDelivery: toolOutputDelivery,
           );
-          if (archived != null) return archived;
+          if (archived != null) return (page: archived, behindHarness: false);
         }
 
         final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
-        if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
-          return null;
-        }
-        return await _chatHistoryRepository.getSessionMessages(
+        if (state == null || state.syncedAt == null) return null;
+        final behindHarness = state.watermark < state.backendActivityAt;
+        if (behindHarness && !backgroundRefresh) return null;
+        final page = await _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
           window: window,
           attachmentProjection: attachmentProjection,
           toolOutputDelivery: toolOutputDelivery,
         );
+        return (page: page, behindHarness: behindHarness);
       },
     );
-    if (decided != null) {
+    if (decided case (:final page, behindHarness: true)) {
+      // Waiting would hold the open on a harness start, and fail it when the
+      // harness cannot start, so the reader gets the stored copy now.
+      unawaited(_refreshFromHarness(sessionId: sessionId));
+      return (
+        messages: page.messages,
+        nextCursor: page.nextCursor,
+        replayedPromptDefaults: null,
+        awaitingHarnessSync: true,
+        userMessagesBefore: page.userMessagesBefore,
+        cannotContinueMessage: _cannotContinueMessages[sessionId],
+      );
+    }
+    if (decided case (:final page, behindHarness: false)) {
       final replayedPromptDefaults = activeBackfill == null ? null : await activeBackfill;
       // A store that stayed "fresh" across an abrupt bridge death still holds
       // the dead turn's open tool parts — no idle event ever fired and no
       // backfill will run. The page is already in memory, so detecting them is
       // free; only a page that actually contains one pays for a status read.
-      if (!_containsUnfinishedPart(page: decided)) {
-        return _messagesPage(page: decided, replayedPromptDefaults: replayedPromptDefaults);
+      if (!_containsUnfinishedPart(page: page)) {
+        return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
       }
       if (!await _sweepUnlessTurnRunning(sessionId: sessionId)) {
-        return _messagesPage(page: decided, replayedPromptDefaults: replayedPromptDefaults);
+        return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
       }
       final storageScope = await _requireStorageScope(sessionId: sessionId);
-      final page = await _enqueueRead(
+      final swept = await _enqueueRead(
         sessionId: sessionId,
         read: () => _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
@@ -177,7 +220,7 @@ class ChatHistoryService({
           toolOutputDelivery: toolOutputDelivery,
         ),
       );
-      return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
+      return _messagesPage(page: swept, replayedPromptDefaults: replayedPromptDefaults);
     }
 
     final SessionPromptDefaults? replayedPromptDefaults;
@@ -246,6 +289,33 @@ class ChatHistoryService({
       ),
     );
     return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
+  }
+
+  /// Re-reads a session a read served behind its harness, then announces it
+  /// on [historyRefreshes]. A failure leaves the stored transcript, still
+  /// marked behind, so the next read tries again. A backend that cannot
+  /// restore the session is announced once, so an open view shows why.
+  Future<void> _refreshFromHarness({required String sessionId}) async {
+    try {
+      await _backfillSessionForRead(sessionId: sessionId);
+      await _sweepUnlessTurnRunning(sessionId: sessionId);
+      _cannotContinueMessages.remove(sessionId);
+    } on PluginSessionUnrestorableException catch (error, stackTrace) {
+      Log.w("Backend cannot restore session $sessionId; serving stored history", error, stackTrace);
+      // No backfill will finalize a dead turn's open tool parts meanwhile.
+      await _sweepUnlessTurnRunning(sessionId: sessionId);
+      final message = error.message;
+      if (message == null || _cannotContinueMessages[sessionId] == message) return;
+      _cannotContinueMessages[sessionId] = message;
+    } on PluginSessionHistoryBusyException catch (error) {
+      // The live stream delivers the running turn; the next read re-reads.
+      Log.d("Session $sessionId is mid-turn; re-reading it after the turn (${error.message})");
+      return;
+    } on Object catch (error, stackTrace) {
+      Log.w("Background re-read of session $sessionId failed; serving its stored history", error, stackTrace);
+      return;
+    }
+    _historyRefreshes.add(sessionId);
   }
 
   /// One page answered by the store alone: no backfill, no harness contact,

@@ -55,21 +55,21 @@ typedef OpenCodeCatalogDatabaseWorker = FutureOr<OpenCodeCatalogDatabaseReadResu
   required String databasePath,
 });
 
-/// One session's `time_updated` in each session table the database has.
-final class const OpenCodeSessionUpdatedRows({
-  /// Whether OpenCode 2.x migrated the database, creating `session_v2`.
-  required final bool migratedToV2,
+/// One session's `time_updated` from the session table the database's schema
+/// keeps current.
+sealed class const OpenCodeSessionUpdatedRow();
 
-  /// From `session`; null when the row is absent or the database migrated.
-  required final int? sessionUpdatedAt,
+/// From `session`, in a database OpenCode 2.x has not migrated; null when the
+/// row is absent.
+final class const OpenCodeLegacySessionUpdatedRow({required final int? updatedAt}) extends OpenCodeSessionUpdatedRow;
 
-  /// From `session_v2`; null when that table or the row is absent.
-  required final int? sessionV2UpdatedAt,
-});
+/// From `session_v2`, once OpenCode 2.x migrated the database; null when the
+/// row is absent. The `session` table is a stale copy then and is not read.
+final class const OpenCodeV2SessionUpdatedRow({required final int? updatedAt}) extends OpenCodeSessionUpdatedRow;
 
-/// Isolate worker for [OpenCodeCatalogDatabaseApi.readSessionUpdatedRows],
+/// Isolate worker for [OpenCodeCatalogDatabaseApi.readSessionUpdatedRow],
 /// under the same sendability rules as [OpenCodeCatalogDatabaseWorker].
-typedef OpenCodeSessionActivityWorker = FutureOr<OpenCodeSessionUpdatedRows> Function({
+typedef OpenCodeSessionActivityWorker = FutureOr<OpenCodeSessionUpdatedRow> Function({
   required String databasePath,
   required String sessionId,
 });
@@ -81,7 +81,7 @@ class const OpenCodeCatalogDatabaseApi({
 }) {
   static OpenCodeCatalogDatabaseApi production() {
     const sqlite = _SqliteOpenCodeCatalogDatabaseWorker();
-    return OpenCodeCatalogDatabaseApi(worker: sqlite.read, sessionActivityWorker: sqlite.readSessionUpdatedRows);
+    return OpenCodeCatalogDatabaseApi(worker: sqlite.read, sessionActivityWorker: sqlite.readSessionUpdatedRow);
   }
 
   Future<OpenCodeCatalogDatabaseReadResult> read({required String databasePath}) {
@@ -89,14 +89,14 @@ class const OpenCodeCatalogDatabaseApi({
     return Isolate.run(() => worker(databasePath: databasePath));
   }
 
-  Future<OpenCodeSessionUpdatedRows> readSessionUpdatedRows({required String databasePath, required String sessionId}) {
+  Future<OpenCodeSessionUpdatedRow> readSessionUpdatedRow({required String databasePath, required String sessionId}) {
     final worker = _sessionActivityWorker;
     return Isolate.run(() => worker(databasePath: databasePath, sessionId: sessionId));
   }
 }
 
 class const _SqliteOpenCodeCatalogDatabaseWorker() {
-  OpenCodeSessionUpdatedRows readSessionUpdatedRows({required String databasePath, required String sessionId}) {
+  OpenCodeSessionUpdatedRow readSessionUpdatedRow({required String databasePath, required String sessionId}) {
     final Database database;
     try {
       database = sqlite3.open(databasePath, mode: OpenMode.readOnly);
@@ -116,12 +116,9 @@ class const _SqliteOpenCodeCatalogDatabaseWorker() {
         return rows.isEmpty ? null : _requiredInt(value: rows.first["time_updated"], field: "$table.time_updated");
       }
 
-      return OpenCodeSessionUpdatedRows(
-        migratedToV2: tables.contains("session_v2"),
-        // A migrated database keeps its stale v1 table; it is never read.
-        sessionUpdatedAt: tables.contains("session_v2") ? null : updatedAt("session"),
-        sessionV2UpdatedAt: updatedAt("session_v2"),
-      );
+      return tables.contains("session_v2")
+          ? OpenCodeV2SessionUpdatedRow(updatedAt: updatedAt("session_v2"))
+          : OpenCodeLegacySessionUpdatedRow(updatedAt: updatedAt("session"));
     } on OpenCodeCatalogDatabaseException {
       rethrow;
     } on Object catch (error) {

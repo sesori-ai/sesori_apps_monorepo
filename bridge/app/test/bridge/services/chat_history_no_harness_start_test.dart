@@ -168,32 +168,87 @@ void main() {
       runtime.sessionActivityReads.clear();
     });
 
-    test("newer harness activity re-reads the session once", () async {
+    test("newer harness activity serves the stored page at once and re-reads in the background", () async {
       runtime.sessionActivityById["backend-a"] = DateTime.utc(2100).millisecondsSinceEpoch;
+      plugin.messagesResult = [...plugin.messagesResult, _userMessage(id: "m2")];
+      final refreshed = history.service.historyRefreshes.first;
 
-      await history.service.getSessionMessages(sessionId: "ses_a");
+      final opened = await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
+      expect(opened.messages.map((m) => m.info.id), ["m1"]);
+      expect(opened.awaitingHarnessSync, isTrue);
+
+      expect(await refreshed, "ses_a");
       expect(plugin.lastGetMessagesSessionId, "backend-a");
-
       plugin.lastGetMessagesSessionId = null;
-      await history.service.getSessionMessages(sessionId: "ses_a");
+      final reopened = await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
+      expect(reopened.messages.map((m) => m.info.id), ["m1", "m2"]);
+      expect(reopened.awaitingHarnessSync, isFalse);
       expect(plugin.lastGetMessagesSessionId, isNull, reason: "the re-read caught the store up to that activity");
     });
 
+    test("a failed background re-read keeps serving the stored page", () async {
+      runtime.sessionActivityById["backend-a"] = DateTime.utc(2100).millisecondsSinceEpoch;
+      plugin.throwOnGetMessagesError = StateError("harness cannot start");
+
+      final opened = await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
+      // The failed re-read leaves the session behind, so the next open serves
+      // the store again and retries in the background.
+      await pumpEventQueue();
+      final reopened = await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
+
+      expect(opened.messages.map((m) => m.info.id), ["m1"]);
+      expect(reopened.messages.map((m) => m.info.id), ["m1"]);
+      expect(reopened.awaitingHarnessSync, isTrue);
+    });
+
+    test("a backend that cannot restore the session is announced once with its explanation", () async {
+      runtime.sessionActivityById["backend-a"] = DateTime.utc(2100).millisecondsSinceEpoch;
+      plugin.throwOnGetMessagesError = const PluginSessionUnrestorableException(
+        operation: "load history",
+        message: "The session's folder was deleted.",
+      );
+      final announcements = <String>[];
+      final subscription = history.service.historyRefreshes.listen(announcements.add);
+      addTearDown(subscription.cancel);
+
+      await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
+      await pumpEventQueue();
+      final refetched = await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
+      await pumpEventQueue();
+
+      expect(refetched.messages.map((m) => m.info.id), ["m1"]);
+      expect(refetched.cannotContinueMessage, "The session's folder was deleted.");
+      expect(announcements, ["ses_a"], reason: "the unchanged explanation must not announce a refetch loop");
+    });
+
     test("unchanged harness activity serves the store, also right after the first backfill", () async {
-      await history.service.getSessionMessages(sessionId: "ses_a");
+      await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
 
       expect(runtime.sessionActivityReads, ["backend-a"]);
       expect(plugin.lastGetMessagesSessionId, isNull);
     });
 
-    test("store-only and older-page reads do not check", () async {
+    test("store-only reads, older pages, and apps without background refresh do not check", () async {
       runtime.sessionActivityById["backend-a"] = DateTime.utc(2100).millisecondsSinceEpoch;
 
-      await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);
-      await history.service.getSessionMessages(sessionId: "ses_a", limit: 10, before: 5);
+      await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true, backgroundRefresh: true);
+      await history.service.getSessionMessages(sessionId: "ses_a", limit: 10, before: 5, backgroundRefresh: true);
+      await history.service.getSessionMessages(sessionId: "ses_a");
 
       expect(runtime.sessionActivityReads, isEmpty);
       expect(plugin.lastGetMessagesSessionId, isNull);
     });
   });
 }
+
+PluginMessageWithParts _userMessage({required String id}) => PluginMessageWithParts(
+  info: PluginMessage.user(
+    promptId: null,
+    invocation: null,
+    id: id,
+    sessionID: "backend-a",
+    agent: null,
+    time: const PluginMessageTime(created: 2, completed: null),
+  ),
+  parts: const [],
+);

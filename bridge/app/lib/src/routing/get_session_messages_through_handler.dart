@@ -33,6 +33,8 @@ class GetSessionMessagesThroughHandler({required final ChatHistoryService _chatH
       attachmentDelivery: body.attachmentDelivery,
       toolOutputDelivery: body.toolOutputDelivery,
       storedOnly: body.storedOnly,
+      // A load-through is the reader scrolling back, which waits as before.
+      backgroundRefresh: false,
     );
     return MessageWithPartsResponse(
       messages: page.messages,

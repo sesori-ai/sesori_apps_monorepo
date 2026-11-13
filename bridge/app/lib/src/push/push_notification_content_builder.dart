@@ -78,6 +78,7 @@ class const PushNotificationContentBuilder() {
       SesoriSessionDiff() ||
       SesoriSessionError() ||
       SesoriSessionCompacted() ||
+      SesoriSessionHistoryRefreshed() ||
       SesoriSessionPromptSettled() ||
       SesoriSessionPromptDefaultsChanged() ||
       SesoriSessionStatus() ||

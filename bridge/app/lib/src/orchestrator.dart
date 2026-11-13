@@ -1182,6 +1182,9 @@ class OrchestratorSession._({
     await _permissionAutoApprovalService.approvePending();
     final startupSummary = await _buildProjectsSummary();
     if (startupSummary != null) _feedLocalObservers(startupSummary);
+    _chatHistoryService.historyRefreshes
+        .listen((sessionId) => _enqueueWireEvent(SesoriSseEvent.sessionHistoryRefreshed(sessionID: sessionId)))
+        .addTo(_subscriptions);
     _sessionUnseenService.unseenChanges
         .listen((change) {
           _enqueueWireEvent(
@@ -1876,6 +1879,7 @@ class OrchestratorSession._({
       SesoriSessionDiff() ||
       SesoriSessionError() ||
       SesoriSessionCompacted() ||
+      SesoriSessionHistoryRefreshed() ||
       SesoriSessionPromptSettled() ||
       SesoriSessionPromptDefaultsChanged() ||
       SesoriSessionStatus() ||
@@ -2125,6 +2129,7 @@ class OrchestratorSession._({
           SesoriSessionDiff() ||
           SesoriSessionError() ||
           SesoriSessionCompacted() ||
+          SesoriSessionHistoryRefreshed() ||
           SesoriSessionPromptSettled() ||
           SesoriSessionPromptDefaultsChanged() ||
           SesoriSessionStatus() ||

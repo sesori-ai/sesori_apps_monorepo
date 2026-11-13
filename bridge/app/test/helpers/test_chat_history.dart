@@ -119,12 +119,14 @@ class TestChatHistoryService({
     MessageAttachmentDelivery attachmentDelivery = MessageAttachmentDelivery.inline,
     ToolOutputDelivery toolOutputDelivery = ToolOutputDelivery.inline,
     bool storedOnly = false,
+    bool backgroundRefresh = false,
   }) => super.getSessionMessages(
     sessionId: sessionId,
     window: window ?? _windowOf(limit: limit, before: before),
     attachmentDelivery: attachmentDelivery,
     toolOutputDelivery: toolOutputDelivery,
     storedOnly: storedOnly,
+    backgroundRefresh: backgroundRefresh,
   );
 
   @override

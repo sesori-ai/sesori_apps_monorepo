@@ -50,10 +50,10 @@ class OpenCodeCatalogRepository({
     if (databasePath == null || !fileExists(path: databasePath)) {
       return const PluginSessionActivityUnavailable();
     }
-    final rows = await databaseApi.readSessionUpdatedRows(databasePath: databasePath, sessionId: sessionId);
-    // OpenCode 2.x keeps session_v2 current once it migrated; the v1 row is a
-    // stale copy then.
-    final updatedAt = rows.migratedToV2 ? rows.sessionV2UpdatedAt : rows.sessionUpdatedAt;
+    final row = await databaseApi.readSessionUpdatedRow(databasePath: databasePath, sessionId: sessionId);
+    final updatedAt = switch (row) {
+      OpenCodeLegacySessionUpdatedRow(:final updatedAt) || OpenCodeV2SessionUpdatedRow(:final updatedAt) => updatedAt,
+    };
     return updatedAt == null
         ? const PluginSessionActivityUnavailable()
         : PluginSessionActivityAvailable(updatedAt: updatedAt);

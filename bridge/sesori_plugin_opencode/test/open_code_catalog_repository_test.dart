@@ -603,7 +603,7 @@ class _FakeCatalogDatabaseApi({required final OpenCodeCatalogDatabaseSnapshot sn
   }
 
   @override
-  Future<OpenCodeSessionUpdatedRows> readSessionUpdatedRows({
+  Future<OpenCodeSessionUpdatedRow> readSessionUpdatedRow({
     required String databasePath,
     required String sessionId,
   }) => throw UnimplementedError();
@@ -633,5 +633,5 @@ class const _NeverCancelled() implements PluginCatalogCancellationSignal {
   bool get isCancelled => false;
 }
 
-OpenCodeSessionUpdatedRows _unusedSessionActivityWorker({required String databasePath, required String sessionId}) =>
+OpenCodeSessionUpdatedRow _unusedSessionActivityWorker({required String databasePath, required String sessionId}) =>
     throw UnimplementedError("the catalog read does not read session activity");

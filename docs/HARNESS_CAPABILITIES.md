@@ -490,17 +490,18 @@ session without an import (see "Opening a session").
 
 Opening a session the store already holds asks its harness for that one
 session's activity time without starting the harness. When the time is newer
-than what the store caught up to, the bridge re-reads the session, so a turn
-run in the harness's own terminal appears on open without a pull. Otherwise the
-store is served with the harness untouched. Store-only reads and older pages
-skip the check.
+than what the store caught up to, the open shows the stored transcript at once
+and the bridge re-reads the session in the background. The turns run in the
+harness's own terminal are then appended without a pull. Otherwise the store is
+served with the harness untouched. Store-only reads and older pages skip the
+check.
 
 | Harness | Status |
 |---|---|
 | Claude Code | ✅ Root sessions: the same tail-record time the catalog scan reads, from the one transcript named for the session. Sub-agent sessions are not checked. Verified live on `2.1.323` (2026-11-12): a `claude -p -c` turn made while the bridge was stopped appeared on the first open after restart, with no pull. |
 | Codex | ✅ Rollout modification time, found under the day its UUIDv7 id encodes. A session-index-only change, such as a rename in another client, is not noticed. Verified live on `0.167.2` (2026-11-12) the same way, with a `codex exec resume` turn. |
 | OpenCode | ✅ The session's `time_updated` row, from `session_v2` once OpenCode 2.x migrated the database, else `session`. Verified live on `2.2.7` (2026-11-12) the same way, with an `opencode run -c` turn. 🚫 Attach mode (`--no-auto-start`): the attached server need not use the database the bridge would resolve. |
-| Pi | ✅ Session file modification time, from the session directory configured for the session's folder. Verified live on `1.5.2` (2026-11-12): a `pi -c -p` turn made while the bridge was stopped appeared on the first open after restart, with no pull. |
+| Pi | ✅ Session file modification time, from the session directory configured for the session's folder. Verified live on `1.5.2` (2026-11-12): a `pi -c -p` turn made while the bridge was stopped appeared on the first open after restart, with no pull. Not supported: a terminal turn in a session that Sesori's own Pi process still holds stays hidden, because the re-read replays that process's history and Pi does not support two writers on one session file. |
 | OMP, Grok, Hermes, DeepSeek, Cursor, Copilot, Antigravity | 🚫 ACP reports activity only through `session/list` on a running agent process; there is no bounded read without starting it. Outside turns appear after the next pull. |
 
 ## Pending requests on archive

@@ -24,11 +24,11 @@ reconnect or restart.
   session, and a session advanced outside Sesori is detected as stale, re-read,
   and re-cached.
 - Opening a synced session (a full or newest-page read that is not store-only)
-  first asks the dormant plugin for that one session's backend activity time
-  (a file stat, transcript tail or database row; never a process start or a
-  catalog scan). A time newer than the store's watermark marks the session stale
-  and the same read re-reads it, so a turn run in the harness's own terminal
-  while Sesori was away appears on open without a pull. An unchanged time, a
+  from an app that sends `backgroundRefresh` first asks the dormant plugin for
+  that one session's backend activity time (a file stat, transcript tail or
+  database row; never a process start or a catalog scan). A time newer than the
+  store's watermark marks the session stale, so a turn run in the harness's own
+  terminal while Sesori was away appears without a pull. An unchanged time, a
   harness that cannot answer cheaply (every ACP harness, OpenCode attach mode),
   a failed check, an archived session, a store-only read and an older page all
   serve the store with the harness untouched. Failure signal: an outside turn
@@ -37,6 +37,21 @@ reconnect or restart.
   the same activity time, read before its fetch, so the open after it does not
   re-read the session again. Per-harness rules are in
   [Harness capabilities](../HARNESS_CAPABILITIES.md#opening-a-session).
+- For an app that sends `backgroundRefresh`, any read of a session that was
+  backfilled before but is now behind its harness (found by the open check or
+  marked by a pull) returns the stored page at once, flagged
+  `awaitingHarnessSync`, and the bridge re-reads the session in the background.
+  A read that arrives while that re-read runs is also served from the store.
+  When the re-read lands, the bridge sends `session.history-refreshed`, and the
+  open view runs its silent refresh, so the new turns are appended at the end
+  of the transcript without a loading state. A failed re-read is logged, and the
+  session stays behind, so the next read retries it. A backend that cannot
+  restore the session is announced once, and its stored pages then carry the
+  plugin's `cannotContinueMessage`. A first open with nothing stored still waits
+  for its backfill. An app without the field gets no open check, and a read
+  behind the harness waits for the re-read as before. Failure signals: a stale
+  open showing a loading state, re-read turns not appearing while the session
+  is open, or the transcript jumping when they do.
 - When a backfill fails because the plugin reports that the backend cannot
   restore the session as stored (`PluginSessionUnrestorableException`; today
   OMP's "Could not restore model", and Pi when the session's recorded folder
@@ -640,13 +655,8 @@ rules where supported.
   The re-read moves the watermark to that time, so it converges. Measured live
   on 2026-11-12 with Pi `1.5.2` and Codex `0.167.2`: no extra re-read after a
   Sesori-run turn; Claude Code and OpenCode are not measured for that case.
-- A stale open waits for the re-read, including a stopped harness's start, before
-  the first page returns; the app shows its loading state meanwhile, as it does
-  for a session a pull marked stale. Measured 2026-11-12: about 1.3 s for
-  Claude Code and 22 s for a cold OpenCode server, against about 0.2 s from the
-  store. A session
-  already open on screen picks up an outside turn on the next app resume or
-  reopen, not while it sits open.
+- A session already open on screen picks up an outside turn on the next app
+  resume or reopen, not while it sits open.
 - Client session-detail refresh triggers are still under diagnosis; only the
   diagnostic logging is in place and any refresh correction is unfinished.
 - Antigravity's native personal-authenticated history beyond the bounded 2026-09-12 ACP sub-agent replay probe, cold
