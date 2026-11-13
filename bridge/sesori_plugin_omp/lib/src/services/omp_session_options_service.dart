@@ -1,9 +1,12 @@
+import "dart:io" show Directory;
+
 import "package:acp_plugin/acp_plugin.dart"
     show AcpNewSessionResult, AcpSessionConfigRepository, AcpSessionConfigurationTracker;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../models/omp_catalog_models.dart";
+import "../omp_identity.dart";
 import "../repositories/omp_catalog_repository.dart";
 import "../trackers/omp_catalog_tracker.dart";
 import "omp_catalog_service.dart";
@@ -42,17 +45,36 @@ class OmpSessionOptionsService({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) async {
-    final scope = _scope(projectId);
-    final result = switch (discoveryMode) {
-      PluginSessionOptionsDiscoveryMode.reuse => await _catalogService.ensureCatalog(projectId: scope),
-      PluginSessionOptionsDiscoveryMode.refresh => await _catalogService.refreshCatalog(projectId: scope),
-    };
+    final result = await _discover(scope: _scope(projectId), discoveryMode: discoveryMode);
     return switch (result) {
       OmpCatalogObserved(:final catalog) => OmpOptionsObserved(options: _options(catalog)),
       OmpCatalogNoModels() => const OmpOptionsNoModels(),
       OmpCatalogDiscoveryFailed() => const OmpOptionsDiscoveryFailed(),
     };
   }
+
+  /// A project folder deleted after its sessions ran fails to launch OMP, so
+  /// its old sessions fall back to the launch directory's options instead of
+  /// failing to open. The folder is checked only after a failed probe.
+  Future<OmpCatalogDiscoveryResult> _discover({
+    required String scope,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) async {
+    final result = await _probe(scope: scope, discoveryMode: discoveryMode);
+    if (result is! OmpCatalogDiscoveryFailed || scope == _launchDirectory || Directory(scope).existsSync()) {
+      return result;
+    }
+    Log.w("[${OmpPluginIdentity.id}] project folder $scope is gone; using the launch directory's options");
+    return await _probe(scope: _launchDirectory, discoveryMode: discoveryMode);
+  }
+
+  Future<OmpCatalogDiscoveryResult> _probe({
+    required String scope,
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+  }) => switch (discoveryMode) {
+    PluginSessionOptionsDiscoveryMode.reuse => _catalogService.ensureCatalog(projectId: scope),
+    PluginSessionOptionsDiscoveryMode.refresh => _catalogService.refreshCatalog(projectId: scope),
+  };
 
   Future<List<PluginCommand>> listCommands({required String? projectId}) async {
     final result = await _catalogService.ensureCatalog(projectId: _scope(projectId));
