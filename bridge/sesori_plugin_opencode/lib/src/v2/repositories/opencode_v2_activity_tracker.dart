@@ -187,7 +187,8 @@ class OpenCodeV2ActivityTracker() {
           V2AgentUpdated() ||
           V2CommandUpdated() ||
           V2ProviderUpdated() ||
-          V2ModelUpdated():
+          V2ModelUpdated() ||
+          V2SkillUpdated():
         return false;
     }
   }

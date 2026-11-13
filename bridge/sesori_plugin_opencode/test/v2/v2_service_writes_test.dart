@@ -218,7 +218,29 @@ void main() {
       ),
       throwsA(isA<PluginStaleOptionsException>()),
     );
-    expect(repository.calls, ["commands"]);
+    expect(repository.calls, ["commands", "skills"]);
+  });
+
+  test("skills are listed as skill commands and run as a prompt with the skill attached", () async {
+    const skill = PluginCommand(name: "fixture-skill", provider: null, source: PluginCommandSource.skill);
+    repository.commands = [const PluginCommand(name: "review", provider: null)];
+    repository.skills = [skill, const PluginCommand(name: "review", provider: null, source: PluginCommandSource.skill)];
+    expect(
+      [for (final command in await service.getCommands(projectId: null)) (command.name, command.source)],
+      [("review", null), ("compact", PluginCommandSource.command), ("fixture-skill", PluginCommandSource.skill)],
+    );
+    repository.calls.clear();
+    await service.sendCommand(
+      sessionId: root.id,
+      promptId: "fixture-prompt",
+      command: "fixture-skill",
+      arguments: "Fixture arguments",
+      userVisibleArguments: null,
+      agent: null,
+      model: null,
+      variant: null,
+    );
+    expect(repository.calls, ["commands", "skills", "skill:fixture-skill:fixture-prompt:Fixture arguments"]);
   });
 
   test("pending children retain root attribution; only a successful reply consumes native constraints", () async {
@@ -349,6 +371,7 @@ class WritableRepository() implements OpenCodeV2Repository {
   Completer<void>? promptAccepted;
   Object? replyFailure;
   List<PluginCommand> commands = [];
+  List<PluginCommand> skills = [];
   List<PluginPromptPart>? parts;
   PluginAgentModel? selectedModel;
   FormReply? reply;
@@ -428,6 +451,22 @@ class WritableRepository() implements OpenCodeV2Repository {
   @override
   Future<void> sendCommand({required String sessionId, required String command, required String arguments}) async {
     calls.add("command:$command");
+  }
+
+  @override
+  Future<List<PluginCommand>> getSkills({required String? directory}) async {
+    calls.add("skills");
+    return skills;
+  }
+
+  @override
+  Future<void> sendSkill({
+    required String sessionId,
+    required String? promptId,
+    required String skillId,
+    required String arguments,
+  }) async {
+    calls.add("skill:$skillId:$promptId:$arguments");
   }
 
   @override

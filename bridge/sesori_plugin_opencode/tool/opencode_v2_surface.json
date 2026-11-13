@@ -48,6 +48,7 @@
     "model.default",
     "provider.list",
     "command.list",
+    "skill.list",
     "worktree.remove"
   ],
   "extraSchemas": [
@@ -76,6 +77,7 @@
     "Session.Info",
     "Session.StructuredError",
     "SessionActive",
+    "Skill.Info",
     "TokenUsage.Info",
     "Tool.Content",
     "Worktree.RemoveInput"

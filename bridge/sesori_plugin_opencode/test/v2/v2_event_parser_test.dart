@@ -22,6 +22,7 @@ void main() {
       ("command.updated", isA<V2CommandUpdated>()),
       ("provider.updated", isA<V2ProviderUpdated>()),
       ("model.updated", isA<V2ModelUpdated>()),
+      ("skill.updated", isA<V2SkillUpdated>()),
     ]) {
       final event =
           parser.parse(

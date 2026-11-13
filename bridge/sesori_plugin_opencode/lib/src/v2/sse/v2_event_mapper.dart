@@ -73,7 +73,8 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     V2AgentUpdated() ||
     V2CommandUpdated() ||
     V2ProviderUpdated() ||
-    V2ModelUpdated() => null,
+    V2ModelUpdated() ||
+    V2SkillUpdated() => null,
   };
 
   BridgeSseEvent mapStatus({required String sessionId, required PluginSessionStatus status}) => switch (status) {
@@ -97,8 +98,8 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
         V2ProjectUpdated() => [const BridgeSseProjectUpdated()],
         // OpenCode answers a cold location with an empty or partial catalog
         // and announces the loaded one here, as it does after a config,
-        // credential or agent file change; clients reread their options.
-        V2AgentUpdated() || V2CommandUpdated() || V2ProviderUpdated() || V2ModelUpdated() => [
+        // credential, agent or skill file change; clients reread their options.
+        V2AgentUpdated() || V2CommandUpdated() || V2ProviderUpdated() || V2ModelUpdated() || V2SkillUpdated() => [
           const BridgeSseCommandCatalogUpdated(),
         ],
         V2SessionExecutionFailed() => [
@@ -266,7 +267,8 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     V2AgentUpdated() ||
     V2CommandUpdated() ||
     V2ProviderUpdated() ||
-    V2ModelUpdated() => null,
+    V2ModelUpdated() ||
+    V2SkillUpdated() => null,
   };
 
   List<BridgeSseEvent> mapAssistantStarted({required V2SessionStepStarted event, required V2AgentNames agentNames}) => [
@@ -408,7 +410,8 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
       V2AgentUpdated() ||
       V2CommandUpdated() ||
       V2ProviderUpdated() ||
-      V2ModelUpdated() => null,
+      V2ModelUpdated() ||
+      V2SkillUpdated() => null,
     };
     if (notice == null) return const [];
     final message = _messageMapper.mapMessage(
@@ -517,7 +520,8 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
           V2AgentUpdated() ||
           V2CommandUpdated() ||
           V2ProviderUpdated() ||
-          V2ModelUpdated():
+          V2ModelUpdated() ||
+          V2SkillUpdated():
         return const [];
     }
   }

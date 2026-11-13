@@ -278,6 +278,7 @@ void main() {
     (path: "/api/model", invoke: (api) => api.listModels(directory: "/fixture/project")),
     (path: "/api/provider", invoke: (api) => api.listProviders(directory: "/fixture/project")),
     (path: "/api/command", invoke: (api) => api.listCommands(directory: "/fixture/project")),
+    (path: "/api/skill", invoke: (api) => api.listSkills(directory: "/fixture/project")),
     (path: "/api/permission/request", invoke: (api) => api.listPermissions(directory: "/fixture/project")),
     (path: "/api/form", invoke: (api) => api.listForms(directory: "/fixture/project")),
   ]) {
