@@ -303,6 +303,30 @@ void main() {
     expect(result.parts.last.agentName, "Explore");
   });
 
+  test("shows a skill run from the command picker as the command the user typed", () {
+    Map<String, dynamic> user({required String text, required Map<String, dynamic>? mention}) => <String, dynamic>{
+      "type": "user",
+      "id": "user",
+      "text": text,
+      "time": <String, int>{"created": 1},
+      "skills": <Object>[
+        <String, dynamic>{"id": "fixture-greeter", "name": "Fixture greeter", "mention": ?mention},
+      ],
+    };
+
+    expect(mapped(json: user(text: "hello", mention: null)).parts.single.text, "/fixture-greeter hello");
+    expect(mapped(json: user(text: "", mention: null)).parts.single.text, "/fixture-greeter");
+    expect(
+      mapped(
+        json: user(
+          text: "use @fixture-greeter",
+          mention: <String, dynamic>{"start": 4, "end": 20, "text": "@fixture-greeter"},
+        ),
+      ).parts.single.text,
+      "use @fixture-greeter",
+    );
+  });
+
   test("bounds standalone tool images and excludes local or credentialed URLs", () {
     final result = mapper.mapToolState(
       toolName: "bash",

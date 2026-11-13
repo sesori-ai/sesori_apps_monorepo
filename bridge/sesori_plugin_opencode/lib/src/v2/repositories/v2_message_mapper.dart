@@ -10,6 +10,7 @@ import "package:sesori_shared/sesori_shared.dart"
         maxTranscriptImageCollectionBytes;
 
 import "../models/openapi/prompt_file_attachment.g.dart";
+import "../models/openapi/prompt_skill_attachment.g.dart";
 import "../models/openapi/session_message_agent_selected.g.dart";
 import "../models/openapi/session_message_assistant.g.dart";
 import "../models/openapi/session_message_assistant_content.g.dart";
@@ -75,7 +76,7 @@ class const V2MessageMapper() {
             id: partId(messageId: message.id, ordinal: 0),
             sessionID: sessionId,
             messageID: message.id,
-            text: message.text,
+            text: _userText(message: message),
           ),
           for (final (index, file) in (message.files ?? const <PromptFileAttachment>[]).indexed)
             PluginMessagePart.file(
@@ -499,6 +500,15 @@ class const V2MessageMapper() {
     }
     return bounded;
   }
+
+  /// A skill run from the command picker is a prompt that carries the skill as
+  /// an attachment and only the arguments as text, so the skill is shown as the
+  /// `/name` the user typed. A skill mentioned inside the text already shows.
+  String _userText({required SessionMessageUser message}) => [
+    for (final skill in message.skills ?? const <PromptSkillAttachment>[])
+      if (skill.mention == null) "/${skill.id}",
+    if (message.text.isNotEmpty) message.text,
+  ].join(" ");
 
   String? _truncate({required String? text}) => text != null && text.length > maxToolOutputLength
       ? String.fromCharCodes(text.runes.take(maxToolOutputLength))
