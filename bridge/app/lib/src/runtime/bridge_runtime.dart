@@ -13,6 +13,7 @@ import "../listeners/plugin_catalog_hydration_listener.dart";
 import "../orchestrator.dart";
 import "../routing/routed_request_dispatcher.dart";
 import "../services/catalog_import_service.dart";
+import "../services/chat_history_service.dart";
 import "bridge_shutdown_coordinator.dart";
 
 class BridgeRuntime({
@@ -26,6 +27,7 @@ class BridgeRuntime({
 
   OrchestratorSession get session => _composition.session;
   CatalogImportService get catalogImportService => _composition.catalogImportService;
+  ChatHistoryService get chatHistoryService => _composition.chatHistoryService;
   PluginCatalogHydrationListener get catalogHydrationListener => _composition.catalogHydrationListener;
 
   Future<void> ensureScratchProject() {
@@ -77,6 +79,7 @@ class BridgeRuntime({
     await step(_composition.sessionRepository.dispose);
     await step(_composition.catalogHydrationListener.dispose);
     await step(_composition.catalogImportService.dispose);
+    await step(_composition.chatHistoryService.dispose);
     await step(_database.close);
     await step(_chatHistoryDatabase.close);
 

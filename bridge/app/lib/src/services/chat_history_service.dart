@@ -83,6 +83,7 @@ class ChatHistoryService({
   /// The plugin's explanation for each session a background re-read found it
   /// cannot restore, served with its stored pages until a re-read succeeds.
   final Map<String, String> _cannotContinueMessages = {};
+  final Set<Future<void>> _backgroundRefreshes = {};
 
   /// The id of each session re-read in the background after a read served it
   /// behind its harness, once the store holds the re-read transcript.
@@ -141,11 +142,18 @@ class ChatHistoryService({
     if (backgroundRefresh && activeBackfill != null) {
       final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
       if (state?.syncedAt != null) {
-        return await _storedOnlyPage(
+        final stored = await _storedOnlyPage(
           sessionId: sessionId,
           window: window,
           attachmentProjection: attachmentProjection,
           toolOutputDelivery: toolOutputDelivery,
+        );
+        // Joins the running backfill, so this reader is told when it lands.
+        return _servedWhileRefreshing(
+          sessionId: sessionId,
+          messages: stored.messages,
+          nextCursor: stored.nextCursor,
+          userMessagesBefore: stored.userMessagesBefore,
         );
       }
     }
@@ -187,14 +195,11 @@ class ChatHistoryService({
     if (decided case (:final page, behindHarness: true)) {
       // Waiting would hold the open on a harness start, and fail it when the
       // harness cannot start, so the reader gets the stored copy now.
-      unawaited(_refreshFromHarness(sessionId: sessionId));
-      return (
+      return _servedWhileRefreshing(
+        sessionId: sessionId,
         messages: page.messages,
         nextCursor: page.nextCursor,
-        replayedPromptDefaults: null,
-        awaitingHarnessSync: true,
         userMessagesBefore: page.userMessagesBefore,
-        cannotContinueMessage: _cannotContinueMessages[sessionId],
       );
     }
     if (decided case (:final page, behindHarness: false)) {
@@ -291,6 +296,32 @@ class ChatHistoryService({
     return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
   }
 
+  /// A stored page served behind the harness, with a background re-read
+  /// started or joined so [historyRefreshes] announces when the store lands.
+  SessionMessagesPage _servedWhileRefreshing({
+    required String sessionId,
+    required List<MessageWithParts> messages,
+    required int? nextCursor,
+    required int userMessagesBefore,
+  }) {
+    final refresh = _refreshFromHarness(sessionId: sessionId);
+    _backgroundRefreshes.add(refresh);
+    unawaited(refresh.whenComplete(() => _backgroundRefreshes.remove(refresh)));
+    return (
+      messages: messages,
+      nextCursor: nextCursor,
+      replayedPromptDefaults: null,
+      awaitingHarnessSync: true,
+      userMessagesBefore: userMessagesBefore,
+      cannotContinueMessage: _cannotContinueMessages[sessionId],
+    );
+  }
+
+  /// Waits for the background re-reads, which never throw, during shutdown.
+  Future<void> drain() => Future.wait(_backgroundRefreshes.toList());
+
+  Future<void> dispose() => _historyRefreshes.close();
+
   /// Re-reads a session a read served behind its harness, then announces it
   /// on [historyRefreshes]. A failure leaves the stored transcript, still
   /// marked behind, so the next read tries again. A backend that cannot
@@ -315,7 +346,7 @@ class ChatHistoryService({
       Log.w("Background re-read of session $sessionId failed; serving its stored history", error, stackTrace);
       return;
     }
-    _historyRefreshes.add(sessionId);
+    if (!_historyRefreshes.isClosed) _historyRefreshes.add(sessionId);
   }
 
   /// One page answered by the store alone: no backfill, no harness contact,

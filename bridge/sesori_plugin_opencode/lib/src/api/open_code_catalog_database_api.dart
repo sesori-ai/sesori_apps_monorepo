@@ -55,21 +55,9 @@ typedef OpenCodeCatalogDatabaseWorker = FutureOr<OpenCodeCatalogDatabaseReadResu
   required String databasePath,
 });
 
-/// One session's `time_updated` from the session table the database's schema
-/// keeps current.
-sealed class const OpenCodeSessionUpdatedRow();
-
-/// From `session`, in a database OpenCode 2.x has not migrated; null when the
-/// row is absent.
-final class const OpenCodeLegacySessionUpdatedRow({required final int? updatedAt}) extends OpenCodeSessionUpdatedRow;
-
-/// From `session_v2`, once OpenCode 2.x migrated the database; null when the
-/// row is absent. The `session` table is a stale copy then and is not read.
-final class const OpenCodeV2SessionUpdatedRow({required final int? updatedAt}) extends OpenCodeSessionUpdatedRow;
-
-/// Isolate worker for [OpenCodeCatalogDatabaseApi.readSessionUpdatedRow],
+/// Isolate worker for [OpenCodeCatalogDatabaseApi.readSessionUpdatedAt],
 /// under the same sendability rules as [OpenCodeCatalogDatabaseWorker].
-typedef OpenCodeSessionActivityWorker = FutureOr<OpenCodeSessionUpdatedRow> Function({
+typedef OpenCodeSessionActivityWorker = FutureOr<int?> Function({
   required String databasePath,
   required String sessionId,
 });
@@ -81,7 +69,7 @@ class const OpenCodeCatalogDatabaseApi({
 }) {
   static OpenCodeCatalogDatabaseApi production() {
     const sqlite = _SqliteOpenCodeCatalogDatabaseWorker();
-    return OpenCodeCatalogDatabaseApi(worker: sqlite.read, sessionActivityWorker: sqlite.readSessionUpdatedRow);
+    return OpenCodeCatalogDatabaseApi(worker: sqlite.read, sessionActivityWorker: sqlite.readSessionUpdatedAt);
   }
 
   Future<OpenCodeCatalogDatabaseReadResult> read({required String databasePath}) {
@@ -89,14 +77,18 @@ class const OpenCodeCatalogDatabaseApi({
     return Isolate.run(() => worker(databasePath: databasePath));
   }
 
-  Future<OpenCodeSessionUpdatedRow> readSessionUpdatedRow({required String databasePath, required String sessionId}) {
+  /// One session's `time_updated` from the session table the schema keeps
+  /// current: `session_v2` once OpenCode 2.x migrated the database, whose
+  /// `session` table is then a stale copy, else `session`. Null when the row
+  /// is absent.
+  Future<int?> readSessionUpdatedAt({required String databasePath, required String sessionId}) {
     final worker = _sessionActivityWorker;
     return Isolate.run(() => worker(databasePath: databasePath, sessionId: sessionId));
   }
 }
 
 class const _SqliteOpenCodeCatalogDatabaseWorker() {
-  OpenCodeSessionUpdatedRow readSessionUpdatedRow({required String databasePath, required String sessionId}) {
+  int? readSessionUpdatedAt({required String databasePath, required String sessionId}) {
     final Database database;
     try {
       database = sqlite3.open(databasePath, mode: OpenMode.readOnly);
@@ -116,9 +108,7 @@ class const _SqliteOpenCodeCatalogDatabaseWorker() {
         return rows.isEmpty ? null : _requiredInt(value: rows.first["time_updated"], field: "$table.time_updated");
       }
 
-      return tables.contains("session_v2")
-          ? OpenCodeV2SessionUpdatedRow(updatedAt: updatedAt("session_v2"))
-          : OpenCodeLegacySessionUpdatedRow(updatedAt: updatedAt("session"));
+      return tables.contains("session_v2") ? updatedAt("session_v2") : updatedAt("session");
     } on OpenCodeCatalogDatabaseException {
       rethrow;
     } on Object catch (error) {

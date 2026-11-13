@@ -50,10 +50,7 @@ class OpenCodeCatalogRepository({
     if (databasePath == null || !fileExists(path: databasePath)) {
       return const PluginSessionActivityUnavailable();
     }
-    final row = await databaseApi.readSessionUpdatedRow(databasePath: databasePath, sessionId: sessionId);
-    final updatedAt = switch (row) {
-      OpenCodeLegacySessionUpdatedRow(:final updatedAt) || OpenCodeV2SessionUpdatedRow(:final updatedAt) => updatedAt,
-    };
+    final updatedAt = await databaseApi.readSessionUpdatedAt(databasePath: databasePath, sessionId: sessionId);
     return updatedAt == null
         ? const PluginSessionActivityUnavailable()
         : PluginSessionActivityAvailable(updatedAt: updatedAt);

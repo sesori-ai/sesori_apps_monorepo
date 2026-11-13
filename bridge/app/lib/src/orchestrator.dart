@@ -219,6 +219,7 @@ typedef OrchestratorComposition = ({
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
+  ChatHistoryService chatHistoryService,
 });
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
@@ -833,6 +834,7 @@ class Orchestrator({
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
+      chatHistoryService: chatHistoryService,
     );
   }
 
