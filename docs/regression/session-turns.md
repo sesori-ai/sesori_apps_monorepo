@@ -149,12 +149,12 @@ defaults and queued client sends coherent.
   from that attachment, and a skill mentioned inside the text keeps the text
   unchanged. A Codex skill is sent as `$name args` with a structured `skill`
   input; the bubble shows `/name args` only when the user item names that
-  skill, and the injected `<skill>` body stays hidden after reload. Harness
+  skill, and the injected `<skill>` body stays hidden after reload. Pi expands
+  a prompt template or `/skill:name` into the stored user message; the live
+  bubble takes the typed text from the pending command, and history decodes
+  Pi's `<skill>` block back to `/skill:name args`. Harness
   exceptions are listed in `docs/HARNESS_CAPABILITIES.md`
   under "Command and skill bubbles".
-  Pi expands a prompt template or `/skill:name` into the stored user message;
-  the live bubble takes the typed text from the pending command, and history
-  decodes Pi's `<skill>` block back to `/skill:name args`.
 - Every send carries a client-generated prompt id, stable across retries. The
   bridge persists each id a session accepts for 30 days and answers a repeat
   as an idempotent success without reaching the plugin, so a retry of a send
