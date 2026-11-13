@@ -60,7 +60,7 @@ final class const OpenCodeSessionUpdatedRows({
   /// Whether OpenCode 2.x migrated the database, creating `session_v2`.
   required final bool migratedToV2,
 
-  /// From `session`; null when that table or the row is absent.
+  /// From `session`; null when the row is absent or the database migrated.
   required final int? sessionUpdatedAt,
 
   /// From `session_v2`; null when that table or the row is absent.
@@ -118,7 +118,8 @@ class const _SqliteOpenCodeCatalogDatabaseWorker() {
 
       return OpenCodeSessionUpdatedRows(
         migratedToV2: tables.contains("session_v2"),
-        sessionUpdatedAt: updatedAt("session"),
+        // A migrated database keeps its stale v1 table; it is never read.
+        sessionUpdatedAt: tables.contains("session_v2") ? null : updatedAt("session"),
         sessionV2UpdatedAt: updatedAt("session_v2"),
       );
     } on OpenCodeCatalogDatabaseException {

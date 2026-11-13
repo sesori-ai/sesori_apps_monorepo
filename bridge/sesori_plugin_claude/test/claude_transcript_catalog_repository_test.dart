@@ -6,7 +6,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show Log, LogLevel, PluginSessionActivityAvailable, PluginSessionActivityUnavailable;
+    show Log, LogLevel, PluginConfig, PluginSessionActivityAvailable, PluginSessionActivityUnavailable;
 import "package:sesori_shared/sesori_shared.dart" show wrapDictatedText;
 import "package:test/test.dart";
 
@@ -42,14 +42,26 @@ void main() {
         ],
       );
 
-      final activity = catalog.readRootSessionActivity(sessionId: _sessionA);
+      // Through the descriptor, so its environment wiring is covered too.
+      final activity = await const ClaudePluginDescriptor().readSessionActivity(
+        config: const PluginConfig(values: {}),
+        environment: {"CLAUDE_CONFIG_DIR": claudeHome.path},
+        sessionId: _sessionA,
+        directory: "/work/beta",
+      );
       final listed = (await catalog.listSessionRecordsInIsolate()).singleWhere((record) => record.id == _sessionA);
 
       final expected = DateTime.utc(2026, 8, 4, 11, 30).millisecondsSinceEpoch;
       expect(listed.updatedAt?.millisecondsSinceEpoch, expected);
       expect(activity, isA<PluginSessionActivityAvailable>().having((a) => a.updatedAt, "updatedAt", expected));
-      expect(catalog.readRootSessionActivity(sessionId: _indexedSessionId(9)), isA<PluginSessionActivityUnavailable>());
-      expect(catalog.readRootSessionActivity(sessionId: "../$_sessionA"), isA<PluginSessionActivityUnavailable>());
+      expect(
+        await catalog.readRootSessionActivity(sessionId: _indexedSessionId(9)),
+        isA<PluginSessionActivityUnavailable>(),
+      );
+      expect(
+        await catalog.readRootSessionActivity(sessionId: "../$_sessionA"),
+        isA<PluginSessionActivityUnavailable>(),
+      );
     });
 
     test("builds a session from a transcript header", () async {

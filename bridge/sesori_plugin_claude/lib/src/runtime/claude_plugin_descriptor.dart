@@ -144,7 +144,7 @@ final class const ClaudePluginDescriptor({
     required Map<String, String> environment,
     required String sessionId,
     required String directory,
-  }) async => ClaudeTranscriptCatalogRepository(
+  }) => ClaudeTranscriptCatalogRepository(
     transcriptApi: ClaudeTranscriptApi(environment: environment),
   ).readRootSessionActivity(sessionId: sessionId);
 

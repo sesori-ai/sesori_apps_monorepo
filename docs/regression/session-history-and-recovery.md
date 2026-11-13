@@ -19,8 +19,10 @@ reconnect or restart.
 
 - Reading an already-synced session serves from the bridge store and
   never starts a stopped backend. Only a first backfill or a re-read after the
-  backend advanced may reach it; backfill is lazy and per session, and a session
-  advanced outside Sesori is detected as stale, re-read, and re-cached.
+  backend advanced may start it; the open-time activity check below is the only
+  other plugin read, and it never starts the backend. Backfill is lazy and per
+  session, and a session advanced outside Sesori is detected as stale, re-read,
+  and re-cached.
 - Opening a synced session (a full or newest-page read that is not store-only)
   first asks the dormant plugin for that one session's backend activity time
   (a file stat, transcript tail or database row; never a process start or a

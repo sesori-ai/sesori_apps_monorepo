@@ -42,19 +42,24 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
   final Map<String, String> _pathsById = {};
 
   /// When root session [sessionId] was last active, by the same rule the
-  /// catalog lists it with: a lookup, one stat and a tail read, never a scan,
-  /// so a dormant plugin can answer. A sub-agent id is unavailable.
-  PluginSessionActivityResult readRootSessionActivity({required String sessionId}) {
-    if (!_uuidPattern.hasMatch(sessionId)) return const PluginSessionActivityUnavailable();
-    final path = _transcriptApi.findRootTranscriptPath(sessionId: sessionId);
-    final stat = path == null ? null : _transcriptApi.statFile(path: path);
-    if (path == null || stat == null) return const PluginSessionActivityUnavailable();
-    final activeAt = _rootActivity(
-      tail: _transcriptApi.readTailRecords(transcriptPath: path, sessionId: sessionId),
-      id: sessionId,
-      modified: stat.modified,
-    );
-    return PluginSessionActivityAvailable(updatedAt: activeAt.millisecondsSinceEpoch);
+  /// catalog lists it with: a project-directory lookup and a bounded tail
+  /// read, never a transcript scan, so a dormant plugin can answer. It runs in
+  /// an isolate like the other transcript reads. A sub-agent id is
+  /// unavailable.
+  Future<PluginSessionActivityResult> readRootSessionActivity({required String sessionId}) {
+    if (!_uuidPattern.hasMatch(sessionId)) return Future.value(const PluginSessionActivityUnavailable());
+    final transcriptApi = _transcriptApi;
+    return Isolate.run(() {
+      final path = transcriptApi.findRootTranscriptPath(sessionId: sessionId);
+      final stat = path == null ? null : transcriptApi.statFile(path: path);
+      if (path == null || stat == null) return const PluginSessionActivityUnavailable();
+      final activeAt = _rootActivity(
+        tail: transcriptApi.readTailRecords(transcriptPath: path, sessionId: sessionId),
+        id: sessionId,
+        modified: stat.modified,
+      );
+      return PluginSessionActivityAvailable(updatedAt: activeAt.millisecondsSinceEpoch);
+    });
   }
 
   /// Every session, newest first. Scanning thousands of transcripts must not

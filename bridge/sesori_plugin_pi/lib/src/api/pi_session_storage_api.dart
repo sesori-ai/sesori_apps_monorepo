@@ -165,8 +165,10 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
   /// The modification time of [sessionId]'s file in the directory Pi stores
   /// [directory]'s sessions in.
   ///
-  /// Lists that one directory instead of scanning every session root. Null
-  /// when no file there is named for the session.
+  /// Lists that one directory instead of scanning every session root, and
+  /// resolves only the matching entry. Pi names every session file
+  /// `<timestamp>_<id>.jsonl`. Null when no file there is named for the
+  /// session.
   DateTime? readSessionModified({required String sessionId, required String directory}) {
     if (!isValidPiSessionId(sessionId: sessionId)) return null;
     final resolved = _resolveEffectiveSessionDirectory(environment: _environment, directory: directory);
@@ -175,11 +177,25 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     if (root == null) return null;
     final diagnostics = _PiScanDiagnostics();
     try {
-      for (final path in _listJsonlFiles(directoryPath: root, diagnostics: diagnostics)) {
-        if (p.basename(path).endsWith("_$sessionId.jsonl")) {
-          return _statFile(path: path, diagnostics: diagnostics)?.modified.toUtc();
-        }
+      final directoryEntity = Directory(root);
+      if (!directoryEntity.existsSync()) return null;
+      for (final entity in directoryEntity.listSync(followLinks: false)) {
+        if (!p.basename(entity.path).endsWith("_$sessionId.jsonl")) continue;
+        final path = _resolveExistingFilePath(
+          path: _absolute(entity.path),
+          operation: "resolve Pi session file",
+          diagnostics: diagnostics,
+        );
+        return path == null ? null : _statFile(path: path, diagnostics: diagnostics)?.modified.toUtc();
       }
+      return null;
+    } on Object catch (error, stackTrace) {
+      diagnostics.recordStorageFailure(
+        operation: "list Pi session files",
+        path: root,
+        error: error,
+        stackTrace: stackTrace,
+      );
       return null;
     } finally {
       _logDiagnostics(diagnostics);

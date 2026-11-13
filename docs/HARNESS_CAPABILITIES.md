@@ -470,8 +470,9 @@ in the harness's own terminal or desktop app reorders the list after the next
 pull. The bridge keeps its monotonic timestamp merge and local title overrides.
 Apart from a manual refresh, the only import is the automatic hydration import
 each harness runs when it becomes ready, until its completion marker for the
-current catalog version is recorded; after that, outside activity waits for the
-next pull.
+current catalog version is recorded; after that, outside activity reaches the
+list at the next pull. Opening a session also catches outside turns in that one
+session without an import (see "Opening a session").
 
 | Harness | Status |
 |---|---|

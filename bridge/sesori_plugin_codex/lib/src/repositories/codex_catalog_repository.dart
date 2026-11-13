@@ -226,7 +226,8 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
   /// no scan, so a dormant plugin can answer. Codex thread ids are UUIDv7,
   /// whose leading 48 bits are the creation time in epoch milliseconds, and
   /// Codex files a rollout under its creation date. The catalog also folds in
-  /// the session index and creation time, which a turn does not move.
+  /// the session index and creation time; the mtime alone suffices here
+  /// because every turn appends to the rollout, moving it past both.
   PluginSessionActivityResult readSessionActivity({required String sessionId}) {
     final match = _uuidV7Pattern.firstMatch(sessionId);
     if (match == null) return const PluginSessionActivityUnavailable();
