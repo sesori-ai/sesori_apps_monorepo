@@ -57,12 +57,7 @@ class ModelCapabilities {
           other.temperature == temperature);
 
   @override
-  int get hashCode => Object.hash(
-    tools,
-    const DeepCollectionEquality().hash(input),
-    const DeepCollectionEquality().hash(output),
-    temperature,
-  );
+  int get hashCode => Object.hash(tools, const DeepCollectionEquality().hash(input), const DeepCollectionEquality().hash(output), temperature);
 
   final bool tools;
   final List<String> input;

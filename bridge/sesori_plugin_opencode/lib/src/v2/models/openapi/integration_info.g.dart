@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'connection_info.g.dart';
 import 'integration_method.g.dart';
 
@@ -22,12 +21,8 @@ class IntegrationInfo {
       id: json["id"] as String,
       name: json["name"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
-      methods: (json["methods"] as List<dynamic>)
-          .map((e) => IntegrationMethod.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      connections: (json["connections"] as List<dynamic>)
-          .map((e) => ConnectionInfo.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      methods: (json["methods"] as List<dynamic>).map((e) => IntegrationMethod.fromJson(e as Map<String, dynamic>)).toList(),
+      connections: (json["connections"] as List<dynamic>).map((e) => ConnectionInfo.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
 
@@ -70,13 +65,7 @@ class IntegrationInfo {
           const DeepCollectionEquality().equals(other.connections, connections));
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    name,
-    const DeepCollectionEquality().hash(metadata),
-    const DeepCollectionEquality().hash(methods),
-    const DeepCollectionEquality().hash(connections),
-  );
+  int get hashCode => Object.hash(id, name, const DeepCollectionEquality().hash(metadata), const DeepCollectionEquality().hash(methods), const DeepCollectionEquality().hash(connections));
 
   final String id;
   final String name;

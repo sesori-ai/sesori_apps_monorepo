@@ -44,7 +44,10 @@ class FormOption {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is FormOption && other.value == value && other.label == label && other.description == description);
+      (other is FormOption &&
+          other.value == value &&
+          other.label == label &&
+          other.description == description);
 
   @override
   int get hashCode => Object.hash(value, label, description);

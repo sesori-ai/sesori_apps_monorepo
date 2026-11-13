@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'session_message_compaction_completed.g.dart';
 import 'session_message_compaction_failed.g.dart';
 import 'session_message_compaction_running.g.dart';
@@ -53,7 +52,8 @@ class SessionMessageCompactionUnknown implements SessionMessageCompaction {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessageCompactionUnknown && const DeepCollectionEquality().equals(other.raw, raw));
+      (other is SessionMessageCompactionUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

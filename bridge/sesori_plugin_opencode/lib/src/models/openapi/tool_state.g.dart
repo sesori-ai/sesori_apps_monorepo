@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'tool_state_completed.g.dart';
 import 'tool_state_error.g.dart';
 import 'tool_state_pending.g.dart';
@@ -54,7 +53,9 @@ class ToolStateUnknown implements ToolState {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ToolStateUnknown && const DeepCollectionEquality().equals(other.raw, raw));
+      identical(this, other) ||
+      (other is ToolStateUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

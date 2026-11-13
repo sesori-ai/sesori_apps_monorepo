@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'provider.g.dart';
 
 @immutable
@@ -53,11 +52,7 @@ class ProviderListResponse {
           const DeepCollectionEquality().equals(other.connected, connected));
 
   @override
-  int get hashCode => Object.hash(
-    const DeepCollectionEquality().hash(all),
-    const DeepCollectionEquality().hash(defaultValue),
-    const DeepCollectionEquality().hash(connected),
-  );
+  int get hashCode => Object.hash(const DeepCollectionEquality().hash(all), const DeepCollectionEquality().hash(defaultValue), const DeepCollectionEquality().hash(connected));
 
   final List<Provider> all;
   final Map<String, String> defaultValue;

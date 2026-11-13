@@ -3,7 +3,6 @@
 
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
-
 import 'location_public_ref.g.dart';
 import 'model_ref.g.dart';
 import 'permission_ruleset.g.dart';
@@ -48,9 +47,7 @@ class SessionInfo {
       title: json["title"] as String?,
       subpath: json["subpath"] as String?,
       metadata: json["metadata"] == null ? null : SessionMetadata.fromJson(json["metadata"] as Map<String, dynamic>),
-      permissions: json["permissions"] == null
-          ? null
-          : PermissionRuleset.fromJson(json["permissions"] as List<dynamic>),
+      permissions: json["permissions"] == null ? null : PermissionRuleset.fromJson(json["permissions"] as List<dynamic>),
       revert: json["revert"] == null ? null : SessionRevert.fromJson(json["revert"] as Map<String, dynamic>),
       location: LocationPublicRef.fromJson(json["location"] as Map<String, dynamic>),
     );
@@ -139,24 +136,7 @@ class SessionInfo {
           other.location == location);
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    parentID,
-    fork,
-    projectID,
-    agent,
-    model,
-    cost,
-    tokens,
-    outcome,
-    time,
-    title,
-    subpath,
-    metadata,
-    permissions,
-    revert,
-    location,
-  );
+  int get hashCode => Object.hash(id, parentID, fork, projectID, agent, model, cost, tokens, outcome, time, title, subpath, metadata, permissions, revert, location);
 
   final String id;
   final String? parentID;
@@ -212,7 +192,9 @@ class SessionInfoFork {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionInfoFork && other.sessionID == sessionID && other.boundary == boundary);
+      (other is SessionInfoFork &&
+          other.sessionID == sessionID &&
+          other.boundary == boundary);
 
   @override
   int get hashCode => Object.hash(sessionID, boundary);

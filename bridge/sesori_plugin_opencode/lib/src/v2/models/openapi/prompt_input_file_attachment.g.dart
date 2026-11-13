@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
-
 import 'prompt_file_source.g.dart';
 import 'prompt_mention.g.dart';
 

@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'provider_settings.g.dart';
 
 @immutable
@@ -53,8 +52,7 @@ class ProviderRequest {
           const DeepCollectionEquality().equals(other.body, body));
 
   @override
-  int get hashCode =>
-      Object.hash(settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body));
+  int get hashCode => Object.hash(settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body));
 
   final ProviderSettings settings;
   final Map<String, String> headers;

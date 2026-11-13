@@ -15,7 +15,8 @@ class SessionMessageNative {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessageNative && const DeepCollectionEquality().equals(other.json, json));
+      (other is SessionMessageNative &&
+          const DeepCollectionEquality().equals(other.json, json));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(json);

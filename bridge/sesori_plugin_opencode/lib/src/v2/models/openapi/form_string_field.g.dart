@@ -4,7 +4,6 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
-
 import 'form_field.g.dart';
 import 'form_option.g.dart';
 import 'form_when.g.dart';
@@ -124,22 +123,7 @@ class FormStringField implements FormField {
           other.custom == custom);
 
   @override
-  int get hashCode => Object.hash(
-    key,
-    title,
-    description,
-    required,
-    hidden,
-    const DeepCollectionEquality().hash(when),
-    format,
-    minLength,
-    maxLength,
-    pattern,
-    placeholder,
-    defaultValue,
-    const DeepCollectionEquality().hash(options),
-    custom,
-  );
+  int get hashCode => Object.hash(key, title, description, required, hidden, const DeepCollectionEquality().hash(when), format, minLength, maxLength, pattern, placeholder, defaultValue, const DeepCollectionEquality().hash(options), custom);
 
   final String key;
   final String? title;

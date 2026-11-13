@@ -38,7 +38,10 @@ class GlobalHealthResponse {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is GlobalHealthResponse && other.healthy == healthy && other.version == version);
+      identical(this, other) ||
+      (other is GlobalHealthResponse &&
+          other.healthy == healthy &&
+          other.version == version);
 
   @override
   int get hashCode => Object.hash(healthy, version);

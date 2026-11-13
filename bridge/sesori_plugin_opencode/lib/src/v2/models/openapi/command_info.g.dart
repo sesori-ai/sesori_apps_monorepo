@@ -38,7 +38,10 @@ class CommandInfo {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is CommandInfo && other.name == name && other.description == description);
+      identical(this, other) ||
+      (other is CommandInfo &&
+          other.name == name &&
+          other.description == description);
 
   @override
   int get hashCode => Object.hash(name, description);

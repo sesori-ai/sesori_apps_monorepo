@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'session_message_info.g.dart';
 
 @immutable
@@ -89,7 +88,9 @@ class SessionMessagesResponseCursor {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessagesResponseCursor && other.previous == previous && other.next == next);
+      (other is SessionMessagesResponseCursor &&
+          other.previous == previous &&
+          other.next == next);
 
   @override
   int get hashCode => Object.hash(previous, next);

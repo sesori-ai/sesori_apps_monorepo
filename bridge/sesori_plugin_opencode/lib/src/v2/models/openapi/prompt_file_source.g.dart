@@ -46,7 +46,9 @@ class PromptFileSourceInline implements PromptFileSource {
       "type": "inline",
     };
   }
+
 }
+
 
 @immutable
 class PromptFileSourceUri implements PromptFileSource {
@@ -79,13 +81,17 @@ class PromptFileSourceUri implements PromptFileSource {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is PromptFileSourceUri && other.uri == uri);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PromptFileSourceUri &&
+          other.uri == uri);
 
   @override
   int get hashCode => uri.hashCode;
 
   final String uri;
 }
+
 
 /// Fallback variant for an unrecognized [PromptFileSource] payload shape.
 /// Carries the raw JSON so newer OpenCode servers do not break
@@ -102,7 +108,8 @@ class PromptFileSourceUnknown implements PromptFileSource {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is PromptFileSourceUnknown && const DeepCollectionEquality().equals(other.raw, raw));
+      (other is PromptFileSourceUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

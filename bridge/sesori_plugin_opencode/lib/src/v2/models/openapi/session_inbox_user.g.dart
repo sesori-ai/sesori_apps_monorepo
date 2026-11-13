@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
-
 import 'session_inbox_delivery.g.dart';
 import 'session_inbox_info.g.dart';
 import 'session_inbox_user_payload.g.dart';
@@ -107,7 +106,9 @@ class SessionInboxUserTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is SessionInboxUserTime && other.created == created);
+      identical(this, other) ||
+      (other is SessionInboxUserTime &&
+          other.created == created);
 
   @override
   int get hashCode => created.hashCode;

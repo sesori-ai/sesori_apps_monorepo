@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'location_public_ref.g.dart';
 import 'session_message_info.g.dart';
 
@@ -27,9 +26,7 @@ class SessionMessageLocationSwitched implements SessionMessageInfo {
       projectID: json["projectID"] as String?,
       subpath: json["subpath"] as String?,
       location: LocationPublicRef.fromJson(json["location"] as Map<String, dynamic>),
-      previous: json["previous"] == null
-          ? null
-          : SessionMessageLocationSwitchedPrevious.fromJson(json["previous"] as Map<String, dynamic>),
+      previous: json["previous"] == null ? null : SessionMessageLocationSwitchedPrevious.fromJson(json["previous"] as Map<String, dynamic>),
     );
   }
 
@@ -82,8 +79,7 @@ class SessionMessageLocationSwitched implements SessionMessageInfo {
           other.previous == previous);
 
   @override
-  int get hashCode =>
-      Object.hash(id, const DeepCollectionEquality().hash(metadata), time, projectID, subpath, location, previous);
+  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, projectID, subpath, location, previous);
 
   final String id;
   final Map<String, dynamic>? metadata;
@@ -124,7 +120,9 @@ class SessionMessageLocationSwitchedTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is SessionMessageLocationSwitchedTime && other.created == created);
+      identical(this, other) ||
+      (other is SessionMessageLocationSwitchedTime &&
+          other.created == created);
 
   @override
   int get hashCode => created.hashCode;

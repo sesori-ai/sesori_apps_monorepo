@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
-
 import 'provider_compaction.g.dart';
 import 'provider_encoding.g.dart';
 
@@ -42,7 +41,9 @@ class ModelVariantSettings {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ModelVariantSettings && other.compaction == compaction && other.encoding == encoding);
+      (other is ModelVariantSettings &&
+          other.compaction == compaction &&
+          other.encoding == encoding);
 
   @override
   int get hashCode => Object.hash(compaction, encoding);

@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'prompt_agent_attachment.g.dart';
 import 'prompt_file_attachment.g.dart';
 import 'prompt_skill_attachment.g.dart';
@@ -21,15 +20,9 @@ class SessionInboxUserPayload {
   factory SessionInboxUserPayload.fromJson(Map<String, dynamic> json) {
     return SessionInboxUserPayload(
       text: json["text"] as String,
-      files: (json["files"] as List<dynamic>?)
-          ?.map((e) => PromptFileAttachment.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      agents: (json["agents"] as List<dynamic>?)
-          ?.map((e) => PromptAgentAttachment.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      skills: (json["skills"] as List<dynamic>?)
-          ?.map((e) => PromptSkillAttachment.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      files: (json["files"] as List<dynamic>?)?.map((e) => PromptFileAttachment.fromJson(e as Map<String, dynamic>)).toList(),
+      agents: (json["agents"] as List<dynamic>?)?.map((e) => PromptAgentAttachment.fromJson(e as Map<String, dynamic>)).toList(),
+      skills: (json["skills"] as List<dynamic>?)?.map((e) => PromptSkillAttachment.fromJson(e as Map<String, dynamic>)).toList(),
       metadata: json["metadata"] as Map<String, dynamic>?,
     );
   }
@@ -73,13 +66,7 @@ class SessionInboxUserPayload {
           const DeepCollectionEquality().equals(other.metadata, metadata));
 
   @override
-  int get hashCode => Object.hash(
-    text,
-    const DeepCollectionEquality().hash(files),
-    const DeepCollectionEquality().hash(agents),
-    const DeepCollectionEquality().hash(skills),
-    const DeepCollectionEquality().hash(metadata),
-  );
+  int get hashCode => Object.hash(text, const DeepCollectionEquality().hash(files), const DeepCollectionEquality().hash(agents), const DeepCollectionEquality().hash(skills), const DeepCollectionEquality().hash(metadata));
 
   final String text;
   final List<PromptFileAttachment>? files;

@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'model_variant_settings.g.dart';
 
 @immutable
@@ -18,9 +17,7 @@ class ModelVariant {
   factory ModelVariant.fromJson(Map<String, dynamic> json) {
     return ModelVariant(
       id: json["id"] as String,
-      settings: json["settings"] == null
-          ? null
-          : ModelVariantSettings.fromJson(json["settings"] as Map<String, dynamic>),
+      settings: json["settings"] == null ? null : ModelVariantSettings.fromJson(json["settings"] as Map<String, dynamic>),
       headers: (json["headers"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
       body: json["body"] as Map<String, dynamic>?,
     );
@@ -61,12 +58,7 @@ class ModelVariant {
           const DeepCollectionEquality().equals(other.body, body));
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    settings,
-    const DeepCollectionEquality().hash(headers),
-    const DeepCollectionEquality().hash(body),
-  );
+  int get hashCode => Object.hash(id, settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body));
 
   final String id;
   final ModelVariantSettings? settings;

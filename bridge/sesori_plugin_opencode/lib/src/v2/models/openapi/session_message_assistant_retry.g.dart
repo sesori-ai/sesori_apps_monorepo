@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
-
 import 'session_structured_error.g.dart';
 
 @immutable
@@ -46,7 +45,10 @@ class SessionMessageAssistantRetry {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessageAssistantRetry && other.attempt == attempt && other.at == at && other.error == error);
+      (other is SessionMessageAssistantRetry &&
+          other.attempt == attempt &&
+          other.at == at &&
+          other.error == error);
 
   @override
   int get hashCode => Object.hash(attempt, at, error);

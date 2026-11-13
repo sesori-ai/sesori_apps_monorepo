@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
-
 import 'session_message_tool_state.g.dart';
 
 @immutable
@@ -37,7 +36,9 @@ class SessionMessageToolStateStreaming implements SessionMessageToolState {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is SessionMessageToolStateStreaming && other.input == input);
+      identical(this, other) ||
+      (other is SessionMessageToolStateStreaming &&
+          other.input == input);
 
   @override
   int get hashCode => input.hashCode;

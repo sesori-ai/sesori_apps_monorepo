@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'permission_ruleset.g.dart';
 import 'snapshot_file_diff.g.dart';
 
@@ -150,27 +149,7 @@ class Session {
           other.revert == revert);
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    slug,
-    projectID,
-    workspaceID,
-    directory,
-    path,
-    parentID,
-    summary,
-    cost,
-    tokens,
-    share,
-    title,
-    agent,
-    model,
-    version,
-    const DeepCollectionEquality().hash(metadata),
-    time,
-    permission,
-    revert,
-  );
+  int get hashCode => Object.hash(id, slug, projectID, workspaceID, directory, path, parentID, summary, cost, tokens, share, title, agent, model, version, const DeepCollectionEquality().hash(metadata), time, permission, revert);
 
   final String id;
   final String slug;
@@ -207,9 +186,7 @@ class SessionSummary {
       additions: (json["additions"] as num).toDouble(),
       deletions: (json["deletions"] as num).toDouble(),
       files: (json["files"] as num).toDouble(),
-      diffs: (json["diffs"] as List<dynamic>?)
-          ?.map((e) => SnapshotFileDiff.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      diffs: (json["diffs"] as List<dynamic>?)?.map((e) => SnapshotFileDiff.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
 
@@ -346,7 +323,10 @@ class SessionShare {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is SessionShare && other.url == url);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionShare &&
+          other.url == url);
 
   @override
   int get hashCode => url.hashCode;
@@ -395,7 +375,10 @@ class SessionModel {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionModel && other.id == id && other.providerID == providerID && other.variant == variant);
+      (other is SessionModel &&
+          other.id == id &&
+          other.providerID == providerID &&
+          other.variant == variant);
 
   @override
   int get hashCode => Object.hash(id, providerID, variant);
@@ -562,7 +545,10 @@ class SessionTokensCache {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is SessionTokensCache && other.read == read && other.write == write);
+      identical(this, other) ||
+      (other is SessionTokensCache &&
+          other.read == read &&
+          other.write == write);
 
   @override
   int get hashCode => Object.hash(read, write);

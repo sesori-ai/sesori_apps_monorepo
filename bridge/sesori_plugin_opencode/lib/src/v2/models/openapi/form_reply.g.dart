@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
-
 import 'form_answer.g.dart';
 
 @immutable
@@ -34,7 +33,10 @@ class FormReply {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is FormReply && other.answer == answer);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FormReply &&
+          other.answer == answer);
 
   @override
   int get hashCode => answer.hashCode;

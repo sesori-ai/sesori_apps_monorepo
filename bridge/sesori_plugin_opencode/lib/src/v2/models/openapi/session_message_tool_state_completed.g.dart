@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'session_message_tool_state.g.dart';
 import 'tool_content.g.dart';
 
@@ -56,11 +55,7 @@ class SessionMessageToolStateCompleted implements SessionMessageToolState {
           const DeepCollectionEquality().equals(other.metadata, metadata));
 
   @override
-  int get hashCode => Object.hash(
-    const DeepCollectionEquality().hash(input),
-    const DeepCollectionEquality().hash(content),
-    const DeepCollectionEquality().hash(metadata),
-  );
+  int get hashCode => Object.hash(const DeepCollectionEquality().hash(input), const DeepCollectionEquality().hash(content), const DeepCollectionEquality().hash(metadata));
 
   final Map<String, dynamic> input;
   final List<ToolContent> content;

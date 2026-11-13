@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
-
 import 'session_message_assistant_content.g.dart';
 import 'session_message_native.g.dart';
 
@@ -43,7 +42,10 @@ class SessionMessageAssistantText implements SessionMessageAssistantContent {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is SessionMessageAssistantText && other.text == text && other.native == native);
+      identical(this, other) ||
+      (other is SessionMessageAssistantText &&
+          other.text == text &&
+          other.native == native);
 
   @override
   int get hashCode => Object.hash(text, native);

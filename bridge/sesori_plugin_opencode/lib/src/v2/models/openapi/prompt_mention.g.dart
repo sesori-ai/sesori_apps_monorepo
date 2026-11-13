@@ -44,7 +44,10 @@ class PromptMention {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is PromptMention && other.start == start && other.end == end && other.text == text);
+      (other is PromptMention &&
+          other.start == start &&
+          other.end == end &&
+          other.text == text);
 
   @override
   int get hashCode => Object.hash(start, end, text);

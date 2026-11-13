@@ -4,7 +4,6 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
-
 import 'model_capabilities.g.dart';
 import 'model_compatibility.g.dart';
 import 'model_cost.g.dart';
@@ -44,17 +43,13 @@ class ModelInfo {
       type: json["type"] as String?,
       family: json["family"] as String?,
       name: json["name"] as String,
-      compatibility: json["compatibility"] == null
-          ? null
-          : ModelCompatibility.fromJson(json["compatibility"] as Map<String, dynamic>),
+      compatibility: json["compatibility"] == null ? null : ModelCompatibility.fromJson(json["compatibility"] as Map<String, dynamic>),
       package: json["package"] as String?,
       settings: json["settings"] == null ? null : ModelSettings.fromJson(json["settings"] as Map<String, dynamic>),
       headers: (json["headers"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
       body: json["body"] as Map<String, dynamic>?,
       capabilities: ModelCapabilities.fromJson(json["capabilities"] as Map<String, dynamic>),
-      variants: (json["variants"] as List<dynamic>)
-          .map((e) => ModelVariant.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      variants: (json["variants"] as List<dynamic>).map((e) => ModelVariant.fromJson(e as Map<String, dynamic>)).toList(),
       time: ModelInfoTime.fromJson(json["time"] as Map<String, dynamic>),
       cost: (json["cost"] as List<dynamic>).map((e) => ModelCost.fromJson(e as Map<String, dynamic>)).toList(),
       status: ModelInfoStatus.fromJson(json["status"] as String),
@@ -158,27 +153,7 @@ class ModelInfo {
           other.limit == limit);
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    modelID,
-    providerID,
-    canonical,
-    type,
-    family,
-    name,
-    compatibility,
-    package,
-    settings,
-    const DeepCollectionEquality().hash(headers),
-    const DeepCollectionEquality().hash(body),
-    capabilities,
-    const DeepCollectionEquality().hash(variants),
-    time,
-    const DeepCollectionEquality().hash(cost),
-    status,
-    enabled,
-    limit,
-  );
+  int get hashCode => Object.hash(id, modelID, providerID, canonical, type, family, name, compatibility, package, settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body), capabilities, const DeepCollectionEquality().hash(variants), time, const DeepCollectionEquality().hash(cost), status, enabled, limit);
 
   final String id;
   final String modelID;
@@ -230,7 +205,10 @@ class ModelInfoTime {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is ModelInfoTime && other.released == released);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelInfoTime &&
+          other.released == released);
 
   @override
   int get hashCode => released.hashCode;
@@ -279,7 +257,10 @@ class ModelInfoLimit {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ModelInfoLimit && other.context == context && other.input == input && other.output == output);
+      (other is ModelInfoLimit &&
+          other.context == context &&
+          other.input == input &&
+          other.output == output);
 
   @override
   int get hashCode => Object.hash(context, input, output);

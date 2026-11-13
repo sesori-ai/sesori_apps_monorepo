@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'output_format_json_schema.g.dart';
 import 'output_format_text.g.dart';
 
@@ -48,7 +47,9 @@ class OutputFormatUnknown implements OutputFormat {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is OutputFormatUnknown && const DeepCollectionEquality().equals(other.raw, raw));
+      identical(this, other) ||
+      (other is OutputFormatUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

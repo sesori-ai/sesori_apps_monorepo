@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
-
 import 'mcp_server_status.g.dart';
 
 @immutable
@@ -20,4 +19,5 @@ class McpStatusPending implements McpServerStatus {
       "status": "pending",
     };
   }
+
 }

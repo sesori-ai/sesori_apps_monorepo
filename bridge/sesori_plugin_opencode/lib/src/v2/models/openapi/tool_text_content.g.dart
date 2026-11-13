@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
-
 import 'tool_content.g.dart';
 
 @immutable
@@ -36,7 +35,10 @@ class ToolTextContent implements ToolContent {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is ToolTextContent && other.text == text);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ToolTextContent &&
+          other.text == text);
 
   @override
   int get hashCode => text.hashCode;

@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'session_message_info.g.dart';
 
 @immutable
@@ -106,7 +105,9 @@ class SessionMessageSyntheticTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is SessionMessageSyntheticTime && other.created == created);
+      identical(this, other) ||
+      (other is SessionMessageSyntheticTime &&
+          other.created == created);
 
   @override
   int get hashCode => created.hashCode;

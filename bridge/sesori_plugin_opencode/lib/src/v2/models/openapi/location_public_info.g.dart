@@ -39,7 +39,9 @@ class LocationPublicInfo {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LocationPublicInfo && other.directory == directory && other.project == project);
+      (other is LocationPublicInfo &&
+          other.directory == directory &&
+          other.project == project);
 
   @override
   int get hashCode => Object.hash(directory, project);

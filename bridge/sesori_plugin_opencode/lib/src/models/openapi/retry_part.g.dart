@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:meta/meta.dart';
-
 import 'apierror.g.dart';
 import 'part.g.dart';
 
@@ -112,7 +111,10 @@ class RetryPartTime {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is RetryPartTime && other.created == created);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RetryPartTime &&
+          other.created == created);
 
   @override
   int get hashCode => created.hashCode;

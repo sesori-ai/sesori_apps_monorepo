@@ -4,7 +4,6 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
-
 import 'session_message_info.g.dart';
 
 @immutable
@@ -29,9 +28,7 @@ class SessionMessageShell implements SessionMessageInfo {
       command: json["command"] as String,
       status: SessionMessageShellStatus.fromJson(json["status"] as String),
       exit: json["exit"] as Object?,
-      output: json["output"] == null
-          ? null
-          : SessionMessageShellOutput.fromJson(json["output"] as Map<String, dynamic>),
+      output: json["output"] == null ? null : SessionMessageShellOutput.fromJson(json["output"] as Map<String, dynamic>),
     );
   }
 
@@ -88,16 +85,7 @@ class SessionMessageShell implements SessionMessageInfo {
           other.output == output);
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    const DeepCollectionEquality().hash(metadata),
-    time,
-    shellID,
-    command,
-    status,
-    const DeepCollectionEquality().hash(exit),
-    output,
-  );
+  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, shellID, command, status, const DeepCollectionEquality().hash(exit), output);
 
   final String id;
   final Map<String, dynamic>? metadata;
@@ -145,7 +133,9 @@ class SessionMessageShellTime {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessageShellTime && other.created == created && other.completed == completed);
+      (other is SessionMessageShellTime &&
+          other.created == created &&
+          other.completed == completed);
 
   @override
   int get hashCode => Object.hash(created, completed);

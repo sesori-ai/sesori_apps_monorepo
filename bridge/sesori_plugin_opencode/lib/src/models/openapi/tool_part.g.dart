@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'part.g.dart';
 import 'tool_state.g.dart';
 
@@ -80,8 +79,7 @@ class ToolPart implements Part {
           const DeepCollectionEquality().equals(other.metadata, metadata));
 
   @override
-  int get hashCode =>
-      Object.hash(id, sessionID, messageID, callID, tool, state, const DeepCollectionEquality().hash(metadata));
+  int get hashCode => Object.hash(id, sessionID, messageID, callID, tool, state, const DeepCollectionEquality().hash(metadata));
 
   final String id;
   final String sessionID;

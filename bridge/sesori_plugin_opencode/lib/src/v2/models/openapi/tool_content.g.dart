@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'tool_file_content.g.dart';
 import 'tool_text_content.g.dart';
 
@@ -48,7 +47,9 @@ class ToolContentUnknown implements ToolContent {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ToolContentUnknown && const DeepCollectionEquality().equals(other.raw, raw));
+      identical(this, other) ||
+      (other is ToolContentUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

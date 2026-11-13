@@ -38,7 +38,10 @@ class Range {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is Range && other.start == start && other.end == end);
+      identical(this, other) ||
+      (other is Range &&
+          other.start == start &&
+          other.end == end);
 
   @override
   int get hashCode => Object.hash(start, end);
@@ -82,7 +85,10 @@ class RangeStart {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is RangeStart && other.line == line && other.character == character);
+      identical(this, other) ||
+      (other is RangeStart &&
+          other.line == line &&
+          other.character == character);
 
   @override
   int get hashCode => Object.hash(line, character);
@@ -126,7 +132,10 @@ class RangeEnd {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is RangeEnd && other.line == line && other.character == character);
+      identical(this, other) ||
+      (other is RangeEnd &&
+          other.line == line &&
+          other.character == character);
 
   @override
   int get hashCode => Object.hash(line, character);

@@ -38,7 +38,10 @@ class QuestionTool {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is QuestionTool && other.messageID == messageID && other.callID == callID);
+      identical(this, other) ||
+      (other is QuestionTool &&
+          other.messageID == messageID &&
+          other.callID == callID);
 
   @override
   int get hashCode => Object.hash(messageID, callID);

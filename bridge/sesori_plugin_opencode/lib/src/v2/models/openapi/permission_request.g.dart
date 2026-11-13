@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'permission_source.g.dart';
 
 @immutable
@@ -83,16 +82,7 @@ class PermissionRequest {
           other.message == message);
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    sessionID,
-    action,
-    const DeepCollectionEquality().hash(resources),
-    const DeepCollectionEquality().hash(save),
-    const DeepCollectionEquality().hash(metadata),
-    source,
-    message,
-  );
+  int get hashCode => Object.hash(id, sessionID, action, const DeepCollectionEquality().hash(resources), const DeepCollectionEquality().hash(save), const DeepCollectionEquality().hash(metadata), source, message);
 
   final String id;
   final String sessionID;

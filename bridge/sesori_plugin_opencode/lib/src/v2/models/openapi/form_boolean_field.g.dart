@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'form_field.g.dart';
 import 'form_when.g.dart';
 
@@ -80,8 +79,7 @@ class FormBooleanField implements FormField {
           other.defaultValue == defaultValue);
 
   @override
-  int get hashCode =>
-      Object.hash(key, title, description, required, hidden, const DeepCollectionEquality().hash(when), defaultValue);
+  int get hashCode => Object.hash(key, title, description, required, hidden, const DeepCollectionEquality().hash(when), defaultValue);
 
   final String key;
   final String? title;

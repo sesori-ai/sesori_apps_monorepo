@@ -38,13 +38,16 @@ class FormValue00Inline implements FormValue {
   Object? toJson() => value;
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is FormValue00Inline && other.value == value);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FormValue00Inline && other.value == value);
 
   @override
   int get hashCode => value.hashCode;
 
   final String value;
 }
+
 
 @immutable
 class FormValue01Inline implements FormValue {
@@ -58,13 +61,15 @@ class FormValue01Inline implements FormValue {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is FormValue01Inline && const DeepCollectionEquality().equals(other.items, items));
+      (other is FormValue01Inline &&
+          const DeepCollectionEquality().equals(other.items, items));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(items);
 
   final List<String> items;
 }
+
 
 /// Fallback variant for an unrecognized [FormValue] payload shape.
 /// Carries the raw JSON so newer OpenCode servers do not break
@@ -80,7 +85,9 @@ class FormValueUnknown implements FormValue {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is FormValueUnknown && const DeepCollectionEquality().equals(other.raw, raw));
+      identical(this, other) ||
+      (other is FormValueUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

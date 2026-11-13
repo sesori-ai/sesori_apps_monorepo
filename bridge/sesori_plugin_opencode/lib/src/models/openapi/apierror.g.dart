@@ -39,7 +39,10 @@ class APIError {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is APIError && other.name == name && other.data == data);
+      identical(this, other) ||
+      (other is APIError &&
+          other.name == name &&
+          other.data == data);
 
   @override
   int get hashCode => Object.hash(name, data);
@@ -113,14 +116,7 @@ class APIErrorData {
           const DeepCollectionEquality().equals(other.metadata, metadata));
 
   @override
-  int get hashCode => Object.hash(
-    message,
-    statusCode,
-    isRetryable,
-    const DeepCollectionEquality().hash(responseHeaders),
-    responseBody,
-    const DeepCollectionEquality().hash(metadata),
-  );
+  int get hashCode => Object.hash(message, statusCode, isRetryable, const DeepCollectionEquality().hash(responseHeaders), responseBody, const DeepCollectionEquality().hash(metadata));
 
   final String message;
   final int? statusCode;

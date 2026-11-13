@@ -46,7 +46,9 @@ class ProviderCompactionSummary implements ProviderCompaction {
       "type": "summary",
     };
   }
+
 }
+
 
 @immutable
 class ProviderCompactionNative implements ProviderCompaction {
@@ -63,7 +65,9 @@ class ProviderCompactionNative implements ProviderCompaction {
       "type": "native",
     };
   }
+
 }
+
 
 /// Fallback variant for an unrecognized [ProviderCompaction] payload shape.
 /// Carries the raw JSON so newer OpenCode servers do not break
@@ -80,7 +84,8 @@ class ProviderCompactionUnknown implements ProviderCompaction {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ProviderCompactionUnknown && const DeepCollectionEquality().equals(other.raw, raw));
+      (other is ProviderCompactionUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

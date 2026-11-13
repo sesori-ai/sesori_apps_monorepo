@@ -38,7 +38,10 @@ class QuestionOption {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is QuestionOption && other.label == label && other.description == description);
+      identical(this, other) ||
+      (other is QuestionOption &&
+          other.label == label &&
+          other.description == description);
 
   @override
   int get hashCode => Object.hash(label, description);

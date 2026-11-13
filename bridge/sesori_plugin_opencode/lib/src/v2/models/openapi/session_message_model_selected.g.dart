@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'model_ref.g.dart';
 import 'session_message_info.g.dart';
 
@@ -107,7 +106,9 @@ class SessionMessageModelSelectedTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is SessionMessageModelSelectedTime && other.created == created);
+      identical(this, other) ||
+      (other is SessionMessageModelSelectedTime &&
+          other.created == created);
 
   @override
   int get hashCode => created.hashCode;

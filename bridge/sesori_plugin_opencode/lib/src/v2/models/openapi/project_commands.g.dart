@@ -32,7 +32,10 @@ class ProjectCommands {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is ProjectCommands && other.start == start);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProjectCommands &&
+          other.start == start);
 
   @override
   int get hashCode => start.hashCode;

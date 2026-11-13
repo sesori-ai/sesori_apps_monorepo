@@ -48,7 +48,9 @@ class SessionStatusIdle implements SessionStatus {
       "type": "idle",
     };
   }
+
 }
+
 
 @immutable
 class SessionStatusRetry implements SessionStatus {
@@ -113,6 +115,7 @@ class SessionStatusRetry implements SessionStatus {
   final int next;
 }
 
+
 @immutable
 class SessionStatusBusy implements SessionStatus {
   const SessionStatusBusy();
@@ -128,7 +131,9 @@ class SessionStatusBusy implements SessionStatus {
       "type": "busy",
     };
   }
+
 }
+
 
 /// Fallback variant for an unrecognized [SessionStatus] payload shape.
 /// Carries the raw JSON so newer OpenCode servers do not break
@@ -145,7 +150,8 @@ class SessionStatusUnknown implements SessionStatus {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionStatusUnknown && const DeepCollectionEquality().equals(other.raw, raw));
+      (other is SessionStatusUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'form_boolean_field.g.dart';
 import 'form_external_field.g.dart';
 import 'form_integer_field.g.dart';
@@ -60,7 +59,9 @@ class FormFieldUnknown implements FormField {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is FormFieldUnknown && const DeepCollectionEquality().equals(other.raw, raw));
+      identical(this, other) ||
+      (other is FormFieldUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

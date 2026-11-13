@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'session_info.g.dart';
 
 @immutable
@@ -42,7 +41,9 @@ class SessionsResponse {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionsResponse && const DeepCollectionEquality().equals(other.data, data) && other.cursor == cursor);
+      (other is SessionsResponse &&
+          const DeepCollectionEquality().equals(other.data, data) &&
+          other.cursor == cursor);
 
   @override
   int get hashCode => Object.hash(const DeepCollectionEquality().hash(data), cursor);
@@ -86,7 +87,10 @@ class SessionsResponseCursor {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is SessionsResponseCursor && other.previous == previous && other.next == next);
+      identical(this, other) ||
+      (other is SessionsResponseCursor &&
+          other.previous == previous &&
+          other.next == next);
 
   @override
   int get hashCode => Object.hash(previous, next);

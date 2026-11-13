@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'part.g.dart';
 
 @immutable
@@ -118,7 +117,10 @@ class ReasoningPartTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ReasoningPartTime && other.start == start && other.end == end);
+      identical(this, other) ||
+      (other is ReasoningPartTime &&
+          other.start == start &&
+          other.end == end);
 
   @override
   int get hashCode => Object.hash(start, end);
