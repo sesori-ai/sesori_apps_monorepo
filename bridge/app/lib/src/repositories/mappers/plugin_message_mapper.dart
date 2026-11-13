@@ -13,6 +13,8 @@ extension PluginMessageMapper on PluginMessage {
       agent: agent,
       time: time.toShared(),
       promptId: promptId,
+      // Bridge core names the invocation from its own sends.
+      invocation: null,
     ),
     PluginMessageAssistant(
       :final id,

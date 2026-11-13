@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "command_info.dart";
 import "session_variant.dart";
 
 part "send_prompt_request.freezed.dart";
@@ -15,6 +16,11 @@ sealed class SendPromptRequest with _$SendPromptRequest {
     required String? agent,
     required PromptModel? model,
     required String? command,
+
+    /// Source of [command] as the command picker listed it. Null for a plain
+    /// prompt and from clients that predate it; the bridge then records the
+    /// invocation as [CommandSource.unknown].
+    @JsonKey(unknownEnumValue: CommandSource.unknown) required CommandSource? commandSource,
     required SessionVariant? variant,
 
     /// Whether this and later turns run in the backend's fast mode.

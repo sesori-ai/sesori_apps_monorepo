@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "command_info.dart";
 import "plugin_identity.dart";
 import "send_prompt_request.dart";
 import "session_variant.dart";
@@ -19,6 +20,11 @@ sealed class CreateSessionRequest with _$CreateSessionRequest {
     required String? agent,
     required PromptModel? model,
     required String? command,
+
+    /// Source of [command] as the command picker listed it. Null for a plain
+    /// prompt and from clients that predate it; the bridge then records the
+    /// invocation as [CommandSource.unknown].
+    @JsonKey(unknownEnumValue: CommandSource.unknown) required CommandSource? commandSource,
     required SessionVariant? variant,
     // COMPATIBILITY 2026-09-23 (v1.9.0): Apps before fast mode omit fastMode and cannot select it, so the session starts at normal speed. Remove @Default and require the field once the minimum supported app always sends it.
     @Default(false) bool fastMode,

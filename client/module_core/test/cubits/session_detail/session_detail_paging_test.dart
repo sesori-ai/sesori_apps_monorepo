@@ -401,10 +401,24 @@ void main() {
 
   group("the prompt index", () {
     const first = [
-      SessionPromptIndexEntry.opener(messageId: "m1", seq: 1, number: 1, createdAt: null, preview: "First"),
+      SessionPromptIndexEntry.opener(
+        invocation: null,
+        messageId: "m1",
+        seq: 1,
+        number: 1,
+        createdAt: null,
+        preview: "First",
+      ),
     ];
     const second = [
-      SessionPromptIndexEntry.opener(messageId: "m2", seq: 2, number: 1, createdAt: null, preview: "Second"),
+      SessionPromptIndexEntry.opener(
+        invocation: null,
+        messageId: "m2",
+        seq: 2,
+        number: 1,
+        createdAt: null,
+        preview: "Second",
+      ),
     ];
 
     test("arrives for a transcript with older history", () async {
@@ -591,6 +605,7 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
 
 MessageWithParts _message({required String id}) => MessageWithParts(
   info: Message.user(
+    invocation: null,
     promptId: null,
     id: id,
     sessionID: _sessionId,

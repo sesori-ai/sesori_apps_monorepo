@@ -674,6 +674,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            invocation: null,
             promptId: null,
             id: "empty-user-envelope",
             sessionID: "session-1",
@@ -880,6 +881,7 @@ void main() {
     const sendingLine = "Sending to Claude Code…";
     final bubble = find.ancestor(of: find.text(firstText), matching: find.byType(UserMessageBubble));
     const listedQueued = QueuedSessionPrompt(
+      commandSource: null,
       id: "prm_first",
       text: firstText,
       command: null,
@@ -888,7 +890,14 @@ void main() {
       dispatchState: QueuedPromptDispatchState.queued,
     );
     const echo = MessageWithParts(
-      info: Message.user(promptId: "prm_first", id: "user-first", sessionID: "session-1", agent: null, time: null),
+      info: Message.user(
+        invocation: null,
+        promptId: "prm_first",
+        id: "user-first",
+        sessionID: "session-1",
+        agent: null,
+        time: null,
+      ),
       parts: [MessagePart.text(id: "part-first", sessionID: "session-1", messageID: "user-first", text: firstText)],
     );
 
@@ -1154,6 +1163,7 @@ void main() {
               echo,
               MessageWithParts(
                 info: Message.user(
+                  invocation: null,
                   promptId: "prm_follow",
                   id: "user-next",
                   sessionID: "session-1",
@@ -1199,6 +1209,7 @@ void main() {
             messages: const [echo],
             bridgeQueuedPrompts: const [
               QueuedSessionPrompt(
+                commandSource: null,
                 id: "prm_follow",
                 text: "Typed next",
                 command: null,
@@ -1237,6 +1248,7 @@ void main() {
             messages: const [echo],
             bridgeQueuedPrompts: const [
               QueuedSessionPrompt(
+                commandSource: null,
                 id: "prm_follow",
                 text: "Typed next",
                 command: null,
@@ -1367,6 +1379,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            invocation: null,
             promptId: null,
             id: "markdown-user",
             sessionID: "session-1",
@@ -1402,6 +1415,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            invocation: null,
             promptId: null,
             id: "remote-image-user",
             sessionID: "session-1",
@@ -1435,6 +1449,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            invocation: null,
             promptId: null,
             id: "unknown-attachment-user",
             sessionID: "session-1",
@@ -1466,6 +1481,7 @@ void main() {
       messages: const [
         MessageWithParts(
           info: Message.user(
+            invocation: null,
             promptId: null,
             id: "empty-user",
             sessionID: "session-1",
@@ -1781,7 +1797,7 @@ void main() {
   group("the Prompts screen", () {
     MessageWithParts textMessage({required String id, required bool user, required String text}) => MessageWithParts(
       info: user
-          ? Message.user(promptId: null, id: id, sessionID: "session-1", agent: null, time: null)
+          ? Message.user(invocation: null, promptId: null, id: id, sessionID: "session-1", agent: null, time: null)
           : Message.assistant(id: id, sessionID: "session-1", agent: null, modelID: null, providerID: null, time: null),
       parts: [MessagePart.text(id: "$id-part", sessionID: "session-1", messageID: id, text: text)],
     );
@@ -1977,7 +1993,14 @@ void main() {
 
       final indexed = state.copyWith(
         promptIndex: const [
-          SessionPromptIndexEntry.opener(messageId: "older-u0", seq: 1, number: 1, createdAt: null, preview: "Older 0"),
+          SessionPromptIndexEntry.opener(
+            invocation: null,
+            messageId: "older-u0",
+            seq: 1,
+            number: 1,
+            createdAt: null,
+            preview: "Older 0",
+          ),
         ],
       );
       when(() => cubit.state).thenReturn(indexed);
@@ -2011,7 +2034,14 @@ void main() {
       await openPrompts(tester);
       final indexed = state.copyWith(
         promptIndex: const [
-          SessionPromptIndexEntry.opener(messageId: "older-u0", seq: 1, number: 1, createdAt: null, preview: "Older 0"),
+          SessionPromptIndexEntry.opener(
+            invocation: null,
+            messageId: "older-u0",
+            seq: 1,
+            number: 1,
+            createdAt: null,
+            preview: "Older 0",
+          ),
         ],
       );
       states.add(indexed);
@@ -2048,6 +2078,7 @@ void main() {
             olderMessagesCursor: 42,
             promptIndex: const [
               SessionPromptIndexEntry.opener(
+                invocation: null,
                 messageId: "older-u0",
                 seq: 1,
                 number: 1,
@@ -2258,6 +2289,7 @@ void main() {
           interaction: authRequired,
           bridgeQueuedPrompts: const [
             QueuedSessionPrompt(
+              commandSource: null,
               dispatchState: QueuedPromptDispatchState.queued,
               id: "remote",
               text: "Remote queued prompt",
@@ -6108,6 +6140,7 @@ void main() {
       bridgeQueuedPrompts: [
         for (final dispatchState in QueuedPromptDispatchState.values)
           QueuedSessionPrompt(
+            commandSource: null,
             id: dispatchState.name,
             text: dispatchState.name,
             command: null,
@@ -6152,6 +6185,7 @@ void main() {
       final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
         bridgeQueuedPrompts: const [
           QueuedSessionPrompt(
+            commandSource: null,
             dispatchState: QueuedPromptDispatchState.queued,
             id: "remote",
             text: "One line\nthen another",
@@ -6222,6 +6256,7 @@ void main() {
     state = state.copyWith(
       bridgeQueuedPrompts: const [
         QueuedSessionPrompt(
+          commandSource: null,
           dispatchState: QueuedPromptDispatchState.queued,
           id: "handoff",
           text: "Follow-up prompt",
@@ -6241,7 +6276,14 @@ void main() {
     state = state.copyWith(
       messages: const [
         MessageWithParts(
-          info: Message.user(id: "delivered", sessionID: "session-1", promptId: "handoff", agent: null, time: null),
+          info: Message.user(
+            invocation: null,
+            id: "delivered",
+            sessionID: "session-1",
+            promptId: "handoff",
+            agent: null,
+            time: null,
+          ),
           parts: [
             MessagePart.text(id: "part", sessionID: "session-1", messageID: "delivered", text: "Follow-up prompt"),
           ],
@@ -6517,7 +6559,14 @@ void main() {
     final transcript = [
       for (var i = 0; i < 12; i++)
         MessageWithParts(
-          info: Message.user(promptId: null, id: "user-$i", sessionID: "session-1", agent: null, time: null),
+          info: Message.user(
+            invocation: null,
+            promptId: null,
+            id: "user-$i",
+            sessionID: "session-1",
+            agent: null,
+            time: null,
+          ),
           parts: [MessagePart.text(id: "part-$i", sessionID: "session-1", messageID: "user-$i", text: "Prompt $i")],
         ),
     ];
@@ -6735,6 +6784,7 @@ void main() {
               ...transcript,
               const MessageWithParts(
                 info: Message.user(
+                  invocation: null,
                   promptId: null,
                   id: "user-12",
                   sessionID: "session-1",
@@ -6883,7 +6933,14 @@ void main() {
           messages: [
             for (var i = 0; i < 80; i++)
               MessageWithParts(
-                info: Message.user(promptId: null, id: "long-$i", sessionID: "session-1", agent: null, time: null),
+                info: Message.user(
+                  invocation: null,
+                  promptId: null,
+                  id: "long-$i",
+                  sessionID: "session-1",
+                  agent: null,
+                  time: null,
+                ),
                 parts: [
                   MessagePart.text(id: "long-part-$i", sessionID: "session-1", messageID: "long-$i", text: "Prompt $i"),
                 ],

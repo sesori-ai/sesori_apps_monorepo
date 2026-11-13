@@ -42,6 +42,7 @@ void main() {
 
   group("CreateSessionRequest.pluginId", () {
     CreateSessionRequest request({required String pluginId}) => CreateSessionRequest(
+      commandSource: null,
       projectId: "project-1",
       pluginId: pluginId,
       parts: const [PromptPart.text(text: "hello")],

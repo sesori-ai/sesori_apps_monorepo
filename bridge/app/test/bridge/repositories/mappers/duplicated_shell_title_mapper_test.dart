@@ -35,6 +35,7 @@ void main() {
 
 MessageWithParts _message({required List<MessagePart> parts}) => MessageWithParts(
   info: const Message.user(
+    invocation: null,
     promptId: null,
     id: "m1",
     sessionID: "ses_a",

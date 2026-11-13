@@ -16,6 +16,11 @@ _SendPromptRequest _$SendPromptRequestFromJson(Map json) => _SendPromptRequest(
       ? null
       : PromptModel.fromJson(Map<String, dynamic>.from(json['model'] as Map)),
   command: json['command'] as String?,
+  commandSource: $enumDecodeNullable(
+    _$CommandSourceEnumMap,
+    json['commandSource'],
+    unknownValue: CommandSource.unknown,
+  ),
   variant: json['variant'] == null
       ? null
       : SessionVariant.fromJson(
@@ -32,10 +37,18 @@ Map<String, dynamic> _$SendPromptRequestToJson(_SendPromptRequest instance) =>
       'agent': ?instance.agent,
       'model': ?instance.model?.toJson(),
       'command': ?instance.command,
+      'commandSource': ?_$CommandSourceEnumMap[instance.commandSource],
       'variant': ?instance.variant?.toJson(),
       'fastMode': instance.fastMode,
       'promptId': ?instance.promptId,
     };
+
+const _$CommandSourceEnumMap = {
+  CommandSource.command: 'command',
+  CommandSource.mcp: 'mcp',
+  CommandSource.skill: 'skill',
+  CommandSource.unknown: 'unknown',
+};
 
 PromptPartText _$PromptPartTextFromJson(Map json) => PromptPartText(
   text: json['text'] as String,

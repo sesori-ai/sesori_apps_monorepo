@@ -33,6 +33,7 @@ typedef RegisteredPluginMetadata = ({
   PluginSessionOptionsScope sessionOptionsScope,
   Set<PluginControlCapability> managementCapabilities,
   bool supportsPromptAttachments,
+  bool namesCommandInvocations,
   Set<PluginMcpScopeKind> mcpScopes,
 });
 
@@ -1160,6 +1161,7 @@ class PluginLifecycleService({
               supportsPromptAttachments: plugin.supportsPromptAttachments,
               mcpScopes: {for (final scope in plugin.mcpScopes) _mapMcpScope(scope: scope)},
               failureReason: _failureReason(snapshot: snapshot),
+              namesCommandInvocations: plugin.namesCommandInvocations,
             );
           }(),
     };

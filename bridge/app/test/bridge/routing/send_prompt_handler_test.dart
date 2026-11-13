@@ -75,6 +75,7 @@ void main() {
       await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
@@ -92,6 +93,7 @@ void main() {
       await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s1",
           parts: [
@@ -116,6 +118,7 @@ void main() {
       await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
@@ -148,6 +151,7 @@ void main() {
       final response = await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s-defaults-prompt",
           parts: [PromptPart.text(text: "Hello")],
@@ -173,6 +177,7 @@ void main() {
       await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s42",
           parts: [PromptPart.text(text: "Ship it")],
@@ -199,6 +204,7 @@ void main() {
       final response = await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
@@ -216,6 +222,7 @@ void main() {
       await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s1",
           parts: [PromptPart.text(text: "Hello")],
@@ -235,6 +242,7 @@ void main() {
       await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s7",
           parts: [PromptPart.text(text: "review this")],
@@ -258,6 +266,7 @@ void main() {
       await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s8",
           parts: [
@@ -280,6 +289,7 @@ void main() {
       await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s8",
           parts: [PromptPart.text(text: "   ")],
@@ -297,6 +307,7 @@ void main() {
       await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s10",
           parts: [PromptPart.text(text: "review this")],
@@ -330,6 +341,7 @@ void main() {
       final response = await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s-defaults-command",
           parts: [PromptPart.text(text: "review this")],
@@ -379,6 +391,7 @@ void main() {
         () => localHandler.handle(
           request: makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
+            commandSource: null,
             promptId: null,
             sessionId: "s-failing-prompt",
             parts: [PromptPart.text(text: "Hello")],
@@ -429,6 +442,7 @@ void main() {
         () => localHandler.handle(
           request: makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
+            commandSource: null,
             promptId: null,
             sessionId: "s-failing-command",
             parts: [PromptPart.text(text: "review this")],
@@ -468,6 +482,7 @@ void main() {
       final response = await localHandler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s-update-fails",
           parts: [PromptPart.text(text: "Hello")],
@@ -488,6 +503,7 @@ void main() {
       await handler.handle(
         request: makeRequest("POST", "/session/prompt_async"),
         body: const SendPromptRequest(
+          commandSource: null,
           promptId: null,
           sessionId: "s9",
           parts: [PromptPart.text(text: "Hello")],
@@ -510,6 +526,7 @@ void main() {
         () => handler.handle(
           request: makeRequest("POST", "/session/prompt_async"),
           body: const SendPromptRequest(
+            commandSource: null,
             promptId: null,
             sessionId: "",
             parts: [PromptPart.text(text: "Hello")],
@@ -530,6 +547,7 @@ void main() {
           "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              commandSource: null,
               promptId: null,
               sessionId: "missing",
               parts: [PromptPart.text(text: "Hello")],
@@ -563,6 +581,7 @@ void main() {
           "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              commandSource: null,
               promptId: null,
               sessionId: "stale-plugin-session",
               parts: [PromptPart.text(text: "Hello")],
@@ -592,6 +611,7 @@ void main() {
           "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              commandSource: null,
               promptId: null,
               sessionId: "s1",
               parts: [PromptPart.text(text: "Hello")],
@@ -626,6 +646,7 @@ void main() {
           "/session/prompt_async",
           body: jsonEncode(
             const SendPromptRequest(
+              commandSource: null,
               promptId: null,
               sessionId: "s1",
               parts: [PromptPart.text(text: "Hello")],

@@ -30,6 +30,11 @@ SessionPromptIndexOpener _$SessionPromptIndexOpenerFromJson(Map json) =>
       number: (json['number'] as num).toInt(),
       createdAt: (json['createdAt'] as num?)?.toInt(),
       preview: json['preview'] as String?,
+      invocation: json['invocation'] == null
+          ? null
+          : CommandInvocation.fromJson(
+              Map<String, dynamic>.from(json['invocation'] as Map),
+            ),
       $type: json['kind'] as String?,
     );
 
@@ -41,6 +46,7 @@ Map<String, dynamic> _$SessionPromptIndexOpenerToJson(
   'number': instance.number,
   'createdAt': ?instance.createdAt,
   'preview': ?instance.preview,
+  'invocation': ?instance.invocation?.toJson(),
   'kind': instance.$type,
 };
 
@@ -51,6 +57,11 @@ SessionPromptIndexFollowUp _$SessionPromptIndexFollowUpFromJson(Map json) =>
       number: (json['number'] as num).toInt(),
       createdAt: (json['createdAt'] as num?)?.toInt(),
       preview: json['preview'] as String?,
+      invocation: json['invocation'] == null
+          ? null
+          : CommandInvocation.fromJson(
+              Map<String, dynamic>.from(json['invocation'] as Map),
+            ),
       openerMessageId: json['openerMessageId'] as String,
       $type: json['kind'] as String?,
     );
@@ -63,6 +74,7 @@ Map<String, dynamic> _$SessionPromptIndexFollowUpToJson(
   'number': instance.number,
   'createdAt': ?instance.createdAt,
   'preview': ?instance.preview,
+  'invocation': ?instance.invocation?.toJson(),
   'openerMessageId': instance.openerMessageId,
   'kind': instance.$type,
 };

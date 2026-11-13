@@ -104,6 +104,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         "/session/create",
         fromJson: Session.fromJson,
         body: CreateSessionRequest(
+          commandSource: null,
           projectId: projectId,
           pluginId: pluginId,
           parts: _buildParts(text: text, attachments: attachments),
@@ -146,6 +147,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
   }) async {
     await BoundedJsonEncoder.eventLoopTurn();
     final request = CreateSessionRequest(
+      commandSource: null,
       projectId: projectId,
       pluginId: pluginId,
       parts: [if (text.isNotEmpty) PromptPart.text(text: text)],
@@ -181,6 +183,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       "/session/prompt_async",
       fromJson: SuccessEmptyResponse.fromJson,
       body: SendPromptRequest(
+        commandSource: null,
         sessionId: sessionId,
         parts: _buildParts(text: text, attachments: attachments),
         agent: agent,

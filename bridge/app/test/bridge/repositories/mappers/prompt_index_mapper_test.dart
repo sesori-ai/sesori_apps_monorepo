@@ -2,10 +2,13 @@ import "package:sesori_bridge/src/repositories/mappers/prompt_index_mapper.dart"
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-SequencedMessage _user({required int seq, required String text}) => (
+SequencedMessage _user({required int seq, required String text}) =>
+    _invokedUser(seq: seq, text: text, invocation: null);
+
+SequencedMessage _invokedUser({required int seq, required String text, required CommandInvocation? invocation}) => (
   seq: seq,
   message: MessageWithParts(
-    info: Message.user(id: "u$seq", sessionID: "s", agent: null, time: null, promptId: null),
+    info: Message.user(invocation: invocation, id: "u$seq", sessionID: "s", agent: null, time: null, promptId: null),
     parts: [MessagePart.text(id: "t$seq", sessionID: "s", messageID: "u$seq", text: text)],
   ),
 );
@@ -45,6 +48,20 @@ String? _preview({required String text}) =>
 
 void main() {
   group("PromptIndexMapper.indexOf", () {
+    test("carries the invocation of openers and follow-ups", () {
+      const review = CommandInvocation(name: "review", source: CommandSource.skill, arguments: null);
+      final entries = const PromptIndexMapper().indexOf(
+        messages: [
+          _invokedUser(seq: 1, text: "Go", invocation: review),
+          _runningTool(seq: 2),
+          _invokedUser(seq: 3, text: "Again", invocation: review),
+          _user(seq: 4, text: "Plain"),
+        ],
+      );
+
+      expect([for (final entry in entries) entry.invocation], [review, review, null]);
+    });
+
     test("lists a prompt in the leading segment as an opener", () {
       final entries = const PromptIndexMapper().indexOf(
         messages: [
@@ -55,8 +72,22 @@ void main() {
       );
 
       expect(entries, const [
-        SessionPromptIndexEntry.opener(messageId: "u2", seq: 2, number: 1, createdAt: null, preview: "Go on"),
-        SessionPromptIndexEntry.opener(messageId: "u3", seq: 3, number: 2, createdAt: null, preview: "Faster"),
+        SessionPromptIndexEntry.opener(
+          invocation: null,
+          messageId: "u2",
+          seq: 2,
+          number: 1,
+          createdAt: null,
+          preview: "Go on",
+        ),
+        SessionPromptIndexEntry.opener(
+          invocation: null,
+          messageId: "u3",
+          seq: 3,
+          number: 2,
+          createdAt: null,
+          preview: "Faster",
+        ),
       ]);
     });
 

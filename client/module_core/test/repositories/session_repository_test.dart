@@ -675,7 +675,14 @@ void main() {
 
     test("passes the entries through", () async {
       const entries = [
-        SessionPromptIndexEntry.opener(messageId: "m1", seq: 1, number: 1, createdAt: null, preview: "Hi"),
+        SessionPromptIndexEntry.opener(
+          invocation: null,
+          messageId: "m1",
+          seq: 1,
+          number: 1,
+          createdAt: null,
+          preview: "Hi",
+        ),
       ];
 
       final result = await indexFor(response: ApiResponse.success(const SessionPromptIndexResponse(entries: entries)));

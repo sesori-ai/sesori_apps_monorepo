@@ -51,6 +51,7 @@ void main() {
     await service.handleEvent(
       event: const SesoriSseEvent.messageUpdated(
         info: Message.user(
+          invocation: null,
           promptId: null,
           id: "user",
           sessionID: "root",
@@ -90,7 +91,14 @@ void main() {
     );
     await service.handleEvent(
       event: const SesoriSseEvent.messageUpdated(
-        info: Message.user(promptId: null, id: "missing-time", sessionID: "root", agent: null, time: null),
+        info: Message.user(
+          invocation: null,
+          promptId: null,
+          id: "missing-time",
+          sessionID: "root",
+          agent: null,
+          time: null,
+        ),
       ),
     );
 
@@ -283,6 +291,7 @@ void main() {
     await service.handleEvent(
       event: const SesoriSseEvent.messageUpdated(
         info: Message.user(
+          invocation: null,
           promptId: null,
           id: "child-message",
           sessionID: "child",
@@ -325,6 +334,7 @@ void main() {
       service.handleEvent(
         event: const SesoriSseEvent.messageUpdated(
           info: Message.user(
+            invocation: null,
             promptId: null,
             id: "newer",
             sessionID: "root",

@@ -142,6 +142,9 @@ class const CodexPluginDescriptor({
   bool get supportsPromptAttachments => true;
 
   @override
+  bool get namesCommandInvocations => true;
+
+  @override
   Set<PluginMcpCapability> get mcpCapabilities => const {
     PluginMcpCapability.management,
     PluginMcpCapability.authentication,

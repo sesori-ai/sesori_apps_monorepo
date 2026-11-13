@@ -56,6 +56,7 @@ class ChatHistoryListener({
       // change stores nothing.
       NormalizedOtherEvent() ||
       NormalizedStatusEvent() ||
+      NormalizedQueuedPromptsEvent() ||
       NormalizedQuotaInterruptionEvent() ||
       NormalizedTerminalHandoff() => Future<void>.value(),
     };

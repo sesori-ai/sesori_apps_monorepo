@@ -25,8 +25,12 @@ import "package:sesori_shared/sesori_shared.dart"
         ActiveSessionRunningCalculator,
         AgentModel,
         AutoContinuationAvailability,
+        CommandInvocation,
         CommandListResponse,
+        CommandSource,
+        Message,
         MessagePartSubtask,
+        MessageUser,
         MessageWithParts,
         ProjectActivitySummary,
         ProjectKind,
@@ -74,6 +78,7 @@ import "models/stored_session.dart";
 import "project_catalog_identity_calculator.dart";
 import "random_hex_id.dart";
 import "session_unseen_calculator.dart";
+import "trackers/command_invocation_tracker.dart";
 
 enum SessionBindingCommitKind() {
   sessionCreation,
@@ -119,6 +124,7 @@ class SessionRepository({
   final Map<String, Future<void>> _tombstoneLoads = <String, Future<void>>{};
   final Set<String> _tombstonesLoaded = <String>{};
   final Map<String, _BusyObservation> _busyObservations = <String, _BusyObservation>{};
+  final CommandInvocationTracker _invocations = CommandInvocationTracker();
   int _lastProjectionTimestamp = 0;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
@@ -396,31 +402,80 @@ class SessionRepository({
     );
   }
 
+  /// Sends [command] and remembers it under [promptId], so the user message
+  /// that fulfils it is named by [stampLiveInvocation].
+  ///
+  /// [commandSource] is the command's source as the client's picker listed
+  /// it; null from clients that predate it.
   Future<void> sendCommand({
     required String sessionId,
     required String promptId,
     required String command,
+    required CommandSource? commandSource,
     required String arguments,
     required String? userVisibleArguments,
     required SessionVariant? variant,
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
-  }) => _useSessionPlugin(
-    sessionId: sessionId,
-    operation: SessionOperation.sendCommand,
-    body: (plugin, binding) => plugin.sendCommand(
-      sessionId: binding.backendSessionId,
+  }) async {
+    // Recorded before the plugin call: its echo can arrive before the call
+    // returns. A refused send forgets it again.
+    _invocations.record(
+      sessionId: sessionId,
       promptId: promptId,
-      command: command,
-      arguments: arguments,
-      userVisibleArguments: userVisibleArguments,
-      variant: _toPluginVariant(variant),
-      fastMode: fastMode,
-      agent: agent,
-      model: _toPluginModel(model),
-    ),
-  );
+      invocation: CommandInvocation(
+        name: command,
+        source: commandSource ?? CommandSource.unknown,
+        arguments: userVisibleArguments,
+      ),
+    );
+    try {
+      await _useSessionPlugin(
+        sessionId: sessionId,
+        operation: SessionOperation.sendCommand,
+        body: (plugin, binding) => plugin.sendCommand(
+          sessionId: binding.backendSessionId,
+          promptId: promptId,
+          command: command,
+          arguments: arguments,
+          userVisibleArguments: userVisibleArguments,
+          variant: _toPluginVariant(variant),
+          fastMode: fastMode,
+          agent: agent,
+          model: _toPluginModel(model),
+        ),
+      );
+    } on Object {
+      _invocations.remove(sessionId: sessionId, promptId: promptId);
+      rethrow;
+    }
+  }
+
+  /// [message] with the invocation this bridge sent under its prompt id.
+  ///
+  /// A plugin that named the invocation itself keeps its own value.
+  Message stampLiveInvocation({required Message message}) {
+    if (message case MessageUser(:final sessionID, promptId: final promptId?, invocation: null)) {
+      final invocation = _invocations.invocationFor(sessionId: sessionID, promptId: promptId);
+      if (invocation != null) return message.copyWith(invocation: invocation);
+    }
+    return message;
+  }
+
+  /// [prompts] with the source of each command this bridge sent to [sessionId].
+  List<QueuedSessionPrompt> stampQueuedCommandSources({
+    required String sessionId,
+    required List<QueuedSessionPrompt> prompts,
+  }) => [
+    for (final prompt in prompts)
+      if (prompt.command != null && prompt.commandSource == null)
+        prompt.copyWith(
+          commandSource: _invocations.invocationFor(sessionId: sessionId, promptId: prompt.id)?.source,
+        )
+      else
+        prompt,
+  ];
 
   Future<void> sendPrompt({
     required String sessionId,
@@ -460,7 +515,7 @@ class SessionRepository({
       body: (plugin, _) async =>
           (await plugin.getQueuedPrompts(sessionId: binding.backendSessionId)).toSharedQueuedPrompts(),
     );
-    return prompts ?? const [];
+    return stampQueuedCommandSources(sessionId: sessionId, prompts: prompts ?? const []);
   }
 
   /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.

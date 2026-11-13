@@ -49,6 +49,7 @@ class SessionPromptService({
     required String? agent,
     required PromptModel? model,
     required String? command,
+    required CommandSource? commandSource,
   }) {
     final normalizedCommand = command?.trim();
     return _dispatcher.dispatch(
@@ -67,6 +68,7 @@ class SessionPromptService({
         agent: agent,
         model: model,
         normalizedCommand: normalizedCommand,
+        commandSource: commandSource,
       ),
     );
   }
@@ -88,6 +90,7 @@ class SessionPromptService({
     agent: agent,
     model: model,
     normalizedCommand: null,
+    commandSource: null,
   );
 
   Future<void> _sendPrompt({
@@ -99,6 +102,7 @@ class SessionPromptService({
     required String? agent,
     required PromptModel? model,
     required String? normalizedCommand,
+    required CommandSource? commandSource,
   }) async {
     // Inside the dispatched body, so this cannot race a concurrent archive on
     // the same family lane.
@@ -157,6 +161,7 @@ class SessionPromptService({
           fastMode: fastMode,
           agent: agent,
           model: model,
+          commandSource: commandSource,
         ),
       );
     }

@@ -255,17 +255,36 @@ class ChatHistoryRepository({
     required Message message,
     required int updatedAt,
   }) async {
-    final existingSeq = await _chatHistoryDao.getMessageSeq(sessionId: sessionId, messageId: message.id);
-    final seq = existingSeq ?? (await _chatHistoryDao.getMaxSeq(sessionId: sessionId) ?? 0) + 1;
+    final existing = await _chatHistoryDao.getMessage(sessionId: sessionId, messageId: message.id);
+    final seq = existing?.seq ?? (await _chatHistoryDao.getMaxSeq(sessionId: sessionId) ?? 0) + 1;
+    final stored = switch (existing) {
+      HistoryMessagesTableData(:final infoJson) => Message.fromJson(jsonDecodeMap(infoJson)),
+      null => null,
+    };
     await _chatHistoryDao.upsertMessage(
       row: HistoryMessagesTableData(
         sessionId: sessionId,
         messageId: message.id,
         seq: seq,
-        infoJson: jsonEncode(message.toJson()),
+        infoJson: jsonEncode(_withStoredInvocation(update: message, stored: stored).toJson()),
         updatedAt: updatedAt,
       ),
     );
+  }
+
+  /// [update] with the command invocation [stored] already names, when
+  /// [update] names none: a later update or a replay of the same user turn
+  /// doesn't know the invocation the bridge stamped live.
+  Message _withStoredInvocation({required Message update, required Message? stored}) {
+    if ((update, stored)
+        case (
+          final MessageUser user,
+          MessageUser(invocation: final invocation?),
+        )
+        when user.invocation == null) {
+      return user.copyWith(invocation: invocation);
+    }
+    return update;
   }
 
   /// Stores one part, spilling any inline attachment bytes to disk first.
@@ -686,16 +705,17 @@ class ChatHistoryRepository({
       for (var index = 0; index < storedContextRows.length; index++) storedContextRows[index].messageId: index,
     };
     for (var index = 0; index < messages.length; index++) {
-      final exactStoredIndex = storedContextIndexById[messages[index].info.id];
+      final imported = messages[index].info;
+      final exactStoredIndex = storedContextIndexById[imported.id];
       final storedIndex = exactStoredIndex ?? semanticPairs[index];
       if (storedIndex == null || storedSemanticFingerprints[storedIndex] == null) continue;
-      final notice = _reconciledNotice(
-        imported: messages[index].info,
-        stored: Message.fromJson(jsonDecodeMap(storedContextRows[storedIndex].infoJson)),
-        sameIdentity: exactStoredIndex != null,
-      );
-      if (notice != null) {
-        importedMessageRows[index] = importedMessageRows[index].copyWith(infoJson: jsonEncode(notice.toJson()));
+      final stored = Message.fromJson(jsonDecodeMap(storedContextRows[storedIndex].infoJson));
+      final notice = _reconciledNotice(imported: imported, stored: stored, sameIdentity: exactStoredIndex != null);
+      // The stored row's invocation survives the import that replaces it,
+      // unless the import names its own.
+      final reconciled = notice ?? _withStoredInvocation(update: imported, stored: stored);
+      if (!identical(reconciled, imported)) {
+        importedMessageRows[index] = importedMessageRows[index].copyWith(infoJson: jsonEncode(reconciled.toJson()));
       }
     }
 
@@ -1289,6 +1309,8 @@ class ChatHistoryRepository({
         source: message.toJson(),
         fields: {
           "id", "sessionID", "promptId", "time", "agent", "modelID", "providerID",
+          // Only a live turn the bridge sent carries it; its replay doesn't.
+          "invocation",
           // An error notice says that a turn failed. Its wording may differ
           // between live and replay: a backend can send the real reason live
           // and save only a fixed closing row (see [_reconciledNotice]).

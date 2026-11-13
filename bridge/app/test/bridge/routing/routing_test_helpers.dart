@@ -688,6 +688,15 @@ class FakeSessionRepository({
   void markSessionIdle({required String sessionId}) {}
 
   @override
+  Message stampLiveInvocation({required Message message}) => message;
+
+  @override
+  List<QueuedSessionPrompt> stampQueuedCommandSources({
+    required String sessionId,
+    required List<QueuedSessionPrompt> prompts,
+  }) => prompts;
+
+  @override
   Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {
     if (pluginId == _plugin.id) return;
     throw PluginOperationException(
@@ -759,6 +768,7 @@ class FakeSessionRepository({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required CommandSource? commandSource,
   }) async {
     await _plugin.sendCommand(
       fastMode: fastMode,

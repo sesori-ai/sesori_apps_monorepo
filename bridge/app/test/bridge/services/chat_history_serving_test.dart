@@ -429,6 +429,7 @@ void main() {
 }
 
 Message _message({required String id}) => Message.user(
+  invocation: null,
   promptId: null,
   id: id,
   sessionID: "ses_a",

@@ -18,6 +18,7 @@ void main() {
         message.toSharedMessage(sessionId: "stable-session"),
         equals(
           const Message.user(
+            invocation: null,
             promptId: null,
             id: "m1",
             sessionID: "stable-session",

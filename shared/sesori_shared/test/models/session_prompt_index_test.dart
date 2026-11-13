@@ -7,8 +7,16 @@ void main() {
   test("index entries carry their kind and omit absent fields on the wire", () {
     const response = SessionPromptIndexResponse(
       entries: [
-        SessionPromptIndexEntry.opener(messageId: "u1", seq: 3, number: 1, createdAt: 10, preview: "Fix it"),
+        SessionPromptIndexEntry.opener(
+          invocation: null,
+          messageId: "u1",
+          seq: 3,
+          number: 1,
+          createdAt: 10,
+          preview: "Fix it",
+        ),
         SessionPromptIndexEntry.followUp(
+          invocation: null,
           messageId: "u2",
           seq: 5,
           number: 2,

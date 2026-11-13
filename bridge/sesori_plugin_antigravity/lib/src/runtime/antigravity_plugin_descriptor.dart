@@ -73,6 +73,9 @@ class const AntigravityPluginDescriptor({
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
   @override
   bool get supportsPromptAttachments => true;
+
+  @override
+  bool get namesCommandInvocations => true;
   @override
   List<PluginOption> get options => cliOptions;
 

@@ -19,6 +19,7 @@ void main() {
       expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isTrue);
+      expect(descriptor.namesCommandInvocations, isTrue);
       expect(descriptor.mcpCapabilities, {PluginMcpCapability.management, PluginMcpCapability.authentication});
       expect(descriptor.mcpScopes, {PluginMcpScopeKind.session}, reason: "Claude answers MCP only for a live session");
       expect(descriptor.options.single.name, "bin");

@@ -49,6 +49,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
           sessionOptionsScope: PluginSessionOptionsScope.project,
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
+          namesCommandInvocations: false,
           mcpScopes: noMcpScopes,
         ),
     ],

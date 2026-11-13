@@ -102,6 +102,9 @@ final class const OmpPluginDescriptor({
   bool get supportsPromptAttachments => true;
 
   @override
+  bool get namesCommandInvocations => true;
+
+  @override
   List<PluginOption> get options => cliOptions;
 
   String? _explicitBin(PluginConfig config) {

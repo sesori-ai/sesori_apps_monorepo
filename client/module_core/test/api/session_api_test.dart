@@ -221,6 +221,7 @@ void main() {
         filename: 'screen"shot.png',
       );
       final expected = CreateSessionRequest(
+        commandSource: null,
         projectId: "project-1",
         pluginId: "plugin-1",
         parts: [
@@ -292,6 +293,7 @@ void main() {
         filename: null,
       );
       final expected = CreateSessionRequest(
+        commandSource: null,
         projectId: "project-1",
         pluginId: "plugin-1",
         parts: [

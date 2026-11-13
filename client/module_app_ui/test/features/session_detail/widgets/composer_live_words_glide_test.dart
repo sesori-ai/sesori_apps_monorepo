@@ -589,6 +589,7 @@ void main() {
               localSend: const LocalSendPhase.idle(),
               bridgeQueuedPrompts: [
                 QueuedSessionPrompt(
+                  commandSource: null,
                   id: "prm_sent",
                   text: wrapDictatedText(text: "spoken words"),
                   command: null,
@@ -968,6 +969,7 @@ SessionDetailLoaded _delivered(SessionDetailLoaded sent) {
       ...sent.messages,
       MessageWithParts(
         info: Message.user(
+          invocation: null,
           promptId: localSend.submission.promptId,
           id: "user-sent",
           sessionID: "session-1",
@@ -1010,7 +1012,14 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
     messages: [
       for (var index = 0; index < 70; index++)
         MessageWithParts(
-          info: Message.user(promptId: null, id: "user-$index", sessionID: "session-1", agent: null, time: null),
+          info: Message.user(
+            invocation: null,
+            promptId: null,
+            id: "user-$index",
+            sessionID: "session-1",
+            agent: null,
+            time: null,
+          ),
           parts: [
             MessagePart.text(
               id: "part-$index",

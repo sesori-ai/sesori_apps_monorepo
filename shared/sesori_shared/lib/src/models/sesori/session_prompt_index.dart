@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "command_invocation.dart";
+
 part "session_prompt_index.freezed.dart";
 part "session_prompt_index.g.dart";
 
@@ -33,6 +35,10 @@ sealed class SessionPromptIndexEntry with _$SessionPromptIndexEntry {
     required int number,
     required int? createdAt,
     required String? preview,
+
+    /// The command this prompt ran, when the bridge named it; [preview] keeps
+    /// the prompt's text for clients that predate this field.
+    required CommandInvocation? invocation,
   }) = SessionPromptIndexOpener;
 
   /// A prompt that joined the turn [openerMessageId] opened.
@@ -43,6 +49,10 @@ sealed class SessionPromptIndexEntry with _$SessionPromptIndexEntry {
     required int number,
     required int? createdAt,
     required String? preview,
+
+    /// The command this prompt ran, when the bridge named it; [preview] keeps
+    /// the prompt's text for clients that predate this field.
+    required CommandInvocation? invocation,
     required String openerMessageId,
   }) = SessionPromptIndexFollowUp;
 

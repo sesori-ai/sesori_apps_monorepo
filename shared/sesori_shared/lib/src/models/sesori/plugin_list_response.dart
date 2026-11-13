@@ -64,6 +64,13 @@ sealed class PluginMetadata with _$PluginMetadata {
     /// harness has not failed or gave no such reason; older bridges omit it,
     /// which reads the same.
     required String? failureReason,
+
+    /// Whether this plugin's confirmed command turns carry
+    /// `MessageUser.invocation`, so a client can show a command as its card
+    /// from the moment it is sent.
+    // COMPATIBILITY 2026-11-12 (v1.13.0): Older bridges omit this capability because they never name invocations.
+    // Remove @Default and require the field once all supported production bridges send it.
+    @Default(false) bool namesCommandInvocations,
   }) = _PluginMetadata;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);

@@ -71,6 +71,7 @@ Future<void> timeRuns({required String label, required Future<void> Function() o
 /// A prompt of the measured median length.
 MessageWithParts _prompt({required int index}) => MessageWithParts(
   info: Message.user(
+    invocation: null,
     id: "u$index",
     sessionID: syntheticSessionId,
     agent: null,

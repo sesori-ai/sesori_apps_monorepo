@@ -94,6 +94,7 @@ void main() {
     await history.service.captureMessage(
       sessionId: "ses_a",
       message: const Message.user(
+        invocation: null,
         promptId: null,
         id: "live",
         sessionID: "ses_a",

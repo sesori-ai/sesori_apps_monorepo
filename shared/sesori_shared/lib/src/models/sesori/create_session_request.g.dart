@@ -20,6 +20,11 @@ _CreateSessionRequest _$CreateSessionRequestFromJson(Map json) =>
               Map<String, dynamic>.from(json['model'] as Map),
             ),
       command: json['command'] as String?,
+      commandSource: $enumDecodeNullable(
+        _$CommandSourceEnumMap,
+        json['commandSource'],
+        unknownValue: CommandSource.unknown,
+      ),
       variant: json['variant'] == null
           ? null
           : SessionVariant.fromJson(
@@ -38,7 +43,15 @@ Map<String, dynamic> _$CreateSessionRequestToJson(
   'agent': ?instance.agent,
   'model': ?instance.model?.toJson(),
   'command': ?instance.command,
+  'commandSource': ?_$CommandSourceEnumMap[instance.commandSource],
   'variant': ?instance.variant?.toJson(),
   'fastMode': instance.fastMode,
   'dedicatedWorktree': instance.dedicatedWorktree,
+};
+
+const _$CommandSourceEnumMap = {
+  CommandSource.command: 'command',
+  CommandSource.mcp: 'mcp',
+  CommandSource.skill: 'skill',
+  CommandSource.unknown: 'unknown',
 };

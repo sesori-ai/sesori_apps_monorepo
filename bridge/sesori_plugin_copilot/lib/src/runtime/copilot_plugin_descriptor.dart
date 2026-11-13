@@ -73,6 +73,9 @@ final class const CopilotPluginDescriptor({
   bool get supportsPromptAttachments => true;
 
   @override
+  bool get namesCommandInvocations => true;
+
+  @override
   List<PluginOption> get options => cliOptions;
 
   String? _explicitBin({required PluginConfig config}) {

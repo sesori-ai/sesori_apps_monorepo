@@ -26,7 +26,14 @@ void main() {
           _assistant(id: "reply", agent: "build", modelID: "sonnet", sender: MessageSender.agent),
           _assistant(id: "automation", agent: "compaction", modelID: "haiku", sender: MessageSender.system),
           const MessageWithParts(
-            info: Message.user(id: "turn", sessionID: "session-1", agent: "general", time: null, promptId: null),
+            info: Message.user(
+              invocation: null,
+              id: "turn",
+              sessionID: "session-1",
+              agent: "general",
+              time: null,
+              promptId: null,
+            ),
             parts: [],
           ),
         ],

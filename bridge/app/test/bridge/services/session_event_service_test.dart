@@ -120,6 +120,71 @@ void main() {
       );
     });
 
+    test("names a sent command on its user turn and queued prompt, through terminal handoffs too", () async {
+      await _insertRoot(database: database, pluginId: plugin.id, sessionId: "s1", backendSessionId: "backend-s1");
+      await repository.sendCommand(
+        sessionId: "s1",
+        promptId: "p1",
+        command: "review",
+        commandSource: CommandSource.skill,
+        arguments: "src",
+        userVisibleArguments: "src",
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+      );
+      const invocation = CommandInvocation(name: "review", source: CommandSource.skill, arguments: "src");
+      BridgeSseMessageUpdated userTurn({required String? promptId}) => BridgeSseMessageUpdated(
+        info: PluginMessage.user(promptId: promptId, id: "m1", sessionID: "s1", agent: null, time: null),
+      );
+      CommandInvocation? invocationOf(NormalizedBridgeEvent event) => switch (event) {
+        NormalizedMessageEvent(message: MessageUser(:final invocation)) ||
+        NormalizedTerminalHandoff(
+          payload: NormalizedMessageEvent(message: MessageUser(:final invocation)),
+        ) => invocation,
+        _ => throw StateError("expected a user message, got $event"),
+      };
+
+      expect(invocationOf(service.toNormalized(event: userTurn(promptId: "p1"))), invocation);
+      expect(
+        invocationOf(
+          service.toNormalized(
+            event: BridgeSseTerminalHandoff(event: userTurn(promptId: "p1")),
+          ),
+        ),
+        invocation,
+      );
+      expect(invocationOf(service.toNormalized(event: userTurn(promptId: "other"))), isNull);
+      expect(invocationOf(service.toNormalized(event: userTurn(promptId: null))), isNull);
+
+      PluginQueuedPrompt queued({required String id, required String? command}) => PluginQueuedPrompt(
+        id: id,
+        dispatchState: PluginQueuedPromptDispatchState.queued,
+        text: "src",
+        command: command,
+        attachmentCount: 0,
+        createdAt: 1,
+      );
+      final normalized = service.toNormalized(
+        event: BridgeSseQueuedPromptsUpdated(
+          sessionID: "s1",
+          prompts: [
+            queued(id: "p1", command: "review"),
+            queued(id: "p2", command: "review"),
+            queued(id: "p3", command: null),
+          ],
+        ),
+      );
+      expect(
+        switch (normalized) {
+          NormalizedQueuedPromptsEvent(:final prompts) => [for (final prompt in prompts) prompt.commandSource],
+          _ => throw StateError("expected queued prompts, got $normalized"),
+        },
+        [CommandSource.skill, null, null],
+      );
+    });
+
     test("settled turns publish durable recency before idle and older backend updates cannot undo it", () async {
       await _insertRoot(
         database: database,
@@ -1679,6 +1744,19 @@ class _EventPlugin() implements NativeProjectsPluginApi {
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) => throw UnimplementedError();
+
+  @override
+  Future<void> sendCommand({
+    required String promptId,
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? userVisibleArguments,
+    required PluginSessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

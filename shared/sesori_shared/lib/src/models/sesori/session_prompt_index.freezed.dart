@@ -186,7 +186,9 @@ SessionPromptIndexEntry _$SessionPromptIndexEntryFromJson(
 /// @nodoc
 mixin _$SessionPromptIndexEntry {
 
- String get messageId; int get seq; int get number; int? get createdAt; String? get preview;
+ String get messageId; int get seq; int get number; int? get createdAt; String? get preview;/// The command this prompt ran, when the bridge named it; [preview] keeps
+/// the prompt's text for clients that predate this field.
+ CommandInvocation? get invocation;
 
   /// Serializes this SessionPromptIndexEntry to a JSON map.
   Map<String, dynamic> toJson();
@@ -195,20 +197,20 @@ mixin _$SessionPromptIndexEntry {
 @override
 bool operator ==(Object other) {
   final _this = this as SessionPromptIndexEntry;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptIndexEntry&&(identical(other.messageId, _this.messageId) || other.messageId == _this.messageId)&&(identical(other.seq, _this.seq) || other.seq == _this.seq)&&(identical(other.number, _this.number) || other.number == _this.number)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.preview, _this.preview) || other.preview == _this.preview));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptIndexEntry&&(identical(other.messageId, _this.messageId) || other.messageId == _this.messageId)&&(identical(other.seq, _this.seq) || other.seq == _this.seq)&&(identical(other.number, _this.number) || other.number == _this.number)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.preview, _this.preview) || other.preview == _this.preview)&&(identical(other.invocation, _this.invocation) || other.invocation == _this.invocation));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as SessionPromptIndexEntry;
-  return Object.hash(runtimeType,_this.messageId,_this.seq,_this.number,_this.createdAt,_this.preview);
+  return Object.hash(runtimeType,_this.messageId,_this.seq,_this.number,_this.createdAt,_this.preview,_this.invocation);
 }
 
 @override
 String toString() {
   final _this = this as SessionPromptIndexEntry;
-  return 'SessionPromptIndexEntry(messageId: ${_this.messageId}, seq: ${_this.seq}, number: ${_this.number}, createdAt: ${_this.createdAt}, preview: ${_this.preview})';
+  return 'SessionPromptIndexEntry(messageId: ${_this.messageId}, seq: ${_this.seq}, number: ${_this.number}, createdAt: ${_this.createdAt}, preview: ${_this.preview}, invocation: ${_this.invocation})';
 }
 
 
@@ -222,7 +224,7 @@ String toString() {
 @JsonSerializable()
 
 class SessionPromptIndexOpener implements SessionPromptIndexEntry {
-  const SessionPromptIndexOpener({required this.messageId, required this.seq, required this.number, required this.createdAt, required this.preview,  String? $type}): $type = $type ?? 'opener';
+  const SessionPromptIndexOpener({required this.messageId, required this.seq, required this.number, required this.createdAt, required this.preview, required this.invocation,  String? $type}): $type = $type ?? 'opener';
   factory SessionPromptIndexOpener.fromJson(Map<String, dynamic> json) => _$SessionPromptIndexOpenerFromJson(json);
 
 @override final  String messageId;
@@ -230,6 +232,9 @@ class SessionPromptIndexOpener implements SessionPromptIndexEntry {
 @override final  int number;
 @override final  int? createdAt;
 @override final  String? preview;
+/// The command this prompt ran, when the bridge named it; [preview] keeps
+/// the prompt's text for clients that predate this field.
+@override final  CommandInvocation? invocation;
 
 @JsonKey(name: 'kind')
 final String $type;
@@ -243,18 +248,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptIndexOpener&&(identical(other.messageId, messageId) || other.messageId == messageId)&&(identical(other.seq, seq) || other.seq == seq)&&(identical(other.number, number) || other.number == number)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.preview, preview) || other.preview == preview));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptIndexOpener&&(identical(other.messageId, messageId) || other.messageId == messageId)&&(identical(other.seq, seq) || other.seq == seq)&&(identical(other.number, number) || other.number == number)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.preview, preview) || other.preview == preview)&&(identical(other.invocation, invocation) || other.invocation == invocation));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,messageId,seq,number,createdAt,preview);
+    return Object.hash(runtimeType,messageId,seq,number,createdAt,preview,invocation);
 }
 
 @override
 String toString() {
-    return 'SessionPromptIndexEntry.opener(messageId: $messageId, seq: $seq, number: $number, createdAt: $createdAt, preview: $preview)';
+    return 'SessionPromptIndexEntry.opener(messageId: $messageId, seq: $seq, number: $number, createdAt: $createdAt, preview: $preview, invocation: $invocation)';
 }
 
 
@@ -267,7 +272,7 @@ String toString() {
 @JsonSerializable()
 
 class SessionPromptIndexFollowUp implements SessionPromptIndexEntry {
-  const SessionPromptIndexFollowUp({required this.messageId, required this.seq, required this.number, required this.createdAt, required this.preview, required this.openerMessageId,  String? $type}): $type = $type ?? 'followUp';
+  const SessionPromptIndexFollowUp({required this.messageId, required this.seq, required this.number, required this.createdAt, required this.preview, required this.invocation, required this.openerMessageId,  String? $type}): $type = $type ?? 'followUp';
   factory SessionPromptIndexFollowUp.fromJson(Map<String, dynamic> json) => _$SessionPromptIndexFollowUpFromJson(json);
 
 @override final  String messageId;
@@ -275,6 +280,9 @@ class SessionPromptIndexFollowUp implements SessionPromptIndexEntry {
 @override final  int number;
 @override final  int? createdAt;
 @override final  String? preview;
+/// The command this prompt ran, when the bridge named it; [preview] keeps
+/// the prompt's text for clients that predate this field.
+@override final  CommandInvocation? invocation;
  final  String openerMessageId;
 
 @JsonKey(name: 'kind')
@@ -289,18 +297,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptIndexFollowUp&&(identical(other.messageId, messageId) || other.messageId == messageId)&&(identical(other.seq, seq) || other.seq == seq)&&(identical(other.number, number) || other.number == number)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.preview, preview) || other.preview == preview)&&(identical(other.openerMessageId, openerMessageId) || other.openerMessageId == openerMessageId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptIndexFollowUp&&(identical(other.messageId, messageId) || other.messageId == messageId)&&(identical(other.seq, seq) || other.seq == seq)&&(identical(other.number, number) || other.number == number)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.preview, preview) || other.preview == preview)&&(identical(other.invocation, invocation) || other.invocation == invocation)&&(identical(other.openerMessageId, openerMessageId) || other.openerMessageId == openerMessageId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,messageId,seq,number,createdAt,preview,openerMessageId);
+    return Object.hash(runtimeType,messageId,seq,number,createdAt,preview,invocation,openerMessageId);
 }
 
 @override
 String toString() {
-    return 'SessionPromptIndexEntry.followUp(messageId: $messageId, seq: $seq, number: $number, createdAt: $createdAt, preview: $preview, openerMessageId: $openerMessageId)';
+    return 'SessionPromptIndexEntry.followUp(messageId: $messageId, seq: $seq, number: $number, createdAt: $createdAt, preview: $preview, invocation: $invocation, openerMessageId: $openerMessageId)';
 }
 
 

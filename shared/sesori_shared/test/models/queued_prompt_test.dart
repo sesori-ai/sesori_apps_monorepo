@@ -5,6 +5,7 @@ void main() {
   group("QueuedSessionPrompt", () {
     test("round-trips all fields through JSON", () {
       const prompt = QueuedSessionPrompt(
+        commandSource: null,
         id: "prm_1234",
         dispatchState: QueuedPromptDispatchState.dispatched,
         text: "fix the tests",
@@ -20,6 +21,7 @@ void main() {
 
     test("round-trips a command entry with null text", () {
       const prompt = QueuedSessionPrompt(
+        commandSource: null,
         id: "prm_5678",
         text: null,
         command: "review",
@@ -32,6 +34,23 @@ void main() {
 
       expect(json.containsKey("text"), isFalse, reason: "null text must be omitted, never an empty string");
       expect(decoded, equals(prompt));
+    });
+
+    test("round-trips a command source and decodes an unknown one to unknown", () {
+      const prompt = QueuedSessionPrompt(
+        commandSource: CommandSource.skill,
+        id: "prm_skill",
+        text: null,
+        command: "review",
+        attachmentCount: 0,
+        createdAt: 1,
+      );
+
+      expect(QueuedSessionPrompt.fromJson(prompt.toJson()), equals(prompt));
+      expect(
+        QueuedSessionPrompt.fromJson({"id": "x", "createdAt": 1, "commandSource": "future-kind"}).commandSource,
+        CommandSource.unknown,
+      );
     });
 
     test("missing and unknown dispatch ownership cannot claim cancellation", () {
@@ -61,8 +80,22 @@ void main() {
     test("round-trips its data list through JSON", () {
       const response = QueuedPromptResponse(
         data: [
-          QueuedSessionPrompt(id: "prm_1", text: "a", command: null, attachmentCount: 0, createdAt: 1),
-          QueuedSessionPrompt(id: "prm_2", text: null, command: "compact", attachmentCount: 0, createdAt: 2),
+          QueuedSessionPrompt(
+            commandSource: null,
+            id: "prm_1",
+            text: "a",
+            command: null,
+            attachmentCount: 0,
+            createdAt: 1,
+          ),
+          QueuedSessionPrompt(
+            commandSource: null,
+            id: "prm_2",
+            text: null,
+            command: "compact",
+            attachmentCount: 0,
+            createdAt: 2,
+          ),
         ],
       );
 
@@ -81,6 +114,7 @@ void main() {
   group("SendPromptRequest.promptId", () {
     test("round-trips when present and is omitted from JSON when null", () {
       const withId = SendPromptRequest(
+        commandSource: null,
         sessionId: "ses_1",
         parts: [PromptPart.text(text: "hello")],
         agent: null,
@@ -111,6 +145,7 @@ void main() {
   group("MessageUser.promptId", () {
     test("round-trips when present and decodes old payloads to null", () {
       const message = Message.user(
+        invocation: null,
         id: "msg_1",
         sessionID: "ses_1",
         agent: null,
@@ -132,7 +167,14 @@ void main() {
       const event = SesoriSseEvent.sessionQueuedPrompts(
         sessionID: "ses_1",
         prompts: [
-          QueuedSessionPrompt(id: "prm_1", text: "queued text", command: null, attachmentCount: 1, createdAt: 7),
+          QueuedSessionPrompt(
+            commandSource: null,
+            id: "prm_1",
+            text: "queued text",
+            command: null,
+            attachmentCount: 1,
+            createdAt: 7,
+          ),
         ],
       );
 

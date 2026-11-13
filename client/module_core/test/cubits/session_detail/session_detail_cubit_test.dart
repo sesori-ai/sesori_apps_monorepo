@@ -2753,6 +2753,7 @@ void main() {
       act: (cubit) async {
         await _awaitLoaded(cubit);
         const message = Message.user(
+          invocation: null,
           promptId: null,
           id: "msg-new",
           sessionID: sessionId,
