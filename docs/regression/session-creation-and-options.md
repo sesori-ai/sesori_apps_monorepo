@@ -97,9 +97,34 @@ variant, and worktree mode, and creating the session with its first input.
   screen-reader label read "N sub-agents, M working", and a screen reader can open the list from it.
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
-- Claude's plugin-scoped discovery runs in its host-created state directory,
-  never a selected project or the bridge process's launch directory. This keeps
-  its global option probe on a valid, stable path when projects move or disappear.
+- Claude's options are project-scoped: each project's command list holds the
+  project's `.claude/commands` and `.claude/skills` entries plus the user's and
+  Claude's own, and another project's picker never shows them. Claude applies its
+  own listing rules to them (naming, descriptions, `user-invocable: false`, a skill
+  winning over a same-named command, the user's `skillOverrides`). Not listed:
+  commands from plugins enabled only in a project's settings, and entries in a
+  parent folder's `.claude`. `skillOverrides` set in the project's own settings is
+  not applied, so a skill turned off there still lists and fails when run. A request that names no project, or a project
+  whose folder was deleted, probes in the host-created state directory, never the
+  bridge process's launch directory, so a deleted project's sessions still open and
+  reload with the user's and Claude's own entries.
+- A Claude catalog probe never runs anything the project controls: a project's
+  probe runs in a temporary mirror holding only copies of its command files
+  (`.claude/commands/**/*.md`) and skill files (`.claude/skills/<skill>/SKILL.md`),
+  with all hooks disabled and no MCP servers, so opening a
+  picker or history runs no project settings helper (such as `apiKeyHelper` or
+  `otelHeadersHelper`), no SessionStart hook and no `.mcp.json` server. The mirror
+  is deleted after the probe, also when it fails. Linked command files and skill
+  folders are followed and copied; an unreadable file or a broken link is logged
+  and skipped, as Claude skips it, and the rest still lists. It needs no symbolic-link
+  privilege, so per-project listing works on Windows without Developer Mode.
+  Managed-policy settings still apply. Failure signal: a project helper's
+  or hook's side effect, or an MCP server process, appearing when only a picker was
+  opened.
+- Claude labels a listed command a skill when its name matches a skill in the
+  project's `.claude/skills` or the user's `<config dir>/skills` (frontmatter
+  `name`, else folder name); every other entry is a command. A replayed run takes
+  its kind from its session project's list.
 - Claude's catalog drops the CLI's own `default` model entry and names the
   selection instead: Opus is the default model and `high` the default effort, so
   every picker entry states what will actually run.

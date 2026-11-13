@@ -17,7 +17,7 @@ void main() {
       expect(descriptor.id, "claude");
       expect(descriptor.displayName, "Claude Code");
       expect(descriptor.projectOwnership, PluginProjectOwnership.bridgeDerived);
-      expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
+      expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.namesCommandInvocations, isTrue);
       expect(descriptor.mcpCapabilities, {PluginMcpCapability.management, PluginMcpCapability.authentication});
@@ -313,7 +313,7 @@ void main() {
       expect(plugin.currentStatus, const PluginReady());
       await expectLater(
         plugin.api.getSessionOptions(
-          projectId: "/tmp/project",
+          projectId: Directory.systemTemp.path,
           discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
         ),
         throwsA(isA<ProcessException>()),
@@ -325,7 +325,7 @@ void main() {
       expect(degraded.userActionHint, isNotEmpty);
 
       await plugin.api.getSessionOptions(
-        projectId: "/tmp/project",
+        projectId: Directory.systemTemp.path,
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
       );
       expect(plugin.currentStatus, const PluginReady());

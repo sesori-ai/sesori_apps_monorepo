@@ -11,6 +11,7 @@ import "../api/models/claude_stream_message.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
 import "../models/claude_permission_mode.dart";
+import "../models/claude_process_purpose.dart";
 import "mappers/claude_mcp_mapper.dart";
 import "models/claude_mcp_authentication_context.dart";
 
@@ -254,6 +255,7 @@ final class ClaudeSessionProcessRepository({
     required String sessionId,
     required String directory,
     required bool createNew,
+    required ClaudeProcessPurpose purpose,
     required String? model,
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
@@ -286,6 +288,7 @@ final class ClaudeSessionProcessRepository({
       sessionId: sessionId,
       directory: directory,
       createNew: createNew,
+      purpose: purpose,
       model: model,
       effort: effort,
       permissionMode: permissionMode,
@@ -455,6 +458,7 @@ final class ClaudeSessionProcessRepository({
     required String sessionId,
     required String directory,
     required bool createNew,
+    required ClaudeProcessPurpose purpose,
     required String? model,
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
@@ -469,6 +473,7 @@ final class ClaudeSessionProcessRepository({
         binaryPath: _binaryPath,
         workingDirectory: directory,
         launch: launch,
+        purpose: purpose,
         model: model,
         effort: effort,
         permissionMode: permissionMode,
