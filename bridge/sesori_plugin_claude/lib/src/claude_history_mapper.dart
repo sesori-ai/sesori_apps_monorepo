@@ -50,6 +50,9 @@ final class const ClaudeHistoryMapper({
     String? lastRealModel;
     // The last compact boundary's details, for the summary record after it.
     ClaudeCompactMetadata? compactMetadata;
+    // Where the last compaction row went, so the command that caused it can
+    // go before it.
+    int? compactionIndex;
     // Task lifecycle replays through the same tracker the live path uses, so
     // terminal precedence has exactly one implementation.
     final tasks = ClaudeToolTracker();
@@ -106,6 +109,7 @@ final class const ClaudeHistoryMapper({
           compactMetadata = record.metadata;
         case ClaudeTranscriptUserRecord(isCompactSummary: true):
           if (skip(record)) continue;
+          compactionIndex = entries.length;
           entries.add(
             _MappedHistoryMessage(
               message: _content.compactionMessage(
@@ -129,17 +133,24 @@ final class const ClaudeHistoryMapper({
           }
           final blocks = _content.map(content: record.content);
           if (_content.commandEnvelope(blocks: blocks) case final command?) {
-            entries.add(
-              _MappedHistoryMessage(
-                message: _commandTurn(
-                  sessionId: sessionId,
-                  messageId: record.id,
-                  timestamp: record.timestamp,
-                  command: command,
-                  commands: commands,
-                ),
+            final turn = _MappedHistoryMessage(
+              message: _commandTurn(
+                sessionId: sessionId,
+                messageId: record.id,
+                timestamp: record.timestamp,
+                command: command,
+                commands: commands,
               ),
             );
+            // Claude records a command after the compaction it ran into
+            // (`/compact`'s own, or an automatic one before its turn). Live,
+            // its row shows at dispatch, above the compaction row, and keeps
+            // that place here.
+            if (compactionIndex case final index? when index == entries.length - 1) {
+              entries.insert(index, turn);
+            } else {
+              entries.add(turn);
+            }
             continue;
           }
           if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
