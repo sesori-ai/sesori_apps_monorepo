@@ -16,7 +16,7 @@ class GrokSessionConfigRepository({required final GrokAcpApi _api}) {
   }) async {
     if (sessionId.isEmpty || modelId.isEmpty || (reasoningEffort?.isEmpty ?? false)) {
       throw const PluginOperationException(
-        selectionOperation,
+        operation: selectionOperation,
         message: "Grok selection values must not be empty",
       );
     }
@@ -31,7 +31,7 @@ class GrokSessionConfigRepository({required final GrokAcpApi _api}) {
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          selectionOperation,
+          operation: selectionOperation,
           message: "Grok rejected the requested session options",
           cause: error,
         ),

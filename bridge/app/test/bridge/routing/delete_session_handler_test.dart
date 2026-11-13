@@ -616,7 +616,7 @@ void main() {
         projectId: "/repo",
         worktreePath: null,
       );
-      plugin.throwOnDeleteSessionError = const PluginOperationException.notFound("deleteSession");
+      plugin.throwOnDeleteSessionError = const PluginOperationException.notFound(operation: "deleteSession");
 
       final response = await handler.handle(
         request: makeRequest("DELETE", "/session/delete"),

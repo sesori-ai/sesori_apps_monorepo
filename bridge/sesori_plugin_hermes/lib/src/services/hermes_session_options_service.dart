@@ -95,7 +95,7 @@ class HermesSessionOptionsService({
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          "session/set_model",
+          operation: "session/set_model",
           message: "Hermes rejected the requested model",
           cause: error,
         ),

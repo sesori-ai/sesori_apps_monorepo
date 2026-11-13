@@ -249,7 +249,7 @@ class McpRepository({
       McpServerAction.enable => PluginMcpServerAction.enable,
       McpServerAction.disable => PluginMcpServerAction.disable,
       McpServerAction.unknown => throw PluginOperationException(
-        McpOperation.executeAction.name,
+        operation: McpOperation.executeAction.name,
         message: "Unsupported MCP action.",
         statusCode: 400,
       ),
@@ -447,13 +447,13 @@ class McpRepository({
         final session = await _sessionDao.getSession(sessionId: sessionId);
         if (session == null) {
           throw PluginOperationException.notFound(
-            operation.name,
+            operation: operation.name,
             message: "Session not found: $sessionId",
           );
         }
         if (session.pluginId != pluginId) {
           throw PluginOperationException(
-            operation.name,
+            operation: operation.name,
             message: "The session does not belong to the selected integration.",
             statusCode: 400,
           );

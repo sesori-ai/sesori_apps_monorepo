@@ -146,7 +146,7 @@ class PendingInteractionService({
       "Rejecting external-action destination for ${action.id} in ${action.sessionID}: HTTPS without user info required",
     );
     throw PluginOperationException(
-      operation.name,
+      operation: operation.name,
       statusCode: 422,
       message: "external-action destination requires absolute HTTPS without user info",
     );

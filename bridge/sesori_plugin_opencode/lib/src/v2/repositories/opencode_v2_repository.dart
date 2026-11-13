@@ -529,7 +529,7 @@ class OpenCodeV2Repository({
     final id = names.nativeId(selection: selection);
     if (id == null) {
       throw const PluginStaleOptionsException(
-        "resolveAgent",
+        operation: "resolveAgent",
         message: "The selected OpenCode agent is no longer offered",
       );
     }

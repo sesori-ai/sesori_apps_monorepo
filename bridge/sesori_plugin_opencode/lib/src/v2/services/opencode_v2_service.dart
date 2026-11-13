@@ -257,7 +257,7 @@ class OpenCodeV2Service({
   }) async {
     if (parentSessionId != null) {
       throw const PluginOperationException(
-        "createSession",
+        operation: "createSession",
         statusCode: 501,
         message:
             "Sesori does not implement child-session creation for OpenCode v2. Create a standalone session instead.",
@@ -338,7 +338,7 @@ class OpenCodeV2Service({
       return _V2CommandKind.skill;
     }
     throw const PluginStaleOptionsException(
-      "sendCommand",
+      operation: "sendCommand",
       message: "OpenCode no longer offers the selected command.",
     );
   }
@@ -358,7 +358,7 @@ class OpenCodeV2Service({
         : (await _repository.getSessionModel(sessionId: sessionId))?.copyWith(variant: variant.id);
     if (model == null && variant != null && selection == null) {
       throw const PluginStaleOptionsException(
-        "selectModel",
+        operation: "selectModel",
         message: "OpenCode has no current model for the selected variant.",
       );
     }
@@ -377,7 +377,7 @@ class OpenCodeV2Service({
         .firstOrNull;
     if (candidate == null || (model.variant != null && !candidate.variants.contains(model.variant))) {
       throw const PluginStaleOptionsException(
-        "selectModel",
+        operation: "selectModel",
         message: "OpenCode no longer offers the selected model or variant.",
       );
     }
@@ -455,7 +455,7 @@ class OpenCodeV2Service({
             .firstOrNull;
     if (form == null) {
       throw const PluginOperationException(
-        "replyToQuestion",
+        operation: "replyToQuestion",
         statusCode: 404,
         message: "OpenCode form is no longer pending.",
       );
@@ -474,7 +474,7 @@ class OpenCodeV2Service({
     final owner = sessionId ?? _tracker.forms.where((form) => form.id == questionId).firstOrNull?.sessionID;
     if (owner == null) {
       throw const PluginOperationException(
-        "rejectQuestion",
+        operation: "rejectQuestion",
         statusCode: 404,
         message: "OpenCode form is no longer pending.",
       );

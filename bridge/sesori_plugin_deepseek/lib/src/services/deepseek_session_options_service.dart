@@ -63,7 +63,7 @@ class DeepSeekSessionOptionsService({
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          "session/set_config_option",
+          operation: "session/set_config_option",
           message: "DeepSeek rejected the requested session selection",
           cause: error,
         ),
@@ -103,7 +103,7 @@ class DeepSeekSessionOptionsService({
 
   Future<PluginSessionOptions> _discover({required AcpStdioClient client, required String cwd}) async =>
       await _tryDiscover(client: client, cwd: cwd) ??
-      (throw const PluginOperationException("deepseek/catalog", message: _noModelsActionHint));
+      (throw const PluginOperationException(operation: "deepseek/catalog", message: _noModelsActionHint));
 
   /// Returns null when DeepSeek lists no models, which it does until a provider credential is configured.
   Future<PluginSessionOptions?> _tryDiscover({required AcpStdioClient client, required String cwd}) async {

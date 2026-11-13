@@ -29,7 +29,7 @@ class const AntigravityOutputComposer({
   bool _consumeStdout({required List<int> line}) {
     if (authorizationMapper.parseLine(line: line) == null) return false;
     throw const PluginAuthenticationRequiredException(
-      "authenticate",
+      operation: "authenticate",
       actionHint: authenticationHint,
       recovery: PluginAuthenticationRecovery.login,
       message: "Antigravity requires personal Google authentication",
@@ -39,7 +39,7 @@ class const AntigravityOutputComposer({
   Object mapInitializationFailure({required Object error}) {
     if (error case AcpOutputInterceptionException(cause: PluginAuthenticationRequiredException())) {
       return PluginAuthenticationRequiredException(
-        "authenticate",
+        operation: "authenticate",
         actionHint: authenticationHint,
         recovery: PluginAuthenticationRecovery.login,
         message: "Antigravity requires personal Google authentication",

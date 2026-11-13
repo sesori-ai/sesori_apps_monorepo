@@ -49,5 +49,5 @@ class const V2FormAnswerValidator() {
   };
 
   Never _invalid({required String message}) =>
-      throw PluginOperationException("replyToQuestion", statusCode: 400, message: message);
+      throw PluginOperationException(operation: "replyToQuestion", statusCode: 400, message: message);
 }

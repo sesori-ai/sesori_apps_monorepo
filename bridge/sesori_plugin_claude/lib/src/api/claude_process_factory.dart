@@ -70,7 +70,11 @@ final class HostClaudeProcessFactory({
       // A deleted session folder fails only that session, not the Claude runtime.
       if (!io.Directory(launch.workingDirectory).existsSync()) {
         Error.throwWithStackTrace(
-          PluginWorkingDirectoryMissingException("spawn Claude", path: launch.workingDirectory, cause: error),
+          PluginWorkingDirectoryMissingException(
+            operation: "spawn Claude",
+            path: launch.workingDirectory,
+            cause: error,
+          ),
           stack,
         );
       }

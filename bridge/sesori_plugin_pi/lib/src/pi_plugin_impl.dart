@@ -243,7 +243,7 @@ final class PiPlugin._({
       rethrow;
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
-        PluginOperationException("renameSession", message: "Pi session rename failed.", cause: error),
+        PluginOperationException(operation: "renameSession", message: "Pi session rename failed.", cause: error),
         stackTrace,
       );
     }
@@ -260,7 +260,7 @@ final class PiPlugin._({
       await _sessionService.deleteSession(root: root);
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
-        PluginOperationException("deleteSession", message: "Pi session deletion failed.", cause: error),
+        PluginOperationException(operation: "deleteSession", message: "Pi session deletion failed.", cause: error),
         stackTrace,
       );
     }
@@ -311,7 +311,7 @@ final class PiPlugin._({
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          "getSessionMessages",
+          operation: "getSessionMessages",
           message: "Pi session history could not be loaded.",
           cause: error,
         ),
@@ -331,7 +331,11 @@ final class PiPlugin._({
     required ({String providerID, String modelID})? model,
   }) async {
     if (parts.isEmpty) {
-      throw const PluginOperationException("sendPrompt", statusCode: 400, message: "Prompt parts are required.");
+      throw const PluginOperationException(
+        operation: "sendPrompt",
+        statusCode: 400,
+        message: "Prompt parts are required.",
+      );
     }
     final session = await _requiredSession(sessionId: sessionId, operation: "sendPrompt");
     await _validateSelection(
@@ -384,19 +388,19 @@ final class PiPlugin._({
     );
     final options = (await _catalogService.requireCatalog(projectId: session.directory)).options;
     if (command.trim() != command || command.isEmpty) {
-      throw const PluginOperationException("sendCommand", statusCode: 400, message: "Invalid Pi command.");
+      throw const PluginOperationException(operation: "sendCommand", statusCode: 400, message: "Invalid Pi command.");
     }
     final catalogCommand = options.commands.where((candidate) => candidate.name == command).firstOrNull;
     if (catalogCommand == null) {
       if (options.completeness != PluginSessionOptionsCompleteness.complete) {
         throw const PluginOperationException(
-          "sendCommand",
+          operation: "sendCommand",
           statusCode: 503,
           message: "Pi command availability could not be confirmed because catalog discovery was incomplete.",
         );
       }
       throw const PluginStaleOptionsException(
-        "sendCommand",
+        operation: "sendCommand",
         message: "Pi no longer offers this command.",
       );
     }
@@ -427,7 +431,7 @@ final class PiPlugin._({
       rethrow;
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
-        PluginOperationException("sendCommand", message: "Pi did not accept the command.", cause: error),
+        PluginOperationException(operation: "sendCommand", message: "Pi did not accept the command.", cause: error),
         stackTrace,
       );
     }
@@ -479,7 +483,7 @@ final class PiPlugin._({
     required String sessionId,
     required PluginPermissionReply reply,
   }) => Future.error(
-    const PluginOperationException.notFound("replyToPermission", message: "Permission not found."),
+    const PluginOperationException.notFound(operation: "replyToPermission", message: "Permission not found."),
   );
 
   @override
@@ -518,8 +522,8 @@ final class PiPlugin._({
     required String message,
     required bool staleOptions,
   }) => staleOptions
-      ? PluginStaleOptionsException(operation, message: message)
-      : PluginOperationException(operation, statusCode: 400, message: message);
+      ? PluginStaleOptionsException(operation: operation, message: message)
+      : PluginOperationException(operation: operation, statusCode: 400, message: message);
 
   Future<void> _validateSelection({
     required String projectId,
@@ -565,7 +569,9 @@ final class PiPlugin._({
 
   Future<PluginSession> _requiredSession({required String sessionId, required String operation}) async {
     final session = await _catalogRepository.findSessionById(sessionId: sessionId);
-    if (session == null) throw PluginOperationException.notFound(operation, message: "Pi session was not found.");
+    if (session == null) {
+      throw PluginOperationException.notFound(operation: operation, message: "Pi session was not found.");
+    }
     return session;
   }
 

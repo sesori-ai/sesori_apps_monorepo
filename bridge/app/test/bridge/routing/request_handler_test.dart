@@ -161,12 +161,14 @@ void main() {
     });
 
     test("PluginOperationException with a status forwards it", () async {
-      final response = await respond(const PluginOperationException("op", statusCode: 409));
+      final response = await respond(const PluginOperationException(operation: "op", statusCode: 409));
       expect(response.status, 409);
     });
 
     test("PluginOperationException without a status maps to 502, not 500", () async {
-      final response = await respond(const PluginOperationException("createSession", message: "cli exited 1"));
+      final response = await respond(
+        const PluginOperationException(operation: "createSession", message: "cli exited 1"),
+      );
       expect(response.status, 502);
     });
 

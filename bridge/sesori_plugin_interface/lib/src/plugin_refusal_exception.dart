@@ -7,8 +7,8 @@ import "plugin_operation_exception.dart";
 /// sentence the plugin wrote for the user: never raw backend output, stack
 /// traces, paths, or prompt content. Failures without such a sentence throw a
 /// plain [PluginOperationException] instead.
-class const PluginRefusalException(
-  super.operation, {
+class const PluginRefusalException({
+  required super.operation,
   required final String userFacingReason,
   required super.cause,
 }) extends PluginOperationException {

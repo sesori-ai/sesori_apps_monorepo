@@ -513,7 +513,7 @@ class _RecordingPluginRuntime({required final BridgePluginApi plugin}) implement
     commitCalls++;
     lastOperation = operation;
     if (!isCurrentGeneration(pluginId: pluginId, generation: generation)) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "stale generation");
+      throw PluginOperationException(operation: operation.name, statusCode: 503, message: "stale generation");
     }
     return await commit();
   }

@@ -1876,7 +1876,10 @@ class CodexPlugin._({
     if (registry == null) return;
     if (registry.isTypedMcpRequest(requestId: questionId)) {
       if (!registry.cancelLegacyMcpRequest(requestId: questionId, sessionId: sessionId)) {
-        throw const PluginOperationException.notFound("cancelMcpRequest", message: "owning session is required");
+        throw const PluginOperationException.notFound(
+          operation: "cancelMcpRequest",
+          message: "owning session is required",
+        );
       }
       return;
     }
@@ -1892,7 +1895,10 @@ class CodexPlugin._({
     if (registry == null) return;
     if (registry.isTypedMcpRequest(requestId: questionId)) {
       if (!registry.cancelLegacyMcpRequest(requestId: questionId, sessionId: sessionId)) {
-        throw const PluginOperationException.notFound("cancelMcpRequest", message: "owning session is required");
+        throw const PluginOperationException.notFound(
+          operation: "cancelMcpRequest",
+          message: "owning session is required",
+        );
       }
       return;
     }

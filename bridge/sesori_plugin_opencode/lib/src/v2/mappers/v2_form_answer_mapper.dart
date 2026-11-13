@@ -58,5 +58,5 @@ class const V2FormAnswerMapper() {
       options.where((option) => option.label == answer).firstOrNull?.value ?? answer;
 
   Never _invalid({required String message}) =>
-      throw PluginOperationException("replyToQuestion", statusCode: 400, message: message);
+      throw PluginOperationException(operation: "replyToQuestion", statusCode: 400, message: message);
 }

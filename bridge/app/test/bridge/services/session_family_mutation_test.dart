@@ -488,7 +488,7 @@ class _FamilyRepository() implements SessionRepository {
   }
 
   PluginOperationException _notFound({required String sessionId, required SessionOperation operation}) {
-    return PluginOperationException.notFound(operation.name, message: "session $sessionId was not found");
+    return PluginOperationException.notFound(operation: operation.name, message: "session $sessionId was not found");
   }
 
   @override

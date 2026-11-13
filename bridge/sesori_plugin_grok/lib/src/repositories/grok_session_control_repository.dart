@@ -23,7 +23,7 @@ class const GrokSessionControlRepository({required final GrokAcpApi api}) {
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          GrokAcpApi.subagentCancelMethod,
+          operation: GrokAcpApi.subagentCancelMethod,
           message: "Grok child cancellation failed for child $childSessionId under parent $parentSessionId",
           cause: error,
         ),

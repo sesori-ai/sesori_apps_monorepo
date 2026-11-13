@@ -4,20 +4,20 @@ import 'package:test/test.dart';
 void main() {
   group('PluginOperationException', () {
     test('statusCode is optional', () {
-      const exception = PluginOperationException('createSession', message: 'cli exited 1');
+      const exception = PluginOperationException(operation: 'createSession', message: 'cli exited 1');
       expect(exception.statusCode, isNull);
       expect(exception.isNotFound, isFalse);
       expect(exception.toString(), 'PluginOperationException: createSession failed: cli exited 1');
     });
 
     test('notFound constructor marks the failure as not-found', () {
-      const exception = PluginOperationException.notFound('deleteSession');
+      const exception = PluginOperationException.notFound(operation: 'deleteSession');
       expect(exception.isNotFound, isTrue);
       expect(exception.statusCode, 404);
     });
 
     test('toString includes the cause when present', () {
-      const exception = PluginOperationException('sync', cause: 'socket closed');
+      const exception = PluginOperationException(operation: 'sync', cause: 'socket closed');
       expect(exception.toString(), 'PluginOperationException: sync failed (cause: socket closed)');
     });
   });
