@@ -548,7 +548,7 @@ state.
   nothing jumps when the bridge drops or returns.
 - A session row leads with the harness logo, in a square of the same size for
   every harness, so titles line up; screen readers hear the harness name from
-  it. The logo rests as a quiet grey glyph. It shows its own colours, holding
+  it. The logo rests as a dim grey glyph (about a third strength). It shows its own colours, holding
   still, while the session has unread activity or is the open one (on the wide
   and desktop sidebars), and breathes in them (about every 1.6 s, fading to
   about a third opacity) while an agent works, but not while the session waits
