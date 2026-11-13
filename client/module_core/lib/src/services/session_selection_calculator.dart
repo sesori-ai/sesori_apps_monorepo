@@ -48,13 +48,20 @@ class const SessionSelectionCalculator() {
   /// The effort/thinking variants [model] offers, in the order the plugin
   /// declared them. `"none"` is a backend spelling of "no variant", never a
   /// picker entry.
+  ///
+  /// A model the catalog does not offer has no known variants, so it offers
+  /// only the one it carries: a session kept on its own unlisted model still
+  /// shows the effort it recorded, and nothing else.
   List<SessionVariant> availableVariants({
     required List<ProviderInfo> providers,
     required AgentModel? model,
   }) {
     if (model == null) return const [];
     final providerModel = _providerModel(providers: providers, model: model);
-    if (providerModel == null || !providerModel.isAvailable) return const [];
+    if (providerModel == null || !providerModel.isAvailable) {
+      final carried = model.variant;
+      return carried == null || carried == "none" ? const [] : [SessionVariant(id: carried)];
+    }
     return providerModel.variants
         .where((variant) => variant != "none")
         .map((variant) => SessionVariant(id: variant))

@@ -693,22 +693,23 @@ defaults and queued client sends coherent.
   replay adopts and persists the latest assistant/error transcript selection,
   including an OpenCode effort variant. Other opens select valid persisted
   prompt defaults first and otherwise continue with the latest assistant/error
-  transcript model before falling back to agent or catalog defaults. The
-  transcript model remains authoritative when a retained provider cache does
-  not list its provider, so a terminal-imported session cannot silently resume
-  on a different provider. When the catalog lists the provider but not the
-  model (an older model or a proxy alias), the open resolves it the way the
-  options refresh would, so the composer's model pill shows its final model
-  from the first frame instead of switching after the refresh. The selection
-  already on screen is retained the same way,
-  but retention is only ever a fallback: an agent the user picks, or a
-  remembered default the bridge reports, replaces the model whenever the catalog
-  still offers what it names, and an options refresh takes no retention at all
-  because adopting the catalog it just fetched is why it ran.
-  Everything the catalog is asked to supply must be something it still
-  advertises as available: persisted defaults, an agent's declared model, and a
-  queued prompt's model are each validated before being adopted, so an agent
-  naming a model this catalog does not carry does not put it in the composer.
+  transcript model before falling back to agent or catalog defaults.
+- A session keeps its own model (its recorded prompt defaults, otherwise its
+  transcript model) even when the harness's catalog does not list it. The pill
+  shows that model, plus the recorded effort as the only variant, from the
+  first frame with or without a cached catalog, and neither changes when an
+  options refresh, silent refresh, reconnect, or queued-prompt revalidation
+  runs. The next prompt goes to that model; if the harness cannot run it, the
+  send fails through the normal failure path and the user picks another model.
+  A model the user picks replaces it and is kept afterwards; once the selection
+  is no longer the session's own, a refresh corrects anything the catalog does
+  not offer as before. Signal: the pill opens on one model and flips to another
+  without a user pick.
+- Everything else the catalog is asked to supply must be something it still
+  advertises as available: an agent's declared model and a queued prompt's
+  model that is not the session's own are validated before being adopted, so an
+  agent naming a model this catalog does not carry does not put it in the
+  composer.
 - The bridge owns accepted-but-not-yet-visible prompts. An entry appears in the
   session snapshot and full-list `session.queued-prompts` events, survives
   leaving the screen, locking the phone, and reconnecting, and is visible to

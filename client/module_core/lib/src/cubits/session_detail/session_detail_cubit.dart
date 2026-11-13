@@ -1408,10 +1408,16 @@ class SessionDetailCubit(
           // The replacement agent's own model leads: the placeholder was never a
           // catalog entry, so nothing about the model beside it was a preference
           // the recovered agent should inherit. The session's model still
-          // follows, for a recovered agent that declares none.
+          // follows, for a recovered agent that declares none, and stays
+          // outright when it is the session's own and the catalog lacks it.
           final recoveredAgent = latest.availableAgents.isEmpty && availableAgents.isNotEmpty
               ? _selection.validatedAgentName(agents: availableAgents, candidates: [latest.selectedAgent])
               : null;
+          final keepsSessionModel = _keepsUnofferedSessionModel(
+            state: latest,
+            model: latest.selectedAgentModel,
+            providers: availableProviders,
+          );
           final recovered = recoveredAgent == null
               ? null
               : _selection.reconcile(
@@ -1419,10 +1425,11 @@ class SessionDetailCubit(
                   providers: availableProviders,
                   agentNameCandidates: [recoveredAgent],
                   modelCandidates: [
-                    availableAgents.firstWhereOrNull((agent) => agent.name == recoveredAgent)?.model,
+                    if (!keepsSessionModel)
+                      availableAgents.firstWhereOrNull((agent) => agent.name == recoveredAgent)?.model,
                     latest.selectedAgentModel,
                   ],
-                  retainedModel: null,
+                  retainedModel: keepsSessionModel ? latest.selectedAgentModel : null,
                 );
           final preservedSelectedAgent = switch (recovered) {
             null => latest.selectedAgent,
@@ -3096,10 +3103,19 @@ class SessionDetailCubit(
           agents: agents,
           candidates: [latest.selectedAgent],
         );
+        //
+        // The session's own model is the exception: when the catalog does not
+        // list it, it stays, and no replacement agent's model displaces it.
+        // Only the user picking another model replaces it.
         final heldSameAgent =
             agentName == latest.selectedAgent &&
             latest.availableAgents.any((agent) => agent.name == latest.selectedAgent);
-        final replacedAgentModel = heldSameAgent
+        final keepsSessionModel = _keepsUnofferedSessionModel(
+          state: latest,
+          model: latest.selectedAgentModel,
+          providers: providers,
+        );
+        final replacedAgentModel = heldSameAgent || keepsSessionModel
             ? null
             : agents.firstWhereOrNull((agent) => agent.name == agentName)?.model;
         final reconciled = _selection.reconcile(
@@ -3107,7 +3123,7 @@ class SessionDetailCubit(
           providers: providers,
           agentNameCandidates: [agentName],
           modelCandidates: [replacedAgentModel, latest.selectedAgentModel],
-          retainedModel: null,
+          retainedModel: keepsSessionModel ? latest.selectedAgentModel : null,
         );
         final selectedAgent = reconciled.agentName ?? _fallbackAgentName;
         final selectedModel = reconciled.model;
@@ -3122,7 +3138,14 @@ class SessionDetailCubit(
                         providers: providers,
                         agentNameCandidates: [submission.agent],
                         modelCandidates: [submission.agentModel],
-                        retainedModel: null,
+                        retainedModel:
+                            _keepsUnofferedSessionModel(
+                              state: latest,
+                              model: submission.agentModel,
+                              providers: providers,
+                            )
+                            ? submission.agentModel
+                            : null,
                       )
                       .model;
             return submission.withSelection(
@@ -3894,6 +3917,30 @@ class SessionDetailCubit(
     return _resolveAgentModel(agents: agents, providerID: reply?.providerID, modelID: reply?.modelID);
   }
 
+  /// The model the session itself names: the selection the bridge recorded
+  /// for it, otherwise the one its transcript last ran on. Null for a session
+  /// with no model of its own yet.
+  AgentModel? _sessionModel({
+    required SessionPromptDefaults? promptDefaults,
+    required AgentModel? assistantAgentModel,
+  }) => promptDefaults?.model ?? assistantAgentModel;
+
+  /// Whether a catalog refresh keeps [model] although [providers] do not offer
+  /// it: only the session's own model, which only the user replaces. Any other
+  /// selection the catalog does not offer is corrected as usual.
+  bool _keepsUnofferedSessionModel({
+    required SessionDetailLoaded state,
+    required AgentModel? model,
+    required List<ProviderInfo> providers,
+  }) {
+    final own = _sessionModel(promptDefaults: state.promptDefaults, assistantAgentModel: state.assistantAgentModel);
+    return model != null &&
+        own != null &&
+        own.providerID == model.providerID &&
+        own.modelID == model.modelID &&
+        !_selection.isModelAvailable(providers: providers, model: model);
+  }
+
   SessionDetailLoaded _buildLoadedState({
     required SessionDetailSnapshot snapshot,
     required Session session,
@@ -3914,19 +3961,16 @@ class SessionDetailCubit(
     final providers = derived.providers;
 
     final assistantAgentModel = _assistantAgentModel(messages: snapshot.messages, agents: agents);
-    // The transcript's own model is retained without validation only when the
-    // catalog does not list its provider: a session imported from a terminal
-    // must not silently resume on a different provider because a retained
-    // provider cache does not know it. A provider the catalog does list judges
-    // its own models here, as the options refresh after this load would, so
-    // the composer opens on the model it keeps instead of switching to it.
-    final transcriptProviderListed = providers.any((provider) => provider.id == assistantAgentModel?.providerID);
+    // The session's own model is retained rather than validated: a session
+    // must not silently resume on a different model because the harness's
+    // catalog does not list what it ran on. Its recorded selection leads, as
+    // it carries the effort the transcript does not.
     final reconciled = _selection.reconcile(
       agents: agents,
       providers: providers,
       agentNameCandidates: [snapshot.promptDefaults?.agent],
-      modelCandidates: [snapshot.promptDefaults?.model, assistantAgentModel],
-      retainedModel: transcriptProviderListed ? null : assistantAgentModel,
+      modelCandidates: [snapshot.promptDefaults?.model],
+      retainedModel: _sessionModel(promptDefaults: snapshot.promptDefaults, assistantAgentModel: assistantAgentModel),
     );
 
     final initialSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
