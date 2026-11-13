@@ -152,7 +152,9 @@ defaults and queued client sends coherent.
   skill, and the injected `<skill>` body stays hidden after reload. Pi expands
   a prompt template or `/skill:name` into the stored user message; the live
   bubble takes the typed text from the pending command, and history decodes
-  Pi's `<skill>` block back to `/skill:name args`. Harness
+  Pi's `<skill>` block back to `/skill:name args`. Oh My Pi lists its
+  `skill:<name>` commands as skills, and history names a replayed skill prompt
+  or Pi `<skill>` envelope as `/skill:name args`, never the injected body. Harness
   exceptions are listed in `docs/HARNESS_CAPABILITIES.md`
   under "Command and skill bubbles".
 - Every send carries a client-generated prompt id, stable across retries. The

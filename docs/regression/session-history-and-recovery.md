@@ -48,6 +48,15 @@ reconnect or restart.
   reload; a duplicate untitled session on the home screen; a mid-turn reload
   failing or spinning until the turn ends; replayed messages showing up again
   in the live stream.
+- A command or skill run keeps one card row in its place when a replay records
+  it in another shape or not at all, on its first backfill and on every later
+  re-import, including one after the backend advanced outside Sesori. The card
+  goes to the replayed user turn between the same neighbors (an OMP prompt
+  template's expanded text), or stays where it was when the replay has no row
+  for it (an OMP skill run), and its neighbors still match their replayed
+  rows. Failure signals after an OMP command or skill run and a reload or
+  forced re-import: the card and the expanded text both shown, a reply shown
+  twice, the card below the last reply, or the card gone.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
