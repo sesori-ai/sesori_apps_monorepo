@@ -100,7 +100,9 @@ variant, and worktree mode, and creating the session with its first input.
 - Claude's options are project-scoped: each project's command list holds the
   project's `.claude/commands` and `.claude/skills` entries, read from disk, plus
   the user's and Claude's own, and another project's picker never shows them.
-  Commands from plugins enabled only in a project's settings are not listed. A request that names no project, or a project
+  Commands from plugins enabled only in a project's settings are not listed.
+  Like Claude, the list leaves out a project command or skill whose frontmatter
+  says `user-invocable: false`. A request that names no project, or a project
   whose folder was deleted, probes in the host-created state directory, never the
   bridge process's launch directory, so a deleted project's sessions still open and
   reload with the user's and Claude's own entries.

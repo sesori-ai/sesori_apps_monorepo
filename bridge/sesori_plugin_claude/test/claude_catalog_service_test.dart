@@ -34,6 +34,12 @@ void main() {
       File(p.join(projectA, ".claude", "commands", "tools", "lint.md"))
         ..createSync(recursive: true)
         ..writeAsStringSync("---\ndescription: Lint the fixture\nargument-hint: <path>\n---\nLint it.\n");
+      File(p.join(projectA, ".claude", "commands", "internal.md"))
+        ..createSync(recursive: true)
+        ..writeAsStringSync("---\nuser-invocable: false\n---\nNot for the menu.\n");
+      File(p.join(projectA, ".claude", "skills", "background", "SKILL.md"))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('---\ndescription: Model only\nuser-invocable: "false"\n---\nBody.\n');
       spawned = [];
       specs = [];
       processes = ClaudeSessionProcessRepository(

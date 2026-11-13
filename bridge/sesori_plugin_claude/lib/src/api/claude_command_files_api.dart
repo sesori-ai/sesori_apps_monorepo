@@ -30,8 +30,9 @@ class ClaudeCommandFilesApi({required Map<String, String> environment}) {
   /// by its path under `commands` with `:` between folders, a skill by its
   /// `SKILL.md` frontmatter `name`, else its folder. A description is the
   /// frontmatter `description`, else the first body line, with Claude's
-  /// ` (project)` suffix. A missing folder or `SKILL.md` contributes nothing;
-  /// any other filesystem failure throws.
+  /// ` (project)` suffix. An entry that is not user-invocable is skipped. A
+  /// missing folder or `SKILL.md` contributes nothing; any other filesystem
+  /// failure throws.
   Future<ClaudeCommandFiles> read({required String projectDirectory}) async {
     final project = p.join(projectDirectory, ".claude");
     final configDirectory = claudeConfigDirectory(environment: _environment);
@@ -58,7 +59,7 @@ class ClaudeCommandFilesApi({required Map<String, String> environment}) {
     }
     return [
       for (final file in files)
-        _entry(
+        ?_entry(
           defaultName: p.split(p.withoutExtension(p.relative(file.path, from: root))).join(":"),
           lines: await file.readAsLines(),
           nameFromFrontmatter: false,
@@ -90,7 +91,10 @@ class ClaudeCommandFilesApi({required Map<String, String> environment}) {
     return _entry(defaultName: p.basename(folder.path), lines: lines, nameFromFrontmatter: true);
   }
 
-  ClaudeCommandDto _entry({
+  /// The entry, or null when its frontmatter says `user-invocable: false`:
+  /// Claude then leaves it out of its own list (verified live with 2.1.323,
+  /// for commands and skills alike), as `/name` cannot run it.
+  ClaudeCommandDto? _entry({
     required String defaultName,
     required List<String> lines,
     required bool nameFromFrontmatter,
@@ -109,6 +113,7 @@ class ClaudeCommandFilesApi({required Map<String, String> environment}) {
         body = lines.sublist(end + 1);
       }
     }
+    if (fields["user-invocable"]?.toLowerCase() == "false") return null;
     final description = fields["description"] ?? _firstText(lines: body);
     return ClaudeCommandDto(
       name: nameFromFrontmatter ? fields["name"] ?? defaultName : defaultName,
