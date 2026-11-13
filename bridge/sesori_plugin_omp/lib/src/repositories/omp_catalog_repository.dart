@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, 
 import "../api/omp_acp_api.dart";
 import "../models/omp_catalog_models.dart";
 import "../omp_identity.dart";
+import "mappers/omp_skill_mapper.dart";
 
 /// Layer-2 mapping and access for OMP catalog discovery.
 class OmpCatalogRepository({required final OmpAcpApi _api}) {
@@ -13,7 +14,8 @@ class OmpCatalogRepository({required final OmpAcpApi _api}) {
   StreamSubscription<AcpNotification>? _commandSubscription;
   Completer<void>? _commandSnapshot;
 
-  List<PluginCommand> get commands => _commandTracker?.commands ?? const [];
+  List<PluginCommand> get commands =>
+      const OmpSkillMapper().labelSkills(commands: _commandTracker?.commands ?? const []);
   bool get hasCommandSnapshot => _commandTracker?.hasSnapshot ?? false;
 
   Future<void> open({required String cwd, required Duration timeout}) async {

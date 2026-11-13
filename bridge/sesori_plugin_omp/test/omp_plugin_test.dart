@@ -1050,6 +1050,46 @@ void main() {
       expect(image.toString(), isNot(contains("/private/")));
     });
 
+    test("names a replayed Pi skill envelope as the skill run", () async {
+      plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
+      final loading = plugin.getSessionMessages("stored");
+      respond(await waitForFrame(AcpMethods.initialize), {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": true},
+        "authMethods": [
+          {"id": "agent", "name": "Agent"},
+        ],
+      });
+      respond(await waitForFrame(AcpMethods.authenticate), const {});
+      final load = await waitForFrame(AcpMethods.sessionLoad);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": "stored",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text": '<skill name="hello" location="/skills/hello/SKILL.md">\nReply briefly.\n</skill>\n\nfor Bob',
+            },
+          },
+        },
+      });
+      respond(load, {"sessionId": "stored"});
+
+      final [message] = await loading;
+      expect(
+        message.info,
+        isA<PluginMessageUser>().having(
+          (info) => info.invocation,
+          "invocation",
+          const PluginCommandInvocation(name: "skill:hello", source: PluginCommandSource.skill, arguments: "for Bob"),
+        ),
+      );
+      expect((message.parts.single as PluginMessagePartText).text, "/skill:hello for Bob");
+    });
+
     test("replays a session the live process holds on that process, without a second omp", () async {
       await connect(capabilities: {"loadSession": true});
       final session = await create("live");

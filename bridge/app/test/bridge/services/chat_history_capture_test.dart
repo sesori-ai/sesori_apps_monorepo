@@ -1743,6 +1743,107 @@ void main() {
           expect(await storedInvocations(history: history), contains(plan));
         });
       });
+
+      group("a replay that records a run in another shape or not at all", () {
+        const greet = CommandInvocation(name: "greet", source: CommandSource.command, arguments: "Alice");
+        const hello = CommandInvocation(name: "skill:hello", source: CommandSource.skill, arguments: "for Bob");
+        MessageWithParts liveRun({required String id, required String text, required CommandInvocation invocation}) {
+          final message = _messageWithText(id: id, text: text, createdAt: null, promptId: "$id-prompt");
+          return switch (message.info) {
+            final MessageUser user => MessageWithParts(
+              info: user.copyWith(invocation: invocation),
+              parts: message.parts,
+            ),
+            _ => message,
+          };
+        }
+
+        // Oh My Pi: untimed rows under fresh ids on every replay, a prompt
+        // template as its expanded text, and no row for its own skill run.
+        List<MessageWithParts> replay({required String generation}) => [
+          _messageWithText(
+            id: "$generation-greet",
+            text: "Say hello to Alice.",
+            createdAt: null,
+            promptId: null,
+          ),
+          _assistantMessageWithText(id: "$generation-hi-alice", text: "Hi Alice", reasoning: null, createdAt: null),
+          _messageWithText(id: "$generation-plain", text: "Say P", createdAt: null, promptId: null),
+          _assistantMessageWithText(id: "$generation-p", text: "P", reasoning: null, createdAt: null),
+          _assistantMessageWithText(id: "$generation-hi-bob", text: "Hi Bob", reasoning: null, createdAt: null),
+        ];
+
+        Future<TestChatHistory> liveSession({required List<MessageWithParts> transcript}) async {
+          final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+          await _captureMessages(
+            history: history,
+            messages: [
+              liveRun(id: "live-greet", text: "/greet Alice", invocation: greet),
+              _assistantMessageWithText(id: "live-hi-alice", text: "Hi Alice", reasoning: null, createdAt: null),
+              _messageWithText(id: "live-plain", text: "Say P", createdAt: null, promptId: "live-plain-prompt"),
+              _assistantMessageWithText(id: "live-p", text: "P", reasoning: null, createdAt: null),
+              liveRun(id: "live-hello", text: "/skill:hello for Bob", invocation: hello),
+              _assistantMessageWithText(id: "live-hi-bob", text: "Hi Bob", reasoning: null, createdAt: null),
+            ],
+          );
+          return history;
+        }
+
+        test("names the reshaped turn and keeps the unreplayed one in place, with no duplicate rows", () async {
+          final history = await liveSession(transcript: replay(generation: "r1"));
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(
+            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+            const ["r1-greet", "r1-hi-alice", "r1-plain", "r1-p", "live-hello", "r1-hi-bob"],
+          );
+          expect(await storedInvocations(history: history), [greet, null, null, null, hello, null]);
+        });
+
+        test("keeps both names through a later import", () async {
+          final transcript = replay(generation: "r1");
+          final history = await liveSession(transcript: transcript);
+          await history.service.backfillSession(sessionId: "ses_a");
+          transcript
+            ..clear()
+            ..addAll(replay(generation: "r2"));
+          await Future<void>.delayed(const Duration(milliseconds: 2));
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(
+            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+            const ["r2-greet", "r2-hi-alice", "r2-plain", "r2-p", "live-hello", "r2-hi-bob"],
+          );
+          expect(await storedInvocations(history: history), [greet, null, null, null, hello, null]);
+        });
+
+        test("leaves a plain turn in a reshaped turn's place alone", () async {
+          final history = createTestChatHistory(
+            sessionRepository: _FakeSessionRepository(
+              transcript: [
+                _messageWithText(id: "replay", text: "Something else", createdAt: null, promptId: null),
+                _assistantMessageWithText(id: "replay-reply", text: "Done", reasoning: null, createdAt: null),
+              ],
+            ),
+          );
+          await _captureMessages(
+            history: history,
+            messages: [
+              _messageWithText(id: "live", text: "Do it", createdAt: null, promptId: "p1"),
+              _assistantMessageWithText(id: "live-reply", text: "Done", reasoning: null, createdAt: null),
+            ],
+          );
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(
+            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+            containsAll(["replay", "live"]),
+          );
+        });
+      });
     });
 
     test("semantic replay matching preserves repeated-message multiplicity", () async {
