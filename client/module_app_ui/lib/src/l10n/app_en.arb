@@ -1479,6 +1479,10 @@
   "@sessionDetailSendFailed": {
     "description": "Status under a message whose send failed; Retry and Remove buttons follow it."
   },
+  "sessionDetailSendFailedModelUnavailable": "This model isn’t available on this harness. Pick another model, then retry.",
+  "@sessionDetailSendFailedModelUnavailable": {
+    "description": "Reason under a message the harness refused because it can't run the session's model; Retry sends it with the model picked in the composer."
+  },
   "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
   "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",
   "sessionDetailAuthenticationRequired": "Provider login required",

@@ -3397,6 +3397,12 @@ abstract class AppLocalizations {
   /// **'Couldn’t send'**
   String get sessionDetailSendFailed;
 
+  /// Reason under a message the harness refused because it can't run the session's model; Retry sends it with the model picked in the composer.
+  ///
+  /// In en, this message translates to:
+  /// **'This model isn’t available on this harness. Pick another model, then retry.'**
+  String get sessionDetailSendFailedModelUnavailable;
+
   /// No description provided for @sessionDetailPromptOptionsUpdated.
   ///
   /// In en, this message translates to:

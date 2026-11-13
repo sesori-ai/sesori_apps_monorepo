@@ -11,6 +11,18 @@ sealed class const PromptSendFailure() {
   /// A server error, timeout or lost response. The prompt may already have
   /// been accepted, so only a same-id Retry is safe.
   const factory uncertain() = UncertainPromptSend;
+
+  /// The bridge refused the session's own model, which the harness does not
+  /// offer, so the prompt did not run and the user may remove it. Only the
+  /// user picking another model fixes it, so Retry sends with their current
+  /// pick.
+  const factory modelUnavailable() = ModelUnavailablePromptSend;
+
+  /// Whether the bridge proved the prompt did not run, so removing it is safe.
+  bool get provesNotRun => switch (this) {
+    RejectedPromptSend() || ModelUnavailablePromptSend() => true,
+    UncertainPromptSend() => false,
+  };
 }
 
 final class const RejectedPromptSend({required final String? reason}) extends PromptSendFailure {
@@ -24,6 +36,14 @@ final class const RejectedPromptSend({required final String? reason}) extends Pr
 final class const UncertainPromptSend() extends PromptSendFailure {
   @override
   bool operator ==(Object other) => other is UncertainPromptSend;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+}
+
+final class const ModelUnavailablePromptSend() extends PromptSendFailure {
+  @override
+  bool operator ==(Object other) => other is ModelUnavailablePromptSend;
 
   @override
   int get hashCode => runtimeType.hashCode;

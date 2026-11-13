@@ -677,6 +677,146 @@ void main() {
 
         expect(_loadedState(cubit).selectedAgentModel?.modelID, "opus");
       });
+
+      test("a send the harness refuses for it fails visibly, and Retry sends with the model picked after", () async {
+        final staleError = ApiError.nonSuccessCode(
+          errorCode: 409,
+          rawErrorString: jsonEncode(
+            const SendPromptErrorResponse(
+              code: SendPromptErrorCode.staleSessionOptions,
+              message: "unknown model",
+            ).toJson(),
+          ),
+        );
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: "project-1",
+            pluginId: "claude",
+            mode: SessionOptionsRequestMode.forceRefresh,
+          ),
+        ).thenAnswer((_) async => _claudeCatalogDeclaringOpus());
+        final sentModels = <String?>[];
+        final promptIds = <String>[];
+        when(
+          () => mockSessionRepository.sendMessage(
+            sessionId: _sessionId,
+            promptId: any(named: "promptId"),
+            text: "hello",
+            attachments: const [],
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: null,
+            commandSource: any(named: "commandSource"),
+          ),
+        ).thenAnswer((invocation) async {
+          final model = invocation.namedArguments[#model] as PromptModel?;
+          sentModels.add(model?.modelID);
+          promptIds.add(invocation.namedArguments[#promptId] as String);
+          return model?.modelID == sessionModel.modelID ? ApiResponse.error(staleError) : ApiResponse.success(null);
+        });
+        final cubit = await createLoadedCubit(
+          agents: _claudeCatalogDeclaringOpusAgents,
+          providerData: _claudeProvidersWithOpus,
+          promptDefaults: const SessionPromptDefaults(agent: null, model: sessionModel),
+        );
+        final notices = <SessionDetailNotice>[];
+        final noticeSubscription = cubit.noticeStream.listen(notices.add);
+        addTearDown(noticeSubscription.cancel);
+
+        await cubit.sendMessage(
+          text: "hello",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        await _awaitCondition(() => _failedOf(state: _loadedState(cubit)) != null);
+        await Future<void>.delayed(Duration.zero);
+
+        // Refused once, with no resend of a model the refresh had to keep, no
+        // claim that settings were updated, and the composer still on it.
+        expect(sentModels, [sessionModel.modelID]);
+        expect(notices, isEmpty);
+        expect(
+          _loadedState(cubit).localSend,
+          isA<LocalSendFailed>().having(
+            (failed) => failed.failure,
+            "failure",
+            const PromptSendFailure.modelUnavailable(),
+          ),
+        );
+        expect(_loadedState(cubit).queuedMessages, isEmpty);
+        expect(_loadedState(cubit).selectedAgentModel, sessionModel);
+        expect(feedbackPromptService.failedSessions, [_sessionId]);
+
+        cubit.selectModel(providerID: "anthropic", modelID: "opus");
+        cubit.retryFailedSend();
+        await _awaitCondition(() => sentModels.length == 2);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(sentModels, [sessionModel.modelID, "opus"]);
+        expect(promptIds.toSet(), hasLength(1));
+        expect(_failedOf(state: _loadedState(cubit)), isNull);
+        expect(notices, isEmpty);
+      });
+
+      test("Retry without picking another model fails visibly again", () async {
+        final staleError = ApiError.nonSuccessCode(
+          errorCode: 409,
+          rawErrorString: jsonEncode(
+            const SendPromptErrorResponse(code: SendPromptErrorCode.staleSessionOptions, message: null).toJson(),
+          ),
+        );
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: "project-1",
+            pluginId: "claude",
+            mode: SessionOptionsRequestMode.forceRefresh,
+          ),
+        ).thenAnswer((_) async => _claudeCatalogDeclaringOpus());
+        var sendCount = 0;
+        when(
+          () => mockSessionRepository.sendMessage(
+            sessionId: _sessionId,
+            promptId: any(named: "promptId"),
+            text: "hello",
+            attachments: const [],
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: null,
+            commandSource: any(named: "commandSource"),
+          ),
+        ).thenAnswer((_) async {
+          sendCount++;
+          return ApiResponse.error(staleError);
+        });
+        final cubit = await createLoadedCubit(
+          agents: _claudeCatalogDeclaringOpusAgents,
+          providerData: _claudeProvidersWithOpus,
+          promptDefaults: const SessionPromptDefaults(agent: null, model: sessionModel),
+        );
+        final notices = <SessionDetailNotice>[];
+        final noticeSubscription = cubit.noticeStream.listen(notices.add);
+        addTearDown(noticeSubscription.cancel);
+
+        await cubit.sendMessage(
+          text: "hello",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        await _awaitCondition(() => _failedOf(state: _loadedState(cubit)) != null);
+        cubit.retryFailedSend();
+        await _awaitCondition(() => sendCount == 2 && _failedOf(state: _loadedState(cubit)) != null);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(sendCount, 2);
+        expect(notices, isEmpty);
+        expect(_loadedState(cubit).queuedMessages, isEmpty);
+      });
     });
 
     test("an options update for another project is ignored", () async {

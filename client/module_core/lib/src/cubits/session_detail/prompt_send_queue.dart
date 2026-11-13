@@ -166,13 +166,24 @@ class PromptSendQueue() {
     return true;
   }
 
-  /// Puts the failed submission back at the head, unchanged, so its resend
-  /// carries the same prompt id and the bridge's dedup can never run it twice.
-  void retryFailedSend() {
+  /// Moves the pending head [promptId], requeued by [failSend], into the
+  /// failed slot, for a rejection found to need the user once the send is
+  /// over. Returns whether it was held.
+  bool holdPendingHead({required String promptId, required PromptSendFailure failure}) {
+    if (_failed != null || _items.firstOrNull?.promptId != promptId) return false;
+    _failed = LocalSendFailed(submission: _items.removeFirst(), failure: failure);
+    return true;
+  }
+
+  /// Puts the failed submission back at the head, so its resend carries the
+  /// same prompt id and the bridge's dedup can never run it twice. [resend]
+  /// picks what goes back: the held submission, or it with other options,
+  /// never another id.
+  void retryFailedSend({required QueuedSessionSubmission Function(LocalSendFailed failed) resend}) {
     final failed = _failed;
     if (failed == null) return;
     _failed = null;
-    _items.addFirst(failed.submission);
+    _items.addFirst(resend(failed));
   }
 
   /// Drops the failed submission (user removal) and returns it.

@@ -2997,10 +2997,22 @@ class SessionDetailCubit(
       ? _promptQueue.holdFailedSend(failure: failure)
       : _promptQueue.failSend();
 
-  /// Sends the failed head again under its original prompt id.
+  /// Sends the failed head again under its original prompt id. A head refused
+  /// for its model goes with the composer's current selection, which is how
+  /// the user answers that refusal; any other goes unchanged.
   void retryFailedSend() {
     if (_promptQueue.failed == null) return;
-    _promptQueue.retryFailedSend();
+    final composer = state;
+    _promptQueue.retryFailedSend(
+      resend: (failed) => switch ((failed.failure, composer)) {
+        (ModelUnavailablePromptSend(), final SessionDetailLoaded loaded) => failed.submission.withSelection(
+          agent: loaded.selectedAgent,
+          agentModel: loaded.selectedAgentModel,
+          fastMode: loaded.runsFastMode,
+        ),
+        _ => failed.submission,
+      },
+    );
     _emitQueueUpdate();
     _tryDrainQueue();
   }
@@ -3033,6 +3045,25 @@ class SessionDetailCubit(
     }
     final latest = state;
     if (latest is! SessionDetailLoaded) return false;
+    // The refresh keeps the session's own model even though the catalog does
+    // not offer it, so resending would only be refused again. It fails like
+    // any other send instead, until the user picks another model or removes
+    // it; a later Retry starts its recovery afresh.
+    final requeued = _promptQueue.items.firstWhereOrNull((item) => item.promptId == rejectedSubmission.promptId);
+    if (requeued != null &&
+        _keepsUnofferedSessionModel(
+          state: latest,
+          model: requeued.agentModel,
+          providers: latest.availableProviders,
+        ) &&
+        _promptQueue.holdPendingHead(
+          promptId: rejectedSubmission.promptId,
+          failure: const PromptSendFailure.modelUnavailable(),
+        )) {
+      _staleOptionsRecoveryAttemptedPromptIds.remove(rejectedSubmission.promptId);
+      unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
+      return false;
+    }
     // A cache update may have overtaken the forced refresh. Reconcile against
     // the catalog actually applied to the screen in either case.
     final rejectedCommand = rejectedSubmission.command;
