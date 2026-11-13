@@ -8,7 +8,9 @@ import "../../foundation/models/session_interaction_state.dart";
 import "../../foundation/models/session_launch/launch_follow_up.dart";
 import "../../foundation/models/session_launch/session_launch_composer.dart";
 import "../../foundation/models/session_launch/session_launch_handoff.dart";
+import "../../foundation/models/session_options/model_orbits.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
+import "../../services/model_orbits_calculator.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "local_send_phase.dart";
@@ -248,17 +250,23 @@ extension SessionDetailStateX on SessionDetailState {
 extension SessionLaunchComposerX on SessionLaunchComposer {
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
   static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
+  static const ModelOrbitsCalculator _orbits = ModelOrbitsCalculator();
 
   FastModeControl get fastModeControl => _fastModeToggle.control(
     support: _selection.fastModeSupport(providers: providers, model: agentModel),
     fastMode: fastMode,
   );
+
+  /// The launch's model and effort as orbits, or null when its catalog is not
+  /// orbit-shaped.
+  ModelOrbits? get modelOrbits => _orbits.orbits(providers: providers, selected: agentModel);
 }
 
 extension SessionDetailLoadedX on SessionDetailLoaded {
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
   static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
   static const SessionApprovalCalculator _approval = SessionApprovalCalculator();
+  static const ModelOrbitsCalculator _orbits = ModelOrbitsCalculator();
 
   String? get retryErrorMessage => switch (sessionStatus) {
     SessionStatusRetry(:final message) => message,
@@ -277,4 +285,8 @@ extension SessionDetailLoadedX on SessionDetailLoaded {
   SessionApprovalControl get approvalControl => _approval.control(bridge: bridgeYolo, session: session);
 
   FastModeControl get fastModeControl => _fastModeToggle.control(support: fastModeSupport, fastMode: runsFastMode);
+
+  /// The selected model and effort as orbits, or null when the catalog is not
+  /// orbit-shaped.
+  ModelOrbits? get modelOrbits => _orbits.orbits(providers: availableProviders, selected: selectedAgentModel);
 }

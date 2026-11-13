@@ -1087,7 +1087,10 @@ class NewSessionCubit({
     }
   }
 
-  void selectModel({required String providerID, required String modelID}) {
+  /// Switches to the model, at [variant] when one was picked with it and the
+  /// model offers it. An applied pick is remembered like [selectVariant]'s, so
+  /// a later model switch does not bring back an older level.
+  void selectModel({required String providerID, required String modelID, required SessionVariant? variant}) {
     if (!_canEditComposer) return;
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
@@ -1097,12 +1100,19 @@ class NewSessionCubit({
       options: options,
       providerId: providerID,
       modelId: modelID,
+      variant: variant,
       variantIntent: variantIntent,
     );
     if (selected == null) return;
     _replaceOptionsData(options: selected);
     if (pluginId != null) {
       _selectionTracker.recordModel(pluginId: pluginId, providerId: providerID, modelId: modelID);
+      if (variant != null && selected.selectedAgentModel?.variant == variant.id) {
+        _selectionTracker.recordVariant(
+          pluginId: pluginId,
+          variant: NewSessionVariantIntent(id: variant.id),
+        );
+      }
     }
   }
 

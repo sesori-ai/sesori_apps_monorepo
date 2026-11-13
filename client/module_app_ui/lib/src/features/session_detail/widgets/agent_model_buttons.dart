@@ -33,7 +33,8 @@ class const AgentModelButtons({
   required final ValueChanged<String> onAgentSelected,
   required final List<ProviderInfo> providers,
   required final AgentModel? selectedAgentModel,
-  required final void Function({required String providerID, required String modelID}) onModelSelected,
+  required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
+  onModelSelected,
   required final List<SessionVariant> availableVariants,
   required final ValueChanged<SessionVariant> onVariantSelected,
 
@@ -315,7 +316,8 @@ class const _ModelMenu({
   required final List<ModelPickerSection> sections,
   required final AgentModel? selected,
   required final List<ProviderInfo> providers,
-  required final void Function({required String providerID, required String modelID}) onModelSelected,
+  required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
+  onModelSelected,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -334,9 +336,9 @@ class const _ModelMenu({
       contentBuilder: (context, close) => ModelPicker(
         sections: sections,
         selected: selected,
-        onModelSelected: ({required String providerID, required String modelID}) {
+        onModelSelected: ({required String providerID, required String modelID, required SessionVariant? variant}) {
           close();
-          onModelSelected(providerID: providerID, modelID: modelID);
+          onModelSelected(providerID: providerID, modelID: modelID, variant: variant);
         },
         onClose: close,
       ),

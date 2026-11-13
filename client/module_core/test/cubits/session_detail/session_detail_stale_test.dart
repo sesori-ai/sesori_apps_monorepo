@@ -357,7 +357,7 @@ void main() {
 
       await _awaitLoaded(cubit);
       cubit.selectAgent("oracle");
-      cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
+      cubit.selectModel(providerID: "openai", modelID: "gpt-4.1", variant: null);
       cubit.selectVariant(const SessionVariant(id: "xhigh"));
 
       when(

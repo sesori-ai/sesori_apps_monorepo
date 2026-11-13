@@ -663,7 +663,7 @@ void main() {
         );
         expect(_loadedState(cubit).selectedAgentModel, sessionModel);
 
-        cubit.selectModel(providerID: "anthropic", modelID: "sonnet");
+        cubit.selectModel(providerID: "anthropic", modelID: "sonnet", variant: null);
         expect(_loadedState(cubit).selectedAgentModel?.modelID, "sonnet");
 
         // The refreshed catalog no longer offers the user's pick, which is not
@@ -750,7 +750,7 @@ void main() {
         expect(_loadedState(cubit).selectedAgentModel, sessionModel);
         expect(feedbackPromptService.failedSessions, [_sessionId]);
 
-        cubit.selectModel(providerID: "anthropic", modelID: "opus");
+        cubit.selectModel(providerID: "anthropic", modelID: "opus", variant: null);
         cubit.retryFailedSend();
         await _awaitCondition(() => sentModels.length == 2);
         await Future<void>.delayed(Duration.zero);

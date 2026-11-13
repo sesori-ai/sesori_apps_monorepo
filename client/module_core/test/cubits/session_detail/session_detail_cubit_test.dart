@@ -870,7 +870,7 @@ void main() {
         clearInteractions(mockProductAnalyticsService);
         final blockedState = cubit.state;
         cubit.selectAgent("coder");
-        cubit.selectModel(providerID: "blocked-provider", modelID: "blocked-model");
+        cubit.selectModel(providerID: "blocked-provider", modelID: "blocked-model", variant: null);
         cubit.selectVariant(const SessionVariant(id: "blocked-variant"));
         cubit.stageCommand(testCommandInfo());
         cubit.clearStagedCommand();
@@ -2426,7 +2426,7 @@ void main() {
       build: buildCubit,
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
+        cubit.selectModel(providerID: "openai", modelID: "gpt-4.1", variant: null);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
@@ -2488,6 +2488,77 @@ void main() {
           (state) => state.selectedAgentModel?.variant,
           "variant",
           "slow",
+        ),
+      ],
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "selectModel switches model and variant in one emit, keeping the previous variant when the picked one is not offered",
+      build: () {
+        ProviderModel model({required String id, required List<String> variants}) => ProviderModel(
+          fastMode: null,
+          id: id,
+          providerID: "openai",
+          name: id,
+          variants: variants,
+          defaultVariant: null,
+          family: null,
+          releaseDate: null,
+        );
+        when(
+          () => mockSessionApi.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            ProviderListResponse(
+              connectedOnly: false,
+              items: [
+                ProviderInfo(
+                  id: "openai",
+                  name: "OpenAI",
+                  defaultModelID: "gpt-4",
+                  models: {
+                    "gpt-4": model(id: "gpt-4", variants: ["high", "medium", "low"]),
+                    "gpt-5": model(id: "gpt-5", variants: ["low", "medium", "high"]),
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        cubit.selectModel(
+          providerID: "openai",
+          modelID: "gpt-5",
+          variant: const SessionVariant(id: "low"),
+        );
+        // gpt-4 offers no xhigh, so it keeps gpt-5's low rather than its own default.
+        cubit.selectModel(
+          providerID: "openai",
+          modelID: "gpt-4",
+          variant: const SessionVariant(id: "xhigh"),
+        );
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel,
+          "initial model",
+          const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+        ),
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel,
+          "picked model and variant",
+          const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "low"),
+        ),
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel,
+          "previous variant kept",
+          const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "low"),
         ),
       ],
     );
@@ -3150,7 +3221,7 @@ void main() {
       );
       await slowRefreshStarted.future;
 
-      cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
+      cubit.selectModel(providerID: "openai", modelID: "gpt-4.1", variant: null);
       expect(
         (cubit.state as SessionDetailLoaded).selectedAgentModel,
         const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
