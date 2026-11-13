@@ -1698,12 +1698,12 @@ abstract class AcpPlugin({
       );
       _markTurnDispatched(sessionId: sessionId, state: state, turn: turn);
       final raw = await dispatched.response;
+      _retireInputOfEndedTurn(sessionId: sessionId);
       final result = AcpPromptResult.fromJson(switch (raw) {
         null => const <String, dynamic>{},
         final Map<dynamic, dynamic> map => map.cast<String, dynamic>(),
         _ => throw FormatException("session/prompt result is not an object: ${raw.runtimeType}"),
       });
-      _retireInputOfEndedTurn(sessionId: sessionId);
       _finishTurn(
         sessionId: sessionId,
         state: state,
