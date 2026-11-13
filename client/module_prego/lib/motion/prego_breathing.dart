@@ -65,22 +65,41 @@ final class _BreathClock._() extends ChangeNotifier {
   }
 }
 
-/// [child] fading to about a third and back every 1.6 seconds, as a sign that
-/// something it stands for is live. Every breathing glyph on screen shares one
-/// phase.
+/// [child] fading to about a third and back every 1.6 seconds while [active],
+/// as a sign that something it stands for is live. Every breathing glyph on
+/// screen shares one phase.
+///
+/// Turning [active] on or off eases the breath in or out instead of jumping to
+/// wherever the shared phase is, so a glyph that stops being live settles at
+/// full opacity smoothly. An inactive glyph follows no clock and costs nothing.
 ///
 /// Reduced motion, a route out of sight and a backgrounded app hold [child]
 /// at full opacity and stop the clock. The fade only changes the layer's
 /// opacity, so [child] never repaints for it.
-class const PregoBreathing({super.key, required final Widget child}) extends StatefulWidget {
+class const PregoBreathing({super.key, required final bool active, required final Widget child})
+    extends StatefulWidget {
   @override
   State<PregoBreathing> createState() => _PregoBreathingState();
 }
 
-class _PregoBreathingState() extends State<PregoBreathing> with WidgetsBindingObserver, PregoReducedMotionStateMixin {
+/// Whether the shared breath clock is stepping, which it does only while some
+/// glyph follows it.
+@visibleForTesting
+bool get debugPregoBreathClockRunning => _BreathClock.instance._timer != null;
+
+class _PregoBreathingState()
+    extends State<PregoBreathing>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin, PregoReducedMotionStateMixin {
+  /// How long the breath takes to ease in or out when [PregoBreathing.active]
+  /// changes.
+  static const _blendDuration = Duration(milliseconds: 400);
+
   final _clock = _BreathClock.instance;
   final _opacity = ValueNotifier<double>(1);
   late final _animation = Animation<double>.fromValueListenable(_opacity);
+
+  /// How deep the breath goes: 1 while active, 0 while not, easing between.
+  late final AnimationController _depth;
   bool _following = false;
 
   bool get _appIsVisible {
@@ -89,7 +108,41 @@ class _PregoBreathingState() extends State<PregoBreathing> with WidgetsBindingOb
   }
 
   @override
-  bool get motionEnabled => TickerMode.valuesOf(context).enabled && _appIsVisible;
+  void initState() {
+    super.initState();
+    _depth = AnimationController(vsync: this, duration: _blendDuration, value: widget.active ? 1 : 0)
+      ..addListener(() {
+        if (_following) _follow();
+      })
+      // Once the breath has eased out, stop following the clock.
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.dismissed) syncMotion();
+      });
+  }
+
+  @override
+  bool get motionEnabled =>
+      TickerMode.valuesOf(context).enabled && _appIsVisible && (widget.active || _depth.value > 0);
+
+  @override
+  void didUpdateWidget(PregoBreathing oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active == oldWidget.active) return;
+    final target = widget.active ? 1.0 : 0.0;
+    if (motionAllowed) {
+      // forward/reverse rather than animateTo: easing out must end dismissed,
+      // which is what lets go of the clock.
+      if (widget.active) {
+        _depth.forward();
+      } else {
+        _depth.reverse();
+      }
+    } else {
+      // Held still, there is no breath to ease into or out of.
+      _depth.value = target;
+    }
+    syncMotion();
+  }
 
   @override
   void startMotion() {
@@ -105,7 +158,7 @@ class _PregoBreathingState() extends State<PregoBreathing> with WidgetsBindingOb
     _opacity.value = 1;
   }
 
-  void _follow() => _opacity.value = _clock.opacity;
+  void _follow() => _opacity.value = 1 - Curves.easeInOut.transform(_depth.value) * (1 - _clock.opacity);
 
   void _stopFollowing() {
     if (!_following) return;
@@ -122,6 +175,7 @@ class _PregoBreathingState() extends State<PregoBreathing> with WidgetsBindingOb
   @override
   void dispose() {
     _stopFollowing();
+    _depth.dispose();
     _opacity.dispose();
     super.dispose();
   }

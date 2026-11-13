@@ -13,8 +13,9 @@ import "session_scheduled_resume.dart";
 /// when the session last changed, over one tertiary meta line with the project.
 ///
 /// The harness logo leads in a square of one size for every harness, and is
-/// the only place the row names the harness. It rests as a quiet grey glyph and
-/// takes its own colours, breathing, while the session runs. The mark right after the title
+/// the only place the row names the harness. It rests as a quiet grey glyph,
+/// takes its own colours while the session has unread activity or is the open
+/// one, and breathes in them while the session runs. The mark right after the title
 /// says how the session is doing: the sparkle rotates while an agent works and
 /// rests solid — the same "new activity" mark the project list uses — when the
 /// session has activity the user hasn't opened; an amber dot means it waits
@@ -82,8 +83,16 @@ class const SessionTile({
   static const double _menuWidth = 220;
 
   /// Whether the row shows an agent at work: running, unless waiting on the
-  /// user, which wins. The turning sparkle and the lit harness logo say it.
+  /// user, which wins. The turning sparkle and the breathing harness logo say it.
   bool get _working => isRunning && !awaitingInput;
+
+  /// How the harness logo shows: breathing while an agent works, in colour
+  /// while the session has unread activity or is the open one, grey otherwise.
+  _LogoTone get _logoTone => switch ((working: _working, standsOut: unseen || selected)) {
+    (working: true, standsOut: _) => _LogoTone.live,
+    (working: false, standsOut: true) => _LogoTone.colored,
+    (working: false, standsOut: false) => _LogoTone.muted,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -286,7 +295,7 @@ class const SessionTile({
           // the meta line no longer says it.
           Semantics(
             label: PregoBrandLogo.displayNameFor(session.pluginId),
-            child: _HarnessLogo(pluginId: session.pluginId, lit: _working),
+            child: _HarnessLogo(pluginId: session.pluginId, tone: _logoTone),
           ),
           Expanded(
             child: _TitleLine(
@@ -562,7 +571,7 @@ class const SessionTile({
             // cover it while the pointer is on the row.
             Semantics(
               label: PregoBrandLogo.displayNameFor(session.pluginId),
-              child: _HarnessLogo(pluginId: session.pluginId, lit: _working),
+              child: _HarnessLogo(pluginId: session.pluginId, tone: _logoTone),
             ),
           ],
         ),
@@ -604,7 +613,7 @@ class const SessionTile({
   }
 
   /// The states that need words: waiting for the user and a retry loop. A
-  /// plain running session has none; its turning sparkle and lit harness logo
+  /// plain running session has none; its turning sparkle and breathing harness logo
   /// say it.
   Widget? _statusLabel({required BuildContext context, required bool pointer}) {
     final loc = context.loc;
@@ -705,7 +714,7 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                         // Silent, unlike the real row's: the meta line names the harness here.
                         // A pointer row ends its meta line with it instead, so its title starts at the edge.
                         // Lit, as a session being created is already at work.
-                        if (!pointer) _HarnessLogo(pluginId: launch.pluginId, lit: true),
+                        if (!pointer) _HarnessLogo(pluginId: launch.pluginId, tone: _LogoTone.live),
                         Expanded(
                           child: _TitleLine(
                             title: Text(
@@ -736,7 +745,7 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (pointer) _HarnessLogo(pluginId: launch.pluginId, lit: true),
+                          if (pointer) _HarnessLogo(pluginId: launch.pluginId, tone: _LogoTone.live),
                         ],
                       ),
                     ),
@@ -858,29 +867,55 @@ class const _TitleLine({required final Widget title, required final Widget? mark
   }
 }
 
+/// How a row's harness logo shows.
+enum _LogoTone() {
+  /// A quiet grey glyph that names the harness without competing with a status.
+  muted,
+
+  /// Its own colours, holding still: the session has unread activity or is the
+  /// open one.
+  colored,
+
+  /// Its own colours, breathing: an agent works.
+  live,
+}
+
 /// The harness mark, leading the title under a finger and ending the meta line
 /// under a pointer. Shared by the session row and the launching row so a title
 /// never moves when one becomes the other.
 ///
-/// At rest it is a quiet grey glyph, naming the harness without competing with
-/// a status. [lit] while an agent works: its own colours, breathing. Colour
-/// means only that, so the open session's logo rests grey too.
-class const _HarnessLogo({required final String pluginId, required final bool lit}) extends StatelessWidget {
+/// A change of [tone] cross-fades between grey and colour, and the breath eases
+/// in and out, so the logo never snaps; under reduced motion it changes at once.
+/// Only the paint changes, never the size.
+class const _HarnessLogo({required final String pluginId, required final _LogoTone tone}) extends StatelessWidget {
+  static const _toneDuration = Duration(milliseconds: 300);
+
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
-    final logo = PregoBrandLogo(
-      pluginId: pluginId,
-      size: pointer ? _pointerBrandLogoSize : _brandLogoSize,
-      // Only an unknown harness's plug takes this colour.
-      color: lit ? colors.textPrimary : colors.textTertiary,
-    );
-    if (lit) return PregoBreathing(child: logo);
-    return Opacity(
-      opacity: 0.7,
-      child: ColorFiltered(colorFilter: const ColorFilter.matrix(_grayscale), child: logo),
+    return PregoBreathing(
+      active: tone == _LogoTone.live,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: tone == _LogoTone.muted ? 0 : 1),
+        duration: prefersReducedMotion(context) ? Duration.zero : _toneDuration,
+        curve: Curves.easeInOut,
+        builder: (context, colour, _) => Opacity(
+          opacity: 0.7 + 0.3 * colour,
+          child: ColorFiltered(
+            colorFilter: ColorFilter.matrix([
+              for (final (index, grey) in _grayscale.indexed) grey + (_identity[index] - grey) * colour,
+            ]),
+            child: PregoBrandLogo(
+              pluginId: pluginId,
+              size: pointer ? _pointerBrandLogoSize : _brandLogoSize,
+              // Only an unknown harness's plug takes this colour.
+              color: Color.lerp(colors.textTertiary, colors.textPrimary, colour),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -982,6 +1017,30 @@ const List<double> _grayscale = [
   0.2126,
   0.7152,
   0.0722,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+];
+
+/// Leaves every colour as it is; the logo's colour fades from [_grayscale] to it.
+const List<double> _identity = [
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
   0,
   0,
   0,
