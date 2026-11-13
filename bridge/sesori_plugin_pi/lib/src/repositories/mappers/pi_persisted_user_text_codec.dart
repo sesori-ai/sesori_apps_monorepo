@@ -8,7 +8,7 @@ final class const PiPersistedUserTextCodec() {
   /// The user message Pi stores for `/skill:name args`: the skill body in a
   /// `<skill>` block, then the arguments. Pi's own TUI parses it the same way.
   static final RegExp _expandedSkill = RegExp(
-    r'^<skill name="([^"]+)" location="[^"]+">\n[\s\S]*?\n</skill>(?:\n\n([\s\S]+))?$',
+    r'^<skill name="([^"]+)" location="[^"]+">\n[\s\S]*\n</skill>(?:\n\n([\s\S]+))?$',
   );
 
   String encode({required String executionText, required String? userVisibleText}) {
