@@ -100,8 +100,10 @@ variant, and worktree mode, and creating the session with its first input.
 - Claude's options are project-scoped: each project's probe runs in that
   project's directory, so its command list holds the project's `.claude/commands`
   and `.claude/skills` entries plus the user's and Claude's own, and another
-  project's picker never shows them. A request that names no project probes in the
-  host-created state directory, never the bridge process's launch directory.
+  project's picker never shows them. A request that names no project, or a project
+  whose folder was deleted, probes in the host-created state directory, never the
+  bridge process's launch directory, so a deleted project's sessions still open and
+  reload with the user's and Claude's own entries.
 - A Claude catalog probe never acts on the project: it starts with all hooks
   disabled and no MCP servers, so opening a picker runs no SessionStart hook and
   starts no `.mcp.json` server. Failure signal: a project hook's side effect or an

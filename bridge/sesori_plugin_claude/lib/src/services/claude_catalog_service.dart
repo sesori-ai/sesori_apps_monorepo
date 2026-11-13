@@ -1,5 +1,5 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginWorkingDirectoryMissingException;
 
 import "../models/claude_process_purpose.dart";
 import "../repositories/claude_backend_catalog_repository.dart";
@@ -47,8 +47,8 @@ final class ClaudeCatalogService({
       if (!refresh || inFlight.refresh) return inFlight.future;
       Log.d("[claude] queued session options refresh for $key");
       final queued = inFlight.future.then(
-        (_) => _fetchCatalog(directory: key, refresh: true),
-        onError: (Object _, StackTrace _) => _fetchCatalog(directory: key, refresh: true),
+        (_) => _fetchProjectCatalog(directory: key, refresh: true),
+        onError: (Object _, StackTrace _) => _fetchProjectCatalog(directory: key, refresh: true),
       );
       return _trackFetch(directory: key, refresh: true, future: queued);
     }
@@ -56,8 +56,22 @@ final class ClaudeCatalogService({
     return _trackFetch(
       directory: key,
       refresh: refresh,
-      future: _fetchCatalog(directory: key, refresh: refresh),
+      future: _fetchProjectCatalog(directory: key, refresh: refresh),
     );
+  }
+
+  /// A project whose folder was deleted cannot start a probe. Its existing
+  /// sessions still open, so it gets the discovery directory's catalog: the
+  /// user's and Claude's own entries. Nothing is cached under the missing
+  /// folder, so a restored folder is probed again.
+  Future<ClaudeBackendCatalog> _fetchProjectCatalog({required String directory, required bool refresh}) async {
+    try {
+      return await _fetchCatalog(directory: directory, refresh: refresh);
+    } on PluginWorkingDirectoryMissingException catch (error, stack) {
+      if (directory == _discoveryDirectory) rethrow;
+      Log.w("[claude] project folder is missing; listing session options without its entries", error, stack);
+      return await getCatalog(directory: null, refresh: refresh);
+    }
   }
 
   Future<ClaudeBackendCatalog> _trackFetch({

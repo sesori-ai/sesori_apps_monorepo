@@ -14,6 +14,7 @@ void main() {
     late Directory temporary;
     late String projectA;
     late String projectB;
+    late String missingProject;
     late List<FakeClaudeProcess> spawned;
     late List<ClaudeLaunchSpec> specs;
     late ClaudeSessionProcessRepository processes;
@@ -23,6 +24,7 @@ void main() {
       temporary = Directory.systemTemp.createTempSync("claude-catalog-service-");
       projectA = p.join(temporary.path, "project-a");
       projectB = p.join(temporary.path, "project-b");
+      missingProject = p.join(temporary.path, "deleted-project");
       final configDirectory = p.join(temporary.path, "config");
       _writeSkill(root: p.join(projectA, ".claude", "skills"), folder: "deploy", frontmatterName: "ship-it");
       _writeSkill(root: p.join(configDirectory, "skills"), folder: "user-skill", frontmatterName: null);
@@ -31,6 +33,13 @@ void main() {
       processes = ClaudeSessionProcessRepository(
         supportsMcpAuthentication: true,
         processFactory: (spec) async {
+          if (spec.workingDirectory == missingProject) {
+            throw PluginWorkingDirectoryMissingException(
+              operation: "spawn Claude",
+              path: spec.workingDirectory,
+              cause: null,
+            );
+          }
           final process = FakeClaudeProcess();
           specs.add(spec);
           spawned.add(process);
@@ -91,6 +100,13 @@ void main() {
       expect(specs.map((spec) => spec.workingDirectory), [projectA, projectB]);
       expect(first.commands.map((command) => command.name), containsAll(["project-command", "ship-it"]));
       expect(second.commands.map((command) => command.name), ["review", "user-skill"]);
+    });
+
+    test("lists a deleted project's options from the discovery directory", () async {
+      final catalog = await service.getCatalog(directory: missingProject, refresh: false);
+
+      expect(specs.single.workingDirectory, "/tmp/claude-state");
+      expect(catalog.commands.map((command) => command.name), ["review", "user-skill"]);
     });
 
     test("labels the project's and the user's skills as skills", () async {
