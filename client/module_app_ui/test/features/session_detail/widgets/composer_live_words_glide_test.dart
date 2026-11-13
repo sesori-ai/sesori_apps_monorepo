@@ -1141,7 +1141,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
                     state: loaded,
                     onShowPendingQuestions: () {},
                     onShowPendingPermissions: () {},
-                    isReviewingPermission: false,
+                    openRequestSheet: null,
                     bottomControls: SessionDetailComposerControls(
                       projectId: "project-1",
                       sessionId: "session-1",

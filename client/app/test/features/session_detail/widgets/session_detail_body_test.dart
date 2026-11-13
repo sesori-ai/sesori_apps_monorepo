@@ -6453,15 +6453,16 @@ void main() {
     ];
     const sixLines = "line 1\nline 2\nline 3\nline 4\nline 5\nline 6";
 
+    double newestRowBottom() => [
+      for (final row in find.byType(TranscriptRowReporter).evaluate())
+        if (row.renderObject case final RenderBox box when box.hasSize)
+          box.localToGlobal(Offset(0, box.size.height)).dy,
+    ].reduce(math.max);
+
     /// The composer's height and how far its top stands above the newest row.
     ({double height, double gap}) measure({required WidgetTester tester}) {
       final controls = find.ancestor(of: find.byType(PromptInput), matching: find.byType(PregoPageHaloLayer));
-      final newestRowBottom = [
-        for (final row in find.byType(TranscriptRowReporter).evaluate())
-          if (row.renderObject case final RenderBox box when box.hasSize)
-            box.localToGlobal(Offset(0, box.size.height)).dy,
-      ].reduce(math.max);
-      return (height: tester.getSize(controls).height, gap: tester.getTopLeft(controls).dy - newestRowBottom);
+      return (height: tester.getSize(controls).height, gap: tester.getTopLeft(controls).dy - newestRowBottom());
     }
 
     Future<StreamController<SessionDetailState>> pumpSession({
@@ -6570,14 +6571,22 @@ void main() {
         final before = measure(tester: tester);
 
         /// The controls' heights on the frames between, each holding the gap.
+        /// The transcript follows the card by its inset alone: its list is
+        /// not rebuilt on the frames the card moves.
         Future<List<double>> expectGapHeld() async {
           final heights = <double>[];
+          final lists = <Widget>[];
           for (var frame = 0; frame < 30; frame++) {
             await tester.pump(const Duration(milliseconds: 16));
             final now = measure(tester: tester);
             expect(now.gap, moreOrLessEquals(before.gap, epsilon: 0.01), reason: "frame $frame");
             heights.add(now.height);
+            final list = tester.widget(find.byType(SessionDetailMessageList));
+            if (!lists.any((shown) => identical(shown, list))) lists.add(list);
           }
+          // Once for the new state; a leaving card's state catches up once more
+          // after it has folded.
+          expect(lists.length, lessThanOrEqualTo(2), reason: "The transcript rebuilt while the card moved.");
           return heights;
         }
 
@@ -6592,6 +6601,91 @@ void main() {
         final leaving = await expectGapHeld();
         expect(measure(tester: tester).height, moreOrLessEquals(before.height), reason: "The card has gone.");
         expect(leaving.where(between), isNotEmpty, reason: "The card folds away.");
+      });
+
+      testWidgets("a permission sheet takes its card as it opens, and answering it moves nothing, $pane", (
+        tester,
+      ) async {
+        final permissions = StreamController<SesoriPermissionAsked>.broadcast();
+        addTearDown(permissions.close);
+        when(() => cubit.permissionStream).thenAnswer((_) => permissions.stream);
+        final states = await pumpSession(
+          tester: tester,
+          draft: "",
+          mode: ChatInputMode.textFirst,
+          size: config.size,
+          pageChrome: config.pageChrome,
+        );
+        final loaded = cubit.state;
+        if (loaded is! SessionDetailLoaded) fail("The session should be loaded.");
+        var current = loaded.copyWith(pendingPermissions: const [_permission]);
+        when(() => cubit.state).thenAnswer((_) => current);
+        when(
+          () => cubit.replyToPermission(requestId: "permission-1", sessionId: "session-1", reply: PermissionReply.once),
+        ).thenAnswer((_) async {
+          // As the cubit does, the request resolves before the reply is sent.
+          current = loaded;
+          states.add(current);
+          return true;
+        });
+
+        states.add(current);
+        permissions.add(_permission);
+        await tester.pumpAndSettle();
+        expect(find.text("write_release_notes"), findsOneWidget);
+        expect(find.byType(SessionDetailNeedsYouCard), findsNothing, reason: "The sheet offers the request.");
+        final resting = newestRowBottom();
+
+        await tester.tap(find.text("Allow"));
+        for (var frame = 0; frame < 30; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(newestRowBottom(), resting, reason: "frame $frame");
+        }
+        expect(find.text("write_release_notes"), findsNothing);
+        expect(find.byType(SessionDetailNeedsYouCard), findsNothing);
+      });
+
+      testWidgets("a turn ending as its request goes waits for the card to fold, $pane", (tester) async {
+        final states = await pumpSession(
+          tester: tester,
+          draft: "",
+          mode: ChatInputMode.textFirst,
+          size: config.size,
+          pageChrome: config.pageChrome,
+        );
+        final loaded = cubit.state;
+        if (loaded is! SessionDetailLoaded) fail("The session should be loaded.");
+        states.add(loaded.copyWith(pendingPermissions: const [_permission]));
+        await tester.pumpAndSettle();
+        expect(find.byType(SessionDetailNeedsYouCard), findsOneWidget);
+
+        states.add(
+          loaded.copyWith(
+            messages: [
+              ...transcript,
+              const MessageWithParts(
+                info: Message.user(
+                  promptId: null,
+                  id: "user-12",
+                  sessionID: "session-1",
+                  agent: null,
+                  time: null,
+                ),
+                parts: [
+                  MessagePart.text(id: "part-12", sessionID: "session-1", messageID: "user-12", text: "Prompt 12"),
+                ],
+              ),
+            ],
+          ),
+        );
+        final prompt12 = find.text("Prompt 12", skipOffstage: false);
+        for (var frame = 0; frame < 12; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(prompt12, findsNothing, reason: "frame $frame");
+        }
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(prompt12, findsWidgets, reason: "The turn's change follows the fold.");
+        await tester.pumpAndSettle();
       });
     });
 

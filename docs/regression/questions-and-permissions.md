@@ -257,6 +257,18 @@ reaches the backend so the turn continues.
   A card grows in above the composer and folds away when answered, holding the
   newest row's gap to the composer on every frame; reduced motion shows it at
   once. Read-only, archived and blocked sessions show no card.
+- A request's card steps aside while its sheet or dialog is open: it folds away
+  as the sheet rises (a sheet that opens on arrival never shows it), so the
+  transcript has settled before the user answers. When the sheet closes because
+  the request was answered, answered elsewhere or withdrawn, nothing in the
+  transcript moves while it leaves. Dismissing the sheet without answering
+  brings the card back with a glide.
+- When a request goes away together with a change to the transcript, such as an
+  interrupted turn folding its running step, the transcript holds still while
+  the card folds or the sheet leaves (200 ms) and then applies the change, so
+  the two motions run one after the other rather than stacking. While the card
+  folds, the transcript follows by its bottom inset alone and its rows are not
+  rebuilt.
 - When management blocks the session's harness, needs-you cards and new response
   dialogs are hidden. A dialog already open on either surface closes without
   answering or rejecting; its pending model remains until an authoritative
@@ -310,6 +322,9 @@ the prompt write is held, proving cancellation does not remove the later request
 
 - A needs-you card floats at the top of the chat, hides the composer or the
   newest message, or a tap on its body or button fails to open the modal.
+- The transcript jumps, glides or closes a gap while an answered, withdrawn or
+  interrupted request's sheet leaves, or an interrupted turn's step fold runs at
+  the same time as the card's fold.
 - A blocked chat shows a needs-you card, opens a response dialog, or accepts a
   late answer/rejection callback. A dialog remains open through the transition,
   closes by answering, clears pending data before either an authoritative

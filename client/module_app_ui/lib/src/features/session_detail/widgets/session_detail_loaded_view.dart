@@ -13,6 +13,7 @@ import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
 import "transcript_jump_notifier.dart";
+import "transcript_laid_out_list_view.dart";
 import "transcript_motion.dart";
 
 typedef SessionDetailBottomControlsBuilder = Widget Function({
@@ -49,6 +50,14 @@ final class const SessionDetailColumnWidths({
   required final double composer,
 });
 
+/// The pending-request sheet open over the session. Its card steps aside while
+/// the sheet rises, so the transcript has already settled when the sheet
+/// closes.
+enum OpenRequestSheet() {
+  question,
+  permission,
+}
+
 class SessionDetailLoadedView extends StatelessWidget {
   final String? projectId;
   final String sessionId;
@@ -62,8 +71,8 @@ class SessionDetailLoadedView extends StatelessWidget {
   final VoidCallback onShowPendingQuestions;
   final VoidCallback onShowPendingPermissions;
 
-  /// The permission dialog is open over this page.
-  final bool isReviewingPermission;
+  /// The request sheet open over this page, if any.
+  final OpenRequestSheet? openRequestSheet;
 
   /// Forwarded to the transcript: see [SessionDetailMessageList.currentPromptId],
   /// [SessionDetailMessageList.jumpNotifier] and [SessionDetailMessageList.onPinchIn].
@@ -78,7 +87,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.state,
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
-    required this.isReviewingPermission,
+    required this.openRequestSheet,
     required this.bottomControls,
     required this.columnWidths,
     required this.currentPromptId,
@@ -93,7 +102,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.state,
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
-    required this.isReviewingPermission,
+    required this.openRequestSheet,
     required this.bottomControls,
     required this.columnWidths,
     required this.currentPromptId,
@@ -120,13 +129,8 @@ class SessionDetailLoadedView extends StatelessWidget {
     required double composerInset,
   }) {
     final loc = context.loc;
-    // A session waiting on the user is not working; its card says so.
-    final isBusy =
-        hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses) &&
-        state.pendingQuestions.isEmpty &&
-        state.pendingPermissions.isEmpty;
     final showEmptyState =
-        !isBusy &&
+        !_isBusy(state: state) &&
         !state.hasRenderableMessages &&
         state.retryErrorMessage == null &&
         state.olderMessagesCursor == null &&
@@ -137,20 +141,13 @@ class SessionDetailLoadedView extends StatelessWidget {
         state.launchFollowUps.isEmpty &&
         state.bridgeQueuedPrompts.isEmpty &&
         state.launchHandoff == null;
-    // A lost response may already have reached the bridge, so only an
-    // authoritative rejection can be removed.
-    final canRemoveFailedSend =
-        !readOnly &&
-        switch (state.localSend) {
-          LocalSendFailed(:final failure) => failure is RejectedPromptSend,
-          LocalSendIdle() || LocalSendSending() => false,
-        };
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
     final hasTypedRequest = state.pendingQuestions.any((q) => q.interactionKind != QuestionInteractionKind.question);
     // An archived session's requests can never be answered.
     final canAnswer = !readOnly && !state.isArchived && state.interaction.canInteract;
+    final showsQuestionCard = canAnswer && openRequestSheet != OpenRequestSheet.question;
     final needsYou = [
-      if (state.pendingQuestions.firstOrNull?.questions.firstOrNull case final question? when canAnswer)
+      if (state.pendingQuestions.firstOrNull?.questions.firstOrNull case final question? when showsQuestionCard)
         SessionDetailNeedsYouCard(
           key: const ValueKey("needs-you-question"),
           icon: TablerRegular.help,
@@ -164,7 +161,8 @@ class SessionDetailLoadedView extends StatelessWidget {
           leads: true,
           onPressed: onShowPendingQuestions,
         ),
-      if (state.pendingPermissions.firstOrNull case final permission? when canAnswer)
+      if (state.pendingPermissions.firstOrNull case final permission?
+          when canAnswer && openRequestSheet != OpenRequestSheet.permission)
         SessionDetailNeedsYouCard(
           key: const ValueKey("needs-you-permission"),
           icon: TablerRegular.shield,
@@ -173,7 +171,7 @@ class SessionDetailLoadedView extends StatelessWidget {
               : loc.permissionBannerMultiple(state.pendingPermissions.length),
           request: _firstLine(permission.description),
           action: loc.needsYouReview,
-          leads: !isReviewingPermission && state.pendingQuestions.firstOrNull?.questions.firstOrNull == null,
+          leads: !showsQuestionCard || state.pendingQuestions.firstOrNull?.questions.firstOrNull == null,
           onPressed: onShowPendingPermissions,
         ),
     ];
@@ -185,114 +183,69 @@ class SessionDetailLoadedView extends StatelessWidget {
     // indicator and archived notice — come from PregoTopBarInsetBuilder so
     // they clear the bar at rest and ride the top-nav connection banner's height
     // animation frame-by-frame.
-    return PregoFloatingBottomControlsLayout(
-      contentBuilder: (context, bottomControlsHeight) => Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                child: showEmptyState
-                    ? Center(child: Text(loc.sessionDetailEmpty))
-                    : PregoTopBarInsetBuilder(
-                        builder: (context, topInset, _) => SessionDetailMessageList(
-                          projectId: projectId,
-                          messages: state.messages,
-                          localSend: state.localSend,
-                          queuedMessages: state.queuedMessages,
-                          harnessName: state.interaction.harnessDisplayName,
-                          launchHandoff: state.launchHandoff,
-                          launchStartedAt: context.read<SessionDetailCubit>().launchStartedAt,
-                          onRetryFailedSend: readOnly || !state.interaction.canInteract
-                              ? null
-                              : context.read<SessionDetailCubit>().retryFailedSend,
-                          onRemoveFailedSend: canRemoveFailedSend
-                              ? context.read<SessionDetailCubit>().removeFailedSend
-                              : null,
-                          launchFollowUps: state.launchFollowUps,
-                          onRetryLaunchFollowUp: readOnly || !state.interaction.canInteract
-                              ? null
-                              : context.read<SessionDetailCubit>().retryLaunchFollowUp,
-                          onRemoveLaunchFollowUp: readOnly
-                              ? null
-                              : context.read<SessionDetailCubit>().removeLaunchFollowUp,
-                          bridgeQueuedPrompts: state.bridgeQueuedPrompts,
-                          bridgePromptAttachments: state.bridgePromptAttachments,
-                          awaitingBridgeSubmissions: state.awaitingBridgeSubmissions,
-                          onCancelBridgeQueuedPrompt: readOnly || !state.interaction.canInteract
-                              ? null
-                              : (promptId) => unawaited(
-                                  context.read<SessionDetailCubit>().cancelBridgeQueuedPrompt(promptId: promptId),
-                                ),
-                          isLoadingOlderMessages: state.isLoadingOlderMessages,
-                          isRefreshing: state.isRefreshing,
-                          currentPromptId: currentPromptId,
-                          jumpNotifier: jumpNotifier,
-                          onPinchIn: onPinchIn,
-                          streamingText: state.streamingText,
-                          children: state.children,
-                          childStatuses: state.childStatuses,
-                          isBusy: isBusy,
-                          mainAgentRunning: state.mainAgentRunning,
-                          // Null once the start of the transcript is loaded,
-                          // so the list stops asking for more.
-                          onLoadOlderMessages: state.olderMessagesCursor == null
-                              ? null
-                              : context.read<SessionDetailCubit>().loadOlderMessages,
-                          promptIndex: state.promptIndex,
-                          onLoadThrough: context.read<SessionDetailCubit>().loadMessagesThrough,
-                          onCancelQueuedMessage: readOnly
-                              ? null
-                              : context.read<SessionDetailCubit>().cancelQueuedMessage,
-                          retryErrorMessage: state.retryErrorMessage,
-                          // Pad the oldest-message edge clear of the bar it scrolls
-                          // behind, and the newest-message edge clear of the floating
-                          // bottom controls overlaid below (background-tasks bar and
-                          // composer); content in between scrolls
-                          // up behind the bar's fade and the composer's fade.
+    //
+    // Built once per state, so the controls growing or folding moves the
+    // transcript through its inset alone, without rebuilding its rows.
+    final content = Stack(
+      children: [
+        Column(
+          children: [
+            Expanded(
+              child: showEmptyState
+                  ? Center(child: Text(loc.sessionDetailEmpty))
+                  : PregoTopBarInsetBuilder(
+                      builder: (context, topInset, _) => _TranscriptHeldWhileRequestSettles(
+                        state: state,
+                        builder: (state) => _buildTranscript(
+                          context: context,
+                          state: state,
                           topInset: topInset,
-                          bottomInset: bottomControlsHeight,
-                          horizontalInset: transcriptInset,
+                          transcriptInset: transcriptInset,
                         ),
                       ),
+                    ),
+            ),
+          ],
+        ),
+        // The refresh indicator and archived notice pin just below the
+        // transparent bar, floating over the chat that scrolls behind them —
+        // rather than pushing the chat down out of the behind-bar region. The
+        // cluster itself is inset-independent, so it rides through as `child`
+        // and only the Positioned offset follows the banner animation.
+        PregoTopBarInsetBuilder(
+          builder: (context, topInset, child) => Positioned(
+            top: topInset,
+            left: 0,
+            right: 0,
+            child: child ?? const SizedBox.shrink(),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (state.isRefreshing) const LinearProgressIndicator(),
+              // Archiving is permanent, so this session is audit-only: say so
+              // where the composer used to be.
+              if (state.isArchived) const SessionDetailArchivedNotice(),
+              // The harness can no longer restore this session; its stored
+              // history stays readable beneath this floating layer, which
+              // fades rather than moving the transcript.
+              AnimatedSwitcher(
+                duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: switch (state.cannotContinueMessage) {
+                  final message? => SessionDetailCannotContinueNotice(message: message),
+                  null => const SizedBox.shrink(),
+                },
               ),
             ],
           ),
-          // The refresh indicator and archived notice pin just below the
-          // transparent bar, floating over the chat that scrolls behind them —
-          // rather than pushing the chat down out of the behind-bar region. The
-          // cluster itself is inset-independent, so it rides through as `child`
-          // and only the Positioned offset follows the banner animation.
-          PregoTopBarInsetBuilder(
-            builder: (context, topInset, child) => Positioned(
-              top: topInset,
-              left: 0,
-              right: 0,
-              child: child ?? const SizedBox.shrink(),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (state.isRefreshing) const LinearProgressIndicator(),
-                // Archiving is permanent, so this session is audit-only: say so
-                // where the composer used to be.
-                if (state.isArchived) const SessionDetailArchivedNotice(),
-                // The harness can no longer restore this session; its stored
-                // history stays readable beneath this floating layer, which
-                // fades rather than moving the transcript.
-                AnimatedSwitcher(
-                  duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  child: switch (state.cannotContinueMessage) {
-                    final message? => SessionDetailCannotContinueNotice(message: message),
-                    null => const SizedBox.shrink(),
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
+    );
+    return PregoFloatingBottomControlsLayout(
+      contentBuilder: (context, bottomControlsHeight) =>
+          TranscriptBottomInset(inset: bottomControlsHeight, child: content),
       // Floating bottom controls: the needs-you cards docked above the
       // background-tasks bar and composer. Queued submissions are regular
       // rows in the transcript above them. Every control's halo paints in
@@ -305,8 +258,9 @@ class SessionDetailLoadedView extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Each card grows into its room and folds away as it last
-                    // looked when answered, so the transcript above glides
-                    // rather than snaps.
+                    // looked, so the transcript above glides rather than snaps.
+                    // A card folds away while its sheet rises, so nothing moves
+                    // when the sheet closes.
                     TranscriptPresenceColumn(risesFromBottom: true, children: needsYou),
                     if (!readOnly && !state.isArchived)
                       SessionAutoContinuationNotice(
@@ -325,6 +279,121 @@ class SessionDetailLoadedView extends StatelessWidget {
           : null,
     );
   }
+
+  Widget _buildTranscript({
+    required BuildContext context,
+    required SessionDetailLoaded state,
+    required double topInset,
+    required double transcriptInset,
+  }) {
+    // A lost response may already have reached the bridge, so only an
+    // authoritative rejection can be removed.
+    final canRemoveFailedSend =
+        !readOnly &&
+        switch (state.localSend) {
+          LocalSendFailed(:final failure) => failure is RejectedPromptSend,
+          LocalSendIdle() || LocalSendSending() => false,
+        };
+    return SessionDetailMessageList(
+      projectId: projectId,
+      messages: state.messages,
+      localSend: state.localSend,
+      queuedMessages: state.queuedMessages,
+      harnessName: state.interaction.harnessDisplayName,
+      launchHandoff: state.launchHandoff,
+      launchStartedAt: context.read<SessionDetailCubit>().launchStartedAt,
+      onRetryFailedSend: readOnly || !state.interaction.canInteract
+          ? null
+          : context.read<SessionDetailCubit>().retryFailedSend,
+      onRemoveFailedSend: canRemoveFailedSend ? context.read<SessionDetailCubit>().removeFailedSend : null,
+      launchFollowUps: state.launchFollowUps,
+      onRetryLaunchFollowUp: readOnly || !state.interaction.canInteract
+          ? null
+          : context.read<SessionDetailCubit>().retryLaunchFollowUp,
+      onRemoveLaunchFollowUp: readOnly ? null : context.read<SessionDetailCubit>().removeLaunchFollowUp,
+      bridgeQueuedPrompts: state.bridgeQueuedPrompts,
+      bridgePromptAttachments: state.bridgePromptAttachments,
+      awaitingBridgeSubmissions: state.awaitingBridgeSubmissions,
+      onCancelBridgeQueuedPrompt: readOnly || !state.interaction.canInteract
+          ? null
+          : (promptId) => unawaited(
+              context.read<SessionDetailCubit>().cancelBridgeQueuedPrompt(promptId: promptId),
+            ),
+      isLoadingOlderMessages: state.isLoadingOlderMessages,
+      isRefreshing: state.isRefreshing,
+      currentPromptId: currentPromptId,
+      jumpNotifier: jumpNotifier,
+      onPinchIn: onPinchIn,
+      streamingText: state.streamingText,
+      children: state.children,
+      childStatuses: state.childStatuses,
+      isBusy: _isBusy(state: state),
+      mainAgentRunning: state.mainAgentRunning,
+      // Null once the start of the transcript is loaded,
+      // so the list stops asking for more.
+      onLoadOlderMessages: state.olderMessagesCursor == null
+          ? null
+          : context.read<SessionDetailCubit>().loadOlderMessages,
+      promptIndex: state.promptIndex,
+      onLoadThrough: context.read<SessionDetailCubit>().loadMessagesThrough,
+      onCancelQueuedMessage: readOnly ? null : context.read<SessionDetailCubit>().cancelQueuedMessage,
+      retryErrorMessage: state.retryErrorMessage,
+      // Pad the oldest-message edge clear of the bar it scrolls
+      // behind; the list pads the newest-message edge clear of
+      // the floating bottom controls by the TranscriptBottomInset
+      // above it. Content in between scrolls up behind the bar's
+      // fade and the composer's fade.
+      topInset: topInset,
+      horizontalInset: transcriptInset,
+    );
+  }
+}
+
+/// A session waiting on the user is not working; its card says so.
+bool _isBusy({required SessionDetailLoaded state}) =>
+    hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses) &&
+    state.pendingQuestions.isEmpty &&
+    state.pendingPermissions.isEmpty;
+
+/// Builds the transcript from [state], except that for the moment after a
+/// pending request goes away it keeps showing what it showed. That moment is
+/// the request's card folding away, or its sheet leaving, so the transcript's
+/// own changes, such as an interrupted turn folding its steps, follow that
+/// motion instead of stacking onto it. Then everything that arrived applies.
+class const _TranscriptHeldWhileRequestSettles({
+  required final SessionDetailLoaded state,
+  required final Widget Function(SessionDetailLoaded state) builder,
+}) extends StatefulWidget {
+  @override
+  State<_TranscriptHeldWhileRequestSettles> createState() => _TranscriptHeldWhileRequestSettlesState();
+}
+
+class _TranscriptHeldWhileRequestSettlesState() extends State<_TranscriptHeldWhileRequestSettles> {
+  late SessionDetailLoaded _shown = widget.state;
+  Timer? _settling;
+
+  static int _requestCount(SessionDetailLoaded state) =>
+      state.pendingQuestions.length + state.pendingPermissions.length;
+
+  @override
+  void didUpdateWidget(_TranscriptHeldWhileRequestSettles oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_requestCount(widget.state) < _requestCount(oldWidget.state) && !context.isReducedMotion) {
+      _settling?.cancel();
+      // A card folds and a bottom sheet leaves in this time.
+      _settling = Timer(transcriptMotionDuration, () => setState(() => _shown = widget.state));
+    }
+    if (!(_settling?.isActive ?? false)) _shown = widget.state;
+  }
+
+  @override
+  void dispose() {
+    _settling?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(_shown);
 }
 
 String _firstLine(String text) => text.trim().split("\n").first;

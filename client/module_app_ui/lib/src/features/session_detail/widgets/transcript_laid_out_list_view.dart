@@ -10,6 +10,8 @@ import "package:material_ui/material_ui.dart";
 /// box's size and position and mark render objects for paint.
 ///
 /// A row joining below the built rows also leaves them where they were.
+///
+/// The newest end is padded clear of the nearest [TranscriptBottomInset] too.
 class TranscriptLaidOutListView({
   super.key,
   super.reverse,
@@ -25,7 +27,8 @@ class TranscriptLaidOutListView({
   this : super.builder();
 
   @override
-  Widget buildChildLayout(BuildContext context) => _RowsHeldInPlace(delegate: childrenDelegate);
+  Widget buildChildLayout(BuildContext context) =>
+      _BottomInsetPadding(sliver: _RowsHeldInPlace(delegate: childrenDelegate));
 
   @override
   Widget buildViewport(BuildContext context, ViewportOffset offset, AxisDirection axisDirection, List<Widget> slivers) {
@@ -41,6 +44,38 @@ class TranscriptLaidOutListView({
       onLaidOut: onLaidOut,
     );
   }
+}
+
+/// The height of the controls floating over the transcript's bottom edge.
+///
+/// It changes on every frame those controls grow or fold, so only the widgets
+/// that place something by it read it: the rows themselves do not rebuild.
+class const TranscriptBottomInset({
+  super.key,
+  required final double inset,
+  required super.child,
+}) extends InheritedWidget {
+  /// Rebuilds the caller whenever the inset changes.
+  static double of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<TranscriptBottomInset>()?.inset ?? 0;
+
+  /// The inset now, for a read during layout that must not rebuild the caller.
+  static double peek(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<TranscriptBottomInset>()?.inset ?? 0;
+
+  @override
+  bool updateShouldNotify(TranscriptBottomInset oldWidget) => inset != oldWidget.inset;
+}
+
+/// Pads the newest end, which a reversed list lays out first, by the
+/// [TranscriptBottomInset]. The same [sliver] instance comes back on an inset
+/// change, so the rows are not rebuilt.
+class const _BottomInsetPadding({required final Widget sliver}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => SliverPadding(
+    padding: EdgeInsets.only(bottom: TranscriptBottomInset.of(context)),
+    sliver: sliver,
+  );
 }
 
 class _LaidOutViewport({
