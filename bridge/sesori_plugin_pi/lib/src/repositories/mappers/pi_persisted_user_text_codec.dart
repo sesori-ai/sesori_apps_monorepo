@@ -44,10 +44,9 @@ final class const PiPersistedUserTextCodec() {
       if (decodeSkillRun(persistedText: persistedText) case (:final command, :final arguments)) {
         return arguments == null ? "/$command" : "/$command $arguments";
       }
-      if (persistedText.startsWith("/")) {
-        final separator = persistedText.indexOf(RegExp(r"\s"));
-        return separator < 0 ? persistedText : persistedText.substring(0, separator);
-      }
+      // Pi stores a slash command it did not expand, such as a skill it did
+      // not load, exactly as typed, so it reads back whole. Bridge core strips
+      // the worktree note a Sesori command carries after its command token.
       return persistedText;
     }
     final hiddenSeparator = persistedText.indexOf(":", marker.length);
