@@ -63,14 +63,20 @@ class HermesEventMapper({
   /// `/queue` line, so after a reload the row stayed beside the replay and,
   /// standing between the run's card and its answer, kept the live answer
   /// from matching its replayed copy. The card already shows the run.
+  ///
+  /// Hermes sends command responses without a `messageId` and every model
+  /// reply with one, so a reply with the same words stays.
   @override
   List<BridgeSseEvent> map(AcpNotification notification) {
     if (notification.params["update"]
         case {
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": final String text},
-        }
-        when notification.method == AcpMethods.sessionUpdate && _queuedAcknowledgement.hasMatch(text)) {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": final String text},
+            } &&
+            final Map<Object?, Object?> update
+        when notification.method == AcpMethods.sessionUpdate &&
+            !update.containsKey("messageId") &&
+            _queuedAcknowledgement.hasMatch(text)) {
       return const [];
     }
     return super.map(notification);

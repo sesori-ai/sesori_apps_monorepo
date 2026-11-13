@@ -1665,6 +1665,37 @@ void main() {
         expect(await storedInvocations(history: history), [review]);
       });
 
+      test("adjacent cards keep their stored order when the replay records them after their reply", () async {
+        final history = createTestChatHistory(
+          sessionRepository: _FakeSessionRepository(
+            transcript: [
+              _assistantMessageWithText(id: "reply", text: "Done", reasoning: null, createdAt: 110),
+              invoked(id: "first", invocation: null),
+              invoked(id: "second", invocation: null),
+            ],
+          ),
+        );
+        await _captureMessageWithParts(
+          history: history,
+          message: invoked(id: "first", invocation: review),
+        );
+        await _captureMessageWithParts(
+          history: history,
+          message: invoked(id: "second", invocation: review),
+        );
+        await _captureMessageWithParts(
+          history: history,
+          message: _assistantMessageWithText(id: "reply", text: "Done", reasoning: null, createdAt: 110),
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["first", "second", "reply"],
+        );
+      });
+
       group("a replay that records only the arguments as their own turn", () {
         const plan = CommandInvocation(name: "plan", source: CommandSource.command, arguments: "Write tests");
         MessageWithParts liveCommand() {

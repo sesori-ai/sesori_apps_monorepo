@@ -187,6 +187,7 @@ void main() {
       );
 
       expect(mapper.map(acknowledgement), isEmpty);
+      expect(mapper.map(finalResponse(text: "Queued for the next turn. (1 queued)")), isNotEmpty);
       expect(
         mapper.map(finalResponse(text: "Queued for the next turn. (1 queued) Then I will run it.")),
         isNotEmpty,

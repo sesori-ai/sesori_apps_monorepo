@@ -354,13 +354,17 @@ class ChatHistoryRepository({
   /// live. A harness that records only a command's arguments can replay them
   /// after the command's own reply (DeepSeek `/plan <text>` replays "Plan mode
   /// on" first), and the card would otherwise drop below that reply.
+  ///
+  /// Turns go from the last stored one back, so a move never carries an
+  /// already placed turn past its own successor.
   List<int> _importedOrder({
     required int importedCount,
     required Map<int, int> storedNamedTurns,
     required Map<int, int> importedIndexByStoredIndex,
   }) {
     final order = [for (var index = 0; index < importedCount; index++) index];
-    for (final MapEntry(key: importedIndex, value: storedIndex) in storedNamedTurns.entries) {
+    final turnsFromLast = storedNamedTurns.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    for (final MapEntry(key: importedIndex, value: storedIndex) in turnsFromLast) {
       final successor = importedIndexByStoredIndex[storedIndex + 1];
       if (successor == null) continue;
       final from = order.indexOf(importedIndex);
