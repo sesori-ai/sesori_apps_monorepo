@@ -43,6 +43,39 @@ void main() {
       expect(result, isA<PluginCatalogSnapshotUnavailable>());
     });
 
+    test("reads one session's activity from session, or session_v2 once migrated", () async {
+      final environment = {"OPENCODE_DB": databasePath, "HOME": temporaryDirectory.path};
+      final database = sqlite3.open(databasePath);
+      _createSchema(database: database);
+      _insertSession(database: database, id: "ses_v1", projectId: "p", directory: "/repo", parentId: null);
+
+      expect(
+        await _repository().readSessionActivity(environment: environment, sessionId: "ses_v1"),
+        isA<PluginSessionActivityAvailable>().having((activity) => activity.updatedAt, "updatedAt", 20),
+      );
+
+      // OpenCode 2.x keeps session_v2 current; the v1 row is a stale copy.
+      database.execute("CREATE TABLE session_v2(id TEXT PRIMARY KEY, time_updated INTEGER NOT NULL)");
+      database.execute("INSERT INTO session_v2(id, time_updated) VALUES('ses_v1', 99)");
+      database.close();
+
+      expect(
+        await _repository().readSessionActivity(environment: environment, sessionId: "ses_v1"),
+        isA<PluginSessionActivityAvailable>().having((activity) => activity.updatedAt, "updatedAt", 99),
+      );
+      expect(
+        await _repository().readSessionActivity(environment: environment, sessionId: "ses_missing"),
+        isA<PluginSessionActivityUnavailable>(),
+      );
+      expect(
+        await _repository().readSessionActivity(
+          environment: {"OPENCODE_DB": "${temporaryDirectory.path}/absent.db", "HOME": temporaryDirectory.path},
+          sessionId: "ses_v1",
+        ),
+        isA<PluginSessionActivityUnavailable>(),
+      );
+    });
+
     test("reads every root and descendant without transcript tables or pagination", () async {
       final database = sqlite3.open(databasePath);
       _createSchema(database: database);
@@ -315,6 +348,7 @@ void main() {
       final repository = OpenCodeCatalogRepository(
         databaseApi: OpenCodeCatalogDatabaseApi(
           worker: _GatedCatalogDatabaseWorker(started: workerStarted.sendPort).read,
+          sessionActivityWorker: _unusedSessionActivityWorker,
         ),
         snapshotMapper: const OpenCodeCatalogSnapshotMapper(
           modelMapper: PluginModelMapper(
@@ -429,6 +463,33 @@ void main() {
       expect(File(databasePath).existsSync(), isFalse);
     });
 
+    test("production descriptor reads session activity, except in attach mode", () async {
+      final database = sqlite3.open(databasePath);
+      _createSchema(database: database);
+      _insertSession(database: database, id: "ses_a", projectId: "p", directory: "/repo", parentId: null);
+      database.close();
+      final environment = {"OPENCODE_DB": databasePath, "HOME": temporaryDirectory.path};
+
+      expect(
+        await OpenCodePluginDescriptor.production().readSessionActivity(
+          config: const PluginConfig(values: {"no-auto-start": false, "bin": null}),
+          environment: environment,
+          sessionId: "ses_a",
+          directory: "/repo",
+        ),
+        isA<PluginSessionActivityAvailable>().having((activity) => activity.updatedAt, "updatedAt", 20),
+      );
+      expect(
+        await OpenCodePluginDescriptor.production().readSessionActivity(
+          config: const PluginConfig(values: {"no-auto-start": true, "port": 4096}),
+          environment: environment,
+          sessionId: "ses_a",
+          directory: "/repo",
+        ),
+        isA<PluginSessionActivityUnavailable>(),
+      );
+    });
+
     test("missing and unidentifiable database choices remain unavailable", () async {
       expect(
         await _repository().read(
@@ -540,6 +601,12 @@ class _FakeCatalogDatabaseApi({required final OpenCodeCatalogDatabaseSnapshot sn
     path = databasePath;
     return snapshot;
   }
+
+  @override
+  Future<int?> readSessionUpdatedAt({
+    required String databasePath,
+    required String sessionId,
+  }) => throw UnimplementedError();
 }
 
 class _GatedCatalogDatabaseWorker({required final SendPort started}) {
@@ -565,3 +632,6 @@ class const _NeverCancelled() implements PluginCatalogCancellationSignal {
   @override
   bool get isCancelled => false;
 }
+
+int? _unusedSessionActivityWorker({required String databasePath, required String sessionId}) =>
+    throw UnimplementedError("the catalog read does not read session activity");

@@ -144,6 +144,12 @@ sealed class SessionMessagesRequest with _$SessionMessagesRequest {
     /// summaries whose detail the app fetches when a row expands.
     // COMPATIBILITY 2026-10-07 (v1.9.1): v1.9.0 apps omit it and expect full tool parts. Drop the default once no supported app predates the field.
     @Default(ToolOutputDelivery.inline) ToolOutputDelivery toolOutputDelivery,
+
+    /// The app refetches the open page when the bridge sends
+    /// `session.history-refreshed`, so a transcript that is behind its harness
+    /// can be served from the store at once while the bridge re-reads it.
+    // COMPATIBILITY 2026-11-12 (v1.13.0): Older apps omit it and expect a read behind the harness to wait for the re-read. Make this required once no supported app predates the field.
+    @Default(false) bool backgroundRefresh,
   }) = _SessionMessagesRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);

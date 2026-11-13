@@ -1,5 +1,12 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSession, PluginSessionTime;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show
+        Log,
+        PluginSession,
+        PluginSessionActivityAvailable,
+        PluginSessionActivityResult,
+        PluginSessionActivityUnavailable,
+        PluginSessionTime;
 
 import "../api/pi_session_storage_api.dart";
 
@@ -90,6 +97,16 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
       ),
     );
     _link();
+  }
+
+  /// [sessionId]'s activity time, read from its file in [directory]'s session
+  /// directory with no scan, so a dormant plugin can answer. It is the file's
+  /// modification time, the same value a scan lists the session with.
+  PluginSessionActivityResult readSessionActivity({required String sessionId, required String directory}) {
+    final modified = _storageApi.readSessionModified(sessionId: sessionId, directory: directory);
+    return modified == null
+        ? const PluginSessionActivityUnavailable()
+        : PluginSessionActivityAvailable(updatedAt: modified.millisecondsSinceEpoch);
   }
 
   /// A persisted or primed session from the last scan, or from one rescan on

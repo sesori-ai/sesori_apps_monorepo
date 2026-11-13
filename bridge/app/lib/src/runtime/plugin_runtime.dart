@@ -400,6 +400,33 @@ class PluginRuntime({
     );
   }
 
+  /// One session's current backend activity, read by the descriptor whether
+  /// or not the plugin is started. Never starts it and takes no lease: the
+  /// read is local and read-only, so there is no generation to fence.
+  ///
+  /// A failed read is logged and reported as unavailable, so the caller keeps
+  /// what it already knew. So is a plugin this build no longer registers,
+  /// whose stored sessions still open from the store.
+  Future<PluginSessionActivityResult> readSessionActivity({
+    required String pluginId,
+    required String sessionId,
+    required String directory,
+  }) async {
+    final slot = _slots[pluginId];
+    if (slot == null) return const PluginSessionActivityUnavailable();
+    try {
+      return await slot.registration.descriptor.readSessionActivity(
+        config: slot.registration.config,
+        environment: _environment,
+        sessionId: sessionId,
+        directory: directory,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w('Plugin "$pluginId" could not read activity for session $sessionId', error, stackTrace);
+      return const PluginSessionActivityUnavailable();
+    }
+  }
+
   PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) {
     final slot = _requireSlot(pluginId);
     if (_shuttingDown) throw const PluginStartAbortedException();

@@ -247,6 +247,17 @@ Map<String, dynamic> _$SesoriSessionPromptDefaultsChangedToJson(
   'type': instance.$type,
 };
 
+SesoriSessionHistoryRefreshed _$SesoriSessionHistoryRefreshedFromJson(
+  Map json,
+) => SesoriSessionHistoryRefreshed(
+  sessionID: json['sessionID'] as String,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$SesoriSessionHistoryRefreshedToJson(
+  SesoriSessionHistoryRefreshed instance,
+) => <String, dynamic>{'sessionID': instance.sessionID, 'type': instance.$type};
+
 SesoriSessionStatus _$SesoriSessionStatusFromJson(Map json) =>
     SesoriSessionStatus(
       sessionID: json['sessionID'] as String,

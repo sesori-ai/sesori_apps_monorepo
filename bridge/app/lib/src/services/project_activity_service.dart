@@ -84,6 +84,7 @@ class ProjectActivityService({
           SesoriSessionDiff() ||
           SesoriSessionError() ||
           SesoriSessionCompacted() ||
+          SesoriSessionHistoryRefreshed() ||
           SesoriSessionPromptSettled() ||
           SesoriSessionPromptDefaultsChanged() ||
           SesoriSessionStatus() ||

@@ -152,6 +152,12 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required SessionPromptDefaults promptDefaults,
   }) = SesoriSessionPromptDefaultsChanged;
 
+  /// The bridge re-read the session from its harness after serving a stored
+  /// page that was behind it, so an open view should refetch.
+  @FreezedUnionValue("session.history-refreshed")
+  @Implements<SesoriSessionEvent>()
+  const factory sessionHistoryRefreshed({required String sessionID}) = SesoriSessionHistoryRefreshed;
+
   @FreezedUnionValue("session.status")
   @Implements<SesoriSessionEvent>()
   const factory sessionStatus({

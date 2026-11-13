@@ -40,6 +40,22 @@ class OpenCodeCatalogRepository({
     return PluginCatalogSnapshotAvailable(snapshot: snapshot);
   }
 
+  /// [sessionId]'s `time_updated` from the same database [read] uses, so it
+  /// matches the activity time the server lists the session with.
+  Future<PluginSessionActivityResult> readSessionActivity({
+    required Map<String, String> environment,
+    required String sessionId,
+  }) async {
+    final databasePath = _resolveDatabasePath(environment: environment);
+    if (databasePath == null || !fileExists(path: databasePath)) {
+      return const PluginSessionActivityUnavailable();
+    }
+    final updatedAt = await databaseApi.readSessionUpdatedAt(databasePath: databasePath, sessionId: sessionId);
+    return updatedAt == null
+        ? const PluginSessionActivityUnavailable()
+        : PluginSessionActivityAvailable(updatedAt: updatedAt);
+  }
+
   String? _resolveDatabasePath({required Map<String, String> environment}) {
     final context = path.Context(
       style: operatingSystem == PlatformOs.windows ? path.Style.windows : path.Style.posix,

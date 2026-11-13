@@ -203,6 +203,12 @@ class const BridgeRuntimeRunner._() {
         action: () => runtime?.catalogImportService.drain() ?? Future<void>.value(),
       )
       ..addPhase(
+        phase: BridgeShutdownPhase.pluginDispose,
+        // A background re-read started by a read is outside the request drain;
+        // like an import, it settles once its plugin transport closes.
+        action: () => runtime?.chatHistoryService.drain() ?? Future<void>.value(),
+      )
+      ..addPhase(
         phase: BridgeShutdownPhase.lifecycle,
         action: () => pluginLifecycleService?.dispose() ?? Future<void>.value(),
         budget: _pluginShutdownBudget,

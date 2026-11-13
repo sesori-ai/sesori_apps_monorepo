@@ -18,6 +18,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginQuotaContinuationReadiness,
         PluginQuotaReportingSupport,
         PluginSession,
+        PluginSessionActivityAvailable,
+        PluginSessionActivityUnavailable,
         PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
     show
@@ -547,6 +549,21 @@ class SessionRepository({
       ),
     );
     return removed ?? false;
+  }
+
+  /// The backend's current activity time for [session] in epoch milliseconds,
+  /// read without starting its plugin, or null when its harness cannot answer
+  /// cheaply or cannot find it.
+  Future<int?> readBackendActivity({required StoredSession session}) async {
+    final result = await _runtime.readSessionActivity(
+      pluginId: session.pluginId,
+      sessionId: session.backendSessionId,
+      directory: session.directory,
+    );
+    return switch (result) {
+      PluginSessionActivityAvailable(:final updatedAt) => updatedAt,
+      PluginSessionActivityUnavailable() => null,
+    };
   }
 
   /// All messages of [sessionId], mapped to the shared model. The stored

@@ -219,6 +219,7 @@ typedef OrchestratorComposition = ({
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
+  ChatHistoryService chatHistoryService,
 });
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
@@ -833,6 +834,7 @@ class Orchestrator({
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
+      chatHistoryService: chatHistoryService,
     );
   }
 
@@ -1182,6 +1184,18 @@ class OrchestratorSession._({
     await _permissionAutoApprovalService.approvePending();
     final startupSummary = await _buildProjectsSummary();
     if (startupSummary != null) _feedLocalObservers(startupSummary);
+    _chatHistoryService.historyRefreshes
+        .listen((refresh) {
+          // An outside turn may have switched agent or model. Sent first, so
+          // the refresh that follows already sees the new selection.
+          if (refresh.replayedPromptDefaults case final promptDefaults?) {
+            _enqueueWireEvent(
+              SesoriSseEvent.sessionPromptDefaultsChanged(sessionID: refresh.sessionId, promptDefaults: promptDefaults),
+            );
+          }
+          _enqueueWireEvent(SesoriSseEvent.sessionHistoryRefreshed(sessionID: refresh.sessionId));
+        })
+        .addTo(_subscriptions);
     _sessionUnseenService.unseenChanges
         .listen((change) {
           _enqueueWireEvent(
@@ -1876,6 +1890,7 @@ class OrchestratorSession._({
       SesoriSessionDiff() ||
       SesoriSessionError() ||
       SesoriSessionCompacted() ||
+      SesoriSessionHistoryRefreshed() ||
       SesoriSessionPromptSettled() ||
       SesoriSessionPromptDefaultsChanged() ||
       SesoriSessionStatus() ||
@@ -2125,6 +2140,7 @@ class OrchestratorSession._({
           SesoriSessionDiff() ||
           SesoriSessionError() ||
           SesoriSessionCompacted() ||
+          SesoriSessionHistoryRefreshed() ||
           SesoriSessionPromptSettled() ||
           SesoriSessionPromptDefaultsChanged() ||
           SesoriSessionStatus() ||

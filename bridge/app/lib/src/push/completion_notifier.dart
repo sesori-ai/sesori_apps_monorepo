@@ -130,6 +130,7 @@ class CompletionNotifier({
           SesoriSessionDiff() ||
           SesoriSessionError() ||
           SesoriSessionCompacted() ||
+          SesoriSessionHistoryRefreshed() ||
           SesoriSessionPromptSettled() ||
           SesoriSessionPromptDefaultsChanged() ||
           SesoriCommandExecuted() ||

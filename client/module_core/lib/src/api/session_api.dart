@@ -406,6 +406,9 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         storedOnly: storedOnly,
         // A bridge that predates the field ignores it and sends full parts.
         toolOutputDelivery: ToolOutputDelivery.onExpand,
+        // The open session view refetches on `session.history-refreshed`. A
+        // bridge that predates the field ignores it and waits for the re-read.
+        backgroundRefresh: true,
       ),
     );
   }

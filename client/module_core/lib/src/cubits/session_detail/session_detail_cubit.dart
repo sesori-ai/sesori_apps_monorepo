@@ -82,6 +82,7 @@ enum _SessionRefreshTrigger(final String logValue) {
   harnessAvailable("harness_available"),
   queuedEvent("queued_event"),
   checkSetup("check_setup"),
+  historyRefreshed("history_refreshed"),
 }
 
 enum _SessionRefreshAction() {
@@ -1677,6 +1678,9 @@ class SessionDetailCubit(
           _onSessionUpdated(info);
         case SesoriCommandExecuted():
           _onDataMayBeStale(trigger: _SessionRefreshTrigger.commandExecuted);
+        // The bridge re-read a transcript it had served behind the harness.
+        case SesoriSessionHistoryRefreshed():
+          _onDataMayBeStale(trigger: _SessionRefreshTrigger.historyRefreshed);
         case SesoriSessionPromptDefaultsChanged(:final promptDefaults):
           _onPromptDefaultsChanged(promptDefaults);
         case SesoriSessionQueuedPrompts(:final prompts):
@@ -1782,6 +1786,7 @@ class SessionDetailCubit(
       SesoriSessionDiff() ||
       SesoriSessionError() ||
       SesoriSessionCompacted() ||
+      SesoriSessionHistoryRefreshed() ||
       SesoriSessionPromptSettled() ||
       SesoriCommandExecuted() ||
       SesoriMessageUpdated() ||
@@ -1843,6 +1848,7 @@ class SessionDetailCubit(
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
+            SesoriSessionHistoryRefreshed() ||
             SesoriSessionPromptSettled() ||
             SesoriServerConnected() ||
             SesoriServerHeartbeat() ||
