@@ -31,8 +31,13 @@ sealed class const TranscriptPromptEntry({
   required final String messageId,
 
   /// The source text's first line that holds more than whitespace, trimmed,
-  /// for a one-line row; null when there is none.
+  /// for a one-line row; null when there is none. For an [invocation], the
+  /// first such line of its arguments.
   required final String? text,
+
+  /// The command, skill or MCP prompt the prompt ran, as the bridge named it;
+  /// null for any other prompt.
+  required final CommandInvocation? invocation,
 
   required final TranscriptPromptSource source,
 
@@ -59,6 +64,7 @@ sealed class const TranscriptPromptEntry({
 final class const TranscriptPromptOpener({
   required super.messageId,
   required super.text,
+  required super.invocation,
   required super.source,
   required super.createdAt,
   required super.dayKey,
@@ -70,6 +76,7 @@ final class const TranscriptPromptOpener({
 final class const TranscriptPromptFollowUp({
   required super.messageId,
   required super.text,
+  required super.invocation,
   required super.source,
   required super.createdAt,
   required super.dayKey,
@@ -129,17 +136,16 @@ class const TranscriptPromptListBuilder() {
     final dayKeyByOpenerId = <String, DateTime?>{};
     for (final indexed in index) {
       final loadedEntry = loadedById[indexed.messageId];
+      // The run a row shows, which its text then follows.
+      final invocation = loadedEntry?.invocation ?? indexed.invocation;
       final TranscriptPromptSource source;
       final String? text;
       if (loadedEntry != null) {
         source = loadedEntry.source;
-        text = loadedEntry.text;
+        text = _rowText(invocation: invocation, text: loadedEntry.text);
       } else if (olderMessagesCursor != null && indexed.seq < olderMessagesCursor) {
         source = TranscriptPromptUnloaded(seq: indexed.seq, preview: indexed.preview);
-        text = switch (indexed.preview) {
-          final preview? => firstNonBlankLine(text: preview),
-          null => null,
-        };
+        text = _rowText(invocation: invocation, text: indexed.preview);
       } else {
         continue;
       }
@@ -154,6 +160,7 @@ class const TranscriptPromptListBuilder() {
             TranscriptPromptOpener(
               messageId: indexed.messageId,
               text: text,
+              invocation: invocation,
               source: source,
               createdAt: indexed.createdAt,
               dayKey: ownDay,
@@ -165,6 +172,7 @@ class const TranscriptPromptListBuilder() {
             TranscriptPromptFollowUp(
               messageId: indexed.messageId,
               text: text,
+              invocation: invocation,
               source: source,
               createdAt: indexed.createdAt,
               // An undated follow-up belongs to its turn's day.
@@ -207,15 +215,17 @@ class const TranscriptPromptListBuilder() {
     final dayKeyByOpenerId = <String, DateTime?>{};
     var userMessages = 0;
     for (final message in messages) {
-      if (message.info is! MessageUser) continue;
+      final info = message.info;
+      if (info is! MessageUser) continue;
       // A hidden user message still takes a number, as the bridge counts it.
       userMessages++;
       if (!message.hasRenderableUserContent) continue;
 
-      final id = message.info.id;
-      final createdAt = message.info.time?.created;
+      final id = info.id;
+      final createdAt = info.time?.created;
       final fullText = message.promptText;
-      final text = fullText == null ? null : firstNonBlankLine(text: fullText);
+      final invocation = info.invocation;
+      final text = _rowText(invocation: invocation, text: fullText);
       final source = TranscriptPromptLoaded(fullText: fullText);
       final number = userMessagesBefore == null ? null : userMessagesBefore + userMessages;
       final ownDay = createdAt == null ? null : _dayOf(createdAt: createdAt);
@@ -227,6 +237,7 @@ class const TranscriptPromptListBuilder() {
           TranscriptPromptFollowUp(
             messageId: id,
             text: text,
+            invocation: invocation,
             source: source,
             createdAt: createdAt,
             // An undated follow-up belongs to its turn's day.
@@ -241,6 +252,7 @@ class const TranscriptPromptListBuilder() {
           TranscriptPromptOpener(
             messageId: id,
             text: text,
+            invocation: invocation,
             source: source,
             createdAt: createdAt,
             dayKey: ownDay,
@@ -250,6 +262,12 @@ class const TranscriptPromptListBuilder() {
       }
     }
     return entries;
+  }
+
+  /// A row's one line: an invocation's arguments, else the prompt's [text].
+  static String? _rowText({required CommandInvocation? invocation, required String? text}) {
+    final shown = invocation == null ? text : invocation.arguments;
+    return shown == null ? null : firstNonBlankLine(text: shown);
   }
 
   static DateTime _dayOf({required int createdAt}) {

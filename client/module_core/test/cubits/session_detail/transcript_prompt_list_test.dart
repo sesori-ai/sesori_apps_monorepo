@@ -6,17 +6,18 @@ final _monday = DateTime(2026, 9, 21, 9).millisecondsSinceEpoch;
 final _tuesday = DateTime(2026, 9, 22, 23, 50).millisecondsSinceEpoch;
 final _wednesday = DateTime(2026, 9, 23, 0, 10).millisecondsSinceEpoch;
 
-MessageWithParts _user({required String id, int? at, List<MessagePart>? parts}) => MessageWithParts(
-  info: Message.user(
-    invocation: null,
-    id: id,
-    sessionID: "s",
-    agent: null,
-    time: at == null ? null : MessageTime(created: at, completed: null),
-    promptId: null,
-  ),
-  parts: parts ?? [_text(text: "Prompt $id")],
-);
+MessageWithParts _user({required String id, int? at, List<MessagePart>? parts, CommandInvocation? invocation}) =>
+    MessageWithParts(
+      info: Message.user(
+        invocation: invocation,
+        id: id,
+        sessionID: "s",
+        agent: null,
+        time: at == null ? null : MessageTime(created: at, completed: null),
+        promptId: null,
+      ),
+      parts: parts ?? [_text(text: "Prompt $id")],
+    );
 
 /// A user message the list hides: no text and no known file.
 MessageWithParts _hiddenUser({required String id}) => _user(id: id, parts: const []);
@@ -88,9 +89,10 @@ SessionPromptIndexEntry _indexed({
   required int number,
   int? at,
   String? opener,
+  CommandInvocation? invocation,
 }) => opener == null
     ? SessionPromptIndexEntry.opener(
-        invocation: null,
+        invocation: invocation,
         messageId: id,
         seq: seq,
         number: number,
@@ -98,7 +100,7 @@ SessionPromptIndexEntry _indexed({
         preview: "Preview $id",
       )
     : SessionPromptIndexEntry.followUp(
-        invocation: null,
+        invocation: invocation,
         messageId: id,
         seq: seq,
         number: number,
@@ -365,6 +367,53 @@ void main() {
       expect(_shape(list: list), ["u1", "u2", "  u3<u2", "u4"]);
       expect(_sources(list: list), ["u1@10", "u2", "u3", "u4"]);
       expect(list.entries.map((entry) => entry.number), [1, 2, 3, 4]);
+    });
+
+    test("carries a run command's invocation, its row's line its arguments, while search keeps the text", () {
+      const skill = CommandInvocation(
+        name: "fixture-greeter",
+        source: CommandSource.skill,
+        arguments: "\n  Say hello\nthen stop",
+      );
+      const command = CommandInvocation(name: "fixture-review", source: CommandSource.command, arguments: null);
+      final list = _list(
+        olderMessagesCursor: 20,
+        messages: [
+          _user(
+            id: "u2",
+            invocation: command,
+            parts: [_text(text: "/fixture-review")],
+          ),
+          _answer(id: "a2"),
+          _user(id: "u3"),
+        ],
+        index: [
+          _indexed(id: "u1", seq: 10, number: 1, invocation: skill),
+          _indexed(id: "u2", seq: 20, number: 2, invocation: command),
+          _indexed(id: "u3", seq: 30, number: 3),
+        ],
+      );
+
+      expect(list.entries.map((entry) => entry.invocation), [skill, command, null]);
+      expect(list.entries.map((entry) => entry.text), ["Say hello", null, "Prompt u3"]);
+      expect(list.entries.map((entry) => entry.searchText), ["Preview u1", "/fixture-review", "Prompt u3"]);
+    });
+
+    test("words a loaded row from the index's invocation when only the index names the run", () {
+      const skill = CommandInvocation(name: "fixture-greeter", source: CommandSource.skill, arguments: "Say hello");
+      final list = _list(
+        olderMessagesCursor: 10,
+        messages: [
+          _user(
+            id: "u1",
+            parts: [_text(text: "/fixture-greeter Say hello")],
+          ),
+        ],
+        index: [_indexed(id: "u1", seq: 10, number: 1, invocation: skill)],
+      );
+
+      expect(list.entries.single.invocation, skill);
+      expect(list.entries.single.text, "Say hello");
     });
 
     test("drops an indexed prompt inside the loaded range that the transcript does not show", () {
