@@ -1703,6 +1703,7 @@ abstract class AcpPlugin({
         final Map<dynamic, dynamic> map => map.cast<String, dynamic>(),
         _ => throw FormatException("session/prompt result is not an object: ${raw.runtimeType}"),
       });
+      _retireInputOfEndedTurn(sessionId: sessionId);
       _finishTurn(
         sessionId: sessionId,
         state: state,
@@ -1716,6 +1717,9 @@ abstract class AcpPlugin({
       // backend failure must remain observable rather than silently dropping
       // the accepted prompt.
       Log.w("[$id] accepted session/prompt for $sessionId failed", error, stack);
+      // Only an agent error response ends the agent's turn; a local timeout
+      // leaves the agent possibly still waiting on the user.
+      if (error is AcpRpcException) _retireInputOfEndedTurn(sessionId: sessionId);
       // An agent can explain the failure in the turn itself before failing the
       // prompt (Hermes does); that halt notice is the turn's one notice.
       if (!eventMapper.showedHaltNotice(sessionId: sessionId)) {
@@ -1730,6 +1734,13 @@ abstract class AcpPlugin({
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
     }
   }
+
+  /// The agent answered [sessionId]'s `session/prompt`, so its turn is over and
+  /// it cannot still be waiting on that session's approvals or questions. Some
+  /// agents abandon one silently (Hermes after its own approval timeout), so
+  /// retire what is left the same way as a request the agent withdrew.
+  void _retireInputOfEndedTurn({required String sessionId}) =>
+      _approvalRegistry?.withdrawForSession(sessionId: sessionId);
 
   String _promptFailureMessage({required Object error}) {
     if (error case AcpRpcException(:final message, :final data)) {

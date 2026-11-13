@@ -205,13 +205,21 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
   /// longer waits for an answer, so none is sent; clients get the same event as
   /// a cancellation. Returns the retired request ids.
   @protected
-  List<String> withdrawWhere({required bool Function(TPayload payload) matches}) {
-    final entries = _pending.values.where((entry) => matches(entry.payload)).toList(growable: false);
-    for (final entry in entries) {
+  List<String> withdrawWhere({required bool Function(TPayload payload) matches}) =>
+      _withdraw(entries: _pending.values.where((entry) => matches(entry.payload)));
+
+  /// Retires every entry of [sessionId] the backend can no longer be waiting
+  /// on, such as when that session's turn has ended, without answering it.
+  void withdrawForSession({required String sessionId}) =>
+      _withdraw(entries: _pending.values.where((entry) => entry.sessionId == sessionId));
+
+  List<String> _withdraw({required Iterable<_PendingEntry<TPayload>> entries}) {
+    final withdrawn = entries.toList(growable: false);
+    for (final entry in withdrawn) {
       _pending.remove(entry.id);
       _emit(entry.cancellationEvent);
     }
-    return [for (final entry in entries) entry.id];
+    return [for (final entry in withdrawn) entry.id];
   }
 
   bool replyPermission({required String requestId, required PluginPermissionReply reply}) {

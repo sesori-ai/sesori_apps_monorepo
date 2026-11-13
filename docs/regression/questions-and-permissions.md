@@ -210,7 +210,13 @@ reaches the backend so the turn continues.
   JSON-RPC id may be an int or a string. OpenCode v2 sends no reply event when
   an interrupt drops a pending permission, so its `session.execution.interrupted`
   (reason user, superseded or inactivity) retires every pending permission of
-  that session, including after Sesori's own Stop. Every harness is listed in
+  that session, including after Sesori's own Stop. When an ACP agent answers a
+  `session/prompt` (any stop reason, or a JSON-RPC error), its turn is over, so
+  every request still pending for that exact session retires the same way, before
+  the session goes idle; children and other sessions keep theirs. A local prompt
+  timeout retires nothing, because the agent may still be waiting. Failure
+  signal: a Hermes approval left open past its 300 s timeout stays on screen
+  after the turn ends. Every harness is listed in
   [Requests the harness withdrew](../HARNESS_CAPABILITIES.md#requests-the-harness-withdrew).
 - ACP and Codex teardown attempts every pending backend resolution independently,
   logs responder or request-subscription failures, and still clears each stale
