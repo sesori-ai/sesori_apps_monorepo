@@ -3565,6 +3565,42 @@ abstract class AppLocalizations {
   /// **'Fast mode can\'t be used with this account right now.'**
   String get sessionDetailFastModeUnavailableUnknown;
 
+  /// Alert message when the orbits picker's fast toggle is tapped while the selected model has no fast mode.
+  ///
+  /// In en, this message translates to:
+  /// **'{model} has no fast mode.'**
+  String orbitsPickerFastModeNotOffered(String model);
+
+  /// Label of the fast-mode toggle in the corner of the orbits model and effort picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast'**
+  String get orbitsPickerFastToggle;
+
+  /// Small tag after a model name in the orbits picker when that model has fast mode.
+  ///
+  /// In en, this message translates to:
+  /// **'FAST'**
+  String get orbitsPickerFastTag;
+
+  /// Shown along the ring of a model that has no effort levels in the orbits picker.
+  ///
+  /// In en, this message translates to:
+  /// **'no effort setting'**
+  String get orbitsPickerNoEffort;
+
+  /// Pill in the orbits picker that opens the full model list. The count is always two or more.
+  ///
+  /// In en, this message translates to:
+  /// **'All {count} models'**
+  String orbitsPickerAllModels(int count);
+
+  /// Screen-reader label of one level dot in the orbits picker. The level is the effort id the harness reports, such as high or xhigh.
+  ///
+  /// In en, this message translates to:
+  /// **'{model}, {level} effort'**
+  String orbitsPickerLevel(String model, String level);
+
   /// No description provided for @sessionDetailModelSearch.
   ///
   /// In en, this message translates to:

@@ -2025,6 +2025,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailFastModeUnavailableUnknown => 'Fast mode can\'t be used with this account right now.';
 
   @override
+  String orbitsPickerFastModeNotOffered(String model) {
+    return '$model has no fast mode.';
+  }
+
+  @override
+  String get orbitsPickerFastToggle => 'Fast';
+
+  @override
+  String get orbitsPickerFastTag => 'FAST';
+
+  @override
+  String get orbitsPickerNoEffort => 'no effort setting';
+
+  @override
+  String orbitsPickerAllModels(int count) {
+    return 'All $count models';
+  }
+
+  @override
+  String orbitsPickerLevel(String model, String level) {
+    return '$model, $level effort';
+  }
+
+  @override
   String get sessionDetailModelSearch => 'Search models...';
 
   @override

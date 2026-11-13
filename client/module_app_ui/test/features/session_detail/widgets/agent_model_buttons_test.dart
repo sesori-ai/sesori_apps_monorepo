@@ -274,6 +274,32 @@ void main() {
       expect(find.text(loc.sessionDetailFastModeConfirmEnableBody), findsOneWidget);
       expect(changes, isEmpty);
     });
+
+    for (final (answer, respond, expected) in [
+      ("confirmed", (WidgetTester tester) => tester.tap(find.byKey(const Key("fast_mode_confirm"))), [true]),
+      ("cancelled", (WidgetTester tester) => tester.tap(find.byKey(const Key("fast_mode_cancel"))), <bool>[]),
+      ("dismissed", (WidgetTester tester) => tester.tapAt(const Offset(10, 10)), <bool>[]),
+    ]) {
+      testWidgets("a cache-reset prompt that is $answer switches only on confirm", (tester) async {
+        final changes = <bool>[];
+        await tester.pumpWidget(
+          _buildFastModeApp(
+            designSystem: PregoDesignSystem.light,
+            control: FastModeControl.off,
+            decision: const FastModeToggleConfirmCacheReset(fastMode: true),
+            onFastModeChanged: changes.add,
+          ),
+        );
+        await tester.tap(pill());
+        await tester.pumpAndSettle();
+
+        await respond(tester);
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key("fast_mode_confirm")), findsNothing);
+        expect(changes, expected);
+      });
+    }
   });
 
   group("Variant picker", () {
