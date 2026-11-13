@@ -37,6 +37,7 @@ Future<_Harness> _open(
   required ModelOrbits orbits,
   FastModeControl fastModeControl = FastModeControl.off,
   FastModeToggleDecision decision = const FastModeToggleApply(fastMode: true),
+  Duration? openFor,
 }) async {
   tester.view
     ..physicalSize = const Size(393, 700)
@@ -71,7 +72,12 @@ Future<_Harness> _open(
       onFastModeChanged: harness.fastChanges.add,
     ),
   );
-  await tester.pumpAndSettle();
+  if (openFor == null) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+    await tester.pump(openFor);
+  }
   return harness;
 }
 
@@ -88,6 +94,20 @@ void main() {
 
     expect(harness.picks, [(providerID: "anthropic", modelID: "fable", variant: const SessionVariant(id: "xhigh"))]);
     expect(picker, findsNothing);
+  });
+
+  testWidgets("a tap while the rings still ripple in lands on the dot as drawn", (tester) async {
+    final harness = await _open(tester, orbits: orbits, openFor: const Duration(milliseconds: 60));
+    // Fable is the last ring to settle, so it is still drawn at 84 % here,
+    // over the spot that Opus owns once settled.
+    final origin = geometry.origin;
+    final drawn = origin + (geometry.dotCenter(ringIndex: 0, levelIndex: 4) - origin) * .84;
+    expect(geometry.hitTest(drawn), const OrbitLevelTarget(ringIndex: 1, levelIndex: 4));
+
+    await tester.tapAt(drawn);
+    await tester.pumpAndSettle();
+
+    expect(harness.picks, [(providerID: "anthropic", modelID: "fable", variant: const SessionVariant(id: "max"))]);
   });
 
   testWidgets("one slide picks the dot it is released on, with a haptic per patch", (tester) async {

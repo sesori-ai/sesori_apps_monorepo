@@ -1,4 +1,3 @@
-import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart"
     show FastModeToggleApply, FastModeToggleConfirmCacheReset, FastModeToggleDecision, FastModeToggleUnavailable;
@@ -65,7 +64,7 @@ Future<bool?> _showFastModeConfirmation({required BuildContext context, required
             hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
             size: PregoButtonsSolidSize.xl,
             fullWidth: true,
-            onPressed: () => sheetContext.pop(true),
+            onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
           const SizedBox(height: PregoSpacing.md),
           PregoButtonsSolid(
@@ -74,7 +73,7 @@ Future<bool?> _showFastModeConfirmation({required BuildContext context, required
             hierarchy: PregoButtonsSolidHierarchy.tertiary,
             size: PregoButtonsSolidSize.xl,
             fullWidth: true,
-            onPressed: () => sheetContext.pop(false),
+            onPressed: () => Navigator.of(sheetContext).pop(false),
           ),
         ],
       ),

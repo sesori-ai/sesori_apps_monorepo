@@ -184,22 +184,54 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
     }
   }
 
+  /// Hit tests what is drawn: while the ripple settles, each ring is still
+  /// scaled about the origin, so the finger is mapped back into each ring's
+  /// own scale and only that ring's targets count. Once settled this is the
+  /// plain [OrbitGeometry.hitTest].
+  OrbitTarget? _hitTest({required OrbitGeometry geometry, required Offset position}) {
+    final direct = geometry.hitTest(position);
+    // The fast toggle is not part of the ripple.
+    if (direct is OrbitFastToggleTarget) return direct;
+    OrbitTarget? drawnAt({required int stagger}) {
+      final scale = OrbitsMotion.scaleOf(
+        entry: widget.animation,
+        reducedMotion: context.isReducedMotion,
+        stagger: stagger,
+      );
+      return geometry.hitTest(_origin + (position - _origin) / scale);
+    }
+
+    final ringCount = widget.orbits.rings.length;
+    for (var ringIndex = 0; ringIndex < ringCount; ringIndex++) {
+      final target = drawnAt(
+        stagger: OrbitsMotion.ringStagger(ringCount: ringCount, ringIndex: ringIndex),
+      );
+      final onThisRing = switch (target) {
+        OrbitLevelTarget(ringIndex: final hit) || OrbitNameTarget(ringIndex: final hit) => hit == ringIndex,
+        _ => false,
+      };
+      if (onThisRing) return target;
+    }
+    final pill = drawnAt(stagger: 0);
+    return pill is OrbitAllModelsTarget ? pill : null;
+  }
+
   void _onPointerDown({required PointerDownEvent event, required OrbitGeometry geometry}) {
     if (_pointer != null || _done) return;
     _pointer = event.pointer;
-    final target = geometry.hitTest(event.localPosition);
+    final target = _hitTest(geometry: geometry, position: event.localPosition);
     _pressed = target;
     _setHot(target);
   }
 
   void _onPointerMove({required PointerMoveEvent event, required OrbitGeometry geometry}) {
     if (event.pointer != _pointer) return;
-    _setHot(geometry.hitTest(event.localPosition));
+    _setHot(_hitTest(geometry: geometry, position: event.localPosition));
   }
 
   void _onPointerUp({required PointerUpEvent event, required OrbitGeometry geometry}) {
     if (event.pointer != _pointer) return;
-    final target = geometry.hitTest(event.localPosition);
+    final target = _hitTest(geometry: geometry, position: event.localPosition);
     final pressed = _pressed;
     _endGesture();
     switch (target) {

@@ -34,7 +34,8 @@ enum OrbitMetal({
   static const enamelBottom = Color(0xFF0F1013);
 
   /// A polished rim that catches the light as it runs, for ring lines and the
-  /// current choice's trail. Repeats every 200 pt, so any span shows a sweep.
+  /// current choice's trail. The 200 pt sweep mirrors back, so the pattern
+  /// repeats every 400 pt and any span shows a highlight.
   Shader rimShader() => ui.Gradient.linear(
     Offset.zero,
     const Offset(160, 120),

@@ -29,6 +29,24 @@ abstract final class OrbitsMotion() {
   /// Rings grow only the last few percent, with no overshoot.
   static const _closedScale = .84;
   static const _settle = Cubic(.15, .75, .25, 1);
+
+  /// How far the ripple has delayed a ring: the innermost ring settles first,
+  /// the outermost last. Rays and the All pill use a stagger of 0.
+  static int ringStagger({required int ringCount, required int ringIndex}) => ringCount - ringIndex;
+
+  /// The scale about the origin that a group staggered by [stagger] is drawn
+  /// at, so hit testing can follow the rings while they settle.
+  static double scaleOf({required Animation<double> entry, required bool reducedMotion, required int stagger}) {
+    if (reducedMotion) return 1;
+    final double progress;
+    if (entry.status == AnimationStatus.reverse) {
+      progress = entry.value;
+    } else {
+      final elapsed = entry.value * open.inMilliseconds - stagger * _staggerMs;
+      progress = _settle.transform((elapsed / _settleMs).clamp(0, 1));
+    }
+    return _closedScale + (1 - _closedScale) * progress;
+  }
 }
 
 /// The neutral colours of the picker, from the Prego theme. The metal comes
@@ -226,8 +244,7 @@ final class OrbitsPainter({
       _group(
         canvas: canvas,
         size: size,
-        // The innermost ring settles first, the outermost last.
-        stagger: ringCount - ringIndex,
+        stagger: OrbitsMotion.ringStagger(ringCount: ringCount, ringIndex: ringIndex),
         paint: () => _paintRing(canvas: canvas, ringIndex: ringIndex),
       );
     }
@@ -257,22 +274,12 @@ final class OrbitsPainter({
     required int stagger,
     required VoidCallback paint,
   }) {
-    final double opacity;
-    final double scale;
-    if (reducedMotion) {
-      opacity = entry.value;
-      scale = 1;
-    } else if (_closing) {
-      opacity = entry.value;
-      scale = OrbitsMotion._closedScale + (1 - OrbitsMotion._closedScale) * entry.value;
-    } else {
-      final elapsed = _openMs - stagger * OrbitsMotion._staggerMs;
-      opacity = Curves.easeOut.transform((elapsed / OrbitsMotion._fadeInMs).clamp(0, 1));
-      scale =
-          OrbitsMotion._closedScale +
-          (1 - OrbitsMotion._closedScale) *
-              OrbitsMotion._settle.transform((elapsed / OrbitsMotion._settleMs).clamp(0, 1));
-    }
+    final opacity = reducedMotion || _closing
+        ? entry.value
+        : Curves.easeOut.transform(
+            ((_openMs - stagger * OrbitsMotion._staggerMs) / OrbitsMotion._fadeInMs).clamp(0, 1),
+          );
+    final scale = OrbitsMotion.scaleOf(entry: entry, reducedMotion: reducedMotion, stagger: stagger);
     if (opacity <= 0) return;
     canvas.save();
     if (opacity < 1) {
