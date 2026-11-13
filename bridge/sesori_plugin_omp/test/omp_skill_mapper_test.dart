@@ -29,39 +29,6 @@ void main() {
 
   String textOf(PluginMessageWithParts message) => (message.parts.single as PluginMessagePartText).text;
 
-  const envelope = '<skill name="hello" location="/skills/hello/SKILL.md">\nReply briefly.\n\nBe kind.\n</skill>';
-
-  test("names a Pi skill envelope with the text after it as arguments", () {
-    final message = named(text: "$envelope\n\nfor Bob\nand Ann");
-
-    expect(
-      invocationOf(message),
-      const PluginCommandInvocation(
-        name: "skill:hello",
-        source: PluginCommandSource.skill,
-        arguments: "for Bob\nand Ann",
-      ),
-    );
-    expect(textOf(message), "/skill:hello for Bob\nand Ann");
-  });
-
-  test("an envelope without arguments has null arguments", () {
-    final message = named(text: envelope);
-
-    expect(
-      invocationOf(message),
-      const PluginCommandInvocation(name: "skill:hello", source: PluginCommandSource.skill, arguments: null),
-    );
-    expect(textOf(message), "/skill:hello");
-  });
-
-  test("drops the image notes Pi appends after the arguments", () {
-    final message = named(text: "$envelope\n\nfor Bob\n\n[Image #1 resized to 800x600]");
-
-    expect(invocationOf(message)?.arguments, "for Bob");
-    expect(textOf(message), "/skill:hello for Bob");
-  });
-
   const ompPrompt =
       '[IMPORTANT: User invoked the "hello" skill; follow its instructions. Full skill below.]\n\n'
       "Reply briefly.\nUser: not the arguments\n\n---\n\n"
@@ -90,10 +57,9 @@ void main() {
     expect(textOf(message), "/skill:hello");
   });
 
-  test("text that is not a whole envelope stays as it is", () {
+  test("text that is not a whole skill prompt stays as it is", () {
     for (final text in [
-      "Explain $envelope",
-      '<skill name="hello">\nbody\n</skill>',
+      '<skill name="hello" location="/skills/hello/SKILL.md">\nReply briefly.\n</skill>\n\nfor Bob',
       "/skill:hello",
       "Quote: $ompPrompt",
     ]) {

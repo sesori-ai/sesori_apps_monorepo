@@ -401,8 +401,8 @@ Client (`client/module_core`, `client/module_app_ui`):
     the stored row below it; on a re-import, a stale card hands its name to
     the replayed turn of the same content, or stays when the replay has none.
   - The plugin lists `skill:<name>` commands as skills and names a replayed
-    skill prompt (an OMP TUI run with images replays its injected text) or
-    Pi `<skill name=… location=…>` envelope as `skill:name`.
+    skill prompt (an OMP TUI run with images replays its injected text) as
+    `skill:name`. OMP lists and replays only its own sessions, never Pi's.
   - A skill sent from Sesori never carries an image (a command sends only its
     text), so the injected text never replays for it.
   - Accepted: with an empty bridge store a template run shows its expanded

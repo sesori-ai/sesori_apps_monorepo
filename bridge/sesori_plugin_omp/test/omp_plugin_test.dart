@@ -1050,7 +1050,7 @@ void main() {
       expect(image.toString(), isNot(contains("/private/")));
     });
 
-    test("names a replayed Pi skill envelope as the skill run", () async {
+    test("names a replayed OMP skill prompt as the skill run", () async {
       plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
       final loading = plugin.getSessionMessages("stored");
       respond(await waitForFrame(AcpMethods.initialize), {
@@ -1071,7 +1071,10 @@ void main() {
             "sessionUpdate": "user_message_chunk",
             "content": {
               "type": "text",
-              "text": '<skill name="hello" location="/skills/hello/SKILL.md">\nReply briefly.\n</skill>\n\nfor Bob',
+              "text":
+                  '[IMPORTANT: User invoked the "hello" skill; follow its instructions. Full skill below.]\n\n'
+                  "Reply briefly.\n\n---\n\n[Skill directory: /skills/hello]\n"
+                  "Resolve relative paths in this skill against this absolute directory.\nUser: for Bob",
             },
           },
         },

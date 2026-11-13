@@ -3,23 +3,12 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// Maps Oh My Pi's skill records to Sesori's skill kind.
 ///
 /// OMP advertises each skill over ACP as a `skill:<name>` command, a name
-/// prefix being the only thing that tells it apart from a command. Its replay
-/// carries a skill run as a user turn in two shapes:
-/// - OMP's own record, a custom message holding the injected skill prompt. The
-///   ACP replay drops it when it is plain text, the shape a Sesori or text-only
-///   run stores, and replays its text when the run carried an image.
-/// - Pi's record, a `<skill name=… location=…>` envelope followed by the
-///   arguments, which OMP replays verbatim for a session Pi wrote.
+/// prefix being the only thing that tells it apart from a command. It records a
+/// skill run as a custom message holding the injected skill prompt; the ACP
+/// replay drops it when it is plain text, the shape a Sesori or text-only run
+/// stores, and replays its text when the run carried an image.
 class const OmpSkillMapper() {
   static const String _skillPrefix = "skill:";
-
-  static final RegExp _piSkillEnvelope = RegExp(
-    r'^<skill name="([^"]+)" location="[^"]+">\n[\s\S]*\n</skill>(?:\n\n([\s\S]+))?$',
-  );
-
-  /// The notes Pi appends to a prompt after resizing, converting, or omitting
-  /// its images.
-  static final RegExp _piTrailingImageHints = RegExp(r"\n\n\[Image[^\n]*\](?:\n\[Image[^\n]*\])*$");
 
   /// OMP's `prompts/skills/user-invocation.md`, rendered and trimmed.
   static final RegExp _ompSkillPrompt = RegExp(
@@ -55,8 +44,7 @@ class const OmpSkillMapper() {
   ];
 
   ({String name, String? arguments})? _skillRun({required String text}) {
-    final match =
-        _ompSkillPrompt.firstMatch(text) ?? _piSkillEnvelope.firstMatch(text.replaceFirst(_piTrailingImageHints, ""));
+    final match = _ompSkillPrompt.firstMatch(text);
     final name = match?.group(1);
     if (match == null || name == null) return null;
     return (name: "$_skillPrefix$name", arguments: match.group(2));
