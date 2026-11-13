@@ -4,6 +4,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
+import "../../../widgets/markdown_styles.dart";
 import "user_message_card.dart";
 
 /// A command, skill or MCP prompt the user ran, as an event in the transcript
@@ -85,7 +86,9 @@ class const InvocationCard({
                       const SizedBox(height: PregoSpacing.md),
                       Text(
                         loc.invocationCardRan(name),
-                        style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textPrimary),
+                        // The arguments' own size, so the two read as one message at every scale.
+                        style: (buildChatMessageMarkdownStyleSheet(prego: prego).p ?? prego.textTheme.textMd.regular)
+                            .copyWith(fontWeight: FontWeight.w500, color: prego.colors.textPrimary),
                       ),
                     ],
                   ),
