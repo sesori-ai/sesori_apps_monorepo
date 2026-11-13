@@ -324,6 +324,42 @@ void main() {
         "codex-auto-review",
       ]);
     });
+
+    test("reports each model's family from its id suffix", () async {
+      CodexModelDto model(String id) => CodexModelDto(
+        id: id,
+        displayName: id,
+        hidden: false,
+        supportedReasoningEfforts: const [],
+        defaultReasoningEffort: null,
+        isDefault: false,
+        serviceTiers: const [],
+      );
+      final repository = CodexModelRepository(
+        appServerApi: _StubAppServerApi(
+          response: CodexModelListResponseDto(
+            data: [
+              for (final id in ["gpt-6.1-sol", "gpt-5.6-sol", "gpt-5.5", "gpt-5.6-codex-mini", "codex-auto-review"])
+                model(id),
+            ],
+            nextCursor: null,
+          ),
+        ),
+      );
+
+      final catalog = await repository.listModels();
+
+      expect(
+        {for (final model in catalog.models) model.id: model.family},
+        {
+          "gpt-6.1-sol": "Sol",
+          "gpt-5.6-sol": "Sol",
+          "gpt-5.6-codex-mini": "Codex Mini",
+          "gpt-5.5": null,
+          "codex-auto-review": null,
+        },
+      );
+    });
   });
 }
 

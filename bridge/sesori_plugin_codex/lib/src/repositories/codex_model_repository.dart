@@ -30,7 +30,7 @@ class CodexModelRepository({required final CodexAppServerApi _appServerApi}) {
           name: _usefulText(value: model.displayName) ?? id,
           variants: variants,
           defaultVariant: variants.contains(defaultEffort) ? defaultEffort : null,
-          family: null,
+          family: CatalogStrengthOrder.openAiFamily(id),
           isAvailable: true,
           releaseDate: null,
         ),

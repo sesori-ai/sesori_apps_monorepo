@@ -2309,6 +2309,19 @@ void main() {
         const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
       );
       expect(selectionTracker.read(pluginId: "plugin-1")?.variant?.id, "high");
+
+      // A picked variant the model does not offer is neither applied nor remembered.
+      cubit.selectModel(
+        providerID: "openai",
+        modelID: "gpt-5",
+        variant: const SessionVariant(id: "xhigh"),
+      );
+
+      expect(
+        cubit.state.agentModelData?.agentModel,
+        const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+      );
+      expect(selectionTracker.read(pluginId: "plugin-1")?.variant?.id, "high");
     });
 
     blocTest<NewSessionCubit, NewSessionState>(
