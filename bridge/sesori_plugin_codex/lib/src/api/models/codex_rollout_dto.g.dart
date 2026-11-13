@@ -446,4 +446,5 @@ _CodexToolArgumentsDto _$CodexToolArgumentsDtoFromJson(Map json) =>
       cellId: json['cell_id'],
       message: _stringOrNull(json['message']),
       agentType: _stringOrNull(json['agent_type']),
+      targets: json['targets'],
     );

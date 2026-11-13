@@ -77,6 +77,27 @@ void main() {
     );
   });
 
+  for (final (arguments, agentCount) in [
+    ('{"targets":["agent-1","agent-2"],"timeout_ms":30000}', 2),
+    ('{"timeout_ms":30000}', null),
+  ]) {
+    test("a wait_agent call carries its target count, never its raw arguments: $arguments", () {
+      final tools = tracker().observeRolloutLine(
+        threadId: "thread-1",
+        line: CodexRolloutLineDto.fromJson({
+          "type": "response_item",
+          "payload": {"type": "function_call", "call_id": "wait-1", "name": "wait_agent", "arguments": arguments},
+        }),
+      );
+
+      expect(tools.single.title, isNull);
+      expect(
+        tools.single.presentation,
+        isA<CodexWaitAgentToolPresentation>().having((p) => p.agentCount, "agentCount", agentCount),
+      );
+    });
+  }
+
   test("leaves commands native when rollout turn metadata is unavailable", () {
     final target = tracker();
     target.observeRolloutLine(

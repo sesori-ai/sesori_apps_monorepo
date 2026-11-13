@@ -387,6 +387,19 @@ class const CodexRolloutToolMapper({
     final usefulId = _usefulText(value: callId) ?? _usefulText(value: id);
     if (usefulId == null) return null;
     final usefulName = _usefulText(value: name) ?? "tool";
+    if (usefulName == "wait_agent") {
+      final targets = _tryDecodeToolArguments(raw: input)?.targets;
+      return CodexRolloutToolCall(
+        id: usefulId,
+        turnId: _usefulText(value: turnId),
+        tool: usefulName,
+        title: null,
+        shellCommand: null,
+        presentation: CodexWaitAgentToolPresentation(
+          agentCount: targets is List && targets.isNotEmpty ? targets.length : null,
+        ),
+      );
+    }
     final fileChangePatch = usefulName.toLowerCase() == "exec" ? _codeModeFileChangePatch(input: input) : null;
     return CodexRolloutToolCall(
       id: usefulId,
