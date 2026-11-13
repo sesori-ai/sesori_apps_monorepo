@@ -385,8 +385,9 @@ Client (`client/module_core`, `client/module_app_ui`):
     that turn live. The bridge store folds it into the stored card (deviation
     from P4, see Explicitly Excluded), so the card is the single row.
   - Accepted: a later plain prompt whose text exactly equals an unmatched
-    card's arguments could take the card; Hermes' live-only "Queued" reply
-    and DeepSeek's card order below "Plan mode on" after a reload remain.
+    card's arguments could take the card. Hermes' live-only "Queued" reply is
+    dropped by its plugin, and the store keeps a bridge-named card in front of
+    its live successor, so DeepSeek's card stays above "Plan mode on".
 - **Oh My Pi** (verified live with OMP 18.19.0).
   - OMP replays a prompt template as its expanded text and drops a text-only
     skill run (its `skill-prompt` custom message is a plain string), with

@@ -438,6 +438,37 @@ class ChatHistoryRepository({
     return jsonEncode([previous, next]);
   }
 
+  /// Imported indexes in transcript order, with each user turn that only the
+  /// bridge names put back in front of the row that followed it in the store.
+  ///
+  /// The bridge's card is the record of that run, so it keeps the place it had
+  /// live. A harness that records only a command's arguments can replay them
+  /// after the command's own reply (DeepSeek `/plan <text>` replays "Plan mode
+  /// on" first), and the card would otherwise drop below that reply.
+  ///
+  /// Turns go from the last stored one back, so a move never carries an
+  /// already placed turn past its own successor.
+  List<int> _importedOrder({
+    required int importedCount,
+    required Map<int, int> storedNamedTurns,
+    required Map<int, int> importedIndexByStoredIndex,
+  }) {
+    final order = [for (var index = 0; index < importedCount; index++) index];
+    final turnsFromLast = storedNamedTurns.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    for (final MapEntry(key: importedIndex, value: storedIndex) in turnsFromLast) {
+      final successor = importedIndexByStoredIndex[storedIndex + 1];
+      if (successor == null) continue;
+      final from = order.indexOf(importedIndex);
+      final to = order.indexOf(successor);
+      if (to < from) {
+        order
+          ..removeAt(from)
+          ..insert(to, importedIndex);
+      }
+    }
+    return order;
+  }
+
   /// Stores one part, spilling any inline attachment bytes to disk first.
   Future<void> upsertPart({
     required String sessionId,
@@ -691,7 +722,10 @@ class ChatHistoryRepository({
   /// Retained rows rejoin the imported transcript at their recorded message
   /// time while their relative order stays stable. Thus an older backend-only
   /// row cannot jump to the newest edge on re-import, while a genuinely newer
-  /// live row stays there.
+  /// live row stays there. A user turn named only by the bridge keeps its
+  /// stored place before its stored successor (see [_importedOrder]); one the
+  /// replay doesn't hold at all, retained without a time the import can order
+  /// it by, keeps its place before the closest stored row below it.
   Future<void> replaceSessionMessages({
     required String sessionId,
     required AttachmentStorageScope storageScope,
@@ -911,12 +945,19 @@ class ChatHistoryRepository({
     final storedContextIndexById = {
       for (var index = 0; index < storedContextRows.length; index++) storedContextRows[index].messageId: index,
     };
+    final importedIndexByStoredIndex = <int, int>{};
+    // Imported index -> its stored row, for a user turn named only by the bridge.
+    final storedNamedTurns = <int, int>{};
     for (var index = 0; index < messages.length; index++) {
       final imported = messages[index].info;
       final exactStoredIndex = storedContextIndexById[imported.id];
       final storedIndex = exactStoredIndex ?? semanticPairs[index];
+      if (storedIndex != null) importedIndexByStoredIndex[storedIndex] = index;
       if (storedIndex == null || storedSemanticFingerprints[storedIndex] == null) continue;
       final stored = Message.fromJson(jsonDecodeMap(storedContextRows[storedIndex].infoJson));
+      if ((imported, stored) case (MessageUser(invocation: null), MessageUser(invocation: _?))) {
+        storedNamedTurns[index] = storedIndex;
+      }
       final notice = _reconciledNotice(imported: imported, stored: stored, sameIdentity: exactStoredIndex != null);
       // The stored row's invocation survives the import that replaces it,
       // unless the import names its own.
@@ -1006,9 +1047,6 @@ class ChatHistoryRepository({
       if (below != null) importedIndexBelow[row.messageId] = below;
       below = importedIndexByStoredId[row.messageId] ?? below;
     }
-    final retainedAnchors = [
-      for (final row in retained) _isInvocationRow(row: row) ? importedIndexBelow[row.messageId] : null,
-    ];
     final retainedCreatedAt = [
       for (final row in retained) Message.fromJson(jsonDecodeMap(row.infoJson)).time?.created,
     ];
@@ -1028,21 +1066,34 @@ class ChatHistoryRepository({
       previousRetainedCreatedAt = orderedCreatedAt;
     }
 
+    final importedOrder = _importedOrder(
+      importedCount: messages.length,
+      storedNamedTurns: storedNamedTurns,
+      importedIndexByStoredIndex: importedIndexByStoredIndex,
+    );
+    final orderPositions = {
+      for (var position = 0; position < importedOrder.length; position++) importedOrder[position]: position,
+    };
+    // A retained invocation turn's place in [importedOrder].
+    final retainedAnchors = [
+      for (final row in retained)
+        if (_isInvocationRow(row: row)) orderPositions[importedIndexBelow[row.messageId]] else null,
+    ];
     final messageRows = <HistoryMessagesTableData>[];
     var importedIndex = 0;
     var retainedIndex = 0;
-    while (importedIndex < importedMessageRows.length || retainedIndex < retained.length) {
+    while (importedIndex < importedOrder.length || retainedIndex < retained.length) {
       final useRetained =
-          importedIndex == importedMessageRows.length ||
+          importedIndex == importedOrder.length ||
           (retainedIndex < retained.length &&
-              switch ((retainedCreatedAt[retainedIndex], messages[importedIndex].info.time?.created)) {
+              switch ((retainedCreatedAt[retainedIndex], messages[importedOrder[importedIndex]].info.time?.created)) {
                 (final int retainedAt, final int importedAt) => retainedAt < importedAt,
                 _ => switch (retainedAnchors[retainedIndex]) {
                   final anchor? => anchor <= importedIndex,
                   null => false,
                 },
               });
-      final row = useRetained ? retained[retainedIndex++] : importedMessageRows[importedIndex++];
+      final row = useRetained ? retained[retainedIndex++] : importedMessageRows[importedOrder[importedIndex++]];
       final orderedSeq = messageRows.length + 1;
       messageRows.add(row.seq == orderedSeq ? row : row.copyWith(seq: orderedSeq));
     }
