@@ -15,7 +15,10 @@ import "package:sesori_shared/sesori_shared.dart";
 ///
 /// 1. The model with the most recent [ProviderModel.releaseDate]. Models
 ///    without a release date sort last.
-/// 2. Deterministic `id` tie-break.
+/// 2. On a tie (including two models without a date), the one listed first.
+///    Plugins list their catalog strongest and newest first, and backends
+///    such as Codex report no release dates, so catalog order is the only
+///    signal left. Callers pass candidates in catalog order.
 ///
 /// The "(latest)" marker in a model name is intentionally ignored as a
 /// ranking signal. Providers may label an older model as "latest" (e.g.
@@ -41,7 +44,7 @@ class const DefaultModelSelector() {
   /// Prefer [defaultModelID] when it resolves to an available model. Otherwise
   /// groups [models] by family, picks the best model per family using
   /// [pickFromFamily], then returns the best of those representatives
-  /// using the same ranking (newest release date, then `id`).
+  /// using the same ranking (newest release date, then catalog order).
   ///
   /// Returns `null` if [models] contains no available models.
   ProviderModel? pickFromProvider({
@@ -75,29 +78,28 @@ class const DefaultModelSelector() {
   }
 
   /// Returns the best model from [candidates] using the standard ranking:
-  /// newest release date, then id.
+  /// newest release date, then the earliest in [candidates].
   ///
   /// [candidates] must be non-empty and contain only available models.
   ProviderModel _bestModel(List<ProviderModel> candidates) {
     assert(candidates.isNotEmpty, "_bestModel requires non-empty candidates");
 
-    final sorted = [...candidates]
-      ..sort((a, b) {
-        final dateA = a.releaseDate;
-        final dateB = b.releaseDate;
-        final int dateCompare;
-        if (dateB == null && dateA == null) {
-          dateCompare = 0;
-        } else if (dateB == null) {
-          dateCompare = -1;
-        } else if (dateA == null) {
-          dateCompare = 1;
-        } else {
-          dateCompare = dateB.compareTo(dateA);
-        }
-        if (dateCompare != 0) return dateCompare;
-        return a.id.compareTo(b.id);
-      });
-    return sorted.first;
+    // A single pass that replaces the best only on a strictly newer date keeps
+    // the earlier candidate on every tie, which a `List.sort` (not stable)
+    // would not guarantee.
+    var best = candidates.first;
+    for (final candidate in candidates.skip(1)) {
+      if (_isNewer(candidate: candidate, than: best)) best = candidate;
+    }
+    return best;
+  }
+
+  /// Whether [candidate] was released after [than]. A model without a release
+  /// date is never newer, and every dated model is newer than an undated one.
+  bool _isNewer({required ProviderModel candidate, required ProviderModel than}) {
+    final candidateDate = candidate.releaseDate;
+    if (candidateDate == null) return false;
+    final thanDate = than.releaseDate;
+    return thanDate == null || candidateDate.isAfter(thanDate);
   }
 }
