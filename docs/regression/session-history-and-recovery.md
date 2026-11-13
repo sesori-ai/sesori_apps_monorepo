@@ -40,7 +40,7 @@ reconnect or restart.
   as a duplicate "Untitled session". A session the live process does not hold
   still replays on a short-lived process. While a turn on a held session runs,
   the plugin reports `PluginSessionHistoryBusyException`. The read then serves
-  the store with `awaitingHarnessSync` and no message, and writes nothing, so
+  the store with `awaitingHarnessSync` and no `cannotContinueMessage`, and writes nothing, so
   the first read after the turn backfills. The open transcript is not reloaded
   when the turn ends, so rows already on screen stay where they are. A prompt
   sent during an idle replay waits behind it. Failure signals: a second OMP

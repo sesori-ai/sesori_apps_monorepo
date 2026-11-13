@@ -1058,23 +1058,27 @@ void main() {
       final loading = plugin.getSessionMessages(session.id);
       final load = await waitForFrame(AcpMethods.sessionLoad);
       expect(load["params"], {"sessionId": "live", "cwd": "/repo", "mcpServers": <Object?>[]});
-      for (final update in <Map<String, dynamic>>[
-        {
-          "sessionUpdate": "user_message_chunk",
-          "content": {"type": "text", "text": "Question"},
-        },
-        {
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "Answer"},
-        },
-      ]) {
-        fake.emit({
-          "jsonrpc": "2.0",
-          "method": AcpMethods.sessionUpdate,
-          "params": {"sessionId": "live", "update": update},
-        });
-      }
-      respond(load, const {});
+      // The replay and its response arrive in one stdout chunk.
+      fake.emitChunk(
+        messages: [
+          for (final update in <Map<String, dynamic>>[
+            {
+              "sessionUpdate": "user_message_chunk",
+              "content": {"type": "text", "text": "Question"},
+            },
+            {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": "Answer"},
+            },
+          ])
+            {
+              "jsonrpc": "2.0",
+              "method": AcpMethods.sessionUpdate,
+              "params": {"sessionId": "live", "update": update},
+            },
+          {"jsonrpc": "2.0", "id": load["id"], "result": const <String, dynamic>{}},
+        ],
+      );
 
       final messages = await loading;
       expect(messages.map((message) => (message.parts.single as PluginMessagePartText).text), ["Question", "Answer"]);

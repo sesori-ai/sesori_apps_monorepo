@@ -44,8 +44,11 @@ class FakeAcpProcess() implements AcpProcessHandle {
   List<Map<String, dynamic>> get written => _stdin.frames;
 
   /// Pushes a server->client JSON-RPC message as one ndjson line.
-  void emit(Map<String, dynamic> message) {
-    _stdout.add(utf8.encode("${jsonEncode(message)}\n"));
+  void emit(Map<String, dynamic> message) => emitChunk(messages: [message]);
+
+  /// Pushes several server->client messages in one stdout chunk.
+  void emitChunk({required List<Map<String, dynamic>> messages}) {
+    _stdout.add(utf8.encode(messages.map((message) => "${jsonEncode(message)}\n").join()));
   }
 
   /// Pushes raw diagnostic text through the actual stderr stream.

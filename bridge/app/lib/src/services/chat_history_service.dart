@@ -51,9 +51,9 @@ typedef SessionMessagesPage = ({
   SessionPromptDefaults? replayedPromptDefaults,
 
   /// Whether the store served this page while behind the harness, so newer
-  /// messages may be missing. Only a store-only read, or a read whose
-  /// backfill the backend refused because it cannot restore the session, can
-  /// report this.
+  /// messages may be missing. Only a store-only read, a read whose backfill
+  /// the backend refused because it cannot restore the session, or a read the
+  /// backend cannot replay until the running turn ends, can report this.
   bool awaitingHarnessSync,
 
   /// How many of the session's user messages are older than [messages].
