@@ -723,9 +723,10 @@ class ChatHistoryRepository({
   /// time while their relative order stays stable. Thus an older backend-only
   /// row cannot jump to the newest edge on re-import, while a genuinely newer
   /// live row stays there. A user turn named only by the bridge keeps its
-  /// stored place before its stored successor (see [_importedOrder]); one the
-  /// replay doesn't hold at all, retained without a time the import can order
-  /// it by, keeps its place before the closest stored row below it.
+  /// stored place before its stored successor (see [_importedOrder]). Any row
+  /// the replay doesn't hold at all, retained without a time the import can
+  /// order it by, keeps its place before the closest stored row below it; only
+  /// a row with no imported row below it stays at the newest edge.
   Future<void> replaceSessionMessages({
     required String sessionId,
     required AttachmentStorageScope storageScope,
@@ -1039,8 +1040,8 @@ class ChatHistoryRepository({
           row,
     ];
     // Stored row id -> the imported row replacing the closest stored row below
-    // it. A retained invocation turn the replay doesn't hold goes before that
-    // row when creation times can't order it, so it keeps its place.
+    // it. A retained row the replay doesn't hold goes before that row when
+    // creation times can't order it, so it keeps its place.
     final importedIndexBelow = <String, int>{};
     int? below;
     for (final row in storedRows.reversed) {
@@ -1074,10 +1075,9 @@ class ChatHistoryRepository({
     final orderPositions = {
       for (var position = 0; position < importedOrder.length; position++) importedOrder[position]: position,
     };
-    // A retained invocation turn's place in [importedOrder].
+    // A retained row's place in [importedOrder].
     final retainedAnchors = [
-      for (final row in retained)
-        if (_isInvocationRow(row: row)) orderPositions[importedIndexBelow[row.messageId]] else null,
+      for (final row in retained) orderPositions[importedIndexBelow[row.messageId]],
     ];
     final messageRows = <HistoryMessagesTableData>[];
     var importedIndex = 0;
