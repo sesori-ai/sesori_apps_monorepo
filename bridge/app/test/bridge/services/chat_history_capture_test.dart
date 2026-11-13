@@ -571,7 +571,7 @@ void main() {
       );
     });
 
-    test("a replay keeps one row per Claude compaction behind the bridge's own /compact bubbles", () async {
+    test("a replay keeps one row per Claude compaction behind its /compact run", () async {
       const claudeSessionId = "11111111-2222-4333-8444-555555555555";
       final temp = Directory.systemTemp.createTempSync("claude-compaction-replay-");
       addTearDown(() => temp.deleteSync(recursive: true));
@@ -592,7 +592,8 @@ void main() {
       };
       // The order Claude Code writes for one `/compact`: boundary and summary
       // first, then the caveat, the `<command-name>` record and its stdout. The
-      // history drops all three, and it never has the bridge's own bubble.
+      // `<command-name>` record keeps the uuid the command was sent with, and
+      // history names it above the compaction row; caveat and stdout drop.
       List<Map<String, Object?>> compactRecords({required int round, required String summaryAt}) => [
         {
           "type": "system",
@@ -662,6 +663,7 @@ void main() {
           sessionId: claudeSessionId,
           agentId: null,
           records: await transcripts.readTranscriptRecordsInIsolate(sessionId: claudeSessionId),
+          commands: const [],
           residentTaskToolUseIds: const {},
           catalogModelId: null,
         ))
@@ -670,7 +672,12 @@ void main() {
             parts: [for (final part in message.parts) part.toShared(sessionId: "ses_a")],
           ),
       ];
-      expect(imported.map((message) => message.info.id), const ["prompt", "msg_reply", "summary-1", "summary-2"]);
+      expect(imported.map((message) => message.info.id), const [
+        "prompt",
+        "msg_reply",
+        ...["command-1", "summary-1"],
+        ...["command-2", "summary-2"],
+      ]);
       final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: imported));
       // Live, the prompt echo and the reply carry their transcript ids.
       for (final message in imported.take(2)) {
@@ -692,7 +699,7 @@ void main() {
         await _captureMessageWithParts(
           history: history,
           message: _messageWithText(
-            id: "sesori-user-$round",
+            id: "command-$round",
             text: "/compact",
             createdAt: DateTime.parse(at).millisecondsSinceEpoch - 7000,
             promptId: "prompt-compact-$round",
@@ -758,9 +765,9 @@ void main() {
         const [
           "prompt",
           "msg_reply",
-          ...["sesori-user-0", "start-0"],
-          ...["sesori-user-1", "start-1"],
-          ...["sesori-user-2", "start-2"],
+          ...["command-0", "start-0"],
+          ...["command-1", "start-1"],
+          ...["command-2", "start-2"],
         ],
       );
 
@@ -771,9 +778,9 @@ void main() {
         const [
           "prompt",
           "msg_reply",
-          ...["sesori-user-0", "start-0"],
-          ...["sesori-user-1", "summary-1"],
-          ...["sesori-user-2", "summary-2"],
+          ...["command-0", "start-0"],
+          ...["command-1", "summary-1"],
+          ...["command-2", "summary-2"],
         ],
         reason: "each live compaction row gives way to its own history row; the failure note has none and stays",
       );

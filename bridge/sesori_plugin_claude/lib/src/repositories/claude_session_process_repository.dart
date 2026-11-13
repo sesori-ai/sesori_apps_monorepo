@@ -22,8 +22,11 @@ final class const ClaudeTurnFailed() extends ClaudeTurnOutcome;
 
 final class const ClaudeTurnInterrupted() extends ClaudeTurnOutcome;
 
+/// A turn written to Claude's stdin.
 final class const ClaudeTurnDispatch({
-  required final bool accepted,
+  /// The uuid the stdin frame carries. The CLI keeps it for the turn's echo
+  /// and its transcript record, a slash command's envelope included.
+  required final String messageId,
   required final Future<ClaudeTurnOutcome> outcome,
 });
 
@@ -345,13 +348,7 @@ final class ClaudeSessionProcessRepository({
     final process = _resident[sessionId];
     if (process == null) throw StateError("Claude session is not resident: $sessionId");
     final content = _promptContent(parts);
-    if (content.isEmpty) {
-      Log.w("[claude] turn contains no supported prompt parts");
-      return ClaudeTurnDispatch(
-        accepted: false,
-        outcome: Future.value(const ClaudeTurnFailed()),
-      );
-    }
+    if (content.isEmpty) throw StateError("Claude turn contains no supported prompt parts");
 
     process.interrupted = false;
     process.interruptSettled = false;
@@ -377,7 +374,7 @@ final class ClaudeSessionProcessRepository({
     }
     _startedSessions.add(sessionId);
     return ClaudeTurnDispatch(
-      accepted: true,
+      messageId: pending.messageId,
       outcome: pending.outcome.future,
     );
   }

@@ -367,8 +367,11 @@ Client (`client/module_core`, `client/module_app_ui`):
   - Name commands from `<command-name>`/`<command-args>` in history (today
     dropped). Resolve the kind from the plugin's own command list, else
     `unknown`.
-  - Check whether the synthetic live row and the history row collapse into
-    one.
+  - The synthetic live row and the history row collapse by exact id: the CLI
+    records a command's envelope under the uuid of the stdin frame that sent
+    it, so the live row takes that uuid instead of `sesori-user-N`. Claude
+    records a command after the compaction it ran into, so history keeps it
+    above that compaction row, where the live row sits.
 - **ACP family.**
   - Name invocations from the `/name args` text Sesori sent, matched against
     the advertised commands, in the replay.
@@ -382,6 +385,9 @@ Client (`client/module_core`, `client/module_app_ui`):
   - a skill with an image showing the injected skill text;
   - skills looking right only because the replay skips a plain-string
     message.
+  - Oh My Pi sessions listed from a Pi folder on a bridge with an empty store
+    show the raw `<skill name=… location=…>` envelope as the user turn. Parse
+    it as Pi's `PiPersistedUserTextCodec.decodeSkillRun` does (#2552).
   Commands after reload need the bridge's record despite unstable ids.
 - Each plugin step records its result in `docs/HARNESS_CAPABILITIES.md`.
 - **Regression docs** reconcile `session-turns.md`, `transcript-turn-navigation.md`

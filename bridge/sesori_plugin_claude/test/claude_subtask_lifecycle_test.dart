@@ -321,6 +321,7 @@ void main() {
           _launchResultRecord(),
           _notificationRecord(text: _notificationText),
         ],
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: null,
       );
@@ -339,6 +340,7 @@ void main() {
         sessionId: _session,
         agentId: null,
         records: [_agentRecord(), _launchResultRecord()],
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: null,
       );
@@ -346,6 +348,7 @@ void main() {
         sessionId: _session,
         agentId: null,
         records: [_agentRecord(), _launchResultRecord()],
+        commands: const [],
         residentTaskToolUseIds: const {_toolUseId},
         catalogModelId: null,
       );
@@ -363,6 +366,7 @@ void main() {
           _launchResultRecord(),
           _notificationRecord(text: _notificationText),
         ],
+        commands: const [],
         residentTaskToolUseIds: const {_toolUseId},
         catalogModelId: null,
       );
@@ -387,6 +391,7 @@ void main() {
           ),
           _notificationRecord(text: "<task-notification>malformed"),
         ],
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: null,
       );

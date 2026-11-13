@@ -333,8 +333,8 @@ void main() {
         parts: const [PluginPromptPart.text(text: "hello")],
         promptId: null,
       );
-      expect(turn.accepted, isTrue);
-      await waitForFrame(harness.processes.single, "user");
+      final written = await waitForFrame(harness.processes.single, "user");
+      expect(turn.messageId, written["uuid"]);
       harness.processes.single.emit(_result());
       expect(await turn.outcome, isA<ClaudeTurnCompleted>());
 
@@ -582,7 +582,6 @@ void main() {
         parts: const [PluginPromptPart.text(text: "hello")],
         promptId: null,
       );
-      expect(turn.accepted, isTrue);
       await waitForFrame(harness.processes.single, "user");
       harness.processes.single.exit(1);
 
@@ -596,14 +595,14 @@ void main() {
     test("drops unsupported inline data instead of sending it as an image", () async {
       await _ensure(repository, createNew: true);
 
-      final dispatch = repository.sendTurn(
-        sessionId: testSessionId,
-        parts: const [PluginPromptPart.fileData(mime: "application/pdf", base64: "secret", filename: "a.pdf")],
-        promptId: null,
+      expect(
+        () => repository.sendTurn(
+          sessionId: testSessionId,
+          parts: const [PluginPromptPart.fileData(mime: "application/pdf", base64: "secret", filename: "a.pdf")],
+          promptId: null,
+        ),
+        throwsStateError,
       );
-
-      expect(dispatch.accepted, isFalse);
-      expect(await dispatch.outcome, isA<ClaudeTurnFailed>());
       expect(harness.processes.single.written.where((frame) => frame["type"] == "user"), isEmpty);
     });
 

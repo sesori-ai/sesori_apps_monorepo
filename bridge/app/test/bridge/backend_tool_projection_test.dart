@@ -58,6 +58,7 @@ void main() {
           .map(
             sessionId: "s",
             agentId: null,
+            commands: const [],
             residentTaskToolUseIds: const {},
             catalogModelId: null,
             records: [
@@ -154,6 +155,7 @@ void main() {
             .map(
               sessionId: "s",
               agentId: null,
+              commands: const [],
               residentTaskToolUseIds: const {},
               catalogModelId: null,
               records: [

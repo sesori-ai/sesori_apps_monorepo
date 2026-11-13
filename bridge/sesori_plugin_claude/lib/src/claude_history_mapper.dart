@@ -27,12 +27,16 @@ final class const ClaudeHistoryMapper({
   ///
   /// [catalogModelId] translates a transcript's API model name into the
   /// catalog's picker id; null keeps names as recorded.
+  ///
+  /// [commands] is the plugin's command list, which gives a replayed slash
+  /// command its kind; a command missing from it is named with an unknown kind.
   List<PluginMessageWithParts> map({
     required String sessionId,
     required String? agentId,
     required List<ClaudeTranscriptRecord> records,
     required Set<String> residentTaskToolUseIds,
     required String? Function({required String apiModel})? catalogModelId,
+    required List<PluginCommand> commands,
   }) {
     String? modelId(String? model) => model == null ? null : catalogModelId?.call(apiModel: model) ?? model;
     bool skip(ClaudeTranscriptAttributedRecord record) => switch (agentId) {
@@ -46,6 +50,9 @@ final class const ClaudeHistoryMapper({
     String? lastRealModel;
     // The last compact boundary's details, for the summary record after it.
     ClaudeCompactMetadata? compactMetadata;
+    // Where the last compaction row went, so the command that caused it can
+    // go before it.
+    int? compactionIndex;
     // Task lifecycle replays through the same tracker the live path uses, so
     // terminal precedence has exactly one implementation.
     final tasks = ClaudeToolTracker();
@@ -102,6 +109,7 @@ final class const ClaudeHistoryMapper({
           compactMetadata = record.metadata;
         case ClaudeTranscriptUserRecord(isCompactSummary: true):
           if (skip(record)) continue;
+          compactionIndex = entries.length;
           entries.add(
             _MappedHistoryMessage(
               message: _content.compactionMessage(
@@ -124,6 +132,27 @@ final class const ClaudeHistoryMapper({
             continue;
           }
           final blocks = _content.map(content: record.content);
+          if (_content.commandEnvelope(blocks: blocks) case final command?) {
+            final turn = _MappedHistoryMessage(
+              message: _commandTurn(
+                sessionId: sessionId,
+                messageId: record.id,
+                timestamp: record.timestamp,
+                command: command,
+                commands: commands,
+              ),
+            );
+            // Claude records a command after the compaction it ran into
+            // (`/compact`'s own, or an automatic one before its turn). Live,
+            // its row shows at dispatch, above the compaction row, and keeps
+            // that place here.
+            if (compactionIndex case final index? when index == entries.length - 1) {
+              entries.insert(index, turn);
+            } else {
+              entries.add(turn);
+            }
+            continue;
+          }
           if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
           final results = [
             for (final block in blocks)
@@ -210,6 +239,41 @@ final class const ClaudeHistoryMapper({
       }
     }
     return messages;
+  }
+
+  /// A slash command's user turn, shaped as the live path's dispatch row: the
+  /// `/name args` text, named by its invocation. The CLI records the envelope
+  /// under the uuid the command was sent with, so it replays that live row.
+  PluginMessageWithParts _commandTurn({
+    required String sessionId,
+    required String messageId,
+    required DateTime? timestamp,
+    required ClaudeCommandEnvelope command,
+    required List<PluginCommand> commands,
+  }) {
+    final ClaudeCommandEnvelope(:name, :arguments) = command;
+    return PluginMessageWithParts(
+      info: PluginMessage.user(
+        id: messageId,
+        sessionID: sessionId,
+        agent: null,
+        time: _messageTime(timestamp),
+        promptId: null,
+        invocation: PluginCommandInvocation(
+          name: name,
+          source: commands.where((listed) => listed.name == name).firstOrNull?.source ?? PluginCommandSource.unknown,
+          arguments: arguments,
+        ),
+      ),
+      parts: [
+        PluginMessagePart.text(
+          id: "$messageId-text",
+          sessionID: sessionId,
+          messageID: messageId,
+          text: arguments == null ? "/$name" : "/$name $arguments",
+        ),
+      ],
+    );
   }
 
   /// A user-role turn, mapped as the live path maps its frame. Null when

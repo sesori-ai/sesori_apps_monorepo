@@ -20,6 +20,10 @@ import "claude_tool_title_mapper.dart";
 
 sealed class const ClaudeMappedContentBlock();
 
+/// A slash command as the CLI's `<command-name>` envelope records it: the bare
+/// [name] without `/`, and the [arguments] typed after it.
+final class const ClaudeCommandEnvelope({required final String name, required final String? arguments});
+
 final class const ClaudeMappedTextContentBlock({required final String text}) extends ClaudeMappedContentBlock;
 
 /// A text block that is a complete `<task-notification>` envelope.
@@ -92,6 +96,27 @@ final class const ClaudeContentMapper() {
         block is ClaudeMappedTextContentBlock &&
         _internalCommandMarkers.any((marker) => block.text.trimLeft().startsWith(marker)),
   );
+
+  static final RegExp _commandNameTag = RegExp(r"<command-name>\s*/?([^<]*?)\s*</command-name>");
+  static final RegExp _commandArgsTag = RegExp(r"<command-args>([\s\S]*?)</command-args>");
+
+  /// The slash command a user turn ran, read from the `<command-name>` and
+  /// `<command-args>` envelope the CLI records in its place. Null for any other
+  /// turn, including local command output.
+  ///
+  /// [ClaudeCommandEnvelope.arguments] is null when the command ran without
+  /// any, never empty.
+  ClaudeCommandEnvelope? commandEnvelope({required List<ClaudeMappedContentBlock> blocks}) {
+    if (blocks case [ClaudeMappedTextContentBlock(:final text)]) {
+      final envelope = text.trimLeft();
+      if (!envelope.startsWith("<command-name>") && !envelope.startsWith("<command-message>")) return null;
+      final name = _commandNameTag.firstMatch(envelope)?.group(1);
+      if (name == null || name.isEmpty) return null;
+      final arguments = _commandArgsTag.firstMatch(envelope)?.group(1)?.trim();
+      return ClaudeCommandEnvelope(name: name, arguments: arguments == null || arguments.isEmpty ? null : arguments);
+    }
+    return null;
+  }
 
   /// Whether a `user` frame or record the CLI generated itself must not render
   /// as a user turn: an injected skill body, an image caption, a continuation
