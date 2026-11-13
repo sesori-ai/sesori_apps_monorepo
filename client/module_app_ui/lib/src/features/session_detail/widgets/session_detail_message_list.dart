@@ -1173,6 +1173,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                 TranscriptLaidOutListView(
                   key: _kListViewKey,
                   onLaidOut: _layOutSticky,
+                  detached: () => !_follow.following,
+                  onCarriedToNewestEnd: _follow.reattach,
                   reverse: true,
                   controller: _follow.scrollController,
                   padding: EdgeInsetsDirectional.only(
