@@ -1886,6 +1886,14 @@ void main() {
       final message = messages.single;
       expect(message.info.id, "user-live-1");
       expect(message.parts.single.text, "/fixture-greeter hello");
+      expect(
+        (message.info as PluginMessageUser).invocation,
+        const PluginCommandInvocation(
+          name: "fixture-greeter",
+          source: PluginCommandSource.skill,
+          arguments: "hello",
+        ),
+      );
     });
 
     test("message projection keeps a user message's text items a blank line apart", () {

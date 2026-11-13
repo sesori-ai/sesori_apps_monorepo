@@ -514,6 +514,10 @@ class CodexEventMapper({
 
     switch (_optionalString(map: item, key: "type")) {
       case "userMessage":
+        final submittedText = _userContentMapper.mapSubmittedTextParts(
+          textParts: _contentTexts(content: item["content"]),
+        );
+        final skillNames = _contentSkillNames(content: item["content"]);
         return _userMessageEvents(
           threadId: threadId,
           itemId: itemId,
@@ -526,14 +530,11 @@ class CodexEventMapper({
             // item caused by a bridge send names its prompt; one typed in the
             // Codex CLI carries none.
             promptId: _optionalString(map: item, key: "clientId"),
-            invocation: null,
+            // Named as a reload names it from the rollout, so a skill picked
+            // in the Codex CLI keeps one shape too.
+            invocation: _userContentMapper.mapCommandInvocation(text: submittedText, skillNames: skillNames),
           ),
-          text: _userContentMapper.mapSkillInvocation(
-            text: _userContentMapper.mapSubmittedTextParts(
-              textParts: _contentTexts(content: item["content"]),
-            ),
-            skillNames: _contentSkillNames(content: item["content"]),
-          ),
+          text: _userContentMapper.mapSkillInvocation(text: submittedText, skillNames: skillNames),
           attachments: _extractUserContentAttachments(content: item["content"]),
         );
       case "agentMessage":

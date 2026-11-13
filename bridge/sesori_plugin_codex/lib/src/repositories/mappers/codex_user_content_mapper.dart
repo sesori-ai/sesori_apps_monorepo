@@ -1,3 +1,5 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+
 final class const CodexUserContentMapper() {
   /// Joins a user message's text items a blank line apart, as the bridge joins
   /// a prompt's visible texts, so a saved file's note stays its own paragraph.
@@ -22,13 +24,34 @@ final class const CodexUserContentMapper() {
   /// only text that starts with a named skill's `\$name` is rewritten.
   String? mapSkillInvocation({required String? text, required List<String> skillNames}) {
     if (text == null) return null;
+    return switch (_skillCall(text: text, skillNames: skillNames)) {
+      (:final name, :final rest) => "/$name$rest",
+      null => text,
+    };
+  }
+
+  /// The skill run that [text] starts, named from the `skill` inputs Codex
+  /// recorded with it, or null when the message ran none.
+  PluginCommandInvocation? mapCommandInvocation({required String? text, required List<String> skillNames}) {
+    if (text == null) return null;
+    return switch (_skillCall(text: text, skillNames: skillNames)) {
+      (:final name, :final rest) => PluginCommandInvocation(
+        name: name,
+        source: PluginCommandSource.skill,
+        arguments: rest.trim().isEmpty ? null : rest.trim(),
+      ),
+      null => null,
+    };
+  }
+
+  ({String name, String rest})? _skillCall({required String text, required List<String> skillNames}) {
     for (final name in skillNames) {
       final token = "\$$name";
       if (!text.startsWith(token)) continue;
       final rest = text.substring(token.length);
-      if (rest.isEmpty || rest.startsWith(RegExp(r"\s"))) return "/$name$rest";
+      if (rest.isEmpty || rest.startsWith(RegExp(r"\s"))) return (name: name, rest: rest);
     }
-    return text;
+    return null;
   }
 
   bool _isGeneratedCodexContext({required String text}) {

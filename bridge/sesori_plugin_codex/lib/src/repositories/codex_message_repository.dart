@@ -813,6 +813,7 @@ class CodexMessageRepository({
         continue;
       }
       final liveItem = pending.liveItem;
+      final skillNames = liveItem?.skillNames ?? const <String>[];
       final messageId =
           liveItem?.id ??
           _persistedOrLegacyMessageId(
@@ -826,14 +827,13 @@ class CodexMessageRepository({
           agent: null,
           time: liveItem == null ? pending.time : liveItem.time,
           promptId: null,
-          invocation: null,
+          // Codex ids are not the bridge's prompt ids, so the rollout's
+          // record of the picked skill is what names the run after a reload.
+          invocation: _userContentMapper.mapCommandInvocation(text: fallbackText, skillNames: skillNames),
         ),
         messageId: messageId,
         sessionId: sessionId,
-        text: _userContentMapper.mapSkillInvocation(
-          text: fallbackText,
-          skillNames: liveItem?.skillNames ?? const [],
-        ),
+        text: _userContentMapper.mapSkillInvocation(text: fallbackText, skillNames: skillNames),
         attachments: pending.attachments,
       );
     }
