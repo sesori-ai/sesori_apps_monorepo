@@ -397,7 +397,10 @@ class const _FastModeButton({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final label = context.loc.sessionDetailFastMode;
-    final borderRadius = BorderRadius.circular(PregoRadius.full);
+    // The size and corners of the row's other square pill, `PregoComposerChip`.
+    // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final borderRadius = BorderRadius.circular(pointer ? PregoRadius.md : PregoRadius.full);
     final (icon, color) = switch (control) {
       // The yellowest warning step per theme; dark utility scales run in reverse.
       FastModeControl.on => (
@@ -420,7 +423,7 @@ class const _FastModeButton({
         onTap: () => unawaited(_onTap(context)),
         excludeSemantics: true,
         child: SizedBox.square(
-          dimension: 36,
+          dimension: pointer ? 28 : 36,
           child: DecoratedBox(
             decoration: pregoComposerSurfaceDecoration(prego: prego, style: surfaceStyle, borderRadius: borderRadius),
             child: Padding(
