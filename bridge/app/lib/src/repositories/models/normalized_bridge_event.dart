@@ -22,6 +22,13 @@ final class const NormalizedStatusEvent({
 /// A finalized message envelope, already carrying its bridge session id.
 final class const NormalizedMessageEvent({required final Message message}) extends NormalizedBridgePayload;
 
+/// The prompts the bridge session [sessionId] holds before dispatch, in
+/// dispatch order, as the shared wire model.
+final class const NormalizedQueuedPromptsEvent({
+  required final String sessionId,
+  required final List<QueuedSessionPrompt> prompts,
+}) extends NormalizedBridgePayload;
+
 /// A terminal observation. A missing reset is meaningful: the quota was
 /// recognized but supplies no reliable instant on which to schedule a send.
 final class const NormalizedQuotaInterruptionEvent({

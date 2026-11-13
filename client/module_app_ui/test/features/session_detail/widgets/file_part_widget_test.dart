@@ -1580,6 +1580,7 @@ void main() {
   testWidgets("renders normalized user file attachments", (tester) async {
     const message = MessageWithParts(
       info: Message.user(
+        invocation: null,
         promptId: null,
         id: "message-1",
         sessionID: "session-1",

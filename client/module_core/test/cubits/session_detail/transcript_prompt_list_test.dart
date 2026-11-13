@@ -8,6 +8,7 @@ final _wednesday = DateTime(2026, 9, 23, 0, 10).millisecondsSinceEpoch;
 
 MessageWithParts _user({required String id, int? at, List<MessagePart>? parts}) => MessageWithParts(
   info: Message.user(
+    invocation: null,
     id: id,
     sessionID: "s",
     agent: null,
@@ -88,8 +89,16 @@ SessionPromptIndexEntry _indexed({
   int? at,
   String? opener,
 }) => opener == null
-    ? SessionPromptIndexEntry.opener(messageId: id, seq: seq, number: number, createdAt: at, preview: "Preview $id")
+    ? SessionPromptIndexEntry.opener(
+        invocation: null,
+        messageId: id,
+        seq: seq,
+        number: number,
+        createdAt: at,
+        preview: "Preview $id",
+      )
     : SessionPromptIndexEntry.followUp(
+        invocation: null,
         messageId: id,
         seq: seq,
         number: number,

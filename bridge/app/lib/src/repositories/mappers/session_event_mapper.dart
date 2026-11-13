@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../models/normalized_bridge_event.dart";
 import "plugin_message_mapper.dart";
 import "plugin_session_status_mapper.dart";
+import "plugin_to_shared_mapping.dart";
 
 class const SessionEventMapper() {
   /// Converts an id-translated event into the value higher layers consume.
@@ -25,6 +26,10 @@ class const SessionEventMapper() {
     ),
     BridgeSseMessageUpdated(:final info) => NormalizedMessageEvent(
       message: info.toSharedMessage(sessionId: info.sessionID),
+    ),
+    BridgeSseQueuedPromptsUpdated(:final sessionID, :final prompts) => NormalizedQueuedPromptsEvent(
+      sessionId: sessionID,
+      prompts: prompts.toSharedQueuedPrompts(),
     ),
     BridgeSseSessionQuotaBlocked(:final sessionID, :final interruption) => NormalizedQuotaInterruptionEvent(
       sessionId: sessionID,
@@ -51,7 +56,6 @@ class const SessionEventMapper() {
     BridgeSsePromptSettled() ||
     BridgeSseSessionIdle() ||
     BridgeSseCommandExecuted() ||
-    BridgeSseQueuedPromptsUpdated() ||
     BridgeSseMessageRemoved() ||
     BridgeSseMessagePartUpdated() ||
     BridgeSseMessagePartDelta() ||

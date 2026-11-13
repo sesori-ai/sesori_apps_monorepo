@@ -88,6 +88,7 @@ void main() {
 
     Future<void> sendCommand({String command = "review"}) {
       return service.sendPrompt(
+        commandSource: null,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
@@ -110,6 +111,7 @@ void main() {
 
     test("failed durable cancellation blocks a manual prompt; a projection failure does not", () async {
       Future<void> send() => service.sendPrompt(
+        commandSource: null,
         sessionId: "s1",
         promptId: "manual",
         parts: const [PromptPart.text(text: "resume")],
@@ -135,6 +137,7 @@ void main() {
 
       await expectLater(
         service.sendPrompt(
+          commandSource: null,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "s1",
@@ -195,6 +198,7 @@ void main() {
         agentModel: null,
       );
       await service.sendPrompt(
+        commandSource: null,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-defaults-command",
@@ -231,6 +235,7 @@ void main() {
       final changeFuture = service.promptDefaultsChanges.first;
 
       await service.sendPrompt(
+        commandSource: null,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-defaults-event",
@@ -253,6 +258,7 @@ void main() {
       final changeFuture = service.promptDefaultsChanges.first;
 
       await service.sendPrompt(
+        commandSource: null,
         promptId: "prompt-fast",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "Hello")],
@@ -263,6 +269,7 @@ void main() {
         command: null,
       );
       await service.sendPrompt(
+        commandSource: null,
         promptId: "prompt-fast-command",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "args")],
@@ -281,6 +288,7 @@ void main() {
 
     test("backend-reported prompt defaults keep the stored fast mode", () async {
       await service.sendPrompt(
+        commandSource: null,
         promptId: "prompt-fast",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "Hello")],
@@ -326,6 +334,7 @@ void main() {
       plugin.sendCommandCompleter = commandGate;
 
       final command = service.sendPrompt(
+        commandSource: null,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
@@ -344,6 +353,7 @@ void main() {
         useAtomicStop: false,
       );
       final prompt = service.sendPrompt(
+        commandSource: null,
         fastMode: false,
         promptId: "prompt-2",
         sessionId: "s1",
@@ -366,6 +376,7 @@ void main() {
 
     test("plain prompts are unaffected and delegate to sendPrompt", () async {
       await service.sendPrompt(
+        commandSource: null,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
@@ -382,6 +393,7 @@ void main() {
 
     test("a repeated prompt or command id succeeds without reaching the plugin again", () async {
       Future<void> sendHello() => service.sendPrompt(
+        commandSource: null,
         fastMode: false,
         promptId: "prompt-2",
         sessionId: "s1",
@@ -404,6 +416,7 @@ void main() {
 
     test("a send the plugin rejects stays retryable with the same prompt id", () async {
       Future<void> sendHello() => service.sendPrompt(
+        commandSource: null,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
@@ -446,6 +459,7 @@ void main() {
 
       await expectLater(
         service.sendPrompt(
+          commandSource: null,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "s1",
@@ -534,6 +548,7 @@ void main() {
       String? command,
     }) {
       return service.sendPrompt(
+        commandSource: null,
         sessionId: "s1",
         promptId: promptId,
         parts: parts,

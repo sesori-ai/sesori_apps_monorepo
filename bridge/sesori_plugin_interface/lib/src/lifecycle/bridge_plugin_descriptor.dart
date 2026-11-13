@@ -45,6 +45,10 @@ abstract class const BridgePluginDescriptor() {
   /// Whether prompts can carry inline image attachments to this backend.
   bool get supportsPromptAttachments => false;
 
+  /// Whether this backend echoes a sent command as a user turn that carries
+  /// the send's prompt id, so the bridge can name the command on that turn.
+  bool get namesCommandInvocations => false;
+
   /// Live terminal quota reporting, available only for verified plugin seams.
   PluginQuotaReportingSupport get quotaReportingSupport => PluginQuotaReportingSupport.unavailable;
 

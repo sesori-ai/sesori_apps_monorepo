@@ -139,6 +139,7 @@ class SessionCreationService({
       fastMode: request.fastMode,
       agent: request.agent,
       model: request.model,
+      commandSource: request.commandSource,
     );
     unawaited(
       _recordNewSessionDefaults(
@@ -217,6 +218,7 @@ class SessionCreationService({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required CommandSource? commandSource,
   }) async {
     if (command == null) {
       return;
@@ -231,6 +233,7 @@ class SessionCreationService({
       fastMode: fastMode,
       agent: agent,
       model: model,
+      commandSource: commandSource,
     );
   }
 

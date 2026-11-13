@@ -11,6 +11,7 @@ import "../../helpers/test_chat_history.dart";
 const _sessionId = "ses_a";
 
 Message _user({required String id, required int? created}) => Message.user(
+  invocation: null,
   id: id,
   sessionID: _sessionId,
   agent: null,

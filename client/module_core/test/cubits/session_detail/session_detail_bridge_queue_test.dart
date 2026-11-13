@@ -57,6 +57,7 @@ SesoriMessagePartUpdated _textPartFor({required String messageId, required Strin
 );
 
 const _queuedPrompt = QueuedSessionPrompt(
+  commandSource: null,
   id: "prm_1",
   text: "steer it",
   command: null,
@@ -1220,6 +1221,7 @@ void main() {
       // The bridge's queue event races ahead of the acceptance response: the
       // local copy hands over in the same emission.
       final acceptedPrompt = QueuedSessionPrompt(
+        commandSource: null,
         id: promptId ?? "",
         text: "steer it",
         command: null,
@@ -1275,6 +1277,7 @@ void main() {
           sessionID: _sessionId,
           prompts: [
             QueuedSessionPrompt(
+              commandSource: null,
               id: failed?.promptId ?? "",
               text: "lost",
               command: null,
@@ -1300,6 +1303,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            invocation: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -1382,6 +1386,7 @@ void main() {
               sessionID: _sessionId,
               prompts: [
                 QueuedSessionPrompt(
+                  commandSource: null,
                   id: promptId,
                   text: "Review image",
                   command: null,
@@ -1452,7 +1457,14 @@ void main() {
         SesoriSseEvent.sessionQueuedPrompts(
           sessionID: _sessionId,
           prompts: [
-            QueuedSessionPrompt(id: promptId ?? "", text: "steer it", command: null, attachmentCount: 0, createdAt: 1),
+            QueuedSessionPrompt(
+              commandSource: null,
+              id: promptId ?? "",
+              text: "steer it",
+              command: null,
+              attachmentCount: 0,
+              createdAt: 1,
+            ),
           ],
         ) as SesoriSessionEvent,
       );
@@ -1635,6 +1647,7 @@ void main() {
       sessionEvents.add(
         SesoriMessageUpdated(
           info: Message.user(
+            invocation: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -1685,6 +1698,7 @@ void main() {
       sessionEvents.add(
         SesoriMessageUpdated(
           info: Message.user(
+            invocation: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -1729,6 +1743,7 @@ void main() {
       sessionEvents.add(
         SesoriMessageUpdated(
           info: Message.user(
+            invocation: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -1772,6 +1787,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            invocation: null,
             id: "other-1",
             sessionID: _sessionId,
             agent: null,
@@ -1817,6 +1833,7 @@ void main() {
       sessionEvents.add(
         SesoriMessageUpdated(
           info: Message.user(
+            invocation: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -1888,7 +1905,14 @@ void main() {
       await cubit.sendMessage(text: "hello", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
       await Future<void>.delayed(Duration.zero);
       final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.submission.promptId;
-      final queued = QueuedSessionPrompt(id: promptId, text: "hello", command: null, attachmentCount: 0, createdAt: 1);
+      final queued = QueuedSessionPrompt(
+        commandSource: null,
+        id: promptId,
+        text: "hello",
+        command: null,
+        attachmentCount: 0,
+        createdAt: 1,
+      );
       sessionEvents.add(
         SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: [queued]) as SesoriSessionEvent,
       );
@@ -1961,6 +1985,7 @@ void main() {
       reloadSnapshotMessages = [
         MessageWithParts(
           info: Message.user(
+            invocation: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2088,6 +2113,7 @@ void main() {
 
     test("an accepted stop returns the bridge queue to the composer, in order, before the draft", () async {
       const dictated = QueuedSessionPrompt(
+        commandSource: null,
         id: "prm_2",
         dispatchState: QueuedPromptDispatchState.queued,
         text: '🎙️ "spoken words"',
@@ -2095,6 +2121,7 @@ void main() {
         createdAt: 101,
       );
       const dispatched = QueuedSessionPrompt(
+        commandSource: null,
         id: "prm_steering",
         dispatchState: QueuedPromptDispatchState.dispatched,
         text: "steered, never echoed",
@@ -2102,6 +2129,7 @@ void main() {
         createdAt: 102,
       );
       const command = QueuedSessionPrompt(
+        commandSource: null,
         id: "prm_3",
         dispatchState: QueuedPromptDispatchState.queued,
         text: "the diff",
@@ -2177,6 +2205,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            invocation: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2205,6 +2234,7 @@ void main() {
       sessionEvents.add(
         const SesoriMessageUpdated(
           info: Message.user(
+            invocation: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2386,7 +2416,14 @@ void main() {
         SesoriSseEvent.sessionQueuedPrompts(
           sessionID: _sessionId,
           prompts: [
-            QueuedSessionPrompt(id: promptId ?? "", text: "steer it", command: null, attachmentCount: 0, createdAt: 1),
+            QueuedSessionPrompt(
+              commandSource: null,
+              id: promptId ?? "",
+              text: "steer it",
+              command: null,
+              attachmentCount: 0,
+              createdAt: 1,
+            ),
           ],
         ) as SesoriSessionEvent,
       );
@@ -2439,6 +2476,7 @@ void main() {
       sessionEvents.add(
         SesoriMessageUpdated(
           info: Message.user(
+            invocation: null,
             id: "echo-first",
             sessionID: _sessionId,
             agent: null,
@@ -2489,7 +2527,14 @@ void main() {
         SesoriSseEvent.sessionQueuedPrompts(
           sessionID: _sessionId,
           prompts: [
-            QueuedSessionPrompt(id: promptId ?? "", text: "steer it", command: null, attachmentCount: 0, createdAt: 1),
+            QueuedSessionPrompt(
+              commandSource: null,
+              id: promptId ?? "",
+              text: "steer it",
+              command: null,
+              attachmentCount: 0,
+              createdAt: 1,
+            ),
           ],
         ) as SesoriSessionEvent,
       );
@@ -2562,6 +2607,7 @@ void main() {
       sessionEvents.add(
         SesoriMessageUpdated(
           info: Message.user(
+            invocation: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2787,7 +2833,14 @@ void main() {
           SesoriSseEvent.sessionQueuedPrompts(
             sessionID: _sessionId,
             prompts: [
-              QueuedSessionPrompt(id: promptId, text: "one", command: null, attachmentCount: 0, createdAt: 50),
+              QueuedSessionPrompt(
+                commandSource: null,
+                id: promptId,
+                text: "one",
+                command: null,
+                attachmentCount: 0,
+                createdAt: 50,
+              ),
             ],
           ) as SesoriSessionEvent,
         );
@@ -3041,6 +3094,7 @@ void main() {
 
       test("puts the sends back ahead of the draft, and the bridge's rows with them", () async {
         const dispatched = QueuedSessionPrompt(
+          commandSource: null,
           id: "prm_steering",
           dispatchState: QueuedPromptDispatchState.dispatched,
           text: "steered, never echoed",
@@ -3080,6 +3134,7 @@ void main() {
           ..add(
             SesoriMessageUpdated(
               info: Message.user(
+                invocation: null,
                 id: "echo-1",
                 sessionID: _sessionId,
                 agent: null,
@@ -3220,6 +3275,7 @@ void main() {
           snapshotMessages: [
             const MessageWithParts(
               info: Message.user(
+                invocation: null,
                 id: "msg-1",
                 sessionID: _sessionId,
                 agent: null,
@@ -3245,6 +3301,7 @@ void main() {
         sessionEvents.add(
           const SesoriMessageUpdated(
             info: Message.user(
+              invocation: null,
               id: "msg-1",
               sessionID: _sessionId,
               agent: null,
@@ -3282,7 +3339,14 @@ void main() {
             sessionID: _sessionId,
             prompts: [
               _queuedPrompt,
-              QueuedSessionPrompt(id: "prm_2", text: "Hello", command: null, attachmentCount: 0, createdAt: 50),
+              QueuedSessionPrompt(
+                commandSource: null,
+                id: "prm_2",
+                text: "Hello",
+                command: null,
+                attachmentCount: 0,
+                createdAt: 50,
+              ),
             ],
           ) as SesoriSessionEvent,
         );
@@ -3602,6 +3666,7 @@ void main() {
                   sessionID: _sessionId,
                   prompts: [
                     QueuedSessionPrompt(
+                      commandSource: null,
                       id: "prm_a",
                       text: "and then prm_a",
                       command: null,
@@ -3660,6 +3725,7 @@ void main() {
               sessionID: _sessionId,
               prompts: [
                 QueuedSessionPrompt(
+                  commandSource: null,
                   id: "prm_a",
                   text: "and then prm_a",
                   command: null,
@@ -3705,6 +3771,7 @@ void main() {
               sessionID: _sessionId,
               prompts: [
                 QueuedSessionPrompt(
+                  commandSource: null,
                   id: "prm_a",
                   text: "and then prm_a",
                   command: null,
@@ -3775,6 +3842,7 @@ void main() {
                     sessionID: _sessionId,
                     prompts: [
                       QueuedSessionPrompt(
+                        commandSource: null,
                         id: "prm_a",
                         text: "and then prm_a",
                         command: null,
@@ -4053,6 +4121,7 @@ void main() {
           ..add(
             const SesoriMessageUpdated(
               info: Message.user(
+                invocation: null,
                 id: "msg-a",
                 sessionID: _sessionId,
                 agent: null,
@@ -4251,7 +4320,14 @@ void main() {
           SesoriSseEvent.sessionQueuedPrompts(
             sessionID: _sessionId,
             prompts: [
-              QueuedSessionPrompt(id: promptId, text: "steer it", command: null, attachmentCount: 0, createdAt: 50),
+              QueuedSessionPrompt(
+                commandSource: null,
+                id: promptId,
+                text: "steer it",
+                command: null,
+                attachmentCount: 0,
+                createdAt: 50,
+              ),
             ],
           ) as SesoriSessionEvent,
         );

@@ -216,14 +216,11 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
     return row.read(maxSeq);
   }
 
-  Future<int?> getMessageSeq({required String sessionId, required String messageId}) async {
-    final row =
-        await (select(historyMessagesTable)..where(
-              (table) => table.sessionId.equals(sessionId) & table.messageId.equals(messageId),
-            ))
-            .getSingleOrNull();
-    return row?.seq;
-  }
+  Future<HistoryMessagesTableData?> getMessage({required String sessionId, required String messageId}) =>
+      (select(historyMessagesTable)..where(
+            (table) => table.sessionId.equals(sessionId) & table.messageId.equals(messageId),
+          ))
+          .getSingleOrNull();
 
   Future<int?> getMaxPartOrderIndex({required String sessionId, required String messageId}) async {
     final maxOrder = historyPartsTable.orderIndex.max();

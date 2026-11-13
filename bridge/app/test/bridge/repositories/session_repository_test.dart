@@ -374,6 +374,57 @@ void main() {
       expect(plugin.lastRenameSessionTitle, equals("Renamed"));
     });
 
+    test("getQueuedPrompts names the source of each command this bridge sent", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        fastMode: false,
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "p1",
+        isDedicated: true,
+        createdAt: 10,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      await repository.sendCommand(
+        sessionId: "s1",
+        promptId: "sent",
+        command: "review",
+        commandSource: CommandSource.mcp,
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+      );
+      PluginQueuedPrompt queued({required String id}) => PluginQueuedPrompt(
+        id: id,
+        dispatchState: PluginQueuedPromptDispatchState.queued,
+        text: null,
+        command: "review",
+        attachmentCount: 0,
+        createdAt: 1,
+      );
+      plugin.queuedPrompts.addAll([queued(id: "sent"), queued(id: "elsewhere")]);
+
+      final prompts = await repository.getQueuedPrompts(sessionId: "s1");
+
+      expect([for (final prompt in prompts) prompt.commandSource], [CommandSource.mcp, null]);
+    });
+
     test("getCatalogSession returns the stored project without scanning the plugin", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -873,6 +924,7 @@ void main() {
         expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
 
         await repository.sendCommand(
+          commandSource: null,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "stable-s1",
@@ -1903,6 +1955,7 @@ void main() {
       expect(plugin.primedDirectories.last, (sessionId: "p1", directory: parent));
 
       await repository.sendCommand(
+        commandSource: null,
         fastMode: false,
         promptId: "prompt-1",
         sessionId: "w1",
@@ -2213,6 +2266,7 @@ void main() {
 
       final guardedOperations = <Future<void> Function()>[
         () => repository.sendCommand(
+          commandSource: null,
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "gone",

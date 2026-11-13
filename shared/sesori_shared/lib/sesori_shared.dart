@@ -38,6 +38,7 @@ export "src/models/sesori/catalog_import_progress.dart";
 export "src/models/sesori/catalog_import_request.dart";
 export "src/models/sesori/catalog_import_statuses_response.dart";
 export "src/models/sesori/command_info.dart";
+export "src/models/sesori/command_invocation.dart";
 export "src/models/sesori/command_list_response.dart";
 export "src/models/sesori/create_session_request.dart";
 export "src/models/sesori/delete_session_request.dart";

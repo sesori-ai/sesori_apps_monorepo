@@ -1569,7 +1569,10 @@ class OrchestratorSession._({
     };
     final eventType = switch (payload) {
       NormalizedOtherEvent(:final event) => event.runtimeType,
-      NormalizedStatusEvent() || NormalizedMessageEvent() || NormalizedQuotaInterruptionEvent() => payload.runtimeType,
+      NormalizedStatusEvent() ||
+      NormalizedMessageEvent() ||
+      NormalizedQueuedPromptsEvent() ||
+      NormalizedQuotaInterruptionEvent() => payload.runtimeType,
     };
     try {
       Log.v("[sse] plugin event arrived: $eventType");
@@ -1578,6 +1581,14 @@ class OrchestratorSession._({
         case NormalizedStatusEvent(:final sessionId, :final status):
           await _deliverNormalized(
             event: _mapper.buildSessionStatusEvent(sessionId: sessionId, status: status),
+            pluginId: pluginId,
+            generation: generation,
+            allowDuringStop: allowDuringStop,
+          );
+          return;
+        case NormalizedQueuedPromptsEvent(:final sessionId, :final prompts):
+          await _deliverNormalized(
+            event: _mapper.buildQueuedPromptsEvent(sessionId: sessionId, prompts: prompts),
             pluginId: pluginId,
             generation: generation,
             allowDuringStop: allowDuringStop,

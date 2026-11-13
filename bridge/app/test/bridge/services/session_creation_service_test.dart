@@ -111,6 +111,7 @@ void main() {
       await expectLater(
         service.createSession(
           request: const CreateSessionRequest(
+            commandSource: null,
             projectId: "/missing-project",
             pluginId: "other",
             dedicatedWorktree: true,
@@ -170,6 +171,7 @@ void main() {
 
       final creation = localService.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: false,
@@ -201,6 +203,7 @@ void main() {
         ..generateGate = metadataGate.future;
       final creation = service.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: false,
@@ -224,6 +227,7 @@ void main() {
 
       await service.createSession(
         request: CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: false,
@@ -249,6 +253,7 @@ void main() {
 
       final created = await service.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: false,
@@ -281,6 +286,7 @@ void main() {
       final output = await _captureWarningLog(() async {
         await service.createSession(
           request: const CreateSessionRequest(
+            commandSource: null,
             projectId: "/repo",
             pluginId: "fake",
             dedicatedWorktree: false,
@@ -326,6 +332,7 @@ void main() {
 
       final creation = localService.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: false,
@@ -358,6 +365,7 @@ void main() {
       await expectLater(
         service.createSession(
           request: const CreateSessionRequest(
+            commandSource: null,
             projectId: "/repo",
             pluginId: "fake",
             dedicatedWorktree: false,
@@ -390,6 +398,7 @@ void main() {
 
       final created = await service.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: true,
@@ -443,6 +452,7 @@ void main() {
       var creationCompleted = false;
       final creation = localService.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: false,
@@ -491,6 +501,7 @@ void main() {
       final output = await _captureWarningLog(() async {
         created = await localService.createSession(
           request: const CreateSessionRequest(
+            commandSource: null,
             projectId: "/repo",
             pluginId: "fake",
             dedicatedWorktree: false,
@@ -519,6 +530,7 @@ void main() {
 
       final created = await service.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: true,
@@ -562,6 +574,7 @@ void main() {
 
       await service.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: true,
@@ -589,6 +602,7 @@ void main() {
     test("saves a file under the id the session is committed with and notes it in place", () async {
       final created = await service.createSession(
         request: CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: false,
@@ -639,6 +653,7 @@ void main() {
     test("saves nothing for a create that sends a command", () async {
       await service.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: false,
@@ -659,6 +674,7 @@ void main() {
 
       final created = await service.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: false,
@@ -685,6 +701,7 @@ void main() {
 
       final created = await service.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: true,
@@ -710,6 +727,7 @@ void main() {
         Clock.fixed(DateTime(2026, 3, 7, 23, 30)),
         () => service.createSession(
           request: CreateSessionRequest(
+            commandSource: null,
             projectId: scratchRoot,
             pluginId: "fake",
             dedicatedWorktree: true,
@@ -766,6 +784,7 @@ void main() {
 
       final created = await service.createSession(
         request: const CreateSessionRequest(
+          commandSource: null,
           projectId: "/repo",
           pluginId: "fake",
           dedicatedWorktree: false,
@@ -887,6 +906,7 @@ class _ThrowingNewSessionDefaultsRepository() implements NewSessionDefaultsRepos
 }
 
 const _imageOnlyRequest = CreateSessionRequest(
+  commandSource: null,
   projectId: "/repo",
   pluginId: "fake",
   dedicatedWorktree: false,

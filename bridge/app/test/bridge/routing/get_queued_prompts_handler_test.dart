@@ -78,6 +78,7 @@ void main() {
 
       expect(response.data, const [
         QueuedSessionPrompt(
+          commandSource: null,
           dispatchState: QueuedPromptDispatchState.queued,
           id: "prm_1",
           text: "first",
@@ -86,6 +87,7 @@ void main() {
           createdAt: 10,
         ),
         QueuedSessionPrompt(
+          commandSource: null,
           dispatchState: QueuedPromptDispatchState.dispatched,
           id: "prm_2",
           text: null,

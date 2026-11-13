@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "command_info.dart";
+
 part "queued_prompt.freezed.dart";
 
 part "queued_prompt.g.dart";
@@ -37,6 +39,10 @@ sealed class QueuedSessionPrompt with _$QueuedSessionPrompt {
     /// Bare slash-command name for a command send, without the leading `/`.
     /// Null for a plain prompt.
     required String? command,
+
+    /// Source of [command] when the bridge knows it. Null for a plain prompt
+    /// and from bridges that cannot name invocations.
+    @JsonKey(unknownEnumValue: CommandSource.unknown) required CommandSource? commandSource,
 
     /// Number of file attachments carried by the prompt.
     @Default(0) int attachmentCount,

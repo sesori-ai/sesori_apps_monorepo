@@ -2,13 +2,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 MessageWithParts _prompt({required String id}) => MessageWithParts(
-  info: Message.user(id: id, sessionID: "s", agent: null, time: null, promptId: null),
+  info: Message.user(invocation: null, id: id, sessionID: "s", agent: null, time: null, promptId: null),
   parts: [MessagePart.text(id: "$id-text", sessionID: "s", messageID: id, text: "Fix the build")],
 );
 
 /// A user message the transcript hides: no text and no known file.
 MessageWithParts _hiddenUser({required String id}) => MessageWithParts(
-  info: Message.user(id: id, sessionID: "s", agent: null, time: null, promptId: null),
+  info: Message.user(invocation: null, id: id, sessionID: "s", agent: null, time: null, promptId: null),
   parts: const [],
 );
 
@@ -137,7 +137,7 @@ void main() {
         attachment: MessageAttachment.metadata(mime: "image/png", filename: " shot.png "),
       );
       const attachmentOnly = MessageWithParts(
-        info: Message.user(id: "u1", sessionID: "s", agent: null, time: null, promptId: null),
+        info: Message.user(invocation: null, id: "u1", sessionID: "s", agent: null, time: null, promptId: null),
         parts: [file],
       );
 

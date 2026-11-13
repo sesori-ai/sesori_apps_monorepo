@@ -226,6 +226,8 @@ class SessionEventService({
 
   /// Gives a delivered busy or retry status the time its session went busy,
   /// and records a delivered idle so the next busy run is timed from its start.
+  /// Also names the command a delivered user turn or queued prompt runs,
+  /// from the sends this bridge registered.
   NormalizedBridgePayload _observeBusy({required NormalizedBridgePayload payload}) {
     switch (payload) {
       case NormalizedStatusEvent(:final sessionId, :final status):
@@ -236,7 +238,14 @@ class SessionEventService({
       case NormalizedOtherEvent(event: BridgeSseSessionIdle(:final sessionID)):
         _sessionRepository.markSessionIdle(sessionId: sessionID);
         return payload;
-      case NormalizedMessageEvent() || NormalizedQuotaInterruptionEvent() || NormalizedOtherEvent():
+      case NormalizedMessageEvent(:final message):
+        return NormalizedMessageEvent(message: _sessionRepository.stampLiveInvocation(message: message));
+      case NormalizedQueuedPromptsEvent(:final sessionId, :final prompts):
+        return NormalizedQueuedPromptsEvent(
+          sessionId: sessionId,
+          prompts: _sessionRepository.stampQueuedCommandSources(sessionId: sessionId, prompts: prompts),
+        );
+      case NormalizedQuotaInterruptionEvent() || NormalizedOtherEvent():
         return payload;
     }
   }

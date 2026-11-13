@@ -342,7 +342,14 @@ MessageWithParts _message({
   final time = createdAtMs == null ? null : MessageTime(created: createdAtMs, completed: null);
 
   final info = role == "user"
-      ? Message.user(promptId: promptId, id: messageId, sessionID: "session-1", agent: null, time: time)
+      ? Message.user(
+          invocation: null,
+          promptId: promptId,
+          id: messageId,
+          sessionID: "session-1",
+          agent: null,
+          time: time,
+        )
       : Message.assistant(
           id: messageId,
           sessionID: "session-1",
@@ -392,6 +399,7 @@ MessageWithParts _automatedMessage({
 
 const _emptyUserMessage = MessageWithParts(
   info: Message.user(
+    invocation: null,
     promptId: null,
     id: "empty-user",
     sessionID: "session-1",
@@ -564,7 +572,7 @@ class _UnpreviewedImageRepository() extends Mock implements MessageImageReposito
 
 /// A prompt of an attached screenshot and a line of [text].
 MessageWithParts _imagePrompt({required String messageId, required String text}) => MessageWithParts(
-  info: Message.user(promptId: null, id: messageId, sessionID: "session-1", agent: null, time: null),
+  info: Message.user(invocation: null, promptId: null, id: messageId, sessionID: "session-1", agent: null, time: null),
   parts: [
     MessagePart.file(
       id: "$messageId-image",
@@ -712,6 +720,7 @@ void main() {
         _message(messageId: "echo", role: "user", text: "Fresh", createdAtMs: 200, promptId: promptId);
 
     const listed = QueuedSessionPrompt(
+      commandSource: null,
       id: "prm_sent",
       text: "Fresh",
       command: null,
@@ -1208,6 +1217,7 @@ void main() {
 
     QueuedSessionPrompt listed({QueuedPromptDispatchState state = QueuedPromptDispatchState.queued}) =>
         QueuedSessionPrompt(
+          commandSource: null,
           id: "prm_sent",
           text: "Fresh",
           command: null,
@@ -1677,8 +1687,22 @@ void main() {
         initialMessages: const [],
         initialStreamingText: const {},
         initialBridgeQueuedPrompts: const [
-          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 1, createdAt: 100),
-          QueuedSessionPrompt(id: "prm_2", text: "src", command: "review", attachmentCount: 0, createdAt: 200),
+          QueuedSessionPrompt(
+            commandSource: null,
+            id: "prm_1",
+            text: "steer it",
+            command: null,
+            attachmentCount: 1,
+            createdAt: 100,
+          ),
+          QueuedSessionPrompt(
+            commandSource: null,
+            id: "prm_2",
+            text: "src",
+            command: "review",
+            attachmentCount: 0,
+            createdAt: 200,
+          ),
         ],
       ),
     );
@@ -1726,6 +1750,7 @@ void main() {
         fastMode: false,
       );
       final prompt = QueuedSessionPrompt(
+        commandSource: null,
         id: submission.promptId,
         text: submission.displayText,
         command: null,
@@ -1815,6 +1840,7 @@ void main() {
       fastMode: false,
     );
     const prompt = QueuedSessionPrompt(
+      commandSource: null,
       id: "image-prompt",
       text: "Review this image",
       command: null,
@@ -2247,6 +2273,7 @@ void main() {
     harness.updateBridgeQueue(
       prompts: const [
         QueuedSessionPrompt(
+          commandSource: null,
           id: "prm_wake",
           text: "wake it",
           command: null,
@@ -2286,6 +2313,7 @@ void main() {
     harness.updateBridgeQueue(
       prompts: const [
         QueuedSessionPrompt(
+          commandSource: null,
           id: "prm_remote",
           text: "from the desktop",
           command: null,
@@ -2448,7 +2476,14 @@ void main() {
         ],
         initialStreamingText: const {},
         initialBridgeQueuedPrompts: const [
-          QueuedSessionPrompt(id: "prm_1", text: "thanks", command: null, attachmentCount: 0, createdAt: 3),
+          QueuedSessionPrompt(
+            commandSource: null,
+            id: "prm_1",
+            text: "thanks",
+            command: null,
+            attachmentCount: 0,
+            createdAt: 3,
+          ),
         ],
       ),
     );
@@ -2508,7 +2543,14 @@ void main() {
         initialMessages: [_message(messageId: "assistant-1", role: "assistant", text: "working on it")],
         initialStreamingText: const {},
         initialBridgeQueuedPrompts: const [
-          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+          QueuedSessionPrompt(
+            commandSource: null,
+            id: "prm_1",
+            text: "steer it",
+            command: null,
+            attachmentCount: 0,
+            createdAt: 100,
+          ),
         ],
       ),
     );
@@ -2545,7 +2587,14 @@ void main() {
         ],
         initialStreamingText: const {},
         initialBridgeQueuedPrompts: const [
-          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+          QueuedSessionPrompt(
+            commandSource: null,
+            id: "prm_1",
+            text: "steer it",
+            command: null,
+            attachmentCount: 0,
+            createdAt: 100,
+          ),
         ],
       ),
     );
@@ -2575,7 +2624,14 @@ void main() {
         ],
         initialStreamingText: const {},
         initialBridgeQueuedPrompts: const [
-          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 200),
+          QueuedSessionPrompt(
+            commandSource: null,
+            id: "prm_1",
+            text: "steer it",
+            command: null,
+            attachmentCount: 0,
+            createdAt: 200,
+          ),
         ],
       ),
     );
@@ -2888,6 +2944,7 @@ void main() {
               older: [
                 MessageWithParts(
                   info: Message.user(
+                    invocation: null,
                     promptId: null,
                     id: "hidden-$requested",
                     sessionID: "session-1",
@@ -4325,7 +4382,14 @@ void main() {
 
       harness.updateBridgeQueue(
         prompts: const [
-          QueuedSessionPrompt(id: "prm_other", text: "From elsewhere", command: null, attachmentCount: 0, createdAt: 1),
+          QueuedSessionPrompt(
+            commandSource: null,
+            id: "prm_other",
+            text: "From elsewhere",
+            command: null,
+            attachmentCount: 0,
+            createdAt: 1,
+          ),
         ],
         attachments: const {},
       );
@@ -5471,6 +5535,7 @@ void main() {
       final promptIndex = [
         for (var turn = 0; turn < 20; turn++)
           SessionPromptIndexEntry.opener(
+            invocation: null,
             messageId: "u$turn",
             seq: turn * 2,
             number: turn + 1,

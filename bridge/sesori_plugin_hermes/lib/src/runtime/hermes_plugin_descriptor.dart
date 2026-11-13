@@ -72,6 +72,9 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   bool get supportsPromptAttachments => true;
 
   @override
+  bool get namesCommandInvocations => true;
+
+  @override
   List<PluginOption> get options => cliOptions;
 
   /// The explicit `--hermes-bin` override, or null when unset, empty, or left

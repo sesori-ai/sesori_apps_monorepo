@@ -43,6 +43,7 @@ const _emptyState = SessionDetailState.loaded(
   messages: [
     MessageWithParts(
       info: Message.user(
+        invocation: null,
         promptId: null,
         id: "empty-user-envelope",
         sessionID: "session-1",

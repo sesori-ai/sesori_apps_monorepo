@@ -30,6 +30,10 @@ class const PromptIndexMapper() {
       final messageId = message.info.id;
       final createdAt = message.info.time?.created;
       final preview = _previewOf(text: message.promptText);
+      final invocation = switch (message.info) {
+        MessageUser(:final invocation) => invocation,
+        _ => null,
+      };
       entries.add(switch (openerIdByMessageId[messageId]) {
         final openerId? when openerId != messageId => SessionPromptIndexEntry.followUp(
           messageId: messageId,
@@ -38,6 +42,7 @@ class const PromptIndexMapper() {
           createdAt: createdAt,
           preview: preview,
           openerMessageId: openerId,
+          invocation: invocation,
         ),
         _ => SessionPromptIndexEntry.opener(
           messageId: messageId,
@@ -45,6 +50,7 @@ class const PromptIndexMapper() {
           number: number,
           createdAt: createdAt,
           preview: preview,
+          invocation: invocation,
         ),
       });
     }

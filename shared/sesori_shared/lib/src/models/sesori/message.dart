@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "command_invocation.dart";
+
 part "message.freezed.dart";
 
 part "message.g.dart";
@@ -45,6 +47,13 @@ sealed class const Message._() with _$Message {
     /// clients can swap the queued bubble for this message atomically.
     /// History reads that cannot reconstruct it carry null.
     required String? promptId,
+
+    /// The command, skill or MCP prompt this turn ran, when the bridge knows.
+    ///
+    /// Null for an ordinary prompt and wherever the bridge cannot name the
+    /// invocation; clients then render the message's text as typed. The text
+    /// parts keep their own content for clients that predate this field.
+    required CommandInvocation? invocation,
   }) = MessageUser;
 
   const factory assistant({

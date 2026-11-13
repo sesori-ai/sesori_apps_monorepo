@@ -121,6 +121,9 @@ class const CursorPluginDescriptor({
   bool get supportsPromptAttachments => true;
 
   @override
+  bool get namesCommandInvocations => true;
+
+  @override
   List<PluginOption> get options => cliOptions;
 
   /// The explicit `--cursor-bin` override, or null when unset, empty, or left

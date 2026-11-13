@@ -1586,6 +1586,79 @@ void main() {
       expect((stored.single.info as MessageAssistant).modelID, "model-2");
     });
 
+    group("command invocations", () {
+      const review = CommandInvocation(name: "review", source: CommandSource.skill, arguments: "src");
+      MessageWithParts invoked({required String id, required CommandInvocation? invocation}) {
+        final message = _messageWithText(id: id, text: "src", createdAt: 100, promptId: null);
+        return switch (message.info) {
+          final MessageUser user => MessageWithParts(
+            info: user.copyWith(invocation: invocation),
+            parts: message.parts,
+          ),
+          _ => message,
+        };
+      }
+
+      Future<List<CommandInvocation?>> storedInvocations({required TestChatHistory history}) async => [
+        for (final message in await _storedMessages(history: history, sessionId: "ses_a"))
+          switch (message.info) {
+            MessageUser(:final invocation) => invocation,
+            _ => null,
+          },
+      ];
+
+      test("a later update of the user turn keeps the invocation stored live", () async {
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
+        await _captureMessageWithParts(
+          history: history,
+          message: invoked(id: "m1", invocation: review),
+        );
+        await _captureMessageWithParts(
+          history: history,
+          message: invoked(id: "m1", invocation: null),
+        );
+
+        expect(await storedInvocations(history: history), [review]);
+      });
+
+      test("a replay of the same id keeps the stored invocation, and its own one wins", () async {
+        const own = CommandInvocation(name: "plan", source: CommandSource.command, arguments: null);
+        for (final (replayed, expected) in [(null, review), (own, own)]) {
+          final history = createTestChatHistory(
+            sessionRepository: _FakeSessionRepository(
+              transcript: [invoked(id: "m1", invocation: replayed)],
+            ),
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: invoked(id: "m1", invocation: review),
+          );
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(await storedInvocations(history: history), [expected]);
+        }
+      });
+
+      test("a stamped live turn matches its replay under another id and keeps the invocation", () async {
+        final history = createTestChatHistory(
+          sessionRepository: _FakeSessionRepository(transcript: [invoked(id: "replay", invocation: null)]),
+        );
+        await _captureMessageWithParts(
+          history: history,
+          message: invoked(id: "live", invocation: review),
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["replay"],
+        );
+        expect(await storedInvocations(history: history), [review]);
+      });
+    });
+
     test("semantic replay matching preserves repeated-message multiplicity", () async {
       final repository = _FakeSessionRepository(
         transcript: [
@@ -2238,6 +2311,7 @@ Future<ChatHistorySyncState> _syncState({
 Message _message({required String id}) => _messageAt(id: id, createdAt: 1);
 
 Message _messageAt({required String id, required int createdAt}) => Message.user(
+  invocation: null,
   promptId: null,
   id: id,
   sessionID: "ses_a",
@@ -2263,6 +2337,7 @@ MessageWithParts _messageWithText({
   required String? promptId,
 }) => MessageWithParts(
   info: Message.user(
+    invocation: null,
     promptId: promptId,
     id: id,
     sessionID: "ses_a",

@@ -18,6 +18,11 @@ _QueuedSessionPrompt _$QueuedSessionPromptFromJson(Map json) =>
           QueuedPromptDispatchState.unknown,
       text: json['text'] as String?,
       command: json['command'] as String?,
+      commandSource: $enumDecodeNullable(
+        _$CommandSourceEnumMap,
+        json['commandSource'],
+        unknownValue: CommandSource.unknown,
+      ),
       attachmentCount: (json['attachmentCount'] as num?)?.toInt() ?? 0,
       createdAt: (json['createdAt'] as num).toInt(),
     );
@@ -29,6 +34,7 @@ Map<String, dynamic> _$QueuedSessionPromptToJson(
   'dispatchState': _$QueuedPromptDispatchStateEnumMap[instance.dispatchState]!,
   'text': ?instance.text,
   'command': ?instance.command,
+  'commandSource': ?_$CommandSourceEnumMap[instance.commandSource],
   'attachmentCount': instance.attachmentCount,
   'createdAt': instance.createdAt,
 };
@@ -37,6 +43,13 @@ const _$QueuedPromptDispatchStateEnumMap = {
   QueuedPromptDispatchState.unknown: 'unknown',
   QueuedPromptDispatchState.queued: 'queued',
   QueuedPromptDispatchState.dispatched: 'dispatched',
+};
+
+const _$CommandSourceEnumMap = {
+  CommandSource.command: 'command',
+  CommandSource.mcp: 'mcp',
+  CommandSource.skill: 'skill',
+  CommandSource.unknown: 'unknown',
 };
 
 _QueuedPromptResponse _$QueuedPromptResponseFromJson(Map json) =>

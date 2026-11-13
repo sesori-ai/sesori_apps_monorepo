@@ -22,7 +22,7 @@ MessageWithParts _assistant(
 );
 
 MessageWithParts _user(String id) => MessageWithParts(
-  info: Message.user(id: id, sessionID: "s", agent: null, time: null, promptId: null),
+  info: Message.user(invocation: null, id: id, sessionID: "s", agent: null, time: null, promptId: null),
   parts: [MessagePart.text(id: "$id-text", sessionID: "s", messageID: id, text: "hi")],
 );
 

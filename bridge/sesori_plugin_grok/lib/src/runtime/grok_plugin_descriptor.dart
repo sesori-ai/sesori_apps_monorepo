@@ -60,6 +60,9 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
   bool get supportsPromptAttachments => false;
 
   @override
+  bool get namesCommandInvocations => true;
+
+  @override
   List<PluginOption> get options => cliOptions;
 
   String? _explicitBin({required PluginConfig config}) {

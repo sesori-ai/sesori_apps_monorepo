@@ -133,10 +133,9 @@ class BridgeEventMapper({
             displaySessionId: displaySessionId,
           ),
         BridgeSseTodoUpdated(:final sessionID) => SesoriSseEvent.todoUpdated(sessionID: sessionID),
-        BridgeSseQueuedPromptsUpdated(:final sessionID, :final prompts) => SesoriSseEvent.sessionQueuedPrompts(
-          sessionID: sessionID,
-          prompts: prompts.toSharedQueuedPrompts(),
-        ),
+        // Normalization delivers queued prompts with their command sources
+        // through [buildQueuedPromptsEvent].
+        BridgeSseQueuedPromptsUpdated() => null,
         // BridgeSseProjectUpdated triggers a full projects-summary rebuild, but
         // the summary needs repository data (the bridge's session→project
         // attribution) — the orchestrator fetches it and builds the event via
@@ -193,6 +192,11 @@ class BridgeEventMapper({
   /// Builds the public status event from the already-normalized shared status.
   SesoriSseEvent buildSessionStatusEvent({required String sessionId, required SessionStatus status}) {
     return SesoriSseEvent.sessionStatus(sessionID: sessionId, status: status);
+  }
+
+  /// Builds the public queue event from the already-normalized shared prompts.
+  SesoriSseEvent buildQueuedPromptsEvent({required String sessionId, required List<QueuedSessionPrompt> prompts}) {
+    return SesoriSseEvent.sessionQueuedPrompts(sessionID: sessionId, prompts: prompts);
   }
 
   /// Builds the public message event from the already-normalized shared message.

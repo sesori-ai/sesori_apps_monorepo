@@ -3,13 +3,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 MessageWithParts _prompt({required String id}) => MessageWithParts(
-  info: Message.user(id: id, sessionID: "s", agent: null, time: null, promptId: null),
+  info: Message.user(invocation: null, id: id, sessionID: "s", agent: null, time: null, promptId: null),
   parts: [MessagePart.text(id: "$id-text", sessionID: "s", messageID: id, text: "Fix the build")],
 );
 
 /// A user message the list hides: no text and no known file.
 MessageWithParts _hiddenUser({required String id}) => MessageWithParts(
-  info: Message.user(id: id, sessionID: "s", agent: null, time: null, promptId: null),
+  info: Message.user(invocation: null, id: id, sessionID: "s", agent: null, time: null, promptId: null),
   parts: const [],
 );
 
