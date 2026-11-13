@@ -653,6 +653,18 @@ availability. If the opt-in or re-read fails, the failure is logged and fast
 mode stays offered. The transient `network_error` and `pending` reasons also
 keep it offered, with a log. Per-turn reasons from result messages are not tracked.
 
+## Prompt-cache warmth chip
+
+| Harness | Status |
+|---|---|
+| Claude | ✅ Implemented: 60-minute lifetime, only for models whose fast mode is available. |
+| Codex | ✅ Implemented: 30-minute lifetime, only for models whose fast mode is available. |
+| OpenCode, Antigravity, Copilot, Cursor, Hermes, Pi, OMP, DeepSeek, Grok | 🚫 Not supported: the harness reports no prompt-cache lifetime. |
+
+The session-detail chip reads the lifetime from the selected model's available
+fast-mode support (`promptCacheTtlSeconds`). Claude and Codex models whose fast
+mode is unavailable or absent carry no lifetime, so they show no chip.
+
 ## Agent selection and harness modes
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |

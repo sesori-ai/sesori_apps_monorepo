@@ -5557,6 +5557,48 @@ abstract class AppLocalizations {
   /// **'Auto-continue'**
   String get sessionAutoContinuationChip;
 
+  /// Label of the quiet prompt cache chip beside the session's model picker while the cache is still warm, with the whole minutes left before it goes cold.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String sessionPromptCacheWarm(int minutes);
+
+  /// Label of the prompt cache chip during the final minute before the cache goes cold.
+  ///
+  /// In en, this message translates to:
+  /// **'<1 min'**
+  String get sessionPromptCacheWarmUnderMinute;
+
+  /// Label of the prompt cache chip once the session's prompt cache has gone cold.
+  ///
+  /// In en, this message translates to:
+  /// **'Cold'**
+  String get sessionPromptCacheCold;
+
+  /// Label of the prompt cache chip while the current turn is running and using the cache.
+  ///
+  /// In en, this message translates to:
+  /// **'Warm'**
+  String get sessionPromptCacheInUse;
+
+  /// Tooltip and screen-reader text of the prompt cache chip while the cache counts down.
+  ///
+  /// In en, this message translates to:
+  /// **'The prompt cache is warm. Sending after it goes cold re-reads the whole conversation.'**
+  String get sessionPromptCacheTooltipWarm;
+
+  /// Tooltip and screen-reader text of the prompt cache chip once the cache has gone cold.
+  ///
+  /// In en, this message translates to:
+  /// **'The prompt cache is cold. The next message re-reads the whole conversation.'**
+  String get sessionPromptCacheTooltipCold;
+
+  /// Tooltip and screen-reader text of the prompt cache chip while a turn is running.
+  ///
+  /// In en, this message translates to:
+  /// **'The current turn is using the prompt cache.'**
+  String get sessionPromptCacheTooltipInUse;
+
   /// No description provided for @sessionAutoContinuationQuotaReached.
   ///
   /// In en, this message translates to:

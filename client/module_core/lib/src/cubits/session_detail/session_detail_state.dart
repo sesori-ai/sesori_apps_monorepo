@@ -277,4 +277,11 @@ extension SessionDetailLoadedX on SessionDetailLoaded {
   SessionApprovalControl get approvalControl => _approval.control(bridge: bridgeYolo, session: session);
 
   FastModeControl get fastModeControl => _fastModeToggle.control(support: fastModeSupport, fastMode: runsFastMode);
+
+  /// When the selected model's prompt cache goes cold, or null when unknown.
+  DateTime? get promptCacheColdAt => _fastModeToggle.promptCacheColdAt(
+    support: fastModeSupport,
+    hasHistory: messages.isNotEmpty,
+    lastModelActivity: _fastModeToggle.lastModelActivity(messages: messages, session: session),
+  );
 }

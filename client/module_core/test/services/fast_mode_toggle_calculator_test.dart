@@ -103,6 +103,49 @@ void main() {
     });
   });
 
+  group("FastModeToggleCalculator promptCacheColdAt", () {
+    test("is the model's last activity plus the cache lifetime", () {
+      expect(
+        _calculator.promptCacheColdAt(support: _available, hasHistory: true, lastModelActivity: _now),
+        _now.add(const Duration(seconds: 1800)),
+      );
+    });
+
+    test("is null when the account cannot use fast mode", () {
+      expect(
+        _calculator.promptCacheColdAt(
+          support: const FastModeSupport.unavailable(reason: FastModeUnavailableReason.extraUsageDisabled),
+          hasHistory: true,
+          lastModelActivity: _now,
+        ),
+        isNull,
+      );
+    });
+
+    test("is null when the model's fast mode is unknown", () {
+      expect(
+        _calculator.promptCacheColdAt(
+          support: const FastModeSupport.unknown(),
+          hasHistory: true,
+          lastModelActivity: _now,
+        ),
+        isNull,
+      );
+    });
+
+    test("is null when the model has no fast mode", () {
+      expect(_calculator.promptCacheColdAt(support: null, hasHistory: true, lastModelActivity: _now), isNull);
+    });
+
+    test("is null on a session without history", () {
+      expect(_calculator.promptCacheColdAt(support: _available, hasHistory: false, lastModelActivity: _now), isNull);
+    });
+
+    test("is null when the model's last activity is unknown", () {
+      expect(_calculator.promptCacheColdAt(support: _available, hasHistory: true, lastModelActivity: null), isNull);
+    });
+  });
+
   group("FastModeToggleCalculator lastModelActivity", () {
     MessageWithParts assistant({required MessageSender sender, required int? completed}) => MessageWithParts(
       info: Message.assistant(

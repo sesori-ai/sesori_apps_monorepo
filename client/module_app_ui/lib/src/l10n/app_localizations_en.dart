@@ -3229,6 +3229,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionAutoContinuationChip => 'Auto-continue';
 
   @override
+  String sessionPromptCacheWarm(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get sessionPromptCacheWarmUnderMinute => '<1 min';
+
+  @override
+  String get sessionPromptCacheCold => 'Cold';
+
+  @override
+  String get sessionPromptCacheInUse => 'Warm';
+
+  @override
+  String get sessionPromptCacheTooltipWarm =>
+      'The prompt cache is warm. Sending after it goes cold re-reads the whole conversation.';
+
+  @override
+  String get sessionPromptCacheTooltipCold =>
+      'The prompt cache is cold. The next message re-reads the whole conversation.';
+
+  @override
+  String get sessionPromptCacheTooltipInUse => 'The current turn is using the prompt cache.';
+
+  @override
   String get sessionAutoContinuationQuotaReached => 'Quota reached';
 
   @override
