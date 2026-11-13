@@ -1,9 +1,10 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart" show SessionPromptExcerpt;
+import "package:sesori_shared/sesori_shared.dart" show CommandInvocation, SessionPromptExcerpt;
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../extensions/command_source_x.dart";
 
 const double _kVerticalPadding = PregoSpacing.md;
 const double _kRailX = PregoSpacing.xl + 4;
@@ -31,7 +32,9 @@ const double _kExcerptLeadShare = 0.6;
 /// One prompt on the Prompts screen: a dot on the spine rail that runs down
 /// the list, then its number, its first line and its time. A follow-up's dot
 /// sits indented off the rail, smaller and fainter, under the prompt it joined.
-/// A search match adds a second line: the words around it, highlighted.
+/// A command, skill or MCP prompt the user ran shows as its card names it: the
+/// kind's icon, `/name`, then its arguments. A search match adds a second line:
+/// the words around it, highlighted.
 class const PromptSpineRow({
   super.key,
   required final TranscriptPromptEntry entry,
@@ -61,7 +64,15 @@ class const PromptSpineRow({
     final colors = prego.colors;
     final loc = context.loc;
     final isFollowUp = entry is TranscriptPromptFollowUp;
-    final text = entry.text ?? loc.transcriptStickyPromptAttachment;
+    final invocation = entry.invocation;
+    final arguments = entry.text;
+    final text = switch (invocation) {
+      CommandInvocation(:final name, :final source) => [
+        loc.invocationCardSemantics(source.name, name),
+        ?arguments,
+      ].join(", "),
+      null => arguments ?? loc.transcriptStickyPromptAttachment,
+    };
     final time = switch (entry.createdAt) {
       final createdAt? when showsTime => context.formatTimeOfDay(createdAt),
       _ => null,
@@ -77,6 +88,9 @@ class const PromptSpineRow({
     final dotSize = isFollowUp ? 5.0 : 7.0;
     final dotX = isFollowUp ? _kRailX + _kFollowUpIndent : _kRailX;
     final excerptStyle = prego.textTheme.textXs.regular.copyWith(color: colors.textTertiary);
+    final textStyle = prego.textTheme.textSm.regular.copyWith(
+      color: isFollowUp ? colors.textSecondary : colors.textPrimary,
+    );
     return Semantics(
       container: true,
       button: true,
@@ -135,15 +149,29 @@ class const PromptSpineRow({
                               style: prego.textTheme.textSm.medium.copyWith(color: colors.textTertiary),
                             ),
                           ),
-                        Expanded(
-                          child: Text(
-                            text,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: prego.textTheme.textSm.regular.copyWith(
-                              color: isFollowUp ? colors.textSecondary : colors.textPrimary,
-                            ),
+                        if (invocation != null)
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
+                            child: Icon(invocation.source.icon, size: PregoIconSize.sm, color: colors.textTertiary),
                           ),
+                        Expanded(
+                          child: switch (invocation) {
+                            CommandInvocation(:final name) => Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: "/$name",
+                                    style: const TextStyle(fontWeight: FontWeight.w500),
+                                  ),
+                                  if (arguments != null) TextSpan(text: " $arguments"),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textStyle,
+                            ),
+                            null => Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle),
+                          },
                         ),
                         if (loading)
                           Padding(

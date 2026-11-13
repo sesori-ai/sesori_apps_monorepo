@@ -4,6 +4,7 @@ import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -11,6 +12,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 import "../../../utils/markdown_plain_text.dart";
 import "../../../widgets/markdown_styles.dart";
+import "invocation_card.dart";
 import "transcript_motion.dart";
 import "transcript_sticky_layout.dart";
 import "user_message_card.dart";
@@ -21,7 +23,8 @@ import "user_prompt_markdown_image.dart";
 /// of the bubble content of every message in [messages], those that could pin
 /// next, and paints only the pinned ones, on a surface of the bubble's own
 /// shape and colour, so a pin is pixel-identical to the bubble it takes over
-/// from.
+/// from. A command, skill or MCP prompt the user ran pins as its card instead,
+/// at the row's leading edge, as [promptTurnShapes] has its row draw it.
 ///
 /// The transcript positions the pins while it lays out its rows: [onLayout]
 /// runs once this has laid out the copies, and the transcript sets
@@ -34,6 +37,9 @@ import "user_prompt_markdown_image.dart";
 class const TranscriptStickyPromptOverlay({
   super.key,
   required final List<MessageWithParts> messages,
+
+  /// Whether each of [messages] is a card or a bubble, as its row shows it.
+  required final PromptTurnShapes promptTurnShapes,
 
   /// The prompt that pins above the loaded messages without being loaded
   /// itself; null when none does.
@@ -58,11 +64,16 @@ class const TranscriptStickyPromptOverlay({
   /// are immutable, and the transcript rebuilds while an answer streams.
   static final _texts = Expando<_CopyText>();
 
-  /// The text a message's copy speaks and shows, or null when it has none.
-  static _CopyText? _textOf({required MessageWithParts message}) {
+  /// The text a message's copy speaks and shows, or null when it has none: a
+  /// card's arguments, else the bubble's text. A message's [shape] follows
+  /// from the message alone, so the cut stays right for it.
+  static _CopyText? _textOf({required MessageWithParts message, required PromptTurnShape shape}) {
     final cached = _texts[message];
     if (cached != null) return cached;
-    final markdown = UserMessageCard.markdownOf(message: message);
+    final markdown = switch (shape) {
+      InvocationPromptTurnShape(:final arguments) => arguments,
+      BubblePromptTurnShape() => UserMessageCard.markdownOf(message: message),
+    };
     if (markdown == null) return null;
     return _texts[message] = (
       head: _cut(markdown: markdown, budget: _spokenCharacterBudget),
@@ -146,17 +157,17 @@ class const TranscriptStickyPromptOverlay({
     return plain.isEmpty ? source : plain;
   }
 
-  /// A bubble holding three lines of body text at the reader's text scale: the
-  /// height a longer prompt compacts to.
-  static double _compactHeight({required BuildContext context, required TextStyle? style}) {
+  /// A line of body text at the reader's text scale, which a longer prompt's
+  /// compact height counts in.
+  static double _bodyLineHeight({required BuildContext context, required TextStyle? style}) {
     final painter = TextPainter(
-      text: TextSpan(text: "0\n0\n0", style: style),
+      text: TextSpan(text: "0", style: style),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
     )..layout();
     final height = painter.height;
     painter.dispose();
-    return height + UserMessageBubble.padding * 2;
+    return height;
   }
 }
 
@@ -177,6 +188,9 @@ class _TranscriptStickyPromptOverlayState()
 
   /// The preview a just-loaded prompt's pin fades over from.
   SessionPromptIndexEntry? _leaving;
+
+  /// Each card copy's header height, by opener, as the copy last laid out.
+  final Map<String, double> _cardHeaderHeights = {};
 
   void _dropLeaving(AnimationStatus status) {
     if (status.isCompleted && _leaving != null) setState(() => _leaving = null);
@@ -218,18 +232,26 @@ class _TranscriptStickyPromptOverlayState()
       openerIds: [for (final message in messages) message.info.id, ?unloaded?.messageId],
       cutOpenerIds: {
         for (final message in messages)
-          if (TranscriptStickyPromptOverlay._textOf(message: message)?.cut ?? false) message.info.id,
+          if (TranscriptStickyPromptOverlay._textOf(
+                message: message,
+                shape: _shapeOf(message: message),
+              )?.cut ??
+              false)
+            message.info.id,
       },
-      compactHeight: TranscriptStickyPromptOverlay._compactHeight(
+      bodyLineHeight: TranscriptStickyPromptOverlay._bodyLineHeight(
         context: context,
         style: buildChatMessageMarkdownStyleSheet(prego: prego).p,
       ),
+      cardHeaderHeights: _cardHeaderHeights,
       horizontalInset: widget.horizontalInset,
       bubbleColor: _bubbleFill(
         prego: prego,
         // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
         pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
       ),
+      cardFill: InvocationCard.fill(prego: prego),
+      cardBorder: InvocationCard.border(prego: prego),
       haloColor: Theme.of(context).scaffoldBackgroundColor,
       // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
       fadesTopEdge: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
@@ -246,31 +268,72 @@ class _TranscriptStickyPromptOverlayState()
     );
   }
 
+  PromptTurnShape _shapeOf({required MessageWithParts message}) =>
+      widget.promptTurnShapes.ofMessage(messageId: message.info.id);
+
   Widget _copy({required AppLocalizations loc, required MessageWithParts opener}) {
-    final text = TranscriptStickyPromptOverlay._textOf(message: opener);
-    return _pinnable(
-      key: ValueKey((pinnedPrompt: opener.info.id)),
-      loc: loc,
-      id: opener.info.id,
-      label: text == null
-          // A prompt with no text is named by its first attachment.
-          ? opener.promptText ?? loc.transcriptStickyPromptAttachment
-          : TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: text.head),
-      content: UserMessageBubbleContent(
-        markdown: text?.end,
-        attachments: [UserMessageCard.attachmentsOf(message: opener)],
-        alignment: .end,
+    final id = opener.info.id;
+    final shape = _shapeOf(message: opener);
+    final text = TranscriptStickyPromptOverlay._textOf(message: opener, shape: shape);
+    final key = ValueKey((pinnedPrompt: id));
+    return switch (shape) {
+      InvocationPromptTurnShape(:final name, :final source) => _cardCopy(
+        key: key,
+        loc: loc,
+        id: id,
+        name: name,
+        source: source,
+        spoken: text?.head,
+        arguments: text?.end,
+        attachments: UserMessageCard.cardAttachmentsOf(message: opener),
       ),
-    );
+      BubblePromptTurnShape() => _pinnable(
+        key: key,
+        loc: loc,
+        id: id,
+        surface: _PinSurface.bubble,
+        label: text == null
+            // A prompt with no text is named by its first attachment.
+            ? opener.promptText ?? loc.transcriptStickyPromptAttachment
+            : TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: text.head),
+        content: UserMessageBubbleContent(
+          markdown: text?.end,
+          attachments: [UserMessageCard.attachmentsOf(message: opener)],
+          alignment: .end,
+        ),
+      ),
+    };
   }
 
-  /// An unloaded prompt's copy: the start of it the prompt index previews.
+  /// An unloaded prompt's copy: the start of it the prompt index previews, or
+  /// the card of what it ran.
   Widget _previewCopy({required AppLocalizations loc, required SessionPromptIndexEntry entry}) {
+    final key = ValueKey((unloadedPrompt: entry.messageId));
+    if (entry.invocation case CommandInvocation(:final name, :final source, :final arguments)) {
+      final shown = switch (arguments) {
+        final arguments? => TranscriptStickyPromptOverlay._cut(
+          markdown: arguments,
+          budget: TranscriptStickyPromptOverlay._copyCharacterBudget,
+        ),
+        null => null,
+      };
+      return _cardCopy(
+        key: key,
+        loc: loc,
+        id: entry.messageId,
+        name: name,
+        source: source,
+        spoken: shown,
+        arguments: shown,
+        attachments: const [],
+      );
+    }
     final preview = entry.preview;
     return _pinnable(
-      key: ValueKey((unloadedPrompt: entry.messageId)),
+      key: key,
       loc: loc,
       id: entry.messageId,
+      surface: _PinSurface.bubble,
       label: preview == null
           ? loc.transcriptStickyPromptAttachment
           : TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: preview),
@@ -282,24 +345,57 @@ class _TranscriptStickyPromptOverlayState()
     );
   }
 
+  /// A card's copy, which reports its header's height so its pin can keep the
+  /// whole header as it compacts.
+  Widget _cardCopy({
+    required Key key,
+    required AppLocalizations loc,
+    required String id,
+    required String name,
+    required CommandSource source,
+    required String? spoken,
+    required String? arguments,
+    required List<Widget> attachments,
+  }) => _pinnable(
+    key: key,
+    loc: loc,
+    id: id,
+    surface: _PinSurface.card,
+    label: [
+      loc.invocationCardSemantics(source.name, name),
+      if (spoken != null) TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: spoken),
+    ].join("\n"),
+    content: InvocationCardContent(
+      name: name,
+      source: source,
+      arguments: arguments,
+      attachments: attachments,
+      onHeaderLayout: (height) => _cardHeaderHeights[id] = height,
+    ),
+  );
+
   Widget _pinnable({
     required Key key,
     required AppLocalizations loc,
     required String id,
+    required _PinSurface surface,
     required String label,
     required Widget content,
-  }) => RepaintBoundary(
+  }) => _PinCopy(
     key: key,
-    child: Semantics(
-      container: true,
-      button: true,
-      label: label,
-      hint: loc.transcriptStickyPromptJumpHint,
-      onTap: () => widget.onTap(openerMessageId: id),
-      excludeSemantics: true,
-      // Hit tests never reach the copy and focus never enters it, so nothing
-      // in it can be pressed, selected or scrolled.
-      child: ExcludeFocus(child: content),
+    surface: surface,
+    child: RepaintBoundary(
+      child: Semantics(
+        container: true,
+        button: true,
+        label: label,
+        hint: loc.transcriptStickyPromptJumpHint,
+        onTap: () => widget.onTap(openerMessageId: id),
+        excludeSemantics: true,
+        // Hit tests never reach the copy and focus never enters it, so nothing
+        // in it can be pressed, selected or scrolled.
+        child: ExcludeFocus(child: content),
+      ),
     ),
   );
 }
@@ -308,12 +404,37 @@ class _TranscriptStickyPromptOverlayState()
 /// whether [end] was [cut] from a longer message.
 typedef _CopyText = ({String head, String end, bool cut});
 
+/// The surface a copy stands on, drawn as its row draws it: a bubble against
+/// the row's trailing edge, or an invocation card against its leading edge.
+enum _PinSurface({required final double inset, required final double radius}) {
+  bubble(inset: UserMessageBubble.padding, radius: UserMessageBubble.radius),
+  card(inset: InvocationCard.inset, radius: InvocationCard.radius),
+}
+
+/// Which surface its copy stands on.
+class const _PinCopy({super.key, required final _PinSurface surface, required super.child})
+    extends ParentDataWidget<_CopyParentData> {
+  @override
+  void applyParentData(RenderObject renderObject) {
+    final parentData = renderObject.parentData;
+    if (parentData is! _CopyParentData || parentData.surface == surface) return;
+    parentData.surface = surface;
+    renderObject.parent?.markNeedsLayout();
+  }
+
+  @override
+  Type get debugTypicalAncestorWidgetClass => _StickyPrompts;
+}
+
 class const _StickyPrompts({
   required final List<String> openerIds,
   required final Set<String> cutOpenerIds,
-  required final double compactHeight,
+  required final double bodyLineHeight,
+  required final Map<String, double> cardHeaderHeights,
   required final double horizontalInset,
   required final Color bubbleColor,
+  required final Color cardFill,
+  required final BoxBorder cardBorder,
   required final Color haloColor,
   required final bool fadesTopEdge,
   required final Animation<double> fade,
@@ -330,9 +451,12 @@ class const _StickyPrompts({
   RenderTranscriptStickyPrompts createRenderObject(BuildContext context) => RenderTranscriptStickyPrompts(
     openerIds: openerIds,
     cutOpenerIds: cutOpenerIds,
-    compactHeight: compactHeight,
+    bodyLineHeight: bodyLineHeight,
+    cardHeaderHeights: cardHeaderHeights,
     horizontalInset: horizontalInset,
     bubbleColor: bubbleColor,
+    cardFill: cardFill,
+    cardBorder: cardBorder,
     haloColor: haloColor,
     fadesTopEdge: fadesTopEdge,
     fade: fade,
@@ -347,9 +471,11 @@ class const _StickyPrompts({
     renderObject
       ..openerIds = openerIds
       ..cutOpenerIds = cutOpenerIds
-      ..compactHeight = compactHeight
+      ..bodyLineHeight = bodyLineHeight
       ..horizontalInset = horizontalInset
       ..bubbleColor = bubbleColor
+      ..cardFill = cardFill
+      ..cardBorder = cardBorder
       ..haloColor = haloColor
       ..fadesTopEdge = fadesTopEdge
       ..fade = fade
@@ -388,10 +514,15 @@ class RenderTranscriptStickyPrompts({
   /// The openers whose copy holds only the end of a longer message.
   required var Set<String> cutOpenerIds,
 
-  /// The height a pinned prompt compacts to.
-  required var double compactHeight,
+  /// A line of body text, which a pinned prompt's compact height counts in.
+  required var double bodyLineHeight,
+
+  /// Each card copy's header height, by opener, as the copies report it.
+  required final Map<String, double> cardHeaderHeights,
   required double horizontalInset,
   required Color bubbleColor,
+  required Color cardFill,
+  required BoxBorder cardBorder,
   required Color haloColor,
 
   /// Whether the rows fade out at the top edge, where a header rather than a
@@ -428,6 +559,22 @@ class RenderTranscriptStickyPrompts({
   set bubbleColor(Color value) {
     if (value == _bubbleColor) return;
     _bubbleColor = value;
+    markNeedsPaint();
+  }
+
+  Color _cardFill = cardFill;
+  Color get cardFill => _cardFill;
+  set cardFill(Color value) {
+    if (value == _cardFill) return;
+    _cardFill = value;
+    markNeedsPaint();
+  }
+
+  BoxBorder _cardBorder = cardBorder;
+  BoxBorder get cardBorder => _cardBorder;
+  set cardBorder(BoxBorder value) {
+    if (value == _cardBorder) return;
+    _cardBorder = value;
     markNeedsPaint();
   }
 
@@ -501,11 +648,42 @@ class RenderTranscriptStickyPrompts({
     super.detach();
   }
 
-  /// Each copy's whole bubble height, once laid out.
-  Map<String, double> get fullHeights => {
+  /// The height a pinned bubble compacts to: three lines of body text.
+  double get compactHeight => bodyLineHeight * 3 + UserMessageBubble.padding * 2;
+
+  /// Each copy's whole surface height, once laid out, and the height its pin
+  /// compacts to.
+  Map<String, TranscriptPinHeights> get pinHeights => {
     for (final (index, child) in getChildrenAsList().indexed)
       if (child.hasSize && index < _openerIds.length)
-        _openerIds[index]: child.size.height + UserMessageBubble.padding * 2,
+        _openerIds[index]: _heightsOf(child: child, openerId: _openerIds[index]),
+  };
+
+  /// [child]'s heights, as the copy of [openerId]. A bubble compacts to
+  /// [compactHeight]; a card to its whole header and two lines of what
+  /// follows, so a pinned card still names what ran.
+  TranscriptPinHeights _heightsOf({required RenderBox child, required String openerId}) {
+    final surface = _surfaceOf(child: child);
+    final full = child.size.height + surface.inset * 2;
+    final compact = switch (surface) {
+      _PinSurface.bubble => compactHeight,
+      _PinSurface.card => switch (cardHeaderHeights[openerId]) {
+        final header? => surface.inset * 2 + header + InvocationCardContent.bodyGap + bodyLineHeight * 2,
+        null => full,
+      },
+    };
+    return (full: full, compact: min(full, compact));
+  }
+
+  static _PinSurface _surfaceOf({required RenderBox child}) => switch (child.parentData) {
+    _CopyParentData(:final surface) => surface,
+    _ => _PinSurface.bubble,
+  };
+
+  /// [surface]'s fill.
+  Color _fillOf({required _PinSurface surface}) => switch (surface) {
+    _PinSurface.bubble => _bubbleColor,
+    _PinSurface.card => _cardFill,
   };
 
   @override
@@ -524,10 +702,13 @@ class RenderTranscriptStickyPrompts({
 
   @override
   void performLayout() {
-    final maxWidth = UserMessageBubble.maxContentWidth(rowWidth: size.width - _horizontalInset * 2);
-    final contentConstraints = BoxConstraints(maxWidth: max(0, maxWidth));
+    final rowWidth = size.width - _horizontalInset * 2;
     for (final child in getChildrenAsList()) {
-      child.layout(contentConstraints, parentUsesSize: true);
+      final maxWidth = switch (_surfaceOf(child: child)) {
+        _PinSurface.bubble => UserMessageBubble.maxContentWidth(rowWidth: rowWidth),
+        _PinSurface.card => InvocationCard.maxContentWidth(rowWidth: rowWidth),
+      };
+      child.layout(BoxConstraints(maxWidth: max(0, maxWidth)), parentUsesSize: true);
     }
     invokeLayoutCallback<BoxConstraints>((_) => onLayout());
   }
@@ -542,24 +723,27 @@ class RenderTranscriptStickyPrompts({
     return _layout.pinned.where((pin) => pin.openerId == openerId).firstOrNull;
   }
 
-  /// Where [pin]'s bubble is, sized for its laid-out [child]: against the
-  /// row's right edge, as the bubble's own row aligns it.
+  /// Where [pin]'s surface is, sized for its laid-out [child]: against the
+  /// row's right edge for a bubble, its left for a card, as the row aligns it.
   Rect _bubbleOf({required TranscriptPinnedPrompt pin, required RenderBox child}) {
-    final width = child.size.width + UserMessageBubble.padding * 2;
-    final right = size.width - _horizontalInset - UserMessageBubble.margin.right;
-    return Rect.fromLTWH(right - width, pin.top, width, pin.height);
+    final surface = _surfaceOf(child: child);
+    final width = child.size.width + surface.inset * 2;
+    final left = switch (surface) {
+      _PinSurface.bubble => size.width - _horizontalInset - UserMessageBubble.margin.right - width,
+      _PinSurface.card => _horizontalInset + UserMessageBubble.margin.left,
+    };
+    return Rect.fromLTWH(left, pin.top, width, pin.height);
   }
 
   /// Where [pin] paints its laid-out [child] within its [bubble]: from the
   /// bubble's top, or ending at its bottom when the pin shows the end.
-  static Offset _contentOf({required TranscriptPinnedPrompt pin, required RenderBox child, required Rect bubble}) =>
-      switch (pin.view) {
-        TranscriptPinStart() => bubble.topLeft.translate(UserMessageBubble.padding, UserMessageBubble.padding),
-        TranscriptPinEnd() => Offset(
-          bubble.left + UserMessageBubble.padding,
-          bubble.bottom - UserMessageBubble.padding - child.size.height,
-        ),
-      };
+  static Offset _contentOf({required TranscriptPinnedPrompt pin, required RenderBox child, required Rect bubble}) {
+    final inset = _surfaceOf(child: child).inset;
+    return switch (pin.view) {
+      TranscriptPinStart() => bubble.topLeft.translate(inset, inset),
+      TranscriptPinEnd() => Offset(bubble.left + inset, bubble.bottom - inset - child.size.height),
+    };
+  }
 
   /// The front-most pin whose bubble, or whole band across the row with [band],
   /// holds [position].
@@ -662,18 +846,22 @@ class RenderTranscriptStickyPrompts({
     required ({RenderBox child, double progress})? leaving,
   }) {
     final entering = _bubbleOf(pin: pin, child: child);
+    final surface = _surfaceOf(child: child);
+    final fill = _fillOf(surface: surface);
     final from = switch (leaving) {
       (:final child, :final progress) => (
         child: child,
         progress: progress,
-        pin: (
-          openerId: pin.openerId,
-          top: pin.top,
-          height: min(child.size.height + UserMessageBubble.padding * 2, compactHeight),
-          fullHeight: child.size.height + UserMessageBubble.padding * 2,
-          elevation: pin.elevation,
-          view: const TranscriptPinStart(),
-        ),
+        pin: switch (_heightsOf(child: child, openerId: pin.openerId)) {
+          (:final full, :final compact) => (
+            openerId: pin.openerId,
+            top: pin.top,
+            height: compact,
+            fullHeight: full,
+            elevation: pin.elevation,
+            view: const TranscriptPinStart(),
+          ),
+        },
       ),
       null => null,
     };
@@ -685,13 +873,13 @@ class RenderTranscriptStickyPrompts({
       (child: _, :final progress, pin: _) => Rect.lerp(fromBubble, entering, progress) ?? entering,
       null => entering,
     };
-    final shape = RRect.fromRectAndRadius(shown, const Radius.circular(UserMessageBubble.radius));
+    final shape = RRect.fromRectAndRadius(shown, Radius.circular(surface.radius));
     if (pin.elevation > 0) {
       // Unclipped, so above the pin line it melts into the bar's fade.
       final halo = pregoPageHaloShadow(color: _haloColor.withValues(alpha: _haloColor.a * pin.elevation));
       context.canvas.drawRRect(shape.shift(offset).inflate(halo.spreadRadius), halo.toPaint());
     }
-    context.canvas.drawRRect(shape.shift(offset), Paint()..color = _bubbleColor);
+    context.canvas.drawRRect(shape.shift(offset), Paint()..color = fill);
     handle.layer = context.pushClipRRect(
       needsCompositing,
       offset,
@@ -720,6 +908,10 @@ class RenderTranscriptStickyPrompts({
       },
       oldLayer: handle.layer,
     );
+    // Over the content and its cut edge, as the card's own border is.
+    if (surface == _PinSurface.card) {
+      _cardBorder.paint(context.canvas, shown.shift(offset), borderRadius: BorderRadius.circular(surface.radius));
+    }
   }
 
   /// Paints [child] where [pin] shows it in [bubble], with its cut edge.
@@ -732,20 +924,27 @@ class RenderTranscriptStickyPrompts({
   }) {
     context.paintChild(child, offset + _contentOf(pin: pin, child: child, bubble: bubble));
     final canvas = context.canvas;
+    final surface = _surfaceOf(child: child);
     switch (pin.view) {
       case TranscriptPinStart():
-        _paintCut(canvas: canvas, bubble: bubble.shift(offset), pin: pin);
+        _paintCut(canvas: canvas, bubble: bubble.shift(offset), pin: pin, surface: surface);
       case TranscriptPinEnd(:final fade):
-        _paintTopCut(canvas: canvas, bubble: bubble.shift(offset), fade: fade);
+        _paintTopCut(canvas: canvas, bubble: bubble.shift(offset), fade: fade, surface: surface);
     }
   }
 
   /// Fades a compacted pin's content out above its bottom padding, which it
   /// keeps clear, as the bubble's own does.
-  void _paintCut({required Canvas canvas, required Rect bubble, required TranscriptPinnedPrompt pin}) {
+  void _paintCut({
+    required Canvas canvas,
+    required Rect bubble,
+    required TranscriptPinnedPrompt pin,
+    required _PinSurface surface,
+  }) {
     final cut = pin.fullHeight - pin.height;
     if (cut <= 0) return;
-    final contentBottom = bubble.bottom - UserMessageBubble.padding;
+    final fill = _fillOf(surface: surface);
+    final contentBottom = bubble.bottom - surface.inset;
     // The fade grows from nothing, so the pin still takes over from its bubble
     // pixel for pixel, but four times as fast as the cut: a line the cut has
     // reached fades out to it rather than showing sliced through, even where a
@@ -758,19 +957,25 @@ class RenderTranscriptStickyPrompts({
           ..shader = LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_bubbleColor.withValues(alpha: 0), _bubbleColor],
+            colors: [fill.withValues(alpha: 0), fill],
           ).createShader(fade),
       )
-      ..drawRect(Rect.fromLTRB(bubble.left, contentBottom, bubble.right, bubble.bottom), Paint()..color = _bubbleColor);
+      ..drawRect(Rect.fromLTRB(bubble.left, contentBottom, bubble.right, bubble.bottom), Paint()..color = fill);
   }
 
   /// Fades the cut top of a pin that shows its bubble's end, as [_paintCut]
   /// does its bottom. It fades in by [fade] from where the pin covers its
   /// bubble exactly, so the handover stays pixel-identical.
-  void _paintTopCut({required Canvas canvas, required Rect bubble, required double fade}) {
+  void _paintTopCut({
+    required Canvas canvas,
+    required Rect bubble,
+    required double fade,
+    required _PinSurface surface,
+  }) {
     if (fade <= 0) return;
-    final color = _bubbleColor.withValues(alpha: _bubbleColor.a * fade);
-    final contentTop = bubble.top + UserMessageBubble.padding;
+    final fill = _fillOf(surface: surface);
+    final color = fill.withValues(alpha: fill.a * fade);
+    final contentTop = bubble.top + surface.inset;
     final edge = Rect.fromLTRB(bubble.left, contentTop, bubble.right, contentTop + 16);
     canvas
       ..drawRect(Rect.fromLTRB(bubble.left, bubble.top, bubble.right, contentTop), Paint()..color = color)
@@ -780,7 +985,7 @@ class RenderTranscriptStickyPrompts({
           ..shader = LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [color, _bubbleColor.withValues(alpha: 0)],
+            colors: [color, fill.withValues(alpha: 0)],
           ).createShader(edge),
       );
   }
@@ -821,7 +1026,9 @@ class RenderTranscriptStickyPrompts({
   }
 }
 
-final class _CopyParentData() extends ContainerBoxParentData<RenderBox>;
+final class _CopyParentData() extends ContainerBoxParentData<RenderBox> {
+  _PinSurface surface = _PinSurface.bubble;
+}
 
 /// The bubble's own fill; the light desktop page is too near its usual one.
 Color _bubbleFill({required PregoDesignSystem prego, required bool pointer}) =>

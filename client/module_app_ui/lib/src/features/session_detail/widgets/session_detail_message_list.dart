@@ -702,9 +702,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final layout = layOutTranscriptStickyPrompts(
       openers: openers,
       previous: pins.stickyLayout,
-      fullHeights: pins.fullHeights,
+      heights: pins.pinHeights,
       cutOpenerIds: pins.cutOpenerIds,
-      compactHeight: pins.compactHeight,
       pinTop: pinTop,
       viewportBottom: pins.size.height - TranscriptBottomInset.peek(context),
     );
@@ -1239,6 +1238,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                       builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
                         key: _stickyKey,
                         messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
+                        promptTurnShapes: widget.promptTurnShapes,
                         unloaded: unloadedPin,
                         horizontalInset: widget.horizontalInset,
                         onLayout: _layOutSticky,
@@ -1247,10 +1247,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                     ),
                   ),
                 ),
-                // Beside the pin, clear of the bubble, which keeps to the right.
+                // Beside the pin, clear of its bubble, which keeps to the right, or
+                // of its card, which keeps to the left.
                 if (_pinLoadId != null)
                   Positioned(
-                    left: widget.horizontalInset + UserMessageBubble.margin.left,
+                    left: unloadedPin?.invocation == null
+                        ? widget.horizontalInset + UserMessageBubble.margin.left
+                        : null,
+                    right: unloadedPin?.invocation == null
+                        ? null
+                        : widget.horizontalInset + UserMessageBubble.margin.right,
                     top: widget.topInset + _kPinGap + UserMessageBubble.padding,
                     child: IgnorePointer(
                       child: AnimatedOpacity(

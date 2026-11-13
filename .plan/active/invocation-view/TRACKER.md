@@ -9,6 +9,10 @@ mirror PR state; live status is on GitHub:
 - D1–D8 are the user's decisions of 2026-11-12. Do not reopen them.
 - P1–P9 are planning decisions from code evidence; see
   [PLAN](PLAN.md#decisions).
+- Step 4: the pinned prompt takes each opener's shape from the same
+  `PromptTurnShapes` the row uses, not from `TranscriptPromptSlot`, so the
+  pin and the row can't disagree. A card pin compacts to its whole header and
+  two lines of arguments.
 
 ## Guardrails
 
