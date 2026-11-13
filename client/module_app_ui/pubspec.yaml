@@ -25,7 +25,7 @@ dependencies:
   pasteboard: ^0.6.0
   path: any
   path_provider: ^2.1.6
-  pdfrx: ^2.12.0
+  pdfrx: ^2.12.1
   re_highlight: ^0.0.3
   record: ^7.2.0
   rxdart: ^0.28.0
