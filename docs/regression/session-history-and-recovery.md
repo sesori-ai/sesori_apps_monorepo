@@ -636,8 +636,13 @@ rules where supported.
   after Sesori's last captured event (a title or summary update, a trailing
   record) can cost one extra re-read on the next open of a Sesori-run session.
   The re-read moves the watermark to that time, so it converges. Measured live
-  on 2026-11-13 with Pi `1.5.2` and Codex `0.167.2`: no extra re-read after a
-  Sesori-run turn; Claude Code and OpenCode are not measured. A session
+  on 2026-11-12 with Pi `1.5.2` and Codex `0.167.2`: no extra re-read after a
+  Sesori-run turn; Claude Code and OpenCode are not measured for that case.
+- A stale open waits for the re-read, including a stopped harness's start, before
+  the first page returns; the app shows its loading state meanwhile, as it does
+  for a session a pull marked stale. Measured 2026-11-12: about 1.3 s for
+  Claude Code and 22 s for a cold OpenCode server, against about 0.2 s from the
+  store. A session
   already open on screen picks up an outside turn on the next app resume or
   reopen, not while it sits open.
 - Client session-detail refresh triggers are still under diagnosis; only the
