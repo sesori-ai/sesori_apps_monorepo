@@ -9,6 +9,7 @@
 /// 2.1.221 and `@anthropic-ai/claude-agent-sdk@0.3.221`.
 library;
 
+export "src/api/claude_command_files_api.dart";
 export "src/api/claude_launch_spec.dart";
 export "src/api/claude_process_factory.dart";
 export "src/api/claude_process_launch.dart";
@@ -31,6 +32,7 @@ export "src/models/claude_effort_level.dart";
 export "src/models/claude_message_origin_kind.dart";
 export "src/models/claude_pasted_code.dart";
 export "src/models/claude_permission_mode.dart";
+export "src/models/claude_process_purpose.dart";
 export "src/models/claude_subagent_session_id.dart";
 export "src/models/claude_task_notification.dart";
 export "src/models/claude_task_status.dart";

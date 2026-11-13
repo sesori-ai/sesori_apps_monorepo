@@ -1,5 +1,8 @@
+import "dart:io" show Directory, FileSystemException;
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../api/claude_command_files_api.dart";
 import "../api/models/claude_backend_catalog_dto.dart";
 import "../foundation/trimmed_or_null.dart";
 import "../models/claude_agent_selection.dart";
@@ -31,7 +34,7 @@ final class const ClaudeBackendCatalog({
 }
 
 /// Maps Claude's backend catalog into the backend-neutral plugin contract.
-final class const ClaudeBackendCatalogRepository() {
+final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi _commandFiles}) {
   static const String providerId = "anthropic";
 
   /// Claude's own catalog entry that resolves to whichever model and effort the
@@ -54,7 +57,37 @@ final class const ClaudeBackendCatalogRepository() {
   /// Claude keeps a prompt cache for about 60 minutes (maintainer-provided).
   static const int _promptCacheTtlSeconds = 60 * 60;
 
-  ClaudeBackendCatalog map({required Map<String, Object?> handshake}) {
+  /// A directory a probe for [directory] runs in, which lists the project's
+  /// commands and skills without running anything the project controls.
+  Future<Directory> createProbeMirror({required String directory}) =>
+      _commandFiles.createProbeMirror(projectDirectory: directory);
+
+  Future<void> deleteProbeMirror({required Directory mirror}) async {
+    try {
+      await _commandFiles.deleteProbeMirror(mirror: mirror);
+    } on FileSystemException catch (error, stack) {
+      // A leftover holds only copied command and skill files in the system
+      // temp directory.
+      Log.w("[claude] failed to remove catalog probe mirror ${mirror.path}", error, stack);
+    }
+  }
+
+  /// The names Claude lists for [directory]'s project and user skills, which
+  /// [map] labels as skills.
+  Future<Set<String>> readSkillNames({required String directory}) async {
+    try {
+      return await _commandFiles.readSkillNames(projectDirectory: directory);
+    } on FileSystemException catch (error, stack) {
+      // Labels only: an unreadable skill folder must not fail the whole list,
+      // so its skills keep the command label until the next probe.
+      Log.w("[claude] skill labels unavailable for $directory", error, stack);
+      return const {};
+    }
+  }
+
+  /// Maps a handshake. Its commands carry no kind, so a command named in
+  /// [skillNames] is labelled a skill and every other one a command.
+  ClaudeBackendCatalog map({required Map<String, Object?> handshake, required Set<String> skillNames}) {
     final dto = ClaudeBackendCatalogDto.fromJson(handshake);
     final fastMode = _fastMode(disabledReason: dto.fastModeDisabledReason);
     final entries = _newestPerFamily([
@@ -97,7 +130,7 @@ final class const ClaudeBackendCatalogRepository() {
               ],
       ),
       commands: List.unmodifiable([
-        for (final command in dto.commands) ?_command(command),
+        for (final command in dto.commands) ?_command(command, skillNames: skillNames),
       ]),
       modelIdsByApiModel: Map.unmodifiable(_modelIdsByApiModel(entries)),
     );
@@ -222,7 +255,7 @@ final class const ClaudeBackendCatalogRepository() {
     );
   }
 
-  PluginCommand? _command(ClaudeCommandDto dto) {
+  PluginCommand? _command(ClaudeCommandDto dto, {required Set<String> skillNames}) {
     final name = dto.name?.trim();
     if (name == null || name.isEmpty || name == fastModeCommand) return null;
     return PluginCommand(
@@ -230,7 +263,7 @@ final class const ClaudeBackendCatalogRepository() {
       description: trimmedOrNull(value: dto.description),
       hints: [?trimmedOrNull(value: dto.argumentHint)],
       provider: null,
-      source: PluginCommandSource.command,
+      source: skillNames.contains(name) ? PluginCommandSource.skill : PluginCommandSource.command,
     );
   }
 }

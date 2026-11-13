@@ -2,6 +2,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ses
 
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
+import "../models/claude_process_purpose.dart";
 import "claude_process_launch.dart";
 
 /// Whether a launch starts a brand-new session or continues an existing one.
@@ -57,6 +58,9 @@ class ClaudeLaunchSpec({
   /// Whether this launch creates or resumes a session.
   required final ClaudeSessionLaunch launch,
 
+  /// Whether the process serves a session or only a catalog probe.
+  required final ClaudeProcessPurpose purpose,
+
   /// Model selection token from the catalog (`ClaudeModel.value`), or null to
   /// let the CLI pick the account default.
   required final String? model,
@@ -87,6 +91,21 @@ class ClaudeLaunchSpec({
   /// plugin missing this flag looks healthy while every write, edit, and
   /// command fails, so the launch-spec test guards it rather than a turn error.
   static const List<String> permissionPromptToolArguments = ["--permission-prompt-tool", "stdio"];
+
+  /// Keeps a catalog probe's hooks and MCP servers off. A project's probe
+  /// also runs in a mirror of only its command and skill folders, so it loads
+  /// no project settings (see `ClaudeCommandFilesApi.createProbeMirror`).
+  /// Verified live on
+  /// 2026-11-13 with Claude Code 2.1.323: without these flags a probe ran the
+  /// project's SessionStart hook and started its `.mcp.json` server; with them
+  /// neither ran. MCP prompts are not in the handshake's command list, so the
+  /// probe loses no command by skipping MCP servers. Managed-policy hooks can
+  /// still run: an organisation sets those to run on every launch.
+  static const List<String> catalogProbeIsolationArguments = [
+    "--settings", '{"disableAllHooks":true}',
+    // With no `--mcp-config`, this loads no MCP server at all.
+    "--strict-mcp-config",
+  ];
 
   /// The child process this spec starts.
   ClaudeProcessLaunch get processLaunch => ClaudeProcessLaunch(
@@ -123,6 +142,7 @@ class ClaudeLaunchSpec({
     if (model case final model?) ...["--model", model],
     if (effort case final effort?) ...["--effort", effort.wireValue],
     if (allowedTools.isNotEmpty) ...["--allowedTools", ...allowedTools],
+    if (purpose == ClaudeProcessPurpose.catalogProbe) ...catalogProbeIsolationArguments,
     // Single-token `--flag=value`, matching the Agent SDK's own argument builder
     // (`sdk.mjs` emits `--session-id=${id}` and `--resume=${id}`). The CLI
     // accepts both spellings, so this is parity rather than correctness — but

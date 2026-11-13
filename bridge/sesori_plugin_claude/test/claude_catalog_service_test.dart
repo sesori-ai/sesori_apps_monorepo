@@ -1,6 +1,8 @@
 import "dart:async";
+import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -9,30 +11,87 @@ import "support/fake_claude_process.dart";
 
 void main() {
   group("ClaudeCatalogService", () {
+    late Directory temporary;
+    late String projectA;
+    late String projectB;
+    late String missingProject;
     late List<FakeClaudeProcess> spawned;
     late List<ClaudeLaunchSpec> specs;
+    late List<String> mirroredProjects;
+    var failSpawns = false;
     late ClaudeSessionProcessRepository processes;
     late ClaudeCatalogService service;
 
     setUp(() {
+      temporary = Directory.systemTemp.createTempSync("claude-catalog-service-");
+      projectA = p.join(temporary.path, "project-a");
+      projectB = p.join(temporary.path, "project-b");
+      missingProject = p.join(temporary.path, "deleted-project");
+      final configDirectory = p.join(temporary.path, "config");
+      _writeSkill(root: p.join(projectA, ".claude", "skills"), folder: "deploy", frontmatterName: "ship-it");
+      for (final path in [
+        p.join("commands", "project-command.md"),
+        p.join("commands", "group", "nested.md"),
+        // Neither a command nor a skill definition, so the mirror leaves them out.
+        p.join("commands", "notes.txt"),
+        p.join("skills", "deploy", "run.sh"),
+        "settings.json",
+      ]) {
+        File(p.join(projectA, ".claude", path))
+          ..createSync(recursive: true)
+          ..writeAsStringSync("fixture");
+      }
+      _writeSkill(root: p.join(configDirectory, "skills"), folder: "user-skill", frontmatterName: null);
+      Directory(projectB).createSync();
+      mirroredProjects = [];
+      failSpawns = false;
       spawned = [];
       specs = [];
       processes = ClaudeSessionProcessRepository(
         supportsMcpAuthentication: true,
         processFactory: (spec) async {
+          if (failSpawns) throw const ProcessException("claude", [], "fixture spawn failure");
           final process = FakeClaudeProcess();
           specs.add(spec);
+          // A project's probe runs in a mirror holding only copies of its
+          // command and skill files. The fake lists what Claude would find.
+          String? mirrored;
+          if (spec.workingDirectory != "/tmp/claude-state") {
+            final files = [
+              for (final entry in Directory(spec.workingDirectory).listSync(recursive: true))
+                if (entry is File) p.relative(entry.path, from: spec.workingDirectory),
+            ];
+            mirrored = files.isEmpty ? projectB : projectA;
+            mirroredProjects.add(mirrored);
+            expect(
+              files,
+              mirrored == projectA ? unorderedEquals(_projectADefinitions) : isEmpty,
+              reason: "only command and skill definitions are copied",
+            );
+          }
           spawned.add(process);
-          unawaited(_answerCatalogControls(process, commandName: "review"));
+          unawaited(
+            _answerCatalogControls(
+              process,
+              commandNames: [
+                "review",
+                "user-skill",
+                if (mirrored == projectA) ...["project-command", "ship-it"],
+              ],
+            ),
+          );
           return process;
         },
         binaryPath: "claude",
         environment: const {},
       );
+      var probeCount = 0;
       service = ClaudeCatalogService(
-        catalog: const ClaudeBackendCatalogRepository(),
+        catalog: ClaudeBackendCatalogRepository(
+          commandFiles: ClaudeCommandFilesApi(environment: {"CLAUDE_CONFIG_DIR": configDirectory}),
+        ),
         processes: processes,
-        probeSessionId: otherTestSessionId,
+        generateProbeSessionId: () => _probeSessionId(++probeCount),
         discoveryDirectory: "/tmp/claude-state",
       );
     });
@@ -42,10 +101,11 @@ void main() {
       for (final process in spawned) {
         await process.close();
       }
+      temporary.deleteSync(recursive: true);
     });
 
-    test("discovers globally from the configured directory and reaps the probe", () async {
-      final catalog = await service.getCatalog(refresh: false);
+    test("discovers in the discovery directory without a project and reaps the probe", () async {
+      final catalog = await service.getCatalog(directory: null, refresh: false);
 
       expect(catalog.providers.providers.single.models, hasLength(2));
       expect(specs.single.workingDirectory, "/tmp/claude-state");
@@ -53,36 +113,91 @@ void main() {
       expect(spawned.single.killed, isTrue);
     });
 
-    test("serves the cached global catalog without another probe", () async {
-      await service.getCatalog(refresh: false);
-      await service.getCatalog(refresh: false);
+    test("starts the probe with hooks and MCP servers off", () async {
+      await service.getCatalog(directory: projectA, refresh: false);
 
-      expect(spawned, hasLength(1));
+      expect(specs.single.purpose, ClaudeProcessPurpose.catalogProbe);
+      expect(specs.single.arguments, containsAllInOrder(ClaudeLaunchSpec.catalogProbeIsolationArguments));
     });
 
-    test("refreshes models through a new global probe while retaining commands", () async {
-      await service.getCatalog(refresh: false);
-      final refreshed = await service.getCatalog(refresh: true);
+    test("probes each project in its own directory and lists only its own entries", () async {
+      final first = await service.getCatalog(directory: projectA, refresh: false);
+      final second = await service.getCatalog(directory: projectB, refresh: false);
+
+      expect(mirroredProjects, [projectA, projectB]);
+      for (final spec in specs) {
+        expect(Directory(spec.workingDirectory).existsSync(), isFalse, reason: "the mirror is deleted after the probe");
+      }
+      expect(File(p.join(projectA, ".claude", "skills", "deploy", "SKILL.md")).existsSync(), isTrue);
+      expect(first.commands.map((command) => command.name), containsAll(["project-command", "ship-it"]));
+      expect(second.commands.map((command) => command.name), ["review", "user-skill"]);
+    });
+
+    test("deletes the mirror when the probe fails", () async {
+      failSpawns = true;
+      final before = Directory.systemTemp.listSync().map((entry) => entry.path).toSet();
+
+      await expectLater(service.getCatalog(directory: projectA, refresh: false), throwsA(anything));
+
+      final leftover = Directory.systemTemp.listSync().where(
+        (entry) => !before.contains(entry.path) && p.basename(entry.path).startsWith("sesori-claude-catalog-"),
+      );
+      expect(leftover, isEmpty);
+    });
+
+    test("lists a deleted project's options from the discovery directory", () async {
+      final catalog = await service.getCatalog(directory: missingProject, refresh: false);
+
+      expect(specs.single.workingDirectory, "/tmp/claude-state");
+      expect(catalog.commands.map((command) => command.name), ["review", "user-skill"]);
+    });
+
+    test("labels the project's and the user's skills as skills", () async {
+      final catalog = await service.getCatalog(directory: projectA, refresh: false);
+
+      expect(
+        {for (final command in catalog.commands) command.name: command.source},
+        {
+          "review": PluginCommandSource.command,
+          "user-skill": PluginCommandSource.skill,
+          "project-command": PluginCommandSource.command,
+          "ship-it": PluginCommandSource.skill,
+        },
+      );
+    });
+
+    test("serves each directory's cached catalog without another probe", () async {
+      await service.getCatalog(directory: projectA, refresh: false);
+      await service.getCatalog(directory: projectB, refresh: false);
+      await service.getCatalog(directory: projectA, refresh: false);
+
+      expect(spawned, hasLength(2));
+      expect(service.latest?.commands.map((command) => command.name), ["review", "user-skill"]);
+    });
+
+    test("refreshes models through a new probe while retaining commands", () async {
+      await service.getCatalog(directory: null, refresh: false);
+      final refreshed = await service.getCatalog(directory: null, refresh: true);
 
       expect(spawned, hasLength(2));
       expect(specs.map((spec) => spec.workingDirectory), everyElement("/tmp/claude-state"));
       expect(_controlSubtypes(spawned.last), contains("list_models"));
       expect(refreshed.providers.providers.single.models.single.id, "new");
-      expect(refreshed.commands.single.name, "review");
+      expect(refreshed.commands.first.name, "review");
       expect(spawned.last.killed, isTrue);
     });
 
-    test("coalesces concurrent global reads", () async {
-      final first = service.getCatalog(refresh: false);
-      final second = service.getCatalog(refresh: false);
+    test("coalesces concurrent reads of one directory", () async {
+      final first = service.getCatalog(directory: projectA, refresh: false);
+      final second = service.getCatalog(directory: projectA, refresh: false);
 
       expect(await first, same(await second));
       expect(spawned, hasLength(1));
     });
 
     test("queues an explicit refresh behind an in-flight reuse discovery", () async {
-      final reuse = service.getCatalog(refresh: false);
-      final refresh = service.getCatalog(refresh: true);
+      final reuse = service.getCatalog(directory: null, refresh: false);
+      final refresh = service.getCatalog(directory: null, refresh: true);
 
       await reuse;
       final refreshed = await refresh;
@@ -109,9 +224,9 @@ void main() {
         environment: const {},
       );
       return ClaudeCatalogService(
-        catalog: const ClaudeBackendCatalogRepository(),
+        catalog: ClaudeBackendCatalogRepository(commandFiles: ClaudeCommandFilesApi(environment: const {})),
         processes: processes,
-        probeSessionId: otherTestSessionId,
+        generateProbeSessionId: () => otherTestSessionId,
         discoveryDirectory: "/tmp/claude-state",
       );
     }
@@ -124,7 +239,7 @@ void main() {
     test("opts the probe in and reports the account reason the SDK opt-in masked", () async {
       service = serviceAnswering(failOptIn: false);
 
-      final catalog = await service.getCatalog(refresh: false);
+      final catalog = await service.getCatalog(directory: null, refresh: false);
 
       expect(_controlSubtypes(process), ["initialize", "apply_flag_settings", "initialize"]);
       final optIn = process.written.firstWhere(
@@ -141,7 +256,7 @@ void main() {
     test("keeps fast mode available when the opt-in fails", () async {
       service = serviceAnswering(failOptIn: true);
 
-      final catalog = await service.getCatalog(refresh: false);
+      final catalog = await service.getCatalog(directory: null, refresh: false);
 
       expect(_controlSubtypes(process), ["initialize", "apply_flag_settings"]);
       expect(
@@ -152,7 +267,29 @@ void main() {
   });
 }
 
-Future<void> _answerCatalogControls(FakeClaudeProcess process, {required String commandName}) async {
+/// The files project A's probe mirror holds, relative to the mirror.
+final List<String> _projectADefinitions = [
+  p.join(".claude", "commands", "project-command.md"),
+  p.join(".claude", "commands", "group", "nested.md"),
+  p.join(".claude", "skills", "deploy", "SKILL.md"),
+];
+
+String _probeSessionId(int index) => "00000000-0000-4000-8000-${index.toString().padLeft(12, "0")}";
+
+void _writeSkill({required String root, required String folder, required String? frontmatterName}) {
+  final file = File(p.join(root, folder, "SKILL.md"))..createSync(recursive: true);
+  file.writeAsStringSync(
+    [
+      "---",
+      if (frontmatterName case final name?) "name: $name",
+      "description: Fixture skill",
+      "---",
+      "Say hi.",
+    ].join("\n"),
+  );
+}
+
+Future<void> _answerCatalogControls(FakeClaudeProcess process, {required List<String> commandNames}) async {
   final answered = <String>{};
   while (!process.killed) {
     for (final frame in process.written) {
@@ -166,7 +303,7 @@ Future<void> _answerCatalogControls(FakeClaudeProcess process, {required String 
           "initialize" => {
             ...sampleHandshake,
             "commands": [
-              {"name": commandName, "description": "Review changes", "argumentHint": "[path]"},
+              for (final name in commandNames) {"name": name, "description": "Fixture entry", "argumentHint": "[path]"},
             ],
           },
           "list_models" => {

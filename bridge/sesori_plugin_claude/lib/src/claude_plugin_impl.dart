@@ -107,17 +107,17 @@ final class ClaudePlugin({
   );
 
   @override
-  // Claude declares plugin-scoped options, so projectId does not select a catalog.
+  // A null projectId lists only the user's and Claude's own commands.
   Future<List<PluginCommand>> getCommands({required String? projectId}) async =>
-      (await _catalogService.getCatalog(refresh: false)).commands;
+      (await _catalogService.getCatalog(directory: projectId, refresh: false)).commands;
 
   @override
-  // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) async {
     final catalog = await _catalogService.getCatalog(
+      directory: projectId,
       refresh: discoveryMode == PluginSessionOptionsDiscoveryMode.refresh,
     );
     return PluginSessionOptionsDiscoveryResult.observed(
@@ -248,7 +248,7 @@ final class ClaudePlugin({
       if (_createdSessions.containsKey(sessionId)) return const [];
       throw const PluginOperationException.notFound(operation: "getSessionMessages", message: "session not found");
     }
-    final catalog = await _catalogForHistory();
+    final catalog = await _catalogForHistory(directory: await _directoryForSession(sessionId));
     try {
       return _history.map(
         sessionId: sessionId,
@@ -267,11 +267,12 @@ final class ClaudePlugin({
     }
   }
 
-  /// The catalog that maps a transcript's API model names to picker ids. A
-  /// failed probe must not withhold history, so it degrades to raw names.
-  Future<ClaudeBackendCatalog?> _catalogForHistory() async {
+  /// The catalog of the session's [directory], which maps a transcript's API
+  /// model names to picker ids and names its commands' kinds. A failed probe
+  /// must not withhold history, so it degrades to raw names and unknown kinds.
+  Future<ClaudeBackendCatalog?> _catalogForHistory({required String? directory}) async {
     try {
-      return await _catalogService.getCatalog(refresh: false);
+      return await _catalogService.getCatalog(directory: directory, refresh: false);
     } on Object catch (error, stack) {
       Log.w("[claude] history keeps API model names: catalog unavailable", error, stack);
       return null;
@@ -381,9 +382,8 @@ final class ClaudePlugin({
   }) => _sessions.abort(sessionId: sessionId, subAgents: subAgents);
 
   @override
-  // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<List<PluginAgent>> getAgents({required String projectId}) async =>
-      (await _catalogService.getCatalog(refresh: false)).agents;
+      (await _catalogService.getCatalog(directory: projectId, refresh: false)).agents;
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async =>
@@ -581,9 +581,8 @@ final class ClaudePlugin({
   }
 
   @override
-  // Claude declares plugin-scoped options, so projectId does not select a catalog.
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>
-      (await _catalogService.getCatalog(refresh: false)).providers;
+      (await _catalogService.getCatalog(directory: projectId, refresh: false)).providers;
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {
