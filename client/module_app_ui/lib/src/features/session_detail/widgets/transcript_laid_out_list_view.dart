@@ -1,3 +1,5 @@
+import "dart:math";
+
 import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
 
@@ -12,6 +14,8 @@ import "package:material_ui/material_ui.dart";
 /// A row joining below the built rows also leaves them where they were.
 ///
 /// The newest end is padded clear of the nearest [TranscriptBottomInset] too.
+/// Scrolled away from that end, a change in the inset leaves the rows where
+/// they are.
 class TranscriptLaidOutListView({
   super.key,
   super.reverse,
@@ -72,10 +76,42 @@ class const TranscriptBottomInset({
 /// change, so the rows are not rebuilt.
 class const _BottomInsetPadding({required final Widget sliver}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => SliverPadding(
+  Widget build(BuildContext context) => _RowsStillPadding(
     padding: EdgeInsets.only(bottom: TranscriptBottomInset.of(context)),
     sliver: sliver,
   );
+}
+
+class const _RowsStillPadding({required super.padding, required super.sliver}) extends SliverPadding {
+  @override
+  RenderSliverPadding createRenderObject(BuildContext context) =>
+      _RenderRowsStillPadding(padding: padding, textDirection: Directionality.of(context));
+}
+
+/// At the newest end the rows rise and fall with the inset, staying clear of
+/// the controls. Scrolled away from it, the reader's rows stay where they are
+/// on screen: the scroll offset moves by the inset's change in the same
+/// layout, so the padding grows or shrinks out of sight below them.
+class _RenderRowsStillPadding({required super.padding, required super.textDirection}) extends RenderSliverPadding {
+  double? _laidOutInset;
+
+  @override
+  void performLayout() {
+    final inset = padding.resolve(textDirection).bottom;
+    final change = inset - (_laidOutInset ?? inset);
+    _laidOutInset = inset;
+    final scrolled = switch (RenderAbstractViewport.maybeOf(this)) {
+      final RenderViewportBase viewport => viewport.offset.pixels,
+      _ => 0.0,
+    };
+    // A shrink can take the offset back to the newest end, not past it.
+    final correction = scrolled > 0 ? max(change, -scrolled) : 0.0;
+    if (correction != 0) {
+      geometry = SliverGeometry(scrollOffsetCorrection: correction);
+      return;
+    }
+    super.performLayout();
+  }
 }
 
 class _LaidOutViewport({
