@@ -627,6 +627,7 @@ Future<void> _ensure(ClaudeSessionProcessRepository repository, {required bool c
   sessionId: testSessionId,
   directory: "/tmp/project",
   createNew: createNew,
+  purpose: ClaudeProcessPurpose.session,
   model: null,
   effort: null,
   permissionMode: null,
