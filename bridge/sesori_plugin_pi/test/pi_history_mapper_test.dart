@@ -56,6 +56,27 @@ void main() {
       );
     });
 
+    test("cold-decodes a skill Pi expanded back to the typed command", () {
+      const codec = PiPersistedUserTextCodec();
+      const block =
+          '<skill name="fixture-greeter" location="/project/.pi/skills/fixture-greeter/SKILL.md">\n'
+          "References are relative to /project/.pi/skills/fixture-greeter.\n\n"
+          "Greet the user.\n\nBe brief.\n</skill>";
+
+      expect(codec.decodeVisibleText(persistedText: "$block\n\nhello there"), "/skill:fixture-greeter hello there");
+      expect(codec.decodeVisibleText(persistedText: block), "/skill:fixture-greeter");
+      // A body that quotes `</skill>` still ends at the wrapper's own close.
+      const quoting =
+          '<skill name="fixture-greeter" location="/project/.pi/skills/fixture-greeter/SKILL.md">\n'
+          "Close a block with:\n</skill>\n\nThen greet.\n</skill>";
+      expect(codec.decodeVisibleText(persistedText: "$quoting\n\nhello"), "/skill:fixture-greeter hello");
+      // A prompt template leaves no trace of its name in the stored message.
+      expect(
+        codec.decodeVisibleText(persistedText: "Greet the user warmly. Topic: hello"),
+        "Greet the user warmly. Topic: hello",
+      );
+    });
+
     test("null and empty authored text suppress execution context", () {
       const codec = PiPersistedUserTextCodec();
 

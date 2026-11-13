@@ -374,12 +374,18 @@ final class PiEventDispatcher({
     final promptText = text == null ? null : const PiPersistedUserTextCodec().stripImageHints(text: text);
     final isAttachmentOnlyMessage =
         message.content.isNotEmpty && message.content.every((content) => content is PiImageContentDto);
-    final correlationIndex = state.pendingPrompts.indexWhere(
+    var correlationIndex = state.pendingPrompts.indexWhere(
       (prompt) =>
           text == prompt.executionText ||
           promptText == prompt.executionText ||
           ((prompt.executionText?.isEmpty ?? false) && isAttachmentOnlyMessage),
     );
+    // Pi expands a `/template` or `/skill:name` prompt before writing the user
+    // message, so its text never equals the `/name args` that was sent. The
+    // oldest pending prompt owns the next user message.
+    if (correlationIndex == -1 && (state.pendingPrompts.firstOrNull?.executionText?.startsWith("/") ?? false)) {
+      correlationIndex = 0;
+    }
     final correlation = correlationIndex == -1 ? null : state.pendingPrompts.removeAt(correlationIndex);
     final messageId = state.identities.next(role: PiMessageIdentityRole.user, timestamp: message.timestamp);
     final mapped = _historyMapper.mapUserMessage(
