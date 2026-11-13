@@ -147,7 +147,10 @@ defaults and queued client sends coherent.
   receives its own invocation. An OpenCode 2 skill turn reaches the server as
   the typed arguments with the skill attached; the bubble shows `/skill args`
   from that attachment, and a skill mentioned inside the text keeps the text
-  unchanged. Harness exceptions are listed in `docs/HARNESS_CAPABILITIES.md`
+  unchanged. Pi expands a prompt template or `/skill:name` into the stored user
+  message; the live bubble takes the typed text from the pending command, and
+  history decodes Pi's `<skill>` block back to `/skill:name args`. Harness
+  exceptions are listed in `docs/HARNESS_CAPABILITIES.md`
   under "Command and skill bubbles".
 - Every send carries a client-generated prompt id, stable across retries. The
   bridge persists each id a session accepts for 30 days and answers a repeat

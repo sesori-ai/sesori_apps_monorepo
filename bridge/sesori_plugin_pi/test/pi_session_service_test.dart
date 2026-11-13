@@ -1902,6 +1902,69 @@ void main() {
     await expectLater(noArguments, throwsA(isA<PiRpcCommandFailureException>()));
   });
 
+  for (final (name, command, expanded) in [
+    ("prompt template", "fixture-cmd", "Greet the user warmly. Topic: hello"),
+    (
+      "skill",
+      "skill:fixture-greeter",
+      '<skill name="fixture-greeter" location="/project/.pi/skills/fixture-greeter/SKILL.md">\n'
+          "References are relative to /project/.pi/skills/fixture-greeter.\n\n"
+          "Greet the user.\n</skill>\n\nhello",
+    ),
+  ]) {
+    test("a $name Pi expands keeps one user bubble showing what was typed", () async {
+      final process = FakePiProcess();
+      final fixture = _Fixture(processes: [process]);
+      addTearDown(fixture.dispose);
+      final service = fixture.service();
+      final events = <BridgeSseEvent>[];
+      service.events.listen(events.add);
+
+      final accepted = service.sendCommand(
+        sessionId: "session",
+        promptId: "prompt-expanded",
+        directory: "/project",
+        command: command,
+        arguments: "hello",
+        userVisibleArguments: "hello",
+        variant: null,
+        model: null,
+      );
+      await _answerEntries(process);
+      final prompt = await waitForCommand(process: process, type: "prompt");
+      expect(prompt["message"], "/$command hello");
+      process.emit(
+        frame: {
+          "type": "message_end",
+          "message": {
+            "role": "user",
+            "content": [
+              {"type": "text", "text": expanded},
+            ],
+            "timestamp": 1,
+          },
+        },
+      );
+      process.emitResponse(id: prompt.requestId, command: "prompt");
+      final state = await waitForCommand(process: process, type: "get_state");
+      process.emitResponse(
+        id: state.requestId,
+        command: "get_state",
+        data: _stateData(process: process, streaming: false),
+      );
+      await accepted;
+      await _waitForIdle(service: service, sessionId: "session");
+
+      final userMessages = events
+          .whereType<BridgeSseMessageUpdated>()
+          .where((event) => event.info is PluginMessageUser)
+          .toList();
+      expect(userMessages, hasLength(1));
+      expect((userMessages.single.info as PluginMessageUser).promptId, "prompt-expanded");
+      expect(events.whereType<BridgeSseMessagePartUpdated>().single.part.text, "/$command hello");
+    });
+  }
+
   test("manually typed slash prompt with an image keeps exact live presentation", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);

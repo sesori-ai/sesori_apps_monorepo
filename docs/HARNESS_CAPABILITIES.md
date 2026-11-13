@@ -78,7 +78,7 @@ residue is cosmetic and is not migrated.
 | Harness | Native evidence | Sesori availability |
 |---|---|---|
 | Claude Code | `user` frames/records flagged `isSynthetic` (stream) or `isMeta` (transcript), including the injected skill body | ✅ Dropped live and on replay; peer injections, tool results, task-notification outcomes and the post-compaction summary still render. |
-| OpenCode, Codex, Pi | Skills exposed as `PluginCommandSource.skill` commands, no injected body record (OpenCode 2 attaches the skill to the prompt and keeps its body out of the user message) | Not applicable: no harness-authored user turn to hide. |
+| OpenCode, Codex, Pi | Skills exposed as `PluginCommandSource.skill` commands, no injected body record (OpenCode 2 attaches the skill to the prompt and keeps its body out of the user message). Pi does write the skill body: `/skill:name args` is stored as one user message holding a `<skill>` block followed by the arguments, and a prompt template as its expanded text (verified live on 2026-11-12 with Pi 1.5.2) | Not applicable for OpenCode. Pi's expanded message is the user's own turn, shown as `/name args` (see "Command and skill bubbles"). |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | None | Not applicable: the ACP seam has no skill concept and no harness-authored user turn. |
 
 ## Command and skill bubbles
@@ -93,6 +93,7 @@ harness receives its own invocation.
 | OpenCode 2 native command | `POST /api/session/{id}/command` takes no id or metadata, and the stored user message holds only the expanded template | ⬜ Not supported: the bubble shows the expanded template, live and after history load, because nothing in the message names the command. Verified live on 2026-11-12 with OpenCode 2.2.6 and 2.2.7. |
 | Claude Code | Commands and skills both run as `/name args` | ✅ `/name args`, live and after a bridge restart. Verified live on 2026-11-12 with Claude Code 2.1.323. |
 | DeepSeek, Hermes | Built-in commands only; no user commands or skills over ACP | ✅ `/name args`, live and after a bridge restart. A built-in that runs its arguments as a turn (DeepSeek `/plan <text>`, Hermes `/queue <text>`) adds that turn as its own bubble. Verified live on 2026-11-12 with the DeepSeek adapter 0.2.2 and Hermes 0.21.5. |
+| Pi | `/name args` reaches Pi's `prompt` RPC, which stores only the expanded text as the user message: a prompt template's body with the arguments substituted, or a `<skill name=… location=…>` block followed by the arguments | ✅ `/name args` live for both: Sesori pairs Pi's expanded user message with the pending command. ✅ `/skill:name args` after history load, decoded from the `<skill>` block. ⬜ Not supported for a prompt template after history load: the bubble shows the expanded template, because nothing in the stored message names it. Native shapes verified live on 2026-11-12 with Pi 1.5.2. |
 | Grok, Cursor, Copilot, Antigravity | Not checked | Unverified: on 2026-11-12 Grok needed `grok login`, the Cursor CLI was older than the supported minimum, and the Copilot and Antigravity runtimes were not installed on the test machine. |
 
 ## Bridge worktree note
