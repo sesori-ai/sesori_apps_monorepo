@@ -78,7 +78,8 @@ residue is cosmetic and is not migrated.
 | Harness | Native evidence | Sesori availability |
 |---|---|---|
 | Claude Code | `user` frames/records flagged `isSynthetic` (stream) or `isMeta` (transcript), including the injected skill body | ✅ Dropped live and on replay; peer injections, tool results, task-notification outcomes and the post-compaction summary still render. |
-| OpenCode, Codex, Pi | Skills exposed as `PluginCommandSource.skill` commands, no injected body record (OpenCode 2 attaches the skill to the prompt and keeps its body out of the user message). Pi does write the skill body: `/skill:name args` is stored as one user message holding a `<skill>` block followed by the arguments, and a prompt template as its expanded text (verified live on 2026-11-12 with Pi 1.5.2) | Not applicable for OpenCode. Pi's expanded message is the user's own turn, shown as `/name args` (see "Command and skill bubbles"). |
+| OpenCode, Codex | Skills exposed as `PluginCommandSource.skill` commands, no injected body record (OpenCode 2 attaches the skill to the prompt and keeps its body out of the user message) | Not applicable. |
+| Pi | Skills exposed as `PluginCommandSource.skill` commands. `/skill:name args` is stored as one user message holding a `<skill>` block followed by the arguments, and a prompt template as its expanded text (verified live on 2026-11-12 with Pi 1.5.2) | The expanded message is the user's own turn, shown as `/name args` (see "Command and skill bubbles"). |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | None | Not applicable: the ACP seam has no skill concept and no harness-authored user turn. |
 
 ## Command and skill bubbles
