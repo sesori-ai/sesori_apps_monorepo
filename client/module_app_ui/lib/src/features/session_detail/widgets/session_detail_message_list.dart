@@ -348,7 +348,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   SessionPromptIndexEntry? _unloadedPin;
 
   /// The unloaded prompt a tap on its pin is loading, until that load ends.
-  String? _pinLoadId;
+  /// Its spinner keeps to this entry's side even once the pin itself clears.
+  SessionPromptIndexEntry? _pinLoad;
   bool _showsPinLoadSpinner = false;
   Timer? _pinLoadSpinner;
 
@@ -638,7 +639,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   void _onPinTap({required String openerMessageId}) {
     if (_unloadedPin case final pin? when pin.messageId == openerMessageId) {
       // Another tap while it loads waits for that load.
-      if (_pinLoadId == null) unawaited(_openUnloadedPin(pin: pin));
+      if (_pinLoad == null) unawaited(_openUnloadedPin(pin: pin));
       return;
     }
     _glideToPrompt(openerMessageId: openerMessageId);
@@ -648,13 +649,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// back to it, as a tap on a loaded prompt's pin does. A slow load shows a
   /// spinner by the pin; one that fails says why.
   Future<void> _openUnloadedPin({required SessionPromptIndexEntry pin}) async {
-    setState(() => _pinLoadId = pin.messageId);
+    setState(() => _pinLoad = pin);
     _pinLoadSpinner = Timer(_kPinLoadSpinnerDelay, () => setState(() => _showsPinLoadSpinner = true));
     final outcome = await widget.onLoadThrough(messageId: pin.messageId, seq: pin.seq);
     if (!mounted) return;
     _pinLoadSpinner?.cancel();
     setState(() {
-      _pinLoadId = null;
+      _pinLoad = null;
       _showsPinLoadSpinner = false;
     });
     final loc = context.loc;
@@ -717,9 +718,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final layout = layOutTranscriptStickyPrompts(
       openers: openers,
       previous: pins.stickyLayout,
-      fullHeights: pins.fullHeights,
+      heights: pins.pinHeights,
       cutOpenerIds: pins.cutOpenerIds,
-      compactHeight: pins.compactHeight,
       pinTop: pinTop,
       viewportBottom: pins.size.height - TranscriptBottomInset.peek(context),
     );
@@ -1254,6 +1254,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                       builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
                         key: _stickyKey,
                         messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
+                        // The rows' own shapes, frozen with them while detached, so a pin never disagrees with its row.
+                        promptTurnShapes: switch (snap) {
+                          final frozen? => widget.promptTurnShapes.copyWith(messages: frozen.messageShapes),
+                          null => widget.promptTurnShapes,
+                        },
                         unloaded: unloadedPin,
                         horizontalInset: widget.horizontalInset,
                         onLayout: _layOutSticky,
@@ -1262,10 +1267,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                     ),
                   ),
                 ),
-                // Beside the pin, clear of the bubble, which keeps to the right.
-                if (_pinLoadId != null)
+                // Beside the pin, clear of its bubble, which keeps to the right, or
+                // of its card, which keeps to the left.
+                if (_pinLoad case final pinLoad?)
                   Positioned(
-                    left: widget.horizontalInset + UserMessageBubble.margin.left,
+                    left: pinLoad.invocation == null ? widget.horizontalInset + UserMessageBubble.margin.left : null,
+                    right: pinLoad.invocation == null ? null : widget.horizontalInset + UserMessageBubble.margin.right,
                     top: widget.topInset + _kPinGap + UserMessageBubble.padding,
                     child: IgnorePointer(
                       child: AnimatedOpacity(

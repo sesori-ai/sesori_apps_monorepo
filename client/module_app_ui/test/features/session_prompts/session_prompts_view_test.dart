@@ -36,6 +36,7 @@ final _yesterday = DateTime(_today.year, _today.month, _today.day - 1);
 TranscriptPromptEntry _opener({required String id, required DateTime? day}) => TranscriptPromptOpener(
   messageId: id,
   text: "Prompt $id",
+  invocation: null,
   source: TranscriptPromptLoaded(fullText: "Prompt $id"),
   createdAt: day?.add(const Duration(hours: 9)).millisecondsSinceEpoch,
   dayKey: day,
@@ -46,6 +47,7 @@ TranscriptPromptEntry _followUp({required String id, required String openerId, r
     TranscriptPromptFollowUp(
       messageId: id,
       text: "Prompt $id",
+      invocation: null,
       source: TranscriptPromptLoaded(fullText: "Prompt $id"),
       createdAt: day?.add(const Duration(hours: 10)).millisecondsSinceEpoch,
       dayKey: day,
@@ -65,6 +67,7 @@ List<TranscriptPromptEntry> _parityPrompts({required int from, required int to})
     TranscriptPromptOpener(
       messageId: "p$index",
       text: "Prompt p$index",
+      invocation: null,
       source: TranscriptPromptLoaded(fullText: "Prompt p$index\nsits on an ${index.isEven ? "even" : "odd"} row"),
       createdAt: _today.add(Duration(minutes: index)).millisecondsSinceEpoch,
       dayKey: _today,
@@ -288,6 +291,49 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets("a run command lists as its kind, /name and its arguments, beside a plain prompt's text", (tester) async {
+    final semantics = tester.ensureSemantics();
+    TranscriptPromptEntry ran({required String id, required String? arguments}) => TranscriptPromptOpener(
+      messageId: id,
+      text: arguments,
+      invocation: CommandInvocation(name: "fixture-greeter", source: CommandSource.skill, arguments: arguments),
+      source: TranscriptPromptLoaded(fullText: "/fixture-greeter ${arguments ?? ""}"),
+      createdAt: null,
+      dayKey: null,
+      number: null,
+    );
+    await _pump(
+      tester,
+      entries: [
+        ran(id: "skill", arguments: "Say hello to the fixture"),
+        ran(id: "bare", arguments: null),
+        _opener(id: "plain", day: null),
+      ],
+      anchor: null,
+    );
+
+    Finder rich(String id) => find.descendant(of: _row(id), matching: find.byType(RichText));
+    String shown(String id) => tester.widgetList<RichText>(rich(id)).map((text) => text.text.toPlainText()).join("|");
+    expect(shown("skill"), contains("/fixture-greeter Say hello to the fixture"));
+    expect(shown("bare"), contains("/fixture-greeter"));
+    expect(shown("bare"), isNot(contains("attachment")));
+    expect(find.descendant(of: _row("skill"), matching: find.byIcon(TablerRegular.sparkles)), findsOneWidget);
+    expect(find.descendant(of: _row("plain"), matching: find.byType(Icon)), findsNothing);
+    expect(find.descendant(of: _row("plain"), matching: find.text("Prompt plain")), findsOneWidget);
+    // One line, the same height as every other row.
+    expect(tester.getSize(_row("skill")).height, tester.getSize(_row("plain")).height);
+    expect(
+      tester.getSemantics(_row("skill")),
+      matchesSemantics(
+        label: "You ran skill fixture-greeter, Say hello to the fixture",
+        hint: "Jump to this prompt",
+        isButton: true,
+        hasTapAction: true,
+      ),
+    );
+    semantics.dispose();
+  });
+
   group("search", () {
     testWidgets("filters as it is typed and clears, holding the reader's row in place throughout", (tester) async {
       // Enough rows below the reader that the filtered list still fills the
@@ -383,6 +429,7 @@ void main() {
           TranscriptPromptOpener(
             messageId: "wide",
             text: "Prompt wide",
+            invocation: null,
             source: TranscriptPromptLoaded(fullText: "Prompt wide\n${"W" * 30} needle"),
             createdAt: null,
             dayKey: null,
@@ -567,6 +614,7 @@ void main() {
     TranscriptPromptEntry unloaded({required String id, required int seq}) => TranscriptPromptOpener(
       messageId: id,
       text: "Prompt $id",
+      invocation: null,
       source: TranscriptPromptUnloaded(seq: seq, preview: "Prompt $id"),
       createdAt: null,
       dayKey: null,
@@ -758,6 +806,7 @@ void main() {
           const TranscriptPromptOpener(
             messageId: "new",
             text: "Deploy it",
+            invocation: null,
             source: TranscriptPromptLoaded(fullText: "Deploy it"),
             createdAt: null,
             dayKey: null,
@@ -857,6 +906,7 @@ void main() {
           const TranscriptPromptOpener(
             messageId: "old",
             text: null,
+            invocation: null,
             source: TranscriptPromptUnloaded(seq: 1, preview: null),
             createdAt: null,
             dayKey: null,
