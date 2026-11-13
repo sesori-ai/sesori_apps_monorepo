@@ -36,7 +36,7 @@ void main() {
   test("names an advertised command with its arguments", () {
     expect(
       named(text: "/plan Write the\ntests "),
-      const PluginCommandInvocation(name: "plan", source: PluginCommandSource.command, arguments: "Write the\ntests"),
+      const PluginCommandInvocation(name: "plan", source: PluginCommandSource.command, arguments: "Write the\ntests "),
     );
   });
 
@@ -57,6 +57,7 @@ void main() {
   test("text that does not run an advertised command stays plain", () {
     expect(named(text: "/tmp/x is broken"), isNull);
     expect(named(text: "please /plan this"), isNull);
+    expect(named(text: " /plan this"), isNull);
   });
 
   test("a turn the harness already named keeps its own invocation", () {

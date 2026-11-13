@@ -36,12 +36,12 @@ class const AcpReplayInvocationMapper() {
   }) {
     final text = parts.whereType<PluginMessagePartText>().singleOrNull?.text;
     if (text == null) return null;
-    final match = _commandLine.firstMatch(text.trim());
+    final match = _commandLine.firstMatch(text);
     if (match == null) return null;
     final name = match.group(1);
     final command = name == null ? null : commandsByName[name];
     if (name == null || command == null) return null;
-    final arguments = match.group(2)?.trim();
+    final arguments = match.group(2);
     return PluginCommandInvocation(
       name: name,
       source: command.source ?? PluginCommandSource.unknown,

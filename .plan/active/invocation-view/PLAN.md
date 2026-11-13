@@ -187,9 +187,10 @@ Planning decisions from code evidence (P1–P9):
 - No new `MessagePart` type. No migration, backfill or new table. Sessions
   from before this change keep their bubbles (low-damage old-data rule).
 - No new content matching for `invocation` beyond the store's existing
-  replay match (P4), except step 9's argument-turn fold: an unmatched stored
-  card pairs with a replayed plain user turn whose only text equals its
-  arguments, when exactly one candidate exists on each side.
+  replay match (P4), except step 9's argument-turn fold: a stored card with no
+  replayed row of its content pairs with a replayed plain user turn with no
+  stored row of its content whose only text equals the arguments exactly,
+  when exactly one candidate exists on each side.
 - No session-options-cache lookup of a command's kind (P2).
 - No tap action, disclosure or description sheet (D2).
 - No change to prompt search semantics (P6).
@@ -377,7 +378,8 @@ Client (`client/module_core`, `client/module_app_ui`):
 - **ACP family.**
   - `AcpPlugin.getSessionMessages` names a replayed user turn whose only text
     is `/name args` for an advertised command (`AcpReplayInvocationMapper`);
-    plugins override `replaySessionMessages`. Oh My Pi inherits it.
+    plugins override `replaySessionMessages`, and DeepSeek `replayCommands` (its catalog).
+    Oh My Pi inherits it, but its replay expands commands, so step 10 names it.
   - DeepSeek `/plan <text>` and Hermes `/queue <text>`: neither harness stores
     the command line, only the text as its own user turn, and neither echoes
     that turn live. The bridge store folds it into the stored card (deviation

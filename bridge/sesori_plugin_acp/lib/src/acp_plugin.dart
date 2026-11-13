@@ -2378,17 +2378,26 @@ abstract class AcpPlugin({
       Map.unmodifiable({..._sessionStatuses, ...childSessionTracker.childStatuses});
 
   /// Replayed history with each advertised slash command named on its user
-  /// turn. Read after the replay, which refreshes the advertised commands.
+  /// turn. The commands are read after the replay, which refreshes them.
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId,
   ) async {
     final messages = await replaySessionMessages(sessionId: sessionId);
-    return const AcpReplayInvocationMapper().nameInvocations(
-      messages: messages,
-      commands: _commandTracker.commands,
-    );
+    final List<PluginCommand> commands;
+    try {
+      commands = await replayCommands(sessionId: sessionId);
+    } on Object catch (error, stackTrace) {
+      // The history still loads; its command runs show as plain turns.
+      Log.w("[$id] could not read commands to name replayed runs of $sessionId", error, stackTrace);
+      return messages;
+    }
+    return const AcpReplayInvocationMapper().nameInvocations(messages: messages, commands: commands);
   }
+
+  /// The commands that name replayed `/name args` turns: the advertised
+  /// snapshot. A harness whose catalog isn't advertised over ACP overrides.
+  Future<List<PluginCommand>> replayCommands({required String sessionId}) async => _commandTracker.commands;
 
   /// The session's history as the harness replays it. Standard ACP replays
   /// through `session/load`; a harness with its own history read overrides.

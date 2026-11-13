@@ -1702,6 +1702,30 @@ void main() {
           expect(await storedInvocations(history: history), [null, plan]);
         });
 
+        test("leaves a plain turn alone when the replay has the command's own row", () async {
+          final history = createTestChatHistory(
+            sessionRepository: _FakeSessionRepository(
+              transcript: [
+                _messageWithText(id: "replay-command", text: "/plan Write tests", createdAt: 100, promptId: null),
+                _messageWithText(id: "replay-plain", text: "Write tests", createdAt: 200, promptId: null),
+              ],
+            ),
+          );
+          await _captureMessageWithParts(history: history, message: liveCommand());
+          await _captureMessageWithParts(
+            history: history,
+            message: _messageWithText(id: "live-plain", text: "Write tests", createdAt: 200, promptId: "p2"),
+          );
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(
+            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+            const ["replay-command", "replay-plain"],
+          );
+          expect(await storedInvocations(history: history), [plan, null]);
+        });
+
         test("leaves the card alone when the text is ambiguous", () async {
           final history = createTestChatHistory(
             sessionRepository: _FakeSessionRepository(

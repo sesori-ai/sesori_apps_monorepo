@@ -114,6 +114,12 @@ class DeepSeekPlugin({
         cwd: projectId ?? launchDirectory,
       );
 
+  /// DeepSeek serves its commands from its own catalog, not an ACP
+  /// `available_commands_update`.
+  @override
+  Future<List<PluginCommand>> replayCommands({required String sessionId}) async =>
+      await getCommands(projectId: directoryForSession(sessionId: sessionId));
+
   Map<String, dynamic>? _sessionMetadata(AcpSessionInfo info) {
     final value = info.metadata?[DeepSeekAcpApi.initializeMetadataKey];
     return value is Map ? value.cast<String, dynamic>() : null;
