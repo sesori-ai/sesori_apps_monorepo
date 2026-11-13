@@ -60,8 +60,9 @@ bridge stored from CLIs 2.1.237 to 2.1.281.
 
 ## Harness-generated user frames
 
-Some harnesses talk to the model through the `user` role themselves. Claude Code
-is the only one that does: loading a skill injects the whole `SKILL.md` body plus
+Some harnesses talk to the model through the `user` role themselves. Codex
+writes a picked skill's body to its rollout this way (see the table). Claude Code
+does it most: loading a skill injects the whole `SKILL.md` body plus
 its `<ARGUMENTS>` blob as a separate `user` frame, and the CLI uses the same
 shape for image captions, "your response was cut off" nudges, sub-agent plumbing
 and automation preambles. Sesori drops those frames so the transcript shows only
