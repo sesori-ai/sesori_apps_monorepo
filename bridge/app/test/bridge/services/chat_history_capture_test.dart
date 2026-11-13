@@ -1702,6 +1702,61 @@ void main() {
           expect(await storedInvocations(history: history), [null, plan]);
         });
 
+        test("matches the run's live answer to its replay, so the turn shows once", () async {
+          final history = createTestChatHistory(
+            sessionRepository: _FakeSessionRepository(
+              transcript: [
+                _messageWithText(id: "replay-start", text: "Start", createdAt: null, promptId: null),
+                _messageWithText(id: "replay", text: "Write tests", createdAt: null, promptId: null),
+                _assistantMessageWithText(id: "replay-answer", text: "Done", reasoning: null, createdAt: null),
+              ],
+            ),
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: _messageWithText(id: "live-start", text: "Start", createdAt: 50, promptId: "p0"),
+          );
+          await _captureMessageWithParts(history: history, message: liveCommand());
+          await _captureMessageWithParts(
+            history: history,
+            message: _assistantMessageWithText(id: "live-answer", text: "Done", reasoning: null, createdAt: 120),
+          );
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(
+            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+            const ["replay-start", "replay", "replay-answer"],
+          );
+        });
+
+        test("keeps the card above the command's reply that the replay records first", () async {
+          final history = createTestChatHistory(
+            sessionRepository: _FakeSessionRepository(
+              transcript: [
+                _assistantMessageWithText(id: "reply", text: "Plan mode on.", reasoning: null, createdAt: 110),
+                _messageWithText(id: "replay", text: "Write tests", createdAt: 120, promptId: null),
+              ],
+            ),
+          );
+          await _captureMessageWithParts(history: history, message: liveCommand());
+          await _captureMessageWithParts(
+            history: history,
+            message: _assistantMessageWithText(id: "reply", text: "Plan mode on.", reasoning: null, createdAt: 110),
+          );
+
+          for (var import = 0; import < 2; import++) {
+            await history.service.backfillSession(sessionId: "ses_a");
+
+            expect(
+              (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+              const ["replay", "reply"],
+              reason: "import ${import + 1}",
+            );
+            expect(await storedInvocations(history: history), [plan, null]);
+          }
+        });
+
         test("leaves a plain turn alone when the replay has the command's own row", () async {
           final history = createTestChatHistory(
             sessionRepository: _FakeSessionRepository(
