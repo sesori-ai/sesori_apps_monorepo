@@ -355,13 +355,14 @@ Client (`client/module_core`, `client/module_app_ui`):
   - Opt in the descriptor.
 - **Codex** (after #2541). Name skills from rollout history. Because ids are
   unstable, history fill is the persistence path.
-- **Pi** (after #2542).
-  - The echo of expanded templates and skills already takes the oldest
-    pending command's prompt id (#2542); step 7 verified it live, so no new
-    correlation code was needed.
-  - Name skills from the `<skill name=…>` envelope. Templates rely on the
-    stored stamp, since Pi ids are stable.
-  - Opt in.
+  - The plugin names a skill from the `skill` input on the live `userMessage`
+    item and on the rollout's `UserMessage` item, with the same rule that
+    rewrites `$name args` to `/name args`, so a skill picked in the Codex CLI
+    is named too.
+  - The live echo carries the prompt id (`clientId`), so the descriptor's
+    opt-in holds (verified live with Codex 0.167.2).
+  - `/compact` is Codex's only command and adds no user turn, so there is no
+    command to name.
 - **Claude Code.**
   - Name commands from `<command-name>`/`<command-args>` in history (today
     dropped). Resolve the kind from the plugin's own command list, else

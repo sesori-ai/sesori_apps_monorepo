@@ -37,6 +37,7 @@ mirror PR state; live status is on GitHub:
 3. `⚙️ [invocation-view] Show command and skill runs as an event card [step 3/12]`
 4. `⚙️ [invocation-view] Pin and list command and skill runs as their card [step 4/12]`
 5. `⚙️ [invocation-view] Name OpenCode command and skill runs [step 5/12]`
+6. `🌿 [invocation-view] Name Codex skill runs from the rollout [step 6/12]`
 7. `🌿 [invocation-view] Name Pi command and skill runs [step 7/12]`
-6. to 12. Titled when each step is planned in detail. The total stays 12
+8. to 12. Titled when each step is planned in detail. The total stays 12
    unless a step splits into substeps.
