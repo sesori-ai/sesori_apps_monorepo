@@ -109,12 +109,14 @@ variant, and worktree mode, and creating the session with its first input.
   bridge process's launch directory, so a deleted project's sessions still open and
   reload with the user's and Claude's own entries.
 - A Claude catalog probe never runs anything the project controls: a project's
-  probe runs in a temporary mirror holding only links to its `.claude/commands`
-  and `.claude/skills`, with all hooks disabled and no MCP servers, so opening a
+  probe runs in a temporary mirror holding only copies of its command files
+  (`.claude/commands/**/*.md`) and skill files (`.claude/skills/<skill>/SKILL.md`),
+  with all hooks disabled and no MCP servers, so opening a
   picker or history runs no project settings helper (such as `apiKeyHelper` or
   `otelHeadersHelper`), no SessionStart hook and no `.mcp.json` server. The mirror
-  is deleted after the probe, also when it fails. Managed-policy settings still
-  apply. Failure signal: a project helper's
+  is deleted after the probe, also when it fails. It needs no symbolic-link
+  privilege, so per-project listing works on Windows without Developer Mode.
+  Managed-policy settings still apply. Failure signal: a project helper's
   or hook's side effect, or an MCP server process, appearing when only a picker was
   opened.
 - Claude labels a listed command a skill when its name matches a skill in the

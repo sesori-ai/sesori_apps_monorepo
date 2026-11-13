@@ -29,6 +29,18 @@ void main() {
       missingProject = p.join(temporary.path, "deleted-project");
       final configDirectory = p.join(temporary.path, "config");
       _writeSkill(root: p.join(projectA, ".claude", "skills"), folder: "deploy", frontmatterName: "ship-it");
+      for (final path in [
+        p.join("commands", "project-command.md"),
+        p.join("commands", "group", "nested.md"),
+        // Neither a command nor a skill definition, so the mirror leaves them out.
+        p.join("commands", "notes.txt"),
+        p.join("skills", "deploy", "run.sh"),
+        "settings.json",
+      ]) {
+        File(p.join(projectA, ".claude", path))
+          ..createSync(recursive: true)
+          ..writeAsStringSync("fixture");
+      }
       _writeSkill(root: p.join(configDirectory, "skills"), folder: "user-skill", frontmatterName: null);
       Directory(projectB).createSync();
       mirroredProjects = [];
@@ -41,18 +53,21 @@ void main() {
           if (failSpawns) throw const ProcessException("claude", [], "fixture spawn failure");
           final process = FakeClaudeProcess();
           specs.add(spec);
-          // A project's probe runs in a mirror holding only links to its
-          // command and skill folders. The fake lists what Claude would find.
-          final mirrored = Directory(p.join(spec.workingDirectory, ".claude")).existsSync()
-              ? p.dirname(p.dirname(Link(p.join(spec.workingDirectory, ".claude", "skills")).targetSync()))
-              : null;
-          if (mirrored != null) {
+          // A project's probe runs in a mirror holding only copies of its
+          // command and skill files. The fake lists what Claude would find.
+          String? mirrored;
+          if (spec.workingDirectory != "/tmp/claude-state") {
+            final files = [
+              for (final entry in Directory(spec.workingDirectory).listSync(recursive: true))
+                if (entry is File) p.relative(entry.path, from: spec.workingDirectory),
+            ];
+            mirrored = files.isEmpty ? projectB : projectA;
             mirroredProjects.add(mirrored);
             expect(
-              Directory(p.join(spec.workingDirectory, ".claude")).listSync().map((entry) => p.basename(entry.path)),
-              unorderedEquals(["commands", "skills"]),
+              files,
+              mirrored == projectA ? unorderedEquals(_projectADefinitions) : isEmpty,
+              reason: "only command and skill definitions are copied",
             );
-            expect(Directory(spec.workingDirectory).listSync().map((entry) => p.basename(entry.path)), [".claude"]);
           }
           spawned.add(process);
           unawaited(
@@ -113,7 +128,6 @@ void main() {
       for (final spec in specs) {
         expect(Directory(spec.workingDirectory).existsSync(), isFalse, reason: "the mirror is deleted after the probe");
       }
-      // Deleting the mirror removes its links without following them.
       expect(File(p.join(projectA, ".claude", "skills", "deploy", "SKILL.md")).existsSync(), isTrue);
       expect(first.commands.map((command) => command.name), containsAll(["project-command", "ship-it"]));
       expect(second.commands.map((command) => command.name), ["review", "user-skill"]);
@@ -252,6 +266,13 @@ void main() {
     });
   });
 }
+
+/// The files project A's probe mirror holds, relative to the mirror.
+final List<String> _projectADefinitions = [
+  p.join(".claude", "commands", "project-command.md"),
+  p.join(".claude", "commands", "group", "nested.md"),
+  p.join(".claude", "skills", "deploy", "SKILL.md"),
+];
 
 String _probeSessionId(int index) => "00000000-0000-4000-8000-${index.toString().padLeft(12, "0")}";
 

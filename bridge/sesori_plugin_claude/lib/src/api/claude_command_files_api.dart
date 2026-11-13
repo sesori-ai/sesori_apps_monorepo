@@ -8,19 +8,21 @@ import "../foundation/claude_config_directory.dart";
 /// Layer-1 owner of the project files a catalog probe needs: the mirror it runs
 /// in, and the skill names that label its list.
 class ClaudeCommandFilesApi({required Map<String, String> environment}) {
-  static const List<String> _mirroredFolders = ["commands", "skills"];
   static const String _skillFile = "SKILL.md";
   static final RegExp _frontmatterDelimiter = RegExp(r"^---\s*$");
   static final RegExp _nameEntry = RegExp(r"^name:\s*(.+?)\s*$");
 
   final Map<String, String> _environment = Map.unmodifiable(environment);
 
-  /// Creates a directory whose `.claude` holds only links to
-  /// [projectDirectory]'s `.claude/commands` and `.claude/skills`. A probe
-  /// started there lists the project's commands and skills by Claude's own
-  /// rules, but loads none of the project's settings, `.mcp.json` or
-  /// `CLAUDE.md`, so nothing the project controls runs. Verified live with
-  /// Claude Code 2.1.323. The caller deletes it with [deleteProbeMirror].
+  /// Creates a directory whose `.claude` holds only copies of
+  /// [projectDirectory]'s command files (`.claude/commands/**/*.md`) and skill
+  /// files (`.claude/skills/<skill>/SKILL.md`). A probe started there lists the
+  /// project's commands and skills by Claude's own rules, but loads none of
+  /// the project's settings, `.mcp.json` or `CLAUDE.md`, so nothing the
+  /// project controls runs. Verified live with Claude Code 2.1.323. Files are
+  /// copied rather than linked because Windows allows symbolic links only to
+  /// administrators or in Developer Mode. The caller deletes the mirror with
+  /// [deleteProbeMirror].
   Future<Directory> createProbeMirror({required String projectDirectory}) async {
     if (!Directory(projectDirectory).existsSync()) {
       throw PluginWorkingDirectoryMissingException(
@@ -29,11 +31,20 @@ class ClaudeCommandFilesApi({required Map<String, String> environment}) {
         cause: null,
       );
     }
+    final source = p.join(projectDirectory, ".claude");
     final mirror = await Directory.systemTemp.createTemp("sesori-claude-catalog-");
     try {
-      final claude = await Directory(p.join(mirror.path, ".claude")).create();
-      for (final folder in _mirroredFolders) {
-        await Link(p.join(claude.path, folder)).create(p.join(projectDirectory, ".claude", folder));
+      final files = [
+        ...(await _filesUnder(folder: p.join(source, "commands"))).where(
+          (file) => p.extension(file.path) == ".md",
+        ),
+        for (final skill in await _foldersIn(root: p.join(source, "skills")))
+          if (File(p.join(skill.path, _skillFile)) case final file when file.existsSync()) file,
+      ];
+      for (final file in files) {
+        final copy = File(p.join(mirror.path, ".claude", p.relative(file.path, from: source)));
+        await copy.parent.create(recursive: true);
+        await file.copy(copy.path);
       }
       return mirror;
     } on Object {
@@ -42,9 +53,32 @@ class ClaudeCommandFilesApi({required Map<String, String> environment}) {
     }
   }
 
-  /// Deletes a [createProbeMirror] directory. Its links are removed, never
-  /// followed.
+  /// Deletes a [createProbeMirror] directory.
   Future<void> deleteProbeMirror({required Directory mirror}) => mirror.delete(recursive: true);
+
+  /// The files anywhere under [folder], or none when it does not exist.
+  Future<List<File>> _filesUnder({required String folder}) async {
+    try {
+      return await Directory(
+        folder,
+      ).list(recursive: true, followLinks: true).where((entry) => entry is File).cast<File>().toList();
+    } on PathNotFoundException {
+      return const [];
+    }
+  }
+
+  /// The folders directly in [root], or none when it does not exist.
+  Future<List<Directory>> _foldersIn({required String root}) async {
+    try {
+      return await Directory(root)
+          .list(followLinks: true)
+          .where((entry) => entry is Directory)
+          .cast<Directory>()
+          .toList();
+    } on PathNotFoundException {
+      return const [];
+    }
+  }
 
   /// The names of the skills in [projectDirectory]'s `.claude/skills` and in
   /// the user's `<config dir>/skills`.
@@ -63,21 +97,9 @@ class ClaudeCommandFilesApi({required Map<String, String> environment}) {
     };
   }
 
-  Future<List<String>> _skillNamesIn({required String root}) async {
-    final List<Directory> folders;
-    try {
-      folders = await Directory(root)
-          .list(followLinks: true)
-          .where((entry) => entry is Directory)
-          .cast<Directory>()
-          .toList();
-    } on PathNotFoundException {
-      return const [];
-    }
-    return [
-      for (final folder in folders) ?await _skillName(folder: folder),
-    ];
-  }
+  Future<List<String>> _skillNamesIn({required String root}) async => [
+    for (final folder in await _foldersIn(root: root)) ?await _skillName(folder: folder),
+  ];
 
   /// The skill [folder] holds, or null when it has no `SKILL.md`.
   Future<String?> _skillName({required Directory folder}) async {

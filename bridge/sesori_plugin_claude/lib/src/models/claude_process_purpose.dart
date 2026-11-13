@@ -4,7 +4,7 @@ enum ClaudeProcessPurpose() {
   session,
 
   /// A catalog probe that only reads the startup handshake. It runs in a
-  /// project's directory so the CLI lists that project's commands and skills,
-  /// and it must not act on the project: it starts no hooks and no MCP servers.
+  /// mirror of a project's command and skill files so the CLI lists them, and
+  /// it must not act on the project: it starts no hooks and no MCP servers.
   catalogProbe,
 }
