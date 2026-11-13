@@ -174,6 +174,26 @@ void main() {
       }
     });
 
+    test("Hermes's live-only queue acknowledgement is dropped", () {
+      const acknowledgement = AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "Queued for the next turn. (1 queued)"},
+          },
+        },
+      );
+
+      expect(mapper.map(acknowledgement), isEmpty);
+      expect(mapper.map(finalResponse(text: "Queued for the next turn. (1 queued)")), isNotEmpty);
+      expect(
+        mapper.map(finalResponse(text: "Queued for the next turn. (1 queued) Then I will run it.")),
+        isNotEmpty,
+      );
+    });
+
     test("a real reply stays assistant text", () {
       final events = mapper.map(finalResponse(text: "The build passes now."));
 
