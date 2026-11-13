@@ -1072,7 +1072,7 @@ effort for the custom model. With `multi_agent_v2` off, Codex's default in
 child session and its subtask tile appear live and in replay (live check on
 0.167.2, 2026-11-12). The `<subagent_notification>` user message Codex adds to
 the parent when a v1 child finishes is hidden, as the tile already shows it; v2
-sends none. In both modes `wait_agent` stays a generic tool card. Sessions whose v1 sub-agents ran before
+sends none. In both modes `wait_agent` renders as a "Waiting for N sub-agents" tool row. Sessions whose v1 sub-agents ran before
 this mapping keep their generic `Spawn_agent` card, because their child was
 never registered.
 
