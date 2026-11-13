@@ -17,6 +17,20 @@ final class const CodexUserContentMapper() {
     text: textParts.length == 1 ? textParts.single : textParts.where((text) => text.trim().isNotEmpty).join("\n\n"),
   );
 
+  /// Shows a picked skill as the user typed it, `/name args`. Codex records
+  /// the invocation as `\$name args` text plus a `skill` input naming it, so
+  /// only text that starts with a named skill's `\$name` is rewritten.
+  String? mapSkillInvocation({required String? text, required List<String> skillNames}) {
+    if (text == null) return null;
+    for (final name in skillNames) {
+      final token = "\$$name";
+      if (!text.startsWith(token)) continue;
+      final rest = text.substring(token.length);
+      if (rest.isEmpty || rest.startsWith(RegExp(r"\s"))) return "/$name$rest";
+    }
+    return text;
+  }
+
   bool _isGeneratedCodexContext({required String text}) {
     final normalized = text.trim();
     return _GeneratedContextTag.values.any((tag) => tag.wraps(text: normalized)) ||
@@ -29,6 +43,10 @@ enum _GeneratedContextTag(final String wireName) {
   recommendedPlugins("recommended_plugins"),
   environmentContext("environment_context"),
   turnAborted("turn_aborted"),
+
+  /// A picked skill's `SKILL.md` body, which Codex injects as a user message
+  /// after the `\$name` text the user's bubble already shows.
+  skill("skill"),
 
   /// A `multi_agent_v1` child's completion, which Codex hands the parent as a
   /// user message; the child's subtask tile already shows it.

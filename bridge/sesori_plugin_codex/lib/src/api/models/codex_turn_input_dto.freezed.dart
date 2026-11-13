@@ -278,4 +278,81 @@ as String,
 
 }
 
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class CodexTurnSkillInputDto implements CodexTurnInputDto {
+  const CodexTurnSkillInputDto({required this.name, required this.path,  String? $type}): $type = $type ?? 'skill';
+  
+
+ final  String name;
+ final  String path;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexTurnInputDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexTurnSkillInputDtoCopyWith<CodexTurnSkillInputDto> get copyWith => _$CodexTurnSkillInputDtoCopyWithImpl<CodexTurnSkillInputDto>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CodexTurnSkillInputDtoToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnSkillInputDto&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,name,path);
+}
+
+@override
+String toString() {
+    return 'CodexTurnInputDto.skill(name: $name, path: $path)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexTurnSkillInputDtoCopyWith<$Res> implements $CodexTurnInputDtoCopyWith<$Res> {
+  factory $CodexTurnSkillInputDtoCopyWith(CodexTurnSkillInputDto value, $Res Function(CodexTurnSkillInputDto) _then) = _$CodexTurnSkillInputDtoCopyWithImpl;
+@useResult
+$Res call({
+ String name, String path
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexTurnSkillInputDtoCopyWithImpl<$Res>
+    implements $CodexTurnSkillInputDtoCopyWith<$Res> {
+  _$CodexTurnSkillInputDtoCopyWithImpl(this._self, this._then);
+
+  final CodexTurnSkillInputDto _self;
+  final $Res Function(CodexTurnSkillInputDto) _then;
+
+/// Create a copy of CodexTurnInputDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? name = null,Object? path = null,}) {
+  return _then(CodexTurnSkillInputDto(
+name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
 // dart format on

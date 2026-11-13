@@ -526,8 +526,11 @@ class CodexEventMapper({
             // Codex CLI carries none.
             promptId: _optionalString(map: item, key: "clientId"),
           ),
-          text: _userContentMapper.mapSubmittedTextParts(
-            textParts: _contentTexts(content: item["content"]),
+          text: _userContentMapper.mapSkillInvocation(
+            text: _userContentMapper.mapSubmittedTextParts(
+              textParts: _contentTexts(content: item["content"]),
+            ),
+            skillNames: _contentSkillNames(content: item["content"]),
           ),
           attachments: _extractUserContentAttachments(content: item["content"]),
         );
@@ -970,6 +973,15 @@ class CodexEventMapper({
       }
     }
     return texts;
+  }
+
+  List<String> _contentSkillNames({required Object? content}) {
+    if (content is! List) return const [];
+    return [
+      for (final entry in content)
+        if (_asMap(value: entry) case final map? when _optionalString(map: map, key: "type") == "skill")
+          ?_optionalString(map: map, key: "name"),
+    ];
   }
 
   List<PluginMessageAttachment> _extractUserContentAttachments({required Object? content}) {

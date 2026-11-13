@@ -21,3 +21,11 @@ Map<String, dynamic> _$CodexTurnLocalImageInputDtoToJson(
 Map<String, dynamic> _$CodexTurnImageInputDtoToJson(
   CodexTurnImageInputDto instance,
 ) => <String, dynamic>{'url': instance.url, 'type': instance.$type};
+
+Map<String, dynamic> _$CodexTurnSkillInputDtoToJson(
+  CodexTurnSkillInputDto instance,
+) => <String, dynamic>{
+  'name': instance.name,
+  'path': instance.path,
+  'type': instance.$type,
+};

@@ -1121,6 +1121,7 @@ class CodexPlugin._({
       await _rolloutTailer.start(sessionId: sessionId);
       final dispatch = await _sessionService.sendCommand(
         threadId: sessionId,
+        cwd: _directoryForSession(sessionId: sessionId),
         command: command,
         arguments: arguments,
         // See _startTurn: Codex echoes this on the command's user item.

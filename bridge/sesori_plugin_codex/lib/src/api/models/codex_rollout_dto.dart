@@ -185,11 +185,31 @@ sealed class CodexRolloutCompletedItemDto with _$CodexRolloutCompletedItemDto {
   @FreezedUnionValue("UserMessage")
   const factory userMessage({
     required String id,
+    @Default(<CodexRolloutUserInputDto>[]) List<CodexRolloutUserInputDto> content,
   }) = CodexRolloutCompletedUserMessageDto;
 
   const factory unknown() = CodexRolloutUnknownCompletedItemDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutCompletedItemDtoFromJson(json);
+}
+
+/// One input of a completed `UserMessage` item. Only a picked skill matters
+/// here: the text is read from the user's `response_item` message.
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
+sealed class CodexRolloutUserInputDto with _$CodexRolloutUserInputDto {
+  @FreezedUnionValue("skill")
+  const factory skill({
+    required String name,
+  }) = CodexRolloutSkillUserInputDto;
+
+  const factory unknown() = CodexRolloutUnknownUserInputDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CodexRolloutUserInputDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)

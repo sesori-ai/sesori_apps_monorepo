@@ -78,7 +78,8 @@ residue is cosmetic and is not migrated.
 | Harness | Native evidence | Sesori availability |
 |---|---|---|
 | Claude Code | `user` frames/records flagged `isSynthetic` (stream) or `isMeta` (transcript), including the injected skill body | ✅ Dropped live and on replay; peer injections, tool results, task-notification outcomes and the post-compaction summary still render. |
-| OpenCode, Codex, Pi | Skills exposed as `PluginCommandSource.skill` commands, no injected body record (OpenCode 2 attaches the skill to the prompt and keeps its body out of the user message) | Not applicable: no harness-authored user turn to hide. |
+| OpenCode, Pi | Skills exposed as `PluginCommandSource.skill` commands, no injected body record (OpenCode 2 attaches the skill to the prompt and keeps its body out of the user message) | Not applicable: no harness-authored user turn to hide. |
+| Codex | A picked skill's `SKILL.md` body is written to the rollout as a user `response_item` wrapped in `<skill>…</skill>`, after the `$name` prompt; it is never sent live | ✅ Hidden on replay by its `<skill>` envelope, like `<environment_context>`. Verified live on 2026-11-12 with Codex 0.167.2. |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | None | Not applicable: the ACP seam has no skill concept and no harness-authored user turn. |
 
 ## Command and skill bubbles
@@ -91,6 +92,7 @@ harness receives its own invocation.
 |---|---|---|
 | OpenCode 2 skill | The prompt's user message keeps only the typed text and lists the skill under `skills` without a `mention` | ✅ `/skill args`, live and after history load. Verified live on 2026-11-12 with OpenCode 2.2.6. |
 | OpenCode 2 native command | `POST /api/session/{id}/command` takes no id or metadata, and the stored user message holds only the expanded template | ⬜ Not supported: the bubble shows the expanded template, live and after history load, because nothing in the message names the command. Verified live on 2026-11-12 with OpenCode 2.2.6 and 2.2.7. |
+| Codex skill | Invoked as `$name args` text plus a structured `skill` input (name and `SKILL.md` path); the live `userMessage` item and the rollout's `UserMessage` item keep that `skill` entry, and the model input is unchanged | ✅ `/name args`, live and after history load, rewritten only when the item names the skill. A skill the catalog no longer lists for the session's directory is sent as text only and keeps `$name args`. Verified live on 2026-11-12 with Codex 0.167.2. |
 | Claude Code | Commands and skills both run as `/name args` | ✅ `/name args`, live and after a bridge restart. Verified live on 2026-11-12 with Claude Code 2.1.323. |
 | DeepSeek, Hermes | Built-in commands only; no user commands or skills over ACP | ✅ `/name args`, live and after a bridge restart. A built-in that runs its arguments as a turn (DeepSeek `/plan <text>`, Hermes `/queue <text>`) adds that turn as its own bubble. Verified live on 2026-11-12 with the DeepSeek adapter 0.2.2 and Hermes 0.21.5. |
 | Grok, Cursor, Copilot, Antigravity | Not checked | Unverified: on 2026-11-12 Grok needed `grok login`, the Cursor CLI was older than the supported minimum, and the Copilot and Antigravity runtimes were not installed on the test machine. |

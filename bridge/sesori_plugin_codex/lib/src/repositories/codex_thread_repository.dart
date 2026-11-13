@@ -115,9 +115,12 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     return null;
   }
 
+  /// [skill] names the skill a `\$name` text part invokes; Codex keeps it on
+  /// the turn's `userMessage` item.
   Future<String?> startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
+    required ({String name, String path})? skill,
     required String? clientUserMessageId,
     required String? model,
     required String? effort,
@@ -132,6 +135,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       remainingInlineBytes -= mapped.inlineBytes;
     }
     if (input.isEmpty) return null;
+    if (skill != null) input.add(CodexTurnInputDto.skill(name: skill.name, path: skill.path));
     final response = await _request(
       operation: "turn/start",
       request: () => _appServerApi.startTurn(

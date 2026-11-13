@@ -20,6 +20,17 @@ class CodexSkillRepository({required final CodexAppServerApi _appServerApi}) {
     ];
   }
 
+  /// The `SKILL.md` path of the enabled skill [name] that Codex resolves for
+  /// [cwd], or null when it has none.
+  Future<String?> findSkillPath({required String cwd, required String name}) async {
+    final response = await _appServerApi.listSkills(cwd: cwd);
+    if (response.data.isEmpty) return null;
+    for (final skill in response.data.first.skills) {
+      if (skill.enabled && skill.name == name) return skill.path;
+    }
+    return null;
+  }
+
   String? _description({required CodexSkillDto skill}) {
     for (final value in [
       skill.interface?.shortDescription,
