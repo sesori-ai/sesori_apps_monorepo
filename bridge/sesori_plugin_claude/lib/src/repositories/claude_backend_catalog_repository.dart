@@ -1,3 +1,5 @@
+import "dart:io" show FileSystemException;
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/claude_skills_api.dart";
@@ -57,8 +59,16 @@ final class ClaudeBackendCatalogRepository({required final ClaudeSkillsApi _skil
 
   /// The names Claude lists for [directory]'s project and user skills, which
   /// [map] labels as skills.
-  Future<Set<String>> readSkillNames({required String directory}) =>
-      _skills.readSkillNames(projectDirectory: directory);
+  Future<Set<String>> readSkillNames({required String directory}) async {
+    try {
+      return await _skills.readSkillNames(projectDirectory: directory);
+    } on FileSystemException catch (error, stack) {
+      // Labels only: an unreadable skill folder must not fail the whole list,
+      // so its skills keep the command label until the next probe.
+      Log.w("[claude] skill labels unavailable for $directory", error, stack);
+      return const {};
+    }
+  }
 
   /// Maps a handshake. Its commands carry no kind, so a command named in
   /// [skillNames] is labelled a skill and every other one a command.

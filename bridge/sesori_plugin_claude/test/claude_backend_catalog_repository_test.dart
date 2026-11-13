@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:claude_plugin/claude_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -274,6 +276,18 @@ void main() {
       expect(catalog.agents.every((agent) => agent.model == null), isTrue);
       expect(catalog.providers.providers, isEmpty);
       expect(catalog.commands, isEmpty);
+    });
+
+    test("an unreadable skill folder throws from the API and leaves the list unlabelled", () async {
+      final project = Directory.systemTemp.createTempSync("claude-skills-");
+      addTearDown(() => project.deleteSync(recursive: true));
+      // A file where the skills folder belongs fails to list without being missing.
+      Directory("${project.path}/.claude").createSync();
+      File("${project.path}/.claude/skills").writeAsStringSync("not a folder");
+
+      final api = ClaudeSkillsApi(environment: const {});
+      await expectLater(api.readSkillNames(projectDirectory: project.path), throwsA(isA<FileSystemException>()));
+      expect(await repository.readSkillNames(directory: project.path), isEmpty);
     });
   });
 }

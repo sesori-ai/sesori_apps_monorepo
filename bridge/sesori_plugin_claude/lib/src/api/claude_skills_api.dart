@@ -1,7 +1,6 @@
 import "dart:io";
 
 import "package:path/path.dart" as p;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../foundation/claude_config_directory.dart";
 
@@ -19,8 +18,8 @@ class ClaudeSkillsApi({required Map<String, String> environment}) {
   /// the user's `<config dir>/skills`.
   ///
   /// Claude names a skill by its `SKILL.md` frontmatter `name`, else by its
-  /// folder (verified live with Claude Code 2.1.323). A folder that cannot be
-  /// read contributes no names, so its skills keep the command label.
+  /// folder (verified live with Claude Code 2.1.323). A missing folder or
+  /// `SKILL.md` contributes no name; any other filesystem failure throws.
   Future<Set<String>> readSkillNames({required String projectDirectory}) async {
     final configDirectory = claudeConfigDirectory(environment: _environment);
     final roots = [
@@ -42,24 +41,18 @@ class ClaudeSkillsApi({required Map<String, String> environment}) {
           .toList();
     } on PathNotFoundException {
       return const [];
-    } on FileSystemException catch (error, stack) {
-      Log.w("[claude] skill labels skip unreadable folder $root", error, stack);
-      return const [];
     }
     return [
       for (final folder in folders) ?await _skillName(folder: folder),
     ];
   }
 
-  /// The skill [folder] holds, or null when it has no readable `SKILL.md`.
+  /// The skill [folder] holds, or null when it has no `SKILL.md`.
   Future<String?> _skillName({required Directory folder}) async {
     try {
       final lines = await File(p.join(folder.path, _skillFile)).readAsLines();
       return _frontmatterName(lines: lines) ?? p.basename(folder.path);
     } on PathNotFoundException {
-      return null;
-    } on FileSystemException catch (error, stack) {
-      Log.w("[claude] skill labels skip unreadable ${folder.path}", error, stack);
       return null;
     }
   }
