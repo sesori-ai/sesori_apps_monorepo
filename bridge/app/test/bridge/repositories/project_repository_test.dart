@@ -383,7 +383,7 @@ void main() {
     });
 
     test("getProjects completes from the catalog when plugin enumeration throws", () async {
-      plugin.getProjectsError = PluginApiException("/project", 500);
+      plugin.getProjectsError = PluginApiException(endpoint: "/project", statusCode: 500);
       await db.projectsDao.setActivity(projectId: "stored", createdAt: 1, updatedAt: 2);
 
       final projects = await repo.getProjects().timeout(const Duration(seconds: 1));

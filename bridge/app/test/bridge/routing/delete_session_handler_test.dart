@@ -540,7 +540,7 @@ void main() {
         worktreePath: "/repo/.worktrees/session-010",
       );
       worktreeService.safetyResult = WorktreeSafe();
-      plugin.throwOnDeleteSessionError = PluginApiException("/session/s10", 500);
+      plugin.throwOnDeleteSessionError = PluginApiException(endpoint: "/session/s10", statusCode: 500);
 
       await expectLater(
         () => handler.handle(
@@ -568,7 +568,7 @@ void main() {
         projectId: "/repo",
         worktreePath: null,
       );
-      plugin.throwOnDeleteSessionError = PluginApiException("/session/s10-unavailable", 503);
+      plugin.throwOnDeleteSessionError = PluginApiException(endpoint: "/session/s10-unavailable", statusCode: 503);
 
       await expectLater(
         () => handler.handle(
@@ -593,7 +593,7 @@ void main() {
         projectId: "/repo",
         worktreePath: null,
       );
-      plugin.throwOnDeleteSessionError = PluginApiException("/session/s11", 404);
+      plugin.throwOnDeleteSessionError = PluginApiException(endpoint: "/session/s11", statusCode: 404);
 
       final response = await handler.handle(
         request: makeRequest("DELETE", "/session/delete"),
@@ -616,7 +616,7 @@ void main() {
         projectId: "/repo",
         worktreePath: null,
       );
-      plugin.throwOnDeleteSessionError = const PluginOperationException.notFound("deleteSession");
+      plugin.throwOnDeleteSessionError = const PluginOperationException.notFound(operation: "deleteSession");
 
       final response = await handler.handle(
         request: makeRequest("DELETE", "/session/delete"),

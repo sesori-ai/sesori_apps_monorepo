@@ -6,8 +6,8 @@ import "plugin_operation_exception.dart";
 /// core shows it as-is and reacts to the type without parsing backend error
 /// text. The status code stays unset, so an instance that escapes still maps
 /// to a 502.
-class const PluginSessionUnrestorableException(
-  super.operation, {
+class const PluginSessionUnrestorableException({
+  required super.operation,
   required String super.message,
   super.cause,
 }) extends PluginOperationException;

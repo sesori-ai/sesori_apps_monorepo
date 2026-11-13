@@ -250,6 +250,14 @@ defaults and queued client sends coherent.
   titles are preserved; raw path fallbacks such as
   `/root/architecture_review_1271` display as `Architecture review · 1271`.
   A missing/mismatched activity leaves the generic spawn tool card.
+- A Codex `wait_agent` call renders as an ordinary tool row reading "Waiting
+  for N sub-agents" ("1 sub-agent" singular; "sub-agents" with no count when
+  the call names no targets), then "Waited for N sub-agents" with the same
+  count rules once it ends. Live and after reload render alike for calls this
+  bridge projected; a transcript the bridge cached before this mapping keeps
+  its raw card. It never shows the raw tool name or its JSON arguments.
+  Failure signal: a "Wait_agent" row or a `{"targets":…}` detail in a session
+  recorded with this bridge.
 - A Codex root remains effectively busy after its own turn completes while any
   tracked descendant turn is running. The root's idle status and completion
   signal are deferred and released exactly once after the last child settles;

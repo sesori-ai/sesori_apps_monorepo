@@ -67,7 +67,7 @@ class HermesCatalogRepository({required final HermesAcpApi _api}) {
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          "hermes catalog cleanup",
+          operation: "hermes catalog cleanup",
           message: processExited
               ? "Could not delete Hermes discovery session $sessionId"
               : "Hermes discovery process did not exit; session $sessionId was not deleted",

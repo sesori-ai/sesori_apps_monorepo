@@ -195,11 +195,103 @@ class const _HarnessControlCard({
       PluginAuthenticationPresentationCancelling() ||
       PluginAuthenticationPresentationCancellingUncertain() => true,
     };
-    final actionHint = plugin.actionHint ?? plugin.setup.actionHint;
+    final failureReason = _failureReason(plugin: plugin, install: install);
+    // A specific start failure reason replaces the generic console hint.
+    final actionHint = failureReason == null ? plugin.actionHint ?? plugin.setup.actionHint : null;
     // The service reports an install as in-flight from the moment its command
     // is issued until the bridge's terminal event, so this covers the window
     // before the first progress event without borrowing the generic action
     // spinner (which any harness action would trigger).
+
+    final rows = <(String, Widget)>[
+      (
+        "identity",
+        PregoGroupedRow(
+          key: Key("harness_management_identity_$pluginId"),
+          minHeight: 52,
+          verticalPadding: PregoSpacing.xs,
+          title: Row(
+            children: [
+              PregoBrandLogo(pluginId: pluginId, color: context.prego.colors.textTertiary),
+              const SizedBox(width: PregoSpacing.md),
+              Expanded(child: Text(plugin.setup.displayName)),
+            ],
+          ),
+          trailing: _HarnessSwitch(plugin: plugin, action: action, install: install, blocked: blocked),
+        ),
+      ),
+      (
+        "status",
+        _FactRow(
+          title: loc.harnessesStatusLabel,
+          value: _HarnessStatus(plugin: plugin, install: install, overview: false),
+        ),
+      ),
+      if (failureReason != null)
+        (
+          "failure_reason",
+          PregoGroupedRow(key: Key("harness_management_failure_reason_$pluginId"), title: Text(failureReason)),
+        ),
+      if (runtimeVersion != null) ("version", _FactRow(title: loc.harnessesVersionLabel, value: Text(runtimeVersion))),
+      if (showWork)
+        (
+          "activity",
+          _FactRow(
+            title: loc.harnessesActivityLabel,
+            value: Text(_workStatus(context: context, state: plugin.workState)),
+          ),
+        ),
+      if (actionHint != null)
+        (
+          "action_hint",
+          PregoGroupedRow(key: Key("harness_management_action_hint_$pluginId"), title: Text(actionHint)),
+        ),
+      if (showExternal)
+        (
+          "external",
+          PregoGroupedRow(
+            key: Key("harness_management_external_$pluginId"),
+            icon: TablerRegular.info_circle,
+            title: Text(loc.harnessManagementExternalTitle),
+            subtitle: Text(loc.harnessManagementExternalDescription),
+          ),
+        ),
+      if (showAuthentication)
+        (
+          "authentication",
+          PregoGroupedRow(
+            key: Key("harness_authentication_$pluginId"),
+            icon: TablerRegular.login,
+            title: Text(
+              plugin.authenticationState == PluginAuthenticationState.inProgress || authenticationForThisHarness
+                  ? loc.harnessAuthenticationViewProgress
+                  : loc.harnessAuthenticationLogIn,
+            ),
+            subtitle: Text(loc.harnessAuthenticationDescription),
+            trailing: authenticationStarting ? const PregoActivityIndicator(color: null) : null,
+            // Only one authentication flow can exist. Its own row can reopen
+            // a retained challenge after uncertain cancellation; every other
+            // row stays disabled until that flow settles.
+            onTap:
+                globalActionBlocked ||
+                    action.blocksControls ||
+                    (blocked && !authenticationForThisHarness) ||
+                    authenticationStarting ||
+                    (authenticationActive && !authenticationForThisHarness)
+                ? null
+                : authenticationForThisHarness
+                ? () => unawaited(
+                    _showAuthenticationSheet(
+                      context: context,
+                      cubit: context.read<PluginManagementCubit>(),
+                    ),
+                  )
+                : () => context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId),
+          ),
+        ),
+      if (showInstall || install != null)
+        ("installation", _HarnessInstallation(plugin: plugin, install: install, blocked: blocked)),
+    ];
 
     return KeyedSubtree(
       key: Key("harness_management_card_$pluginId"),
@@ -212,72 +304,15 @@ class const _HarnessControlCard({
               color: context.prego.colors.bgSurface2,
               key: Key("harnesses_detail_card_$pluginId"),
               children: [
-                PregoGroupedRow(
-                  key: Key("harness_management_identity_$pluginId"),
-                  minHeight: 52,
-                  verticalPadding: PregoSpacing.xs,
-                  title: Row(
-                    children: [
-                      PregoBrandLogo(pluginId: pluginId, color: context.prego.colors.textTertiary),
-                      const SizedBox(width: PregoSpacing.md),
-                      Expanded(child: Text(plugin.setup.displayName)),
-                    ],
-                  ),
-                  trailing: _HarnessSwitch(plugin: plugin, action: action, install: install, blocked: blocked),
+                // Rows that come and go with the harness's state (a failure
+                // reason, a hint, the version) size and fade in or out while
+                // the rows below them glide, instead of snapping.
+                PregoAnimatedList<(String, Widget)>(
+                  items: rows,
+                  itemKey: (row) => ValueKey(row.$1),
+                  itemBuilder: (context, index, row) =>
+                      PregoGroupedRowPosition(isLast: index == rows.length - 1, child: row.$2),
                 ),
-                _FactRow(
-                  title: loc.harnessesStatusLabel,
-                  value: _HarnessStatus(plugin: plugin, install: install, overview: false),
-                ),
-                if (_failureReason(plugin: plugin, install: install) case final reason?)
-                  PregoGroupedRow(key: Key("harness_management_failure_reason_$pluginId"), title: Text(reason)),
-                if (runtimeVersion != null) _FactRow(title: loc.harnessesVersionLabel, value: Text(runtimeVersion)),
-                if (showWork)
-                  _FactRow(
-                    title: loc.harnessesActivityLabel,
-                    value: Text(_workStatus(context: context, state: plugin.workState)),
-                  ),
-                if (actionHint != null) PregoGroupedRow(title: Text(actionHint)),
-                if (showExternal)
-                  PregoGroupedRow(
-                    key: Key("harness_management_external_$pluginId"),
-                    icon: TablerRegular.info_circle,
-                    title: Text(loc.harnessManagementExternalTitle),
-                    subtitle: Text(loc.harnessManagementExternalDescription),
-                  ),
-                if (showAuthentication)
-                  PregoGroupedRow(
-                    key: Key("harness_authentication_$pluginId"),
-                    icon: TablerRegular.login,
-                    title: Text(
-                      plugin.authenticationState == PluginAuthenticationState.inProgress || authenticationForThisHarness
-                          ? loc.harnessAuthenticationViewProgress
-                          : loc.harnessAuthenticationLogIn,
-                    ),
-                    subtitle: Text(loc.harnessAuthenticationDescription),
-                    trailing: authenticationStarting ? const PregoActivityIndicator(color: null) : null,
-                    // Only one authentication flow can exist. Its own row can reopen
-                    // a retained challenge after uncertain cancellation; every other
-                    // row stays disabled until that flow settles.
-                    onTap:
-                        globalActionBlocked ||
-                            action.blocksControls ||
-                            (blocked && !authenticationForThisHarness) ||
-                            authenticationStarting ||
-                            (authenticationActive && !authenticationForThisHarness)
-                        ? null
-                        : authenticationForThisHarness
-                        ? () => unawaited(
-                            _showAuthenticationSheet(
-                              context: context,
-                              cubit: context.read<PluginManagementCubit>(),
-                            ),
-                          )
-                        : () => context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId),
-                  ),
-
-                if (showInstall || install != null)
-                  _HarnessInstallation(plugin: plugin, install: install, blocked: blocked),
               ],
             ),
           ),

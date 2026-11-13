@@ -176,6 +176,33 @@ void main() {
     expect(skillRepository.lastCwd, "/repo");
   });
 
+  test("sendCommand still invokes a skill by text when the skill lookup fails", () async {
+    final service = _newService();
+    final threadRepository = _StubThreadRepository();
+    service.attachAppServerRepositories(
+      threadRepository: threadRepository,
+      modelRepository: _StubModelRepository(),
+      skillRepository: _StubSkillRepository(error: StateError("skills unavailable")),
+    );
+
+    final dispatched = await service.sendCommand(
+      threadId: "thread-id",
+      cwd: "/repo",
+      command: "fixture-greeter",
+      arguments: "hello",
+      clientUserMessageId: "prm_1",
+      model: null,
+      effort: null,
+      collaborationMode: null,
+      fastMode: false,
+    );
+
+    final input = threadRepository.lastParts.single as PluginPromptPartText;
+    expect(input.text, r"$fixture-greeter hello");
+    expect(threadRepository.lastSkill, isNull);
+    expect(dispatched.turnId, "turn");
+  });
+
   test("a mode turn without a model uses the rollout's model on a cold catalog", () async {
     const threadId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
     final codexHome = Directory.systemTemp.createTempSync("codex-turn-model-");
@@ -674,6 +701,8 @@ class _StubSkillRepository({
   @override
   Future<String?> findSkillPath({required String cwd, required String name}) async {
     lastCwd = cwd;
+    final failure = error;
+    if (failure != null) throw failure;
     return skillPaths[name];
   }
 }

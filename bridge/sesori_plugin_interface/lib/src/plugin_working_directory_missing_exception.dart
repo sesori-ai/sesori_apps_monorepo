@@ -6,8 +6,8 @@ import "plugin_session_unrestorable_exception.dart";
 /// This is a per-session failure, not a backend health problem: plugins throw
 /// it instead of reporting a spawn failure. The user-facing [message] omits
 /// the [path]; [toString] keeps it for local logs.
-class const PluginWorkingDirectoryMissingException(
-  super.operation, {
+class const PluginWorkingDirectoryMissingException({
+  required super.operation,
   required final String path,
   required super.cause,
 }) extends PluginSessionUnrestorableException {

@@ -236,7 +236,7 @@ void main() {
     });
 
     test("handleInternal returns 502 for upstream incompatibility", () async {
-      plugin.throwOnGetMessagesError = PluginApiException("GET /session/s1/message", 502);
+      plugin.throwOnGetMessagesError = PluginApiException(endpoint: "GET /session/s1/message", statusCode: 502);
 
       final response = await handler.routeForTest(
         makeRequest(

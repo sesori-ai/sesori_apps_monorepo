@@ -496,6 +496,7 @@ sealed class CodexToolArgumentsDto with _$CodexToolArgumentsDto {
     @JsonKey(name: "cell_id") required Object? cellId,
     @JsonKey(fromJson: _stringOrNull) required String? message,
     @JsonKey(name: "agent_type", fromJson: _stringOrNull) required String? agentType,
+    required Object? targets,
   }) = _CodexToolArgumentsDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexToolArgumentsDtoFromJson(json);

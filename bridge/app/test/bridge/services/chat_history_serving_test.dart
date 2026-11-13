@@ -280,7 +280,7 @@ void main() {
 
   group("sessions the backend cannot restore", () {
     const unrestorable = PluginSessionUnrestorableException(
-      "session/load history replay",
+      operation: "session/load history replay",
       message: "This session can't be continued.",
     );
 
@@ -327,7 +327,7 @@ void main() {
   test("a read during a turn the harness cannot replay serves the stored rows and backfills after it", () async {
     final repository = _FakeSessionRepository(
       transcript: const [],
-      error: const PluginSessionHistoryBusyException("session/load history replay", message: "turn running"),
+      error: const PluginSessionHistoryBusyException(operation: "session/load history replay", message: "turn running"),
     );
     final history = createTestChatHistory(sessionRepository: repository);
     await history.service.captureMessage(

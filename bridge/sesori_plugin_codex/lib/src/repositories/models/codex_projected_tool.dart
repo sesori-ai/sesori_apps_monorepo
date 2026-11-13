@@ -18,3 +18,7 @@ final class CodexProjectedTool({
 sealed class const CodexToolPresentation();
 
 final class const CodexOrdinaryToolPresentation() extends CodexToolPresentation;
+
+/// Codex's `wait_agent` call, shown as a sentence instead of its raw targets.
+/// [agentCount] is null when the call names no targets (the v2 mailbox wait).
+final class const CodexWaitAgentToolPresentation({required final int? agentCount}) extends CodexToolPresentation;

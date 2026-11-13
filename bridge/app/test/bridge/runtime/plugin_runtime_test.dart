@@ -516,7 +516,7 @@ void main() {
         pluginId: "one",
         operation: _TestOperation.use,
         body: (_) => throw const PluginAuthenticationRequiredException(
-          "test",
+          operation: "test",
           actionHint: "Authenticate locally.",
           recovery: PluginAuthenticationRecovery.login,
         ),
@@ -555,7 +555,7 @@ void main() {
         pluginId: "one",
         operation: _TestOperation.use,
         body: (_) => throw const PluginAuthenticationRequiredException(
-          "test",
+          operation: "test",
           actionHint: "Authenticate locally.",
           recovery: PluginAuthenticationRecovery.login,
         ),
@@ -591,7 +591,7 @@ void main() {
         pluginId: "one",
         operation: _TestOperation.use,
         body: (_) => throw const PluginAuthenticationRequiredException(
-          "test",
+          operation: "test",
           actionHint: "Check the gateway, then refresh setup.",
           recovery: PluginAuthenticationRecovery.externalConfiguration,
         ),
@@ -631,7 +631,7 @@ void main() {
         pluginId: "one",
         operation: _TestOperation.use,
         body: (_) => throw const PluginAuthenticationRequiredException(
-          "test",
+          operation: "test",
           actionHint: "Authenticate locally.",
           recovery: PluginAuthenticationRecovery.login,
         ),
@@ -759,7 +759,7 @@ void main() {
         operation: _TestOperation.capture,
         residency: PluginGenerationResidency.normal,
         body: (_) => throw const PluginAuthenticationRequiredException(
-          "test",
+          operation: "test",
           actionHint: "Authenticate locally.",
           recovery: PluginAuthenticationRecovery.login,
         ),
@@ -1638,7 +1638,7 @@ void main() {
         pluginId: "one",
         operation: _TestOperation.use,
         body: (_) => throw const PluginAuthenticationRequiredException(
-          "test",
+          operation: "test",
           actionHint: "Authenticate locally.",
           recovery: PluginAuthenticationRecovery.login,
         ),
@@ -1692,7 +1692,7 @@ void main() {
 
     failingSource.addError(
       const PluginAuthenticationRequiredException(
-        "stream",
+        operation: "stream",
         actionHint: "Authenticate locally.",
         recovery: PluginAuthenticationRecovery.login,
       ),
@@ -1920,7 +1920,7 @@ void main() {
     await _waitUntil(() => runtime.snapshot.single.accessGate == PluginRuntimeAccessGate.draining);
     factory.api.eventsController.addError(
       const PluginAuthenticationRequiredException(
-        "test",
+        operation: "test",
         actionHint: "Authenticate locally.",
         recovery: PluginAuthenticationRecovery.login,
       ),

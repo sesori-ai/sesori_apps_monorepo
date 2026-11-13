@@ -88,13 +88,13 @@ class GrokSessionOptionsService({
   }) {
     if (agent != null && agent.isNotEmpty && agent != _pluginId) {
       throw PluginStaleOptionsException(
-        operation,
+        operation: operation,
         message: "Grok no longer offers the requested agent",
       );
     }
     if (model != null && model.providerID != _pluginId) {
       throw PluginStaleOptionsException(
-        operation,
+        operation: operation,
         message: "Grok no longer offers the requested provider",
       );
     }
@@ -102,7 +102,7 @@ class GrokSessionOptionsService({
     final requestedModel = model == null ? null : catalog?.modelById(id: model.modelID);
     if (model != null && requestedModel == null) {
       throw PluginStaleOptionsException(
-        operation,
+        operation: operation,
         message: "Grok no longer offers the requested model",
       );
     }
@@ -117,7 +117,7 @@ class GrokSessionOptionsService({
         (model == null && (catalog?.models.any((candidate) => candidate.reasoningEfforts.contains(effort)) ?? false));
     if (!offersEffort) {
       throw PluginStaleOptionsException(
-        operation,
+        operation: operation,
         message: "Grok no longer offers the requested reasoning effort",
       );
     }
@@ -132,7 +132,7 @@ class GrokSessionOptionsService({
     if (model == null && variant == null) return;
     if (model != null && model.providerID != _pluginId) {
       throw const PluginStaleOptionsException(
-        GrokSessionConfigRepository.selectionOperation,
+        operation: GrokSessionConfigRepository.selectionOperation,
         message: "Grok no longer offers the requested provider",
       );
     }
@@ -146,7 +146,7 @@ class GrokSessionOptionsService({
       catalogModel = catalog?.modelById(id: currentModelId);
       if (catalogModel == null) {
         throw const PluginStaleOptionsException(
-          GrokSessionConfigRepository.selectionOperation,
+          operation: GrokSessionConfigRepository.selectionOperation,
           message: "Grok no longer offers the session's selected model",
         );
       }
@@ -155,14 +155,14 @@ class GrokSessionOptionsService({
     }
     if (catalogModel == null) {
       throw const PluginStaleOptionsException(
-        GrokSessionConfigRepository.selectionOperation,
+        operation: GrokSessionConfigRepository.selectionOperation,
         message: "Grok no longer offers the requested model",
       );
     }
     final reasoningEffort = variant?.id;
     if (reasoningEffort != null && !catalogModel.reasoningEfforts.contains(reasoningEffort)) {
       throw const PluginStaleOptionsException(
-        GrokSessionConfigRepository.selectionOperation,
+        operation: GrokSessionConfigRepository.selectionOperation,
         message: "Grok no longer offers the requested reasoning effort",
       );
     }

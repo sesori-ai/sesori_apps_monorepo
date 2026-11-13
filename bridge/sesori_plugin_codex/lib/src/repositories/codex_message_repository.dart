@@ -48,7 +48,7 @@ class CodexMessageRepository({
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          "read Codex session transcript",
+          operation: "read Codex session transcript",
           message: "history read for $sessionId failed",
           cause: error,
         ),

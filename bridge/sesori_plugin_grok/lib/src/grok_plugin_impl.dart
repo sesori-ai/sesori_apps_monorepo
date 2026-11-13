@@ -234,7 +234,7 @@ class GrokPlugin._({
   Future<void> deleteSession(String sessionId) async {
     if (childSessionTracker.hasActiveWorkForSession(sessionId: sessionId)) {
       throw const PluginOperationException(
-        "deleteSession",
+        operation: "deleteSession",
         message: "A Grok session with active sub-agent work must finish or be stopped before deletion",
       );
     }

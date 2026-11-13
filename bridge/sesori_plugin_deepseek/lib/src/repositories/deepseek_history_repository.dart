@@ -80,7 +80,7 @@ class DeepSeekHistoryRepository({
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          DeepSeekAcpApi.historyMethod,
+          operation: DeepSeekAcpApi.historyMethod,
           message: "DeepSeek history replay failed",
           cause: error,
         ),

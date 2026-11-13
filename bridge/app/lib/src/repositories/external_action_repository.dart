@@ -100,7 +100,7 @@ class ExternalActionRepository({
   Never _replyUnavailable({required String requestId, required String sessionId}) {
     Log.w("Native external-action response unavailable for $requestId in $sessionId");
     throw PluginOperationException(
-      SessionOperation.replyToExternalAction.name,
+      operation: SessionOperation.replyToExternalAction.name,
       statusCode: 503,
       message: "native external-action response is unavailable",
     );

@@ -174,7 +174,11 @@ void main() {
     });
 
     test("does not forward plugin status codes or error text", () async {
-      service.error = const PluginOperationException("capture", statusCode: 418, message: "sensitive upstream text");
+      service.error = const PluginOperationException(
+        operation: "capture",
+        statusCode: 418,
+        message: "sensitive upstream text",
+      );
 
       final response = await _send(
         handler: handler,

@@ -279,6 +279,12 @@ reaches the backend so the turn continues.
   folds, the transcript follows by its bottom inset alone and its rows are not
   rebuilt. With reduced motion, the card goes and the change applies at once,
   with no glide and no hold.
+- These glides apply at the newest edge only. Scrolled away from it, a card
+  growing or folding, the composer or any other bottom control changing
+  height, or the keyboard opening or closing leaves the rows being read where
+  they are on screen. A shrink larger than the distance scrolled settles the
+  list at the newest edge, where it follows the latest messages again and Jump
+  to latest goes away. A glide back to the newest edge is not held.
 - When management blocks the session's harness, needs-you cards and new response
   dialogs are hidden. A dialog already open on either surface closes without
   answering or rejecting; its pending model remains until an authoritative

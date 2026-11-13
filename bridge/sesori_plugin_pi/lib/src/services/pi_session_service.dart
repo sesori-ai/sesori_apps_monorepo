@@ -240,7 +240,7 @@ final class PiSessionService({
         : await _catalog.resolveSession(sessionId: parentSessionId, knownDirectories: {directory});
     if (parentSessionId != null && parent == null) {
       throw PluginOperationException.notFound(
-        "create Pi session",
+        operation: "create Pi session",
         message: "Parent Pi session was not found.",
         cause: PiSessionHistoryNotFoundException(sessionId: parentSessionId),
       );

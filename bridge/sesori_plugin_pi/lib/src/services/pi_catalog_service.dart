@@ -109,14 +109,14 @@ class PiCatalogService({
   }
 
   Never _throwNoModels() => throw const PluginOperationException(
-    "discover Pi options",
+    operation: "discover Pi options",
     message: "Pi session options are unavailable.",
     cause: PiCatalogNoModelsException(),
   );
 
   Never _throwDiscoveryFailure({required PiOptionsDiscoveryFailed result}) {
     final error = PluginOperationException(
-      "discover Pi options",
+      operation: "discover Pi options",
       message: "Pi session options are unavailable.",
       cause: result.cause,
     );

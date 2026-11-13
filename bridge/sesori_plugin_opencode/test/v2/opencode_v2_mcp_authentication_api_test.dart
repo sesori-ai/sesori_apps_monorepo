@@ -195,7 +195,7 @@ void main() {
   }
 
   test("native transport failure propagates unchanged", () async {
-    const error = PluginOperationException("fixture", message: "Fixture failure", statusCode: 503);
+    const error = PluginOperationException(operation: "fixture", message: "Fixture failure", statusCode: 503);
     final api = _api(handler: (_) async => throw error);
     await expectLater(
       api.startMcpAuthentication(directory: _directory, integrationId: _integrationId, methodId: "native-method"),
