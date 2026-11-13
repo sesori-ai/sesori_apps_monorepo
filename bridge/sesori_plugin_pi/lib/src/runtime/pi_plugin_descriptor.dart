@@ -95,6 +95,12 @@ final class const PiPluginDescriptor({
   @override
   bool get supportsPromptAttachments => true;
 
+  /// Pi's echo of a sent command, expanded template or skill included, carries
+  /// the command's prompt id (`PiEventDispatcher` gives it the oldest pending
+  /// command), and its message ids are stable across reloads.
+  @override
+  bool get namesCommandInvocations => true;
+
   @override
   PluginQuotaReportingSupport get quotaReportingSupport => PluginQuotaReportingSupport.conditional;
 

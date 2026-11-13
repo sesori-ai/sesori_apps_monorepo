@@ -155,6 +155,46 @@ void main() {
       expect(first[1].info.id, "pi:session:user:10:2");
     });
 
+    test("names a skill run from Pi's skill envelope, and nothing else", () {
+      const block =
+          '<skill name="fixture-greeter" location="/project/.pi/skills/fixture-greeter/SKILL.md">\n'
+          "Greet the user.\n</skill>";
+      final messages = mapper.map(
+        sessionId: sessionId,
+        entries: [
+          _message(id: "with-text", parentId: null, message: _user("$block\n\nhello there", timestamp: 1)),
+          _message(id: "bare", parentId: "with-text", message: _user(block, timestamp: 2)),
+          _message(id: "template", parentId: "bare", message: _user("Greet the user. Topic: hi", timestamp: 3)),
+        ],
+        leafId: "template",
+      );
+
+      final invocations = messages.map((message) => (message.info as PluginMessageUser).invocation).toList();
+      expect(invocations, [
+        const PluginCommandInvocation(
+          name: "skill:fixture-greeter",
+          source: PluginCommandSource.skill,
+          arguments: "hello there",
+        ),
+        const PluginCommandInvocation(
+          name: "skill:fixture-greeter",
+          source: PluginCommandSource.skill,
+          arguments: null,
+        ),
+        null,
+      ]);
+
+      // A live echo of a skill Sesori sent is named by bridge core instead.
+      final live = PiHistoryMapper(pluginId: "pi").mapUserMessage(
+        sessionId: sessionId,
+        messageId: "live",
+        message: _user("$block\n\nhello there", timestamp: 4),
+        exactText: "/skill:fixture-greeter hello there",
+        promptId: "prompt",
+      );
+      expect((live?.info as PluginMessageUser?)?.invocation, isNull);
+    });
+
     test("applies thinking-level changes along only the active branch", () {
       final messages = mapper.map(
         sessionId: sessionId,

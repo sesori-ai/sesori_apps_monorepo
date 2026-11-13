@@ -110,10 +110,28 @@ final class PiHistoryMapper({
         agent: null,
         time: _time(message.timestamp),
         promptId: promptId,
-        invocation: null,
+        // A turn Sesori sent ([exactText]) is named by bridge core from the
+        // send itself; any other turn is named from Pi's own skill record.
+        invocation: exactText == null ? _skillInvocation(message: message) : null,
       ),
       parts: parts,
     );
+  }
+
+  /// Pi stores `/skill:name args` as the skill body in a `<skill>` envelope,
+  /// so the run keeps its name in history. A prompt template leaves no such
+  /// record.
+  PluginCommandInvocation? _skillInvocation({required PiUserMessageDto message}) {
+    final text = message.content.whereType<PiTextContentDto>().singleOrNull?.text;
+    if (text == null) return null;
+    return switch (_persistedUserTextCodec.decodeSkillRun(persistedText: text)) {
+      (:final command, :final arguments) => PluginCommandInvocation(
+        name: command,
+        source: PluginCommandSource.skill,
+        arguments: arguments,
+      ),
+      null => null,
+    };
   }
 
   PluginMessageWithParts _mapAssistantMessage({
