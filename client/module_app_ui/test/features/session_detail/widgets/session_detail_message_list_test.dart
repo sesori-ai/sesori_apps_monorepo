@@ -10,6 +10,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/compaction_part_widget.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/invocation_card.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
@@ -36,6 +37,7 @@ class const _SessionDetailMessageListHarness({
   final SessionLaunchHandoff? launchHandoff,
   final DateTime? launchStartedAt,
   final List<LaunchFollowUp> launchFollowUps = const [],
+  final PromptTurnShapes promptTurnShapes = const PromptTurnShapes(),
 }) extends StatefulWidget {
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
@@ -62,7 +64,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late List<SessionPromptIndexEntry>? _promptIndex = widget.initialPromptIndex;
   int? lastCancelledQueuedMessageIndex;
 
-  PromptTurnShapes _promptTurnShapes = const PromptTurnShapes();
+  late PromptTurnShapes _promptTurnShapes = widget.promptTurnShapes;
 
   void setPromptTurnShapes(PromptTurnShapes shapes) => setState(() => _promptTurnShapes = shapes);
 
@@ -524,9 +526,15 @@ List<MessageWithParts> _turns({
 Future<_SessionDetailMessageListHarnessState> _pumpTurns(
   WidgetTester tester, {
   required List<MessageWithParts> messages,
+  PromptTurnShapes promptTurnShapes = const PromptTurnShapes(),
 }) async {
   await tester.pumpWidget(
-    _SessionDetailMessageListHarness(initialMessages: messages, initialStreamingText: const {}, topInset: _topInset),
+    _SessionDetailMessageListHarness(
+      initialMessages: messages,
+      initialStreamingText: const {},
+      topInset: _topInset,
+      promptTurnShapes: promptTurnShapes,
+    ),
   );
   await tester.pumpAndSettle();
   return tester.state<_SessionDetailMessageListHarnessState>(find.byType(_SessionDetailMessageListHarness));
@@ -534,7 +542,11 @@ Future<_SessionDetailMessageListHarnessState> _pumpTurns(
 
 /// Shows [messages] as [_pumpTurns] does, as the desktop shell presents them:
 /// under a pointer, on a session page that can show a prompt's attachments.
-Future<void> _pumpPointerTurns(WidgetTester tester, {required List<MessageWithParts> messages}) async {
+Future<void> _pumpPointerTurns(
+  WidgetTester tester, {
+  required List<MessageWithParts> messages,
+  PromptTurnShapes promptTurnShapes = const PromptTurnShapes(),
+}) async {
   await tester.pumpWidget(
     PregoInteractionScope(
       mode: PregoInteractionMode.pointer,
@@ -558,6 +570,7 @@ Future<void> _pumpPointerTurns(WidgetTester tester, {required List<MessageWithPa
           initialMessages: messages,
           initialStreamingText: const {},
           topInset: _topInset,
+          promptTurnShapes: promptTurnShapes,
         ),
       ),
     ),
@@ -599,6 +612,12 @@ MessageWithParts _imagePrompt({required String messageId, required String text})
 final _waitingBubble = find.byWidgetPredicate(
   (widget) => widget is QueuedMessageBubble && widget.presentation is! DeliveredMessageBubblePresentation,
 );
+
+bool _rectsMatch(Rect a, Rect b) =>
+    (a.left - b.left).abs() < 0.01 &&
+    (a.top - b.top).abs() < 0.01 &&
+    (a.right - b.right).abs() < 0.01 &&
+    (a.bottom - b.bottom).abs() < 0.01;
 
 double _topOf(WidgetTester tester, String rowId) => tester.getTopLeft(_messageKey(rowId)).dy;
 
@@ -5156,7 +5175,7 @@ void main() {
 
         final own = ownBubble(tester, "u4");
         expect(own.bottom, greaterThan(tester.getRect(find.byKey(_listViewKey)).bottom));
-        expect(pins(tester).fullHeights["u4"], lessThan(own.height / 2));
+        expect(pins(tester).pinHeights["u4"]?.full, lessThan(own.height / 2));
         expect(pinOf(tester, "u4"), isNull, reason: "a pin would hide the lines still to read");
         expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u4")).hidden, isFalse);
       });
@@ -5566,6 +5585,215 @@ void main() {
 
       expect(ownBubble(tester, "u6").top, moreOrLessEquals(pinTop, epsilon: 0.5));
       semantics.dispose();
+    });
+
+    group("of a command the user ran", () {
+      const name = "fixture-greeter";
+      const title = "You ran /$name";
+
+      /// Shows [mixedTurns] with u5 a skill run with [arguments], as a phone or,
+      /// under a pointer, a desktop window shows it.
+      Future<void> pumpCard(WidgetTester tester, {required bool desktop, required String? arguments}) async {
+        await tester.binding.setSurfaceSize(desktop ? const Size(1280, 800) : const Size(390, 700));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final shapes = PromptTurnShapes(
+          messages: {
+            "u5": InvocationPromptTurnShape(name: name, source: CommandSource.skill, arguments: arguments),
+          },
+        );
+        // A message of its own, as the bridge sends the run's text with it.
+        final messages = [
+          for (final message in mixedTurns)
+            message.info.id == "u5"
+                ? _message(messageId: "u5", role: "user", text: "/$name ${arguments ?? ""}")
+                : message,
+        ];
+        if (desktop) {
+          await _pumpPointerTurns(tester, messages: messages, promptTurnShapes: shapes);
+        } else {
+          await _pumpTurns(tester, messages: messages, promptTurnShapes: shapes);
+        }
+      }
+
+      Finder cardCopyOf(String openerId) => find.descendant(
+        of: find.descendant(of: overlay, matching: find.byKey(ValueKey((pinnedPrompt: openerId)))),
+        matching: find.byType(InvocationCardContent),
+      );
+
+      Finder ownCardOf(String openerId) =>
+          find.descendant(of: slotOf(openerId), matching: find.byType(InvocationCardContent));
+
+      for (final desktop in [false, true]) {
+        final width = desktop ? "desktop" : "phone";
+
+        testWidgets("takes over from its card exactly where the two coincide, at the leading edge ($width)", (
+          tester,
+        ) async {
+          await pumpCard(tester, desktop: desktop, arguments: "Say hello to the fixture\nThen stop.");
+          await _scrollRowTo(tester, rowId: "u5", top: pinTop - PregoSpacing.xs + 1);
+          expect(pinOf(tester, "u5"), isNull);
+
+          await _scrollRowTo(tester, rowId: "u5", top: pinTop - PregoSpacing.xs);
+
+          final pin = pinOf(tester, "u5") ?? fail("u5 is not pinned");
+          expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u5")).hidden, isTrue);
+          expect(find.descendant(of: cardCopyOf("u5"), matching: find.text(title)), findsOneWidget);
+          final own = tester.getRect(ownCardOf("u5"));
+          final copy = tester.getRect(cardCopyOf("u5"));
+          // The same content, laid out at the same width, on the same spot.
+          expect(copy.topLeft, offsetMoreOrLessEquals(own.topLeft, epsilon: 0.01));
+          expect(copy.width, moreOrLessEquals(own.width, epsilon: 0.01));
+          expect(copy.height, moreOrLessEquals(own.height, epsilon: 0.01));
+          final ownSurface = own.inflate(InvocationCard.inset);
+          expect(ownSurface.left, moreOrLessEquals(UserMessageBubble.margin.left, epsilon: 0.01));
+          expect(pin.top, moreOrLessEquals(ownSurface.top, epsilon: 0.01));
+          expect(pin.height, moreOrLessEquals(ownSurface.height, epsilon: 0.01));
+          expect(pin.view, const TranscriptPinStart());
+          final surface = RRect.fromRectAndRadius(ownSurface, const Radius.circular(InvocationCard.radius));
+          final fill = InvocationCard.fill(prego: tester.element(overlay).prego);
+          expect(
+            pins(tester),
+            paints..something(
+              (method, arguments) => switch (arguments) {
+                [final RRect shape, final Paint paint] when method == #drawRRect =>
+                  _rectsMatch(shape.outerRect, surface.outerRect) &&
+                      shape.tlRadius == surface.tlRadius &&
+                      paint.color.toARGB32() == fill.toARGB32(),
+                _ => false,
+              },
+            ),
+            reason: "the card's own fill and shape",
+          );
+        });
+
+        testWidgets("compacts to its whole header and two lines of its arguments ($width)", (tester) async {
+          await pumpCard(
+            tester,
+            desktop: desktop,
+            arguments: [for (var line = 0; line < 12; line++) "Argument line $line"].join("\n\n"),
+          );
+          // The answer under the pin, the next prompt far below.
+          await _scrollRowTo(tester, rowId: "a5-0", top: pinTop);
+
+          final pin = pinOf(tester, "u5") ?? fail("u5 is not pinned");
+          final pins = tester.renderObject<RenderTranscriptStickyPrompts>(overlay);
+          final line = (pins.compactHeight - UserMessageBubble.padding * 2) / 3;
+          final copy = tester.getRect(cardCopyOf("u5"));
+          final titleRect = tester.getRect(find.descendant(of: cardCopyOf("u5"), matching: find.text(title)));
+          // From the tag's top to the title's bottom.
+          final header = titleRect.bottom - copy.top;
+          expect(pin.top, pinTop);
+          expect(pin.height, lessThan(pin.fullHeight));
+          expect(
+            pin.height,
+            moreOrLessEquals(
+              InvocationCard.inset * 2 + header + InvocationCardContent.bodyGap + line * 2,
+              epsilon: 0.01,
+            ),
+          );
+          expect(
+            titleRect.bottom,
+            lessThan(pin.top + pin.height - InvocationCard.inset),
+            reason: "the header shows whole",
+          );
+        });
+      }
+
+      testWidgets("keeps a tall card's header: it takes over from the card's end, then turns to its start", (
+        tester,
+      ) async {
+        await pumpCard(
+          tester,
+          desktop: false,
+          arguments: [for (var line = 0; line < 40; line++) "Argument line $line"].join("\n\n"),
+        );
+        await _scrollRowTo(tester, rowId: "a5-0", top: pinTop);
+
+        final pinned = pinOf(tester, "u5") ?? fail("u5 is not pinned");
+        expect(pinned.fullHeight, greaterThan(transcriptStickyMaxStartHeight));
+        expect(pinned.view, const TranscriptPinEnd(fade: 1));
+        expect(
+          tester.getRect(cardCopyOf("u5")).top,
+          moreOrLessEquals(pinned.top + InvocationCard.inset, epsilon: 0.01),
+          reason: "the pin shows the card's start",
+        );
+        final titleRect = tester.getRect(find.descendant(of: cardCopyOf("u5"), matching: find.text(title)));
+        expect(titleRect.bottom, lessThan(pinned.top + pinned.height - InvocationCard.inset));
+
+        // Back to where the pin first takes over, from the card's end.
+        final position = _position(tester);
+        final own = tester.getRect(ownCardOf("u5")).inflate(InvocationCard.inset);
+        position.jumpTo(position.pixels + pinTop + pinned.height - own.bottom);
+        await tester.pumpAndSettle();
+
+        final takeover = pinOf(tester, "u5") ?? fail("u5 is not pinned");
+        expect(takeover.view, const TranscriptPinEnd(fade: 0));
+        final ownNow = tester.getRect(ownCardOf("u5"));
+        final copyNow = tester.getRect(cardCopyOf("u5"));
+        expect(copyNow.topLeft, offsetMoreOrLessEquals(ownNow.topLeft, epsilon: 0.01), reason: "nothing jumps");
+        expect(copyNow.bottom, moreOrLessEquals(ownNow.bottom, epsilon: 0.01));
+      });
+
+      testWidgets("pins a bare command whole, with no room kept for arguments", (tester) async {
+        await pumpCard(tester, desktop: false, arguments: null);
+        await _scrollRowTo(tester, rowId: "a5-1", top: _topInset - 100);
+
+        final pin = pinOf(tester, "u5") ?? fail("u5 is not pinned");
+        expect(pin.height, pin.fullHeight);
+        expect(
+          pin.height,
+          moreOrLessEquals(tester.getSize(cardCopyOf("u5")).height + InvocationCard.inset * 2, epsilon: 0.01),
+        );
+      });
+
+      testWidgets("names the run to a screen reader, and jumps to its card", (tester) async {
+        final semantics = tester.ensureSemantics();
+        await pumpCard(tester, desktop: false, arguments: "Say hello");
+        await _scrollRowTo(tester, rowId: "a5-1", top: _topInset - 100);
+
+        expect(
+          tester.getSemantics(cardCopyOf("u5")),
+          isSemantics(
+            label: "You ran skill $name\nSay hello",
+            hint: "Jump to this prompt",
+            isButton: true,
+            hasTapAction: true,
+          ),
+        );
+        semantics.dispose();
+      });
+
+      testWidgets("pins an unloaded run as its card", (tester) async {
+        await tester.pumpWidget(
+          _SessionDetailMessageListHarness(
+            initialMessages: shortTurns.skip(1).toList(),
+            initialStreamingText: const {},
+            topInset: _topInset,
+            onLoadOlderMessages: () async {},
+            initialPromptIndex: const [
+              SessionPromptIndexEntry.opener(
+                invocation: CommandInvocation(name: name, source: CommandSource.mcp, arguments: "Say hello"),
+                messageId: "u0",
+                seq: 0,
+                number: 1,
+                createdAt: null,
+                preview: "/$name Say hello",
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+        await _scrollRowTo(tester, rowId: "a0-0", top: _topInset - 100);
+
+        expect(pinOf(tester, "u0"), isNotNull);
+        final preview = find.descendant(
+          of: find.descendant(of: overlay, matching: find.byKey(const ValueKey((unloadedPrompt: "u0")))),
+          matching: find.byType(InvocationCardContent),
+        );
+        expect(find.descendant(of: preview, matching: find.text(title)), findsOneWidget);
+        expect(find.descendant(of: preview, matching: find.byIcon(TablerRegular.plug_connected)), findsOneWidget);
+        expect(tester.getRect(preview).left, UserMessageBubble.margin.left + InvocationCard.inset);
+      });
     });
 
     group("of an unloaded turn", () {

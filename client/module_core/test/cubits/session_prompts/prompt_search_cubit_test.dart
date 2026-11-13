@@ -11,6 +11,7 @@ class _MockSessionRepository() extends Mock implements SessionRepository;
 TranscriptPromptEntry _loaded({required String id, required String text}) => TranscriptPromptOpener(
   messageId: id,
   text: text,
+  invocation: null,
   source: TranscriptPromptLoaded(fullText: text),
   createdAt: null,
   dayKey: null,
@@ -20,6 +21,7 @@ TranscriptPromptEntry _loaded({required String id, required String text}) => Tra
 TranscriptPromptEntry _unloaded({required String id, required int seq}) => TranscriptPromptOpener(
   messageId: id,
   text: null,
+  invocation: null,
   source: TranscriptPromptUnloaded(seq: seq, preview: null),
   createdAt: null,
   dayKey: null,

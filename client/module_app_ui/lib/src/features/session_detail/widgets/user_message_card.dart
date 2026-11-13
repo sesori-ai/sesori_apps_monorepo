@@ -39,6 +39,14 @@ class const UserMessageCard({
     attachments: _attachments(message: message),
   );
 
+  /// The message's attachments, as its invocation card shows them: none when
+  /// it has none, so the card keeps no room for them.
+  static List<Widget> cardAttachmentsOf({required MessageWithParts message}) => [
+    if (_attachments(message: message) case final attachments
+        when attachments.any((attachment) => attachment is! MessageAttachmentUnknown))
+      AttachmentCollectionWidget(sessionId: message.info.sessionID, attachments: attachments),
+  ];
+
   static List<MessageAttachment> _attachments({required MessageWithParts message}) =>
       message.parts.whereType<MessagePartFile>().map((part) => part.attachment).whereType<MessageAttachment>().toList();
 }
@@ -66,11 +74,7 @@ class _UserMessageCardState() extends State<UserMessageCard> {
         name: name,
         source: source,
         arguments: arguments,
-        attachments: [
-          if (UserMessageCard._attachments(message: message) case final attachments
-              when attachments.any((attachment) => attachment is! MessageAttachmentUnknown))
-            AttachmentCollectionWidget(sessionId: message.info.sessionID, attachments: attachments),
-        ],
+        attachments: UserMessageCard.cardAttachmentsOf(message: message),
         outlined: _outlined,
         transitionDuration: _transitionDuration,
       );

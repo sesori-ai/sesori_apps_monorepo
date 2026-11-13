@@ -319,8 +319,12 @@ class OpenCodeV2Service({
         if (promptId != null) _commandEchoes.expect(sessionId: sessionId, promptId: promptId);
         try {
           await _repository.sendCommand(sessionId: sessionId, command: command, arguments: arguments);
-        } on Object {
-          if (promptId != null) _commandEchoes.forget(sessionId: sessionId, promptId: promptId);
+        } on PluginOperationException catch (error) {
+          // Only a definite refusal proves no message is coming; after a
+          // timeout or 5xx the command may still run and echo.
+          if ((promptId, error.statusCode) case (final promptId?, final status?) when status >= 400 && status < 500) {
+            _commandEchoes.forget(sessionId: sessionId, promptId: promptId);
+          }
           rethrow;
         }
       case _V2CommandKind.skill:

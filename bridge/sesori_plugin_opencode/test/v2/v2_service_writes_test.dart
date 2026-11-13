@@ -293,6 +293,12 @@ void main() {
     await expectLater(send(promptId: "refused-prompt"), throwsA(isA<PluginOperationException>()));
     commandEchoes.observeAdmitted(sessionId: root.id, messageId: "msg_typed");
     expect(commandEchoes.promptIdFor(messageId: "msg_typed"), isNull);
+
+    // A timeout or 5xx doesn't prove the command didn't run, so its echo still names it.
+    repository.commandFailure = const PluginOperationException(operation: "sendCommand", statusCode: 504);
+    await expectLater(send(promptId: "uncertain-prompt"), throwsA(isA<PluginOperationException>()));
+    commandEchoes.observeAdmitted(sessionId: root.id, messageId: "msg_late");
+    expect(commandEchoes.promptIdFor(messageId: "msg_late"), "uncertain-prompt");
   });
 
   test("pending children retain root attribution; only a successful reply consumes native constraints", () async {
