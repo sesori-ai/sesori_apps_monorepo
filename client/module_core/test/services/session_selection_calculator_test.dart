@@ -319,6 +319,21 @@ void main() {
       expect(resolved.availableVariants, isEmpty);
     });
 
+    test("an unlisted retained model keeps the variant it carries as its only one", () {
+      const sessionModel = AgentModel(providerID: "anthropic", modelID: "proxy-alias", variant: "high");
+
+      final resolved = _calculator.reconcile(
+        agents: agents,
+        providers: providers,
+        agentNameCandidates: ["build"],
+        modelCandidates: const [],
+        retainedModel: sessionModel,
+      );
+
+      expect(resolved.model, sessionModel);
+      expect(resolved.availableVariants.map((variant) => variant.id), ["high"]);
+    });
+
     test("a surviving candidate outranks the retained model", () {
       final resolved = _calculator.reconcile(
         agents: agents,

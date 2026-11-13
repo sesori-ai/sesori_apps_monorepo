@@ -114,6 +114,62 @@ ProviderListResponse _providerDataWithVariants(List<String> variants) => Provide
   connectedOnly: false,
 );
 
+const ProviderModel _opusModel = ProviderModel(
+  fastMode: null,
+  id: "opus",
+  providerID: "anthropic",
+  name: "Opus",
+  variants: ["high", "max"],
+  defaultVariant: "high",
+  family: null,
+  releaseDate: null,
+);
+
+const ProviderModel _sonnetModel = ProviderModel(
+  fastMode: null,
+  id: "sonnet",
+  providerID: "anthropic",
+  name: "Sonnet",
+  variants: ["high", "max"],
+  defaultVariant: "high",
+  family: null,
+  releaseDate: null,
+);
+
+const ProviderListResponse _claudeProvidersWithOpus = ProviderListResponse(
+  connectedOnly: false,
+  items: [
+    ProviderInfo(id: "anthropic", name: "Anthropic", defaultModelID: "opus", models: {"opus": _opusModel}),
+  ],
+);
+
+/// Claude's one agent, declaring Opus as Claude's own catalog does.
+const List<AgentInfo> _claudeCatalogDeclaringOpusAgents = [
+  AgentInfo(
+    name: "Agent",
+    description: "Agent",
+    model: AgentModel(providerID: "anthropic", modelID: "opus", variant: "high"),
+    mode: AgentMode.primary,
+  ),
+];
+
+SessionOptionsRepositoryResult _claudeCatalogDeclaringOpus() => SessionOptionsRepositoryAvailable(
+  isStale: false,
+  catalog: SessionOptionsCatalog(
+    agents: _claudeCatalogDeclaringOpusAgents,
+    providers: _claudeProvidersWithOpus.items,
+    providersConnectedOnly: false,
+    commands: const [],
+    lastUsedPromptDefaults: null,
+  ),
+);
+
+SessionDetailLoaded _loadedState(SessionDetailCubit cubit) {
+  final state = cubit.state;
+  if (state is! SessionDetailLoaded) fail("expected a loaded session, got $state");
+  return state;
+}
+
 SessionOptionsRepositoryResult _claudeOptionsWithVariants(List<String> variants) => SessionOptionsRepositoryAvailable(
   isStale: false,
   catalog: SessionOptionsCatalog(
@@ -530,6 +586,97 @@ void main() {
       await _awaitCondition(() => (cubit.state as SessionDetailLoaded).selectedAgent == "Agent");
 
       expect((cubit.state as SessionDetailLoaded).selectedAgentModel?.modelID, "haiku");
+    });
+
+    group("a session's own model the catalog does not list", () {
+      const sessionModel = AgentModel(providerID: "anthropic", modelID: "proxy-alias", variant: "high");
+
+      Future<List<SessionDetailLoaded>> openAndRefresh({required ProviderListResponse? cachedProviders}) async {
+        final refreshed = Completer<void>();
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: "project-1",
+            pluginId: "claude",
+            mode: SessionOptionsRequestMode.forceRefresh,
+          ),
+        ).thenAnswer((_) async {
+          refreshed.complete();
+          return _claudeCatalogDeclaringOpus();
+        });
+        final loaded = <SessionDetailLoaded>[];
+        final cubit = await createLoadedCubit(
+          agents: cachedProviders == null ? const [] : _claudeCatalogDeclaringOpusAgents,
+          providerData: cachedProviders,
+          promptDefaults: const SessionPromptDefaults(agent: null, model: sessionModel),
+          areOptionsStale: true,
+        );
+        loaded.add(_loadedState(cubit));
+        final subscription = cubit.stream.listen((state) {
+          if (state is SessionDetailLoaded) loaded.add(state);
+        });
+        addTearDown(subscription.cancel);
+        await refreshed.future;
+        await _awaitCondition(() => _loadedState(cubit).availableAgents.isNotEmpty);
+        await Future<void>.delayed(Duration.zero);
+        return loaded;
+      }
+
+      void expectKeptThroughout(List<SessionDetailLoaded> loaded) {
+        expect(loaded, isNotEmpty);
+        for (final state in loaded) {
+          expect(state.selectedAgentModel, sessionModel);
+          // The variant the session recorded, and nothing the catalog guesses.
+          expect(state.availableVariants.map((variant) => variant.id), ["high"]);
+        }
+      }
+
+      test("stays selected from the open through an options refresh", () async {
+        expectKeptThroughout(await openAndRefresh(cachedProviders: _claudeProvidersWithOpus));
+      });
+
+      test("stays selected when the open had no cached catalog", () async {
+        expectKeptThroughout(await openAndRefresh(cachedProviders: null));
+      });
+
+      test("is replaced once the user picks another model, and a pick the catalog drops is corrected", () async {
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: "project-1",
+            pluginId: "claude",
+            mode: SessionOptionsRequestMode.cacheOnly,
+          ),
+        ).thenAnswer((_) async => _claudeCatalogDeclaringOpus());
+        final cubit = await createLoadedCubit(
+          agents: _claudeCatalogDeclaringOpusAgents,
+          providerData: const ProviderListResponse(
+            connectedOnly: false,
+            items: [
+              ProviderInfo(
+                id: "anthropic",
+                name: "Anthropic",
+                defaultModelID: "opus",
+                models: {"opus": _opusModel, "sonnet": _sonnetModel},
+              ),
+            ],
+          ),
+          promptDefaults: const SessionPromptDefaults(agent: null, model: sessionModel),
+        );
+        expect(_loadedState(cubit).selectedAgentModel, sessionModel);
+
+        cubit.selectModel(providerID: "anthropic", modelID: "sonnet");
+        expect(_loadedState(cubit).selectedAgentModel?.modelID, "sonnet");
+
+        // The refreshed catalog no longer offers the user's pick, which is not
+        // the session's own model, so the refresh corrects it.
+        globalEvents.add(
+          SseEvent(
+            data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-1"),
+          ),
+        );
+        await _awaitCondition(() => _loadedState(cubit).selectedAgentModel?.modelID != "sonnet");
+
+        expect(_loadedState(cubit).selectedAgentModel?.modelID, "opus");
+      });
     });
 
     test("an options update for another project is ignored", () async {
