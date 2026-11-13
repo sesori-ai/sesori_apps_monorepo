@@ -10,7 +10,8 @@ typedef _CatalogFetch = ({bool refresh, Future<ClaudeBackendCatalog> future});
 /// Owns the per-directory catalog probes.
 ///
 /// Claude lists a project's own commands and skills only to a process started
-/// in that project, so each directory gets its own probe and cached catalog.
+/// where it finds them, so each directory gets its own probe and cached
+/// catalog.
 final class ClaudeCatalogService({
   required ClaudeBackendCatalogRepository catalog,
   required final ClaudeSessionProcessRepository _processes,
@@ -60,7 +61,7 @@ final class ClaudeCatalogService({
     );
   }
 
-  /// A project whose folder was deleted cannot start a probe. Its existing
+  /// A project whose folder was deleted cannot be mirrored for a probe. Its existing
   /// sessions still open, so it gets the discovery directory's catalog: the
   /// user's and Claude's own entries. Nothing is cached under the missing
   /// folder, so a restored folder is probed again.
@@ -85,13 +86,33 @@ final class ClaudeCatalogService({
     });
   }
 
+  /// Probes [directory]'s catalog. A project's probe runs in a mirror of its
+  /// command and skill folders rather than in the project, so it loads none
+  /// of the project's settings: those can name helper commands that Claude
+  /// runs at startup.
   Future<ClaudeBackendCatalog> _fetchCatalog({required String directory, required bool refresh}) async {
     Log.d("[claude] discovering session options in $directory (refresh=$refresh)");
+    if (directory == _discoveryDirectory) {
+      return await _probe(directory: directory, workingDirectory: directory, refresh: refresh);
+    }
+    final mirror = await _catalogRepository.createProbeMirror(directory: directory);
+    try {
+      return await _probe(directory: directory, workingDirectory: mirror.path, refresh: refresh);
+    } finally {
+      await _catalogRepository.deleteProbeMirror(mirror: mirror);
+    }
+  }
+
+  Future<ClaudeBackendCatalog> _probe({
+    required String directory,
+    required String workingDirectory,
+    required bool refresh,
+  }) async {
     final probeSessionId = _generateProbeSessionId();
     try {
       await _processes.ensureResident(
         sessionId: probeSessionId,
-        directory: directory,
+        directory: workingDirectory,
         createNew: true,
         purpose: ClaudeProcessPurpose.catalogProbe,
         model: null,
@@ -100,9 +121,10 @@ final class ClaudeCatalogService({
         fastMode: false,
         allowedTools: const [],
       );
-      final catalog = _catalogRepository.map(
-        handshake: await _readHandshake(sessionId: probeSessionId, refresh: refresh),
-        files: await _catalogRepository.readCommandFiles(directory: directory),
+      final catalog = await _readCatalog(
+        sessionId: probeSessionId,
+        refresh: refresh,
+        skillNames: await _catalogRepository.readSkillNames(directory: directory),
       );
       _catalogs[directory] = catalog;
       _latest = catalog;
@@ -119,18 +141,22 @@ final class ClaudeCatalogService({
     }
   }
 
-  Future<Map<String, Object?>> _readHandshake({required String sessionId, required bool refresh}) async {
+  Future<ClaudeBackendCatalog> _readCatalog({
+    required String sessionId,
+    required bool refresh,
+    required Set<String> skillNames,
+  }) async {
     final handshake = _processes.handshake(sessionId: sessionId);
     if (handshake == null) throw StateError("Claude session has no catalog: $sessionId");
     final accountHandshake = await _unmaskFastMode(sessionId: sessionId, handshake: handshake);
-    if (!refresh) return accountHandshake;
+    if (!refresh) return _catalogRepository.map(handshake: accountHandshake, skillNames: skillNames);
 
     final refreshed = await _processes.sendControlRequest(
       sessionId: sessionId,
       subtype: "list_models",
       params: const {},
     );
-    return {...accountHandshake, ...refreshed};
+    return _catalogRepository.map(handshake: {...accountHandshake, ...refreshed}, skillNames: skillNames);
   }
 
   /// Opts the probe into fast mode and re-reads the handshake, which then

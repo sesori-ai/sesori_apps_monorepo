@@ -28,8 +28,9 @@ void main() {
     tearDown(() => harness.close());
 
     test("discovers and caches a complete catalog in the selected project", () async {
+      final project = harness.createProjectDirectory(name: "project");
       final options = await harness.plugin.getSessionOptions(
-        projectId: "/tmp/project",
+        projectId: project,
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
       );
 
@@ -38,22 +39,22 @@ void main() {
       expect(observed.options.providers.providers.single.models, hasLength(2));
       expect(observed.options.commands.single.name, "review");
       expect(harness.processes, hasLength(1));
-      expect(harness.specs.single.workingDirectory, "/tmp/project");
+      expect(harness.specs.single.workingDirectory, _isProbeMirror);
       expect(harness.specs.single.purpose, ClaudeProcessPurpose.catalogProbe);
       expect(_controlSubtypes(harness.processes.single), ["initialize"]);
       expect(harness.processes.single.killed, isTrue);
       expect(await harness.plugin.listAllSessions(knownDirectories: const {}), isEmpty);
 
       // A cached read is served without spawning a second probe.
-      await harness.plugin.getCommands(projectId: "/tmp/project");
+      await harness.plugin.getCommands(projectId: project);
       expect(harness.processes, hasLength(1));
 
       await harness.plugin.getSessionOptions(
-        projectId: "/tmp/project",
+        projectId: project,
         discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
       );
       expect(harness.processes, hasLength(2));
-      expect(harness.specs.map((spec) => spec.workingDirectory), everyElement("/tmp/project"));
+      expect(harness.specs.map((spec) => spec.workingDirectory), everyElement(_isProbeMirror));
       expect(_controlSubtypes(harness.processes.last), contains("list_models"));
     });
 
@@ -74,17 +75,18 @@ void main() {
       expect(harness.processes, hasLength(1));
     });
 
-    test("probes each project in its own directory", () async {
+    test("probes each project in its own mirror", () async {
       await harness.plugin.getSessionOptions(
-        projectId: "/tmp/project",
+        projectId: harness.createProjectDirectory(name: "project"),
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
       );
       await harness.plugin.getSessionOptions(
-        projectId: "/tmp/other-project",
+        projectId: harness.createProjectDirectory(name: "other-project"),
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
       );
 
-      expect(harness.specs.map((spec) => spec.workingDirectory), ["/tmp/project", "/tmp/other-project"]);
+      expect(harness.specs.map((spec) => spec.workingDirectory), everyElement(_isProbeMirror));
+      expect(harness.specs.map((spec) => spec.workingDirectory).toSet(), hasLength(2));
     });
 
     test("creates under the generated id and buffers creation before listening", () async {
@@ -847,13 +849,14 @@ void main() {
     });
 
     test("names a replayed command with its kind from the session project's list", () async {
+      final project = harness.createProjectDirectory(name: "project");
       final transcript = File("${harness.temporary.path}/projects/project/$testSessionId.jsonl");
       transcript.parent.createSync(recursive: true);
       transcript.writeAsStringSync(
         jsonEncode({
           "type": "user",
           "sessionId": testSessionId,
-          "cwd": "/tmp/project",
+          "cwd": project,
           "uuid": "command-run",
           "timestamp": "2026-08-09T10:00:00Z",
           "message": {
@@ -865,7 +868,7 @@ void main() {
 
       final messages = await harness.plugin.getSessionMessages(testSessionId);
 
-      expect(harness.specs.single.workingDirectory, "/tmp/project");
+      expect(harness.specs.single.workingDirectory, _isProbeMirror);
       expect(
         (messages.single.info as PluginMessageUser).invocation,
         const PluginCommandInvocation(name: "review", source: PluginCommandSource.command, arguments: "src"),
@@ -1794,6 +1797,10 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
     return session;
   }
 
+  /// A real project folder, which a catalog probe needs to mirror.
+  String createProjectDirectory({required String name}) =>
+      (Directory("${temporary.path}/workspace/$name")..createSync(recursive: true)).path;
+
   Future<void> close() async {
     await plugin.dispose();
     for (final process in processes) {
@@ -2008,3 +2015,10 @@ class _UnavailableMcpAuthenticationRepository() implements ClaudeMcpAuthenticati
     );
   }
 }
+
+/// A project's catalog probe runs in a temporary mirror of its command and
+/// skill folders, never in the project itself.
+final Matcher _isProbeMirror = predicate<String>(
+  (path) => path.split(Platform.pathSeparator).last.startsWith("sesori-claude-catalog-"),
+  "a catalog probe mirror",
+);

@@ -92,7 +92,9 @@ class ClaudeLaunchSpec({
   /// command fails, so the launch-spec test guards it rather than a turn error.
   static const List<String> permissionPromptToolArguments = ["--permission-prompt-tool", "stdio"];
 
-  /// Keeps a catalog probe from running anything its directory controls.
+  /// Keeps a catalog probe's hooks and MCP servers off. A project's probe
+  /// also runs in a mirror of only its command and skill folders, so it loads
+  /// no project settings (see `ClaudeCommandFilesApi.createProbeMirror`).
   /// Verified live on
   /// 2026-11-13 with Claude Code 2.1.323: without these flags a probe ran the
   /// project's SessionStart hook and started its `.mcp.json` server; with them
@@ -100,12 +102,6 @@ class ClaudeLaunchSpec({
   /// probe loses no command by skipping MCP servers. Managed-policy hooks can
   /// still run: an organisation sets those to run on every launch.
   static const List<String> catalogProbeIsolationArguments = [
-    // Project and local settings can name helper commands (`apiKeyHelper`,
-    // `otelHeadersHelper` and others) that run at startup. Verified live on
-    // 2026-11-13: a project's `apiKeyHelper` ran in a probe without this flag
-    // and nothing ran with it. The probe then lists no project commands or
-    // skills, so the plugin reads those from disk.
-    "--setting-sources", "user",
     "--settings", '{"disableAllHooks":true}',
     // With no `--mcp-config`, this loads no MCP server at all.
     "--strict-mcp-config",

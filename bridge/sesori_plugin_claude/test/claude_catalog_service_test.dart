@@ -17,6 +17,8 @@ void main() {
     late String missingProject;
     late List<FakeClaudeProcess> spawned;
     late List<ClaudeLaunchSpec> specs;
+    late List<String> mirroredProjects;
+    var failSpawns = false;
     late ClaudeSessionProcessRepository processes;
     late ClaudeCatalogService service;
 
@@ -28,36 +30,40 @@ void main() {
       final configDirectory = p.join(temporary.path, "config");
       _writeSkill(root: p.join(projectA, ".claude", "skills"), folder: "deploy", frontmatterName: "ship-it");
       _writeSkill(root: p.join(configDirectory, "skills"), folder: "user-skill", frontmatterName: null);
-      File(p.join(projectA, ".claude", "commands", "project-command.md"))
-        ..createSync(recursive: true)
-        ..writeAsStringSync("Run the fixture.\n");
-      File(p.join(projectA, ".claude", "commands", "tools", "lint.md"))
-        ..createSync(recursive: true)
-        ..writeAsStringSync("---\ndescription: Lint the fixture\nargument-hint: <path>\n---\nLint it.\n");
-      File(p.join(projectA, ".claude", "commands", "internal.md"))
-        ..createSync(recursive: true)
-        ..writeAsStringSync("---\nuser-invocable: false\n---\nNot for the menu.\n");
-      File(p.join(projectA, ".claude", "skills", "background", "SKILL.md"))
-        ..createSync(recursive: true)
-        ..writeAsStringSync('---\ndescription: Model only\nuser-invocable: "false"\n---\nBody.\n');
+      Directory(projectB).createSync();
+      mirroredProjects = [];
+      failSpawns = false;
       spawned = [];
       specs = [];
       processes = ClaudeSessionProcessRepository(
         supportsMcpAuthentication: true,
         processFactory: (spec) async {
-          if (spec.workingDirectory == missingProject) {
-            throw PluginWorkingDirectoryMissingException(
-              operation: "spawn Claude",
-              path: spec.workingDirectory,
-              cause: null,
-            );
-          }
+          if (failSpawns) throw const ProcessException("claude", [], "fixture spawn failure");
           final process = FakeClaudeProcess();
           specs.add(spec);
+          // A project's probe runs in a mirror holding only links to its
+          // command and skill folders. The fake lists what Claude would find.
+          final mirrored = Directory(p.join(spec.workingDirectory, ".claude")).existsSync()
+              ? p.dirname(p.dirname(Link(p.join(spec.workingDirectory, ".claude", "skills")).targetSync()))
+              : null;
+          if (mirrored != null) {
+            mirroredProjects.add(mirrored);
+            expect(
+              Directory(p.join(spec.workingDirectory, ".claude")).listSync().map((entry) => p.basename(entry.path)),
+              unorderedEquals(["commands", "skills"]),
+            );
+            expect(Directory(spec.workingDirectory).listSync().map((entry) => p.basename(entry.path)), [".claude"]);
+          }
           spawned.add(process);
           unawaited(
-            // A probe loads only user settings, so it lists no project entries.
-            _answerCatalogControls(process, commandNames: ["review", "user-skill"]),
+            _answerCatalogControls(
+              process,
+              commandNames: [
+                "review",
+                "user-skill",
+                if (mirrored == projectA) ...["project-command", "ship-it"],
+              ],
+            ),
           );
           return process;
         },
@@ -92,7 +98,7 @@ void main() {
       expect(spawned.single.killed, isTrue);
     });
 
-    test("starts the probe without project settings, hooks or MCP servers", () async {
+    test("starts the probe with hooks and MCP servers off", () async {
       await service.getCatalog(directory: projectA, refresh: false);
 
       expect(specs.single.purpose, ClaudeProcessPurpose.catalogProbe);
@@ -103,9 +109,26 @@ void main() {
       final first = await service.getCatalog(directory: projectA, refresh: false);
       final second = await service.getCatalog(directory: projectB, refresh: false);
 
-      expect(specs.map((spec) => spec.workingDirectory), [projectA, projectB]);
-      expect(first.commands.map((command) => command.name), containsAll(["project-command", "ship-it", "tools:lint"]));
+      expect(mirroredProjects, [projectA, projectB]);
+      for (final spec in specs) {
+        expect(Directory(spec.workingDirectory).existsSync(), isFalse, reason: "the mirror is deleted after the probe");
+      }
+      // Deleting the mirror removes its links without following them.
+      expect(File(p.join(projectA, ".claude", "skills", "deploy", "SKILL.md")).existsSync(), isTrue);
+      expect(first.commands.map((command) => command.name), containsAll(["project-command", "ship-it"]));
       expect(second.commands.map((command) => command.name), ["review", "user-skill"]);
+    });
+
+    test("deletes the mirror when the probe fails", () async {
+      failSpawns = true;
+      final before = Directory.systemTemp.listSync().map((entry) => entry.path).toSet();
+
+      await expectLater(service.getCatalog(directory: projectA, refresh: false), throwsA(anything));
+
+      final leftover = Directory.systemTemp.listSync().where(
+        (entry) => !before.contains(entry.path) && p.basename(entry.path).startsWith("sesori-claude-catalog-"),
+      );
+      expect(leftover, isEmpty);
     });
 
     test("lists a deleted project's options from the discovery directory", () async {
@@ -115,7 +138,7 @@ void main() {
       expect(catalog.commands.map((command) => command.name), ["review", "user-skill"]);
     });
 
-    test("adds the project's commands and skills from disk and labels skills", () async {
+    test("labels the project's and the user's skills as skills", () async {
       final catalog = await service.getCatalog(directory: projectA, refresh: false);
 
       expect(
@@ -123,17 +146,9 @@ void main() {
         {
           "review": PluginCommandSource.command,
           "user-skill": PluginCommandSource.skill,
-          "ship-it": PluginCommandSource.skill,
           "project-command": PluginCommandSource.command,
-          "tools:lint": PluginCommandSource.command,
+          "ship-it": PluginCommandSource.skill,
         },
-      );
-      final lint = catalog.commands.singleWhere((command) => command.name == "tools:lint");
-      expect(lint.description, "Lint the fixture (project)");
-      expect(lint.hints, ["<path>"]);
-      expect(
-        catalog.commands.singleWhere((command) => command.name == "project-command").description,
-        "Run the fixture. (project)",
       );
     });
 
