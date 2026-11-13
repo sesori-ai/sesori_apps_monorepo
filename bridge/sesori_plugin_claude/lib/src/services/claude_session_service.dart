@@ -8,6 +8,7 @@ import "../api/models/claude_stream_message.dart";
 import "../claude_approval_registry.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
+import "../models/claude_process_purpose.dart";
 import "../models/claude_task_status.dart";
 import "../models/claude_task_type.dart";
 import "../models/claude_tool_use_result.dart";
@@ -379,6 +380,7 @@ final class ClaudeSessionService({
         sessionId: sessionId,
         directory: directory,
         createNew: createNew,
+        purpose: ClaudeProcessPurpose.session,
         model: model,
         effort: effort,
         permissionMode: permissionMode,

@@ -1,13 +1,16 @@
+import "dart:io";
+
 import "package:claude_plugin/claude_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
   group("ClaudeBackendCatalogRepository", () {
-    const repository = ClaudeBackendCatalogRepository();
+    final repository = ClaudeBackendCatalogRepository(commandFiles: ClaudeCommandFilesApi(environment: const {}));
 
     test("maps models, effort variants, commands, and the default agent", () {
       final catalog = repository.map(
+        skillNames: const {},
         handshake: {
           "commands": [
             {"name": "review", "description": "Review changes", "argumentHint": "<scope>"},
@@ -77,6 +80,7 @@ void main() {
     group("fast mode availability", () {
       PluginFastModeSupport? fastModeFor({required Object? disabledReason}) => repository
           .map(
+            skillNames: const {},
             handshake: {
               "models": [
                 {"value": "opus", "supportsFastMode": true},
@@ -154,6 +158,7 @@ void main() {
 
     test("declares no default effort when effort support is off, even with levels listed", () {
       final catalog = repository.map(
+        skillNames: const {},
         handshake: {
           "models": [
             {
@@ -172,6 +177,7 @@ void main() {
 
     test("maps resolved and short API model names back to picker ids", () {
       final catalog = repository.map(
+        skillNames: const {},
         handshake: {
           "models": [
             {"value": "default", "resolvedModel": "claude-opus-5[1m]"},
@@ -198,6 +204,7 @@ void main() {
     test("offers only each family's newest model, ranked by what it resolves to", () {
       // Claude CLI 2.1.283's catalog: family aliases beside pinned older versions.
       final catalog = repository.map(
+        skillNames: const {},
         handshake: {
           "models": [
             {"value": "default", "resolvedModel": "claude-opus-5-5"},
@@ -230,6 +237,7 @@ void main() {
 
     test("filters malformed entries and falls back to the first model", () {
       final catalog = repository.map(
+        skillNames: const {},
         handshake: {
           "commands": [
             {"description": "missing name"},
@@ -249,6 +257,7 @@ void main() {
 
     test("omits the native /fast command owned by the fast-mode selection", () {
       final catalog = repository.map(
+        skillNames: const {},
         handshake: {
           "commands": [
             {"name": "fast", "description": "Toggle fast mode", "argumentHint": "[on|off]"},
@@ -261,12 +270,29 @@ void main() {
     });
 
     test("returns agents but no provider for an empty model catalog", () {
-      final catalog = repository.map(handshake: const {});
+      final catalog = repository.map(handshake: const {}, skillNames: const {});
 
       expect(catalog.agents.map((agent) => agent.name), ["Agent"]);
       expect(catalog.agents.every((agent) => agent.model == null), isTrue);
       expect(catalog.providers.providers, isEmpty);
       expect(catalog.commands, isEmpty);
     });
+
+    test(
+      "an unreadable skill file throws from the API and leaves the list unlabelled",
+      () async {
+        final project = Directory.systemTemp.createTempSync("claude-skills-");
+        addTearDown(() => project.deleteSync(recursive: true));
+        final skill = File("${project.path}/.claude/skills/deploy/SKILL.md")
+          ..createSync(recursive: true)
+          ..writeAsStringSync("---\nname: deploy\n---\n");
+        Process.runSync("chmod", ["000", skill.path]);
+
+        final api = ClaudeCommandFilesApi(environment: const {});
+        await expectLater(api.readSkillNames(projectDirectory: project.path), throwsA(isA<FileSystemException>()));
+        expect(await repository.readSkillNames(directory: project.path), isEmpty);
+      },
+      testOn: "!windows",
+    );
   });
 }
