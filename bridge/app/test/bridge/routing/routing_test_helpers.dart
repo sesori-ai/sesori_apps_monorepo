@@ -342,6 +342,9 @@ class FakeSessionRepository({
   }) async => (rootSessionId: sessionId, pluginId: _plugin.id);
 
   @override
+  Future<int?> readBackendActivity({required StoredSession session}) async => null;
+
+  @override
   Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {
     final pluginMessages = await _plugin.getSessionMessages(sessionId);
     return (

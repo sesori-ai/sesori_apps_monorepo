@@ -3,7 +3,14 @@ import "dart:isolate";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSession, PluginSessionTime;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show
+        Log,
+        PluginSession,
+        PluginSessionActivityAvailable,
+        PluginSessionActivityResult,
+        PluginSessionActivityUnavailable,
+        PluginSessionTime;
 
 import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
@@ -213,7 +220,28 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
   /// A rollout from its creation-date directories only, for a live tail
   /// polling for a rollout Codex had not written when the tail started.
   String? findRecentRolloutPath({required String sessionId}) =>
-      _rolloutApi.findRecentRolloutPath(sessionId: sessionId, now: DateTime.now());
+      _rolloutApi.findRolloutPathAround(sessionId: sessionId, around: DateTime.now());
+
+  /// [sessionId]'s rollout modification time, located from the id alone with
+  /// no scan, so a dormant plugin can answer. Codex thread ids are UUIDv7,
+  /// whose leading 48 bits are the creation time in epoch milliseconds, and
+  /// Codex files a rollout under its creation date. The catalog also folds in
+  /// the session index and creation time, which a turn does not move.
+  PluginSessionActivityResult readSessionActivity({required String sessionId}) {
+    final match = _uuidV7Pattern.firstMatch(sessionId);
+    if (match == null) return const PluginSessionActivityUnavailable();
+    final createdAt = DateTime.fromMillisecondsSinceEpoch(int.parse("${match[1]}${match[2]}", radix: 16));
+    final rolloutPath = _rolloutApi.findRolloutPathAround(sessionId: sessionId, around: createdAt);
+    final modified = rolloutPath == null ? null : _rolloutApi.lastModified(rolloutPath: rolloutPath);
+    return modified == null
+        ? const PluginSessionActivityUnavailable()
+        : PluginSessionActivityAvailable(updatedAt: modified.millisecondsSinceEpoch);
+  }
+
+  static final RegExp _uuidV7Pattern = RegExp(
+    r"^([0-9a-f]{8})-([0-9a-f]{4})-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    caseSensitive: false,
+  );
 
   /// Deletes [sessionId]'s rollout and its session index lines, rescanning
   /// once when the last scan does not know the session. Returns false when

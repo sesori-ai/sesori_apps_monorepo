@@ -901,6 +901,31 @@ void main() {
     });
   });
 
+  group("session activity", () {
+    test("reads one session's file time from the effective directory without a scan", () {
+      final fixture = _StorageFixture();
+      addTearDown(fixture.dispose);
+      final project = fixture.directory("project");
+      const id = "019a0000-1111-7222-8333-aaaaaaaaaaaa";
+      final root = _defaultSessionDirectory(agentDirectory: fixture.agentDirectory, cwd: project);
+      final path = fixture.writeSession(
+        root: root,
+        id: id,
+        cwd: project,
+        fileName: "2026-08-01T00-00-00-000Z_$id.jsonl",
+      );
+      final modified = DateTime.utc(2026, 8, 2, 3, 4, 5);
+      File(path).setLastModifiedSync(modified);
+      fixture.writeSession(root: root, id: "019a0000-1111-7222-8333-bbbbbbbbbbbb", cwd: project);
+
+      final api = fixture.api();
+
+      expect(api.readSessionModified(sessionId: id, directory: project), modified);
+      expect(api.readSessionModified(sessionId: "019a0000-1111-7222-8333-cccccccccccc", directory: project), isNull);
+      expect(api.readSessionModified(sessionId: "../$id", directory: project), isNull);
+    });
+  });
+
   group("pending new sessions", () {
     test("deleting a globally resolved session clears its project-local marker", () async {
       final fixture = _StorageFixture();

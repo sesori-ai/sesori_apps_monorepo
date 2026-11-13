@@ -98,6 +98,24 @@ class TestPluginRuntime({
   @override
   bool namesCommandInvocations({required String pluginId}) => invocationNamingPluginIds.contains(pluginId);
 
+  /// Backend activity times by backend session id, as a dormant descriptor
+  /// would read them. Absent sessions report unavailable.
+  final Map<String, int> sessionActivityById = {};
+  final List<String> sessionActivityReads = [];
+
+  @override
+  Future<PluginSessionActivityResult> readSessionActivity({
+    required String pluginId,
+    required String sessionId,
+    required String directory,
+  }) async {
+    sessionActivityReads.add(sessionId);
+    return switch (sessionActivityById[sessionId]) {
+      final updatedAt? => PluginSessionActivityAvailable(updatedAt: updatedAt),
+      null => const PluginSessionActivityUnavailable(),
+    };
+  }
+
   /// Mirrors a descriptor that declares exactly the MCP interfaces its plugin
   /// implements, so declared support holds while the plugin is stopped.
   @override

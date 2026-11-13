@@ -59,6 +59,7 @@ export "src/models/plugin_provider.dart";
 export "src/models/plugin_queued_prompt.dart";
 export "src/models/plugin_quota_interruption.dart";
 export "src/models/plugin_session.dart";
+export "src/models/plugin_session_activity.dart";
 export "src/models/plugin_session_options.dart";
 export "src/models/plugin_session_status.dart";
 export "src/models/plugin_session_variant.dart";

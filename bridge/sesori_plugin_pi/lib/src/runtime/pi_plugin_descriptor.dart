@@ -8,8 +8,10 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "../api/pi_process_factory.dart";
 import "../api/pi_rpc_client.dart";
+import "../api/pi_session_storage_api.dart";
 import "../pi_identity.dart";
 import "../pi_plugin_impl.dart";
+import "../repositories/pi_session_catalog_repository.dart";
 import "pi_bridge_plugin.dart";
 import "pi_runtime_manifest.dart";
 
@@ -288,6 +290,18 @@ final class const PiPluginDescriptor({
     }
     return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
   }
+
+  /// A stat of the session's file, the same modification time the catalog
+  /// scan reports, so neither the plugin nor a Pi process has to start.
+  @override
+  Future<PluginSessionActivityResult> readSessionActivity({
+    required PluginConfig config,
+    required Map<String, String> environment,
+    required String sessionId,
+    required String directory,
+  }) async => PiSessionCatalogRepository(
+    storageApi: PiSessionStorageApi(environment: environment),
+  ).readSessionActivity(sessionId: sessionId, directory: directory);
 
   HostProcessCommandExecutor _commandExecutor({required HostProcessService processes}) => HostProcessCommandExecutor(
     includeParentEnvironment: true,

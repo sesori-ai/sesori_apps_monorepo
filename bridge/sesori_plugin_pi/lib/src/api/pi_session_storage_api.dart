@@ -162,6 +162,30 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     }
   }
 
+  /// The modification time of [sessionId]'s file in the directory Pi stores
+  /// [directory]'s sessions in.
+  ///
+  /// Lists that one directory instead of scanning every session root. Null
+  /// when no file there is named for the session.
+  DateTime? readSessionModified({required String sessionId, required String directory}) {
+    if (!isValidPiSessionId(sessionId: sessionId)) return null;
+    final resolved = _resolveEffectiveSessionDirectory(environment: _environment, directory: directory);
+    _logDiagnostics(resolved.diagnostics);
+    final root = resolved.path;
+    if (root == null) return null;
+    final diagnostics = _PiScanDiagnostics();
+    try {
+      for (final path in _listJsonlFiles(directoryPath: root, diagnostics: diagnostics)) {
+        if (p.basename(path).endsWith("_$sessionId.jsonl")) {
+          return _statFile(path: path, diagnostics: diagnostics)?.modified.toUtc();
+        }
+      }
+      return null;
+    } finally {
+      _logDiagnostics(diagnostics);
+    }
+  }
+
   Future<void> writePendingNewSession({
     required String sessionId,
     required String cwd,

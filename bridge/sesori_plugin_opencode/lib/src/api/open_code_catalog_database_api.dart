@@ -65,9 +65,41 @@ class const OpenCodeCatalogDatabaseApi({required final OpenCodeCatalogDatabaseWo
     final worker = _worker;
     return Isolate.run(() => worker(databasePath: databasePath));
   }
+
+  /// [sessionId]'s `time_updated`: from `session_v2` once OpenCode 2.x has
+  /// migrated the database, which it keeps current, otherwise from `session`.
+  /// Null when no row has that id.
+  Future<int?> readSessionUpdatedAt({required String databasePath, required String sessionId}) => Isolate.run(
+    () => const _SqliteOpenCodeCatalogDatabaseWorker().readSessionUpdatedAt(
+      databasePath: databasePath,
+      sessionId: sessionId,
+    ),
+  );
 }
 
 class const _SqliteOpenCodeCatalogDatabaseWorker() {
+  int? readSessionUpdatedAt({required String databasePath, required String sessionId}) {
+    Database? database;
+    try {
+      database = sqlite3.open(databasePath, mode: OpenMode.readOnly);
+      final migrated = database
+          .select("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'session_v2' LIMIT 1")
+          .isNotEmpty;
+      final rows = database.select(
+        "SELECT time_updated FROM ${migrated ? "session_v2" : "session"} WHERE id = ? LIMIT 1",
+        [sessionId],
+      );
+      if (rows.isEmpty) return null;
+      return _requiredInt(value: rows.first["time_updated"], field: "session.time_updated");
+    } on OpenCodeCatalogDatabaseException {
+      rethrow;
+    } on Object catch (error) {
+      throw OpenCodeCatalogDatabaseException(message: "OpenCode session activity read failed", cause: error);
+    } finally {
+      database?.close();
+    }
+  }
+
   OpenCodeCatalogDatabaseReadResult read({required String databasePath}) {
     Database? database;
     try {

@@ -21,6 +21,18 @@ reconnect or restart.
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session
   advanced outside Sesori is detected as stale, re-read, and re-cached.
+- Opening a synced session (a full or newest-page read that is not store-only)
+  first asks the dormant plugin for that one session's backend activity time
+  (a file stat, transcript tail or database row; never a process start or a
+  catalog scan). A time newer than the store's watermark marks the session stale
+  and the same read re-reads it, so a turn run in the harness's own terminal
+  while Sesori was away appears on open without a pull. An unchanged time, a
+  harness that cannot answer cheaply (every ACP harness, OpenCode attach mode),
+  a failed check, an archived session, a store-only read and an older page all
+  serve the store with the harness untouched. Failure signal: an outside turn
+  missing after reopening a Pi, Claude Code, Codex or OpenCode session, or an
+  unchanged session waking its harness on every open. Per-harness rules are in
+  [Harness capabilities](../HARNESS_CAPABILITIES.md#opening-a-session).
 - When a backfill fails because the plugin reports that the backend cannot
   restore the session as stored (`PluginSessionUnrestorableException`; today
   OMP's "Could not restore model", and Pi when the session's recorded folder
@@ -617,6 +629,13 @@ rules where supported.
   inactive runtime slot cannot see, so bridge inactivity and backend
   unavailability are not fully distinguished. Agent, provider, and command
   discovery can also still start a stopped backend.
+- The open-time activity check compares harness-written times with a watermark
+  that live capture stamps on the bridge clock, so a harness write landing just
+  after Sesori's last captured event (a title or summary update, a trailing
+  record) can cost one extra re-read on the next open of a Sesori-run session.
+  The re-read moves the watermark to that time, so it converges. A session
+  already open on screen picks up an outside turn on the next app resume or
+  reopen, not while it sits open.
 - Client session-detail refresh triggers are still under diagnosis; only the
   diagnostic logging is in place and any refresh correction is unfinished.
 - Antigravity's native personal-authenticated history beyond the bounded 2026-09-12 ACP sub-agent replay probe, cold

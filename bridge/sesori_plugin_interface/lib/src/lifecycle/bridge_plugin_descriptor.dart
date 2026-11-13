@@ -4,6 +4,7 @@ import "../host/host_process_service.dart";
 import "../host/plugin_host.dart";
 import "../models/plugin_catalog_snapshot.dart";
 import "../models/plugin_quota_interruption.dart";
+import "../models/plugin_session_activity.dart";
 import "bridge_plugin.dart";
 import "plugin_activation_policy.dart";
 import "plugin_config.dart";
@@ -144,6 +145,25 @@ abstract class const BridgePluginDescriptor() {
     required Map<String, String> environment,
     required PluginCatalogCancellationSignal cancellation,
   }) async => const PluginCatalogSnapshotUnavailable();
+
+  /// Reads one session's current backend activity time, whether or not the
+  /// plugin is started, and never starts it.
+  ///
+  /// The bridge calls this when a session is opened, to notice turns made
+  /// outside Sesori since its stored copy. [sessionId] is the backend's id and
+  /// [directory] the bridge's stored working directory for the session. The
+  /// read must stay bounded and local — a file stat, a small tail read or one
+  /// database row — with no process start, no catalog-wide scan and no backend
+  /// mutation. Unexpected failures throw so the runtime can log them.
+  ///
+  /// The default declares that the harness cannot answer cheaply; such a
+  /// session is noticed only by a catalog import.
+  Future<PluginSessionActivityResult> readSessionActivity({
+    required PluginConfig config,
+    required Map<String, String> environment,
+    required String sessionId,
+    required String directory,
+  }) async => const PluginSessionActivityUnavailable();
 
   /// Installs this plugin's pinned managed runtime into [stateDirectory] and
   /// reports progress.

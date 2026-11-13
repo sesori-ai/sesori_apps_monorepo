@@ -136,6 +136,18 @@ final class const ClaudePluginDescriptor({
     PluginControlCapability.authentication,
   };
 
+  /// Read from the session's transcript by the catalog's own activity rule, so
+  /// neither the plugin nor a CLI process has to start.
+  @override
+  Future<PluginSessionActivityResult> readSessionActivity({
+    required PluginConfig config,
+    required Map<String, String> environment,
+    required String sessionId,
+    required String directory,
+  }) async => ClaudeTranscriptCatalogRepository(
+    transcriptApi: ClaudeTranscriptApi(environment: environment),
+  ).readRootSessionActivity(sessionId: sessionId);
+
   @override
   Future<PluginSetupStatus> inspectSetup({
     required PluginConfig config,

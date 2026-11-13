@@ -7,7 +7,8 @@ import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel, PluginSession;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show Log, LogLevel, PluginSession, PluginSessionActivityAvailable, PluginSessionActivityUnavailable;
 import "package:test/test.dart";
 
 void main() {
@@ -325,6 +326,38 @@ void main() {
         expect(repository.cachedSessionById(sessionId: _sessionId(3)), isNull);
         expect(rolloutApi.deletedPaths, [rolloutApi.pathOf(_sessionId(3))]);
       });
+    });
+
+    test("reads one session's rollout time from the day its UUIDv7 encodes", () {
+      final codexHome = Directory.systemTemp.createTempSync("codex-home-");
+      addTearDown(() => codexHome.deleteSync(recursive: true));
+      // Created 2026-07-16T09:00Z.
+      const sessionId = "019f6a27-7a80-7abc-8def-0123456789ab";
+      final rollout = File(
+        p.join(codexHome.path, "sessions", "2026", "07", "16", "rollout-2026-07-16T09-00-00-$sessionId.jsonl"),
+      )..createSync(recursive: true);
+      final modified = DateTime.utc(2026, 8, 1, 12);
+      rollout.setLastModifiedSync(modified);
+      final repository = CodexCatalogRepository(
+        rolloutApi: CodexRolloutApi(environment: {"CODEX_HOME": codexHome.path}),
+      );
+
+      expect(
+        repository.readSessionActivity(sessionId: sessionId),
+        isA<PluginSessionActivityAvailable>().having(
+          (activity) => activity.updatedAt,
+          "updatedAt",
+          modified.millisecondsSinceEpoch,
+        ),
+      );
+      expect(
+        repository.readSessionActivity(sessionId: "019f6a27-7a80-7abc-8def-ffffffffffff"),
+        isA<PluginSessionActivityUnavailable>(),
+      );
+      expect(
+        repository.readSessionActivity(sessionId: "11111111-2222-4333-8444-555555555555"),
+        isA<PluginSessionActivityUnavailable>(),
+      );
     });
   });
 }

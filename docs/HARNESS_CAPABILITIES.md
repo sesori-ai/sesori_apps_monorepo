@@ -485,6 +485,23 @@ next pull.
 | DeepSeek | 🚫 Sesori starts DeepSeek with a bridge-owned `--state-dir`, so sessions a DeepSeek CLI keeps in its own state are not in the store Sesori lists. |
 | Cursor, Copilot, Antigravity | Not verified: the time is the ACP `session/list` `updatedAt` each harness reports. |
 
+### Opening a session
+
+Opening a session the store already holds asks its harness for that one
+session's activity time without starting the harness. When the time is newer
+than what the store caught up to, the bridge re-reads the session, so a turn
+run in the harness's own terminal appears on open without a pull. Otherwise the
+store is served with the harness untouched. Store-only reads and older pages
+skip the check.
+
+| Harness | Status |
+|---|---|
+| Claude Code | ✅ Root sessions: the same tail-record time the catalog scan reads, from the one transcript named for the session. Sub-agent sessions are not checked. |
+| Codex | ✅ Rollout modification time, found under the day its UUIDv7 id encodes. A session-index-only change, such as a rename in another client, is not noticed. |
+| OpenCode | ✅ The session's `time_updated` row, from `session_v2` once OpenCode 2.x migrated the database, else `session`. 🚫 Attach mode (`--no-auto-start`): the attached server need not use the database the bridge would resolve. |
+| Pi | ✅ Session file modification time, from the session directory configured for the session's folder. |
+| OMP, Grok, Hermes, DeepSeek, Cursor, Copilot, Antigravity | 🚫 ACP reports activity only through `session/list` on a running agent process; there is no bounded read without starting it. Outside turns appear after the next pull. |
+
 ## Pending requests on archive
 
 Whatever the harness reports, an archived session never counts as running or

@@ -197,6 +197,18 @@ class const CodexPluginDescriptor({
   @override
   List<PluginOption> get options => cliOptions;
 
+  /// Read from the session's rollout, so neither the plugin nor the app-server
+  /// has to start.
+  @override
+  Future<PluginSessionActivityResult> readSessionActivity({
+    required PluginConfig config,
+    required Map<String, String> environment,
+    required String sessionId,
+    required String directory,
+  }) async => CodexCatalogRepository(
+    rolloutApi: CodexRolloutApi(environment: environment),
+  ).readSessionActivity(sessionId: sessionId);
+
   String? _explicitBin({required PluginConfig config}) {
     final value = config.value("bin")?.trim();
     if (value == null || value.isEmpty || value == "codex") return null;

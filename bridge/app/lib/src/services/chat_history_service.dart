@@ -105,6 +105,14 @@ class ChatHistoryService({
         toolOutputDelivery: toolOutputDelivery,
       );
     }
+    // Opening reads the newest messages. An older page or a load-through is
+    // the reader scrolling back, where a re-read would only move the cursor.
+    final opensSession = switch (window) {
+      HistoryWindowAll() => true,
+      HistoryWindowNewest(:final before) => before == null,
+      HistoryWindowThrough() => false,
+    };
+    if (opensSession) await _noticeBackendActivity(sessionId: sessionId);
     // The archive check, the freshness decision, and the read all run inside
     // the session queue, so they observe one state. Deciding outside it would
     // let queued work — an observed import, or a failed capture clearing
@@ -528,6 +536,29 @@ class ChatHistoryService({
             Log.w("Failed to record backend activity for session ${observed.sessionId}", error, stackTrace);
           }),
     ]);
+  }
+
+  /// Asks the session's harness, without starting it, whether the session
+  /// moved on since the store last caught up — a turn run in its terminal or
+  /// desktop app — and records that as backend activity, so the read that
+  /// follows re-reads the transcript instead of serving the stored copy.
+  ///
+  /// Only a store that is current is worth checking: a stale one is re-read
+  /// anyway. The activity write is queued before that read, so the read sees
+  /// it. A failure costs only the notice: the open proceeds as before.
+  Future<void> _noticeBackendActivity({required String sessionId}) async {
+    try {
+      final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
+      if (stored == null || stored.archivedAt != null) return;
+      final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
+      if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) return;
+      final activityAt = await _sessionRepository.readBackendActivity(session: stored);
+      if (activityAt == null || activityAt <= state.watermark) return;
+      Log.d("Session $sessionId changed in its harness since the store caught up; re-reading it");
+      await _observeSessionActivity(sessionId: sessionId, activityAt: activityAt);
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to check backend activity for session $sessionId", error, stackTrace);
+    }
   }
 
   Future<void> _observeSessionActivity({required String sessionId, required int activityAt}) {
