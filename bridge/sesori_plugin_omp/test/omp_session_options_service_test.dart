@@ -1,3 +1,5 @@
+import "dart:io";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:omp_plugin/src/api/omp_acp_api.dart";
 import "package:omp_plugin/src/models/omp_catalog_models.dart";
@@ -204,6 +206,44 @@ void main() {
       isA<OmpOptionsDiscoveryFailed>(),
     );
   });
+
+  test("a deleted project folder falls back to the launch directory's options", () async {
+    final launch = Directory.systemTemp.createTempSync("omp-launch-");
+    final existing = Directory.systemTemp.createTempSync("omp-project-");
+    addTearDown(() {
+      launch.deleteSync(recursive: true);
+      existing.deleteSync(recursive: true);
+    });
+    final deleted = "${existing.path}-deleted";
+    final catalogService = _FakeCatalogService(
+      tracker.snapshotFor(projectId: "/repo") ?? fail("expected a seeded catalog snapshot"),
+    )..failingProjects.addAll({deleted, existing.path});
+    final optionsService = OmpSessionOptionsService(
+      catalogService: catalogService,
+      tracker: tracker,
+      repository: OmpCatalogRepository(api: _UnusedAcpApi()),
+      configurationTracker: AcpSessionConfigurationTracker(),
+      launchDirectory: launch.path,
+    );
+
+    for (final mode in PluginSessionOptionsDiscoveryMode.values) {
+      expect(
+        await optionsService.getSessionOptions(projectId: deleted, discoveryMode: mode),
+        isA<OmpOptionsObserved>(),
+      );
+    }
+    expect(catalogService.probed, [deleted, launch.path, deleted, launch.path]);
+
+    catalogService.probed.clear();
+    expect(
+      await optionsService.getSessionOptions(
+        projectId: existing.path,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      ),
+      isA<OmpOptionsDiscoveryFailed>(),
+    );
+    expect(catalogService.probed, [existing.path]);
+  });
 }
 
 AcpNewSessionResult _result({required String model, required String mode, required String thinking}) =>
@@ -263,12 +303,19 @@ class _FakeConfigRepository() implements AcpSessionConfigRepository {
 
 class _FakeCatalogService(final OmpProjectCatalog catalog) implements OmpCatalogService {
   OmpCatalogDiscoveryResult result = OmpCatalogObserved(catalog: catalog);
+  final Set<String> failingProjects = {};
+  final List<String> probed = [];
 
   @override
-  Future<OmpCatalogDiscoveryResult> ensureCatalog({required String projectId}) async => result;
+  Future<OmpCatalogDiscoveryResult> ensureCatalog({required String projectId}) async => _resultFor(projectId);
 
   @override
-  Future<OmpCatalogDiscoveryResult> refreshCatalog({required String projectId}) async => result;
+  Future<OmpCatalogDiscoveryResult> refreshCatalog({required String projectId}) async => _resultFor(projectId);
+
+  OmpCatalogDiscoveryResult _resultFor(String projectId) {
+    probed.add(projectId);
+    return failingProjects.contains(projectId) ? const OmpCatalogDiscoveryFailed() : result;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
