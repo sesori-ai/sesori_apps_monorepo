@@ -3749,15 +3749,32 @@ void main() {
 
   testWidgets("hiding the keyboard keeps Jump to latest while the list is still away from latest", (tester) async {
     await _pumpBehindKeyboard(tester, messages: _userMessages(count: 12));
-    await tester.drag(find.byKey(_listViewKey), const Offset(0, 300));
+    await tester.drag(find.byKey(_listViewKey), const Offset(0, 500));
     await tester.pumpAndSettle();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    final pixels = _position(tester).pixels;
+    expect(pixels, greaterThan(320));
+
+    _hideKeyboard(tester);
+    await tester.pumpAndSettle();
+
+    // The viewport grows below the rows being read, which stay where they were.
+    expect(_position(tester).pixels, pixels - 300);
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+  }, variant: _pinchPlatforms);
+
+  testWidgets("hiding the keyboard follows latest again once it reveals the newest message", (tester) async {
+    await _pumpBehindKeyboard(tester, messages: _userMessages(count: 12));
+    await tester.drag(find.byKey(_listViewKey), const Offset(0, 150));
+    await tester.pumpAndSettle();
+    expect(_position(tester).pixels, inInclusiveRange(21, 299));
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 
     _hideKeyboard(tester);
     await tester.pumpAndSettle();
 
-    expect(_position(tester).pixels, greaterThan(20));
-    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    expect(_position(tester).pixels, 0);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
   }, variant: _pinchPlatforms);
 
   testWidgets("desktop pointer scroll detaches immediately", (tester) async {

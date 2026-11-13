@@ -1,6 +1,7 @@
 import "dart:math";
 
 import "package:flutter/rendering.dart";
+import "package:flutter/scheduler.dart";
 import "package:material_ui/material_ui.dart";
 
 /// A [ListView.builder] that calls [onLaidOut] each time its viewport has laid
@@ -14,8 +15,10 @@ import "package:material_ui/material_ui.dart";
 /// A row joining below the built rows also leaves them where they were.
 ///
 /// The newest end is padded clear of the nearest [TranscriptBottomInset] too.
-/// Scrolled away from that end, a change in the inset leaves the rows where
-/// they are.
+/// While [detached] says the reader has scrolled away from that end, a change
+/// in the inset or in the viewport's height, as when the keyboard opens, leaves
+/// the rows where they are. When such a shrink carries the list all the way
+/// back to that end, [onCarriedToNewestEnd] runs after the frame.
 class TranscriptLaidOutListView({
   super.key,
   super.reverse,
@@ -27,12 +30,17 @@ class TranscriptLaidOutListView({
   super.findChildIndexCallback,
   required super.itemBuilder,
   required final VoidCallback onLaidOut,
+  required final ValueGetter<bool> detached,
+  required final VoidCallback onCarriedToNewestEnd,
 }) extends ListView {
   this : super.builder();
 
   @override
-  Widget buildChildLayout(BuildContext context) =>
-      _BottomInsetPadding(sliver: _RowsHeldInPlace(delegate: childrenDelegate));
+  Widget buildChildLayout(BuildContext context) => _BottomInsetPadding(
+    detached: detached,
+    onCarriedToNewestEnd: onCarriedToNewestEnd,
+    sliver: _RowsHeldInPlace(delegate: childrenDelegate),
+  );
 
   @override
   Widget buildViewport(BuildContext context, ViewportOffset offset, AxisDirection axisDirection, List<Widget> slivers) {
@@ -74,38 +82,79 @@ class const TranscriptBottomInset({
 /// Pads the newest end, which a reversed list lays out first, by the
 /// [TranscriptBottomInset]. The same [sliver] instance comes back on an inset
 /// change, so the rows are not rebuilt.
-class const _BottomInsetPadding({required final Widget sliver}) extends StatelessWidget {
+class const _BottomInsetPadding({
+  required final ValueGetter<bool> detached,
+  required final VoidCallback onCarriedToNewestEnd,
+  required final Widget sliver,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _RowsStillPadding(
+    detached: detached,
+    onCarriedToNewestEnd: onCarriedToNewestEnd,
     padding: EdgeInsets.only(bottom: TranscriptBottomInset.of(context)),
     sliver: sliver,
   );
 }
 
-class const _RowsStillPadding({required super.padding, required super.sliver}) extends SliverPadding {
+class const _RowsStillPadding({
+  required final ValueGetter<bool> detached,
+  required final VoidCallback onCarriedToNewestEnd,
+  required super.padding,
+  required super.sliver,
+}) extends SliverPadding {
   @override
-  RenderSliverPadding createRenderObject(BuildContext context) =>
-      _RenderRowsStillPadding(padding: padding, textDirection: Directionality.of(context));
+  RenderSliverPadding createRenderObject(BuildContext context) => _RenderRowsStillPadding(
+    detached: detached,
+    onCarriedToNewestEnd: onCarriedToNewestEnd,
+    padding: padding,
+    textDirection: Directionality.of(context),
+  );
+
+  @override
+  void updateRenderObject(BuildContext context, RenderSliverPadding renderObject) {
+    super.updateRenderObject(context, renderObject);
+    if (renderObject is _RenderRowsStillPadding) {
+      renderObject
+        ..detached = detached
+        ..onCarriedToNewestEnd = onCarriedToNewestEnd;
+    }
+  }
 }
 
-/// At the newest end the rows rise and fall with the inset, staying clear of
-/// the controls. Scrolled away from it, the reader's rows stay where they are
-/// on screen: the scroll offset moves by the inset's change in the same
-/// layout, so the padding grows or shrinks out of sight below them.
-class _RenderRowsStillPadding({required super.padding, required super.textDirection}) extends RenderSliverPadding {
+/// Following the newest end, the rows rise and fall with the inset and the
+/// viewport's bottom edge, staying clear of the controls. Detached, the
+/// reader's rows stay where they are on screen: the scroll offset moves by the
+/// change in the same layout, so it happens out of sight below them. A glide
+/// back to the newest end follows again, so it is left to drive the offset.
+class _RenderRowsStillPadding({
+  required var ValueGetter<bool> detached,
+  required var VoidCallback onCarriedToNewestEnd,
+  required super.padding,
+  required super.textDirection,
+}) extends RenderSliverPadding {
   double? _laidOutInset;
+  double? _laidOutExtent;
 
   @override
   void performLayout() {
     final inset = padding.resolve(textDirection).bottom;
-    final change = inset - (_laidOutInset ?? inset);
+    final extent = constraints.viewportMainAxisExtent;
+    // The viewport's top stays put on screen, so its bottom edge, which the
+    // rows are placed from, moves by its change in height.
+    final change = inset - (_laidOutInset ?? inset) + (_laidOutExtent ?? extent) - extent;
     _laidOutInset = inset;
+    _laidOutExtent = extent;
     final scrolled = switch (RenderAbstractViewport.maybeOf(this)) {
       final RenderViewportBase viewport => viewport.offset.pixels,
       _ => 0.0,
     };
-    // A shrink can take the offset back to the newest end, not past it.
-    final correction = scrolled > 0 ? max(change, -scrolled) : 0.0;
+    if (change == 0 || !detached()) return super.performLayout();
+    // A shrink can take the offset back to the newest end, not past it. There
+    // the reader sees the latest rows, so the list may follow them again.
+    if (scrolled > 0 && change <= -scrolled) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => onCarriedToNewestEnd());
+    }
+    final correction = max(change, -scrolled);
     if (correction != 0) {
       geometry = SliverGeometry(scrollOffsetCorrection: correction);
       return;
