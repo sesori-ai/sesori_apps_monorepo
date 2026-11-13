@@ -42,7 +42,8 @@ class const UserMessageCard({
   /// The message's attachments, as its invocation card shows them: none when
   /// it has none, so the card keeps no room for them.
   static List<Widget> cardAttachmentsOf({required MessageWithParts message}) => [
-    if (_attachments(message: message) case final attachments when attachments.isNotEmpty)
+    if (_attachments(message: message) case final attachments
+        when attachments.any((attachment) => attachment is! MessageAttachmentUnknown))
       AttachmentCollectionWidget(sessionId: message.info.sessionID, attachments: attachments),
   ];
 

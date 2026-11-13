@@ -71,8 +71,8 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   `opencode`, `codex`, `github_copilot`, `cursor`, `claude_code`, `hermes_agent`, `pi`, `oh_my_pi`, `deepseek`,
   `grok_build`, `antigravity`, or `other` for a plugin ID no built-in harness claims. The raw plugin ID never reaches
   the wire, and no model, provider, agent, tool or command name rides with it. Reporting infers each account's
-  first-session harness from its earliest such outcome; `first_session_run` stays parameter-free. The desktop strips
-  `harness` before posting, because the auth server's strict event schema does not accept it yet.
+  first-session harness from its earliest such outcome; `first_session_run` stays parameter-free. The desktop sends
+  `harness` to the auth server on both events, like the mobile app.
 - An accepted prompt that carries at least one file the bridge saves also reports `prompt_files_sent`, right after its
   `session_message_sent` or `session_created_with_message`, from the session screen's send, a new session's create, and
   a new session's follow-ups. It carries only a pinned `file_count` (`1`, `2_4`, `5_plus`) and `source` (`picker`,

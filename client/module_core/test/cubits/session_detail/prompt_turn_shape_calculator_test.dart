@@ -61,16 +61,19 @@ void main() {
       );
     });
 
-    test("is a bubble without the capability, a source, or a command", () {
+    test("is a Custom card from the start for a command without a known source", () {
+      expect(
+        calculator.ofSubmission(submission: command(source: null, text: "x"), namesCommandInvocations: true),
+        const PromptTurnShape.invocation(name: "fixture-greeter", source: CommandSource.unknown, arguments: "x"),
+      );
+    });
+
+    test("is a bubble without the capability or a command", () {
       expect(
         calculator.ofSubmission(
           submission: command(source: CommandSource.skill, text: "x"),
           namesCommandInvocations: false,
         ),
-        const PromptTurnShape.bubble(),
-      );
-      expect(
-        calculator.ofSubmission(submission: command(source: null, text: "x"), namesCommandInvocations: true),
         const PromptTurnShape.bubble(),
       );
       expect(
@@ -91,7 +94,7 @@ void main() {
     });
   });
 
-  test("ofQueuedPrompt follows the same rule as a local submission", () {
+  test("ofQueuedPrompt is a card only for a command the bridge sourced", () {
     const prompt = QueuedSessionPrompt(
       id: "q1",
       text: "args",
@@ -104,6 +107,11 @@ void main() {
       const PromptTurnShape.invocation(name: "fixture-greeter", source: CommandSource.skill, arguments: "args"),
     );
     expect(calculator.ofQueuedPrompt(prompt: prompt, namesCommandInvocations: false), const PromptTurnShape.bubble());
+    expect(
+      calculator.ofQueuedPrompt(prompt: prompt.copyWith(commandSource: null), namesCommandInvocations: true),
+      const PromptTurnShape.bubble(),
+      reason: "the bridge did not send it, so its turn will not be named",
+    );
   });
 
   test("shapes lists only invocations, by message and prompt id", () {

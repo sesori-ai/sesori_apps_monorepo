@@ -5,6 +5,12 @@ final class const PiPersistedUserTextCodec() {
   static final RegExp _positiveLength = RegExp(r"^[1-9][0-9]*$");
   static final RegExp _trailingImageHints = RegExp(r"\n\n\[Image[^\n]*\](?:\n\[Image[^\n]*\])*$");
 
+  /// The user message Pi stores for `/skill:name args`: the skill body in a
+  /// `<skill>` block, then the arguments. Pi's own TUI parses it the same way.
+  static final RegExp _expandedSkill = RegExp(
+    r'^<skill name="([^"]+)" location="[^"]+">\n[\s\S]*\n</skill>(?:\n\n([\s\S]+))?$',
+  );
+
   String encode({required String executionText, required String? userVisibleText}) {
     final visibleText = userVisibleText ?? "";
     if (visibleText.isNotEmpty && !executionText.endsWith(visibleText)) {
@@ -26,6 +32,11 @@ final class const PiPersistedUserTextCodec() {
 
   String _decodeVisibleText({required String persistedText}) {
     if (!persistedText.startsWith(marker)) {
+      final skill = _expandedSkill.firstMatch(persistedText);
+      if (skill != null) {
+        final arguments = skill.group(2);
+        return arguments == null ? "/skill:${skill.group(1)}" : "/skill:${skill.group(1)} $arguments";
+      }
       if (persistedText.startsWith("/")) {
         final separator = persistedText.indexOf(RegExp(r"\s"));
         return separator < 0 ? persistedText : persistedText.substring(0, separator);

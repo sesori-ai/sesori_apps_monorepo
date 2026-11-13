@@ -96,7 +96,7 @@ void main() {
   /// stop the loop is PregoAiLoader's own test.
   bool sparkleTwinkles(WidgetTester tester) => tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate;
 
-  /// The harness logo's strength: 0.7 as a grey glyph, 1 in its own colours,
+  /// The harness logo's strength: 0.35 as a grey glyph, 1 in its own colours,
   /// and between the two while it cross-fades.
   double logoStrength(WidgetTester tester) => tester
       .widget<Opacity>(find.ancestor(of: find.byType(PregoBrandLogo), matching: find.byType(Opacity)).first)
@@ -111,7 +111,7 @@ void main() {
     return switch ((logoStrength(tester), breathing)) {
       (1, true) => "breathing",
       (1, false) => "colour",
-      (0.7, false) => "grey",
+      (0.35, false) => "grey",
       final look => fail("an unsettled or impossible logo: $look"),
     };
   }
@@ -327,11 +327,11 @@ void main() {
         await pump(tester, tile(session: session));
         final size = tester.getSize(logo);
         final centre = tester.getCenter(logo);
-        expect(logoStrength(tester), 0.7);
+        expect(logoStrength(tester), 0.35);
 
         await pump(tester, tile(session: session, unseen: true));
         await tester.pump(const Duration(milliseconds: 150));
-        expect(logoStrength(tester), allOf(greaterThan(0.7), lessThan(1)), reason: "midway, neither grey nor colour");
+        expect(logoStrength(tester), allOf(greaterThan(0.35), lessThan(1)), reason: "midway, neither grey nor colour");
         expect(tester.getSize(logo), size);
         expect(tester.getCenter(logo), centre);
         await tester.pump(const Duration(milliseconds: 200));
@@ -340,7 +340,7 @@ void main() {
         // Reading it fades it back.
         await pump(tester, tile(session: session));
         await tester.pump(const Duration(milliseconds: 150));
-        expect(logoStrength(tester), allOf(greaterThan(0.7), lessThan(1)));
+        expect(logoStrength(tester), allOf(greaterThan(0.35), lessThan(1)));
         await tester.pump(const Duration(milliseconds: 200));
         expect(logoLook(tester), "grey");
 

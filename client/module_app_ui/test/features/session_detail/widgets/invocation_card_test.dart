@@ -79,6 +79,18 @@ void main() {
     }
   });
 
+  testWidgets("gives dictated arguments a slot to land on, as a bubble does", (tester) async {
+    await _pump(
+      tester,
+      child: const UserMessageCard(message: _message, shape: _skill, outlineFade: null),
+    );
+
+    final slot = tester.widget<SentBubbleSlot>(
+      find.descendant(of: find.byType(InvocationCard), matching: find.byType(SentBubbleSlot)),
+    );
+    expect(slot.text, "Greet the team\nin two lines");
+  });
+
   testWidgets("is a record, not a control: no ink, no button role", (tester) async {
     final semantics = tester.ensureSemantics();
     await _pump(

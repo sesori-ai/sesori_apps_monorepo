@@ -6,6 +6,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../../../extensions/command_source_x.dart";
 import "../../../widgets/markdown_styles.dart";
+import "sent_bubble_landing.dart";
 import "user_message_card.dart";
 
 /// A command, skill or MCP prompt the user ran, as an event in the transcript
@@ -55,31 +56,35 @@ class const InvocationCard({
         child: Semantics(
           container: true,
           label: loc.invocationCardSemantics(source.name, name),
-          child: AnimatedContainer(
-            duration: transitionDuration,
-            curve: Curves.easeInOutCubic,
-            margin: margin,
-            padding: const EdgeInsets.all(_padding),
-            constraints: BoxConstraints(
-              maxWidth: maxContentWidth(rowWidth: constraints.maxWidth) + inset * 2,
-            ),
-            decoration: BoxDecoration(
-              color: fill(prego: prego),
-              border: border(prego: prego),
-              borderRadius: BorderRadius.circular(radius),
-            ),
-            foregroundDecoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(
-                color: prego.colors.borderBrand.withValues(alpha: outlined ? 0.55 : 0),
+          // A command whose arguments were dictated lands its words here, as a bubble does.
+          child: SentBubbleSlot(
+            text: arguments,
+            child: AnimatedContainer(
+              duration: transitionDuration,
+              curve: Curves.easeInOutCubic,
+              margin: margin,
+              padding: const EdgeInsets.all(_padding),
+              constraints: BoxConstraints(
+                maxWidth: maxContentWidth(rowWidth: constraints.maxWidth) + inset * 2,
               ),
-            ),
-            child: InvocationCardContent(
-              name: name,
-              source: source,
-              arguments: arguments,
-              attachments: attachments,
-              onHeaderLayout: null,
+              decoration: BoxDecoration(
+                color: fill(prego: prego),
+                border: border(prego: prego),
+                borderRadius: BorderRadius.circular(radius),
+              ),
+              foregroundDecoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(
+                  color: prego.colors.borderBrand.withValues(alpha: outlined ? 0.55 : 0),
+                ),
+              ),
+              child: InvocationCardContent(
+                name: name,
+                source: source,
+                arguments: arguments,
+                attachments: attachments,
+                onHeaderLayout: null,
+              ),
             ),
           ),
         ),

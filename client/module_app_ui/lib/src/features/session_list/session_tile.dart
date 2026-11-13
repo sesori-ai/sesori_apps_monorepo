@@ -902,7 +902,7 @@ class const _HarnessLogo({required final String pluginId, required final _LogoTo
         duration: prefersReducedMotion(context) ? Duration.zero : _toneDuration,
         curve: Curves.easeInOut,
         builder: (context, colour, _) => Opacity(
-          opacity: 0.7 + 0.3 * colour,
+          opacity: 0.35 + 0.65 * colour,
           child: ColorFiltered(
             colorFilter: ColorFilter.matrix([
               for (final (index, grey) in _grayscale.indexed) grey + (_identity[index] - grey) * colour,
