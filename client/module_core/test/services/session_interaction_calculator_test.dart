@@ -161,13 +161,18 @@ void main() {
     );
   });
 
-  test("a failed start's specific reason replaces the generic console hint", () {
+  test("a ready harness's failed start reason replaces the generic console hint", () {
     const generic = "Check the bridge console and restart the bridge to retry this plugin.";
-    for (final (failureReason, expected) in [("Remove the flag.", "Remove the flag."), (null, generic)]) {
+    for (final (setup, failureReason, expected) in [
+      (PluginSetupState.ready, "Remove the flag.", "Remove the flag."),
+      (PluginSetupState.ready, null, generic),
+      // A setup that is not ready keeps the hint that unblocks it.
+      (PluginSetupState.authenticationRequired, "Remove the flag.", generic),
+    ]) {
       final result = calculator.calculate(
         pluginId: "harness",
         managementResult: managementFixture(
-          setup: PluginSetupState.ready,
+          setup: setup,
           runtime: PluginRuntimeState.failed,
           runtimeActionHint: generic,
           failureReason: failureReason,

@@ -896,6 +896,42 @@ void main() {
     }
   });
 
+  testWidgets("a restart or a failure on the open detail eases its reason row out and in", (tester) async {
+    phone(tester: tester);
+    const reason = "Remove --opencode-no-password to start OpenCode 2.";
+    final failed = _plugin(
+      id: "failed",
+      runtime: PluginRuntimeState.failed,
+      setup: PluginSetupState.ready,
+    ).copyWith(failureReason: reason);
+    final active = _plugin(id: "failed", runtime: PluginRuntimeState.active, setup: PluginSetupState.ready);
+    final card = find.byKey(const Key("harnesses_detail_card_failed"));
+    publish(plugins: [failed]);
+    await tester.pumpWidget(app(detailId: "failed"));
+    await tester.pumpAndSettle();
+    final failedHeight = tester.getSize(card).height;
+
+    for (final (next, endsWithReason) in [(active, false), (failed, true)]) {
+      publish(plugins: [next]);
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+      final startHeight = tester.getSize(card).height;
+      // The first frame starts the transition's clock; the next is mid-way.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 130));
+      // Mid-way the row is still on screen and the card, with what sits below
+      // it, is between its two heights rather than snapped to either.
+      expect(find.text(reason), findsOneWidget);
+      final midHeight = tester.getSize(card).height;
+      await tester.pumpAndSettle();
+      final endHeight = tester.getSize(card).height;
+      expect(find.text(reason), endsWithReason ? findsOneWidget : findsNothing);
+      expect(endHeight, endsWithReason ? failedHeight : lessThan(failedHeight));
+      final (low, high) = startHeight < endHeight ? (startHeight, endHeight) : (endHeight, startHeight);
+      expect(midHeight, inExclusiveRange(low, high));
+    }
+  });
+
   testWidgets("failed detail retains truthful unavailable status and offers a functional retry", (tester) async {
     phone(tester: tester);
     publish(

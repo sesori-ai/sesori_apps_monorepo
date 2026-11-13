@@ -82,7 +82,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   under "Failed" (two lines at most; the row opens the detail page), fading in
   while the row eases its height, and the detail page shows it whole as its own
   row in place of the generic failed hint, which shows only for a failure without
-  a reason. A chat on that harness shows the reason under its unavailable notice
+  a reason. When the harness restarts or fails while the detail page is open,
+  its status-card rows size and fade out or in while the rows and sections below
+  glide; nothing snaps. A chat on that harness shows the reason under its unavailable notice
   in place of the generic hint the same way. The plugin list includes an enabled harness that failed to start
   (never as the default) and carries the same sentence as `failureReason`: the
   new-session harness picker reads "Failed · <reason>" on one line, and the
