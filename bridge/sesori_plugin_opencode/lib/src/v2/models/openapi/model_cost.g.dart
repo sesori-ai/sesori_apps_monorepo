@@ -99,10 +99,7 @@ class ModelCostTier {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ModelCostTier &&
-          other.type == type &&
-          other.size == size);
+      identical(this, other) || (other is ModelCostTier && other.type == type && other.size == size);
 
   @override
   int get hashCode => Object.hash(type, size);
@@ -146,10 +143,7 @@ class ModelCostCache {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ModelCostCache &&
-          other.read == read &&
-          other.write == write);
+      identical(this, other) || (other is ModelCostCache && other.read == read && other.write == write);
 
   @override
   int get hashCode => Object.hash(read, write);

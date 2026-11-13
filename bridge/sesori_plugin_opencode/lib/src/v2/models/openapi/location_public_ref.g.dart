@@ -33,9 +33,7 @@ class LocationPublicRef {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is LocationPublicRef &&
-          other.directory == directory);
+      identical(this, other) || (other is LocationPublicRef && other.directory == directory);
 
   @override
   int get hashCode => directory.hashCode;

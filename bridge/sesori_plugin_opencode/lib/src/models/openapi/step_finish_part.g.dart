@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:meta/meta.dart';
+
 import 'part.g.dart';
 
 @immutable
@@ -191,10 +192,7 @@ class StepFinishPartTokensCache {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is StepFinishPartTokensCache &&
-          other.read == read &&
-          other.write == write);
+      identical(this, other) || (other is StepFinishPartTokensCache && other.read == read && other.write == write);
 
   @override
   int get hashCode => Object.hash(read, write);

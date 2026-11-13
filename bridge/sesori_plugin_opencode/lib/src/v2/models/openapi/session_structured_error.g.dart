@@ -18,7 +18,9 @@ class SessionStructuredError {
       type: json["type"] as String,
       message: json["message"] as String,
       status: (json["status"] as num?)?.toInt(),
-      response: json["response"] == null ? null : SessionStructuredErrorResponse.fromJson(json["response"] as Map<String, dynamic>),
+      response: json["response"] == null
+          ? null
+          : SessionStructuredErrorResponse.fromJson(json["response"] as Map<String, dynamic>),
       retryAfterMs: (json["retryAfterMs"] as num?)?.toInt(),
     );
   }
@@ -101,9 +103,7 @@ class SessionStructuredErrorResponse {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SessionStructuredErrorResponse &&
-          other.body == body);
+      identical(this, other) || (other is SessionStructuredErrorResponse && other.body == body);
 
   @override
   int get hashCode => body.hashCode;

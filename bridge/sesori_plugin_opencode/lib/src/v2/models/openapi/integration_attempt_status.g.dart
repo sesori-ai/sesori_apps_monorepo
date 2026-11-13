@@ -67,16 +67,13 @@ final class IntegrationAttemptStatusPending implements IntegrationAttemptStatus 
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is IntegrationAttemptStatusPending &&
-          other.time == time);
+      identical(this, other) || (other is IntegrationAttemptStatusPending && other.time == time);
 
   @override
   int get hashCode => time.hashCode;
 
   final IntegrationAttemptStatusPendingTime time;
 }
-
 
 @immutable
 final class IntegrationAttemptStatusComplete implements IntegrationAttemptStatus {
@@ -110,16 +107,13 @@ final class IntegrationAttemptStatusComplete implements IntegrationAttemptStatus
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is IntegrationAttemptStatusComplete &&
-          other.time == time);
+      identical(this, other) || (other is IntegrationAttemptStatusComplete && other.time == time);
 
   @override
   int get hashCode => time.hashCode;
 
   final IntegrationAttemptStatusCompleteTime time;
 }
-
 
 @immutable
 final class IntegrationAttemptStatusFailed implements IntegrationAttemptStatus {
@@ -159,9 +153,7 @@ final class IntegrationAttemptStatusFailed implements IntegrationAttemptStatus {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is IntegrationAttemptStatusFailed &&
-          other.message == message &&
-          other.time == time);
+      (other is IntegrationAttemptStatusFailed && other.message == message && other.time == time);
 
   @override
   int get hashCode => Object.hash(message, time);
@@ -169,7 +161,6 @@ final class IntegrationAttemptStatusFailed implements IntegrationAttemptStatus {
   final String message;
   final IntegrationAttemptStatusFailedTime time;
 }
-
 
 @immutable
 final class IntegrationAttemptStatusExpired implements IntegrationAttemptStatus {
@@ -203,16 +194,13 @@ final class IntegrationAttemptStatusExpired implements IntegrationAttemptStatus 
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is IntegrationAttemptStatusExpired &&
-          other.time == time);
+      identical(this, other) || (other is IntegrationAttemptStatusExpired && other.time == time);
 
   @override
   int get hashCode => time.hashCode;
 
   final IntegrationAttemptStatusExpiredTime time;
 }
-
 
 /// Fallback variant for an unrecognized [IntegrationAttemptStatus] payload shape.
 /// Carries the raw JSON so newer OpenCode servers do not break
@@ -229,8 +217,7 @@ final class IntegrationAttemptStatusUnknown implements IntegrationAttemptStatus 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is IntegrationAttemptStatusUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      (other is IntegrationAttemptStatusUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);
@@ -277,7 +264,8 @@ class IntegrationAttemptStatusPendingTime {
           const DeepCollectionEquality().equals(other.expires, expires));
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(created), const DeepCollectionEquality().hash(expires));
+  int get hashCode =>
+      Object.hash(const DeepCollectionEquality().hash(created), const DeepCollectionEquality().hash(expires));
 
   final Object created;
   final Object expires;
@@ -324,7 +312,8 @@ class IntegrationAttemptStatusCompleteTime {
           const DeepCollectionEquality().equals(other.expires, expires));
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(created), const DeepCollectionEquality().hash(expires));
+  int get hashCode =>
+      Object.hash(const DeepCollectionEquality().hash(created), const DeepCollectionEquality().hash(expires));
 
   final Object created;
   final Object expires;
@@ -371,7 +360,8 @@ class IntegrationAttemptStatusFailedTime {
           const DeepCollectionEquality().equals(other.expires, expires));
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(created), const DeepCollectionEquality().hash(expires));
+  int get hashCode =>
+      Object.hash(const DeepCollectionEquality().hash(created), const DeepCollectionEquality().hash(expires));
 
   final Object created;
   final Object expires;
@@ -418,7 +408,8 @@ class IntegrationAttemptStatusExpiredTime {
           const DeepCollectionEquality().equals(other.expires, expires));
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(created), const DeepCollectionEquality().hash(expires));
+  int get hashCode =>
+      Object.hash(const DeepCollectionEquality().hash(created), const DeepCollectionEquality().hash(expires));
 
   final Object created;
   final Object expires;

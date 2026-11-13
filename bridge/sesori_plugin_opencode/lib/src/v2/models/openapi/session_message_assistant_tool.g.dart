@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
+
 import 'session_message_assistant_content.g.dart';
 import 'session_message_native.g.dart';
 import 'session_message_tool_state.g.dart';

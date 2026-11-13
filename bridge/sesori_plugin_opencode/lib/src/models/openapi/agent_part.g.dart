@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:meta/meta.dart';
+
 import 'part.g.dart';
 
 @immutable
@@ -115,10 +116,7 @@ class AgentPartSource {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AgentPartSource &&
-          other.value == value &&
-          other.start == start &&
-          other.end == end);
+      (other is AgentPartSource && other.value == value && other.start == start && other.end == end);
 
   @override
   int get hashCode => Object.hash(value, start, end);

@@ -81,7 +81,8 @@ class Project {
           const DeepCollectionEquality().equals(other.sandboxes, sandboxes));
 
   @override
-  int get hashCode => Object.hash(id, worktree, vcs, name, icon, commands, time, const DeepCollectionEquality().hash(sandboxes));
+  int get hashCode =>
+      Object.hash(id, worktree, vcs, name, icon, commands, time, const DeepCollectionEquality().hash(sandboxes));
 
   final String id;
   final String worktree;
@@ -134,10 +135,7 @@ class ProjectIcon {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ProjectIcon &&
-          other.url == url &&
-          other.overrideValue == overrideValue &&
-          other.color == color);
+      (other is ProjectIcon && other.url == url && other.overrideValue == overrideValue && other.color == color);
 
   @override
   int get hashCode => Object.hash(url, overrideValue, color);
@@ -176,10 +174,7 @@ class ProjectCommands {
   }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ProjectCommands &&
-          other.start == start);
+  bool operator ==(Object other) => identical(this, other) || (other is ProjectCommands && other.start == start);
 
   @override
   int get hashCode => start.hashCode;

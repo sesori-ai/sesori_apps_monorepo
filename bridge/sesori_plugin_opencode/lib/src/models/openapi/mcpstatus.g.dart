@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'mcpstatus_connected.g.dart';
 import 'mcpstatus_disabled.g.dart';
 import 'mcpstatus_failed.g.dart';
@@ -56,9 +57,7 @@ class MCPStatusUnknown implements MCPStatus {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is MCPStatusUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      identical(this, other) || (other is MCPStatusUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

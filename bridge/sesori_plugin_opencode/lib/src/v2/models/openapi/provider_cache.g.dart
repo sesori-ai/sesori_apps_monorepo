@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
+
 import 'provider_cache_warming.g.dart';
 
 @immutable
@@ -39,10 +40,7 @@ class ProviderCache {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ProviderCache &&
-          other.ttl == ttl &&
-          other.warming == warming);
+      identical(this, other) || (other is ProviderCache && other.ttl == ttl && other.warming == warming);
 
   @override
   int get hashCode => Object.hash(ttl, warming);

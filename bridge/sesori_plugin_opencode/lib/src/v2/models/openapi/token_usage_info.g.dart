@@ -99,10 +99,7 @@ class TokenUsageInfoCache {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is TokenUsageInfoCache &&
-          other.read == read &&
-          other.write == write);
+      identical(this, other) || (other is TokenUsageInfoCache && other.read == read && other.write == write);
 
   @override
   int get hashCode => Object.hash(read, write);

@@ -62,10 +62,7 @@ class PermissionSource00Inline implements PermissionSource {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is PermissionSource00Inline &&
-          other.messageID == messageID &&
-          other.id == id);
+      identical(this, other) || (other is PermissionSource00Inline && other.messageID == messageID && other.id == id);
 
   @override
   int get hashCode => Object.hash(messageID, id);
@@ -73,7 +70,6 @@ class PermissionSource00Inline implements PermissionSource {
   final String messageID;
   final String id;
 }
-
 
 /// Fallback variant for an unrecognized [PermissionSource] payload shape.
 /// Carries the raw JSON so newer OpenCode servers do not break
@@ -90,8 +86,7 @@ class PermissionSourceUnknown implements PermissionSource {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is PermissionSourceUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      (other is PermissionSourceUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

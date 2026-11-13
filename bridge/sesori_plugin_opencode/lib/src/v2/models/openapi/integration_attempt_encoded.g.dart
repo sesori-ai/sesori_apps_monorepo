@@ -121,7 +121,8 @@ class IntegrationAttemptEncodedTime {
           const DeepCollectionEquality().equals(other.expires, expires));
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(created), const DeepCollectionEquality().hash(expires));
+  int get hashCode =>
+      Object.hash(const DeepCollectionEquality().hash(created), const DeepCollectionEquality().hash(expires));
 
   final Object created;
   final Object expires;

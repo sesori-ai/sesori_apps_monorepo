@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:meta/meta.dart';
+
 import 'permission_action.g.dart';
 
 @immutable
@@ -45,10 +46,7 @@ class PermissionRule {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is PermissionRule &&
-          other.permission == permission &&
-          other.pattern == pattern &&
-          other.action == action);
+      (other is PermissionRule && other.permission == permission && other.pattern == pattern && other.action == action);
 
   @override
   int get hashCode => Object.hash(permission, pattern, action);

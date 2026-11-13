@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'session_message_tool_state.g.dart';
 import 'session_structured_error.g.dart';
 import 'tool_content.g.dart';
@@ -20,7 +21,9 @@ class SessionMessageToolStateError implements SessionMessageToolState {
     return SessionMessageToolStateError(
       input: json["input"] as Map<String, dynamic>,
       error: SessionStructuredError.fromJson(json["error"] as Map<String, dynamic>),
-      content: (json["content"] as List<dynamic>?)?.map((e) => ToolContent.fromJson(e as Map<String, dynamic>)).toList(),
+      content: (json["content"] as List<dynamic>?)
+          ?.map((e) => ToolContent.fromJson(e as Map<String, dynamic>))
+          .toList(),
       metadata: json["metadata"] as Map<String, dynamic>?,
     );
   }
@@ -62,7 +65,12 @@ class SessionMessageToolStateError implements SessionMessageToolState {
           const DeepCollectionEquality().equals(other.metadata, metadata));
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(input), error, const DeepCollectionEquality().hash(content), const DeepCollectionEquality().hash(metadata));
+  int get hashCode => Object.hash(
+    const DeepCollectionEquality().hash(input),
+    error,
+    const DeepCollectionEquality().hash(content),
+    const DeepCollectionEquality().hash(metadata),
+  );
 
   final Map<String, dynamic> input;
   final SessionStructuredError error;

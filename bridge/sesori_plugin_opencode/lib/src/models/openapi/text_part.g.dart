@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'part.g.dart';
 
 @immutable
@@ -84,7 +85,16 @@ class TextPart implements Part {
           const DeepCollectionEquality().equals(other.metadata, metadata));
 
   @override
-  int get hashCode => Object.hash(id, sessionID, messageID, text, synthetic, ignored, time, const DeepCollectionEquality().hash(metadata));
+  int get hashCode => Object.hash(
+    id,
+    sessionID,
+    messageID,
+    text,
+    synthetic,
+    ignored,
+    time,
+    const DeepCollectionEquality().hash(metadata),
+  );
 
   final String id;
   final String sessionID;
@@ -131,10 +141,7 @@ class TextPartTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is TextPartTime &&
-          other.start == start &&
-          other.end == end);
+      identical(this, other) || (other is TextPartTime && other.start == start && other.end == end);
 
   @override
   int get hashCode => Object.hash(start, end);

@@ -348,6 +348,7 @@ void main() {
       final repository = OpenCodeCatalogRepository(
         databaseApi: OpenCodeCatalogDatabaseApi(
           worker: _GatedCatalogDatabaseWorker(started: workerStarted.sendPort).read,
+          sessionActivityWorker: _unusedSessionActivityWorker,
         ),
         snapshotMapper: const OpenCodeCatalogSnapshotMapper(
           modelMapper: PluginModelMapper(
@@ -602,7 +603,10 @@ class _FakeCatalogDatabaseApi({required final OpenCodeCatalogDatabaseSnapshot sn
   }
 
   @override
-  Future<int?> readSessionUpdatedAt({required String databasePath, required String sessionId}) async => null;
+  Future<OpenCodeSessionUpdatedRows> readSessionUpdatedRows({
+    required String databasePath,
+    required String sessionId,
+  }) => throw UnimplementedError();
 }
 
 class _GatedCatalogDatabaseWorker({required final SendPort started}) {
@@ -628,3 +632,6 @@ class const _NeverCancelled() implements PluginCatalogCancellationSignal {
   @override
   bool get isCancelled => false;
 }
+
+OpenCodeSessionUpdatedRows _unusedSessionActivityWorker({required String databasePath, required String sessionId}) =>
+    throw UnimplementedError("the catalog read does not read session activity");

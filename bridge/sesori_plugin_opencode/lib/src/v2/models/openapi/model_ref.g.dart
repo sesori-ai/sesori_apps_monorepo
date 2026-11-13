@@ -44,10 +44,7 @@ class ModelRef {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ModelRef &&
-          other.id == id &&
-          other.providerID == providerID &&
-          other.variant == variant);
+      (other is ModelRef && other.id == id && other.providerID == providerID && other.variant == variant);
 
   @override
   int get hashCode => Object.hash(id, providerID, variant);

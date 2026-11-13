@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
+
 import 'model_cache_format.g.dart';
 import 'model_max_tokens_field.g.dart';
 import 'model_media_input.g.dart';
@@ -26,7 +27,9 @@ class ModelCompatibility {
     return ModelCompatibility(
       reasoningField: json["reasoningField"] as String?,
       requireReasoning: json["requireReasoning"] as bool?,
-      maxTokensField: json["maxTokensField"] == null ? null : ModelMaxTokensField.fromJson(json["maxTokensField"] as String),
+      maxTokensField: json["maxTokensField"] == null
+          ? null
+          : ModelMaxTokensField.fromJson(json["maxTokensField"] as String),
       requireFinishReason: json["requireFinishReason"] as bool?,
       requireAssistantAfterTool: json["requireAssistantAfterTool"] as bool?,
       supportsPromptCacheKey: json["supportsPromptCacheKey"] as bool?,
@@ -101,7 +104,19 @@ class ModelCompatibility {
           other.mediaInput == mediaInput);
 
   @override
-  int get hashCode => Object.hash(reasoningField, requireReasoning, maxTokensField, requireFinishReason, requireAssistantAfterTool, supportsPromptCacheKey, streamUsage, cacheFormat, supportsThinkingBlockBinding, supportsEffortUpdates, mediaInput);
+  int get hashCode => Object.hash(
+    reasoningField,
+    requireReasoning,
+    maxTokensField,
+    requireFinishReason,
+    requireAssistantAfterTool,
+    supportsPromptCacheKey,
+    streamUsage,
+    cacheFormat,
+    supportsThinkingBlockBinding,
+    supportsEffortUpdates,
+    mediaInput,
+  );
 
   final String? reasoningField;
   final bool? requireReasoning;

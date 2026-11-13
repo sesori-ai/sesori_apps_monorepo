@@ -4,6 +4,7 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
 import 'provider_compatibility.g.dart';
 import 'provider_settings.g.dart';
 
@@ -30,7 +31,9 @@ class ProviderInfo {
       name: json["name"] as String,
       activation: ProviderInfoActivation.fromJson(json["activation"] as String),
       package: json["package"] as String,
-      compatibility: json["compatibility"] == null ? null : ProviderCompatibility.fromJson(json["compatibility"] as Map<String, dynamic>),
+      compatibility: json["compatibility"] == null
+          ? null
+          : ProviderCompatibility.fromJson(json["compatibility"] as Map<String, dynamic>),
       settings: json["settings"] == null ? null : ProviderSettings.fromJson(json["settings"] as Map<String, dynamic>),
       headers: (json["headers"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
       body: json["body"] as Map<String, dynamic>?,
@@ -96,7 +99,18 @@ class ProviderInfo {
           const DeepCollectionEquality().equals(other.body, body));
 
   @override
-  int get hashCode => Object.hash(id, canonical, integrationID, name, activation, package, compatibility, settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body));
+  int get hashCode => Object.hash(
+    id,
+    canonical,
+    integrationID,
+    name,
+    activation,
+    package,
+    compatibility,
+    settings,
+    const DeepCollectionEquality().hash(headers),
+    const DeepCollectionEquality().hash(body),
+  );
 
   final String id;
   final String? canonical;

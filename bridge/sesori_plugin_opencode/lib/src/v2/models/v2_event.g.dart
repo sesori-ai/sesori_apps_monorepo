@@ -379,8 +379,7 @@ sealed class V2EventData {
       "provider.updated" => V2ProviderUpdated.fromJson(json),
       "model.updated" => V2ModelUpdated.fromJson(json),
       "skill.updated" => V2SkillUpdated.fromJson(json),
-      final String unknown =>
-        throw FormatException("Unknown SSE event type: $unknown"),
+      final String unknown => throw FormatException("Unknown SSE event type: $unknown"),
     };
   }
 }
@@ -399,6 +398,7 @@ class V2ServerConnected extends V2EventData {
     return const V2ServerConnected();
   }
 }
+
 class V2SessionCreated extends V2EventData implements V2SessionEventData {
   const V2SessionCreated({
     required this.sessionID,
@@ -457,6 +457,7 @@ class V2SessionCreated extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionRenamed extends V2EventData implements V2SessionEventData {
   const V2SessionRenamed({
     required this.sessionID,
@@ -483,6 +484,7 @@ class V2SessionRenamed extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionDeleted extends V2EventData implements V2SessionEventData {
   const V2SessionDeleted({
     required this.sessionID,
@@ -505,6 +507,7 @@ class V2SessionDeleted extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionExecutionStarted extends V2EventData implements V2SessionEventData {
   const V2SessionExecutionStarted({
     required this.sessionID,
@@ -527,6 +530,7 @@ class V2SessionExecutionStarted extends V2EventData implements V2SessionEventDat
     );
   }
 }
+
 class V2SessionExecutionSucceeded extends V2EventData implements V2SessionEventData {
   const V2SessionExecutionSucceeded({
     required this.sessionID,
@@ -549,6 +553,7 @@ class V2SessionExecutionSucceeded extends V2EventData implements V2SessionEventD
     );
   }
 }
+
 class V2SessionExecutionFailed extends V2EventData implements V2SessionEventData {
   const V2SessionExecutionFailed({
     required this.sessionID,
@@ -575,6 +580,7 @@ class V2SessionExecutionFailed extends V2EventData implements V2SessionEventData
     );
   }
 }
+
 class V2SessionExecutionInterrupted extends V2EventData implements V2SessionEventData {
   const V2SessionExecutionInterrupted({
     required this.sessionID,
@@ -601,6 +607,7 @@ class V2SessionExecutionInterrupted extends V2EventData implements V2SessionEven
     );
   }
 }
+
 class V2SessionInboxEnqueued extends V2EventData implements V2SessionEventData {
   const V2SessionInboxEnqueued({
     required this.sessionID,
@@ -627,6 +634,7 @@ class V2SessionInboxEnqueued extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionInboxDelivered extends V2EventData implements V2SessionEventData {
   const V2SessionInboxDelivered({
     required this.sessionID,
@@ -653,6 +661,7 @@ class V2SessionInboxDelivered extends V2EventData implements V2SessionEventData 
     );
   }
 }
+
 class V2SessionInboxCancelled extends V2EventData implements V2SessionEventData {
   const V2SessionInboxCancelled({
     required this.sessionID,
@@ -679,6 +688,7 @@ class V2SessionInboxCancelled extends V2EventData implements V2SessionEventData 
     );
   }
 }
+
 class V2SessionInboxDeliveryChanged extends V2EventData implements V2SessionEventData {
   const V2SessionInboxDeliveryChanged({
     required this.sessionID,
@@ -705,6 +715,7 @@ class V2SessionInboxDeliveryChanged extends V2EventData implements V2SessionEven
     );
   }
 }
+
 class V2SessionAgentSelected extends V2EventData implements V2SessionEventData {
   const V2SessionAgentSelected({
     required this.sessionID,
@@ -735,6 +746,7 @@ class V2SessionAgentSelected extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionSynthetic extends V2EventData implements V2SessionEventData {
   const V2SessionSynthetic({
     required this.sessionID,
@@ -765,6 +777,7 @@ class V2SessionSynthetic extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionStepStarted extends V2EventData implements V2SessionEventData {
   const V2SessionStepStarted({
     required this.sessionID,
@@ -803,6 +816,7 @@ class V2SessionStepStarted extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionStepEnded extends V2EventData implements V2SessionEventData {
   const V2SessionStepEnded({
     required this.sessionID,
@@ -837,6 +851,7 @@ class V2SessionStepEnded extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionStepFailed extends V2EventData implements V2SessionEventData {
   const V2SessionStepFailed({
     required this.sessionID,
@@ -875,6 +890,7 @@ class V2SessionStepFailed extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionTextStarted extends V2EventData implements V2SessionEventData {
   const V2SessionTextStarted({
     required this.sessionID,
@@ -905,6 +921,7 @@ class V2SessionTextStarted extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionTextDelta extends V2EventData implements V2SessionEventData {
   const V2SessionTextDelta({
     required this.sessionID,
@@ -939,6 +956,7 @@ class V2SessionTextDelta extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionTextEnded extends V2EventData implements V2SessionEventData {
   const V2SessionTextEnded({
     required this.sessionID,
@@ -973,6 +991,7 @@ class V2SessionTextEnded extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionReasoningStarted extends V2EventData implements V2SessionEventData {
   const V2SessionReasoningStarted({
     required this.sessionID,
@@ -1003,6 +1022,7 @@ class V2SessionReasoningStarted extends V2EventData implements V2SessionEventDat
     );
   }
 }
+
 class V2SessionReasoningDelta extends V2EventData implements V2SessionEventData {
   const V2SessionReasoningDelta({
     required this.sessionID,
@@ -1037,6 +1057,7 @@ class V2SessionReasoningDelta extends V2EventData implements V2SessionEventData 
     );
   }
 }
+
 class V2SessionReasoningEnded extends V2EventData implements V2SessionEventData {
   const V2SessionReasoningEnded({
     required this.sessionID,
@@ -1071,6 +1092,7 @@ class V2SessionReasoningEnded extends V2EventData implements V2SessionEventData 
     );
   }
 }
+
 class V2SessionToolInputStarted extends V2EventData implements V2SessionEventData {
   const V2SessionToolInputStarted({
     required this.sessionID,
@@ -1105,6 +1127,7 @@ class V2SessionToolInputStarted extends V2EventData implements V2SessionEventDat
     );
   }
 }
+
 class V2SessionToolInputDelta extends V2EventData implements V2SessionEventData {
   const V2SessionToolInputDelta({
     required this.sessionID,
@@ -1139,6 +1162,7 @@ class V2SessionToolInputDelta extends V2EventData implements V2SessionEventData 
     );
   }
 }
+
 class V2SessionToolInputEnded extends V2EventData implements V2SessionEventData {
   const V2SessionToolInputEnded({
     required this.sessionID,
@@ -1173,6 +1197,7 @@ class V2SessionToolInputEnded extends V2EventData implements V2SessionEventData 
     );
   }
 }
+
 class V2SessionToolCalled extends V2EventData implements V2SessionEventData {
   const V2SessionToolCalled({
     required this.sessionID,
@@ -1211,6 +1236,7 @@ class V2SessionToolCalled extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionToolProgress extends V2EventData implements V2SessionEventData {
   const V2SessionToolProgress({
     required this.sessionID,
@@ -1245,6 +1271,7 @@ class V2SessionToolProgress extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionToolSuccess extends V2EventData implements V2SessionEventData {
   const V2SessionToolSuccess({
     required this.sessionID,
@@ -1287,6 +1314,7 @@ class V2SessionToolSuccess extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2SessionToolFailed extends V2EventData implements V2SessionEventData {
   const V2SessionToolFailed({
     required this.sessionID,
@@ -1327,12 +1355,15 @@ class V2SessionToolFailed extends V2EventData implements V2SessionEventData {
       assistantMessageID: json["assistantMessageID"] as String,
       id: json["id"] as String,
       error: SessionStructuredError.fromJson(json["error"] as Map<String, dynamic>),
-      content: json["content"] == null ? null : (json["content"] as List<dynamic>).map((e) => ToolContent.fromJson(e as Map<String, dynamic>)).toList(),
+      content: json["content"] == null
+          ? null
+          : (json["content"] as List<dynamic>).map((e) => ToolContent.fromJson(e as Map<String, dynamic>)).toList(),
       metadata: json["metadata"] == null ? null : json["metadata"] as Map<String, dynamic>,
       executed: json["executed"] as bool,
     );
   }
 }
+
 class V2SessionRetryScheduled extends V2EventData implements V2SessionEventData {
   const V2SessionRetryScheduled({
     required this.sessionID,
@@ -1371,6 +1402,7 @@ class V2SessionRetryScheduled extends V2EventData implements V2SessionEventData 
     );
   }
 }
+
 class V2SessionCompactionStarted extends V2EventData implements V2SessionEventData {
   const V2SessionCompactionStarted({
     required this.sessionID,
@@ -1397,6 +1429,7 @@ class V2SessionCompactionStarted extends V2EventData implements V2SessionEventDa
     );
   }
 }
+
 class V2SessionCompactionDelta extends V2EventData implements V2SessionEventData {
   const V2SessionCompactionDelta({
     required this.sessionID,
@@ -1423,6 +1456,7 @@ class V2SessionCompactionDelta extends V2EventData implements V2SessionEventData
     );
   }
 }
+
 class V2SessionCompactionEnded extends V2EventData implements V2SessionEventData {
   const V2SessionCompactionEnded({
     required this.sessionID,
@@ -1449,6 +1483,7 @@ class V2SessionCompactionEnded extends V2EventData implements V2SessionEventData
     );
   }
 }
+
 class V2SessionCompactionFailed extends V2EventData implements V2SessionEventData {
   const V2SessionCompactionFailed({
     required this.sessionID,
@@ -1479,6 +1514,7 @@ class V2SessionCompactionFailed extends V2EventData implements V2SessionEventDat
     );
   }
 }
+
 class V2PermissionAsked extends V2EventData implements V2SessionEventData {
   const V2PermissionAsked({
     required this.id,
@@ -1529,6 +1565,7 @@ class V2PermissionAsked extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2PermissionReplied extends V2EventData implements V2SessionEventData {
   const V2PermissionReplied({
     required this.sessionID,
@@ -1559,6 +1596,7 @@ class V2PermissionReplied extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2FormCreated extends V2EventData implements V2SessionEventData {
   const V2FormCreated({
     required this.form,
@@ -1581,6 +1619,7 @@ class V2FormCreated extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2FormReplied extends V2EventData implements V2SessionEventData {
   const V2FormReplied({
     required this.id,
@@ -1611,6 +1650,7 @@ class V2FormReplied extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2FormCancelled extends V2EventData implements V2SessionEventData {
   const V2FormCancelled({
     required this.id,
@@ -1637,6 +1677,7 @@ class V2FormCancelled extends V2EventData implements V2SessionEventData {
     );
   }
 }
+
 class V2ProjectUpdated extends V2EventData {
   const V2ProjectUpdated({
     required this.id,
@@ -1683,6 +1724,7 @@ class V2ProjectUpdated extends V2EventData {
     );
   }
 }
+
 class V2AgentUpdated extends V2EventData {
   const V2AgentUpdated();
 
@@ -1697,6 +1739,7 @@ class V2AgentUpdated extends V2EventData {
     return const V2AgentUpdated();
   }
 }
+
 class V2CommandUpdated extends V2EventData {
   const V2CommandUpdated();
 
@@ -1711,6 +1754,7 @@ class V2CommandUpdated extends V2EventData {
     return const V2CommandUpdated();
   }
 }
+
 class V2ProviderUpdated extends V2EventData {
   const V2ProviderUpdated();
 
@@ -1725,6 +1769,7 @@ class V2ProviderUpdated extends V2EventData {
     return const V2ProviderUpdated();
   }
 }
+
 class V2ModelUpdated extends V2EventData {
   const V2ModelUpdated();
 
@@ -1739,6 +1784,7 @@ class V2ModelUpdated extends V2EventData {
     return const V2ModelUpdated();
   }
 }
+
 class V2SkillUpdated extends V2EventData {
   const V2SkillUpdated();
 
@@ -1753,6 +1799,7 @@ class V2SkillUpdated extends V2EventData {
     return const V2SkillUpdated();
   }
 }
+
 class V2EventEnvelope {
   const V2EventEnvelope({
     required this.id,

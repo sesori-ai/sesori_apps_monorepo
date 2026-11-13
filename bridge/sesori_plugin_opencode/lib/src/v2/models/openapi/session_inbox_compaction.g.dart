@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'session_inbox_delivery.g.dart';
 import 'session_inbox_info.g.dart';
 
@@ -106,9 +107,7 @@ class SessionInboxCompactionTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SessionInboxCompactionTime &&
-          other.created == created);
+      identical(this, other) || (other is SessionInboxCompactionTime && other.created == created);
 
   @override
   int get hashCode => created.hashCode;

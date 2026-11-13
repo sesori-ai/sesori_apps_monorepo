@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'session_message_agent_selected.g.dart';
 import 'session_message_assistant.g.dart';
 import 'session_message_compaction.g.dart';
@@ -75,8 +76,7 @@ class SessionMessageInfoUnknown implements SessionMessageInfo {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessageInfoUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      (other is SessionMessageInfoUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

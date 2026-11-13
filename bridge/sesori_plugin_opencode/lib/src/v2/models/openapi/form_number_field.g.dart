@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'form_field.g.dart';
 import 'form_when.g.dart';
 
@@ -91,7 +92,17 @@ class FormNumberField implements FormField {
           const DeepCollectionEquality().equals(other.defaultValue, defaultValue));
 
   @override
-  int get hashCode => Object.hash(key, title, description, required, hidden, const DeepCollectionEquality().hash(when), const DeepCollectionEquality().hash(minimum), const DeepCollectionEquality().hash(maximum), const DeepCollectionEquality().hash(defaultValue));
+  int get hashCode => Object.hash(
+    key,
+    title,
+    description,
+    required,
+    hidden,
+    const DeepCollectionEquality().hash(when),
+    const DeepCollectionEquality().hash(minimum),
+    const DeepCollectionEquality().hash(maximum),
+    const DeepCollectionEquality().hash(defaultValue),
+  );
 
   final String key;
   final String? title;

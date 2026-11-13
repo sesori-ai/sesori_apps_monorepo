@@ -63,16 +63,13 @@ class SessionForkBoundaryBefore implements SessionForkBoundary {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SessionForkBoundaryBefore &&
-          other.messageID == messageID);
+      identical(this, other) || (other is SessionForkBoundaryBefore && other.messageID == messageID);
 
   @override
   int get hashCode => messageID.hashCode;
 
   final String messageID;
 }
-
 
 @immutable
 class SessionForkBoundaryThrough implements SessionForkBoundary {
@@ -106,16 +103,13 @@ class SessionForkBoundaryThrough implements SessionForkBoundary {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SessionForkBoundaryThrough &&
-          other.messageID == messageID);
+      identical(this, other) || (other is SessionForkBoundaryThrough && other.messageID == messageID);
 
   @override
   int get hashCode => messageID.hashCode;
 
   final String messageID;
 }
-
 
 /// Fallback variant for an unrecognized [SessionForkBoundary] payload shape.
 /// Carries the raw JSON so newer OpenCode servers do not break
@@ -132,8 +126,7 @@ class SessionForkBoundaryUnknown implements SessionForkBoundary {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionForkBoundaryUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      (other is SessionForkBoundaryUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

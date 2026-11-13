@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:meta/meta.dart';
+
 import 'jsonschema.g.dart';
 import 'output_format.g.dart';
 
@@ -43,9 +44,7 @@ class OutputFormatJsonSchema implements OutputFormat {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is OutputFormatJsonSchema &&
-          other.schema == schema &&
-          other.retryCount == retryCount);
+      (other is OutputFormatJsonSchema && other.schema == schema && other.retryCount == retryCount);
 
   @override
   int get hashCode => Object.hash(schema, retryCount);

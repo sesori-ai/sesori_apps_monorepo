@@ -4,6 +4,7 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
 import 'session_message_compaction.g.dart';
 import 'session_structured_error.g.dart';
 import 'token_usage_info.g.dart';
@@ -123,9 +124,7 @@ class SessionMessageCompactionFailedTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SessionMessageCompactionFailedTime &&
-          other.created == created);
+      identical(this, other) || (other is SessionMessageCompactionFailedTime && other.created == created);
 
   @override
   int get hashCode => created.hashCode;

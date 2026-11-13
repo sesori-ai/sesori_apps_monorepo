@@ -44,10 +44,7 @@ class ProjectIcon {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ProjectIcon &&
-          other.url == url &&
-          other.overrideValue == overrideValue &&
-          other.color == color);
+      (other is ProjectIcon && other.url == url && other.overrideValue == overrideValue && other.color == color);
 
   @override
   int get hashCode => Object.hash(url, overrideValue, color);

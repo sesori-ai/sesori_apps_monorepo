@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'form_value.g.dart';
 
 @immutable
@@ -25,9 +26,7 @@ class FormAnswer {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is FormAnswer &&
-          const DeepCollectionEquality().equals(other.value, value));
+      identical(this, other) || (other is FormAnswer && const DeepCollectionEquality().equals(other.value, value));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(value);

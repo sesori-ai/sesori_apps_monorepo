@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'prompt_agent_attachment.g.dart';
 import 'prompt_file_attachment.g.dart';
 import 'prompt_skill_attachment.g.dart';
@@ -26,9 +27,15 @@ class SessionMessageUser implements SessionMessageInfo {
       metadata: json["metadata"] as Map<String, dynamic>?,
       time: SessionMessageUserTime.fromJson(json["time"] as Map<String, dynamic>),
       text: json["text"] as String,
-      files: (json["files"] as List<dynamic>?)?.map((e) => PromptFileAttachment.fromJson(e as Map<String, dynamic>)).toList(),
-      agents: (json["agents"] as List<dynamic>?)?.map((e) => PromptAgentAttachment.fromJson(e as Map<String, dynamic>)).toList(),
-      skills: (json["skills"] as List<dynamic>?)?.map((e) => PromptSkillAttachment.fromJson(e as Map<String, dynamic>)).toList(),
+      files: (json["files"] as List<dynamic>?)
+          ?.map((e) => PromptFileAttachment.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      agents: (json["agents"] as List<dynamic>?)
+          ?.map((e) => PromptAgentAttachment.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      skills: (json["skills"] as List<dynamic>?)
+          ?.map((e) => PromptSkillAttachment.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -81,7 +88,15 @@ class SessionMessageUser implements SessionMessageInfo {
           const DeepCollectionEquality().equals(other.skills, skills));
 
   @override
-  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, text, const DeepCollectionEquality().hash(files), const DeepCollectionEquality().hash(agents), const DeepCollectionEquality().hash(skills));
+  int get hashCode => Object.hash(
+    id,
+    const DeepCollectionEquality().hash(metadata),
+    time,
+    text,
+    const DeepCollectionEquality().hash(files),
+    const DeepCollectionEquality().hash(agents),
+    const DeepCollectionEquality().hash(skills),
+  );
 
   final String id;
   final Map<String, dynamic>? metadata;
@@ -122,9 +137,7 @@ class SessionMessageUserTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SessionMessageUserTime &&
-          other.created == created);
+      identical(this, other) || (other is SessionMessageUserTime && other.created == created);
 
   @override
   int get hashCode => created.hashCode;

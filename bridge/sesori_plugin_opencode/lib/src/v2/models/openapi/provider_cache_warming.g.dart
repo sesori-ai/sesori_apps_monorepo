@@ -62,9 +62,7 @@ class ProviderCacheWarming00Inline implements ProviderCacheWarming {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ProviderCacheWarming00Inline &&
-          other.interval == interval &&
-          other.duration == duration);
+      (other is ProviderCacheWarming00Inline && other.interval == interval && other.duration == duration);
 
   @override
   int get hashCode => Object.hash(interval, duration);
@@ -72,7 +70,6 @@ class ProviderCacheWarming00Inline implements ProviderCacheWarming {
   final String? interval;
   final String? duration;
 }
-
 
 /// Fallback variant for an unrecognized [ProviderCacheWarming] payload shape.
 /// Carries the raw JSON so newer OpenCode servers do not break
@@ -89,8 +86,7 @@ class ProviderCacheWarmingUnknown implements ProviderCacheWarming {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ProviderCacheWarmingUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      (other is ProviderCacheWarmingUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

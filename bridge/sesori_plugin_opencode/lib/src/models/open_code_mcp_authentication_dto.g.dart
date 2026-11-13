@@ -6,19 +6,18 @@ part of 'open_code_mcp_authentication_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_OpenCodeMcpConfigurationDto _$OpenCodeMcpConfigurationDtoFromJson(Map json) =>
-    _OpenCodeMcpConfigurationDto(
-      mcp:
-          (json['mcp'] as Map?)?.map(
-            (k, e) => MapEntry(
-              k as String,
-              OpenCodeMcpServerConfigurationDto.fromJson(
-                Map<String, dynamic>.from(e as Map),
-              ),
-            ),
-          ) ??
-          const {},
-    );
+_OpenCodeMcpConfigurationDto _$OpenCodeMcpConfigurationDtoFromJson(Map json) => _OpenCodeMcpConfigurationDto(
+  mcp:
+      (json['mcp'] as Map?)?.map(
+        (k, e) => MapEntry(
+          k as String,
+          OpenCodeMcpServerConfigurationDto.fromJson(
+            Map<String, dynamic>.from(e as Map),
+          ),
+        ),
+      ) ??
+      const {},
+);
 
 _OpenCodeMcpServerConfigurationDto _$OpenCodeMcpServerConfigurationDtoFromJson(
   Map json,
@@ -40,11 +39,9 @@ const _$OpenCodeMcpTransportEnumMap = {
 
 _OpenCodeMcpOAuthParametersDto _$OpenCodeMcpOAuthParametersDtoFromJson(
   Map json,
-) =>
-    _OpenCodeMcpOAuthParametersDto(redirectUri: json['redirectUri'] as String?);
+) => _OpenCodeMcpOAuthParametersDto(redirectUri: json['redirectUri'] as String?);
 
-_OpenCodeMcpAuthenticationResponseDto
-_$OpenCodeMcpAuthenticationResponseDtoFromJson(Map json) =>
+_OpenCodeMcpAuthenticationResponseDto _$OpenCodeMcpAuthenticationResponseDtoFromJson(Map json) =>
     _OpenCodeMcpAuthenticationResponseDto(
       authorizationUrl: json['authorizationUrl'] as String,
       oauthState: json['oauthState'] as String,

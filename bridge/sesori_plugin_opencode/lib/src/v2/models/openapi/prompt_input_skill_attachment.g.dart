@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
+
 import 'prompt_mention.g.dart';
 
 @immutable
@@ -39,10 +40,7 @@ class PromptInputSkillAttachment {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is PromptInputSkillAttachment &&
-          other.id == id &&
-          other.mention == mention);
+      identical(this, other) || (other is PromptInputSkillAttachment && other.id == id && other.mention == mention);
 
   @override
   int get hashCode => Object.hash(id, mention);

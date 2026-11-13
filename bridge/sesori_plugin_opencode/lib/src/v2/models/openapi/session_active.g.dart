@@ -32,10 +32,7 @@ class SessionActive {
   }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SessionActive &&
-          other.type == type);
+  bool operator ==(Object other) => identical(this, other) || (other is SessionActive && other.type == type);
 
   @override
   int get hashCode => type.hashCode;

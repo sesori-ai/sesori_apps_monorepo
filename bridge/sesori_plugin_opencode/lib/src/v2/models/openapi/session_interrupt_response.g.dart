@@ -33,9 +33,7 @@ class SessionInterruptResponse {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SessionInterruptResponse &&
-          other.interrupted == interrupted);
+      identical(this, other) || (other is SessionInterruptResponse && other.interrupted == interrupted);
 
   @override
   int get hashCode => interrupted.hashCode;

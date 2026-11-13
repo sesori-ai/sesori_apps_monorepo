@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
 
 import 'package:meta/meta.dart';
+
 import 'session_message_assistant_content.g.dart';
 import 'session_message_native.g.dart';
 
@@ -17,7 +18,9 @@ class SessionMessageAssistantReasoning implements SessionMessageAssistantContent
     return SessionMessageAssistantReasoning(
       text: json["text"] as String,
       native: json["native"] == null ? null : SessionMessageNative.fromJson(json["native"] as Map<String, dynamic>),
-      time: json["time"] == null ? null : SessionMessageAssistantReasoningTime.fromJson(json["time"] as Map<String, dynamic>),
+      time: json["time"] == null
+          ? null
+          : SessionMessageAssistantReasoningTime.fromJson(json["time"] as Map<String, dynamic>),
     );
   }
 
@@ -48,10 +51,7 @@ class SessionMessageAssistantReasoning implements SessionMessageAssistantContent
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessageAssistantReasoning &&
-          other.text == text &&
-          other.native == native &&
-          other.time == time);
+      (other is SessionMessageAssistantReasoning && other.text == text && other.native == native && other.time == time);
 
   @override
   int get hashCode => Object.hash(text, native, time);
@@ -97,9 +97,7 @@ class SessionMessageAssistantReasoningTime {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessageAssistantReasoningTime &&
-          other.created == created &&
-          other.completed == completed);
+      (other is SessionMessageAssistantReasoningTime && other.created == created && other.completed == completed);
 
   @override
   int get hashCode => Object.hash(created, completed);

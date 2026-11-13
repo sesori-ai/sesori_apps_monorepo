@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'form_fields.g.dart';
 
 @immutable
@@ -81,10 +82,7 @@ final class IntegrationOAuthMethod implements IntegrationMethod {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is IntegrationOAuthMethod &&
-          other.id == id &&
-          other.label == label &&
-          other.form == form);
+      (other is IntegrationOAuthMethod && other.id == id && other.label == label && other.form == form);
 
   @override
   int get hashCode => Object.hash(id, label, form);
@@ -93,7 +91,6 @@ final class IntegrationOAuthMethod implements IntegrationMethod {
   final String label;
   final FormFields? form;
 }
-
 
 @immutable
 final class IntegrationCommandMethod implements IntegrationMethod {
@@ -151,7 +148,6 @@ final class IntegrationCommandMethod implements IntegrationMethod {
   final List<String> command;
 }
 
-
 @immutable
 final class IntegrationKeyMethod implements IntegrationMethod {
   const IntegrationKeyMethod({
@@ -189,10 +185,7 @@ final class IntegrationKeyMethod implements IntegrationMethod {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is IntegrationKeyMethod &&
-          other.label == label &&
-          other.form == form);
+      identical(this, other) || (other is IntegrationKeyMethod && other.label == label && other.form == form);
 
   @override
   int get hashCode => Object.hash(label, form);
@@ -200,7 +193,6 @@ final class IntegrationKeyMethod implements IntegrationMethod {
   final String? label;
   final FormFields? form;
 }
-
 
 @immutable
 final class IntegrationExternalMethod implements IntegrationMethod {
@@ -245,10 +237,7 @@ final class IntegrationExternalMethod implements IntegrationMethod {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is IntegrationExternalMethod &&
-          other.id == id &&
-          other.label == label &&
-          other.form == form);
+      (other is IntegrationExternalMethod && other.id == id && other.label == label && other.form == form);
 
   @override
   int get hashCode => Object.hash(id, label, form);
@@ -257,7 +246,6 @@ final class IntegrationExternalMethod implements IntegrationMethod {
   final String label;
   final FormFields? form;
 }
-
 
 @immutable
 final class IntegrationEnvMethod implements IntegrationMethod {
@@ -292,15 +280,13 @@ final class IntegrationEnvMethod implements IntegrationMethod {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is IntegrationEnvMethod &&
-          const DeepCollectionEquality().equals(other.names, names));
+      (other is IntegrationEnvMethod && const DeepCollectionEquality().equals(other.names, names));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(names);
 
   final List<String> names;
 }
-
 
 /// Fallback variant for an unrecognized [IntegrationMethod] payload shape.
 /// Carries the raw JSON so newer OpenCode servers do not break
@@ -317,8 +303,7 @@ final class IntegrationMethodUnknown implements IntegrationMethod {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is IntegrationMethodUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      (other is IntegrationMethodUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

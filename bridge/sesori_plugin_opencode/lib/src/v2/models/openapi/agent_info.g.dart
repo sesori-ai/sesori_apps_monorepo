@@ -3,6 +3,7 @@
 
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
 import 'model_ref.g.dart';
 import 'permission_ruleset.g.dart';
 import 'provider_request.g.dart';
@@ -102,7 +103,8 @@ class AgentInfo {
           other.permissions == permissions);
 
   @override
-  int get hashCode => Object.hash(id, name, model, request, system, description, mode, hidden, color, steps, permissions);
+  int get hashCode =>
+      Object.hash(id, name, model, request, system, description, mode, hidden, color, steps, permissions);
 
   final String id;
   final String name;

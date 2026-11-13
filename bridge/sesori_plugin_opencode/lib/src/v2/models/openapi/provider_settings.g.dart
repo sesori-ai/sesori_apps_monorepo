@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'provider_cache.g.dart';
 import 'provider_compaction.g.dart';
 import 'provider_encoding.g.dart';
@@ -79,7 +80,15 @@ class ProviderSettings {
           other.encoding == encoding);
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(timeout), const DeepCollectionEquality().hash(headerTimeout), const DeepCollectionEquality().hash(chunkTimeout), compaction, cache, transport, encoding);
+  int get hashCode => Object.hash(
+    const DeepCollectionEquality().hash(timeout),
+    const DeepCollectionEquality().hash(headerTimeout),
+    const DeepCollectionEquality().hash(chunkTimeout),
+    compaction,
+    cache,
+    transport,
+    encoding,
+  );
 
   final Object? timeout;
   final Object? headerTimeout;

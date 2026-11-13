@@ -4,6 +4,7 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
 import 'model_ref.g.dart';
 import 'session_message_assistant_content.g.dart';
 import 'session_message_assistant_retry.g.dart';
@@ -38,15 +39,21 @@ class SessionMessageAssistant implements SessionMessageInfo {
       time: SessionMessageAssistantTime.fromJson(json["time"] as Map<String, dynamic>),
       agent: json["agent"] as String,
       model: ModelRef.fromJson(json["model"] as Map<String, dynamic>),
-      content: (json["content"] as List<dynamic>).map((e) => SessionMessageAssistantContent.fromJson(e as Map<String, dynamic>)).toList(),
-      snapshot: json["snapshot"] == null ? null : SessionMessageAssistantSnapshot.fromJson(json["snapshot"] as Map<String, dynamic>),
+      content: (json["content"] as List<dynamic>)
+          .map((e) => SessionMessageAssistantContent.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      snapshot: json["snapshot"] == null
+          ? null
+          : SessionMessageAssistantSnapshot.fromJson(json["snapshot"] as Map<String, dynamic>),
       finish: json["finish"] == null ? null : SessionMessageAssistantFinish.fromJson(json["finish"] as String),
       rawFinish: json["rawFinish"] as String?,
       native: json["native"] == null ? null : SessionMessageNative.fromJson(json["native"] as Map<String, dynamic>),
       cost: (json["cost"] as num?)?.toDouble(),
       tokens: json["tokens"] == null ? null : TokenUsageInfo.fromJson(json["tokens"] as Map<String, dynamic>),
       error: json["error"] == null ? null : SessionStructuredError.fromJson(json["error"] as Map<String, dynamic>),
-      retry: json["retry"] == null ? null : SessionMessageAssistantRetry.fromJson(json["retry"] as Map<String, dynamic>),
+      retry: json["retry"] == null
+          ? null
+          : SessionMessageAssistantRetry.fromJson(json["retry"] as Map<String, dynamic>),
     );
   }
 
@@ -127,7 +134,22 @@ class SessionMessageAssistant implements SessionMessageInfo {
           other.retry == retry);
 
   @override
-  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, agent, model, const DeepCollectionEquality().hash(content), snapshot, finish, rawFinish, native, cost, tokens, error, retry);
+  int get hashCode => Object.hash(
+    id,
+    const DeepCollectionEquality().hash(metadata),
+    time,
+    agent,
+    model,
+    const DeepCollectionEquality().hash(content),
+    snapshot,
+    finish,
+    rawFinish,
+    native,
+    cost,
+    tokens,
+    error,
+    retry,
+  );
 
   final String id;
   final Map<String, dynamic>? metadata;

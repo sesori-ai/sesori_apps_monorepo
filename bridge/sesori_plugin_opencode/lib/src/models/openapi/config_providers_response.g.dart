@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'provider.g.dart';
 
 @immutable
@@ -46,7 +47,8 @@ class ConfigProvidersResponse {
           const DeepCollectionEquality().equals(other.defaultValue, defaultValue));
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(providers), const DeepCollectionEquality().hash(defaultValue));
+  int get hashCode =>
+      Object.hash(const DeepCollectionEquality().hash(providers), const DeepCollectionEquality().hash(defaultValue));
 
   final List<Provider> providers;
   final Map<String, String> defaultValue;

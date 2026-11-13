@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'session_message_assistant_reasoning.g.dart';
 import 'session_message_assistant_text.g.dart';
 import 'session_message_assistant_tool.g.dart';
@@ -51,8 +52,7 @@ class SessionMessageAssistantContentUnknown implements SessionMessageAssistantCo
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessageAssistantContentUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      (other is SessionMessageAssistantContentUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

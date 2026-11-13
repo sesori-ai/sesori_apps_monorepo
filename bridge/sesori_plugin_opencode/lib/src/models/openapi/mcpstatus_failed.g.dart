@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:meta/meta.dart';
+
 import 'mcpstatus.g.dart';
 
 @immutable
@@ -35,10 +36,7 @@ class MCPStatusFailed implements MCPStatus {
   }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is MCPStatusFailed &&
-          other.error == error);
+  bool operator ==(Object other) => identical(this, other) || (other is MCPStatusFailed && other.error == error);
 
   @override
   int get hashCode => error.hashCode;

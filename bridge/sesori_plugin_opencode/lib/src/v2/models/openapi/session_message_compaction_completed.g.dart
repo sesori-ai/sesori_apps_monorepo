@@ -4,6 +4,7 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
 import 'model_ref.g.dart';
 import 'session_message_compaction.g.dart';
 import 'session_message_native.g.dart';
@@ -95,7 +96,17 @@ class SessionMessageCompactionCompleted implements SessionMessageCompaction {
           other.tokens == tokens);
 
   @override
-  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, reason, model, native, summary, cost, tokens);
+  int get hashCode => Object.hash(
+    id,
+    const DeepCollectionEquality().hash(metadata),
+    time,
+    reason,
+    model,
+    native,
+    summary,
+    cost,
+    tokens,
+  );
 
   final String id;
   final Map<String, dynamic>? metadata;
@@ -138,9 +149,7 @@ class SessionMessageCompactionCompletedTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SessionMessageCompactionCompletedTime &&
-          other.created == created);
+      identical(this, other) || (other is SessionMessageCompactionCompletedTime && other.created == created);
 
   @override
   int get hashCode => created.hashCode;

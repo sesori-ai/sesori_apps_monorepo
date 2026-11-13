@@ -44,10 +44,7 @@ class ConnectionStatus {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ConnectionStatus &&
-          other.status == status &&
-          other.message == message &&
-          other.url == url);
+      (other is ConnectionStatus && other.status == status && other.message == message && other.url == url);
 
   @override
   int get hashCode => Object.hash(status, message, url);

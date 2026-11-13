@@ -4,6 +4,7 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
 import 'session_message_info.g.dart';
 import 'session_structured_error.g.dart';
 
@@ -107,9 +108,7 @@ class SessionMessageIdleTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SessionMessageIdleTime &&
-          other.created == created);
+      identical(this, other) || (other is SessionMessageIdleTime && other.created == created);
 
   @override
   int get hashCode => created.hashCode;

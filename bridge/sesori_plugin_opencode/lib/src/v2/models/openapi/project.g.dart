@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'project_commands.g.dart';
 import 'project_icon.g.dart';
 import 'project_time.g.dart';
@@ -84,7 +85,8 @@ class Project {
           const DeepCollectionEquality().equals(other.sandboxes, sandboxes));
 
   @override
-  int get hashCode => Object.hash(id, canonical, vcs, name, icon, commands, time, const DeepCollectionEquality().hash(sandboxes));
+  int get hashCode =>
+      Object.hash(id, canonical, vcs, name, icon, commands, time, const DeepCollectionEquality().hash(sandboxes));
 
   final String id;
   final String canonical;

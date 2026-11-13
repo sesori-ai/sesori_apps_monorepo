@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'session_message_tool_state_completed.g.dart';
 import 'session_message_tool_state_error.g.dart';
 import 'session_message_tool_state_running.g.dart';
@@ -54,8 +55,7 @@ class SessionMessageToolStateUnknown implements SessionMessageToolState {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessageToolStateUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      (other is SessionMessageToolStateUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

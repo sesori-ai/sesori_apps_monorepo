@@ -4,6 +4,7 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
 import 'connection_status.g.dart';
 
 @immutable
@@ -96,7 +97,6 @@ final class ConnectionCredentialInfo implements ConnectionInfo {
   final ConnectionStatus? status;
 }
 
-
 @immutable
 final class ConnectionEnvInfo implements ConnectionInfo {
   const ConnectionEnvInfo({
@@ -134,10 +134,7 @@ final class ConnectionEnvInfo implements ConnectionInfo {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ConnectionEnvInfo &&
-          other.name == name &&
-          other.status == status);
+      identical(this, other) || (other is ConnectionEnvInfo && other.name == name && other.status == status);
 
   @override
   int get hashCode => Object.hash(name, status);
@@ -145,7 +142,6 @@ final class ConnectionEnvInfo implements ConnectionInfo {
   final String name;
   final ConnectionStatus? status;
 }
-
 
 /// Fallback variant for an unrecognized [ConnectionInfo] payload shape.
 /// Carries the raw JSON so newer OpenCode servers do not break
@@ -162,8 +158,7 @@ final class ConnectionInfoUnknown implements ConnectionInfo {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ConnectionInfoUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      (other is ConnectionInfoUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);
