@@ -429,6 +429,9 @@ class _OrbitsChipState() extends State<_OrbitsChip> {
   /// The finger that opened the picker, while it is down.
   OrbitsPointerHandoff? _handoff;
 
+  /// Whether a keyboard has focused the chip, which then shows Prego's ring.
+  bool _focused = false;
+
   void _open({required OrbitsPointerHandoff? handoff}) {
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.hasSize) return;
@@ -467,6 +470,9 @@ class _OrbitsChipState() extends State<_OrbitsChip> {
     final orbits = widget.orbits;
     final level = orbits.currentLevel;
     final loc = context.loc;
+    final colors = context.prego.colors;
+    // Enter and Space open the picker from a focused chip, as they did the pills.
+    final activate = CallbackAction<Intent>(onInvoke: (_) => _open(handoff: null));
     return Semantics(
       button: true,
       label: level == null ? orbits.current.name : loc.orbitsPickerLevel(orbits.current.name, level.wireId),
@@ -480,7 +486,22 @@ class _OrbitsChipState() extends State<_OrbitsChip> {
           onPointerMove: (event) => _handoffOf(event: event, ends: false)?.move(position: event.position),
           onPointerUp: (event) => _handoffOf(event: event, ends: true)?.release(position: event.position),
           onPointerCancel: (event) => _handoffOf(event: event, ends: true)?.cancel(),
-          child: MedallionChip(orbits: orbits, fast: widget.fastModeControl == FastModeControl.on),
+          child: FocusableActionDetector(
+            onFocusChange: (focused) => setState(() => _focused = focused),
+            actions: {ActivateIntent: activate, ButtonActivateIntent: activate},
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(MedallionChip.height / 2),
+                boxShadow: _focused
+                    ? [
+                        BoxShadow(color: colors.focusRing, spreadRadius: 4),
+                        BoxShadow(color: colors.bgSurface1, spreadRadius: 2),
+                      ]
+                    : null,
+              ),
+              child: MedallionChip(orbits: orbits, fast: widget.fastModeControl == FastModeControl.on),
+            ),
+          ),
         ),
       ),
     );

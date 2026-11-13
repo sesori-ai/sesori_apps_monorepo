@@ -1,3 +1,4 @@
+import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -196,6 +197,17 @@ void main() {
 
     expect(picks, [(providerID: "anthropic", modelID: "sonnet", variant: const SessionVariant(id: "low"))]);
     expect(picker, findsNothing);
+  });
+
+  testWidgets("a hardware keyboard focuses the chip and Enter opens the picker", (tester) async {
+    await _pump(tester, orbits: orbits);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(picker, findsOneWidget);
   });
 
   testWidgets("All models closes the orbits and opens the model list", (tester) async {
