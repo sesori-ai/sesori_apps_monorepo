@@ -190,6 +190,24 @@ void main() {
       expect(find.byIcon(TablerRegular.bolt_off), findsNothing);
     });
 
+    for (final (mode, side) in [(PregoInteractionMode.pointer, 28.0), (PregoInteractionMode.touch, 36.0)]) {
+      testWidgets("is a $side point square under ${mode.name}, like the row's status chips", (tester) async {
+        await tester.pumpWidget(
+          PregoInteractionScope(
+            mode: mode,
+            child: _buildFastModeApp(
+              designSystem: PregoDesignSystem.light,
+              control: FastModeControl.off,
+              decision: const FastModeToggleApply(fastMode: true),
+              onFastModeChanged: (_) {},
+            ),
+          ),
+        );
+
+        expect(tester.getSize(pill()), Size.square(side));
+      });
+    }
+
     for (final (name, designSystem, expected) in [
       ("dark", PregoDesignSystem.dark, const Color(0xFFFEC84B)),
       ("light", PregoDesignSystem.light, const Color(0xFFF79009)),
