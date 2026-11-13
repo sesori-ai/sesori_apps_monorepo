@@ -41,5 +41,6 @@ mirror PR state; live status is on GitHub:
 7. `🌿 [invocation-view] Name Pi command and skill runs [step 7/12]`
 8. `🌿 [invocation-view] Name Claude Code command runs from the transcript [step 8/12]`
 9. `⚙️ [invocation-view] Name ACP command runs and fold the DeepSeek/Hermes argument turn [step 9/12]`
-10. to 12. Titled when each step is planned in detail. The total stays 12
+10. `🚧 [invocation-view] Keep Oh My Pi command and skill runs as one card in place [step 10/12]`
+11. to 12. Titled when each step is planned in detail. The total stays 12
    unless a step splits into substeps.

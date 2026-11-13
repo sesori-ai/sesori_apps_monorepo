@@ -85,6 +85,15 @@ reconnect or restart.
   reload; a duplicate untitled session on the home screen; a mid-turn reload
   failing or spinning until the turn ends; replayed messages showing up again
   in the live stream.
+- A command or skill run the bridge stored keeps one card row in its place
+  when a replay records it in another shape or not at all, on its first
+  backfill and on every later re-import, including one after the backend advanced outside Sesori. The card
+  goes to the replayed user turn between the same neighbors (an OMP prompt
+  template's expanded text), or stays where it was when the replay has no row
+  for it (an OMP skill run), and its neighbors still match their replayed
+  rows. Failure signals after an OMP command or skill run and a reload or
+  forced re-import: the card and the expanded text both shown, a reply shown
+  twice, the card below the last reply, or the card gone.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
@@ -644,6 +653,10 @@ rules where supported.
 
 ## Known Limitations
 
+- A run the bridge never stored has only the backend's record. With an empty
+  bridge store, an OMP prompt template run shows its expanded text without a
+  name and a text-only OMP skill run has no row, since OMP records neither
+  name.
 - A first-ever open or a stale re-read still needs the backend; if it is
   unavailable and cannot auto-start, that read fails. A store-only read avoids
   that at the cost of a possibly incomplete transcript. A store-only read also

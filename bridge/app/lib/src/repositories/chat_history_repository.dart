@@ -347,6 +347,97 @@ class ChatHistoryRepository({
     };
   }
 
+  /// Stored context row indexes of the invocation turns the replay has no row
+  /// of the same content for, other than [pairedStoredIndexes].
+  Set<int> _leftoverInvocationIndexes({
+    required List<_SemanticMessageFingerprints?> importedFingerprints,
+    required List<HistoryMessagesTableData> storedRows,
+    required List<_SemanticMessageFingerprints?> storedFingerprints,
+    required Set<String> importedIds,
+    required Set<String> pairedStoredIds,
+    required Set<int> pairedStoredIndexes,
+  }) {
+    final importedContents = {for (final fingerprint in importedFingerprints) ?fingerprint?.content};
+    final leftovers = <int>{};
+    for (var index = 0; index < storedRows.length; index++) {
+      final row = storedRows[index];
+      final content = storedFingerprints[index]?.content;
+      if (content == null ||
+          importedContents.contains(content) ||
+          importedIds.contains(row.messageId) ||
+          pairedStoredIds.contains(row.messageId) ||
+          pairedStoredIndexes.contains(index)) {
+        continue;
+      }
+      if (_isInvocationRow(row: row)) leftovers.add(index);
+    }
+    return leftovers;
+  }
+
+  bool _isInvocationRow({required HistoryMessagesTableData row}) => switch (Message.fromJson(
+    jsonDecodeMap(row.infoJson),
+  )) {
+    MessageUser(invocation: CommandInvocation()) => true,
+    _ => false,
+  };
+
+  /// Imported index -> stored context row index, pairing a leftover stored
+  /// invocation turn with the replayed user turn in its place.
+  ///
+  /// Some harnesses record a command run in a shape of their own, such as Oh
+  /// My Pi replaying a prompt template as its expanded text. That turn is the
+  /// run the stored card names, so it takes the card instead of showing as a
+  /// bubble beside it. Only leftovers take part: [leftoverStoredIndexes], and
+  /// a replayed user turn with no stored row of the same content. Both must
+  /// sit between neighbors of the same content, with one candidate each side.
+  Map<int, int> _reshapedTurnPairs({
+    required List<MessageWithParts> messages,
+    required List<_SemanticMessageFingerprints?> importedFingerprints,
+    required List<_SemanticMessageFingerprints?> storedFingerprints,
+    required Set<String> storedIds,
+    required Set<int> leftoverStoredIndexes,
+    required Set<int> pairedImportedIndexes,
+  }) {
+    if (leftoverStoredIndexes.isEmpty) return const {};
+    final storedContents = {for (final fingerprint in storedFingerprints) ?fingerprint?.content};
+    final storedIndexesBySlot = <String, List<int>>{};
+    for (final index in leftoverStoredIndexes) {
+      storedIndexesBySlot.putIfAbsent(_slot(fingerprints: storedFingerprints, index: index), () => []).add(index);
+    }
+    final importedIndexesBySlot = <String, List<int>>{};
+    for (var index = 0; index < messages.length; index++) {
+      final content = importedFingerprints[index]?.content;
+      if (storedIds.contains(messages[index].info.id) ||
+          pairedImportedIndexes.contains(index) ||
+          content == null ||
+          storedContents.contains(content)) {
+        continue;
+      }
+      if (messages[index].info case MessageUser(invocation: null)) {
+        final slot = _slot(fingerprints: importedFingerprints, index: index);
+        if (storedIndexesBySlot.containsKey(slot)) importedIndexesBySlot.putIfAbsent(slot, () => []).add(index);
+      }
+    }
+    return {
+      for (final MapEntry(key: slot, value: importedIndexes) in importedIndexesBySlot.entries)
+        if ((importedIndexes, storedIndexesBySlot[slot]) case ([final importedIndex], [final storedIndex]))
+          importedIndex: storedIndex,
+    };
+  }
+
+  /// The contents of the nearest comparable rows before and after [index].
+  String _slot({required List<_SemanticMessageFingerprints?> fingerprints, required int index}) {
+    String? previous;
+    for (var before = index - 1; before >= 0 && previous == null; before--) {
+      previous = fingerprints[before]?.content;
+    }
+    String? next;
+    for (var after = index + 1; after < fingerprints.length && next == null; after++) {
+      next = fingerprints[after]?.content;
+    }
+    return jsonEncode([previous, next]);
+  }
+
   /// Imported indexes in transcript order, with each user turn that only the
   /// bridge names put back in front of the row that followed it in the store.
   ///
@@ -632,7 +723,9 @@ class ChatHistoryRepository({
   /// time while their relative order stays stable. Thus an older backend-only
   /// row cannot jump to the newest edge on re-import, while a genuinely newer
   /// live row stays there. A user turn named only by the bridge keeps its
-  /// stored place before its stored successor (see [_importedOrder]).
+  /// stored place before its stored successor (see [_importedOrder]); one the
+  /// replay doesn't hold at all, retained without a time the import can order
+  /// it by, keeps its place before the closest stored row below it.
   Future<void> replaceSessionMessages({
     required String sessionId,
     required AttachmentStorageScope storageScope,
@@ -698,9 +791,10 @@ class ChatHistoryRepository({
       );
     }
 
+    bool isCurrent(HistoryMessagesTableData row) => lastImportedAt == null || row.updatedAt > lastImportedAt;
     final storedContextRows = [
       for (final row in storedRows)
-        if (importedIds.contains(row.messageId) || lastImportedAt == null || row.updatedAt > lastImportedAt) row,
+        if (importedIds.contains(row.messageId) || isCurrent(row)) row,
     ];
     final storedSemanticFingerprints = <_SemanticMessageFingerprints?>[];
     for (final row in storedContextRows) {
@@ -724,9 +818,7 @@ class ChatHistoryRepository({
       storedIds: storedIds,
     );
 
-    // Imported index -> the stored invocation row its argument turn replaces.
-    // Both sides anchor their neighbors as one identity, as exact ids do.
-    final argumentTurnPairs = _argumentTurnPairs(
+    final argumentTurnPairsByText = _argumentTurnPairs(
       messages: messages,
       importedFingerprints: importedSemanticFingerprints,
       storedRows: storedContextRows,
@@ -735,14 +827,39 @@ class ChatHistoryRepository({
       importedIds: importedIds,
       pairedStoredIds: anchoredReplayExtensionStoredIds,
     );
-    final argumentTurnAnchors = {
-      for (final MapEntry(key: importedIndex, value: storedIndex) in argumentTurnPairs.entries)
+    final leftoverInvocationIndexes = _leftoverInvocationIndexes(
+      importedFingerprints: importedSemanticFingerprints,
+      storedRows: storedContextRows,
+      storedFingerprints: storedSemanticFingerprints,
+      importedIds: importedIds,
+      pairedStoredIds: anchoredReplayExtensionStoredIds,
+      pairedStoredIndexes: argumentTurnPairsByText.values.toSet(),
+    );
+    // Imported index -> the stored invocation row its replayed turn replaces,
+    // by argument text or by place. Both sides anchor their neighbors as one
+    // identity, as exact ids do.
+    final invocationTurnPairs = {
+      ...argumentTurnPairsByText,
+      ..._reshapedTurnPairs(
+        messages: messages,
+        importedFingerprints: importedSemanticFingerprints,
+        storedFingerprints: storedSemanticFingerprints,
+        storedIds: storedIds,
+        leftoverStoredIndexes: leftoverInvocationIndexes,
+        pairedImportedIndexes: argumentTurnPairsByText.keys.toSet(),
+      ),
+    };
+    final invocationTurnAnchors = {
+      for (final MapEntry(key: importedIndex, value: storedIndex) in invocationTurnPairs.entries)
         importedIndex: _exactIdentityAnchor(messageId: storedContextRows[storedIndex].messageId),
     };
-    final storedArgumentTurnAnchors = {
-      for (final MapEntry(key: importedIndex, value: storedIndex) in argumentTurnPairs.entries)
-        storedIndex: argumentTurnAnchors[importedIndex],
+    final storedInvocationTurnAnchors = {
+      for (final MapEntry(key: importedIndex, value: storedIndex) in invocationTurnPairs.entries)
+        storedIndex: invocationTurnAnchors[importedIndex],
     };
+    // An invocation turn the replay doesn't hold sits between its neighbors
+    // without separating them, so they still match their replayed rows.
+    final unreplayedInvocationIndexes = leftoverInvocationIndexes.difference(invocationTurnPairs.values.toSet());
 
     final importedSemanticContexts = _semanticContextFingerprints(
       fingerprints: importedSemanticFingerprints,
@@ -750,21 +867,24 @@ class ChatHistoryRepository({
         for (var index = 0; index < messages.length; index++)
           storedIds.contains(messages[index].info.id)
               ? _exactIdentityAnchor(messageId: messages[index].info.id)
-              : argumentTurnAnchors[index],
+              : invocationTurnAnchors[index],
       ],
     );
     final storedSemanticContexts = _semanticContextFingerprints(
-      fingerprints: storedSemanticFingerprints,
+      fingerprints: [
+        for (var index = 0; index < storedSemanticFingerprints.length; index++)
+          unreplayedInvocationIndexes.contains(index) ? null : storedSemanticFingerprints[index],
+      ],
       anchorOverrides: [
         for (var index = 0; index < storedContextRows.length; index++)
           importedIds.contains(storedContextRows[index].messageId)
               ? _exactIdentityAnchor(messageId: storedContextRows[index].messageId)
-              : storedArgumentTurnAnchors[index],
+              : storedInvocationTurnAnchors[index],
       ],
     );
     final importedIndexesByContext = <String, List<int>>{};
     for (var index = 0; index < importedSemanticContexts.length; index++) {
-      if (storedIds.contains(messages[index].info.id) || argumentTurnPairs.containsKey(index)) continue;
+      if (storedIds.contains(messages[index].info.id) || invocationTurnPairs.containsKey(index)) continue;
       final fingerprint = importedSemanticContexts[index];
       if (fingerprint != null) importedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
     }
@@ -772,7 +892,7 @@ class ChatHistoryRepository({
     final storedIndexesByContext = <String, List<int>>{};
     for (var index = 0; index < storedContextRows.length; index++) {
       final row = storedContextRows[index];
-      if (importedIds.contains(row.messageId) || storedArgumentTurnAnchors.containsKey(index)) continue;
+      if (importedIds.contains(row.messageId) || storedInvocationTurnAnchors.containsKey(index)) continue;
       final fingerprint = storedSemanticContexts[index];
       if (fingerprint != null) storedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
     }
@@ -817,7 +937,7 @@ class ChatHistoryRepository({
       }
     }
 
-    for (final MapEntry(key: importedIndex, value: storedIndex) in argumentTurnPairs.entries) {
+    for (final MapEntry(key: importedIndex, value: storedIndex) in invocationTurnPairs.entries) {
       semanticallyImportedStoredIds.add(storedContextRows[storedIndex].messageId);
       semanticPairs[importedIndex] = storedIndex;
     }
@@ -847,13 +967,86 @@ class ChatHistoryRepository({
       }
     }
 
+    // Stored row id -> the index of the imported row that replaces it.
+    final importedIndexByStoredId = {
+      for (var index = 0; index < messages.length; index++)
+        if (storedIds.contains(messages[index].info.id)) messages[index].info.id: index,
+      for (final MapEntry(key: importedIndex, value: storedIndex) in semanticPairs.entries)
+        storedContextRows[storedIndex].messageId: importedIndex,
+    };
+
+    // Rows an earlier import wrote are replaced by this one, but an invocation
+    // turn among them keeps its name: the replayed turn of the same content
+    // takes it, and one the replay doesn't hold (Oh My Pi drops its own skill
+    // runs) stays in its place. Its place comes from the stale rows the replay
+    // holds once by content.
+    final keptStaleIds = <String>{};
+    final staleRows = [
+      for (final row in storedRows)
+        if (!importedIds.contains(row.messageId) && !isCurrent(row)) row,
+    ];
+    if (staleRows.any((row) => _isInvocationRow(row: row))) {
+      final importedIndexesByContent = <String, List<int>>{};
+      for (var index = 0; index < messages.length; index++) {
+        if (importedSemanticFingerprints[index]?.content case final content?) {
+          importedIndexesByContent.putIfAbsent(content, () => []).add(index);
+        }
+      }
+      final staleRowsByContent = <String, List<HistoryMessagesTableData>>{};
+      for (final row in staleRows) {
+        final fingerprint = await _semanticMessageFingerprints(
+          sessionId: sessionId,
+          messageId: row.messageId,
+          storageScope: storageScope,
+          infoJson: row.infoJson,
+          partJsons: storedPartJsonByMessage[row.messageId] ?? const [],
+        );
+        if (fingerprint != null) staleRowsByContent.putIfAbsent(fingerprint.content, () => []).add(row);
+      }
+      for (final MapEntry(key: content, value: rows) in staleRowsByContent.entries) {
+        final importedIndexes = importedIndexesByContent[content];
+        if (importedIndexes == null) {
+          keptStaleIds.addAll([
+            for (final row in rows)
+              if (_isInvocationRow(row: row)) row.messageId,
+          ]);
+          continue;
+        }
+        if ((rows, importedIndexes) case ([final row], [final index])) {
+          importedIndexByStoredId[row.messageId] = index;
+          final imported = messages[index].info;
+          final pairedInImport = storedIds.contains(imported.id) || semanticPairs.containsKey(index);
+          if (!pairedInImport && imported is MessageUser && imported.invocation == null) {
+            final reconciled = _withStoredInvocation(
+              update: imported,
+              stored: Message.fromJson(jsonDecodeMap(row.infoJson)),
+            );
+            if (!identical(reconciled, imported)) {
+              importedMessageRows[index] = importedMessageRows[index].copyWith(
+                infoJson: jsonEncode(reconciled.toJson()),
+              );
+            }
+          }
+        }
+      }
+    }
+
     final retained = [
       for (final row in storedRows)
         if (!importedIds.contains(row.messageId) &&
             !semanticallyImportedStoredIds.contains(row.messageId) &&
-            (lastImportedAt == null || row.updatedAt > lastImportedAt))
+            (isCurrent(row) || keptStaleIds.contains(row.messageId)))
           row,
     ];
+    // Stored row id -> the imported row replacing the closest stored row below
+    // it. A retained invocation turn the replay doesn't hold goes before that
+    // row when creation times can't order it, so it keeps its place.
+    final importedIndexBelow = <String, int>{};
+    int? below;
+    for (final row in storedRows.reversed) {
+      if (below != null) importedIndexBelow[row.messageId] = below;
+      below = importedIndexByStoredId[row.messageId] ?? below;
+    }
     final retainedCreatedAt = [
       for (final row in retained) Message.fromJson(jsonDecodeMap(row.infoJson)).time?.created,
     ];
@@ -878,6 +1071,14 @@ class ChatHistoryRepository({
       storedNamedTurns: storedNamedTurns,
       importedIndexByStoredIndex: importedIndexByStoredIndex,
     );
+    final orderPositions = {
+      for (var position = 0; position < importedOrder.length; position++) importedOrder[position]: position,
+    };
+    // A retained invocation turn's place in [importedOrder].
+    final retainedAnchors = [
+      for (final row in retained)
+        if (_isInvocationRow(row: row)) orderPositions[importedIndexBelow[row.messageId]] else null,
+    ];
     final messageRows = <HistoryMessagesTableData>[];
     var importedIndex = 0;
     var retainedIndex = 0;
@@ -887,7 +1088,10 @@ class ChatHistoryRepository({
           (retainedIndex < retained.length &&
               switch ((retainedCreatedAt[retainedIndex], messages[importedOrder[importedIndex]].info.time?.created)) {
                 (final int retainedAt, final int importedAt) => retainedAt < importedAt,
-                _ => false,
+                _ => switch (retainedAnchors[retainedIndex]) {
+                  final anchor? => anchor <= importedIndex,
+                  null => false,
+                },
               });
       final row = useRetained ? retained[retainedIndex++] : importedMessageRows[importedOrder[importedIndex++]];
       final orderedSeq = messageRows.length + 1;

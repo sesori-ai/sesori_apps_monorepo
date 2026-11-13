@@ -1050,6 +1050,49 @@ void main() {
       expect(image.toString(), isNot(contains("/private/")));
     });
 
+    test("names a replayed OMP skill prompt as the skill run", () async {
+      plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
+      final loading = plugin.getSessionMessages("stored");
+      respond(await waitForFrame(AcpMethods.initialize), {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": true},
+        "authMethods": [
+          {"id": "agent", "name": "Agent"},
+        ],
+      });
+      respond(await waitForFrame(AcpMethods.authenticate), const {});
+      final load = await waitForFrame(AcpMethods.sessionLoad);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": "stored",
+          "update": {
+            "sessionUpdate": "user_message_chunk",
+            "content": {
+              "type": "text",
+              "text":
+                  '[IMPORTANT: User invoked the "hello" skill; follow its instructions. Full skill below.]\n\n'
+                  "Reply briefly.\n\n---\n\n[Skill directory: /skills/hello]\n"
+                  "Resolve relative paths in this skill against this absolute directory.\nUser: for Bob",
+            },
+          },
+        },
+      });
+      respond(load, {"sessionId": "stored"});
+
+      final [message] = await loading;
+      expect(
+        message.info,
+        isA<PluginMessageUser>().having(
+          (info) => info.invocation,
+          "invocation",
+          const PluginCommandInvocation(name: "skill:hello", source: PluginCommandSource.skill, arguments: "for Bob"),
+        ),
+      );
+      expect((message.parts.single as PluginMessagePartText).text, "/skill:hello for Bob");
+    });
+
     test("replays a session the live process holds on that process, without a second omp", () async {
       await connect(capabilities: {"loadSession": true});
       final session = await create("live");

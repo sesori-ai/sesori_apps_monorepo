@@ -388,17 +388,27 @@ Client (`client/module_core`, `client/module_app_ui`):
     card's arguments could take the card. Hermes' live-only "Queued" reply is
     dropped by its plugin, and the store keeps a bridge-named card in front of
     its live successor, so DeepSeek's card stays above "Plan mode on".
-- **Oh My Pi.** Verify live, then fix what is real:
-  - a kept live row landing below the reply (the replay has no timestamps);
-  - a kept live row dropped by a reload that doesn't mark the session out of
-    sync;
-  - a skill with an image showing the injected skill text;
-  - skills looking right only because the replay skips a plain-string
-    message.
-  - Oh My Pi sessions listed from a Pi folder on a bridge with an empty store
-    show the raw `<skill name=… location=…>` envelope as the user turn. Parse
-    it as Pi's `PiPersistedUserTextCodec.decodeSkillRun` does (#2552).
-  Commands after reload need the bridge's record despite unstable ids.
+- **Oh My Pi** (verified live with OMP 18.19.0).
+  - OMP replays a prompt template as its expanded text and drops a text-only
+    skill run (its `skill-prompt` custom message is a plain string), with
+    untimed rows under fresh ids. The stored card therefore matched nothing:
+    the first backfill showed the card and the expanded bubble, duplicated
+    the neighboring replies and put the card below them, and a later
+    re-import with a sync marker dropped the cards.
+  - Bridge core (`ChatHistoryRepository.replaceSessionMessages`), harness
+    neutral: a leftover stored card pairs with the leftover replayed user turn
+    between the same neighbors; a card the replay doesn't hold no longer
+    separates its neighbors and keeps its place before the row that replaced
+    the stored row below it; on a re-import, a stale card hands its name to
+    the replayed turn of the same content, or stays when the replay has none.
+  - The plugin lists `skill:<name>` commands as skills and names a replayed
+    skill prompt (an OMP TUI run with images replays its injected text) as
+    `skill:name`. OMP lists and replays only its own sessions, never Pi's.
+  - A skill sent from Sesori never carries an image (a command sends only its
+    text), so the injected text never replays for it.
+  - Accepted: with an empty bridge store a template run shows its expanded
+    text and a text-only skill run has no row; OMP records neither name. A
+    card the backend later drops lingers until a replayed row takes its place.
 - Each plugin step records its result in `docs/HARNESS_CAPABILITIES.md`.
 - **Regression docs** reconcile `session-turns.md`, `transcript-turn-navigation.md`
   and `session-history-and-recovery.md`.
@@ -504,7 +514,7 @@ Deliberately not added:
 | 7 | 🌿 [invocation-view] Name Pi command and skill runs [step 7/12] | ≤ 200 | 5 |
 | 8 | Claude Code naming from history | rough | 5 |
 | 9 | ⚙️ [invocation-view] Name ACP command runs and fold the DeepSeek/Hermes argument turn [step 9/12] | ≤ 600 | 5 |
-| 10 | Oh My Pi findings | rough | 9 |
+| 10 | 🚧 [invocation-view] Keep Oh My Pi command and skill runs as one card in place [step 10/12] | ≤ 700 | 9 |
 | 11 | Regression docs | rough | 2–10 |
 | 12 | Retire after the matrix run | rough | 11 |
 
