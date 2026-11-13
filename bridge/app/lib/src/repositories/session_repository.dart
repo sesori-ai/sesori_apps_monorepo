@@ -427,7 +427,7 @@ class SessionRepository({
           // Only for a plugin that declares it names runs, so a client that
           // showed a bubble while sending never sees the turn turn into a card.
           // Recorded before the plugin call: its echo can arrive before the
-          // call returns. A refused send forgets it again.
+          // call returns. A definitely refused send forgets it again.
           if (_runtime.namesCommandInvocations(pluginId: plugin.id)) {
             _invocations.record(
               sessionId: sessionId,
@@ -452,8 +452,13 @@ class SessionRepository({
           );
         },
       );
-    } on Object {
-      _invocations.remove(sessionId: sessionId, promptId: promptId);
+    } on PluginOperationException catch (error) {
+      // Only a definite refusal forgets the entry. A send whose outcome is
+      // unknown (timeout, 5xx, no status) may still have run, and its late
+      // echo must come back named, or its card would turn into a bubble.
+      if (error.statusCode case final status? when status >= 400 && status < 500) {
+        _invocations.remove(sessionId: sessionId, promptId: promptId);
+      }
       rethrow;
     }
   }

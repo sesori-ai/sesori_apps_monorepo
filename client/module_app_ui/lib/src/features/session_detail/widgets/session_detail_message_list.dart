@@ -154,6 +154,10 @@ typedef _DetachedSnapshot = ({
   /// The prompt index as it stood, so the pin above the frozen messages never
   /// names a prompt sent after them.
   List<SessionPromptIndexEntry>? promptIndex,
+
+  /// The frozen messages' card shapes, so a row being read never turns
+  /// between a card and a bubble.
+  Map<String, InvocationPromptTurnShape> messageShapes,
 });
 
 enum _TransientStage() {
@@ -441,6 +445,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         isBusy: frozen.isBusy,
         mainAgentRunning: frozen.mainAgentRunning,
         promptIndex: frozen.promptIndex,
+        messageShapes: {
+          ...frozen.messageShapes,
+          for (final MessageWithParts(:info) in [...prepended, ...delivered])
+            info.id: ?widget.promptTurnShapes.messages[info.id],
+        },
       );
     });
     // The prepended rows render against the frozen `streamingText` and
@@ -500,7 +509,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     isBusy: widget.isBusy,
     mainAgentRunning: widget.mainAgentRunning,
     promptIndex: widget.promptIndex ?? _promptIndex,
+    messageShapes: widget.promptTurnShapes.messages,
   );
+
+  PromptTurnShape _messageShape({required String messageId}) => switch (_snapshot) {
+    final frozen? => frozen.messageShapes[messageId] ?? const PromptTurnShape.bubble(),
+    null => widget.promptTurnShapes.ofMessage(messageId: messageId),
+  };
 
   void _onRowMount({required String rowId, required BuildContext context}) => _rowContexts[rowId] = context;
 
@@ -1239,7 +1254,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                       builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
                         key: _stickyKey,
                         messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
-                        promptTurnShapes: widget.promptTurnShapes,
+                        // The rows' own shapes, frozen with them while detached, so a pin never disagrees with its row.
+                        promptTurnShapes: switch (snap) {
+                          final frozen? => widget.promptTurnShapes.copyWith(messages: frozen.messageShapes),
+                          null => widget.promptTurnShapes,
+                        },
                         unloaded: unloadedPin,
                         horizontalInset: widget.horizontalInset,
                         onLayout: _layOutSticky,
@@ -1491,7 +1510,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     registry: _promptSlots,
     child: UserMessageCard(
       message: message,
-      shape: widget.promptTurnShapes.ofMessage(messageId: message.info.id),
+      shape: _messageShape(messageId: message.info.id),
       outlineFade: outlineFade,
     ),
   );
@@ -1503,7 +1522,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     child: QueuedMessageBubble(
       displayText: null,
       isCommand: false,
-      shape: widget.promptTurnShapes.ofMessage(messageId: message.info.id),
+      shape: _messageShape(messageId: message.info.id),
       attachmentCount: 0,
       localAttachments: const [],
       presentation: QueuedMessageBubblePresentation.delivered(

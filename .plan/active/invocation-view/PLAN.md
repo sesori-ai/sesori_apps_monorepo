@@ -221,8 +221,11 @@ Bridge core (`bridge/app`, `bridge/sesori_plugin_interface`):
   and `stampQueuedCommandSources({required String sessionId, required List<QueuedSessionPrompt> prompts})`.
   `SessionRepository.sendCommand` gains `required CommandSource? commandSource`
   and registers the entry before the plugin call. It registers before the call
-  because the echo can arrive before acceptance returns. A send that throws
-  removes its entry again. It registers only when the session's plugin
+  because the echo can arrive before acceptance returns. A send the plugin
+  definitely refuses (a 4xx-class `PluginOperationException`) removes its
+  entry again. A send whose outcome is unknown (timeout, 5xx, no status)
+  keeps it, as the harness may still run it and its late echo must come
+  back named. It registers only when the session's plugin
   declares `namesCommandInvocations`, so a plugin that does not name its runs
   never has a turn turn from a bubble into a card. The tracker has no
   lifecycle hooks and no timers.
