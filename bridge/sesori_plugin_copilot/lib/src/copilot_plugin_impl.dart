@@ -179,7 +179,7 @@ class CopilotPlugin._({
       final failure = _copilotSessionOptionsService.lastDiscoveryFailure;
       if (failure == null) {
         throw const PluginOperationException(
-          "session/options",
+          operation: "session/options",
           message: "GitHub Copilot session options could not be discovered",
         );
       }

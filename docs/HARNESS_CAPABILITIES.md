@@ -78,9 +78,9 @@ residue is cosmetic and is not migrated.
 | Harness | Native evidence | Sesori availability |
 |---|---|---|
 | Claude Code | `user` frames/records flagged `isSynthetic` (stream) or `isMeta` (transcript), including the injected skill body | ✅ Dropped live and on replay; peer injections, tool results, task-notification outcomes and the post-compaction summary still render. |
-| OpenCode, Codex | Skills exposed as `PluginCommandSource.skill` commands, no injected body record (OpenCode 2 attaches the skill to the prompt and keeps its body out of the user message) | Not applicable. |
-| Pi | Skills exposed as `PluginCommandSource.skill` commands. `/skill:name args` is stored as one user message holding a `<skill>` block followed by the arguments, and a prompt template as its expanded text (verified live on 2026-11-12 with Pi 1.5.2) | The expanded message is the user's own turn, shown as `/name args` (see "Command and skill bubbles"). |
+| OpenCode, Codex, Pi | Skills exposed as `PluginCommandSource.skill` commands, no injected body record (OpenCode 2 attaches the skill to the prompt and keeps its body out of the user message) | Not applicable: no harness-authored user turn to hide. |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | None | Not applicable: the ACP seam has no skill concept and no harness-authored user turn. |
+| Pi | Skills exposed as `PluginCommandSource.skill` commands. `/skill:name args` is stored as one user message holding a `<skill>` block followed by the arguments, and a prompt template as its expanded text (verified live on 2026-11-12 with Pi 1.5.2) | The expanded message is the user's own turn, shown as `/name args` (see "Command and skill bubbles"). |
 
 ## Command and skill bubbles
 
@@ -90,12 +90,9 @@ harness receives its own invocation.
 
 | Harness | Native evidence | Sesori availability |
 |---|---|---|
+| Pi | `/name args` reaches Pi's `prompt` RPC, which stores only the expanded text as the user message: a prompt template's body with the arguments substituted, or a `<skill name=… location=…>` block followed by the arguments | ✅ `/name args` live for both: Sesori pairs Pi's expanded user message with the pending command. ✅ `/skill:name args` after history load, decoded from the `<skill>` block. After history load a prompt template still shows the expanded template, because nothing in the stored message names it. Native shapes verified live on 2026-11-12 with Pi 1.5.2. |
 | OpenCode 2 skill | The prompt's user message keeps only the typed text and lists the skill under `skills` without a `mention` | ✅ `/skill args`, live and after history load. Verified live on 2026-11-12 with OpenCode 2.2.6. |
-| OpenCode 2 native command | `POST /api/session/{id}/command` takes no id or metadata, and the stored user message holds only the expanded template | ⬜ Not supported: the bubble shows the expanded template, live and after history load, because nothing in the message names the command. Verified live on 2026-11-12 with OpenCode 2.2.6 and 2.2.7. |
-| Claude Code | Commands and skills both run as `/name args` | ✅ `/name args`, live and after a bridge restart. Verified live on 2026-11-12 with Claude Code 2.1.323. |
-| DeepSeek, Hermes | Built-in commands only; no user commands or skills over ACP | ✅ `/name args`, live and after a bridge restart. A built-in that runs its arguments as a turn (DeepSeek `/plan <text>`, Hermes `/queue <text>`) adds that turn as its own bubble. Verified live on 2026-11-12 with the DeepSeek adapter 0.2.2 and Hermes 0.21.5. |
-| Pi | `/name args` reaches Pi's `prompt` RPC, which stores only the expanded text as the user message: a prompt template's body with the arguments substituted, or a `<skill name=… location=…>` block followed by the arguments | ✅ `/name args` live for both: Sesori pairs Pi's expanded user message with the pending command. ✅ `/skill:name args` after history load, decoded from the `<skill>` block. ⬜ Not supported for a prompt template after history load: the bubble shows the expanded template, because nothing in the stored message names it. Native shapes verified live on 2026-11-12 with Pi 1.5.2. |
-| Grok, Cursor, Copilot, Antigravity | Not checked | Unverified: on 2026-11-12 Grok needed `grok login`, the Cursor CLI was older than the supported minimum, and the Copilot and Antigravity runtimes were not installed on the test machine. |
+| OpenCode 2 native command | `POST /api/session/{id}/command` takes no id or metadata, and the stored user message holds only the expanded template | ⬜ Not supported: the bubble shows the expanded template, live and after history load, because nothing in the message names the command. Verified live on 2026-11-12 with OpenCode 2.2.6. |
 
 ## Bridge worktree note
 
@@ -1088,7 +1085,7 @@ effort for the custom model. With `multi_agent_v2` off, Codex's default in
 child session and its subtask tile appear live and in replay (live check on
 0.167.2, 2026-11-12). The `<subagent_notification>` user message Codex adds to
 the parent when a v1 child finishes is hidden, as the tile already shows it; v2
-sends none. In both modes `wait_agent` stays a generic tool card. Sessions whose v1 sub-agents ran before
+sends none. In both modes `wait_agent` renders as a "Waiting for N sub-agents" tool row. Sessions whose v1 sub-agents ran before
 this mapping keep their generic `Spawn_agent` card, because their child was
 never registered.
 

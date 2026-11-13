@@ -73,7 +73,7 @@ class SessionMutationDispatcher({
         );
         if (updated == null) {
           throw PluginOperationException.notFound(
-            SessionOperation.setApprovalOverride.name,
+            operation: SessionOperation.setApprovalOverride.name,
             message: "session $sessionId was not found",
           );
         }
@@ -143,7 +143,7 @@ class SessionMutationDispatcher({
     final renamed = stored ? await _sessionRepository.getCatalogSession(sessionId: sessionId) : null;
     if (renamed == null) {
       throw PluginOperationException.notFound(
-        SessionOperation.renameSession.name,
+        operation: SessionOperation.renameSession.name,
         message: "session $sessionId was not found",
       );
     }

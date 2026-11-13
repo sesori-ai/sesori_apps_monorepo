@@ -392,7 +392,7 @@ void main() {
     // ── Plugin independence ──────────────────────────────────────────────────
 
     test("opens successfully when plugin.getProject would throw", () async {
-      plugin.throwOnGetProjectError = PluginApiException("/project/open", 404);
+      plugin.throwOnGetProjectError = PluginApiException(endpoint: "/project/open", statusCode: 404);
 
       final result = await handler.handle(
         request: makeRequest("POST", "/project/open"),

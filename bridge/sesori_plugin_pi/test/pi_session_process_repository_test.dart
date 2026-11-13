@@ -242,7 +242,7 @@ void main() {
     test("keeps a deleted session folder typed so the bridge can serve stored history", () async {
       final repository = _repository(
         processFactory: ({required spec}) async => throw PluginWorkingDirectoryMissingException(
-          "spawn Pi",
+          operation: "spawn Pi",
           path: spec.workingDirectory,
           cause: const ProcessException("pi", [], "No such file or directory", 2),
         ),

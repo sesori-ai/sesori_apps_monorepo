@@ -26,6 +26,16 @@ void main() {
     );
   }
 
+  // Detach the file sink before flushing: async work that outlives a
+  // configuration can still log, and a write admitted after the flush would
+  // recreate logs/ while the directory is being deleted. Every reset needs
+  // this, because reset does not flush the sink it drops.
+  Future<void> resetDependencies() async {
+    setLogSink(sink: const StdoutLogSink());
+    await getIt<LogSink>().flush();
+    await getIt.reset();
+  }
+
   setUp(() async {
     root = await Directory.systemTemp.createTemp("sesori-admission-");
     master = _MasterStore();
@@ -33,12 +43,7 @@ void main() {
     registerPorts();
   });
   tearDown(() async {
-    // Detach the file sink before flushing: async work that outlives a test can
-    // still log, and a write admitted after the flush would recreate logs/
-    // while the directory is being deleted.
-    setLogSink(sink: const StdoutLogSink());
-    await getIt<LogSink>().flush();
-    await getIt.reset();
+    await resetDependencies();
     getIt.skipDoubleRegistration = false;
     await root.delete(recursive: true);
   });
@@ -114,7 +119,7 @@ void main() {
     expect(master.reads, 1);
     expect(master.writes, 1);
 
-    await getIt.reset();
+    await resetDependencies();
     registerPorts();
     legacy.readError = StateError("Completed import must not enumerate again");
     getIt.registerSingleton<LegacyNativeStorage>(legacy);

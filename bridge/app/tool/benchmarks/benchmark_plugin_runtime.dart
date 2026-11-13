@@ -80,7 +80,11 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
   }) async {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is not running",
+      );
     }
     return await body(plugin);
   }
@@ -94,7 +98,11 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
   }) async {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is not running",
+      );
     }
     return (value: await body(plugin), generation: 1);
   }
@@ -108,7 +116,11 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
   }) async {
     final plugin = _plugins[pluginId];
     if (plugin == null) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is not running",
+      );
     }
     return await commit(await prepare(plugin), 1);
   }
@@ -121,7 +133,7 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
     required Future<R> Function() commit,
   }) {
     if (!isCurrentGeneration(pluginId: pluginId, generation: generation)) {
-      throw PluginOperationException(operation.name, statusCode: 503);
+      throw PluginOperationException(operation: operation.name, statusCode: 503);
     }
     return commit();
   }
@@ -149,7 +161,7 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
     required Stream<T> Function(PluginCatalogImportSource source) body,
   }) {
     final plugin = _plugins[pluginId];
-    if (plugin == null) return Stream.error(PluginOperationException(operation.name, statusCode: 503));
+    if (plugin == null) return Stream.error(PluginOperationException(operation: operation.name, statusCode: 503));
     return body(
       PluginCatalogImportLiveSource(
         authority: const _BenchmarkCatalogImportAuthority(),

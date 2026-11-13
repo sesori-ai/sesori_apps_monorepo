@@ -99,7 +99,7 @@ class HermesAcpApi({
     }
     final diagnostics = "${result.stderr.trim()}\n${result.stdout.trim()}".trim();
     throw PluginOperationException(
-      "hermes sessions delete",
+      operation: "hermes sessions delete",
       message: "Hermes exited with code ${result.exitCode}: $diagnostics",
     );
   }

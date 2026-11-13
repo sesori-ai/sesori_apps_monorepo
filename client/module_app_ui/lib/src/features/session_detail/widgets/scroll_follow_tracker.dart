@@ -67,6 +67,14 @@ class ScrollFollowTracker({
     notifyListeners();
   }
 
+  /// Follows again where the scrollable rests, for one that a layout change,
+  /// not the user, carried back to [edge].
+  void reattach() {
+    if (_following) return;
+    _following = true;
+    notifyListeners();
+  }
+
   /// Suppress detaching for the duration of a gesture that must not
   /// disturb follow mode — specifically the horizontal timestamp "peek",
   /// which slides rows sideways without scrolling. The scrollable still

@@ -242,7 +242,7 @@ class AntigravitySessionOptionsService({
     if ((providerId != null && providerId != AntigravityIdentity.pluginId) ||
         (agent != null && agent != AntigravityIdentity.pluginId)) {
       throw PluginStaleOptionsException(
-        operation,
+        operation: operation,
         message: "Antigravity supports its primary agent and advertised provider only",
       );
     }
@@ -300,7 +300,7 @@ class AntigravitySessionOptionsService({
     final raw = selectionId ?? "unresolved";
     final diagnosticId = raw.length <= 120 ? raw : "${raw.substring(0, 120)}…";
     throw PluginStaleOptionsException(
-      operation,
+      operation: operation,
       message: "Antigravity selection '$diagnosticId' is not in the current account catalog",
     );
   }

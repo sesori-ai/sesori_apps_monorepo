@@ -61,7 +61,13 @@ class const SessionInteractionCalculator() {
     }
 
     final displayName = metadata.setup.displayName;
-    final actionHint = metadata.actionHint ?? metadata.setup.actionHint;
+    // A ready harness's specific start failure reason replaces the generic
+    // console hint; a setup that is not ready keeps its own unblocking hint.
+    final failureReason =
+        metadata.setup.state == PluginSetupState.ready && metadata.runtimeState == PluginRuntimeState.failed
+        ? metadata.failureReason
+        : null;
+    final actionHint = failureReason ?? metadata.actionHint ?? metadata.setup.actionHint;
     if (metadata.runtimeState == PluginRuntimeState.disabled) {
       return SessionInteractionState.blocked(
         reason: SessionInteractionBlockedReason.disabled,

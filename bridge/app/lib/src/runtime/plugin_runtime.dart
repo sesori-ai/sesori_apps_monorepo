@@ -632,13 +632,13 @@ class PluginRuntime({
     required Future<R> Function() commit,
   }) async {
     if (_shuttingDown) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "bridge is shutting down");
+      throw PluginOperationException(operation: operation.name, statusCode: 503, message: "bridge is shutting down");
     }
     final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
     final plugin = slot.plugin;
     if (plugin == null || slot.generation != generation || !_isRoutable(slot)) {
       throw PluginOperationException(
-        operation.name,
+        operation: operation.name,
         statusCode: 503,
         message: "plugin generation changed before durable commit",
       );
@@ -667,10 +667,14 @@ class PluginRuntime({
   }) async* {
     final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
     if (_shuttingDown) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "bridge is shutting down");
+      throw PluginOperationException(operation: operation.name, statusCode: 503, message: "bridge is shutting down");
     }
     if (slot.accessGate != PluginRuntimeAccessGate.enabled || !slot.startAllowed) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is unavailable");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is unavailable",
+      );
     }
 
     if (slot.plugin != null || slot.startFuture != null) {
@@ -690,7 +694,11 @@ class PluginRuntime({
       return;
     }
     if (_blocksAcquisition(slot) || slot.catalogSnapshotPermit != null) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is transitioning");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is transitioning",
+      );
     }
 
     final permit = _CatalogSnapshotPermit(slot: slot);
@@ -769,7 +777,7 @@ class PluginRuntime({
         requireCurrentGeneration(pluginId: pluginId, generation: generation, operation: operation);
         if (!identical(slot.plugin?.api, api)) {
           throw PluginOperationException(
-            operation.name,
+            operation: operation.name,
             statusCode: 503,
             message: "plugin generation changed during catalog import",
           );
@@ -782,7 +790,7 @@ class PluginRuntime({
             slot.accessGate != PluginRuntimeAccessGate.enabled ||
             !slot.startAllowed) {
           throw PluginOperationException(
-            operation.name,
+            operation: operation.name,
             statusCode: 503,
             message: "plugin catalog snapshot authority changed during import",
           );
@@ -1024,7 +1032,7 @@ class PluginRuntime({
   }) {
     if (!isCurrentGeneration(pluginId: pluginId, generation: generation)) {
       throw PluginOperationException(
-        operation.name,
+        operation: operation.name,
         statusCode: 503,
         message: "plugin generation changed during operation",
       );
@@ -1675,26 +1683,42 @@ class PluginRuntime({
     required PluginGenerationResidency acquisitionResidency,
   }) async {
     if (_shuttingDown) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "bridge is shutting down");
+      throw PluginOperationException(operation: operation.name, statusCode: 503, message: "bridge is shutting down");
     }
     final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
     if (acquisitionResidency == PluginGenerationResidency.normal) _promoteGenerationResidency(slot);
     if (slot.accessGate != PluginRuntimeAccessGate.enabled || !slot.startAllowed) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is unavailable");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is unavailable",
+      );
     }
     if (_blocksAcquisition(slot)) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is transitioning");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is transitioning",
+      );
     }
     if (!_isRoutable(slot) && startIfNeeded) {
       await _ensureStarted(slot: slot, residency: acquisitionResidency);
     }
     if (_blocksAcquisition(slot)) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is transitioning");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is transitioning",
+      );
     }
     final plugin = slot.plugin;
     final generation = slot.generation;
     if (plugin == null || generation == null || !_isRoutable(slot)) {
-      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running");
+      throw PluginOperationException(
+        operation: operation.name,
+        statusCode: 503,
+        message: "plugin $pluginId is not running",
+      );
     }
     slot.leaseCount++;
     _publishSnapshots();
@@ -1743,7 +1767,7 @@ class PluginRuntime({
     );
     if (!identical(lease.slot.plugin?.api, lease.api)) {
       throw PluginOperationException(
-        operation.name,
+        operation: operation.name,
         statusCode: 503,
         message: "plugin generation changed during operation",
       );
@@ -1753,7 +1777,7 @@ class PluginRuntime({
   void _requireSameGeneration({required _PluginLease lease, required Enum operation}) {
     if (lease.slot.generation != lease.generation || !identical(lease.slot.plugin?.api, lease.api)) {
       throw PluginOperationException(
-        operation.name,
+        operation: operation.name,
         statusCode: 503,
         message: "plugin generation changed during operation",
       );
@@ -2287,7 +2311,7 @@ class PluginRuntime({
     final slot = _slots[pluginId];
     if (slot == null) {
       throw PluginOperationException(
-        operation.name,
+        operation: operation.name,
         statusCode: 503,
         message: "plugin $pluginId is unknown and unavailable",
       );

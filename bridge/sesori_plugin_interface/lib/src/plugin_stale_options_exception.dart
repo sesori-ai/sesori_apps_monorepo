@@ -6,8 +6,8 @@ import "plugin_operation_exception.dart";
 /// so the client refreshes its options and either resends with a supported
 /// selection or surfaces an unavailable command; bridge core reacts to the
 /// type without parsing backend error text.
-class const PluginStaleOptionsException(
-  super.operation, {
+class const PluginStaleOptionsException({
+  required super.operation,
   super.message,
   super.cause,
 }) extends PluginOperationException {

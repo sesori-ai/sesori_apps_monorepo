@@ -554,9 +554,9 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
 }
 
 /// Retain native diagnostics without reflecting an arbitrary response body in presentation.
-class _V2ApiException({required String operation, required int? statusCode, required Exception innerError})
+class _V2ApiException({required super.operation, required super.statusCode, required Exception innerError})
     extends PluginOperationException {
-  this : super(operation, statusCode: statusCode, message: "OpenCode request failed.", cause: innerError);
+  this : super(message: "OpenCode request failed.", cause: innerError);
 
   @override
   String toString() => "OpenCode v2 request failed: $operation${statusCode == null ? "" : " (HTTP $statusCode)"}";

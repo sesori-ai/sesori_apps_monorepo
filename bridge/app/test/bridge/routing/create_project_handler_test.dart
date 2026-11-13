@@ -180,7 +180,7 @@ void main() {
 
     test("plugin getProject failure cannot block bridge-owned project creation", () async {
       final path = "${tempDir.path}/plugin-error";
-      plugin.throwOnGetProjectError = PluginApiException("/project", 503);
+      plugin.throwOnGetProjectError = PluginApiException(endpoint: "/project", statusCode: 503);
 
       final result = await handler.handle(
         request: makeRequest("POST", "/project/create"),

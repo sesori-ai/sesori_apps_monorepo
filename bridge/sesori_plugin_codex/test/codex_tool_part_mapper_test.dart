@@ -27,4 +27,32 @@ void main() {
       expect(part.state.output, "hello");
     });
   }
+
+  for (final (agentCount, status, label) in [
+    (2, PluginToolStatus.running, "Waiting for 2 sub-agents"),
+    (1, PluginToolStatus.running, "Waiting for 1 sub-agent"),
+    (null, PluginToolStatus.running, "Waiting for sub-agents"),
+    (2, PluginToolStatus.completed, "Waited for 2 sub-agents"),
+    (null, PluginToolStatus.completed, "Waited for sub-agents"),
+  ]) {
+    test("wait_agent reads as a sentence: $label", () {
+      final part = mapper.map(
+        sessionId: "root-1",
+        tool: CodexProjectedTool(
+          canonicalId: "call-1",
+          tool: "wait_agent",
+          presentation: CodexWaitAgentToolPresentation(agentCount: agentCount),
+          title: null,
+          shellCommand: null,
+          status: status,
+          output: null,
+          time: null,
+          attachments: const [],
+        ),
+      ) as PluginMessagePartTool;
+
+      expect(part.tool, label);
+      expect(part.state.title, isNull);
+    });
+  }
 }

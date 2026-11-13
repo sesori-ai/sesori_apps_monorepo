@@ -2140,7 +2140,7 @@ abstract class AcpPlugin({
         await activeSettlement.timeout(rootSessionCancelSettlementTimeout);
       } on TimeoutException catch (cause) {
         throw PluginOperationException(
-          "abortSession",
+          operation: "abortSession",
           statusCode: 502,
           message: "Root cancellation was issued, but its active turn did not settle before the stop deadline",
           cause: cause,
@@ -2152,7 +2152,7 @@ abstract class AcpPlugin({
     if (survivingChildCount > 0) {
       final cause = StateError("$survivingChildCount sub-agent(s) survived root cancellation");
       throw PluginOperationException(
-        "abortSession",
+        operation: "abortSession",
         statusCode: 502,
         message: "Root cancellation settled without stopping every sub-agent",
         cause: cause,
@@ -2318,7 +2318,7 @@ abstract class AcpPlugin({
       } on Object catch (error, stackTrace) {
         Error.throwWithStackTrace(
           PluginOperationException(
-            "deleteSession",
+            operation: "deleteSession",
             message: "ACP session did not settle and close",
             cause: error,
           ),
@@ -2546,7 +2546,7 @@ abstract class AcpPlugin({
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
     if (state.pending > 0) {
       throw const PluginSessionHistoryBusyException(
-        "session/load history replay",
+        operation: "session/load history replay",
         message: "a turn is running on the live process",
       );
     }
@@ -2604,7 +2604,7 @@ abstract class AcpPlugin({
         // failure lets the bridge serve the history it already holds.
         Error.throwWithStackTrace(
           PluginSessionUnrestorableException(
-            "session/load history replay",
+            operation: "session/load history replay",
             message: unrestorableMessage,
             cause: error,
           ),
@@ -2618,7 +2618,7 @@ abstract class AcpPlugin({
     // retry state) instead of swallowing it into an empty list.
     Error.throwWithStackTrace(
       PluginOperationException(
-        "session/load history replay",
+        operation: "session/load history replay",
         message: "history replay for $sessionId failed",
         cause: error,
       ),

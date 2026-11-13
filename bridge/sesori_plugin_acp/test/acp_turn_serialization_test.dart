@@ -1066,7 +1066,7 @@ void main() {
           processStarts++;
           if (processStarts == 1) return fake;
           throw const PluginAuthenticationRequiredException(
-            "authenticate",
+            operation: "authenticate",
             actionHint: "Authenticate locally.",
             recovery: PluginAuthenticationRecovery.login,
           );

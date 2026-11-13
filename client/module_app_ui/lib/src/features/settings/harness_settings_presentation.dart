@@ -187,7 +187,9 @@ class const _HarnessSwitch({
     final installed = plugin.setup.state != PluginSetupState.runtimeMissing;
     final interactive = installed && !blocked;
 
+    // Its own node, so the label and 44px target hold wherever the row sits.
     return Semantics(
+      container: true,
       label: context.loc.harnessesEnabledLabel(plugin.setup.displayName),
       child: MouseRegion(
         cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,

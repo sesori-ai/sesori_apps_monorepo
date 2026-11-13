@@ -188,7 +188,9 @@ final class ClaudePlugin({
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async {
     final existing = await _findSession(sessionId);
-    if (existing == null) throw const PluginOperationException.notFound("renameSession", message: "session not found");
+    if (existing == null) {
+      throw const PluginOperationException.notFound(operation: "renameSession", message: "session not found");
+    }
     final renamed = existing.copyWith(title: title);
     if (_createdSessions.containsKey(sessionId)) _createdSessions[sessionId] = renamed;
     _eventBuffer.add(BridgeSseSessionUpdated(info: renamed.toJson(), titleChanged: true));
@@ -202,13 +204,17 @@ final class ClaudePlugin({
         existing != null ||
         _processes.isResident(sessionId: sessionId) ||
         _sessions.sessionStatuses.containsKey(sessionId);
-    if (!known) throw const PluginOperationException.notFound("deleteSession", message: "session not found");
+    if (!known) throw const PluginOperationException.notFound(operation: "deleteSession", message: "session not found");
     await _sessions.deleteSession(sessionId: sessionId);
     try {
       try {
         await _transcripts.deleteSession(sessionId: sessionId);
       } on Object catch (error) {
-        throw PluginOperationException("deleteSession", message: "Claude transcript deletion failed", cause: error);
+        throw PluginOperationException(
+          operation: "deleteSession",
+          message: "Claude transcript deletion failed",
+          cause: error,
+        );
       }
     } finally {
       _createdSessions.remove(sessionId);
@@ -241,7 +247,7 @@ final class ClaudePlugin({
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
     if (await _transcripts.findTranscriptPath(sessionId: sessionId) == null) {
       if (_createdSessions.containsKey(sessionId)) return const [];
-      throw const PluginOperationException.notFound("getSessionMessages", message: "session not found");
+      throw const PluginOperationException.notFound(operation: "getSessionMessages", message: "session not found");
     }
     final catalog = await _catalogForHistory();
     try {
@@ -254,7 +260,7 @@ final class ClaudePlugin({
       );
     } on Object catch (error) {
       throw PluginOperationException(
-        "getSessionMessages",
+        operation: "getSessionMessages",
         message: "Claude history read failed",
         cause: error,
       );
@@ -284,7 +290,9 @@ final class ClaudePlugin({
   }) async {
     _requireTurn(parts: parts, operation: "sendPrompt");
     final directory = await _directoryForSession(sessionId);
-    if (directory == null) throw const PluginOperationException.notFound("sendPrompt", message: "session not found");
+    if (directory == null) {
+      throw const PluginOperationException.notFound(operation: "sendPrompt", message: "session not found");
+    }
     final text = parts
         .whereType<PluginPromptPartText>()
         .map((part) => part.text)
@@ -320,10 +328,15 @@ final class ClaudePlugin({
     required ({String providerID, String modelID})? model,
   }) async {
     final directory = await _directoryForSession(sessionId);
-    if (directory == null) throw const PluginOperationException.notFound("sendCommand", message: "session not found");
+    if (directory == null) {
+      throw const PluginOperationException.notFound(operation: "sendCommand", message: "session not found");
+    }
     // A catalog cached before /fast was filtered can still offer it.
     if (command == ClaudeBackendCatalogRepository.fastModeCommand) {
-      throw const PluginStaleOptionsException("sendCommand", message: "fast mode is set through the session selection");
+      throw const PluginStaleOptionsException(
+        operation: "sendCommand",
+        message: "fast mode is set through the session selection",
+      );
     }
     final visible = userVisibleArguments?.trim();
     await _enqueueQueued(
@@ -420,7 +433,7 @@ final class ClaudePlugin({
     if (_approvals.hasForm(id: questionId)) {
       if (answers.length != 1 || answers.single.length != 1 || answers.single.single != "Cancel") {
         throw const PluginOperationException(
-          "replyToQuestion",
+          operation: "replyToQuestion",
           statusCode: 400,
           message: "this form notice can only be cancelled",
         );
@@ -433,7 +446,7 @@ final class ClaudePlugin({
     if (_approvals.hasExternalAction(id: questionId)) {
       if (answers.length != 1 || answers.single.length != 1 || answers.single.single != "Cancel") {
         throw const PluginOperationException(
-          "replyToQuestion",
+          operation: "replyToQuestion",
           statusCode: 400,
           message: "this external-action notice can only be cancelled",
         );
@@ -443,10 +456,13 @@ final class ClaudePlugin({
     }
     final exitsPlanMode = _approvals.isExitPlanModeQuestion(id: questionId);
     if (!_approvals.hasQuestion(id: questionId)) {
-      throw const PluginOperationException.notFound("replyToQuestion", message: "question not found");
+      throw const PluginOperationException.notFound(operation: "replyToQuestion", message: "question not found");
     }
     if (!_approvals.replyQuestion(id: questionId, answers: answers)) {
-      throw const PluginOperationException("replyToQuestion", message: "Claude rejected the question response");
+      throw const PluginOperationException(
+        operation: "replyToQuestion",
+        message: "Claude rejected the question response",
+      );
     }
     // COMPATIBILITY 2026-09-21 (v1.9.0): Only an honoured "Plan" selection reaches plan
     // exit now. Remove with `ClaudeAgentSelection.plan`.
@@ -486,45 +502,61 @@ final class ClaudePlugin({
       return;
     }
     if (!_approvals.hasQuestion(id: questionId)) {
-      throw const PluginOperationException.notFound("rejectQuestion", message: "question not found");
+      throw const PluginOperationException.notFound(operation: "rejectQuestion", message: "question not found");
     }
     if (!_approvals.rejectQuestion(id: questionId)) {
-      throw const PluginOperationException("rejectQuestion", message: "Claude rejected the question response");
+      throw const PluginOperationException(
+        operation: "rejectQuestion",
+        message: "Claude rejected the question response",
+      );
     }
   }
 
   void _cancelLegacyForm({required String id, required String? sessionId}) {
     if (sessionId == null) {
-      throw const PluginOperationException.notFound("cancelForm", message: "owning session is required");
+      throw const PluginOperationException.notFound(operation: "cancelForm", message: "owning session is required");
     }
     switch (_approvals.declineForm(id: id, sessionId: sessionId, choice: PluginFormDismissalChoice.cancel)) {
       case PluginFormDismissalResult.accepted:
         return;
       case PluginFormDismissalResult.alreadySettled:
-        throw const PluginOperationException.notFound("cancelForm", message: "native request is not pending");
+        throw const PluginOperationException.notFound(
+          operation: "cancelForm",
+          message: "native request is not pending",
+        );
       case PluginFormDismissalResult.unavailable:
-        throw const PluginOperationException("cancelForm", statusCode: 503, message: "native reply unavailable");
+        throw const PluginOperationException(
+          operation: "cancelForm",
+          statusCode: 503,
+          message: "native reply unavailable",
+        );
     }
   }
 
   void _cancelLegacyExternalAction({required String id, required String? sessionId}) {
     if (sessionId == null) {
-      throw const PluginOperationException.notFound("cancelExternalAction", message: "owning session is required");
+      throw const PluginOperationException.notFound(
+        operation: "cancelExternalAction",
+        message: "owning session is required",
+      );
     }
     switch (_approvals.replyExternalAction(id: id, sessionId: sessionId, choice: PluginExternalActionChoice.cancel)) {
       case PluginExternalActionReply.accepted:
         return;
       case PluginExternalActionReply.alreadySettled:
-        throw const PluginOperationException.notFound("cancelExternalAction", message: "native request is not pending");
+        throw const PluginOperationException.notFound(
+          operation: "cancelExternalAction",
+          message: "native request is not pending",
+        );
       case PluginExternalActionReply.unsupportedChoice:
         throw const PluginOperationException(
-          "cancelExternalAction",
+          operation: "cancelExternalAction",
           statusCode: 400,
           message: "unsupported native choice",
         );
       case PluginExternalActionReply.unavailable:
         throw const PluginOperationException(
-          "cancelExternalAction",
+          operation: "cancelExternalAction",
           statusCode: 503,
           message: "native reply unavailable",
         );
@@ -538,10 +570,13 @@ final class ClaudePlugin({
     required PluginPermissionReply reply,
   }) async {
     if (!_approvals.hasPermission(id: requestId)) {
-      throw const PluginOperationException.notFound("replyToPermission", message: "permission not found");
+      throw const PluginOperationException.notFound(operation: "replyToPermission", message: "permission not found");
     }
     if (!_approvals.replyPermission(id: requestId, reply: reply)) {
-      throw const PluginOperationException("replyToPermission", message: "Claude rejected the permission response");
+      throw const PluginOperationException(
+        operation: "replyToPermission",
+        message: "Claude rejected the permission response",
+      );
     }
   }
 
@@ -614,7 +649,11 @@ final class ClaudePlugin({
     // resumed under its id, so a write to it is refused rather than spawning a
     // CLI that fails.
     if (ClaudeSubagentSessionId.agentIdOf(sessionId) != null) {
-      throw PluginOperationException(operation, statusCode: 400, message: "sub-agent sessions are read-only");
+      throw PluginOperationException(
+        operation: operation,
+        statusCode: 400,
+        message: "sub-agent sessions are read-only",
+      );
     }
     _validateModel(model, operation: operation, staleOptions: true);
     final effort = _effort(variant, operation: operation, staleOptions: true);
@@ -638,7 +677,7 @@ final class ClaudePlugin({
     } on PluginOperationException {
       rethrow;
     } on Object catch (error) {
-      throw PluginOperationException(operation, message: "Claude did not accept the turn", cause: error);
+      throw PluginOperationException(operation: operation, message: "Claude did not accept the turn", cause: error);
     }
   }
 
@@ -677,7 +716,7 @@ final class ClaudePlugin({
     } on PluginOperationException {
       rethrow;
     } on Object catch (error) {
-      throw PluginOperationException(operation, message: "Claude did not accept the turn", cause: error);
+      throw PluginOperationException(operation: operation, message: "Claude did not accept the turn", cause: error);
     }
   }
 
@@ -686,8 +725,8 @@ final class ClaudePlugin({
     required String message,
     required bool staleOptions,
   }) => staleOptions
-      ? PluginStaleOptionsException(operation, message: message)
-      : PluginOperationException(operation, statusCode: 400, message: message);
+      ? PluginStaleOptionsException(operation: operation, message: message)
+      : PluginOperationException(operation: operation, statusCode: 400, message: message);
 
   void _validateModel(
     ({String providerID, String modelID})? model, {
@@ -811,7 +850,7 @@ final class ClaudePlugin({
           // it can carry credentials.
           _usesCustomBaseUrl()
               ? const PluginAuthenticationRequiredException(
-                  "claude session",
+                  operation: "claude session",
                   actionHint:
                       "The Anthropic-compatible gateway configured for Claude Code rejected the request. "
                       "Check the gateway's credentials and configuration, then refresh setup.",
@@ -819,7 +858,7 @@ final class ClaudePlugin({
                   message: "Claude Code gateway authentication failed",
                 )
               : const PluginAuthenticationRequiredException(
-                  "claude session",
+                  operation: "claude session",
                   actionHint: "Log in from Sesori, or run `claude auth login` on this machine.",
                   recovery: PluginAuthenticationRecovery.login,
                   message: "Claude Code authentication failed",
@@ -831,7 +870,7 @@ final class ClaudePlugin({
       if (message case ClaudeAssistantMessage(error: ClaudeAssistantError.cloudCredentialError)) {
         _eventBuffer.addError(
           const PluginAuthenticationRequiredException(
-            "claude session",
+            operation: "claude session",
             actionHint:
                 "The cloud provider configured for Claude Code rejected its credentials. "
                 "Refresh the provider credentials on this machine, then refresh setup.",
@@ -902,7 +941,7 @@ final class ClaudePlugin({
 
 void _requireTurn({required List<PluginPromptPart> parts, required String operation}) {
   if (parts.isEmpty) {
-    throw PluginOperationException(operation, statusCode: 400, message: "prompt must not be empty");
+    throw PluginOperationException(operation: operation, statusCode: 400, message: "prompt must not be empty");
   }
 }
 
