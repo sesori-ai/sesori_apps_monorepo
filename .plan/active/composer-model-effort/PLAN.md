@@ -2,10 +2,9 @@
 
 ## Status and scope
 
-- Design agreed on review pages, rounds 1–16
-  (`/Users/alexandrudochioiu/.review-pages/composer-model-effort/`, local to
-  the owner's machine). Round 15 settled the picker; round 16 settled how many
-  rings show and which harnesses get them.
+- Design agreed with the owner over 16 review rounds; the decisions below
+  (D1–D9) are the complete record. Round 15 settled the picker; round 16
+  settled how many rings show and which harnesses get them.
 - Phase 1 is detailed below. Later phases are intent only; each becomes its
   own plan when it starts.
 - Phase 1 ships on the touch composer layout (`AgentModelButtons.compact ==
@@ -34,7 +33,8 @@ picks model and effort together. Every other catalog keeps today's pills.
   catalog, take each family's representative through
   `DefaultModelSelector.pickFromFamily` (the same rule the model picker uses,
   so rings and picker agree), and keep the first four. If the current model
-  is not among them, it replaces the fourth. Rings keep catalog order, first
+  is not among them, it is appended when fewer than four rings exist and
+  otherwise replaces the fourth. Rings keep catalog order, first
   outermost.
 - **D3 "All N models".** Shown when the catalog has more available models than
   rings. It closes the orbits and opens today's `ModelPicker` popover from the
@@ -76,8 +76,9 @@ picks model and effort together. Every other catalog keeps today's pills.
     on. Silver for standard speed, gold for fast. While the composer is
     read-only (launch hand-off), the same chip is shown locked, so nothing
     swaps or shifts.
-  - Picker: rings centred near the chip at the bottom-left; level rays from LOW
-    (lower angle) to MAX/ULTRA; ULTRA gets its own ray.
+  - Picker: rings centred near the chip at the bottom-left; one ray per
+    ladder level any ring offers, from the lowest (MINIMAL or LOW, lower
+    angle) to the highest (MAX or ULTRA); ULTRA gets its own ray.
   - Only the current choice is drawn: the medallion on its dot and a polished
     trail along its ring up to it. Every other dot is the same hollow 11 pt
     dot.
@@ -196,8 +197,8 @@ picks model and effort together. Every other catalog keeps today's pills.
 
 - No wire shape change.
 - New app, old bridge: `family: null`, so every model is its own family and
-  the rings are the first four plus the current model (round 16's accepted
-  fallback).
+  the rings are the first four models, with the current model in the fourth
+  place when it is not among them (round 16's accepted fallback).
 - Old app, new bridge: Codex model rows gain a family subtitle and group by
   family, with the oldest of each family shown by default (D6).
 
@@ -262,9 +263,11 @@ short recording in the PR.
 ### Step 6 — Regression documents (🌱)
 
 `docs/regression/session-creation-and-options.md`: chip, orbits, eligibility,
-rings rule, gestures, the launch hand-off chip, and the Codex family grouping
-in the model picker. No `HARNESS_CAPABILITIES.md` change: eligibility follows
-the catalog, not a harness gap.
+rings rule, gestures, the launch hand-off chip, the Codex family grouping
+in the model picker, and the first-listed default for undated catalogs.
+`docs/HARNESS_CAPABILITIES.md`: a row saying which harnesses get the orbits on
+the touch composer (Claude Code, Codex) and that the others keep the pills
+until the list sheet lands.
 
 ### Step 7 — L3 matrix and retirement (🌱)
 
@@ -282,11 +285,18 @@ proxy where they accept it).
 | Codex, iOS simulator | Rings are the latest model of each family; "All N models" opens the regular picker, which shows the newest of each family; picking a model outside the rings makes it the fourth ring; FAST tags hidden when every ring has fast mode. |
 | New session to session detail, iOS simulator | Both composers behave the same; during the launch hand-off the locked chip stays in place with no swap. |
 | One non-orbit harness (OpenCode or Pi), iOS simulator | Today's pills, unchanged. |
+| Claude Code and Pi, new session with no remembered pick | The starting model is the first-listed one (D5), and the session starts on it. |
 
 ## Risks and accepted behaviour
 
 - Released apps show the oldest Codex model of each family by default after
   the bridge updates (D6). Accepted.
+- D5 applies to every harness: a catalog with no `defaultModelID` and no
+  release dates (Claude Code, Pi, DeepSeek, Cursor, Copilot and others) now
+  starts a new session on its first-listed model, which plugins sort
+  strongest and newest first, instead of the alphabetically first id. A
+  remembered pick still wins. Accepted as an improvement; covered in the
+  matrix.
 - Mixed generations in the rings (for example GPT-6.1 Sol outermost, GPT-6
   Astra inside) follow catalog order rather than tier strength. Accepted; the
   catalog order is the shared strongest-first rule.
