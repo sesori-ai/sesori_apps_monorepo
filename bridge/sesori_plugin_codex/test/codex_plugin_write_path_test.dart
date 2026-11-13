@@ -604,7 +604,7 @@ void main() {
       expect(fake.sentMethods, ["initialize", "config/read", "thread/resume"]);
     });
 
-    test("lists skills, invokes them with dollar syntax, and compacts natively", () async {
+    test("lists skills, invokes them with dollar syntax naming the skill, and compacts natively", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -615,6 +615,7 @@ void main() {
                 "skills": [
                   {
                     "name": "review",
+                    "path": "/work/sample/.agents/skills/review/SKILL.md",
                     "description": "Review changes",
                     "shortDescription": null,
                     "interface": null,
@@ -629,6 +630,25 @@ void main() {
           result: {
             "thread": {"id": "t-existing", "cwd": "/work/sample"},
             "model": "gpt-5.4",
+          },
+        ),
+        const _Response(
+          result: {
+            "data": [
+              {
+                "cwd": "/work/sample",
+                "skills": [
+                  {
+                    "name": "review",
+                    "path": "/work/sample/.agents/skills/review/SKILL.md",
+                    "description": "Review changes",
+                    "shortDescription": null,
+                    "interface": null,
+                    "enabled": true,
+                  },
+                ],
+              },
+            ],
           },
         ),
         const _Response(
@@ -669,14 +689,17 @@ void main() {
         "skills/list",
         "config/read",
         "thread/resume",
+        "skills/list",
         "turn/start",
         "thread/compact/start",
       ]);
       expect(fake.sentParamsFor("skills/list"), {
         "cwds": ["/work/sample"],
       });
-      final input = fake.sentParamsFor("turn/start")["input"] as List;
-      expect(input.single["text"], r"$review staged changes");
+      expect(fake.sentParamsFor("turn/start")["input"], [
+        {"type": "text", "text": r"$review staged changes", "text_elements": <Object?>[]},
+        {"type": "skill", "name": "review", "path": "/work/sample/.agents/skills/review/SKILL.md"},
+      ]);
       expect(fake.sentParamsFor("turn/start")["collaborationMode"], {
         "mode": "plan",
         "settings": {
@@ -1278,6 +1301,8 @@ void main() {
             "thread": {"id": "t-command"},
           },
         ),
+        // skills/list: no skill to name.
+        const _Response(result: {"data": <Object?>[]}),
         const _Response(
           result: {
             "turn": {"id": "u-command"},
@@ -1308,6 +1333,8 @@ void main() {
             "thread": {"id": "t-command-force"},
           },
         ),
+        // skills/list: no skill to name.
+        const _Response(result: {"data": <Object?>[]}),
         const _Response(
           result: {
             "turn": {"id": "u-command-force"},
@@ -3399,6 +3426,7 @@ void main() {
                 "skills": [
                   {
                     "name": "review",
+                    "path": "/work/sample/.agents/skills/review/SKILL.md",
                     "description": "Review changes",
                     "shortDescription": null,
                     "interface": null,

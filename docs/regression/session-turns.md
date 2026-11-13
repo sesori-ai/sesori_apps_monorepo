@@ -147,7 +147,10 @@ defaults and queued client sends coherent.
   receives its own invocation. An OpenCode 2 skill turn reaches the server as
   the typed arguments with the skill attached; the bubble shows `/skill args`
   from that attachment, and a skill mentioned inside the text keeps the text
-  unchanged. Harness exceptions are listed in `docs/HARNESS_CAPABILITIES.md`
+  unchanged. A Codex skill is sent as `$name args` with a structured `skill`
+  input; the bubble shows `/name args` only when the user item names that
+  skill, and the injected `<skill>` body stays hidden after reload. Harness
+  exceptions are listed in `docs/HARNESS_CAPABILITIES.md`
   under "Command and skill bubbles".
 - Every send carries a client-generated prompt id, stable across retries. The
   bridge persists each id a session accepts for 30 days and answers a repeat

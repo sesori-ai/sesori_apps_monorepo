@@ -548,10 +548,13 @@ state.
   nothing jumps when the bridge drops or returns.
 - A session row leads with the harness logo, in a square of the same size for
   every harness, so titles line up; screen readers hear the harness name from
-  it. The logo rests as a quiet grey glyph and shows its own colours, breathing
-  (about every 1.6 s, fading to about a third opacity), only while an agent works: not while
-  the session waits for the user, and not for being the open session. With
-  reduced motion it stays lit and still. Right after the title's text comes its status mark: a turning sparkle
+  it. The logo rests as a quiet grey glyph. It shows its own colours, holding
+  still, while the session has unread activity or is the open one (on the wide
+  and desktop sidebars), and breathes in them (about every 1.6 s, fading to
+  about a third opacity) while an agent works, but not while the session waits
+  for the user. Grey and colour cross-fade, and the breath eases in and out
+  when a run starts or stops, so the logo never snaps or moves. With reduced
+  motion it changes at once and stays still. Right after the title's text comes its status mark: a turning sparkle
   while running, an amber dot, the same amber on phone and desktop, while waiting for the user (which wins over
   running), a resting sparkle when unread. A quiet session shows no mark and
   keeps no space for one. A long title fades out before the mark, so the mark
@@ -994,9 +997,10 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   pushes its status mark off the line behind a long title,
   shows a project in a list filtered to one project, changes height when its
   meta line is empty or holds a status word, a project or a count, or clips its
-  meta line under enlarged text. The harness logo shows colour while the
-  session waits for the user, while it is quiet, or only because it is open; a
-  lit logo breathes under reduced motion; a desktop row shows "Running" in
+  meta line under enlarged text. The harness logo shows colour while a read,
+  unselected session is quiet or waits for the user, stays grey while unread
+  or open, snaps between grey and colour or out of its breath with reduced motion
+  off, or breathes under reduced motion; a desktop row shows "Running" in
   words or the words "background tasks", or its logo is anywhere but the end
   of the meta line.
 - In a scrolled session list, a row or date heading arriving or leaving above

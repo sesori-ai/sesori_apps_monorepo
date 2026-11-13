@@ -303,7 +303,7 @@ as List<CodexSkillDto>,
 /// @nodoc
 mixin _$CodexSkillDto {
 
- String get name; String get description; String? get shortDescription; CodexSkillInterfaceDto? get interface; bool get enabled;
+ String get name; String get description; String? get shortDescription; String get path; CodexSkillInterfaceDto? get interface; bool get enabled;
 /// Create a copy of CodexSkillDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -315,20 +315,20 @@ $CodexSkillDtoCopyWith<CodexSkillDto> get copyWith => _$CodexSkillDtoCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as CodexSkillDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillDto&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.shortDescription, _this.shortDescription) || other.shortDescription == _this.shortDescription)&&(identical(other.interface, _this.interface) || other.interface == _this.interface)&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillDto&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.shortDescription, _this.shortDescription) || other.shortDescription == _this.shortDescription)&&(identical(other.path, _this.path) || other.path == _this.path)&&(identical(other.interface, _this.interface) || other.interface == _this.interface)&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CodexSkillDto;
-  return Object.hash(runtimeType,_this.name,_this.description,_this.shortDescription,_this.interface,_this.enabled);
+  return Object.hash(runtimeType,_this.name,_this.description,_this.shortDescription,_this.path,_this.interface,_this.enabled);
 }
 
 @override
 String toString() {
   final _this = this as CodexSkillDto;
-  return 'CodexSkillDto(name: ${_this.name}, description: ${_this.description}, shortDescription: ${_this.shortDescription}, interface: ${_this.interface}, enabled: ${_this.enabled})';
+  return 'CodexSkillDto(name: ${_this.name}, description: ${_this.description}, shortDescription: ${_this.shortDescription}, path: ${_this.path}, interface: ${_this.interface}, enabled: ${_this.enabled})';
 }
 
 
@@ -339,7 +339,7 @@ abstract mixin class $CodexSkillDtoCopyWith<$Res>  {
   factory $CodexSkillDtoCopyWith(CodexSkillDto value, $Res Function(CodexSkillDto) _then) = _$CodexSkillDtoCopyWithImpl;
 @useResult
 $Res call({
- String name, String description, String? shortDescription, CodexSkillInterfaceDto? interface, bool enabled
+ String name, String description, String? shortDescription, String path, CodexSkillInterfaceDto? interface, bool enabled
 });
 
 
@@ -356,12 +356,13 @@ class _$CodexSkillDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexSkillDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? description = null,Object? shortDescription = freezed,Object? interface = freezed,Object? enabled = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? description = null,Object? shortDescription = freezed,Object? path = null,Object? interface = freezed,Object? enabled = null,}) {
   return _then(CodexSkillDto(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,shortDescription: freezed == shortDescription ? _self.shortDescription : shortDescription // ignore: cast_nullable_to_non_nullable
-as String?,interface: freezed == interface ? _self.interface : interface // ignore: cast_nullable_to_non_nullable
+as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,interface: freezed == interface ? _self.interface : interface // ignore: cast_nullable_to_non_nullable
 as CodexSkillInterfaceDto?,enabled: null == enabled ? _self.enabled : enabled // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
@@ -387,12 +388,13 @@ $CodexSkillInterfaceDtoCopyWith<$Res>? get interface {
 @JsonSerializable(createToJson: false)
 
 class _CodexSkillDto implements CodexSkillDto {
-  const _CodexSkillDto({required this.name, required this.description, required this.shortDescription, required this.interface, required this.enabled});
+  const _CodexSkillDto({required this.name, required this.description, required this.shortDescription, required this.path, required this.interface, required this.enabled});
   factory _CodexSkillDto.fromJson(Map<String, dynamic> json) => _$CodexSkillDtoFromJson(json);
 
 @override final  String name;
 @override final  String description;
 @override final  String? shortDescription;
+@override final  String path;
 @override final  CodexSkillInterfaceDto? interface;
 @override final  bool enabled;
 
@@ -406,18 +408,18 @@ _$CodexSkillDtoCopyWith<_CodexSkillDto> get copyWith => __$CodexSkillDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSkillDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription)&&(identical(other.interface, interface) || other.interface == interface)&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSkillDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription)&&(identical(other.path, path) || other.path == path)&&(identical(other.interface, interface) || other.interface == interface)&&(identical(other.enabled, enabled) || other.enabled == enabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,name,description,shortDescription,interface,enabled);
+    return Object.hash(runtimeType,name,description,shortDescription,path,interface,enabled);
 }
 
 @override
 String toString() {
-    return 'CodexSkillDto(name: $name, description: $description, shortDescription: $shortDescription, interface: $interface, enabled: $enabled)';
+    return 'CodexSkillDto(name: $name, description: $description, shortDescription: $shortDescription, path: $path, interface: $interface, enabled: $enabled)';
 }
 
 
@@ -428,7 +430,7 @@ abstract mixin class _$CodexSkillDtoCopyWith<$Res> implements $CodexSkillDtoCopy
   factory _$CodexSkillDtoCopyWith(_CodexSkillDto value, $Res Function(_CodexSkillDto) _then) = __$CodexSkillDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String description, String? shortDescription, CodexSkillInterfaceDto? interface, bool enabled
+ String name, String description, String? shortDescription, String path, CodexSkillInterfaceDto? interface, bool enabled
 });
 
 
@@ -445,12 +447,13 @@ class __$CodexSkillDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexSkillDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? description = null,Object? shortDescription = freezed,Object? interface = freezed,Object? enabled = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? description = null,Object? shortDescription = freezed,Object? path = null,Object? interface = freezed,Object? enabled = null,}) {
   return _then(_CodexSkillDto(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,shortDescription: freezed == shortDescription ? _self.shortDescription : shortDescription // ignore: cast_nullable_to_non_nullable
-as String?,interface: freezed == interface ? _self.interface : interface // ignore: cast_nullable_to_non_nullable
+as String?,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,interface: freezed == interface ? _self.interface : interface // ignore: cast_nullable_to_non_nullable
 as CodexSkillInterfaceDto?,enabled: null == enabled ? _self.enabled : enabled // ignore: cast_nullable_to_non_nullable
 as bool,
   ));

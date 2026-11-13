@@ -109,6 +109,7 @@ void main() {
 
     final dispatched = await service.sendCommand(
       threadId: "thread-id",
+      cwd: "/repo",
       command: "review",
       arguments: "staged changes",
       clientUserMessageId: "prm_1",
@@ -124,10 +125,12 @@ void main() {
     expect(threadRepository.lastEffort, "high");
     expect(threadRepository.lastClientUserMessageId, "prm_1");
     expect(threadRepository.lastFastMode, isTrue);
+    expect(threadRepository.lastSkill, isNull);
     expect(dispatched.turnId, "turn");
 
     final compacted = await service.sendCommand(
       threadId: "thread-id",
+      cwd: "/repo",
       command: "compact",
       arguments: "",
       clientUserMessageId: "prm_2",
@@ -138,6 +141,66 @@ void main() {
     );
     expect(threadRepository.compactCount, 1);
     expect(compacted.turnId, isNull);
+  });
+
+  test("sendCommand names the skill it invokes so its bubble can show the picked command", () async {
+    final service = _newService();
+    final threadRepository = _StubThreadRepository();
+    final skillRepository = _StubSkillRepository(
+      skillPaths: const {"fixture-greeter": "/repo/.agents/skills/fixture-greeter/SKILL.md"},
+    );
+    service.attachAppServerRepositories(
+      threadRepository: threadRepository,
+      modelRepository: _StubModelRepository(),
+      skillRepository: skillRepository,
+    );
+
+    await service.sendCommand(
+      threadId: "thread-id",
+      cwd: "/repo",
+      command: "fixture-greeter",
+      arguments: "hello",
+      clientUserMessageId: "prm_1",
+      model: null,
+      effort: null,
+      collaborationMode: null,
+      fastMode: false,
+    );
+
+    final input = threadRepository.lastParts.single as PluginPromptPartText;
+    expect(input.text, r"$fixture-greeter hello");
+    expect(threadRepository.lastSkill, (
+      name: "fixture-greeter",
+      path: "/repo/.agents/skills/fixture-greeter/SKILL.md",
+    ));
+    expect(skillRepository.lastCwd, "/repo");
+  });
+
+  test("sendCommand still invokes a skill by text when the skill lookup fails", () async {
+    final service = _newService();
+    final threadRepository = _StubThreadRepository();
+    service.attachAppServerRepositories(
+      threadRepository: threadRepository,
+      modelRepository: _StubModelRepository(),
+      skillRepository: _StubSkillRepository(error: StateError("skills unavailable")),
+    );
+
+    final dispatched = await service.sendCommand(
+      threadId: "thread-id",
+      cwd: "/repo",
+      command: "fixture-greeter",
+      arguments: "hello",
+      clientUserMessageId: "prm_1",
+      model: null,
+      effort: null,
+      collaborationMode: null,
+      fastMode: false,
+    );
+
+    final input = threadRepository.lastParts.single as PluginPromptPartText;
+    expect(input.text, r"$fixture-greeter hello");
+    expect(threadRepository.lastSkill, isNull);
+    expect(dispatched.turnId, "turn");
   });
 
   test("a mode turn without a model uses the rollout's model on a cold catalog", () async {
@@ -167,6 +230,7 @@ void main() {
 
     await service.sendCommand(
       threadId: threadId,
+      cwd: "/repo",
       command: "review",
       arguments: "",
       clientUserMessageId: null,
@@ -613,8 +677,11 @@ class _StubModelRepository({
   }
 }
 
-class _StubSkillRepository({var List<PluginCommand> commands = const [], final Object? error})
-    extends CodexSkillRepository {
+class _StubSkillRepository({
+  var List<PluginCommand> commands = const [],
+  final Object? error,
+  final Map<String, String> skillPaths = const {},
+}) extends CodexSkillRepository {
   this
     : super(
         appServerApi: CodexAppServerApi(
@@ -627,6 +694,16 @@ class _StubSkillRepository({var List<PluginCommand> commands = const [], final O
     final failure = error;
     if (failure != null) throw failure;
     return commands;
+  }
+
+  String? lastCwd;
+
+  @override
+  Future<String?> findSkillPath({required String cwd, required String name}) async {
+    lastCwd = cwd;
+    final failure = error;
+    if (failure != null) throw failure;
+    return skillPaths[name];
   }
 }
 
@@ -645,6 +722,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
   String? lastEffort;
   String? lastClientUserMessageId;
   bool? lastFastMode;
+  ({String name, String path})? lastSkill;
 
   @override
   Future<String?> readDeveloperInstructions({required String? cwd}) async => null;
@@ -674,6 +752,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
   Future<String?> startTurn({
     required String threadId,
     required List<PluginPromptPart> parts,
+    required ({String name, String path})? skill,
     required String? clientUserMessageId,
     required String? model,
     required String? effort,
@@ -681,6 +760,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
     required bool? fastMode,
   }) async {
     lastParts = parts;
+    lastSkill = skill;
     lastModel = model;
     lastEffort = effort;
     lastClientUserMessageId = clientUserMessageId;

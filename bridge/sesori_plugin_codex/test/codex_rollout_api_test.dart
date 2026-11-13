@@ -1823,6 +1823,71 @@ void main() {
       expect(message.parts.single.text, "first prompt");
     });
 
+    test("message projection shows a picked skill as typed and hides its injected body", () {
+      // Codex 0.167.2's records for `$fixture-greeter hello` sent with a
+      // structured `skill` input.
+      const skillBody =
+          "<skill>\n<name>fixture-greeter</name>\n<path>/repo/.agents/skills/fixture-greeter/SKILL.md</path>\n"
+          "---\nname: fixture-greeter\n---\n\nGreet the user.\n</skill>";
+      Map<String, Object?> userResponseItem({required String id, required String text}) => {
+        "timestamp": "2026-11-12T10:00:00.000Z",
+        "type": "response_item",
+        "payload": {
+          "type": "message",
+          "id": id,
+          "role": "user",
+          "content": [
+            {"type": "input_text", "text": text},
+          ],
+        },
+      };
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/11/12/rollout-skill-invocation.jsonl",
+        sessionId: "019a0000-1111-2222-3333-ccccccccccd2",
+        cwd: "/repo",
+        extraLines: [
+          jsonEncode(userResponseItem(id: "msg-prompt", text: r"$fixture-greeter hello")),
+          jsonEncode({
+            "timestamp": "2026-11-12T10:00:00.001Z",
+            "type": "event_msg",
+            "payload": {
+              "type": "item_completed",
+              "thread_id": "019a0000-1111-2222-3333-ccccccccccd2",
+              "turn_id": "turn-1",
+              "item": {
+                "type": "UserMessage",
+                "id": "user-live-1",
+                "client_id": "prm_1",
+                "content": [
+                  {"type": "text", "text": r"$fixture-greeter hello", "text_elements": <Object?>[]},
+                  {
+                    "type": "skill",
+                    "name": "fixture-greeter",
+                    "path": "/repo/.agents/skills/fixture-greeter/SKILL.md",
+                  },
+                ],
+              },
+              "started_at_ms": 1794560400001,
+              "completed_at_ms": 1794560400001,
+            },
+          }),
+          jsonEncode(userResponseItem(id: "msg-skill", text: skillBody)),
+        ],
+      );
+
+      final messages = projectRootMessagesWithoutChildReplay(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-ccccccccccd2",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      final message = messages.single;
+      expect(message.info.id, "user-live-1");
+      expect(message.parts.single.text, "/fixture-greeter hello");
+    });
+
     test("message projection keeps a user message's text items a blank line apart", () {
       // A prompt sent before the plugin joined its text parts: the typed text
       // and a saved file's note are separate items.

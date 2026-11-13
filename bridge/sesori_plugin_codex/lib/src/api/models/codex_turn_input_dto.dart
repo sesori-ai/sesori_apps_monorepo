@@ -20,4 +20,12 @@ sealed class CodexTurnInputDto with _$CodexTurnInputDto {
   const factory image({
     required String url,
   }) = CodexTurnImageInputDto;
+
+  /// Names the skill a `\$name` text input invokes, so Codex's `userMessage`
+  /// item records which skill the user picked.
+  @FreezedUnionValue("skill")
+  const factory skill({
+    required String name,
+    required String path,
+  }) = CodexTurnSkillInputDto;
 }

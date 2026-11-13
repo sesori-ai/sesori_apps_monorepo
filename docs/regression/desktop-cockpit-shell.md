@@ -66,8 +66,9 @@ The main pane hosts one full-width routed page.
   runs, then the project, then background tasks as a stack glyph and their number (the words in its tooltip), and ends
   with the harness glyph under the time, which hover actions cover. A plain running row has no "Running" word; screen
   readers still hear it from the mark, and hear a waiting row's state once, from the mark, not the "Waiting" word. A
-  launching row ends its metadata line with the harness glyph too, lit. The harness glyph is a quiet grey, and only
-  while an agent works does it show its own colours, breathing; being the open session does not colour it.
+  launching row ends its metadata line with the harness glyph too, lit. The harness glyph is a quiet grey; it shows its own
+  colours, holding still, while the session has unread activity or is the open one, and breathes in them while an
+  agent works. Each change cross-fades, and the breath eases in and out, without moving or resizing the glyph.
 - A pointer shell dictates by clicking the mic: the composer keeps its size, the X and pencil take the options' place
   as its other small buttons, a quiet waveform fills the row, the wide Send takes the mic's, and the input's placeholder
   says Listening; Enter sends and Esc cancels. On a running session Stop keeps its place beside Send, so the agent stays

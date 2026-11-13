@@ -28,6 +28,7 @@ sealed class CodexSkillDto with _$CodexSkillDto {
     required String name,
     required String description,
     required String? shortDescription,
+    required String path,
     required CodexSkillInterfaceDto? interface,
     required bool enabled,
   }) = _CodexSkillDto;
