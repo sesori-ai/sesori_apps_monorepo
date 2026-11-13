@@ -432,6 +432,53 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("an ended turn retires its session's abandoned permission and sends no answer", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      final otherSessionId = await createSession(cwd, "s2");
+      emitted.clear();
+
+      await sendPrompt(sessionId, "abandoned permission");
+      final prompt = await waitForFrame("session/prompt");
+      for (final (id, owner) in [(93, sessionId), (94, otherSessionId)]) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "id": id,
+          "method": AcpMethods.sessionRequestPermission,
+          "params": {
+            "sessionId": owner,
+            "toolCall": {"toolCallId": "tool-$id", "title": "Run command", "kind": "execute"},
+            "options": [
+              {"optionId": "allow", "name": "Allow", "kind": "allow_once"},
+            ],
+          },
+        });
+      }
+      for (var i = 0; i < 20 && emitted.whereType<BridgeSsePermissionAsked>().length < 2; i++) {
+        await pump();
+      }
+      final abandoned = (await plugin.getPendingPermissions(sessionId: sessionId)).single;
+
+      respondTo(prompt, {"stopReason": "end_turn"});
+      for (var i = 0; i < 20 && idleCount() == 0; i++) {
+        await pump();
+      }
+
+      expect(await plugin.getPendingPermissions(sessionId: sessionId), isEmpty);
+      expect(await plugin.getPendingPermissions(sessionId: otherSessionId), hasLength(1));
+      final clearing = emitted.whereType<BridgeSsePermissionReplied>().single;
+      expect(clearing.requestID, abandoned.id);
+      expect(emitted.indexOf(clearing), lessThan(emitted.indexOf(emitted.whereType<BridgeSseSessionIdle>().first)));
+      await plugin.replyToPermission(
+        requestId: abandoned.id,
+        sessionId: sessionId,
+        reply: PluginPermissionReply.once,
+      );
+      await pump();
+      expect(fake.written.where((frame) => frame["id"] == 93), isEmpty);
+      expect(emitted.whereType<BridgeSsePermissionReplied>(), hasLength(1));
+    });
+
     test("a prompt-ordered lifecycle extension stays behind its accepted user message", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
@@ -1605,6 +1652,8 @@ void main() {
       respondTo(s2Prompt, {"stopReason": "end_turn"});
       await pump();
       await pump();
+      // Ending s2's turn also retired the request it left pending.
+      expect(await plugin.getPendingPermissions(sessionId: s2), isEmpty);
       emitBarePermission(502);
       await pump();
       expect(await plugin.getPendingPermissions(sessionId: s1), hasLength(1));
@@ -1616,7 +1665,7 @@ void main() {
       await pump();
       emitBarePermission(503);
       await pump();
-      expect(await plugin.getPendingPermissions(sessionId: s2), hasLength(2));
+      expect(await plugin.getPendingPermissions(sessionId: s2), hasLength(1));
     });
   });
 }

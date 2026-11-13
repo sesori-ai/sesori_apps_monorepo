@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:opencode_plugin/src/v2/mappers/v2_form_answer_mapper.dart";
 import "package:opencode_plugin/src/v2/mappers/v2_form_answer_validator.dart";
@@ -65,6 +66,22 @@ void main() {
       formAnswerMapper: const V2FormAnswerMapper(),
       formAnswerValidator: const V2FormAnswerValidator(),
     );
+  });
+
+  test("a session for a symlinked project opens the project by its real path", () async {
+    final root = Directory.systemTemp.createTempSync("sesori-opencode-symlink-");
+    addTearDown(() => root.deleteSync(recursive: true));
+    final real = Directory("${root.path}/real")..createSync();
+    final link = Link("${root.path}/link")..createSync(real.path);
+    await service.createSession(
+      directory: link.path,
+      parentSessionId: null,
+      parts: [],
+      agent: null,
+      model: null,
+      variant: null,
+    );
+    expect(repository.createdDirectory, real.resolveSymbolicLinksSync());
   });
 
   test("explicit child creation fails before mutation; an empty standalone session is allowed", () async {
@@ -374,6 +391,7 @@ class WritableRepository() implements OpenCodeV2Repository {
   List<PluginCommand> skills = [];
   List<PluginPromptPart>? parts;
   PluginAgentModel? selectedModel;
+  String? createdDirectory;
   FormReply? reply;
   ({String text, String? description, bool resume})? synthetic;
 
@@ -385,6 +403,7 @@ class WritableRepository() implements OpenCodeV2Repository {
     required PluginAgentModel? model,
   }) async {
     calls.add("create");
+    createdDirectory = directory;
     selectedModel = model;
     return session;
   }
