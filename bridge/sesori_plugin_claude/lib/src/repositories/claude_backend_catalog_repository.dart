@@ -66,7 +66,8 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
     try {
       await _commandFiles.deleteProbeMirror(mirror: mirror);
     } on FileSystemException catch (error, stack) {
-      // A leftover holds only two links in the system temp directory.
+      // A leftover holds only copied command and skill files in the system
+      // temp directory.
       Log.w("[claude] failed to remove catalog probe mirror ${mirror.path}", error, stack);
     }
   }

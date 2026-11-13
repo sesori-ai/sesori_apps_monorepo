@@ -278,16 +278,21 @@ void main() {
       expect(catalog.commands, isEmpty);
     });
 
-    test("an unreadable skill folder throws from the API and leaves the list unlabelled", () async {
-      final project = Directory.systemTemp.createTempSync("claude-skills-");
-      addTearDown(() => project.deleteSync(recursive: true));
-      // A file where the skills folder belongs fails to list without being missing.
-      Directory("${project.path}/.claude").createSync();
-      File("${project.path}/.claude/skills").writeAsStringSync("not a folder");
+    test(
+      "an unreadable skill file throws from the API and leaves the list unlabelled",
+      () async {
+        final project = Directory.systemTemp.createTempSync("claude-skills-");
+        addTearDown(() => project.deleteSync(recursive: true));
+        final skill = File("${project.path}/.claude/skills/deploy/SKILL.md")
+          ..createSync(recursive: true)
+          ..writeAsStringSync("---\nname: deploy\n---\n");
+        Process.runSync("chmod", ["000", skill.path]);
 
-      final api = ClaudeCommandFilesApi(environment: const {});
-      await expectLater(api.readSkillNames(projectDirectory: project.path), throwsA(isA<FileSystemException>()));
-      expect(await repository.readSkillNames(directory: project.path), isEmpty);
-    });
+        final api = ClaudeCommandFilesApi(environment: const {});
+        await expectLater(api.readSkillNames(projectDirectory: project.path), throwsA(isA<FileSystemException>()));
+        expect(await repository.readSkillNames(directory: project.path), isEmpty);
+      },
+      testOn: "!windows",
+    );
   });
 }

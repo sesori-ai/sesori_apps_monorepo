@@ -1,7 +1,7 @@
 import "dart:io";
 
 import "package:path/path.dart" as p;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginWorkingDirectoryMissingException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginWorkingDirectoryMissingException;
 
 import "../foundation/claude_config_directory.dart";
 
@@ -44,7 +44,12 @@ class ClaudeCommandFilesApi({required Map<String, String> environment}) {
       for (final file in files) {
         final copy = File(p.join(mirror.path, ".claude", p.relative(file.path, from: source)));
         await copy.parent.create(recursive: true);
-        await file.copy(copy.path);
+        try {
+          await file.copy(copy.path);
+        } on FileSystemException catch (error, stack) {
+          // Claude skips a definition it cannot read, so the probe lists the rest.
+          Log.w("[claude] catalog probe skips unreadable ${file.path}", error, stack);
+        }
       }
       return mirror;
     } on Object {
@@ -56,28 +61,35 @@ class ClaudeCommandFilesApi({required Map<String, String> environment}) {
   /// Deletes a [createProbeMirror] directory.
   Future<void> deleteProbeMirror({required Directory mirror}) => mirror.delete(recursive: true);
 
-  /// The files anywhere under [folder], or none when it does not exist.
-  Future<List<File>> _filesUnder({required String folder}) async {
-    try {
-      return await Directory(
-        folder,
-      ).list(recursive: true, followLinks: true).where((entry) => entry is File).cast<File>().toList();
-    } on PathNotFoundException {
-      return const [];
-    }
-  }
+  /// The files anywhere under [folder], following links, or none when it does
+  /// not exist.
+  Future<List<File>> _filesUnder({required String folder}) async => [
+    for (final entry in await _list(folder: folder, recursive: true))
+      if (entry is File) entry,
+  ];
 
-  /// The folders directly in [root], or none when it does not exist.
-  Future<List<Directory>> _foldersIn({required String root}) async {
-    try {
-      return await Directory(root)
-          .list(followLinks: true)
-          .where((entry) => entry is Directory)
-          .cast<Directory>()
-          .toList();
-    } on PathNotFoundException {
-      return const [];
+  /// The folders directly in [root], following links, or none when it does
+  /// not exist.
+  Future<List<Directory>> _foldersIn({required String root}) async => [
+    for (final entry in await _list(folder: root, recursive: false))
+      if (entry is Directory) entry,
+  ];
+
+  /// Lists [folder] following links. A broken link or an unreadable entry is
+  /// logged and skipped, as Claude skips it.
+  Future<List<FileSystemEntity>> _list({required String folder, required bool recursive}) async {
+    if (!Directory(folder).existsSync()) return const [];
+    final entries = await Directory(folder)
+        .list(recursive: recursive, followLinks: true)
+        .handleError(
+          (Object error, StackTrace stack) => Log.w("[claude] catalog probe skips an entry in $folder", error, stack),
+          test: (error) => error is FileSystemException,
+        )
+        .toList();
+    for (final link in entries.whereType<Link>()) {
+      Log.w("[claude] catalog probe skips broken link ${link.path}");
     }
+    return entries;
   }
 
   /// The names of the skills in [projectDirectory]'s `.claude/skills` and in
@@ -85,7 +97,8 @@ class ClaudeCommandFilesApi({required Map<String, String> environment}) {
   ///
   /// Claude names a skill by its `SKILL.md` frontmatter `name`, else by its
   /// folder (verified live with Claude Code 2.1.323). A missing folder or
-  /// `SKILL.md` contributes no name; any other filesystem failure throws.
+  /// `SKILL.md` contributes no name, as does a folder that cannot be listed;
+  /// an unreadable `SKILL.md` throws.
   Future<Set<String>> readSkillNames({required String projectDirectory}) async {
     final configDirectory = claudeConfigDirectory(environment: _environment);
     final roots = [

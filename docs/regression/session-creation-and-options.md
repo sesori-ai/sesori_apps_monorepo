@@ -114,7 +114,9 @@ variant, and worktree mode, and creating the session with its first input.
   with all hooks disabled and no MCP servers, so opening a
   picker or history runs no project settings helper (such as `apiKeyHelper` or
   `otelHeadersHelper`), no SessionStart hook and no `.mcp.json` server. The mirror
-  is deleted after the probe, also when it fails. It needs no symbolic-link
+  is deleted after the probe, also when it fails. Linked command files and skill
+  folders are followed and copied; an unreadable file or a broken link is logged
+  and skipped, as Claude skips it, and the rest still lists. It needs no symbolic-link
   privilege, so per-project listing works on Windows without Developer Mode.
   Managed-policy settings still apply. Failure signal: a project helper's
   or hook's side effect, or an MCP server process, appearing when only a picker was
