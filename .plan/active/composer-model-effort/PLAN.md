@@ -285,18 +285,17 @@ proxy where they accept it).
 | Codex, iOS simulator | Rings are the latest model of each family; "All N models" opens the regular picker, which shows the newest of each family; picking a model outside the rings makes it the fourth ring; FAST tags hidden when every ring has fast mode. |
 | New session to session detail, iOS simulator | Both composers behave the same; during the launch hand-off the locked chip stays in place with no swap. |
 | One non-orbit harness (OpenCode or Pi), iOS simulator | Today's pills, unchanged. |
-| Claude Code and Pi, new session with no remembered pick | The starting model is the first-listed one (D5), and the session starts on it. |
 
 ## Risks and accepted behaviour
 
 - Released apps show the oldest Codex model of each family by default after
   the bridge updates (D6). Accepted.
-- D5 applies to every harness: a catalog with no `defaultModelID` and no
-  release dates (Claude Code, Pi, DeepSeek, Cursor, Copilot and others) now
-  starts a new session on its first-listed model, which plugins sort
-  strongest and newest first, instead of the alphabetically first id. A
-  remembered pick still wins. Accepted as an improvement; covered in the
-  matrix.
+- D5 applies to every harness, but only decides a starting model when the
+  catalog has no available `defaultModelID` and no release dates. Plugins that
+  supply a default (Claude Code, Pi, Codex) keep it. Such a catalog now starts
+  on its first-listed model, which plugins sort strongest and newest first,
+  instead of the alphabetically first id; a remembered pick still wins.
+  Accepted as an improvement; covered by step 2's selector unit tests.
 - Mixed generations in the rings (for example GPT-6.1 Sol outermost, GPT-6
   Astra inside) follow catalog order rather than tier strength. Accepted; the
   catalog order is the shared strongest-first rule.
