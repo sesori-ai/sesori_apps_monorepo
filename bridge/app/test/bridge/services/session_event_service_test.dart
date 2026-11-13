@@ -121,22 +121,19 @@ void main() {
     });
 
     test("names a sent command on its user turn and queued prompt, through terminal handoffs too", () async {
-      try {
-        await repository.sendCommand(
-          sessionId: "s1",
-          promptId: "p1",
-          command: "review",
-          commandSource: CommandSource.skill,
-          arguments: "src",
-          userVisibleArguments: "src",
-          variant: null,
-          fastMode: false,
-          agent: null,
-          model: null,
-        );
-      } on Object {
-        // No session is bound here; the send registers before the plugin call.
-      }
+      await _insertRoot(database: database, pluginId: plugin.id, sessionId: "s1", backendSessionId: "backend-s1");
+      await repository.sendCommand(
+        sessionId: "s1",
+        promptId: "p1",
+        command: "review",
+        commandSource: CommandSource.skill,
+        arguments: "src",
+        userVisibleArguments: "src",
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+      );
       const invocation = CommandInvocation(name: "review", source: CommandSource.skill, arguments: "src");
       BridgeSseMessageUpdated userTurn({required String? promptId}) => BridgeSseMessageUpdated(
         info: PluginMessage.user(promptId: promptId, id: "m1", sessionID: "s1", agent: null, time: null),
@@ -1747,6 +1744,19 @@ class _EventPlugin() implements NativeProjectsPluginApi {
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) => throw UnimplementedError();
+
+  @override
+  Future<void> sendCommand({
+    required String promptId,
+    required String sessionId,
+    required String command,
+    required String arguments,
+    required String? userVisibleArguments,
+    required PluginSessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -418,9 +418,9 @@ class SessionRepository({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
-  }) {
+  }) async {
     // Recorded before the plugin call: its echo can arrive before the call
-    // returns. A send that fails leaves an entry no echo will ever match.
+    // returns. A refused send forgets it again.
     _invocations.record(
       sessionId: sessionId,
       promptId: promptId,
@@ -430,21 +430,26 @@ class SessionRepository({
         arguments: userVisibleArguments,
       ),
     );
-    return _useSessionPlugin(
-      sessionId: sessionId,
-      operation: SessionOperation.sendCommand,
-      body: (plugin, binding) => plugin.sendCommand(
-        sessionId: binding.backendSessionId,
-        promptId: promptId,
-        command: command,
-        arguments: arguments,
-        userVisibleArguments: userVisibleArguments,
-        variant: _toPluginVariant(variant),
-        fastMode: fastMode,
-        agent: agent,
-        model: _toPluginModel(model),
-      ),
-    );
+    try {
+      await _useSessionPlugin(
+        sessionId: sessionId,
+        operation: SessionOperation.sendCommand,
+        body: (plugin, binding) => plugin.sendCommand(
+          sessionId: binding.backendSessionId,
+          promptId: promptId,
+          command: command,
+          arguments: arguments,
+          userVisibleArguments: userVisibleArguments,
+          variant: _toPluginVariant(variant),
+          fastMode: fastMode,
+          agent: agent,
+          model: _toPluginModel(model),
+        ),
+      );
+    } on Object {
+      _invocations.remove(sessionId: sessionId, promptId: promptId);
+      rethrow;
+    }
   }
 
   /// [message] with the invocation this bridge sent under its prompt id.

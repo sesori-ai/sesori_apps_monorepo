@@ -36,6 +36,23 @@ void main() {
       expect(decoded, equals(prompt));
     });
 
+    test("round-trips a command source and decodes an unknown one to unknown", () {
+      const prompt = QueuedSessionPrompt(
+        commandSource: CommandSource.skill,
+        id: "prm_skill",
+        text: null,
+        command: "review",
+        attachmentCount: 0,
+        createdAt: 1,
+      );
+
+      expect(QueuedSessionPrompt.fromJson(prompt.toJson()), equals(prompt));
+      expect(
+        QueuedSessionPrompt.fromJson({"id": "x", "createdAt": 1, "commandSource": "future-kind"}).commandSource,
+        CommandSource.unknown,
+      );
+    });
+
     test("missing and unknown dispatch ownership cannot claim cancellation", () {
       for (final value in [null, "future-state"]) {
         final prompt = QueuedSessionPrompt.fromJson({
