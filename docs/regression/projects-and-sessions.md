@@ -999,8 +999,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   meta line is empty or holds a status word, a project or a count, or clips its
   meta line under enlarged text. The harness logo shows colour while a read,
   unselected session is quiet or waits for the user, stays grey while unread
-  or open, snaps between grey and colour or out of its breath, or breathes
-  under reduced motion; a desktop row shows "Running" in
+  or open, snaps between grey and colour or out of its breath with reduced motion
+  off, or breathes under reduced motion; a desktop row shows "Running" in
   words or the words "background tasks", or its logo is anywhere but the end
   of the meta line.
 - In a scrolled session list, a row or date heading arriving or leaving above

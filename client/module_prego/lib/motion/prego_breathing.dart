@@ -82,6 +82,11 @@ class const PregoBreathing({super.key, required final bool active, required fina
   State<PregoBreathing> createState() => _PregoBreathingState();
 }
 
+/// Whether the shared breath clock is stepping, which it does only while some
+/// glyph follows it.
+@visibleForTesting
+bool get debugPregoBreathClockRunning => _BreathClock.instance._timer != null;
+
 class _PregoBreathingState()
     extends State<PregoBreathing>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin, PregoReducedMotionStateMixin {
@@ -125,7 +130,13 @@ class _PregoBreathingState()
     if (widget.active == oldWidget.active) return;
     final target = widget.active ? 1.0 : 0.0;
     if (motionAllowed) {
-      _depth.animateTo(target, curve: Curves.easeInOut);
+      // forward/reverse rather than animateTo: easing out must end dismissed,
+      // which is what lets go of the clock.
+      if (widget.active) {
+        _depth.forward();
+      } else {
+        _depth.reverse();
+      }
     } else {
       // Held still, there is no breath to ease into or out of.
       _depth.value = target;
@@ -147,7 +158,7 @@ class _PregoBreathingState()
     _opacity.value = 1;
   }
 
-  void _follow() => _opacity.value = 1 - _depth.value * (1 - _clock.opacity);
+  void _follow() => _opacity.value = 1 - Curves.easeInOut.transform(_depth.value) * (1 - _clock.opacity);
 
   void _stopFollowing() {
     if (!_following) return;

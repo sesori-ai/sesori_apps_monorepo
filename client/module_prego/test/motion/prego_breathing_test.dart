@@ -75,8 +75,7 @@ void main() {
     final easingOut = [bottom, opacityOf(tester), ...await sample()];
     expect(easingOut.last, 1);
     expect(largestStep(easingOut), lessThan(0.15));
-    await tester.binding.delayed(const Duration(milliseconds: 100));
-    expect(tester.binding.hasScheduledFrame, isFalse, reason: "an inactive glyph follows no clock");
+    expect(debugPregoBreathClockRunning, isFalse, reason: "an inactive glyph follows no clock");
 
     await tester.pumpWidget(harness([glyph(active: true)]));
     // A whole breath, to reach its bottom wherever the shared phase is.
@@ -92,8 +91,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 800));
 
     expect(opacityOf(tester), 1);
-    await tester.binding.delayed(const Duration(milliseconds: 100));
-    expect(tester.binding.hasScheduledFrame, isFalse);
+    expect(debugPregoBreathClockRunning, isFalse);
   });
 
   testWidgets("holds full opacity and schedules nothing under reduced motion", (tester) async {
