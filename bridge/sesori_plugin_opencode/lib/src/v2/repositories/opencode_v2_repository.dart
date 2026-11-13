@@ -228,8 +228,7 @@ class OpenCodeV2Repository({
     final location = await _api.getLocation(directory: directory);
     final projects = await _api.listProjects();
     final project = projects.firstWhere((project) => project.id == location.project.id);
-    // The location is opened by its real path; the project keeps the path the user opened.
-    return _modelMapper.mapProject(project: project, activity: null).copyWith(directory: directory);
+    return _modelMapper.mapProject(project: project, activity: null).copyWith(directory: location.directory);
   }
 
   Future<List<PluginSession>> getSessions({required String directory}) async {

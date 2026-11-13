@@ -1,5 +1,5 @@
 import "dart:convert";
-import "dart:io" show Directory, FileSystemException, HttpStatus;
+import "dart:io" show HttpStatus;
 
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -544,21 +544,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     }
   }
 
-  Map<String, String> _location({required String? directory}) => {
-    "location[directory]": ?(directory == null ? null : _realPath(directory: directory)),
-  };
-
-  /// OpenCode watches a location's real path, so a location opened through a
-  /// symlink never sees its config, agent or command file edits
-  /// (anomalyco/opencode#58904). A missing directory is sent as given and
-  /// OpenCode reports it.
-  String _realPath({required String directory}) {
-    try {
-      return Directory(directory).resolveSymbolicLinksSync();
-    } on FileSystemException {
-      return directory;
-    }
-  }
+  Map<String, String> _location({required String? directory}) => {"location[directory]": ?directory};
 
   String _sessionPath({required String sessionId}) => "/api/session/${Uri.encodeComponent(sessionId)}";
 }

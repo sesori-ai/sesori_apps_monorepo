@@ -1,3 +1,5 @@
+import "dart:io" show Directory, FileSystemException;
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
@@ -176,23 +178,27 @@ class OpenCodeV2Service({
 
   Future<String?> _mcpDirectory({required PluginMcpScope scope}) async => switch (scope) {
     PluginMcpHarnessScope() => null,
-    PluginMcpProjectScope(:final projectId) => projectId,
+    PluginMcpProjectScope(:final projectId) => await _realPath(directory: projectId),
     PluginMcpSessionScope(:final sessionId) => await _repository.getSessionDirectory(sessionId: sessionId),
   };
 
   Future<List<PluginProject>> getProjects() => _repository.getProjects();
   Future<PluginCatalogSnapshotResult> readCatalogSnapshot({required PluginCatalogCancellationSignal cancellation}) =>
       _repository.readCatalogSnapshot(cancellation: cancellation);
-  Future<PluginProject> getProject({required String projectId}) => _repository.getProject(directory: projectId);
-  Future<List<PluginAgent>> getAgents({required String projectId}) => _repository.getAgents(directory: projectId);
-  Future<PluginProvidersResult> getProviders({required String projectId}) =>
-      _repository.getProviders(directory: projectId);
+  // The project keeps the path the user opened.
+  Future<PluginProject> getProject({required String projectId}) async =>
+      (await _repository.getProject(directory: await _realPath(directory: projectId))).copyWith(directory: projectId);
+  Future<List<PluginAgent>> getAgents({required String projectId}) async =>
+      await _repository.getAgents(directory: await _realPath(directory: projectId));
+  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
+      await _repository.getProviders(directory: await _realPath(directory: projectId));
   Future<List<PluginSession>> getChildSessions({required String sessionId}) =>
       _repository.getChildSessions(sessionId: sessionId);
   Future<List<PluginMessageWithParts>> getMessages({required String sessionId}) =>
       _repository.getMessages(sessionId: sessionId);
 
-  Future<List<PluginSession>> getSessions({required String projectId}) => _repository.getSessions(directory: projectId);
+  Future<List<PluginSession>> getSessions({required String projectId}) async =>
+      await _repository.getSessions(directory: await _realPath(directory: projectId));
 
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {
     for (final id in await _repository.getActiveSessionIds())
@@ -206,7 +212,9 @@ class OpenCodeV2Service({
   }
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
-    final commands = await _repository.getCommands(directory: projectId);
+    final commands = await _repository.getCommands(
+      directory: projectId == null ? null : await _realPath(directory: projectId),
+    );
     return commands.any((command) => command.name == compactionCommandName)
         ? commands
         : [...commands, PluginCommand.compaction(name: compactionCommandName)];
@@ -215,9 +223,10 @@ class OpenCodeV2Service({
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({required String projectId}) async {
     // Providers go first because reading them waits for OpenCode to load the
     // folder; until then its agents and commands read back empty.
-    final providers = await _repository.getProviders(directory: projectId);
+    final directory = await _realPath(directory: projectId);
+    final providers = await _repository.getProviders(directory: directory);
     final (agents, commands) = await shared.wait2(
-      _repository.getAgents(directory: projectId),
+      _repository.getAgents(directory: directory),
       getCommands(projectId: projectId),
     );
     return PluginSessionOptionsDiscoveryResult.observed(
@@ -246,11 +255,12 @@ class OpenCodeV2Service({
             "Sesori does not implement child-session creation for OpenCode v2. Create a standalone session instead.",
       );
     }
+    final location = await _realPath(directory: directory);
     final selection = model == null
         ? null
         : PluginAgentModel(providerID: model.providerID, modelID: model.modelID, variant: variant?.id);
-    if (selection != null) await _validateModel(directory: directory, model: selection);
-    final session = await _repository.createSession(directory: directory, title: null, agent: agent, model: selection);
+    if (selection != null) await _validateModel(directory: location, model: selection);
+    final session = await _repository.createSession(directory: location, title: null, agent: agent, model: selection);
     if (parts.isNotEmpty) {
       await sendPrompt(
         sessionId: session.id,
@@ -355,8 +365,12 @@ class OpenCodeV2Service({
   Future<PluginSession> renameSession({required String sessionId, required String title}) =>
       _repository.renameSession(sessionId: sessionId, title: title);
   Future<void> deleteSession({required String sessionId}) => _repository.deleteSession(sessionId: sessionId);
-  Future<void> deleteWorkspace({required String projectId, required String worktreePath}) =>
-      _repository.deleteWorktree(directory: projectId, worktreePath: worktreePath, force: false);
+  Future<void> deleteWorkspace({required String projectId, required String worktreePath}) async =>
+      await _repository.deleteWorktree(
+        directory: await _realPath(directory: projectId),
+        worktreePath: worktreePath,
+        force: false,
+      );
   // The bridge database owns archival. OpenCode 2.1.0+ can archive natively
   // (`PATCH /api/session/{id}` with `archived`), but the 2.0.11 minimum cannot,
   // so Sesori does not sync it.
@@ -455,6 +469,20 @@ class OpenCodeV2Service({
   }) async {
     await _repository.replyToPermission(sessionId: sessionId, requestId: requestId, reply: reply);
     _tracker.removePermission(requestId: requestId);
+  }
+
+  /// OpenCode 2.2.7 watches only a location's real path, so a project the
+  /// bridge opens through a symlink would miss its config, agent and command
+  /// file edits (anomalyco/opencode#58904). Only paths the bridge hands in are
+  /// resolved: a session's or loaded location's directory stays as OpenCode
+  /// reported it, because pending input and MCP state live per location.
+  Future<String> _realPath({required String directory}) async {
+    try {
+      return await Directory(directory).resolveSymbolicLinks();
+    } on FileSystemException catch (error, stack) {
+      Log.w("OpenCode v2 opens $directory without resolving symlinks", error, stack);
+      return directory;
+    }
   }
 
   Future<String> _directory({required String sessionId}) async =>
