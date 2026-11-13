@@ -187,7 +187,10 @@ Planning decisions from code evidence (P1–P9):
 - No new `MessagePart` type. No migration, backfill or new table. Sessions
   from before this change keep their bubbles (low-damage old-data rule).
 - No new content matching for `invocation` beyond the store's existing
-  replay match (P4).
+  replay match (P4), except step 9's argument-turn fold: a stored card with no
+  replayed row of its content pairs with a replayed plain user turn with no
+  stored row of its content whose only text equals the arguments exactly,
+  when exactly one candidate exists on each side.
 - No session-options-cache lookup of a command's kind (P2).
 - No tap action, disclosure or description sheet (D2).
 - No change to prompt search semantics (P6).
@@ -367,14 +370,23 @@ Client (`client/module_core`, `client/module_app_ui`):
   - Name commands from `<command-name>`/`<command-args>` in history (today
     dropped). Resolve the kind from the plugin's own command list, else
     `unknown`.
-  - Check whether the synthetic live row and the history row collapse into
-    one.
+  - The synthetic live row and the history row collapse by exact id: the CLI
+    records a command's envelope under the uuid of the stdin frame that sent
+    it, so the live row takes that uuid instead of `sesori-user-N`. Claude
+    records a command after the compaction it ran into, so history keeps it
+    above that compaction row, where the live row sits.
 - **ACP family.**
-  - Name invocations from the `/name args` text Sesori sent, matched against
-    the advertised commands, in the replay.
-  - DeepSeek `/plan <text>` and Hermes `/queue <text>`: fold the
-    harness-created argument turn, which Hermes stores before the command,
-    into the invocation, so the card is the single representation.
+  - `AcpPlugin.getSessionMessages` names a replayed user turn whose only text
+    is `/name args` for an advertised command (`AcpReplayInvocationMapper`);
+    plugins override `replaySessionMessages`, and DeepSeek `replayCommands` (its catalog).
+    Oh My Pi inherits it, but its replay expands commands, so step 10 names it.
+  - DeepSeek `/plan <text>` and Hermes `/queue <text>`: neither harness stores
+    the command line, only the text as its own user turn, and neither echoes
+    that turn live. The bridge store folds it into the stored card (deviation
+    from P4, see Explicitly Excluded), so the card is the single row.
+  - Accepted: a later plain prompt whose text exactly equals an unmatched
+    card's arguments could take the card; Hermes' live-only "Queued" reply
+    and DeepSeek's card order below "Plan mode on" after a reload remain.
 - **Oh My Pi.** Verify live, then fix what is real:
   - a kept live row landing below the reply (the replay has no timestamps);
   - a kept live row dropped by a reload that doesn't mark the session out of
@@ -382,6 +394,9 @@ Client (`client/module_core`, `client/module_app_ui`):
   - a skill with an image showing the injected skill text;
   - skills looking right only because the replay skips a plain-string
     message.
+  - Oh My Pi sessions listed from a Pi folder on a bridge with an empty store
+    show the raw `<skill name=… location=…>` envelope as the user turn. Parse
+    it as Pi's `PiPersistedUserTextCodec.decodeSkillRun` does (#2552).
   Commands after reload need the bridge's record despite unstable ids.
 - Each plugin step records its result in `docs/HARNESS_CAPABILITIES.md`.
 - **Regression docs** reconcile `session-turns.md`, `transcript-turn-navigation.md`
@@ -487,7 +502,7 @@ Deliberately not added:
 | 6 | Codex naming from history | rough | 5 |
 | 7 | 🌿 [invocation-view] Name Pi command and skill runs [step 7/12] | ≤ 200 | 5 |
 | 8 | Claude Code naming from history | rough | 5 |
-| 9 | ACP-family naming and the DeepSeek/Hermes argument turn | rough | 5 |
+| 9 | ⚙️ [invocation-view] Name ACP command runs and fold the DeepSeek/Hermes argument turn [step 9/12] | ≤ 600 | 5 |
 | 10 | Oh My Pi findings | rough | 9 |
 | 11 | Regression docs | rough | 2–10 |
 | 12 | Retire after the matrix run | rough | 11 |

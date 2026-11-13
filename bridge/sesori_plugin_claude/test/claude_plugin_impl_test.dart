@@ -293,6 +293,10 @@ void main() {
         (event) => event.part.text == "/review src",
       );
       expect(visible, hasLength(1));
+      // The CLI records the command's envelope under the uuid it was sent
+      // with, so the live row takes that id and history replays the same row.
+      final sent = first.written.lastWhere((frame) => frame["type"] == "user");
+      expect(visible.single.part.messageID, sent["uuid"]);
 
       // Naming the advertised agent returns the session to the default mode.
       first.emit(_result());

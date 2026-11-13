@@ -31,9 +31,9 @@ void main() {
         records: [
           _messageRecord(
             type: "user",
-            uuid: "model-command-user",
+            uuid: "model-command-output",
             content: const [
-              {"type": "text", "text": "<command-name>/model</command-name>"},
+              {"type": "text", "text": "<local-command-stdout>Set model to opus</local-command-stdout>"},
             ],
           ),
           _messageRecord(
@@ -104,6 +104,7 @@ void main() {
         sessionId: _sessionId,
         agentId: null,
         records: records,
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: null,
       );
@@ -111,6 +112,7 @@ void main() {
         sessionId: _sessionId,
         agentId: null,
         records: records,
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: ({required apiModel}) => apiModel == "claude-test-model" ? "test" : null,
       );
@@ -152,6 +154,68 @@ void main() {
       );
     });
 
+    test("names a slash command's envelope record by the command, with its kind from the command list", () async {
+      _writeTranscript(
+        temp: temp,
+        records: [
+          _messageRecord(
+            type: "user",
+            uuid: "listed-command",
+            timestamp: "2026-08-09T10:00:00Z",
+            content:
+                "<command-message>echoword</command-message>\n<command-name>/echoword</command-name>\n"
+                "<command-args>banana split</command-args>",
+          ),
+          _messageRecord(
+            type: "user",
+            uuid: "expanded-prompt",
+            content: "Reply with exactly: echo banana split",
+            isMeta: true,
+          ),
+          _messageRecord(
+            type: "user",
+            uuid: "unlisted-command",
+            content:
+                "<command-name>/context</command-name>\n            <command-message>context</command-message>\n"
+                "            <command-args></command-args>",
+          ),
+          _messageRecord(
+            type: "user",
+            uuid: "command-output",
+            content: "<local-command-stdout>## Context Usage</local-command-stdout>",
+          ),
+        ],
+      );
+
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        agentId: null,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        commands: const [
+          PluginCommand(
+            name: "echoword",
+            description: null,
+            hints: [],
+            provider: null,
+            source: PluginCommandSource.command,
+          ),
+        ],
+        residentTaskToolUseIds: const {},
+        catalogModelId: null,
+      );
+
+      expect(messages.map((message) => message.info.id), ["listed-command", "unlisted-command"]);
+      expect(
+        messages.map((message) => (message.info as PluginMessageUser).invocation),
+        const [
+          PluginCommandInvocation(name: "echoword", source: PluginCommandSource.command, arguments: "banana split"),
+          PluginCommandInvocation(name: "context", source: PluginCommandSource.unknown, arguments: null),
+        ],
+      );
+      expect(messages.map((message) => message.parts.single.text), ["/echoword banana split", "/context"]);
+      expect(messages.first.info.time?.created, DateTime.parse("2026-08-09T10:00:00Z").millisecondsSinceEpoch);
+    });
+
     test("maps the transcript-only compaction summary to one compaction row with its boundary's details", () async {
       _writeTranscript(
         temp: temp,
@@ -177,6 +241,7 @@ void main() {
         sessionId: _sessionId,
         agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: null,
       );
@@ -216,6 +281,7 @@ void main() {
         sessionId: _sessionId,
         agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: null,
       );
@@ -258,6 +324,7 @@ void main() {
           sessionId: _sessionId,
           agentId: null,
           records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+          commands: const [],
           residentTaskToolUseIds: const {},
           catalogModelId: null,
         ),
@@ -289,6 +356,7 @@ void main() {
           sessionId: _sessionId,
           agentId: null,
           records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+          commands: const [],
           residentTaskToolUseIds: const {},
           catalogModelId: null,
         ),
@@ -336,6 +404,7 @@ void main() {
         sessionId: _sessionId,
         agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: null,
       );
@@ -370,6 +439,7 @@ void main() {
         sessionId: _sessionId,
         agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: null,
       );
@@ -422,6 +492,7 @@ void main() {
         sessionId: _sessionId,
         agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        commands: const [],
         residentTaskToolUseIds: const {},
         catalogModelId: null,
       );

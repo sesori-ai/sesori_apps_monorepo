@@ -57,7 +57,6 @@ final class ClaudePlugin({
   final Set<String> _unstartedSessions = {};
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _disposeFuture;
-  int _messageSequence = 0;
 
   @override
   String get id => pluginId;
@@ -257,6 +256,7 @@ final class ClaudePlugin({
         records: await _transcripts.readTranscriptRecordsInIsolate(sessionId: sessionId),
         residentTaskToolUseIds: _eventDispatcher.residentTaskToolUseIds(sessionId: sessionId),
         catalogModelId: catalog?.catalogModelId,
+        commands: catalog?.commands ?? const [],
       );
     } on Object catch (error) {
       throw PluginOperationException(
@@ -898,6 +898,7 @@ final class ClaudePlugin({
     final visible = event.displayText;
     _emitVisibleUserMessage(
       sessionId: event.sessionId,
+      messageId: event.messageId,
       text: visible == null || visible.isEmpty ? "/$command" : "/$command $visible",
       promptId: event.promptId,
     );
@@ -907,13 +908,19 @@ final class ClaudePlugin({
   /// Synthesizes the visible user bubble for a slash command at dispatch.
   ///
   /// Plain prompts never need this: `--replay-user-messages` echoes them under
-  /// their transcript uuid. A command's echo (and its transcript row) is the
-  /// CLI's `<command-name>` envelope, which both mapping paths drop, so this
-  /// synthetic message stays the turn's only user row and cannot duplicate.
-  void _emitVisibleUserMessage({required String sessionId, required String? text, required String? promptId}) {
+  /// their transcript uuid. A command's echo is the CLI's `<command-name>`
+  /// envelope, which the live path drops, so this message is the turn's only
+  /// live user row. It takes the uuid the command was sent with, which the CLI
+  /// keeps for the envelope's transcript record, so history replays this same
+  /// row instead of adding a second one.
+  void _emitVisibleUserMessage({
+    required String sessionId,
+    required String messageId,
+    required String? text,
+    required String? promptId,
+  }) {
     final visible = text?.trim();
     if (visible == null || visible.isEmpty) return;
-    final messageId = "sesori-user-${++_messageSequence}";
     final now = _clock.now().millisecondsSinceEpoch;
     _eventBuffer.add(
       BridgeSseMessageUpdated(

@@ -23,6 +23,9 @@ final class const ClaudeTurnDispatched({
   /// not resolve it again.
   required final String directory,
   required final String promptId,
+
+  /// The uuid Claude keeps for this turn's echo and transcript record.
+  required final String messageId,
   required final String? displayText,
   required final String? command,
   required final bool isSteering,
@@ -392,9 +395,6 @@ final class ClaudeSessionService({
         parts: parts,
         promptId: mode.replayPromptId,
       );
-      if (!dispatch.accepted) {
-        throw StateError("Claude rejected the turn before dispatch");
-      }
       final isSteering = state.selfStartedTurn != null || state.settlements.isNotEmpty;
       switch (mode) {
         case _BlockingTurnMode(:final acceptance):
@@ -408,6 +408,7 @@ final class ClaudeSessionService({
                 sessionId: sessionId,
                 directory: directory,
                 promptId: entry.id,
+                messageId: dispatch.messageId,
                 displayText: entry.displayText,
                 command: entry.command,
                 isSteering: isSteering,

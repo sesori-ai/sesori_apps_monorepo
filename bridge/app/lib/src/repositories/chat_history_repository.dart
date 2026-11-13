@@ -287,6 +287,66 @@ class ChatHistoryRepository({
     return update;
   }
 
+  /// Imported index -> stored context row index, pairing a replayed user turn
+  /// with the stored invocation whose arguments are its whole text.
+  ///
+  /// Some harnesses record only a command's arguments, as a user turn of
+  /// their own (DeepSeek `/plan <text>`, Hermes `/queue <text>`), and never the
+  /// command. That turn is the run the stored card names, so it takes the
+  /// card instead of showing as a bubble beside it. Only leftovers take part:
+  /// a stored card with no replayed row of the same content, and a replayed
+  /// turn with no stored row of the same content. The text must equal the
+  /// arguments exactly, with one candidate on each side.
+  Map<int, int> _argumentTurnPairs({
+    required List<MessageWithParts> messages,
+    required List<_SemanticMessageFingerprints?> importedFingerprints,
+    required List<HistoryMessagesTableData> storedRows,
+    required List<_SemanticMessageFingerprints?> storedFingerprints,
+    required Set<String> storedIds,
+    required Set<String> importedIds,
+    required Set<String> pairedStoredIds,
+  }) {
+    final importedContents = {
+      for (var index = 0; index < messages.length; index++)
+        if (!storedIds.contains(messages[index].info.id)) ?importedFingerprints[index]?.content,
+    };
+    final storedContents = <String>{};
+    final storedIndexesByArguments = <String, List<int>>{};
+    for (var index = 0; index < storedRows.length; index++) {
+      final row = storedRows[index];
+      final fingerprint = storedFingerprints[index];
+      if (importedIds.contains(row.messageId) || pairedStoredIds.contains(row.messageId) || fingerprint == null) {
+        continue;
+      }
+      storedContents.add(fingerprint.content);
+      if (importedContents.contains(fingerprint.content)) continue;
+      if (Message.fromJson(jsonDecodeMap(row.infoJson)) case MessageUser(
+        invocation: CommandInvocation(:final arguments?),
+      )) {
+        storedIndexesByArguments.putIfAbsent(arguments, () => []).add(index);
+      }
+    }
+    if (storedIndexesByArguments.isEmpty) return const {};
+
+    final importedIndexesByText = <String, List<int>>{};
+    for (var index = 0; index < messages.length; index++) {
+      final message = messages[index];
+      final content = importedFingerprints[index]?.content;
+      if (storedIds.contains(message.info.id) || content == null || storedContents.contains(content)) continue;
+      if (message.info case MessageUser(invocation: null)) {
+        final text = message.parts.whereType<MessagePartText>().singleOrNull?.text;
+        if (text != null && storedIndexesByArguments.containsKey(text)) {
+          importedIndexesByText.putIfAbsent(text, () => []).add(index);
+        }
+      }
+    }
+    return {
+      for (final MapEntry(key: text, value: importedIndexes) in importedIndexesByText.entries)
+        if ((importedIndexes, storedIndexesByArguments[text]) case ([final importedIndex], [final storedIndex]))
+          importedIndex: storedIndex,
+    };
+  }
+
   /// Stores one part, spilling any inline attachment bytes to disk first.
   Future<void> upsertPart({
     required String sessionId,
@@ -632,23 +692,47 @@ class ChatHistoryRepository({
       storedIds: storedIds,
     );
 
+    // Imported index -> the stored invocation row its argument turn replaces.
+    // Both sides anchor their neighbors as one identity, as exact ids do.
+    final argumentTurnPairs = _argumentTurnPairs(
+      messages: messages,
+      importedFingerprints: importedSemanticFingerprints,
+      storedRows: storedContextRows,
+      storedFingerprints: storedSemanticFingerprints,
+      storedIds: storedIds,
+      importedIds: importedIds,
+      pairedStoredIds: anchoredReplayExtensionStoredIds,
+    );
+    final argumentTurnAnchors = {
+      for (final MapEntry(key: importedIndex, value: storedIndex) in argumentTurnPairs.entries)
+        importedIndex: _exactIdentityAnchor(messageId: storedContextRows[storedIndex].messageId),
+    };
+    final storedArgumentTurnAnchors = {
+      for (final MapEntry(key: importedIndex, value: storedIndex) in argumentTurnPairs.entries)
+        storedIndex: argumentTurnAnchors[importedIndex],
+    };
+
     final importedSemanticContexts = _semanticContextFingerprints(
       fingerprints: importedSemanticFingerprints,
       anchorOverrides: [
-        for (final message in messages)
-          storedIds.contains(message.info.id) ? _exactIdentityAnchor(messageId: message.info.id) : null,
+        for (var index = 0; index < messages.length; index++)
+          storedIds.contains(messages[index].info.id)
+              ? _exactIdentityAnchor(messageId: messages[index].info.id)
+              : argumentTurnAnchors[index],
       ],
     );
     final storedSemanticContexts = _semanticContextFingerprints(
       fingerprints: storedSemanticFingerprints,
       anchorOverrides: [
-        for (final row in storedContextRows)
-          importedIds.contains(row.messageId) ? _exactIdentityAnchor(messageId: row.messageId) : null,
+        for (var index = 0; index < storedContextRows.length; index++)
+          importedIds.contains(storedContextRows[index].messageId)
+              ? _exactIdentityAnchor(messageId: storedContextRows[index].messageId)
+              : storedArgumentTurnAnchors[index],
       ],
     );
     final importedIndexesByContext = <String, List<int>>{};
     for (var index = 0; index < importedSemanticContexts.length; index++) {
-      if (storedIds.contains(messages[index].info.id)) continue;
+      if (storedIds.contains(messages[index].info.id) || argumentTurnPairs.containsKey(index)) continue;
       final fingerprint = importedSemanticContexts[index];
       if (fingerprint != null) importedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
     }
@@ -656,7 +740,7 @@ class ChatHistoryRepository({
     final storedIndexesByContext = <String, List<int>>{};
     for (var index = 0; index < storedContextRows.length; index++) {
       final row = storedContextRows[index];
-      if (importedIds.contains(row.messageId)) continue;
+      if (importedIds.contains(row.messageId) || storedArgumentTurnAnchors.containsKey(index)) continue;
       final fingerprint = storedSemanticContexts[index];
       if (fingerprint != null) storedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
     }
@@ -699,6 +783,11 @@ class ChatHistoryRepository({
           semanticPairs[entry.value[index]] = matchingStoredIndexes[index];
         }
       }
+    }
+
+    for (final MapEntry(key: importedIndex, value: storedIndex) in argumentTurnPairs.entries) {
+      semanticallyImportedStoredIds.add(storedContextRows[storedIndex].messageId);
+      semanticPairs[importedIndex] = storedIndex;
     }
 
     final storedContextIndexById = {

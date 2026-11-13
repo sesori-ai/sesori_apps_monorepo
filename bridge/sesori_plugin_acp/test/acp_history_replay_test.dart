@@ -163,6 +163,52 @@ void main() {
       expect(text, contains("partial reply"));
     });
 
+    test("a replayed turn that ran an advertised command is named, others stay plain", () async {
+      final loading = plugin.getSessionMessages(sessionId);
+      await completeReplayHandshake();
+
+      final loadFrame = await waitForFrame("session/load");
+      void emitUpdate(Map<String, dynamic> update) => fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {"sessionId": sessionId, "update": update},
+      });
+      emitUpdate({
+        "sessionUpdate": "user_message_chunk",
+        "content": {"type": "text", "text": "/review src"},
+      });
+      emitUpdate({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "reviewed"},
+      });
+      emitUpdate({
+        "sessionUpdate": "user_message_chunk",
+        "content": {"type": "text", "text": "/tmp/x is broken"},
+      });
+      // The agent advertises its commands after the history, as Hermes does.
+      emitUpdate({
+        "sessionUpdate": "available_commands_update",
+        "availableCommands": [
+          {"name": "review", "description": "Review code"},
+        ],
+      });
+      await pump();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": loadFrame["id"],
+        "error": {"code": -32602, "message": "Invalid params"},
+      });
+
+      final invocations = [
+        for (final message in await loading)
+          if (message.info case PluginMessageUser(:final invocation)) invocation,
+      ];
+      expect(invocations, const [
+        PluginCommandInvocation(name: "review", source: PluginCommandSource.command, arguments: "src"),
+        null,
+      ]);
+    });
+
     test("getSessionMessages materializes standard images through its dedicated replay client", () async {
       final loading = plugin.getSessionMessages(sessionId);
       await completeReplayHandshake();
@@ -493,4 +539,72 @@ void main() {
       );
     });
   });
+
+  test("a harness's own catalog names its own history's command runs", () async {
+    // DeepSeek-shaped: history and commands come from the harness's own reads,
+    // never from an `available_commands_update` notification.
+    final fake = FakeAcpProcess();
+    final childSessions = AcpChildSessionTracker();
+    final plugin = _OwnCatalogAcpPlugin(
+      id: "own",
+      agentDisplayName: "Own",
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: []),
+      launchDirectory: "/repo",
+      eventMapper: AcpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "own",
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: childSessions,
+      ),
+      childSessionTracker: childSessions,
+      commandTracker: AcpCommandTracker(),
+      processFactory: (_) async => fake,
+    );
+    addTearDown(() async {
+      await plugin.dispose();
+      await fake.close();
+    });
+
+    final [message] = await plugin.getSessionMessages("s1");
+
+    expect(
+      message.info,
+      isA<PluginMessageUser>().having(
+        (info) => info.invocation,
+        "invocation",
+        const PluginCommandInvocation(name: "plan", source: PluginCommandSource.command, arguments: "x"),
+      ),
+    );
+  });
+}
+
+class _OwnCatalogAcpPlugin({
+  required super.id,
+  required super.agentDisplayName,
+  required super.launchSpec,
+  required super.launchDirectory,
+  required super.eventMapper,
+  required super.childSessionTracker,
+  required super.commandTracker,
+  required super.processFactory,
+}) extends TestAcpPlugin {
+  @override
+  Future<List<PluginCommand>> replayCommands({required String sessionId}) async => const [
+    PluginCommand(name: "plan", provider: null, source: PluginCommandSource.command),
+  ];
+
+  @override
+  Future<List<PluginMessageWithParts>> replaySessionMessages({required String sessionId}) async => [
+    PluginMessageWithParts(
+      info: PluginMessage.user(
+        id: "m1",
+        sessionID: sessionId,
+        agent: null,
+        time: null,
+        promptId: null,
+        invocation: null,
+      ),
+      parts: [PluginMessagePart.text(id: "m1-text", sessionID: sessionId, messageID: "m1", text: "/plan x")],
+    ),
+  ];
 }

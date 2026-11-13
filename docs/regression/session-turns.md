@@ -1233,10 +1233,12 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   sends survive only as long as the session-detail cubit is alive.
 - The bridge keeps accepted prompt ids for 30 days; a retry delayed past that
   window runs again.
-- Pi persists API commands and manually typed slash prompts in the same raw
-  shape. Cold replay therefore shows only the slash-command token to avoid
-  exposing bridge-owned arguments; live API-command presentation retains only
-  the exact user-authored arguments.
+- Pi persists a slash command it did not expand (for example a `pi -p
+  "/skill:name args"` run whose skill Pi did not load) exactly as typed, so cold
+  replay shows the command with its arguments. The only bridge-owned argument
+  text, a dedicated worktree's note after the command token, is stripped by
+  bridge core; live API-command presentation retains only the exact
+  user-authored arguments.
 - Beyond the bounded 2026-09-12 authenticated ACP sub-agent projection probe, Antigravity native turn behavior,
   personal OAuth and cross-target reconnect remain unverified; synthetic ACP composition does not substitute for them.
   The probe establishes no inline-subtask, child-session, descendant-lifecycle, or scoped-stop support.

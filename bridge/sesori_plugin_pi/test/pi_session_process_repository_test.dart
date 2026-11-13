@@ -522,7 +522,7 @@ void main() {
       expect(messages.single.parts.single.text, "hook content");
     });
 
-    test("cold replay keeps slash command visible without exposing persisted arguments", () async {
+    test("cold replay keeps an unexpanded slash command with its arguments", () async {
       final process = FakePiProcess();
       final repository = _repository(processFactory: ({required spec}) async => process);
 
@@ -531,12 +531,11 @@ void main() {
       process.emitResponse(
         id: command.requestId,
         command: "get_entries",
-        data: _historyJson(text: "/deploy --token private"),
+        data: _historyJson(text: "/skill:fixture-greeter hi there"),
       );
 
       final messages = await pending;
-      expect(messages.single.parts.single.text, "/deploy");
-      expect(messages.single.parts.single.text, isNot(contains("private")));
+      expect(messages.single.parts.single.text, "/skill:fixture-greeter hi there");
     });
 
     test("decodes exact persisted user-visible text marker", () async {
