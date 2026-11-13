@@ -5,6 +5,26 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
+  test("a plugin-named invocation reaches the shared user message", () {
+    const message = PluginMessage.user(
+      id: "m1",
+      sessionID: "backend-session",
+      agent: null,
+      time: null,
+      promptId: null,
+      invocation: PluginCommandInvocation(name: "fixture-skill", source: PluginCommandSource.skill, arguments: "go"),
+    );
+
+    expect(
+      message.toSharedMessage(sessionId: "s1"),
+      isA<MessageUser>().having(
+        (user) => user.invocation,
+        "invocation",
+        const CommandInvocation(name: "fixture-skill", source: CommandSource.skill, arguments: "go"),
+      ),
+    );
+  });
+
   group("PluginMessagePartsMapper.toSharedMessageWithParts", () {
     test("drops unknown parts instead of throwing", () {
       // Arrange: a backend history message that carries a content block the
@@ -48,6 +68,7 @@ void main() {
             agent: null,
             time: null,
             promptId: null,
+            invocation: null,
           ),
           parts: [
             PluginMessagePart.text(id: "p1", sessionID: "backend-session", messageID: "m1", text: note),
@@ -61,6 +82,7 @@ void main() {
             agent: null,
             time: null,
             promptId: null,
+            invocation: null,
           ),
           parts: [
             PluginMessagePart.text(id: "p3", sessionID: "backend-session", messageID: "m2", text: "$note\nFix it"),

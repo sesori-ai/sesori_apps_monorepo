@@ -13,6 +13,7 @@ import "../models/v2_event.g.dart";
 import "../models/v2_execution_interrupt_reason.dart";
 import "../models/v2_message_filter.dart";
 import "../repositories/opencode_v2_activity_tracker.dart";
+import "../repositories/opencode_v2_command_echo_tracker.dart";
 import "../repositories/opencode_v2_compaction_tracker.dart";
 import "../repositories/opencode_v2_repository.dart";
 import "../repositories/v2_model_mapper.dart";
@@ -25,6 +26,7 @@ class OpenCodeV2Service({
   required final OpenCodeV2Repository _repository,
   required final OpenCodeV2ActivityTracker _tracker,
   required final OpenCodeV2CompactionTracker _compactions,
+  required final OpenCodeV2CommandEchoTracker _commandEchoes,
   required final V2EventMapper _mapper,
   required final V2ModelMapper _modelMapper,
   required final V2FormAnswerMapper _formAnswerMapper,
@@ -109,6 +111,7 @@ class OpenCodeV2Service({
   void reset() {
     _tracker.reset();
     _compactions.reset();
+    _commandEchoes.reset();
   }
 
   void invalidateBaseline() => _tracker.invalidateBaseline();
@@ -312,7 +315,14 @@ class OpenCodeV2Service({
     await _select(sessionId: sessionId, agent: agent, model: model, variant: variant);
     switch (kind) {
       case _V2CommandKind.native:
-        await _repository.sendCommand(sessionId: sessionId, command: command, arguments: arguments);
+        // Its message can arrive before the request returns.
+        if (promptId != null) _commandEchoes.expect(sessionId: sessionId, promptId: promptId);
+        try {
+          await _repository.sendCommand(sessionId: sessionId, command: command, arguments: arguments);
+        } on Object {
+          if (promptId != null) _commandEchoes.forget(sessionId: sessionId, promptId: promptId);
+          rethrow;
+        }
       case _V2CommandKind.skill:
         await _repository.sendSkill(sessionId: sessionId, promptId: promptId, skillId: command, arguments: arguments);
       case _V2CommandKind.compaction:
@@ -671,19 +681,21 @@ class OpenCodeV2Service({
         if (message == null) return const [];
         _compactions.observe(message: message);
         return _mapper.mapMessageSnapshot(message: message);
+      case V2SessionInboxEnqueued(:final sessionID, :final inboxID):
+        _commandEchoes.observeAdmitted(sessionId: sessionID, messageId: inboxID);
+        return const [];
       case V2SessionInboxDelivered():
         final message = await _repository.getMessage(
           sessionId: event.sessionID,
           messageId: event.inboxID,
           directory: directory,
         );
-        return message == null ? const [] : _mapper.mapMessageSnapshot(message: message);
+        return message == null ? const [] : _mapper.mapMessageSnapshot(message: _withCommandPromptId(message: message));
       case V2ServerConnected() ||
           V2SessionCreated() ||
           V2SessionRenamed() ||
           V2SessionDeleted() ||
           V2SessionExecutionStarted() ||
-          V2SessionInboxEnqueued() ||
           V2SessionInboxCancelled() ||
           V2SessionInboxDeliveryChanged() ||
           V2SessionSynthetic() ||
@@ -711,6 +723,16 @@ class OpenCodeV2Service({
           V2SkillUpdated():
         return const [];
     }
+  }
+
+  /// A native command's message carries its prompt once it is matched to it.
+  PluginMessageWithParts _withCommandPromptId({required PluginMessageWithParts message}) {
+    if (message.info case final PluginMessageUser user when user.promptId == null) {
+      if (_commandEchoes.promptIdFor(messageId: user.id) case final promptId?) {
+        return message.copyWith(info: user.copyWith(promptId: promptId));
+      }
+    }
+    return message;
   }
 
   // The generated session marker has no common getter; forms nest their ID.

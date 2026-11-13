@@ -227,6 +227,7 @@ Map<String, dynamic> _$PluginMessageUserToJson(PluginMessageUser instance) =>
       'agent': ?instance.agent,
       'time': ?instance.time?.toJson(),
       'promptId': ?instance.promptId,
+      'invocation': ?instance.invocation?.toJson(),
       'role': instance.$type,
     };
 

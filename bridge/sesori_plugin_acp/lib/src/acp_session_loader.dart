@@ -509,6 +509,7 @@ class AcpReplayCollector({
         agent: null,
         time: draft.time,
         promptId: null,
+        invocation: null,
       );
     }
     return PluginMessage.assistant(

@@ -141,6 +141,7 @@ class const PluginModelMapper({
         agent: agent,
         time: _mapUserMessageTime(time),
         promptId: null,
+        invocation: null,
       ),
       AssistantMessage() => _assistantMessageMapper.map(
         info,

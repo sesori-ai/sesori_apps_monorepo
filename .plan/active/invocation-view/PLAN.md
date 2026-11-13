@@ -343,9 +343,15 @@ Client (`client/module_core`, `client/module_app_ui`):
     `plugin_message_mapper`.
   - OpenCode 2 native commands get a live prompt-id correlation for the
     command's user message, so core stamps them and stable ids carry the
-    stamp across reloads.
+    stamp across reloads. `POST …/command` takes no id, so the plugin's
+    `OpenCodeV2CommandEchoTracker` gives the first inbox message admitted
+    without a Sesori prompt id, while the command request is outstanding,
+    that command's prompt id (accepted: a TUI message admitted in that same
+    moment would take the name).
   - OpenCode 2 skills are named from history.
-  - OpenCode 1 follows its existing correlation if it stays supported.
+  - OpenCode 1 already echoes commands with their prompt id (Sesori names the
+    message id), so it needs no change and the one shared descriptor opts in
+    honestly for both protocols.
   - Opt in the descriptor.
 - **Codex** (after #2541). Name skills from rollout history. Because ids are
   unstable, history fill is the persistence path.
@@ -475,7 +481,7 @@ Deliberately not added:
 | 2 | 🚧 [invocation-view] Name command and skill runs on the user turn from the bridge [step 2/12] | ≤ 1,500 (~400 generated) | — (base `origin/main`) |
 | 3 | ⚙️ [invocation-view] Show command and skill runs as an event card [step 3/12] | ≤ 1,300 (~150 generated l10n) | 2 |
 | 4 | ⚙️ [invocation-view] Pin and list command and skill runs as their card [step 4/12] | ≤ 900 | 3 |
-| 5 | Plugin interface and OpenCode naming | rough | 2, #2541, #2542 merged |
+| 5 | ⚙️ [invocation-view] Name OpenCode command and skill runs [step 5/12] | ≤ 700 | 2, #2541, #2542 merged |
 | 6 | Codex naming from history | rough | 5 |
 | 7 | Pi correlation and naming | rough | 5 |
 | 8 | Claude Code naming from history | rough | 5 |

@@ -8,6 +8,7 @@ void main() {
     test("preserves time on a user message", () {
       const message = PluginMessage.user(
         promptId: null,
+        invocation: null,
         id: "m1",
         sessionID: "s1",
         agent: null,
@@ -117,6 +118,7 @@ void main() {
     test("maps a null time to null", () {
       const message = PluginMessage.user(
         promptId: null,
+        invocation: null,
         id: "m4",
         sessionID: "s1",
         agent: null,
@@ -144,6 +146,7 @@ void main() {
         PluginMessageWithParts(
           info: PluginMessage.user(
             promptId: null,
+            invocation: null,
             id: "m2",
             sessionID: "s1",
             agent: null,
@@ -217,6 +220,7 @@ void main() {
         PluginMessageWithParts(
           info: PluginMessage.user(
             promptId: null,
+            invocation: null,
             id: "m1",
             sessionID: "s1",
             agent: null,

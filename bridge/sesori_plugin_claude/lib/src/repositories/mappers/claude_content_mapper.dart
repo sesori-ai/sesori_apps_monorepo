@@ -130,6 +130,7 @@ final class const ClaudeContentMapper() {
               agent: null,
               time: time,
               promptId: promptId,
+              invocation: null,
             ),
       parts: parts,
     );

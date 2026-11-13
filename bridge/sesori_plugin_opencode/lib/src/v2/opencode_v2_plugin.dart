@@ -12,6 +12,7 @@ import "api/opencode_v2_api.dart";
 import "mappers/v2_form_answer_mapper.dart";
 import "mappers/v2_form_answer_validator.dart";
 import "repositories/opencode_v2_activity_tracker.dart";
+import "repositories/opencode_v2_command_echo_tracker.dart";
 import "repositories/opencode_v2_compaction_tracker.dart";
 import "repositories/opencode_v2_repository.dart";
 import "repositories/v2_message_mapper.dart";
@@ -59,6 +60,7 @@ class OpenCodeV2Plugin._({
         repository: repository,
         tracker: OpenCodeV2ActivityTracker(),
         compactions: OpenCodeV2CompactionTracker(),
+        commandEchoes: OpenCodeV2CommandEchoTracker(),
         mapper: V2EventMapper(modelMapper: modelMapper, messageMapper: messageMapper),
         modelMapper: modelMapper,
         formAnswerMapper: const V2FormAnswerMapper(),

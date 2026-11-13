@@ -416,6 +416,7 @@ void main() {
         const PluginMessageWithParts(
           info: PluginMessage.user(
             promptId: null,
+            invocation: null,
             id: "m1",
             sessionID: "s1",
             agent: null,

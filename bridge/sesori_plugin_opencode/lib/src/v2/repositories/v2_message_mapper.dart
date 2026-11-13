@@ -70,6 +70,7 @@ class const V2MessageMapper() {
           agent: null,
           time: PluginMessageTime(created: message.time.created.toInt(), completed: null),
           promptId: promptIdForMessage(messageId: message.id),
+          invocation: _skillInvocation(message: message),
         );
         parts = [
           PluginMessagePart.text(
@@ -509,6 +510,19 @@ class const V2MessageMapper() {
       if (skill.mention == null) "/${skill.id}",
     if (message.text.isNotEmpty) message.text,
   ].join(" ");
+
+  /// The skill run from the command picker, which OpenCode records as the
+  /// message's one unmentioned skill attachment. A native command leaves no
+  /// such record: its message holds only the expanded template.
+  PluginCommandInvocation? _skillInvocation({required SessionMessageUser message}) =>
+      switch ([...?message.skills?.where((skill) => skill.mention == null)]) {
+        [final skill] => PluginCommandInvocation(
+          name: skill.id,
+          source: PluginCommandSource.skill,
+          arguments: message.text.isEmpty ? null : message.text,
+        ),
+        _ => null,
+      };
 
   String? _truncate({required String? text}) => text != null && text.length > maxToolOutputLength
       ? String.fromCharCodes(text.runes.take(maxToolOutputLength))

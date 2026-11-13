@@ -100,6 +100,24 @@ harness receives its own invocation.
 | DeepSeek, Hermes | Built-in commands only; no user commands or skills over ACP | ✅ `/name args`, live and after a bridge restart. A built-in that runs its arguments as a turn (DeepSeek `/plan <text>`, Hermes `/queue <text>`) adds that turn as its own bubble. Verified live on 2026-11-12 with the DeepSeek adapter 0.2.2 and Hermes 0.21.5. |
 | Grok, Cursor, Copilot, Antigravity | Not checked | Unverified: on 2026-11-12 Grok needed `grok login`, the Cursor CLI was older than the supported minimum, and the Copilot and Antigravity runtimes were not installed on the test machine. |
 
+## Command and skill run names
+
+A newer app shows a command, skill or MCP prompt run as an event card named on
+the user turn (`MessageUser.invocation`), from "Sending…" through reopening
+the session and restarting the bridge. The bridge names the commands it sent
+when the harness echoes the send's prompt id, and keeps the name in its history
+store across reloads. A plugin may also name a run from the harness's own
+record. A harness that doesn't declare `namesCommandInvocations` keeps the
+`/name args` bubble on every app.
+
+| Harness | Native evidence | Sesori availability |
+|---|---|---|
+| OpenCode 2 native command | `POST /api/session/{id}/command` takes no id and answers 204; the command's callback admits its user message to the session inbox (`session.inbox.enqueued`) before the request returns. History keeps only the expanded template | ✅ Named live: the plugin gives the first inbox message without a Sesori prompt id, admitted while the command request is outstanding, the command's prompt id. A message typed in the TUI in that same moment would take the name instead. After a reload or bridge restart the name comes from the bridge's history store, by the stable message id. Verified live on 2026-11-12 with OpenCode 2.2.7. |
+| OpenCode 2 skill | The user message lists the skill under `skills` without a `mention` | ✅ Named live and from OpenCode's own history: a message with exactly one unmentioned skill names it, with the message text as its arguments. Verified live on 2026-11-12 with OpenCode 2.2.7. |
+| OpenCode 1 | Commands and compaction take the message id Sesori names | ✅ Named live from the prompt id; after a reload the name comes from the bridge's history store, as OpenCode 1 message ids are stable. History doesn't name the command. Not verified live: no OpenCode 1 runtime on the test machine. |
+| Codex, Claude Code, ACP family (Cursor, Copilot, Grok, Hermes, DeepSeek, Antigravity, Oh My Pi) | The live echo carries the prompt id | ✅ Named live from the prompt id. Their history doesn't name runs yet, so after a reload the name survives only where the bridge's store matches the replayed row by id or content. Not yet verified live per harness. |
+| Pi | Expanded templates and skills echo without the prompt id | ⬜ Not implemented: keeps the bubble. |
+
 ## Bridge worktree note
 
 A dedicated-worktree session's first prompt or command arguments open with a

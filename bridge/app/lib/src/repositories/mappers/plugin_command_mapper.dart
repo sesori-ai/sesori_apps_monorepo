@@ -10,6 +10,10 @@ extension PluginCommandSourceMapping on PluginCommandSource {
   };
 }
 
+extension PluginCommandInvocationMapping on PluginCommandInvocation {
+  CommandInvocation toShared() => CommandInvocation(name: name, source: source.toShared(), arguments: arguments);
+}
+
 extension PluginCommandMapping on PluginCommand {
   /// Maps to shared [CommandInfo] for the mobile client.
   ///

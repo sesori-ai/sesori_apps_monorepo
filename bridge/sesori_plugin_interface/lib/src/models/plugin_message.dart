@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "plugin_command_invocation.dart";
+
 part "plugin_message.freezed.dart";
 
 part "plugin_message.g.dart";
@@ -341,6 +343,12 @@ sealed class PluginMessage with _$PluginMessage {
     /// clients can swap the queued bubble for this message atomically.
     /// History reads that cannot reconstruct it carry null.
     required String? promptId,
+
+    /// The command, skill or MCP prompt this message ran, when the backend's
+    /// own record names it. Bridge core names the commands it sent itself, so
+    /// a plugin sets this only from what its backend recorded; its value wins
+    /// over the bridge's.
+    required PluginCommandInvocation? invocation,
   }) = PluginMessageUser;
 
   const factory assistant({

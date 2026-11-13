@@ -33,6 +33,7 @@ void main() {
       );
       const messageInfo = PluginMessage.user(
         promptId: null,
+        invocation: null,
         id: "message",
         sessionID: "backend-session",
         agent: null,

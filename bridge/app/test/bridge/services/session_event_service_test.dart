@@ -136,7 +136,14 @@ void main() {
       );
       const invocation = CommandInvocation(name: "review", source: CommandSource.skill, arguments: "src");
       BridgeSseMessageUpdated userTurn({required String? promptId}) => BridgeSseMessageUpdated(
-        info: PluginMessage.user(promptId: promptId, id: "m1", sessionID: "s1", agent: null, time: null),
+        info: PluginMessage.user(
+          promptId: promptId,
+          invocation: null,
+          id: "m1",
+          sessionID: "s1",
+          agent: null,
+          time: null,
+        ),
       );
       CommandInvocation? invocationOf(NormalizedBridgeEvent event) => switch (event) {
         NormalizedMessageEvent(message: MessageUser(:final invocation)) ||
@@ -998,6 +1005,7 @@ void main() {
       const message = BridgeSseMessageUpdated(
         info: PluginMessage.user(
           promptId: null,
+          invocation: null,
           id: "backend-message",
           sessionID: "backend-root",
           agent: null,

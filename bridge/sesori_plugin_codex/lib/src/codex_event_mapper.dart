@@ -526,6 +526,7 @@ class CodexEventMapper({
             // item caused by a bridge send names its prompt; one typed in the
             // Codex CLI carries none.
             promptId: _optionalString(map: item, key: "clientId"),
+            invocation: null,
           ),
           text: _userContentMapper.mapSkillInvocation(
             text: _userContentMapper.mapSubmittedTextParts(
