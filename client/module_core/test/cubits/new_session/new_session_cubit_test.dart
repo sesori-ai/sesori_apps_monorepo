@@ -1356,7 +1356,7 @@ void main() {
       cubit.stageCommand(command);
       expect(cubit.state.agentModelData?.stagedCommand, command);
       cubit.clearStagedCommand();
-      cubit.selectModel(providerID: "other-provider", modelID: "other-model");
+      cubit.selectModel(providerID: "other-provider", modelID: "other-model", variant: null);
 
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
       expect(cubit.state.agentModelData?.agentModel, modelBeforeSend);
@@ -1757,6 +1757,7 @@ void main() {
         cubit.selectModel(
           providerID: invalidSelection.providerID,
           modelID: invalidSelection.modelID,
+          variant: null,
         );
 
         expect(cubit.state.agentModelData?.agentModel, selectionBefore);
@@ -1803,7 +1804,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectModel(providerID: "anthropic", modelID: "claude-3");
+        cubit.selectModel(providerID: "anthropic", modelID: "claude-3", variant: null);
       },
       expect: () => [
         composingWith<NewSessionPhaseIdle>().having(
@@ -1855,7 +1856,7 @@ void main() {
       addTearDown(cubit.close);
       await waitForComposer(cubit);
 
-      cubit.selectModel(providerID: "anthropic", modelID: "claude-3");
+      cubit.selectModel(providerID: "anthropic", modelID: "claude-3", variant: null);
 
       expect(
         cubit.state.agentModelData?.agentModel,
@@ -1968,7 +1969,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectModel(providerID: "openai", modelID: "gpt-5");
+        cubit.selectModel(providerID: "openai", modelID: "gpt-5", variant: null);
       },
       expect: () => [
         composingWith<NewSessionPhaseIdle>().having(
@@ -2235,7 +2236,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        cubit.selectModel(providerID: "anthropic", modelID: "claude-3");
+        cubit.selectModel(providerID: "anthropic", modelID: "claude-3", variant: null);
       },
       verify: (_) {
         final saved = selectionTracker.read(pluginId: "plugin-1");
@@ -2245,6 +2246,70 @@ void main() {
         expect(saved?.variant, isNull);
       },
     );
+
+    test("selectModel with a variant wins over the remembered one and becomes the remembered one", () async {
+      ProviderModel model({required String id}) => ProviderModel(
+        fastMode: null,
+        id: id,
+        providerID: "openai",
+        name: id,
+        variants: const ["low", "high"],
+        defaultVariant: null,
+        family: null,
+        releaseDate: null,
+      );
+      selectionTracker.recordVariant(
+        pluginId: "plugin-1",
+        variant: const NewSessionVariantIntent(id: "low"),
+      );
+      when(
+        () => mockSessionApi.listProviders(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          ProviderListResponse(
+            connectedOnly: false,
+            items: [
+              ProviderInfo(
+                id: "openai",
+                name: "OpenAI",
+                defaultModelID: "gpt-4",
+                models: {
+                  "gpt-4": model(id: "gpt-4"),
+                  "gpt-5": model(id: "gpt-5"),
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      cubit.selectModel(
+        providerID: "openai",
+        modelID: "gpt-5",
+        variant: const SessionVariant(id: "high"),
+      );
+
+      expect(
+        cubit.state.agentModelData?.agentModel,
+        const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+      );
+      expect(selectionTracker.read(pluginId: "plugin-1")?.variant?.id, "high");
+
+      // A later switch without a variant does not bring back the older level.
+      cubit.selectModel(providerID: "openai", modelID: "gpt-4", variant: null);
+
+      expect(
+        cubit.state.agentModelData?.agentModel,
+        const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+      );
+      expect(selectionTracker.read(pluginId: "plugin-1")?.variant?.id, "high");
+    });
 
     blocTest<NewSessionCubit, NewSessionState>(
       "restores a persisted model + variant on load, overriding the default",

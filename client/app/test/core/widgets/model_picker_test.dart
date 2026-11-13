@@ -62,7 +62,8 @@ const _claudeNew = AgentModel(providerID: "anthropic", modelID: "claude-new", va
 Widget _buildApp({
   required AgentModel selected,
   required PregoInteractionMode mode,
-  required void Function({required String providerID, required String modelID}) onModelSelected,
+  required void Function({required String providerID, required String modelID, required SessionVariant? variant})
+  onModelSelected,
 }) {
   return PregoInteractionScope(
     mode: mode,
@@ -121,7 +122,7 @@ void main() {
       _buildApp(
         selected: _claudeNew,
         mode: PregoInteractionMode.touch,
-        onModelSelected: ({required providerID, required modelID}) {},
+        onModelSelected: ({required providerID, required modelID, required variant}) {},
       ),
     );
     await _openPicker(tester: tester);
@@ -144,7 +145,7 @@ void main() {
   });
 
   testWidgets("an open picker follows a selection made elsewhere and keeps its search", (tester) async {
-    void onModelSelected({required String providerID, required String modelID}) {}
+    void onModelSelected({required String providerID, required String modelID, required SessionVariant? variant}) {}
     await tester.pumpWidget(
       _buildApp(selected: _claudeNew, mode: PregoInteractionMode.touch, onModelSelected: onModelSelected),
     );
@@ -173,7 +174,7 @@ void main() {
       _buildApp(
         selected: _claudeNew,
         mode: PregoInteractionMode.touch,
-        onModelSelected: ({required providerID, required modelID}) {},
+        onModelSelected: ({required providerID, required modelID, required variant}) {},
       ),
     );
     await _openPicker(tester: tester);
@@ -193,7 +194,8 @@ void main() {
       _buildApp(
         selected: _claudeNew,
         mode: PregoInteractionMode.touch,
-        onModelSelected: ({required providerID, required modelID}) => selected.add((providerID, modelID)),
+        onModelSelected: ({required providerID, required modelID, required variant}) =>
+            selected.add((providerID, modelID)),
       ),
     );
     await _openPicker(tester: tester);
@@ -211,7 +213,8 @@ void main() {
       _buildApp(
         selected: _claudeNew,
         mode: PregoInteractionMode.pointer,
-        onModelSelected: ({required providerID, required modelID}) => selected.add((providerID, modelID)),
+        onModelSelected: ({required providerID, required modelID, required variant}) =>
+            selected.add((providerID, modelID)),
       ),
     );
     await _openPicker(tester: tester);
@@ -251,7 +254,8 @@ void main() {
       _buildApp(
         selected: _claudeNew,
         mode: PregoInteractionMode.pointer,
-        onModelSelected: ({required providerID, required modelID}) => selected.add((providerID, modelID)),
+        onModelSelected: ({required providerID, required modelID, required variant}) =>
+            selected.add((providerID, modelID)),
       ),
     );
     await _openPicker(tester: tester);
@@ -268,7 +272,7 @@ void main() {
       _buildApp(
         selected: _claudeNew,
         mode: PregoInteractionMode.touch,
-        onModelSelected: ({required providerID, required modelID}) {},
+        onModelSelected: ({required providerID, required modelID, required variant}) {},
       ),
     );
     await _openPicker(tester: tester);

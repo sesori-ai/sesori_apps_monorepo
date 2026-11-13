@@ -81,6 +81,24 @@ class const SessionSelectionCalculator() {
     return variants.any((variant) => variant.id == declared) ? declared : variants.firstOrNull?.id;
   }
 
+  /// The variant a switch to [model] runs at: the first of [candidates] the
+  /// model offers, otherwise [defaultVariant].
+  ///
+  /// [candidates] is a preference order, typically the variant the user picked
+  /// together with the model, then the one the previous model ran at. Nulls
+  /// are skipped, so a caller may pass a value it does not have.
+  String? switchedModelVariant({
+    required List<ProviderInfo> providers,
+    required AgentModel model,
+    required List<String?> candidates,
+  }) {
+    final variants = availableVariants(providers: providers, model: model);
+    return candidates.firstWhereOrNull(
+          (candidate) => candidate != null && variants.any((variant) => variant.id == candidate),
+        ) ??
+        defaultVariant(providers: providers, model: model);
+  }
+
   /// The fast mode [model] offers, or null when it has none or the catalog no
   /// longer offers the model.
   FastModeSupport? fastModeSupport({

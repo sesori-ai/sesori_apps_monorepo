@@ -13,7 +13,8 @@ class const ModelPicker({
   /// Sorted and grouped by the caller, which keeps them across rebuilds.
   required final List<ModelPickerSection> sections,
   required final AgentModel? selected,
-  required final void Function({required String providerID, required String modelID}) onModelSelected,
+  required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
+  onModelSelected,
   required final VoidCallback onClose,
 }) extends StatefulWidget {
   @override
@@ -46,7 +47,7 @@ class _ModelPickerState() extends State<ModelPicker> {
         rows.add(
           PregoPickerSearchOption(
             isSelected: section.providerID == selected?.providerID && model.modelID == selected?.modelID,
-            onPick: () => widget.onModelSelected(providerID: section.providerID, modelID: model.modelID),
+            onPick: () => widget.onModelSelected(providerID: section.providerID, modelID: model.modelID, variant: null),
             child: _ModelLabel(name: model.displayName, family: model.family),
           ),
         );

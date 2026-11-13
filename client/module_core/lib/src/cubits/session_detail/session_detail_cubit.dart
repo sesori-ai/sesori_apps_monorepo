@@ -3631,20 +3631,23 @@ class SessionDetailCubit(
     );
   }
 
-  void selectModel({required String providerID, required String modelID}) {
+  /// Switches to the model, at [variant] when the model offers it, otherwise
+  /// at the previous model's variant when offered, otherwise at its default.
+  void selectModel({required String providerID, required String modelID, required SessionVariant? variant}) {
     if (_refuseWhenInteractionBlocked(action: "select a model")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
-    final previousVariant = current.selectedAgentModel?.variant;
     final newModel = AgentModel(providerID: providerID, modelID: modelID, variant: null);
     final availableVariants = _selection.availableVariants(
       providers: current.availableProviders,
       model: newModel,
     );
-    final variant = availableVariants.any((v) => v.id == previousVariant)
-        ? previousVariant
-        : _selection.defaultVariant(providers: current.availableProviders, model: newModel);
+    final resolvedVariant = _selection.switchedModelVariant(
+      providers: current.availableProviders,
+      model: newModel,
+      candidates: [variant?.id, current.selectedAgentModel?.variant],
+    );
 
     final agentModel = _resolveAgentModel(
       agents: current.availableAgents,
@@ -3655,7 +3658,7 @@ class SessionDetailCubit(
     if (isClosed) return;
     emit(
       current.copyWith(
-        selectedAgentModel: agentModel?.copyWith(variant: variant),
+        selectedAgentModel: agentModel?.copyWith(variant: resolvedVariant),
         availableVariants: availableVariants,
       ),
     );

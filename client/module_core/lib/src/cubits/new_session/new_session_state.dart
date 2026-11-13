@@ -4,7 +4,9 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../errors/remote_failure_reason.dart";
 import "../../foundation/models/composer/new_session_submission_snapshot.dart";
 import "../../foundation/models/session_launch/launch_follow_up.dart";
+import "../../foundation/models/session_options/model_orbits.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
+import "../../services/model_orbits_calculator.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/new_session_options_service.dart";
@@ -205,12 +207,17 @@ typedef AgentModelData = ({
   /// Whether the session starts in fast mode.
   bool runsFastMode,
   FastModeControl fastModeControl,
+
+  /// The selected model and effort as orbits, or null when the catalog is not
+  /// orbit-shaped.
+  ModelOrbits? modelOrbits,
   NewSessionProjectWorktreeCapability projectWorktreeCapability,
 });
 
 extension NewSessionComposeConfigAgentModel on NewSessionComposeConfig {
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
   static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
+  static const ModelOrbitsCalculator _orbits = ModelOrbitsCalculator();
 
   AgentModelData get agentModelData {
     final data = options.data;
@@ -240,6 +247,7 @@ extension NewSessionComposeConfigAgentModel on NewSessionComposeConfig {
         support: _selection.fastModeSupport(providers: providers, model: agentModel),
         fastMode: runsFastMode,
       ),
+      modelOrbits: _orbits.orbits(providers: providers, selected: agentModel),
       projectWorktreeCapability: projectWorktreeCapability,
     );
   }

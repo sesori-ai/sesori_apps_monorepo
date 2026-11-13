@@ -380,10 +380,15 @@ class NewSessionOptionsService({
     );
   }
 
+  /// Switches to the model at the first variant it offers among: [variant]
+  /// (picked together with the model), the remembered [variantIntent], the
+  /// previous model's variant, and the variant an agent declares for this
+  /// model; otherwise at the model's default.
   NewSessionOptionsData? selectModel({
     required NewSessionOptionsData options,
     required String providerId,
     required String modelId,
+    required SessionVariant? variant,
     required NewSessionVariantIntent? variantIntent,
   }) {
     final requested = AgentModel(providerID: providerId, modelID: modelId, variant: null);
@@ -394,19 +399,14 @@ class NewSessionOptionsService({
           (agent) => agent.model?.providerID == providerId && agent.model?.modelID == modelId,
         )
         ?.model;
-    final variants = _selection.availableVariants(providers: options.providers, model: requested);
-    final previousVariant = options.selectedAgentModel?.variant;
-    final agentVariant = agentModel?.variant;
-    final selectedVariant = previousVariant != null && variants.any((variant) => variant.id == previousVariant)
-        ? previousVariant
-        : agentVariant != null && variants.any((variant) => variant.id == agentVariant)
-        ? agentVariant
-        : _selection.defaultVariant(providers: options.providers, model: requested);
-    final selectedAgentModel = _applyVariantIntent(
-      providers: options.providers,
-      model: requested.copyWith(variant: selectedVariant),
-      variantIntent: variantIntent,
+    final selectedAgentModel = requested.copyWith(
+      variant: _selection.switchedModelVariant(
+        providers: options.providers,
+        model: requested,
+        candidates: [variant?.id, variantIntent?.id, options.selectedAgentModel?.variant, agentModel?.variant],
+      ),
     );
+    final variants = _selection.availableVariants(providers: options.providers, model: requested);
 
     return NewSessionOptionsData(
       agents: options.agents,
