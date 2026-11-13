@@ -81,6 +81,17 @@ residue is cosmetic and is not migrated.
 | OpenCode, Codex, Pi | Skills exposed as `PluginCommandSource.skill` commands, no injected body record (OpenCode 2 attaches the skill to the prompt and keeps its body out of the user message) | Not applicable: no harness-authored user turn to hide. |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | None | Not applicable: the ACP seam has no skill concept and no harness-authored user turn. |
 
+## Command and skill bubbles
+
+A command or skill run from the command picker should leave the user's bubble
+showing what they typed, `/name args`, live and after history load, while the
+harness receives its own invocation.
+
+| Harness | Native evidence | Sesori availability |
+|---|---|---|
+| OpenCode 2 skill | The prompt's user message keeps only the typed text and lists the skill under `skills` without a `mention` | ✅ `/skill args`, live and after history load. Verified live on 2026-11-12 with OpenCode 2.2.6. |
+| OpenCode 2 native command | `POST /api/session/{id}/command` takes no id or metadata, and the stored user message holds only the expanded template | ⬜ Not supported: the bubble shows the expanded template, live and after history load, because nothing in the message names the command. Verified live on 2026-11-12 with OpenCode 2.2.6. |
+
 ## Bridge worktree note
 
 A dedicated-worktree session's first prompt or command arguments open with a
