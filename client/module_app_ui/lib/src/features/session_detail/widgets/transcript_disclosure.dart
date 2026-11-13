@@ -172,9 +172,13 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
     final double shift;
     if (growth > 0) {
       final rowBottom = row.localToGlobal(Offset(0, row.size.height)).dy;
-      // The list's bottom padding keeps the newest row clear of the floating
-      // composer, so that strip is no room.
-      final covered = context.findAncestorRenderObjectOfType<RenderSliverPadding>()?.resolvedPadding?.bottom ?? 0;
+      // The list's bottom paddings (its own gap and the floating controls'
+      // height) keep the newest row clear of the composer, so that strip is
+      // no room.
+      var covered = 0.0;
+      for (var node = row.parent; node != null && node != viewport; node = node.parent) {
+        if (node is RenderSliverPadding) covered += node.resolvedPadding?.bottom ?? 0;
+      }
       final viewportBottom = viewport.localToGlobal(Offset(0, viewport.size.height)).dy - covered;
       shift = min(growth, max(0, viewportBottom - rowBottom));
     } else {

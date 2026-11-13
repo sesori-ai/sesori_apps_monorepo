@@ -3561,6 +3561,76 @@ void main() {
     );
   });
 
+  testWidgets("the permission card stays folded from one sheet to the next until a sheet is dismissed", (tester) async {
+    const second = SesoriPermissionAsked(
+      requestID: "permission-2",
+      sessionID: "session-1",
+      displaySessionId: null,
+      tool: "delete_build_folder",
+      description: "Allow deleting the build folder",
+    );
+    const third = SesoriPermissionAsked(
+      requestID: "permission-3",
+      sessionID: "session-1",
+      displaySessionId: null,
+      tool: "push_release_tag",
+      description: "Allow pushing the release tag",
+    );
+    final permissions = StreamController<SesoriPermissionAsked>.broadcast();
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(permissions.close);
+    addTearDown(states.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    void emit(List<SesoriPermissionAsked> pending) {
+      state = state.copyWith(pendingPermissions: pending);
+      states.add(state);
+    }
+
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => states.stream);
+    when(() => cubit.permissionStream).thenAnswer((_) => permissions.stream);
+    when(
+      () => cubit.replyToPermission(requestId: "permission-1", sessionId: "session-1", reply: PermissionReply.once),
+    ).thenAnswer((_) async {
+      emit(const [second, third]);
+      return true;
+    });
+    final card = find.byType(SessionDetailNeedsYouCard);
+
+    /// Pumps through to the next sheet, the card never showing on the way.
+    Future<void> expectCardFoldedUntil(String tool) async {
+      for (var frame = 0; frame < 40; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(card, findsNothing, reason: "frame $frame");
+      }
+      await tester.pumpAndSettle();
+      expect(find.text(tool), findsOneWidget);
+      expect(card, findsNothing);
+    }
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    emit(const [_permission, second, third]);
+    permissions.add(_permission);
+    await tester.pumpAndSettle();
+    expect(find.text("write_release_notes"), findsOneWidget);
+    expect(card, findsNothing);
+
+    // Answered: the next request's sheet opens over a still card row.
+    await tester.tap(find.text("Allow"));
+    await expectCardFoldedUntil("delete_build_folder");
+
+    // Withdrawn, as by another device: the same.
+    emit(const [third]);
+    await expectCardFoldedUntil("push_release_tag");
+
+    // Dismissed unanswered: the card comes back.
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
+    expect(find.text("push_release_tag"), findsNothing);
+    expect(card, findsOneWidget);
+  });
+
   testWidgets("presents a queued permission after answering an active question", (tester) async {
     final questionController = StreamController<SesoriQuestionAsked>.broadcast();
     final permissionController = StreamController<SesoriPermissionAsked>.broadcast();
@@ -6453,15 +6523,16 @@ void main() {
     ];
     const sixLines = "line 1\nline 2\nline 3\nline 4\nline 5\nline 6";
 
+    double newestRowBottom() => [
+      for (final row in find.byType(TranscriptRowReporter).evaluate())
+        if (row.renderObject case final RenderBox box when box.hasSize)
+          box.localToGlobal(Offset(0, box.size.height)).dy,
+    ].reduce(math.max);
+
     /// The composer's height and how far its top stands above the newest row.
     ({double height, double gap}) measure({required WidgetTester tester}) {
       final controls = find.ancestor(of: find.byType(PromptInput), matching: find.byType(PregoPageHaloLayer));
-      final newestRowBottom = [
-        for (final row in find.byType(TranscriptRowReporter).evaluate())
-          if (row.renderObject case final RenderBox box when box.hasSize)
-            box.localToGlobal(Offset(0, box.size.height)).dy,
-      ].reduce(math.max);
-      return (height: tester.getSize(controls).height, gap: tester.getTopLeft(controls).dy - newestRowBottom);
+      return (height: tester.getSize(controls).height, gap: tester.getTopLeft(controls).dy - newestRowBottom());
     }
 
     Future<StreamController<SessionDetailState>> pumpSession({
@@ -6570,14 +6641,22 @@ void main() {
         final before = measure(tester: tester);
 
         /// The controls' heights on the frames between, each holding the gap.
+        /// The transcript follows the card by its inset alone: its list is
+        /// not rebuilt on the frames the card moves.
         Future<List<double>> expectGapHeld() async {
           final heights = <double>[];
+          final lists = <Widget>[];
           for (var frame = 0; frame < 30; frame++) {
             await tester.pump(const Duration(milliseconds: 16));
             final now = measure(tester: tester);
             expect(now.gap, moreOrLessEquals(before.gap, epsilon: 0.01), reason: "frame $frame");
             heights.add(now.height);
+            final list = tester.widget(find.byType(SessionDetailMessageList));
+            if (!lists.any((shown) => identical(shown, list))) lists.add(list);
           }
+          // Once for the new state; a leaving card's state catches up once more
+          // after it has folded.
+          expect(lists.length, lessThanOrEqualTo(2), reason: "The transcript rebuilt while the card moved.");
           return heights;
         }
 
@@ -6592,6 +6671,91 @@ void main() {
         final leaving = await expectGapHeld();
         expect(measure(tester: tester).height, moreOrLessEquals(before.height), reason: "The card has gone.");
         expect(leaving.where(between), isNotEmpty, reason: "The card folds away.");
+      });
+
+      testWidgets("a permission sheet takes its card as it opens, and answering it moves nothing, $pane", (
+        tester,
+      ) async {
+        final permissions = StreamController<SesoriPermissionAsked>.broadcast();
+        addTearDown(permissions.close);
+        when(() => cubit.permissionStream).thenAnswer((_) => permissions.stream);
+        final states = await pumpSession(
+          tester: tester,
+          draft: "",
+          mode: ChatInputMode.textFirst,
+          size: config.size,
+          pageChrome: config.pageChrome,
+        );
+        final loaded = cubit.state;
+        if (loaded is! SessionDetailLoaded) fail("The session should be loaded.");
+        var current = loaded.copyWith(pendingPermissions: const [_permission]);
+        when(() => cubit.state).thenAnswer((_) => current);
+        when(
+          () => cubit.replyToPermission(requestId: "permission-1", sessionId: "session-1", reply: PermissionReply.once),
+        ).thenAnswer((_) async {
+          // As the cubit does, the request resolves before the reply is sent.
+          current = loaded;
+          states.add(current);
+          return true;
+        });
+
+        states.add(current);
+        permissions.add(_permission);
+        await tester.pumpAndSettle();
+        expect(find.text("write_release_notes"), findsOneWidget);
+        expect(find.byType(SessionDetailNeedsYouCard), findsNothing, reason: "The sheet offers the request.");
+        final resting = newestRowBottom();
+
+        await tester.tap(find.text("Allow"));
+        for (var frame = 0; frame < 30; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(newestRowBottom(), resting, reason: "frame $frame");
+        }
+        expect(find.text("write_release_notes"), findsNothing);
+        expect(find.byType(SessionDetailNeedsYouCard), findsNothing);
+      });
+
+      testWidgets("a turn ending as its request goes waits for the card to fold, $pane", (tester) async {
+        final states = await pumpSession(
+          tester: tester,
+          draft: "",
+          mode: ChatInputMode.textFirst,
+          size: config.size,
+          pageChrome: config.pageChrome,
+        );
+        final loaded = cubit.state;
+        if (loaded is! SessionDetailLoaded) fail("The session should be loaded.");
+        states.add(loaded.copyWith(pendingPermissions: const [_permission]));
+        await tester.pumpAndSettle();
+        expect(find.byType(SessionDetailNeedsYouCard), findsOneWidget);
+
+        states.add(
+          loaded.copyWith(
+            messages: [
+              ...transcript,
+              const MessageWithParts(
+                info: Message.user(
+                  promptId: null,
+                  id: "user-12",
+                  sessionID: "session-1",
+                  agent: null,
+                  time: null,
+                ),
+                parts: [
+                  MessagePart.text(id: "part-12", sessionID: "session-1", messageID: "user-12", text: "Prompt 12"),
+                ],
+              ),
+            ],
+          ),
+        );
+        final prompt12 = find.text("Prompt 12", skipOffstage: false);
+        for (var frame = 0; frame < 12; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(prompt12, findsNothing, reason: "frame $frame");
+        }
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(prompt12, findsWidgets, reason: "The turn's change follows the fold.");
+        await tester.pumpAndSettle();
       });
     });
 

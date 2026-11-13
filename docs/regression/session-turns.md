@@ -128,6 +128,7 @@ defaults and queued client sends coherent.
   down as it rises, and its bubble is held hidden until they land (see `voice-input.md`).
 - The newest row keeps its gap to the composer on every frame the bottom controls change height: through a send, a
   composer growing or shrinking with its text, a needs-you card coming or going, and the first frame of the transcript.
+  Those frames move the rows through the transcript's bottom inset without rebuilding them.
 - A send with the keyboard down, typed or dictated onto a draft, closes the composer as the send's row rises, on the
   rise's timing: the rows above move one way and stop with it, with no drop afterwards. The layout it leaves fades inside
   the closing box, cut along its top. Under reduced motion the composer's height lands in one frame, and the layout

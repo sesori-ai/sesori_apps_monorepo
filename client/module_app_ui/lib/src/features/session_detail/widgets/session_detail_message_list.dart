@@ -122,13 +122,6 @@ class const SessionDetailMessageList({
   required final void Function({required Offset focalPoint}) onPinchIn,
   final String? retryErrorMessage,
 
-  /// Height of the floating composer overlaying the list's bottom edge. Used
-  /// both as extra bottom scroll padding — so the newest message rests clear of
-  /// the composer while older content scrolls up behind its fade — and to lift
-  /// the "jump to latest" pill above the composer. Zero in the read-only
-  /// variant, which renders no composer.
-  final double bottomInset = 0,
-
   /// Top inset (status bar + nav bar height) the list scrolls behind. Added as
   /// extra top scroll padding so the oldest message rests clear of the
   /// transparent bar at full scroll, while content in between scrolls up behind
@@ -710,7 +703,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       cutOpenerIds: pins.cutOpenerIds,
       compactHeight: pins.compactHeight,
       pinTop: pinTop,
-      viewportBottom: pins.size.height - widget.bottomInset,
+      viewportBottom: pins.size.height - TranscriptBottomInset.peek(context),
     );
     pins.stickyLayout = layout;
     _promptSlots.hideOnly(openerIds: layout.hiddenOpenerIds);
@@ -1130,12 +1123,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
     return FollowDetachScrollable(
       tracker: _follow,
-      detachedOverlayBuilder: (ctx) => JumpToEdgePill(
-        tapTargetKey: _kJumpToLatestKey,
-        label: loc.sessionDetailJumpToLatest,
-        onTap: () => _follow.animateToEdge(),
-        // Lift the pill clear of the floating composer overlaid below.
-        bottomInset: widget.bottomInset,
+      detachedOverlayBuilder: (ctx) => Builder(
+        builder: (context) => JumpToEdgePill(
+          tapTargetKey: _kJumpToLatestKey,
+          label: loc.sessionDetailJumpToLatest,
+          onTap: () => _follow.animateToEdge(),
+          // Lift the pill clear of the floating composer overlaid below.
+          bottomInset: TranscriptBottomInset.of(context),
+        ),
       ),
       // Horizontal "peek" gesture: slide the transcript left to reveal each
       // message's timestamp on the right. This participates in the gesture
@@ -1184,7 +1179,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                     start: widget.horizontalInset,
                     end: widget.horizontalInset,
                     top: 8 + widget.topInset,
-                    bottom: 8 + widget.bottomInset,
+                    // The list view adds the floating controls' height itself.
+                    bottom: 8,
                   ),
                   keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
                   physics: const AlwaysScrollableScrollPhysics(),
