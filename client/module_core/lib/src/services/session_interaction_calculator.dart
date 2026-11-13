@@ -61,7 +61,8 @@ class const SessionInteractionCalculator() {
     }
 
     final displayName = metadata.setup.displayName;
-    final actionHint = metadata.actionHint ?? metadata.setup.actionHint;
+    // A specific start failure reason replaces the generic console hint.
+    final actionHint = metadata.failureReason ?? metadata.actionHint ?? metadata.setup.actionHint;
     if (metadata.runtimeState == PluginRuntimeState.disabled) {
       return SessionInteractionState.blocked(
         reason: SessionInteractionBlockedReason.disabled,

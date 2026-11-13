@@ -160,6 +160,24 @@ void main() {
           .having((state) => state.refreshError, "refreshError", same(error)),
     );
   });
+
+  test("a failed start's specific reason replaces the generic console hint", () {
+    const generic = "Check the bridge console and restart the bridge to retry this plugin.";
+    for (final (failureReason, expected) in [("Remove the flag.", "Remove the flag."), (null, generic)]) {
+      final result = calculator.calculate(
+        pluginId: "harness",
+        managementResult: managementFixture(
+          setup: PluginSetupState.ready,
+          runtime: PluginRuntimeState.failed,
+          runtimeActionHint: generic,
+          failureReason: failureReason,
+        ),
+        connectionStatus: connected,
+        previous: null,
+      );
+      expect(result, isA<SessionInteractionBlocked>().having((state) => state.actionHint, "actionHint", expected));
+    }
+  });
 }
 
 PluginManagementLoadResult managementFixture({
@@ -167,6 +185,8 @@ PluginManagementLoadResult managementFixture({
   required PluginRuntimeState runtime,
   String pluginId = "harness",
   String actionHint = "Open harness settings",
+  String? runtimeActionHint,
+  String? failureReason,
 }) => PluginManagementLoadResult.supported(
   response: PluginManagementResponse(
     snapshotToken: "test",
@@ -188,8 +208,8 @@ PluginManagementLoadResult managementFixture({
         hasIdleTimeoutOverride: false,
         managementCapabilities: const {},
         mcpScopes: null,
-        actionHint: null,
-        failureReason: null,
+        actionHint: runtimeActionHint,
+        failureReason: failureReason,
       ),
     ],
   ),

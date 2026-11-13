@@ -877,6 +877,25 @@ void main() {
     });
   }
 
+  testWidgets("failed detail hides the generic hint only when a specific reason exists", (tester) async {
+    phone(tester: tester);
+    const generic = "Check the bridge console and restart the bridge to retry this plugin.";
+    const reason = "Remove --opencode-no-password to start OpenCode 2.";
+    final failed = _plugin(
+      id: "failed",
+      runtime: PluginRuntimeState.failed,
+      setup: PluginSetupState.ready,
+    ).copyWith(actionHint: generic);
+    for (final (failureReason, showsHint) in [(reason, false), (null, true)]) {
+      publish(plugins: [failed.copyWith(failureReason: failureReason)]);
+      await tester.pumpWidget(app(detailId: "failed"));
+      await tester.pumpAndSettle();
+
+      expect(find.text(reason), failureReason == null ? findsNothing : findsOneWidget);
+      expect(find.text(generic), showsHint ? findsOneWidget : findsNothing);
+    }
+  });
+
   testWidgets("failed detail retains truthful unavailable status and offers a functional retry", (tester) async {
     phone(tester: tester);
     publish(

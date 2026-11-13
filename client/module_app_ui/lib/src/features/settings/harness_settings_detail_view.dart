@@ -195,7 +195,9 @@ class const _HarnessControlCard({
       PluginAuthenticationPresentationCancelling() ||
       PluginAuthenticationPresentationCancellingUncertain() => true,
     };
-    final actionHint = plugin.actionHint ?? plugin.setup.actionHint;
+    final failureReason = _failureReason(plugin: plugin, install: install);
+    // A specific start failure reason replaces the generic console hint.
+    final actionHint = failureReason == null ? plugin.actionHint ?? plugin.setup.actionHint : null;
     // The service reports an install as in-flight from the moment its command
     // is issued until the bridge's terminal event, so this covers the window
     // before the first progress event without borrowing the generic action
@@ -229,15 +231,16 @@ class const _HarnessControlCard({
                   title: loc.harnessesStatusLabel,
                   value: _HarnessStatus(plugin: plugin, install: install, overview: false),
                 ),
-                if (_failureReason(plugin: plugin, install: install) case final reason?)
-                  PregoGroupedRow(key: Key("harness_management_failure_reason_$pluginId"), title: Text(reason)),
+                if (failureReason != null)
+                  PregoGroupedRow(key: Key("harness_management_failure_reason_$pluginId"), title: Text(failureReason)),
                 if (runtimeVersion != null) _FactRow(title: loc.harnessesVersionLabel, value: Text(runtimeVersion)),
                 if (showWork)
                   _FactRow(
                     title: loc.harnessesActivityLabel,
                     value: Text(_workStatus(context: context, state: plugin.workState)),
                   ),
-                if (actionHint != null) PregoGroupedRow(title: Text(actionHint)),
+                if (actionHint != null)
+                  PregoGroupedRow(key: Key("harness_management_action_hint_$pluginId"), title: Text(actionHint)),
                 if (showExternal)
                   PregoGroupedRow(
                     key: Key("harness_management_external_$pluginId"),
