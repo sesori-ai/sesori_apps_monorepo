@@ -31,7 +31,9 @@ reconnect or restart.
   a failed check, an archived session, a store-only read and an older page all
   serve the store with the harness untouched. Failure signal: an outside turn
   missing after reopening a Pi, Claude Code, Codex or OpenCode session, or an
-  unchanged session waking its harness on every open. Per-harness rules are in
+  unchanged session waking its harness on every open. A first backfill stamps
+  the same activity time, read before its fetch, so the open after it does not
+  re-read the session again. Per-harness rules are in
   [Harness capabilities](../HARNESS_CAPABILITIES.md#opening-a-session).
 - When a backfill fails because the plugin reports that the backend cannot
   restore the session as stored (`PluginSessionUnrestorableException`; today
@@ -633,7 +635,9 @@ rules where supported.
   that live capture stamps on the bridge clock, so a harness write landing just
   after Sesori's last captured event (a title or summary update, a trailing
   record) can cost one extra re-read on the next open of a Sesori-run session.
-  The re-read moves the watermark to that time, so it converges. A session
+  The re-read moves the watermark to that time, so it converges. Measured live
+  on 2026-11-13 with Pi `1.5.2` and Codex `0.167.2`: no extra re-read after a
+  Sesori-run turn; Claude Code and OpenCode are not measured. A session
   already open on screen picks up an outside turn on the next app resume or
   reopen, not while it sits open.
 - Client session-detail refresh triggers are still under diagnosis; only the

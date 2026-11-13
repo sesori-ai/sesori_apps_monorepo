@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 import "dart:typed_data";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock, ParallelLock;
@@ -561,6 +562,18 @@ class ChatHistoryService({
     }
   }
 
+  /// A failure only costs one extra re-read on the next open, so it is logged
+  /// and the backfill proceeds.
+  Future<int?> _readFirstBackfillActivity({required String sessionId}) async {
+    try {
+      final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
+      return stored == null ? null : await _sessionRepository.readBackendActivity(session: stored);
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to read backend activity before backfilling session $sessionId", error, stackTrace);
+      return null;
+    }
+  }
+
   Future<void> _observeSessionActivity({required String sessionId, required int activityAt}) {
     return _enqueue(
       sessionId: sessionId,
@@ -976,7 +989,13 @@ class ChatHistoryService({
         // Read inside the queue too, so it cannot miss a capture that landed
         // between the read and the write.
         final observedBefore = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
-        final backendActivityAt = observedBefore?.backendActivityAt ?? 0;
+        // A first backfill has no activity to stamp yet. The harness's own
+        // time, read before the fetch, keeps the next open from re-reading the
+        // snapshot this one is about to take.
+        final firstActivityAt = observedBefore?.syncedAt == null
+            ? await _readFirstBackfillActivity(sessionId: sessionId)
+            : null;
+        final backendActivityAt = math.max(observedBefore?.backendActivityAt ?? 0, firstActivityAt ?? 0);
         final shouldReconcilePromptDefaults =
             observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);

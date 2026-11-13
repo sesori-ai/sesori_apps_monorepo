@@ -497,9 +497,9 @@ skip the check.
 | Harness | Status |
 |---|---|
 | Claude Code | ✅ Root sessions: the same tail-record time the catalog scan reads, from the one transcript named for the session. Sub-agent sessions are not checked. |
-| Codex | ✅ Rollout modification time, found under the day its UUIDv7 id encodes. A session-index-only change, such as a rename in another client, is not noticed. |
+| Codex | ✅ Rollout modification time, found under the day its UUIDv7 id encodes. A session-index-only change, such as a rename in another client, is not noticed. Verified live on `0.167.2` (2026-11-13) the same way, with a `codex exec resume` turn. |
 | OpenCode | ✅ The session's `time_updated` row, from `session_v2` once OpenCode 2.x migrated the database, else `session`. 🚫 Attach mode (`--no-auto-start`): the attached server need not use the database the bridge would resolve. |
-| Pi | ✅ Session file modification time, from the session directory configured for the session's folder. |
+| Pi | ✅ Session file modification time, from the session directory configured for the session's folder. Verified live on `1.5.2` (2026-11-13): a `pi -c -p` turn made while the bridge was stopped appeared on the first open after restart, with no pull. |
 | OMP, Grok, Hermes, DeepSeek, Cursor, Copilot, Antigravity | 🚫 ACP reports activity only through `session/list` on a running agent process; there is no bounded read without starting it. Outside turns appear after the next pull. |
 
 ## Pending requests on archive

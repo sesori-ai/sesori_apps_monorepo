@@ -161,6 +161,8 @@ void main() {
         projectId: "project-a",
         parentSessionId: null,
       );
+      // The first backfill stamps the harness's time, read before its fetch.
+      runtime.sessionActivityById["backend-a"] = 1000;
       await history.service.getSessionMessages(sessionId: "ses_a");
       plugin.lastGetMessagesSessionId = null;
       runtime.sessionActivityReads.clear();
@@ -177,9 +179,7 @@ void main() {
       expect(plugin.lastGetMessagesSessionId, isNull, reason: "the re-read caught the store up to that activity");
     });
 
-    test("unchanged harness activity serves the store", () async {
-      runtime.sessionActivityById["backend-a"] = 0;
-
+    test("unchanged harness activity serves the store, also right after the first backfill", () async {
       await history.service.getSessionMessages(sessionId: "ses_a");
 
       expect(runtime.sessionActivityReads, ["backend-a"]);
