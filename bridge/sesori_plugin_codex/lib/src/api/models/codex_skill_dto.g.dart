@@ -31,6 +31,7 @@ _CodexSkillDto _$CodexSkillDtoFromJson(Map json) => _CodexSkillDto(
   name: json['name'] as String,
   description: json['description'] as String,
   shortDescription: json['shortDescription'] as String?,
+  path: json['path'] as String,
   interface: json['interface'] == null
       ? null
       : CodexSkillInterfaceDto.fromJson(

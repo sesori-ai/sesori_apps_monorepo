@@ -630,7 +630,7 @@ class CodexMessageRepository({
           continue;
         case CodexRolloutEventMessageLineDto(
           payload: CodexRolloutItemCompletedEventDto(
-            item: CodexRolloutCompletedUserMessageDto(:final id),
+            item: CodexRolloutCompletedUserMessageDto(:final id, :final content),
             :final startedAtMs,
           ),
         ):
@@ -640,6 +640,10 @@ class CodexMessageRepository({
             pending.liveItem = (
               id: id,
               time: startedAtMs == null ? pending.time : PluginMessageTime(created: startedAtMs, completed: null),
+              skillNames: [
+                for (final input in content)
+                  if (input case CodexSkillUserInputDto(:final name)) name,
+              ],
             );
             unkeyedUserMessage = null;
           }
@@ -822,7 +826,10 @@ class CodexMessageRepository({
         ),
         messageId: messageId,
         sessionId: sessionId,
-        text: fallbackText,
+        text: _userContentMapper.mapSkillInvocation(
+          text: fallbackText,
+          skillNames: liveItem?.skillNames ?? const [],
+        ),
         attachments: pending.attachments,
       );
     }
@@ -945,7 +952,7 @@ class _PendingUserMessage({
 }) {
   bool resolved = false;
 
-  /// The live `userMessage` item's id and time, once its `UserMessage` item
-  /// is read.
-  ({String id, PluginMessageTime? time})? liveItem;
+  /// The live `userMessage` item's id, time and picked skills, once its
+  /// `UserMessage` item is read.
+  ({String id, PluginMessageTime? time, List<String> skillNames})? liveItem;
 }

@@ -622,6 +622,7 @@ class CodexSessionService({
       final turnId = await _connectedThreadRepository.startTurn(
         threadId: threadId,
         parts: parts,
+        skill: null,
         clientUserMessageId: clientUserMessageId,
         model: prepared.model,
         effort: prepared.effort,
@@ -667,6 +668,7 @@ class CodexSessionService({
   Future<({CodexResumedThread? resumedThread, String? resolvedModel, String? resolvedEffort, String? turnId})>
   sendCommand({
     required String threadId,
+    required String cwd,
     required String command,
     required String arguments,
     required String? clientUserMessageId,
@@ -677,6 +679,7 @@ class CodexSessionService({
   }) async {
     Future<String?> dispatch(_PreparedTurn prepared) => _dispatchCommand(
       threadId: threadId,
+      cwd: cwd,
       command: command,
       arguments: arguments,
       clientUserMessageId: clientUserMessageId,
@@ -745,6 +748,7 @@ class CodexSessionService({
 
   Future<String?> _dispatchCommand({
     required String threadId,
+    required String cwd,
     required String command,
     required String arguments,
     required String? clientUserMessageId,
@@ -758,9 +762,18 @@ class CodexSessionService({
       return null;
     }
     final invocation = arguments.isEmpty ? "\$$command" : "\$$command $arguments";
+    // The model reads the same `$name` text either way; naming the skill as
+    // well lets the transcript show it as the `/name` the user picked.
+    String? skillPath;
+    try {
+      skillPath = await _connectedSkillRepository.findSkillPath(cwd: cwd, name: command);
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] skill lookup failed; invoking it by text only", error, stackTrace);
+    }
     return await _connectedThreadRepository.startTurn(
       threadId: threadId,
       parts: [PluginPromptPart.text(text: invocation)],
+      skill: skillPath == null ? null : (name: command, path: skillPath),
       clientUserMessageId: clientUserMessageId,
       model: model,
       effort: effort,

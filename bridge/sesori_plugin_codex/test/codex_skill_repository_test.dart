@@ -16,6 +16,7 @@ void main() {
               skills: [
                 CodexSkillDto(
                   name: "system-skill",
+                  path: "/repo/.agents/skills/system-skill/SKILL.md",
                   description: "Long description",
                   shortDescription: "Legacy short description",
                   interface: CodexSkillInterfaceDto(
@@ -25,6 +26,7 @@ void main() {
                 ),
                 CodexSkillDto(
                   name: "disabled-skill",
+                  path: "/repo/.agents/skills/disabled-skill/SKILL.md",
                   description: "Disabled",
                   shortDescription: null,
                   interface: null,
@@ -45,6 +47,45 @@ void main() {
     expect(commands.single.source, PluginCommandSource.skill);
   });
 
+  test("finds the SKILL.md path of an enabled skill only", () async {
+    final repository = CodexSkillRepository(
+      appServerApi: _StubAppServerApi(
+        response: const CodexSkillsListResponseDto(
+          data: [
+            CodexSkillsListEntryDto(
+              cwd: "/repo",
+              skills: [
+                CodexSkillDto(
+                  name: "fixture-greeter",
+                  path: "/repo/.agents/skills/fixture-greeter/SKILL.md",
+                  description: "Greets",
+                  shortDescription: null,
+                  interface: null,
+                  enabled: true,
+                ),
+                CodexSkillDto(
+                  name: "disabled-skill",
+                  path: "/repo/.agents/skills/disabled-skill/SKILL.md",
+                  description: "Disabled",
+                  shortDescription: null,
+                  interface: null,
+                  enabled: false,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(
+      await repository.findSkillPath(cwd: "/repo", name: "fixture-greeter"),
+      "/repo/.agents/skills/fixture-greeter/SKILL.md",
+    );
+    expect(await repository.findSkillPath(cwd: "/repo", name: "disabled-skill"), isNull);
+    expect(await repository.findSkillPath(cwd: "/repo", name: "missing"), isNull);
+  });
+
   test("falls back through legacy and full descriptions", () async {
     final repository = CodexSkillRepository(
       appServerApi: _StubAppServerApi(
@@ -55,6 +96,7 @@ void main() {
               skills: [
                 CodexSkillDto(
                   name: "legacy",
+                  path: "/repo/.agents/skills/legacy/SKILL.md",
                   description: "Long legacy",
                   shortDescription: "Short legacy",
                   interface: null,
@@ -62,6 +104,7 @@ void main() {
                 ),
                 CodexSkillDto(
                   name: "full",
+                  path: "/repo/.agents/skills/full/SKILL.md",
                   description: "Full description",
                   shortDescription: null,
                   interface: null,
