@@ -168,11 +168,10 @@ class PromptSendQueue() {
 
   /// Moves the pending head [promptId], requeued by [failSend], into the
   /// failed slot, for a rejection found to need the user once the send is
-  /// over. Returns whether it was held.
-  bool holdPendingHead({required String promptId, required PromptSendFailure failure}) {
-    if (_failed != null || _items.firstOrNull?.promptId != promptId) return false;
+  /// over.
+  void holdPendingHead({required String promptId, required PromptSendFailure failure}) {
+    if (_failed != null || _items.firstOrNull?.promptId != promptId) return;
     _failed = LocalSendFailed(submission: _items.removeFirst(), failure: failure);
-    return true;
   }
 
   /// Puts the failed submission back at the head, so its resend carries the

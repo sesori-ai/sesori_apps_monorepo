@@ -3045,25 +3045,6 @@ class SessionDetailCubit(
     }
     final latest = state;
     if (latest is! SessionDetailLoaded) return false;
-    // The refresh keeps the session's own model even though the catalog does
-    // not offer it, so resending would only be refused again. It fails like
-    // any other send instead, until the user picks another model or removes
-    // it; a later Retry starts its recovery afresh.
-    final requeued = _promptQueue.items.firstWhereOrNull((item) => item.promptId == rejectedSubmission.promptId);
-    if (requeued != null &&
-        _keepsUnofferedSessionModel(
-          state: latest,
-          model: requeued.agentModel,
-          providers: latest.availableProviders,
-        ) &&
-        _promptQueue.holdPendingHead(
-          promptId: rejectedSubmission.promptId,
-          failure: const PromptSendFailure.modelUnavailable(),
-        )) {
-      _staleOptionsRecoveryAttemptedPromptIds.remove(rejectedSubmission.promptId);
-      unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
-      return false;
-    }
     // A cache update may have overtaken the forced refresh. Reconcile against
     // the catalog actually applied to the screen in either case.
     final rejectedCommand = rejectedSubmission.command;
@@ -3071,6 +3052,17 @@ class SessionDetailCubit(
         rejectedCommand != null && !latest.availableCommands.any((command) => command.name == rejectedCommand);
     if (commandUnavailable) {
       _promptQueue.markCommandUnavailable(promptId: rejectedSubmission.promptId);
+    } else if (_isRefusedForRetainedModel(rejected: rejectedSubmission, state: latest)) {
+      // The resend would be identical and refused again. It fails like any
+      // other send instead, until the user picks another model or removes it;
+      // a later Retry starts its recovery afresh.
+      _promptQueue.holdPendingHead(
+        promptId: rejectedSubmission.promptId,
+        failure: const PromptSendFailure.modelUnavailable(),
+      );
+      _staleOptionsRecoveryAttemptedPromptIds.remove(rejectedSubmission.promptId);
+      unawaited(_feedbackPromptService.recordFailure(sessionId: _sessionId));
+      return false;
     }
     _noticeStream.add(
       commandUnavailable ? const SessionDetailCommandUnavailable() : const SessionDetailPromptOptionsUpdated(),
@@ -3246,6 +3238,23 @@ class SessionDetailCubit(
       if (notify && !isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
       return _OptionsReloadResult.failed;
     }
+  }
+
+  /// Whether the model is what a stale-options refusal of [rejected] can only
+  /// mean: the refresh left its whole selection as it was, so nothing else it
+  /// names went stale, and its model is the session's own one the catalog
+  /// does not offer, which the refresh keeps rather than replaces.
+  bool _isRefusedForRetainedModel({
+    required QueuedSessionSubmission rejected,
+    required SessionDetailLoaded state,
+  }) {
+    final requeued = _promptQueue.items.firstOrNull;
+    return requeued != null &&
+        requeued.promptId == rejected.promptId &&
+        requeued.agent == rejected.agent &&
+        requeued.agentModel == rejected.agentModel &&
+        requeued.fastMode == rejected.fastMode &&
+        _keepsUnofferedSessionModel(state: state, model: requeued.agentModel, providers: state.availableProviders);
   }
 
   /// A queued submission's agent, revalidated against the current catalog.

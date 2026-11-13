@@ -761,6 +761,113 @@ void main() {
         expect(notices, isEmpty);
       });
 
+      group("is not blamed for a refusal the refresh explains otherwise", () {
+        final staleError = ApiError.nonSuccessCode(
+          errorCode: 409,
+          rawErrorString: jsonEncode(
+            const SendPromptErrorResponse(code: SendPromptErrorCode.staleSessionOptions, message: null).toJson(),
+          ),
+        );
+
+        setUp(() {
+          when(
+            () => mockSessionRepository.loadSessionOptions(
+              projectId: "project-1",
+              pluginId: "claude",
+              mode: SessionOptionsRequestMode.forceRefresh,
+            ),
+          ).thenAnswer((_) async => _claudeCatalogDeclaringOpus());
+        });
+
+        test("a withdrawn command is marked unavailable", () async {
+          when(
+            () => mockSessionRepository.sendMessage(
+              sessionId: _sessionId,
+              promptId: any(named: "promptId"),
+              text: any(named: "text"),
+              attachments: const [],
+              agent: any(named: "agent"),
+              model: any(named: "model"),
+              variant: any(named: "variant"),
+              fastMode: any(named: "fastMode"),
+              command: any(named: "command"),
+              commandSource: any(named: "commandSource"),
+            ),
+          ).thenAnswer((_) async => ApiResponse.error(staleError));
+          final cubit = await createLoadedCubit(
+            agents: _claudeCatalogDeclaringOpusAgents,
+            providerData: _claudeProvidersWithOpus,
+            commands: const [_reviewCommand],
+            promptDefaults: const SessionPromptDefaults(agent: null, model: sessionModel),
+          );
+          final notices = <SessionDetailNotice>[];
+          final noticeSubscription = cubit.noticeStream.listen(notices.add);
+          addTearDown(noticeSubscription.cancel);
+
+          await cubit.sendMessage(
+            text: "src",
+            command: testCommandInfo(name: "review"),
+            inputMode: ComposerInputMode.typed,
+            attachments: const [],
+          );
+          await _awaitCondition(() => notices.isNotEmpty);
+          await Future<void>.delayed(Duration.zero);
+
+          expect(notices, [const SessionDetailCommandUnavailable()]);
+          expect(_failedOf(state: _loadedState(cubit)), isNull);
+          expect(_loadedState(cubit).queuedMessages.single, isA<UnavailableQueuedCommandSubmission>());
+        });
+
+        test("a withdrawn agent is replaced and the send retried with the session's model", () async {
+          final sent = <({String? agent, String? model})>[];
+          when(
+            () => mockSessionRepository.sendMessage(
+              sessionId: _sessionId,
+              promptId: any(named: "promptId"),
+              text: "hello",
+              attachments: const [],
+              agent: any(named: "agent"),
+              model: any(named: "model"),
+              variant: any(named: "variant"),
+              fastMode: any(named: "fastMode"),
+              command: null,
+              commandSource: any(named: "commandSource"),
+            ),
+          ).thenAnswer((invocation) async {
+            final agent = invocation.namedArguments[#agent] as String?;
+            sent.add((agent: agent, model: (invocation.namedArguments[#model] as PromptModel?)?.modelID));
+            return agent == "Retired" ? ApiResponse.error(staleError) : ApiResponse.success(null);
+          });
+          final cubit = await createLoadedCubit(
+            agents: [
+              const AgentInfo(name: "Retired", description: "Retired", model: null, mode: AgentMode.primary),
+              ..._claudeCatalogDeclaringOpusAgents,
+            ],
+            providerData: _claudeProvidersWithOpus,
+            promptDefaults: const SessionPromptDefaults(agent: "Retired", model: sessionModel),
+          );
+          final notices = <SessionDetailNotice>[];
+          final noticeSubscription = cubit.noticeStream.listen(notices.add);
+          addTearDown(noticeSubscription.cancel);
+
+          await cubit.sendMessage(
+            text: "hello",
+            command: null,
+            inputMode: ComposerInputMode.typed,
+            attachments: const [],
+          );
+          await _awaitCondition(() => sent.length == 2);
+          await Future<void>.delayed(Duration.zero);
+
+          expect(sent, [
+            (agent: "Retired", model: sessionModel.modelID),
+            (agent: "Agent", model: sessionModel.modelID),
+          ]);
+          expect(notices, [const SessionDetailPromptOptionsUpdated()]);
+          expect(_failedOf(state: _loadedState(cubit)), isNull);
+        });
+      });
+
       test("Retry without picking another model fails visibly again", () async {
         final staleError = ApiError.nonSuccessCode(
           errorCode: 409,
