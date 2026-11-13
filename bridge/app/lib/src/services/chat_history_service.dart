@@ -2,7 +2,8 @@ import "dart:async";
 import "dart:typed_data";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock, ParallelLock;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSessionUnrestorableException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show Log, PluginSessionHistoryBusyException, PluginSessionUnrestorableException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/attachment_spill_storage.dart";
@@ -173,6 +174,26 @@ class ChatHistoryService({
     final SessionPromptDefaults? replayedPromptDefaults;
     try {
       replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);
+    } on PluginSessionHistoryBusyException catch (error) {
+      // A turn is running and the harness can replay history only between
+      // turns. The store holds what the live stream captured, and nothing is
+      // written, so the first read after the turn backfills. Open tool parts
+      // belong to the running turn, so there is nothing to sweep.
+      Log.d("Session $sessionId is mid-turn; serving stored history until it ends (${error.message})");
+      final stored = await _storedOnlyPage(
+        sessionId: sessionId,
+        window: window,
+        attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
+      );
+      return (
+        messages: stored.messages,
+        nextCursor: stored.nextCursor,
+        replayedPromptDefaults: null,
+        awaitingHarnessSync: true,
+        userMessagesBefore: stored.userMessagesBefore,
+        cannotContinueMessage: null,
+      );
     } on PluginSessionUnrestorableException catch (error, stackTrace) {
       // The backend refuses to reopen the session as stored, so serve what the
       // store already holds with the plugin's explanation. Nothing is written:

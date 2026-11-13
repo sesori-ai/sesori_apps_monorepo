@@ -2,7 +2,8 @@ import "dart:async";
 
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSessionUnrestorableException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show PluginSessionHistoryBusyException, PluginSessionUnrestorableException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -321,6 +322,33 @@ void main() {
       expect(page.awaitingHarnessSync, isTrue);
       expect(page.cannotContinueMessage, "This session can't be continued.");
     });
+  });
+
+  test("a read during a turn the harness cannot replay serves the stored rows and backfills after it", () async {
+    final repository = _FakeSessionRepository(
+      transcript: const [],
+      error: const PluginSessionHistoryBusyException("session/load history replay", message: "turn running"),
+    );
+    final history = createTestChatHistory(sessionRepository: repository);
+    await history.service.captureMessage(
+      sessionId: "ses_a",
+      message: _message(id: "live"),
+    );
+
+    final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+    expect(page.messages.map((message) => message.info.id), const ["live"]);
+    expect(page.awaitingHarnessSync, isTrue);
+    expect(page.cannotContinueMessage, isNull);
+    expect((await history.repository.getSyncState(sessionId: "ses_a"))?.syncedAt, isNull);
+
+    repository
+      ..error = null
+      ..transcript = [_messageWithParts(id: "live")];
+    final afterTurn = await history.service.getSessionMessages(sessionId: "ses_a");
+    expect(afterTurn.messages.map((message) => message.info.id), const ["live"]);
+    expect(afterTurn.awaitingHarnessSync, isFalse);
+    expect(repository.fetchCount, 2);
   });
 
   group("store-only reads", () {

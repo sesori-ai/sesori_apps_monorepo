@@ -124,6 +124,14 @@ class OmpPlugin._({
   @override
   bool get supportsFormElicitation => true;
 
+  /// From 18.19.0, a second `omp acp` process that loads a session this
+  /// process holds writes a full copy as a new "open-elsewhere" session when
+  /// it exits, which shows up as a duplicate untitled session. Loading it on
+  /// the holding process returns the session already in memory and writes
+  /// nothing.
+  @override
+  bool get replaysResidentHistoryOnLiveProcess => true;
+
   @override
   AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) => OmpApprovalRegistry(
     client: client,

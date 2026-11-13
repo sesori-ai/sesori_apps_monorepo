@@ -33,6 +33,21 @@ reconnect or restart.
   gone. The app shows the message under a "Can't continue this session" banner
   that floats above the transcript and fades in and out without moving it; the
   composer stays enabled. Any other backfill failure still fails the read.
+- OMP replays history for a session its live `omp acp` process holds on that
+  process (`session/load` returns the in-memory session and writes nothing),
+  never through a second process: from 18.19.0 a second process that loads a
+  held session writes an "open-elsewhere" copy when it exits, which shows up
+  as a duplicate "Untitled session". A session the live process does not hold
+  still replays on a short-lived process. While a turn on a held session runs,
+  the plugin reports `PluginSessionHistoryBusyException`. The read then serves
+  the store with `awaitingHarnessSync` and no message, and writes nothing, so
+  the first read after the turn backfills. The open transcript is not reloaded
+  when the turn ends, so rows already on screen stay where they are. A prompt
+  sent during an idle replay waits behind it. Failure signals: a second OMP
+  session file or an "open-elsewhere" line in the OMP log after a history
+  reload; a duplicate untitled session on the home screen; a mid-turn reload
+  failing or spinning until the turn ends; replayed messages showing up again
+  in the live stream.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
