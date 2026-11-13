@@ -77,6 +77,17 @@ stored or sent to the bridge.
   attachment's name when the prompt has no text, with the hint "Jump to this
   prompt", also when the prompt's own row is far above and not built, and find no
   action on the band around it.
+- A command, skill or MCP prompt run that shows as an invocation card (see
+  `session-turns.md`) pins as that card, not as a bubble: the same surface and
+  content at the leading edge, pixel-identical with the row where it takes
+  over, on phone and under a pointer. The pin takes each opener's shape from
+  the same turn shape the row uses, so the pin and the row never disagree. A
+  compacted card pin keeps its whole header (kind tag and "You ran /name") and
+  about two lines of the arguments; a run with no arguments or only a few
+  lines pins whole. It compacts, hands over, is pushed out and glides back as
+  a bubble pin does, and screen readers hear it labelled with the run's name,
+  as the row is. An unloaded opener whose index entry names a run pins as its
+  card too.
 - When the loaded messages start inside a turn whose prompt is not loaded, and
   the bridge sent the prompt index, that prompt pins above them in the same
   bubble, showing the index's preview: the start of its text, else its first
@@ -108,6 +119,12 @@ stored or sent to the bridge.
   them for undated prompts; a session with no timed prompt shows no headers and
   no times. The list ends with "{n} prompts loaded"; an empty session with no
   earlier page reads "No prompts in this session yet".
+  A row for a named command, skill or MCP prompt run shows the run's kind
+  icon, `/name` and then the arguments, at the same height as a plain row,
+  and screen readers hear the run's name; loaded and unloaded rows alike,
+  since index entries carry the run's `invocation`. Without a name (an older
+  bridge, or a harness that doesn't name runs) the row shows the prompt's text
+  as before. Search still matches the prompt's text.
 - While the session has earlier messages, the app also asks the bridge for the
   session's prompt index, after each load and refresh. Once it arrives the list
   holds every prompt of the session, unloaded ones included with their number,
@@ -359,6 +376,10 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
 
 On the release-target phone and on macOS, on a session of three or more pages:
 
+- On a session whose turns open with a command run and a skill run, scrolling
+  pins each run as its card, with no jump where the pin takes over, and the
+  Prompts screen lists both with their kind icon and `/name`.
+
 - A real-device pinch in on the phone and a macOS trackpad pinch open the
   Prompts screen growing from the fingers, while following (following
   continues) and while reading history (it stays detached), with the transcript
@@ -508,6 +529,9 @@ answer, and on a trackpad while text streams.
   the transcript; the covered transcript takes focus or is read out.
 - An opening of the Prompts screen reports no `transcript_prompts_opened` or
   the wrong `entry`.
+- A named run pins as a bubble, the card pin is offset from or sized unlike
+  its row where it takes over, its header is cut while compacted, or its
+  Prompts row shows the expanded template or loses the kind icon or `/name`.
 
 ## Known Limitations
 

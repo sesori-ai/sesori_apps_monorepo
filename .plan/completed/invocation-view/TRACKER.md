@@ -1,7 +1,7 @@
 # Invocation View: Tracker
 
-This tracker holds decisions, guardrails and the fixed PR titles. It doesn't
-mirror PR state; live status is on GitHub:
+This tracker holds decisions, guardrails and the PR titles. Live PR status is
+on GitHub:
 `gh pr list --state all --search "[invocation-view]"`.
 
 ## Decisions In Force
@@ -42,5 +42,13 @@ mirror PR state; live status is on GitHub:
 8. `🌿 [invocation-view] Name Claude Code command runs from the transcript [step 8/12]`
 9. `⚙️ [invocation-view] Name ACP command runs and fold the DeepSeek/Hermes argument turn [step 9/12]`
 10. `🚧 [invocation-view] Keep Oh My Pi command and skill runs as one card in place [step 10/12]`
-11. to 12. Titled when each step is planned in detail. The total stays 12
-   unless a step splits into substeps.
+11. `🌱 [invocation-view] Reconcile regression documents, record the matrix and retire the plan [step 11/11]`
+
+Step 12 (run the matrix and retire the plan) folded into step 11, so the
+series total became 11. Steps 1–10 kept their published `/12` titles.
+
+## Status
+
+Complete. Steps 1–10 merged as #2543, #2545, #2548, #2549, #2550, #2551,
+#2552, #2554, #2557 and #2561; step 11 is the retiring PR. Matrix results are
+in [PLAN](PLAN.md#matrix-results-2026-11-13-main-at-d855a79ce0-bridge-1130-from-source).

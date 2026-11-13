@@ -85,6 +85,25 @@ reconnect or restart.
   reload; a duplicate untitled session on the home screen; a mid-turn reload
   failing or spinning until the turn ends; replayed messages showing up again
   in the live stream.
+- A command, skill or MCP prompt run the bridge named keeps its card after
+  reopening the session, a reconnect backfill and a bridge restart. The name
+  (`MessageUser.invocation`) is part of the stored message, in
+  `chat_history.db` and in an archived session's audit file, with no table of
+  its own. A later update of the same message without a name keeps the stored
+  one. A re-import gives the stored name to the replayed row the store matches
+  it to, by exact id or by its existing content match, and a name the plugin
+  read from the harness's own record wins. The name doesn't count in the
+  replay match, so a named live row still matches its replay and is never kept
+  twice. The bridge keeps the names of commands it sent in memory only until
+  their user turn is stored. Where a harness records a run's arguments as a
+  plain user turn of their own and no command line (Hermes `/queue <text>`,
+  DeepSeek `/plan <text>`), a re-import folds that turn into the stored card
+  when exactly one stored card and one replayed turn pair up, so the card is
+  the only row for it and stays in front of the row that followed it live.
+  Failure signals after a reload, a forced re-import (clearing the session's
+  sync mark) or a bridge restart: a card turned back into a bubble, a card and
+  a bubble for the same run, the argument turn shown beside its card, or a
+  reply duplicated.
 - A command or skill run the bridge stored keeps one card row in its place
   when a replay records it in another shape or not at all, on its first
   backfill and on every later re-import, including one after the backend advanced outside Sesori. The card
@@ -111,8 +130,10 @@ reconnect or restart.
   follow-up, by the shared `splitPromptTurns` rule the client also uses), its
   number among all the session's user messages (hidden ones count but get no
   entry, matching `userMessagesBefore`), its creation time when the harness
-  gave one, and a preview of at most 300 UTF-16 code units, null rather than
-  empty when there is nothing to show. It reads like a store-only read: from
+  gave one, a preview of at most 300 UTF-16 code units, null rather than
+  empty when there is nothing to show, and the stored message's `invocation`
+  for a named run (the preview keeps the text, so an older app lists
+  `/name args`). It reads like a store-only read: from
   the store in one snapshot, or from an archived session's audit file, outside
   the session queue, never backfilling. An image-only prompt is listed by its
   stored file name without reading the spill file. An unknown session, or one

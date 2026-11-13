@@ -3,7 +3,10 @@
 ## Status
 
 - **Plan slug:** `invocation-view`
-- **Status:** Active. Step 1 raises this plan.
+- **Status:** Complete. Steps 1–10 merged; step 11 reconciled the regression
+  documents, ran the matrix below ("Matrix results") and retired the plan.
+  Step 12 (matrix and retirement) was folded into step 11, so the series
+  total is 11.
 - **Plan date:** 2026-11-12
 - **Base:** `origin/main` at `4029c2478a`
 - **User decisions:** review page
@@ -411,8 +414,8 @@ Client (`client/module_core`, `client/module_app_ui`):
     card the backend later drops lingers until a replayed row takes its place.
 - Each plugin step records its result in `docs/HARNESS_CAPABILITIES.md`.
 - **Regression docs** reconcile `session-turns.md`, `transcript-turn-navigation.md`
-  and `session-history-and-recovery.md`.
-- **Retirement** runs the matrix below and moves the plan.
+  and `session-history-and-recovery.md` (done in step 11).
+- **Retirement** runs the matrix below and moves the plan (done in step 11).
 
 ## Complexity Budget
 
@@ -488,9 +491,51 @@ Deliberately not added:
   - Live model access goes through the local test proxy; a harness without a
     usable runtime is reported `Blocked`, never silently dropped.
 
+### Matrix results (2026-11-13, `main` at `d855a79ce0`, bridge 1.13.0 from source)
+
+Run in proportion: every step merged on 2026-11-13 with its own live check,
+so cells those PRs verified that day are cited, not rerun. Rerun today: Pi
+and Hermes through a source bridge on a dev slot, with throwaway harness
+config under `/tmp` and the local test proxy (model `test-oai`), driven
+through the bridge's debug API; and one on-screen check on a headless iOS
+simulator against that bridge, with fixture data. "Re-import" means clearing
+the session's sync mark, which is what an event-stream reconnect does, then
+reading the session.
+
+| Harness (version) | Command | Skill / MCP prompt | Live | Reopen | Re-import | Restart | Source |
+|---|---|---|---|---|---|---|---|
+| OpenCode 2 (2.2.7) | Pass (native) | Pass (skill) | Pass | Pass | Pass | Pass | cited #2550 |
+| Codex (0.167.2) | n/a (`/compact` adds no user turn) | Pass (skill) | Pass | Pass | Pass (empty store) | Pass | cited #2551; rerun Blocked: the isolated `CODEX_HOME` has no sign-in the setup check accepts |
+| Pi (1.5.2) | Pass (template, with text) | Pass (skill, with text) | Pass | Pass | Pass | Pass | rerun |
+| Claude Code (2.1.323) | Pass | Pass (skill kinds, #2556) | Pass | Pass | Pass | Pass | cited #2554, #2556 |
+| Hermes (0.23.1 rerun; 0.21.5 cited) | Pass (`/queue <text>`) | n/a (no skills over ACP) | Pass | Pass | Pass (folded, one row) | Pass | rerun; cited #2557, #2559 |
+| DeepSeek (adapter 0.2.2) | Pass (`/plan <text>`) | n/a | Pass | Pass | Pass | Pass | cited #2557, #2559 |
+| Oh My Pi (18.19.0) | Pass (template) | Pass (skill) | Pass | Pass | Pass | Pass | cited #2561 |
+| Cursor | Blocked | Blocked | — | — | — | — | needs a real account; the test proxy can't serve it |
+| Grok | Blocked | Blocked | — | — | — | — | needs a real account; the test proxy can't serve it |
+| Copilot | Blocked | Blocked | — | — | — | — | runtime not installed on the test machine |
+| Antigravity | Blocked | Blocked | — | — | — | — | runtime not installed on the test machine |
+
+| State or check | Result | Evidence |
+|---|---|---|
+| Runs without text | Pass | cited #2550 (OpenCode 2) and #2551 (Codex); a bare command pins whole (#2549 tests) |
+| MCP prompt | Not run live | MCP card and an unloaded MCP entry pinning as a card are covered by #2548 and #2549 tests |
+| Sending, queued and confirmed keep one card shape | Pass (tests) | #2548 widget tests and its simulator captures from fixtures; not rerun on screen today |
+| Queued with cancel | Pass | rerun on Hermes: a `/queue` sent behind a running turn listed in the bridge queue with `commandSource: command`, the cancel removed it, and it never ran; cited #2554 for a Claude command queued mid-turn and named. Pi refuses a command while busy, so it never queues on the bridge |
+| Reconnect backfill | Pass | rerun on Pi and Hermes: the card stays one row, no duplicates; Pi's re-imported skill row keeps its name from Pi's record |
+| Archived-session read | Not run | the audit file serializes the same stored message (#2545) |
+| On-screen card, pinned card, Prompts list | Pass | headless iOS simulator (slot device), Pi fixture session: a Command card and two Skill cards in the transcript, the skill card pinned at the top over its long reply, and Prompts rows with the kind icon and `/name` |
+| Desktop width | Pass (tests) | #2548 and #2549 host renders and geometry tests |
+| Compatibility (new app, previous production bridge; previous production app, new bridge) | Blocked | no v1.12.0 production bridge or app build is available locally (the installed bridge is an internal 1.12.0 build); covered by #2545's older-payload parsing tests and #2548's bubble fallback test |
+
+No product bug found. Hermes 0.23.1 came from a throwaway virtualenv, because
+the installed Hermes launcher doesn't start under an isolated `HERMES_HOME`;
+that is a test-setup limit, not a Sesori issue.
+
 ## Delivery Rules
 
-- PR titles: `<emoji> [invocation-view] <description> [step x/12]`. Body
+- PR titles: `<emoji> [invocation-view] <description> [step x/12]`, and
+  `[step 11/11]` for the last one once step 12 folded into it. Body
   sections: Complexity, What, Why, Risk and test focus, Expected result,
   Verification.
 - Soft cap: about 1,500 changed lines; report generated against authored
@@ -503,20 +548,27 @@ Deliberately not added:
 
 ## Steps
 
-| Step | Title | Target (changed lines) | Needs |
+Steps 1–10 were titled `[step x/12]`; step 12 folded into step 11, so the
+last PR is `[step 11/11]`.
+
+| Step | Title | Needs | Status |
 |---|---|---|---|
-| 1 | 🌱 [invocation-view] Raise the plan [step 1/12] | ≤ 450 | — |
-| 2 | 🚧 [invocation-view] Name command and skill runs on the user turn from the bridge [step 2/12] | ≤ 1,500 (~400 generated) | — (base `origin/main`) |
-| 3 | ⚙️ [invocation-view] Show command and skill runs as an event card [step 3/12] | ≤ 1,300 (~150 generated l10n) | 2 |
-| 4 | ⚙️ [invocation-view] Pin and list command and skill runs as their card [step 4/12] | ≤ 900 | 3 |
-| 5 | ⚙️ [invocation-view] Name OpenCode command and skill runs [step 5/12] | ≤ 700 | 2, #2541, #2542 merged |
-| 6 | Codex naming from history | rough | 5 |
-| 7 | 🌿 [invocation-view] Name Pi command and skill runs [step 7/12] | ≤ 200 | 5 |
-| 8 | Claude Code naming from history | rough | 5 |
-| 9 | ⚙️ [invocation-view] Name ACP command runs and fold the DeepSeek/Hermes argument turn [step 9/12] | ≤ 600 | 5 |
-| 10 | 🚧 [invocation-view] Keep Oh My Pi command and skill runs as one card in place [step 10/12] | ≤ 700 | 9 |
-| 11 | Regression docs | rough | 2–10 |
-| 12 | Retire after the matrix run | rough | 11 |
+| 1 | 🌱 Raise the plan | — | merged (#2543) |
+| 2 | 🚧 Name command and skill runs on the user turn from the bridge | — | merged (#2545) |
+| 3 | ⚙️ Show command and skill runs as an event card | 2 | merged (#2548) |
+| 4 | ⚙️ Pin and list command and skill runs as their card | 3 | merged (#2549) |
+| 5 | ⚙️ Name OpenCode command and skill runs | 2, #2541, #2542 | merged (#2550) |
+| 6 | 🌿 Name Codex skill runs from the rollout | 5 | merged (#2551) |
+| 7 | 🌿 Name Pi command and skill runs | 5 | merged (#2552) |
+| 8 | 🌿 Name Claude Code command runs from the transcript | 5 | merged (#2554) |
+| 9 | ⚙️ Name ACP command runs and fold the DeepSeek/Hermes argument turn | 5 | merged (#2557) |
+| 10 | 🚧 Keep Oh My Pi command and skill runs as one card in place | 9 | merged (#2561) |
+| 11 | 🌱 Reconcile regression documents, record the matrix and retire the plan | 2–10 | this PR (also covers the former step 12) |
+
+Related PRs outside the numbered series: #2553 (Pi unexpanded slash command
+arguments), #2555 (outside harness turns on open), #2556 (Claude Code
+per-project commands and skills), #2559 (Hermes `/queue` and DeepSeek `/plan`
+turns once and in place after a reload).
 
 ## Open Questions
 
