@@ -22,8 +22,8 @@ void main() {
     ),
   );
 
-  const a = PregoBreathing(key: Key("a"), child: SizedBox.square(dimension: 10));
-  const b = PregoBreathing(key: Key("b"), child: SizedBox.square(dimension: 10));
+  const a = PregoBreathing(key: Key("a"), active: true, child: SizedBox.square(dimension: 10));
+  const b = PregoBreathing(key: Key("b"), active: true, child: SizedBox.square(dimension: 10));
 
   double opacityOf(WidgetTester tester, {String key = "a"}) => tester
       .widget<FadeTransition>(find.descendant(of: find.byKey(Key(key)), matching: find.byType(FadeTransition)))
@@ -50,6 +50,50 @@ void main() {
       await tester.pump(const Duration(milliseconds: 75));
       expect(opacityOf(tester, key: "b"), opacityOf(tester));
     }
+  });
+
+  clockTestWidgets("eases the breath out to full opacity and back in, never jumping", (tester) async {
+    Widget glyph({required bool active}) =>
+        PregoBreathing(key: const Key("a"), active: active, child: const SizedBox.square(dimension: 10));
+
+    // Stop near the bottom of a breath, where a snap to full would show most.
+    await tester.pumpWidget(harness([glyph(active: true)]));
+    var bottom = 1.0;
+    while (bottom > 0.4) {
+      await tester.pump(const Duration(milliseconds: 25));
+      bottom = opacityOf(tester);
+    }
+
+    Future<List<double>> sample({int steps = 20}) async => [
+      for (var step = 0; step < steps; step++)
+        await tester.pump(const Duration(milliseconds: 25)).then((_) => opacityOf(tester)),
+    ];
+    double largestStep(List<double> values) =>
+        [for (var i = 1; i < values.length; i++) (values[i] - values[i - 1]).abs()].reduce(max);
+
+    await tester.pumpWidget(harness([glyph(active: false)]));
+    final easingOut = [bottom, opacityOf(tester), ...await sample()];
+    expect(easingOut.last, 1);
+    expect(largestStep(easingOut), lessThan(0.15));
+    await tester.binding.delayed(const Duration(milliseconds: 100));
+    expect(tester.binding.hasScheduledFrame, isFalse, reason: "an inactive glyph follows no clock");
+
+    await tester.pumpWidget(harness([glyph(active: true)]));
+    // A whole breath, to reach its bottom wherever the shared phase is.
+    final easingIn = [1.0, opacityOf(tester), ...await sample(steps: 80)];
+    expect(largestStep(easingIn), lessThan(0.15));
+    expect(easingIn.reduce(min), lessThan(0.9), reason: "breathing again");
+  });
+
+  testWidgets("an inactive glyph holds full opacity and schedules nothing", (tester) async {
+    await tester.pumpWidget(
+      harness([const PregoBreathing(key: Key("a"), active: false, child: SizedBox.square(dimension: 10))]),
+    );
+    await tester.pump(const Duration(milliseconds: 800));
+
+    expect(opacityOf(tester), 1);
+    await tester.binding.delayed(const Duration(milliseconds: 100));
+    expect(tester.binding.hasScheduledFrame, isFalse);
   });
 
   testWidgets("holds full opacity and schedules nothing under reduced motion", (tester) async {

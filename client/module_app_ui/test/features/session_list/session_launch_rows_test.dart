@@ -202,11 +202,8 @@ void main() {
     expect(find.textContaining("Creating…"), findsOneWidget);
     // Lit, as the session is already at work.
     expect(
-      find.descendant(
-        of: launchRow,
-        matching: find.descendant(of: find.byType(PregoBreathing), matching: find.byType(PregoBrandLogo)),
-      ),
-      findsOneWidget,
+      tester.widget<PregoBreathing>(find.descendant(of: launchRow, matching: find.byType(PregoBreathing))).active,
+      isTrue,
     );
     final below = rowBelowTop(tester);
     expect(below, greaterThan(tester.getBottomLeft(launchRow).dy - 1), reason: "the launch row leads");

@@ -96,14 +96,24 @@ void main() {
   /// stop the loop is PregoAiLoader's own test.
   bool sparkleTwinkles(WidgetTester tester) => tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate;
 
-  /// Whether the harness logo is lit, in its own colours and breathing, rather
-  /// than resting as a grey glyph. It is always exactly one of the two.
-  bool logoLit(WidgetTester tester) {
-    final logo = find.byType(PregoBrandLogo);
-    final breathing = find.ancestor(of: logo, matching: find.byType(PregoBreathing)).evaluate().isNotEmpty;
-    final grey = find.ancestor(of: logo, matching: find.byType(ColorFiltered)).evaluate().isNotEmpty;
-    expect(breathing, !grey, reason: "a logo is either lit or grey");
-    return breathing;
+  /// The harness logo's strength: 0.7 as a grey glyph, 1 in its own colours,
+  /// and between the two while it cross-fades.
+  double logoStrength(WidgetTester tester) => tester
+      .widget<Opacity>(find.ancestor(of: find.byType(PregoBrandLogo), matching: find.byType(Opacity)).first)
+      .opacity;
+
+  /// How the harness logo shows once settled: grey, in colour, or in colour
+  /// and breathing.
+  String logoLook(WidgetTester tester) {
+    final breathing = tester
+        .widget<PregoBreathing>(find.ancestor(of: find.byType(PregoBrandLogo), matching: find.byType(PregoBreathing)))
+        .active;
+    return switch ((logoStrength(tester), breathing)) {
+      (1, true) => "breathing",
+      (1, false) => "colour",
+      (0.7, false) => "grey",
+      final look => fail("an unsettled or impossible logo: $look"),
+    };
   }
 
   double logoOpacity(WidgetTester tester) => tester
@@ -287,21 +297,57 @@ void main() {
         }
       });
 
-      testWidgets("the logo is lit only while an agent works: not while waiting, nor for being open", (tester) async {
+      testWidgets("the logo breathes while an agent works, and holds its colour while unread or open", (
+        tester,
+      ) async {
         final session = testSession(title: "My Session", updatedAt: now);
-        for (final (name, row, lit) in [
-          ("quiet", tile(session: session), false),
-          ("unread", tile(session: session, unseen: true), false),
-          ("open", tile(session: session, selected: true), false),
-          ("waiting", tile(session: session, awaitingInput: true), false),
-          ("waiting while counted as running", tile(session: session, isRunning: true, awaitingInput: true), false),
-          ("running", tile(session: session, isRunning: true), true),
-          ("running and open", tile(session: session, isRunning: true, selected: true), true),
-          ("retrying", tile(session: session, isRunning: true, isRetrying: true), true),
+        for (final (name, row, look) in [
+          ("quiet", tile(session: session), "grey"),
+          ("unread", tile(session: session, unseen: true), "colour"),
+          ("open", tile(session: session, selected: true), "colour"),
+          ("unread and open", tile(session: session, unseen: true, selected: true), "colour"),
+          ("waiting", tile(session: session, awaitingInput: true), "grey"),
+          ("waiting and unread", tile(session: session, awaitingInput: true, unseen: true), "colour"),
+          ("waiting while counted as running", tile(session: session, isRunning: true, awaitingInput: true), "grey"),
+          ("running", tile(session: session, isRunning: true), "breathing"),
+          ("running and open", tile(session: session, isRunning: true, selected: true), "breathing"),
+          ("running and unread", tile(session: session, isRunning: true, unseen: true), "breathing"),
+          ("retrying", tile(session: session, isRunning: true, isRetrying: true), "breathing"),
         ]) {
           await pump(tester, row);
-          expect(logoLit(tester), lit, reason: name);
+          // A fresh row: settle any cross-fade from the previous one.
+          await tester.pump(const Duration(milliseconds: 500));
+          expect(logoLook(tester), look, reason: name);
         }
+      });
+
+      testWidgets("the logo cross-fades into and out of colour, at once under reduced motion", (tester) async {
+        final session = testSession(title: "My Session", updatedAt: now);
+        final logo = find.byType(PregoBrandLogo);
+        await pump(tester, tile(session: session));
+        final size = tester.getSize(logo);
+        final centre = tester.getCenter(logo);
+        expect(logoStrength(tester), 0.7);
+
+        await pump(tester, tile(session: session, unseen: true));
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(logoStrength(tester), allOf(greaterThan(0.7), lessThan(1)), reason: "midway, neither grey nor colour");
+        expect(tester.getSize(logo), size);
+        expect(tester.getCenter(logo), centre);
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(logoLook(tester), "colour");
+
+        // Reading it fades it back.
+        await pump(tester, tile(session: session));
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(logoStrength(tester), allOf(greaterThan(0.7), lessThan(1)));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(logoLook(tester), "grey");
+
+        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        await pump(tester, tile(session: session, selected: true));
+        expect(logoLook(tester), "colour");
       });
 
       testWidgets("a lit logo breathes, and holds still at full strength under reduced motion", (tester) async {
@@ -324,7 +370,7 @@ void main() {
             await tester.pump(const Duration(milliseconds: 200));
             expect(logoOpacity(tester), 1);
           }
-          expect(logoLit(tester), isTrue);
+          expect(logoLook(tester), "breathing");
         });
       });
 
@@ -729,7 +775,7 @@ void main() {
       }
 
       // The launching row, pumped last, counts as running.
-      expect(logoLit(tester), isTrue);
+      expect(logoLook(tester), "breathing");
       // The meta line's 16 px box centres at 7 + 19 + 2 + 8.
       expect(layouts, {for (final name in variants.keys) name: (height: 51.0, titleTop: 7.0, logoCentre: 36.0)});
     });
