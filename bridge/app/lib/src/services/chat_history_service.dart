@@ -46,6 +46,15 @@ final class const CapturedPartShapes({
 /// fallback is bounded to the released inline-wire budget.
 final class const CapturedPartUnavailable({required final MessagePart inlineFallbackPart}) extends CapturedPartDelivery;
 
+/// A session whose background re-read landed in the store.
+typedef SessionHistoryRefresh = ({
+  String sessionId,
+
+  /// The prompt defaults the re-read stored from the harness's history, as a
+  /// blocking stale read would have returned them; `null` when it stored none.
+  SessionPromptDefaults? replayedPromptDefaults,
+});
+
 typedef SessionMessagesPage = ({
   List<MessageWithParts> messages,
   int? nextCursor,
@@ -80,16 +89,16 @@ class ChatHistoryService({
   final KeyedParallelLock<String> _writeLock = KeyedParallelLock<String>();
   final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
   final ParallelLock _thumbnailGenerationLock = ParallelLock(maxParallelOperations: 1);
-  final StreamController<String> _historyRefreshes = StreamController<String>.broadcast();
+  final StreamController<SessionHistoryRefresh> _historyRefreshes = StreamController<SessionHistoryRefresh>.broadcast();
 
   /// The plugin's explanation for each session a background re-read found it
   /// cannot restore, served with its stored pages until a re-read succeeds.
   final Map<String, String> _cannotContinueMessages = {};
   final Set<Future<void>> _backgroundRefreshes = {};
 
-  /// The id of each session re-read in the background after a read served it
-  /// behind its harness, once the store holds the re-read transcript.
-  Stream<String> get historyRefreshes => _historyRefreshes.stream;
+  /// Each session re-read in the background after a read served it behind its
+  /// harness, once the store holds the re-read transcript.
+  Stream<SessionHistoryRefresh> get historyRefreshes => _historyRefreshes.stream;
 
   /// The [window] of the session's messages, served from the store whenever
   /// it is known to be current and falling back to the backend otherwise.
@@ -341,8 +350,9 @@ class ChatHistoryService({
   /// again only when finalizing dead tool parts changes the stored transcript.
   Future<void> _refreshFromHarness({required String sessionId}) async {
     bool announce;
+    SessionPromptDefaults? replayedPromptDefaults;
     try {
-      await _backfillSessionForRead(sessionId: sessionId);
+      replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);
       _cannotContinueMessages.remove(sessionId);
       announce = true;
     } on PluginSessionUnrestorableException catch (error, stackTrace) {
@@ -366,7 +376,9 @@ class ChatHistoryService({
     } on Object catch (error, stackTrace) {
       Log.w("Failed to finalize open tool parts for session $sessionId", error, stackTrace);
     }
-    if (announce && !_historyRefreshes.isClosed) _historyRefreshes.add(sessionId);
+    if (announce && !_historyRefreshes.isClosed) {
+      _historyRefreshes.add((sessionId: sessionId, replayedPromptDefaults: replayedPromptDefaults));
+    }
   }
 
   /// One page answered by the store alone: no backfill, no harness contact,

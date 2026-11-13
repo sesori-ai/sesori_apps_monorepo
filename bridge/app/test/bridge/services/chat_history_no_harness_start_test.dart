@@ -171,7 +171,7 @@ void main() {
     test("newer harness activity serves the stored page at once and re-reads in the background", () async {
       runtime.sessionActivityById["backend-a"] = DateTime.utc(2100).millisecondsSinceEpoch;
       plugin.messagesResult = [...plugin.messagesResult, _userMessage(id: "m2")];
-      final refreshed = history.service.historyRefreshes.first;
+      final refreshed = history.service.historyRefreshes.map((refresh) => refresh.sessionId).first;
 
       final opened = await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
       expect(opened.messages.map((m) => m.info.id), ["m1"]);
@@ -208,7 +208,9 @@ void main() {
       await pumpEventQueue();
       plugin.lastGetMessagesSessionId = null;
       final announcements = <String>[];
-      final subscription = history.service.historyRefreshes.listen(announcements.add);
+      final subscription = history.service.historyRefreshes
+          .map((refresh) => refresh.sessionId)
+          .listen(announcements.add);
       addTearDown(subscription.cancel);
 
       // The announcement would make the open view reload its newest page and
@@ -233,7 +235,9 @@ void main() {
         message: "The session's folder was deleted.",
       );
       final announcements = <String>[];
-      final subscription = history.service.historyRefreshes.listen(announcements.add);
+      final subscription = history.service.historyRefreshes
+          .map((refresh) => refresh.sessionId)
+          .listen(announcements.add);
       addTearDown(subscription.cancel);
 
       await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);

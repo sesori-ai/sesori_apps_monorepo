@@ -46,7 +46,11 @@ reconnect or restart.
   re-read runs is also served from the store.
   When the re-read lands, the bridge sends `session.history-refreshed`, and the
   open view runs its silent refresh, so the new turns are appended at the end
-  of the transcript without a loading state. A failed re-read is logged, and the
+  of the transcript without a loading state. An agent or model the re-read
+  found the outside turn used is sent first as `session.prompt-defaults-changed`,
+  so the composer follows it as it would after a blocking read. A view whose
+  reader has paged back skips that refresh, leaving the older history in place;
+  the next refresh or open shows the new turns. A failed re-read is logged, and the
   session stays behind, so the next read retries it. A backend that cannot
   restore the session is announced once, and its stored pages then carry the
   plugin's `cannotContinueMessage`. A first open with nothing stored still waits

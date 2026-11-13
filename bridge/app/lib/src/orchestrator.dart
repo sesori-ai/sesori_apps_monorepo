@@ -1185,7 +1185,16 @@ class OrchestratorSession._({
     final startupSummary = await _buildProjectsSummary();
     if (startupSummary != null) _feedLocalObservers(startupSummary);
     _chatHistoryService.historyRefreshes
-        .listen((sessionId) => _enqueueWireEvent(SesoriSseEvent.sessionHistoryRefreshed(sessionID: sessionId)))
+        .listen((refresh) {
+          // An outside turn may have switched agent or model. Sent first, so
+          // the refresh that follows already sees the new selection.
+          if (refresh.replayedPromptDefaults case final promptDefaults?) {
+            _enqueueWireEvent(
+              SesoriSseEvent.sessionPromptDefaultsChanged(sessionID: refresh.sessionId, promptDefaults: promptDefaults),
+            );
+          }
+          _enqueueWireEvent(SesoriSseEvent.sessionHistoryRefreshed(sessionID: refresh.sessionId));
+        })
         .addTo(_subscriptions);
     _sessionUnseenService.unseenChanges
         .listen((change) {

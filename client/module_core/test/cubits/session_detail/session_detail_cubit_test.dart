@@ -28,6 +28,7 @@ import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapsh
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -3211,6 +3212,53 @@ void main() {
         (cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id),
         ["stored", "outside"],
       );
+    });
+
+    test("session.history-refreshed leaves paged-back history in place", () async {
+      var newestPageReads = 0;
+      when(
+        () => mockSessionRepository.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer((invocation) async {
+        final isOlderPage = invocation.namedArguments[#before] != null;
+        if (!isOlderPage) newestPageReads += 1;
+        return ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [testMessageWithParts(id: isOlderPage ? "older" : "newest")],
+            nextCursor: isOlderPage ? null : 5,
+            userMessagesBefore: null,
+            replayedPromptDefaults: null,
+            cannotContinueMessage: null,
+          ),
+        );
+      });
+      when(
+        () => mockSessionRepository.getPromptIndex(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) async => const SessionPromptIndexUnsupported());
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      connectionStatus.add(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
+          health: testHealthResponse(),
+        ),
+      );
+      await cubit.loadOlderMessages();
+      expect((cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id), ["older", "newest"]);
+
+      sessionEvents.add(const SesoriSessionHistoryRefreshed(sessionID: sessionId));
+      await pumpEventQueue();
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.isRefreshing, isFalse);
+      expect(state.messages.map((message) => message.info.id), ["older", "newest"]);
+      expect(newestPageReads, 1, reason: "a refresh would reload the newest page and drop the older one");
     });
 
     blocTest<SessionDetailCubit, SessionDetailState>(
