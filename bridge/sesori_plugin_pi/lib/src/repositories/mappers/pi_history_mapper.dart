@@ -110,6 +110,7 @@ final class PiHistoryMapper({
         agent: null,
         time: _time(message.timestamp),
         promptId: promptId,
+        invocation: null,
       ),
       parts: parts,
     );

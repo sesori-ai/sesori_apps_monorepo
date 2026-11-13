@@ -12,6 +12,7 @@ import "package:opencode_plugin/src/v2/mappers/v2_form_answer_validator.dart";
 import "package:opencode_plugin/src/v2/models/v2_decode_exception.dart";
 import "package:opencode_plugin/src/v2/opencode_v2_plugin.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_activity_tracker.dart";
+import "package:opencode_plugin/src/v2/repositories/opencode_v2_command_echo_tracker.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_compaction_tracker.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_repository.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_message_mapper.dart";
@@ -45,6 +46,7 @@ OpenCodeV2Service _service({required Future<http.Response> Function(http.Request
     ),
     tracker: OpenCodeV2ActivityTracker(),
     compactions: OpenCodeV2CompactionTracker(),
+    commandEchoes: OpenCodeV2CommandEchoTracker(),
     mapper: const V2EventMapper(
       modelMapper: V2ModelMapper(pluginId: "fixture"),
       messageMapper: V2MessageMapper(),

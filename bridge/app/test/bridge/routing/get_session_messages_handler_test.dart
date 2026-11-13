@@ -90,6 +90,7 @@ void main() {
         const PluginMessageWithParts(
           info: PluginMessage.user(
             promptId: null,
+            invocation: null,
             id: "m1",
             sessionID: "s1",
             agent: null,
@@ -131,7 +132,14 @@ void main() {
       plugin.messagesResult = [
         for (final id in const ["m1", "m2", "m3"])
           PluginMessageWithParts(
-            info: PluginMessage.user(promptId: null, id: id, sessionID: "s1", agent: null, time: null),
+            info: PluginMessage.user(
+              promptId: null,
+              invocation: null,
+              id: id,
+              sessionID: "s1",
+              agent: null,
+              time: null,
+            ),
             parts: const [],
           ),
       ];
@@ -148,7 +156,14 @@ void main() {
     test("serves a shell tool without the title that repeats its command", () async {
       plugin.messagesResult = [
         const PluginMessageWithParts(
-          info: PluginMessage.user(promptId: null, id: "m1", sessionID: "s1", agent: null, time: null),
+          info: PluginMessage.user(
+            promptId: null,
+            invocation: null,
+            id: "m1",
+            sessionID: "s1",
+            agent: null,
+            time: null,
+          ),
           parts: [
             PluginMessagePart.tool(
               id: "p1",
@@ -190,6 +205,7 @@ void main() {
         PluginMessageWithParts(
           info: const PluginMessage.user(
             promptId: null,
+            invocation: null,
             id: "m1",
             sessionID: "s1",
             agent: null,

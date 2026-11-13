@@ -1153,7 +1153,14 @@ void main() {
       );
       plugin.messagesResult = const [
         PluginMessageWithParts(
-          info: PluginMessageUser(promptId: null, id: "message-1", sessionID: "backend-s1", agent: null, time: null),
+          info: PluginMessageUser(
+            promptId: null,
+            invocation: null,
+            id: "message-1",
+            sessionID: "backend-s1",
+            agent: null,
+            time: null,
+          ),
           parts: [
             PluginMessagePart.text(
               id: "part-1",

@@ -21,6 +21,7 @@ void main() {
         PluginMessageWithParts(
           info: PluginMessage.user(
             promptId: null,
+            invocation: null,
             id: "m1",
             sessionID: "backend-a",
             agent: null,

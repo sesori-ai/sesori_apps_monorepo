@@ -327,6 +327,41 @@ void main() {
     );
   });
 
+  test("names a skill run from the command picker as its invocation", () {
+    PluginCommandInvocation? invocation({required String text, required List<Object> skills}) => switch (mapped(
+      json: <String, dynamic>{
+        "type": "user",
+        "id": "user",
+        "text": text,
+        "time": <String, int>{"created": 1},
+        "skills": skills,
+      },
+    ).info) {
+      PluginMessageUser(:final invocation) => invocation,
+      _ => fail("expected a user message"),
+    };
+    const skill = <String, dynamic>{"id": "fixture-greeter", "name": "Fixture greeter"};
+
+    expect(
+      invocation(text: "hello", skills: [skill]),
+      const PluginCommandInvocation(name: "fixture-greeter", source: PluginCommandSource.skill, arguments: "hello"),
+    );
+    expect(invocation(text: "", skills: [skill])?.arguments, isNull);
+    expect(
+      invocation(
+        text: "use @fixture-greeter",
+        skills: [
+          {
+            ...skill,
+            "mention": <String, dynamic>{"start": 4, "end": 20, "text": "@fixture-greeter"},
+          },
+        ],
+      ),
+      isNull,
+    );
+    expect(invocation(text: "plain", skills: []), isNull);
+  });
+
   test("bounds standalone tool images and excludes local or credentialed URLs", () {
     final result = mapper.mapToolState(
       toolName: "bash",

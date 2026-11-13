@@ -2,19 +2,21 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "plugin_command_mapper.dart";
 import "plugin_to_shared_mapping.dart";
 
 /// Maps plugin-level message types to shared [Message] types.
 extension PluginMessageMapper on PluginMessage {
   Message toSharedMessage({required String sessionId}) => switch (this) {
-    PluginMessageUser(:final id, :final agent, :final time, :final promptId) => Message.user(
+    PluginMessageUser(:final id, :final agent, :final time, :final promptId, :final invocation) => Message.user(
       id: id,
       sessionID: sessionId,
       agent: agent,
       time: time.toShared(),
       promptId: promptId,
-      // Bridge core names the invocation from its own sends.
-      invocation: null,
+      // A plugin names a run from its backend's record; otherwise bridge core
+      // names the commands it sent itself.
+      invocation: invocation?.toShared(),
     ),
     PluginMessageAssistant(
       :final id,

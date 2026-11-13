@@ -158,6 +158,7 @@ void main() {
       const BridgeSseMessageUpdated(
         info: PluginMessage.user(
           promptId: null,
+          invocation: null,
           id: "message",
           sessionID: "session",
           agent: null,

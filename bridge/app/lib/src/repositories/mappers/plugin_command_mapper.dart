@@ -1,3 +1,4 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -8,6 +9,19 @@ extension PluginCommandSourceMapping on PluginCommandSource {
     PluginCommandSource.skill => CommandSource.skill,
     PluginCommandSource.unknown => CommandSource.unknown,
   };
+}
+
+extension PluginCommandInvocationMapping on PluginCommandInvocation {
+  /// The arguments lose the bridge's worktree note, as the message's text
+  /// parts do, since a plugin names them from the prompt the bridge sent.
+  CommandInvocation toShared() => CommandInvocation(
+    name: name,
+    source: source.toShared(),
+    arguments: switch (arguments) {
+      final arguments? => stripWorktreeSystemContext(text: arguments),
+      null => null,
+    },
+  );
 }
 
 extension PluginCommandMapping on PluginCommand {

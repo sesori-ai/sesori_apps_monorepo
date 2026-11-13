@@ -10,6 +10,7 @@ import "package:opencode_plugin/src/v2/models/v2_agent_names.dart";
 import "package:opencode_plugin/src/v2/models/v2_event.g.dart";
 import "package:opencode_plugin/src/v2/models/v2_message_filter.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_activity_tracker.dart";
+import "package:opencode_plugin/src/v2/repositories/opencode_v2_command_echo_tracker.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_compaction_tracker.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_repository.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_message_mapper.dart";
@@ -87,10 +88,12 @@ V2EventEnvelope frame({required String type, required Map<String, dynamic> data}
 void main() {
   late OpenCodeV2ActivityTracker tracker;
   late FakeRepository repository;
+  late OpenCodeV2CommandEchoTracker commandEchoes;
   late OpenCodeV2Service service;
   setUp(() {
     tracker = OpenCodeV2ActivityTracker();
     repository = FakeRepository();
+    commandEchoes = OpenCodeV2CommandEchoTracker();
     service = OpenCodeV2Service(
       repository: repository,
       mcpAuthentication: V2McpAuthenticationService(
@@ -99,6 +102,7 @@ void main() {
       ),
       tracker: tracker,
       compactions: OpenCodeV2CompactionTracker(),
+      commandEchoes: commandEchoes,
       mapper: const V2EventMapper(modelMapper: models, messageMapper: messages),
       modelMapper: models,
       formAnswerMapper: const V2FormAnswerMapper(),
@@ -639,6 +643,38 @@ void main() {
     final events = await service.handleEvent(envelope: delivery);
     expect(events.whereType<BridgeSseMessageUpdated>().single.info.id, "msg_input");
     expect(repository.calls, ["message:child/msg_input:$worktree", "message:child/msg_input:$worktree"]);
+  });
+
+  test("a native command's admitted message is delivered with the command's prompt id", () async {
+    await service.coldStart();
+    commandEchoes.expect(sessionId: "child", promptId: "command-prompt");
+    Future<String?> deliver({required String id}) async {
+      repository.message = messages.mapMessage(
+        sessionId: "child",
+        agentNames: names,
+        message: SessionMessageInfo.fromJson(<String, dynamic>{
+          "id": id,
+          "type": "user",
+          "text": "Expanded fixture template",
+          "time": const <String, int>{"created": 1},
+        }),
+      );
+      final data = {"sessionID": "child", "inboxID": id};
+      await service.handleEvent(
+        envelope: frame(type: "session.inbox.enqueued", data: data),
+      );
+      final events = await service.handleEvent(
+        envelope: frame(type: "session.inbox.delivered", data: data),
+      );
+      return switch (events.whereType<BridgeSseMessageUpdated>().single.info) {
+        PluginMessageUser(:final promptId) => promptId,
+        _ => fail("expected a user message"),
+      };
+    }
+
+    expect(await deliver(id: "msg_command"), "command-prompt");
+    // The command is matched once; a later message stays the TUI's.
+    expect(await deliver(id: "msg_typed"), isNull);
   });
 
   test("notice projection uses display names without fetching names for synthetic text", () async {

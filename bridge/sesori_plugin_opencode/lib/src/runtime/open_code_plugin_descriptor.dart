@@ -151,6 +151,12 @@ class const OpenCodePluginDescriptor({
   @override
   bool get supportsPromptAttachments => true;
 
+  /// Both protocols echo a sent command with its prompt id: OpenCode 1 takes
+  /// the message id Sesori names, and OpenCode 2 matches a native command's
+  /// message by arrival (`OpenCodeV2CommandEchoTracker`).
+  @override
+  bool get namesCommandInvocations => true;
+
   @override
   Set<PluginMcpCapability> get mcpCapabilities => const {
     PluginMcpCapability.management,

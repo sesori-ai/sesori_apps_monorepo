@@ -43,6 +43,7 @@ export "src/models/plugin_active_session.dart";
 export "src/models/plugin_agent.dart";
 export "src/models/plugin_catalog_snapshot.dart";
 export "src/models/plugin_command.dart";
+export "src/models/plugin_command_invocation.dart";
 export "src/models/plugin_mcp.dart";
 export "src/models/plugin_mcp_authentication.dart";
 export "src/models/plugin_mcp_connector_setup.dart";

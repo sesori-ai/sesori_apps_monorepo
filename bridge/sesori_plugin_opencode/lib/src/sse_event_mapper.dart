@@ -63,6 +63,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         // Set for a message this bridge's own send created; a message authored
         // anywhere else (the OpenCode TUI, another tool) has none.
         promptId: promptId,
+        invocation: null,
       ),
       AssistantMessage() => _assistantMessageMapper.map(info, keepsCompactionParts: keepsCompactionParts),
       // Unknown roles from a newer OpenCode server have no plugin shape the

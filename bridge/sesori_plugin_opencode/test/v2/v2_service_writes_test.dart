@@ -9,6 +9,7 @@ import "package:opencode_plugin/src/v2/models/openapi/permission_request.g.dart"
 import "package:opencode_plugin/src/v2/models/openapi/session_info.g.dart";
 import "package:opencode_plugin/src/v2/models/v2_event.g.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_activity_tracker.dart";
+import "package:opencode_plugin/src/v2/repositories/opencode_v2_command_echo_tracker.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_compaction_tracker.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_repository.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_message_mapper.dart";
@@ -48,9 +49,11 @@ const parts = <PluginPromptPart>[
 void main() {
   late WritableRepository repository;
   late OpenCodeV2ActivityTracker tracker;
+  late OpenCodeV2CommandEchoTracker commandEchoes;
   late OpenCodeV2Service service;
   setUp(() {
     repository = WritableRepository();
+    commandEchoes = OpenCodeV2CommandEchoTracker();
     tracker = OpenCodeV2ActivityTracker();
     tracker.seed(sessions: [root, child], activeSessionIds: {}, permissions: [], forms: []);
     service = OpenCodeV2Service(
@@ -61,6 +64,7 @@ void main() {
       ),
       tracker: tracker,
       compactions: OpenCodeV2CompactionTracker(),
+      commandEchoes: commandEchoes,
       mapper: const V2EventMapper(modelMapper: models, messageMapper: V2MessageMapper()),
       modelMapper: models,
       formAnswerMapper: const V2FormAnswerMapper(),
@@ -264,6 +268,39 @@ void main() {
     expect(repository.calls, ["commands", "skills", "skill:fixture-skill:fixture-prompt:Fixture arguments"]);
   });
 
+  test("a native command claims the next admitted message unless OpenCode refused it", () async {
+    repository.commands = [const PluginCommand(name: "review", provider: null)];
+    Future<void> send({required String promptId}) => service.sendCommand(
+      sessionId: root.id,
+      promptId: promptId,
+      command: "review",
+      arguments: "Fixture arguments",
+      userVisibleArguments: "Fixture arguments",
+      agent: null,
+      model: null,
+      variant: null,
+    );
+
+    await send(promptId: "sent-prompt");
+    commandEchoes.observeAdmitted(sessionId: root.id, messageId: "msg_sent");
+    expect(commandEchoes.promptIdFor(messageId: "msg_sent"), "sent-prompt");
+
+    repository.commandFailure = const PluginOperationException(
+      operation: "sendCommand",
+      statusCode: 404,
+      message: "Fixture refusal",
+    );
+    await expectLater(send(promptId: "refused-prompt"), throwsA(isA<PluginOperationException>()));
+    commandEchoes.observeAdmitted(sessionId: root.id, messageId: "msg_typed");
+    expect(commandEchoes.promptIdFor(messageId: "msg_typed"), isNull);
+
+    // A timeout or 5xx doesn't prove the command didn't run, so its echo still names it.
+    repository.commandFailure = const PluginOperationException(operation: "sendCommand", statusCode: 504);
+    await expectLater(send(promptId: "uncertain-prompt"), throwsA(isA<PluginOperationException>()));
+    commandEchoes.observeAdmitted(sessionId: root.id, messageId: "msg_late");
+    expect(commandEchoes.promptIdFor(messageId: "msg_late"), "uncertain-prompt");
+  });
+
   test("pending children retain root attribution; only a successful reply consumes native constraints", () async {
     tracker.seed(sessions: [root, child], activeSessionIds: {}, permissions: [permission], forms: [form]);
     expect((await service.getPendingQuestions(sessionId: root.id)).single.displaySessionId, root.id);
@@ -391,6 +428,7 @@ class WritableRepository() implements OpenCodeV2Repository {
   final promptEntered = Completer<void>();
   Completer<void>? promptAccepted;
   Object? replyFailure;
+  Object? commandFailure;
   List<PluginCommand> commands = [];
   List<PluginCommand> skills = [];
   List<PluginPromptPart>? parts;
@@ -474,6 +512,7 @@ class WritableRepository() implements OpenCodeV2Repository {
   @override
   Future<void> sendCommand({required String sessionId, required String command, required String arguments}) async {
     calls.add("command:$command");
+    if (commandFailure case final failure?) throw failure;
   }
 
   @override

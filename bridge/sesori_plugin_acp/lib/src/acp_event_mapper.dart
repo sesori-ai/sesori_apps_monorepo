@@ -1387,6 +1387,7 @@ class AcpEventMapper({
         agent: null,
         time: time,
         promptId: promptId,
+        invocation: null,
       ),
       _ChunkRole.assistant => PluginMessage.assistant(
         id: messageId,

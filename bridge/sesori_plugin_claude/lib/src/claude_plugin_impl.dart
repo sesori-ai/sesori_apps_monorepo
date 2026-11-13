@@ -923,6 +923,7 @@ final class ClaudePlugin({
           agent: null,
           time: PluginMessageTime(created: now, completed: now),
           promptId: promptId,
+          invocation: null,
         ),
       ),
     );
