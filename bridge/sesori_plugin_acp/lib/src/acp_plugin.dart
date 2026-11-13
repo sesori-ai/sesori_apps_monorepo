@@ -220,6 +220,10 @@ abstract class AcpPlugin({
   /// quiet-window detection.
   final Map<String, int> _suppressedReplayCounts = {};
 
+  /// Per-session sinks for a history replay running on the live process; its
+  /// replay notifications go here instead of the live stream.
+  final Map<String, void Function(AcpNotification notification)> _liveReplaySinks = {};
+
   /// Whether this connection's agent rejected an *unfiltered* `session/list`
   /// (the ACP spec's global enumeration — `cwd` is only a filter). Remembered
   /// per connection so a non-compliant agent is asked once, not on every
@@ -256,6 +260,14 @@ abstract class AcpPlugin({
   /// Chooses only among advertised capabilities. Never retries arbitrary errors
   /// using a second method. History replay remains session/load.
   AcpResidencyPreference get residencyPreference => AcpResidencyPreference.loadFirst;
+
+  /// Whether history for a session resident in the live process is replayed
+  /// by `session/load` on that process instead of a separate replay process.
+  /// A harness that copies a session another of its processes holds (OMP)
+  /// opts in; while a turn on the session runs, such a replay throws
+  /// [PluginSessionHistoryBusyException] because its output would interleave
+  /// with the turn's.
+  bool get replaysResidentHistoryOnLiveProcess => false;
 
   /// A concrete plugin delegates to its injected composition factory. The client
   /// remains the pre-log interception and failure-cleanup owner.
@@ -462,6 +474,12 @@ abstract class AcpPlugin({
     }
     final sid = notification.params["sessionId"];
     if (sid is String && childSessionTracker.isDeleted(sessionId: sid)) return;
+    if (sid is String && isResumeReplayNotification(notification)) {
+      if (_liveReplaySinks[sid] case final sink?) {
+        sink(notification);
+        return;
+      }
+    }
     if (sid is String && _suppressedSessions.contains(sid) && isResumeReplayNotification(notification)) {
       // Replay from an in-flight resume-load — drop so old history does not
       // re-stream into the live conversation or reconstruct stale live state.
@@ -2370,9 +2388,6 @@ abstract class AcpPlugin({
     if (_knownSessionDirectory(sessionId: sessionId) == null) {
       await listAllSessions(knownDirectories: const {});
     }
-    // History via `session/load` replay on a dedicated short-lived client so
-    // replayed updates don't interleave with the live session's stream.
-    final replayClient = _createClient(logTag: "$id-replay");
     AcpReplayCollector collectorFactory({required AcpReplayToolPartSuppression? toolPartSuppression}) =>
         AcpReplayCollector(
           sessionUpdateNormalizer: eventMapper.normalizeSessionUpdate,
@@ -2394,6 +2409,12 @@ abstract class AcpPlugin({
           toolPartReplacement: null,
           toolPartSuppression: toolPartSuppression,
         );
+    if (replaysResidentHistoryOnLiveProcess && _residentSessions.contains(sessionId)) {
+      return await _replayResidentHistory(sessionId: sessionId, collectorFactory: collectorFactory);
+    }
+    // History via `session/load` replay on a dedicated short-lived client so
+    // replayed updates don't interleave with the live session's stream.
+    final replayClient = _createClient(logTag: "$id-replay");
     late final AcpSessionReplayCollector replayCollector;
     List<PluginMessageWithParts> buildReplay() => replayCollector.buildWithAssistantSelection(
       modelId: eventMapper.modelForSession(sessionId: sessionId),
@@ -2494,33 +2515,7 @@ abstract class AcpPlugin({
       rethrow;
     } on Object catch (error, stackTrace) {
       flushDeferredCommandRefresh();
-      if (error is AcpRpcException) {
-        final unrestorableMessage = unrestorableSessionMessage(error: error);
-        if (unrestorableMessage != null) {
-          // The agent refuses to reopen this session as stored; the typed
-          // failure lets the bridge serve the history it already holds.
-          Error.throwWithStackTrace(
-            PluginSessionUnrestorableException(
-              "session/load history replay",
-              message: unrestorableMessage,
-              cause: error,
-            ),
-            stackTrace,
-          );
-        }
-      }
-      // A broken replay (connect/init/auth/load failure) must stay
-      // distinguishable from a genuinely empty thread: surface it as a typed
-      // failure (the bridge router maps it to a 502 and the phone renders a
-      // retry state) instead of swallowing it into an empty list.
-      Error.throwWithStackTrace(
-        PluginOperationException(
-          "session/load history replay",
-          message: "history replay for $sessionId failed",
-          cause: error,
-        ),
-        stackTrace,
-      );
+      _throwReplayFailure(sessionId: sessionId, error: error, stackTrace: stackTrace);
     } finally {
       try {
         await sub?.cancel();
@@ -2538,6 +2533,97 @@ abstract class AcpPlugin({
         Log.w("[$id] failed to dispose replay client", e, st);
       }
     }
+  }
+
+  /// Replays [sessionId]'s history on the live process that holds it. The
+  /// replay joins the session's turn chain while no turn is pending, so a
+  /// prompt accepted meanwhile waits behind it and its output never lands in
+  /// the snapshot.
+  Future<List<PluginMessageWithParts>> _replayResidentHistory({
+    required String sessionId,
+    required AcpReplayCollectorFactory collectorFactory,
+  }) async {
+    final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
+    if (state.pending > 0) {
+      throw const PluginSessionHistoryBusyException(
+        "session/load history replay",
+        message: "a turn is running on the live process",
+      );
+    }
+    final replay = state.tail.then(
+      (_) => _loadResidentHistory(sessionId: sessionId, collectorFactory: collectorFactory),
+    );
+    // Each link isolates its own failure, as _enqueueTurn's links do.
+    state.tail = replay.then<void>((_) {}, onError: (Object _) {});
+    return await replay;
+  }
+
+  Future<List<PluginMessageWithParts>> _loadResidentHistory({
+    required String sessionId,
+    required AcpReplayCollectorFactory collectorFactory,
+  }) async {
+    try {
+      final collector = await createSessionReplayCollector(
+        sessionId: sessionId,
+        collectorFactory: collectorFactory,
+      );
+      var received = 0;
+      _liveReplaySinks[sessionId] = (notification) {
+        received++;
+        collector.consumeNotification(notification: notification);
+      };
+      final result = await AcpAgentApi(client: await _connectedClient()).loadSession(
+        sessionId: sessionId,
+        cwd: directoryForSession(sessionId: sessionId),
+        timeout: const Duration(minutes: 2),
+      );
+      captureSessionConfig(result, sessionId: sessionId, fromNewSession: false);
+      // Notifications reach the sink through async streams, so the response
+      // can resolve while replayed updates are still queued.
+      await _drainReplay(() => received);
+      return collector.buildWithAssistantSelection(
+        modelId: eventMapper.modelForSession(sessionId: sessionId),
+        providerId: eventMapper.providerForSession(sessionId: sessionId),
+        variant: replayVariantForSession(sessionId: sessionId),
+      );
+    } on PluginAuthenticationRequiredException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      _throwReplayFailure(sessionId: sessionId, error: error, stackTrace: stackTrace);
+    } finally {
+      _liveReplaySinks.remove(sessionId);
+    }
+  }
+
+  /// Rethrows a failed history replay as its typed failure.
+  Never _throwReplayFailure({required String sessionId, required Object error, required StackTrace stackTrace}) {
+    if (error is AcpRpcException) {
+      final unrestorableMessage = unrestorableSessionMessage(error: error);
+      if (unrestorableMessage != null) {
+        // The agent refuses to reopen this session as stored; the typed
+        // failure lets the bridge serve the history it already holds.
+        Error.throwWithStackTrace(
+          PluginSessionUnrestorableException(
+            "session/load history replay",
+            message: unrestorableMessage,
+            cause: error,
+          ),
+          stackTrace,
+        );
+      }
+    }
+    // A broken replay (connect/init/auth/load failure) must stay
+    // distinguishable from a genuinely empty thread: surface it as a typed
+    // failure (the bridge router maps it to a 502 and the phone renders a
+    // retry state) instead of swallowing it into an empty list.
+    Error.throwWithStackTrace(
+      PluginOperationException(
+        "session/load history replay",
+        message: "history replay for $sessionId failed",
+        cause: error,
+      ),
+      stackTrace,
+    );
   }
 
   /// Waits until the replay `session/update` stream goes quiet — no new

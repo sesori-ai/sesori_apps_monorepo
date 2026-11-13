@@ -12,10 +12,12 @@ void main() {
     late OmpPlugin plugin;
     late List<BridgeSseEvent> events;
     late AcpLaunchSpec launchSpec;
+    late int spawns;
 
     setUp(() {
       fake = FakeAcpProcess();
       events = [];
+      spawns = 0;
       plugin = OmpPlugin(
         binaryPath: OmpBinary.defaultBinary,
         launchDirectory: "/repo",
@@ -23,6 +25,7 @@ void main() {
         clock: const ServerClock(),
         processFactory: (spec) async {
           launchSpec = spec;
+          spawns++;
           return fake;
         },
       );
@@ -1045,6 +1048,62 @@ void main() {
       expect(image.base64, "AQ==");
       expect(image.filename, "history.webp");
       expect(image.toString(), isNot(contains("/private/")));
+    });
+
+    test("replays a session the live process holds on that process, without a second omp", () async {
+      await connect(capabilities: {"loadSession": true});
+      final session = await create("live");
+      final eventsBefore = events.length;
+
+      final loading = plugin.getSessionMessages(session.id);
+      final load = await waitForFrame(AcpMethods.sessionLoad);
+      expect(load["params"], {"sessionId": "live", "cwd": "/repo", "mcpServers": <Object?>[]});
+      // The replay and its response arrive in one stdout chunk.
+      fake.emitChunk(
+        messages: [
+          for (final update in <Map<String, dynamic>>[
+            {
+              "sessionUpdate": "user_message_chunk",
+              "content": {"type": "text", "text": "Question"},
+            },
+            {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": "Answer"},
+            },
+          ])
+            {
+              "jsonrpc": "2.0",
+              "method": AcpMethods.sessionUpdate,
+              "params": {"sessionId": "live", "update": update},
+            },
+          {"jsonrpc": "2.0", "id": load["id"], "result": const <String, dynamic>{}},
+        ],
+      );
+
+      final messages = await loading;
+      expect(messages.map((message) => (message.parts.single as PluginMessagePartText).text), ["Question", "Answer"]);
+      expect(spawns, 1);
+      expect(frames(AcpMethods.initialize), hasLength(1));
+      // The replay never reaches the live stream.
+      expect(events.skip(eventsBefore).whereType<BridgeSseMessagePartUpdated>(), isEmpty);
+    });
+
+    test("reports a held session's history as busy while its turn runs", () async {
+      await connect(capabilities: {"loadSession": true});
+      final session = await create("live");
+      await send(session.id, "keep going");
+      final prompt = await waitForFrame(AcpMethods.sessionPrompt);
+
+      await expectLater(plugin.getSessionMessages(session.id), throwsA(isA<PluginSessionHistoryBusyException>()));
+      expect(frames(AcpMethods.sessionLoad), isEmpty);
+      expect(spawns, 1);
+
+      respond(prompt, {"stopReason": "end_turn"});
+      await settle();
+      final loading = plugin.getSessionMessages(session.id);
+      respond(await waitForFrame(AcpMethods.sessionLoad), const {});
+      expect(await loading, isEmpty);
+      expect(spawns, 1);
     });
 
     test("resumes a prior-process session before prompting", () async {

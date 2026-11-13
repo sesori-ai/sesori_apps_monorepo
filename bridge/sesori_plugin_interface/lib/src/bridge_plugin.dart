@@ -17,6 +17,7 @@ import "models/plugin_session_options.dart";
 import "models/plugin_session_status.dart";
 import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
+import "plugin_session_history_busy_exception.dart";
 import "plugin_session_unrestorable_exception.dart";
 import "plugin_stale_options_exception.dart";
 
@@ -121,7 +122,10 @@ sealed class BridgePluginApi() {
   /// stay distinguishable from "no messages yet". When the backend refuses to
   /// restore this session's history as stored, throw the typed
   /// [PluginSessionUnrestorableException] so the bridge can serve the history
-  /// it already holds with the plugin's explanation.
+  /// it already holds with the plugin's explanation. When the backend can
+  /// replay history only between turns and one is running, throw the typed
+  /// [PluginSessionHistoryBusyException] so the bridge serves what it holds
+  /// and reads again after the turn.
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId);
 
   /// Sends a prompt to a session.
