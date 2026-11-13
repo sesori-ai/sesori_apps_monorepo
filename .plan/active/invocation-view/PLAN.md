@@ -82,8 +82,14 @@ Planning decisions from code evidence (P1–P9):
   `NormalizedMessageEvent` whose `MessageUser` carries a registered `promptId`.
   Live capture (`ChatHistoryListener`) and client delivery consume that same
   normalized value, so storage and the wire can't diverge. The tracker lives
-  only in memory, which is safe because plugin queues don't survive a bridge
-  restart either.
+  only in memory. A queued prompt dies with the bridge anyway, because plugin
+  queues are in memory too. So a restart can lose the name only in the short
+  gap after the harness accepted the command and before its user turn
+  reached the bridge. The cost is that one turn shows as a plain bubble. The
+  guarantee is therefore: the card survives reopening and restarts once the
+  user turn is recorded. Writing the outbound invocation to the store before
+  the plugin call isn't worth it, because the store has no row for that turn
+  yet, and correlating one later would add state.
 - **P4 Persistence is the history store.** The stamped message is stored as
   `infoJson` in `chat_history.db` and copied into the archive file (both
   serialize `Message`). That store is D4's "small local record". There is no
@@ -94,9 +100,12 @@ Planning decisions from code evidence (P1–P9):
   id when the import has none. A plugin-provided invocation wins. The replay
   semantic fingerprint (`_semanticMessageFingerprints`) excludes `invocation`
   as it excludes `promptId`, so a stamped live row still matches its replay.
-  Carry-over is exact-id only. Matching by content would add machinery for
-  plugins whose ids are unstable, and those plugins fill the field from
-  history themselves (Phase 2).
+  Carry-over follows the store's existing replay matching: an exact id, or
+  the content match the store already makes between a live row and its
+  replay. That match is a one-line reuse, so a harness with unstable ids
+  keeps the card after the first backfill. Content matching adds no new
+  machinery. Where neither match holds, the plugin fills the field from
+  history (Phase 2).
 - **P5 Queued state.** `QueuedSessionPrompt` gains
   `required CommandSource? commandSource`. Bridge core fills it from the
   tracker by prompt id, in the repository read path (`getQueuedPrompts`) and
@@ -173,8 +182,8 @@ Planning decisions from code evidence (P1–P9):
 
 - No new `MessagePart` type. No migration, backfill or new table. Sessions
   from before this change keep their bubbles (low-damage old-data rule).
-- No content-based carry-over of `invocation` across unstable replay ids in
-  bridge core (P4).
+- No new content matching for `invocation` beyond the store's existing
+  replay match (P4).
 - No session-options-cache lookup of a command's kind (P2).
 - No tap action, disclosure or description sheet (D2).
 - No change to prompt search semantics (P6).
@@ -205,7 +214,7 @@ Bridge core (`bridge/app`, `bridge/sesori_plugin_interface`):
   `(sessionId, promptId)` to `CommandInvocation`. Its owner is
   `SessionRepository`, which constructs it, writes it in `sendCommand`, and
   exposes reads only through `stampLiveInvocation({required Message message})`
-  and `commandSourceFor({required String sessionId, required String promptId})`.
+  and `stampQueuedCommandSources({required String sessionId, required List<QueuedSessionPrompt> prompts})`.
   `SessionRepository.sendCommand` gains `required CommandSource? commandSource`
   and registers the entry before the plugin call. It registers before the call
   because the echo can arrive before acceptance returns. A send that throws
@@ -226,7 +235,7 @@ Bridge core (`bridge/app`, `bridge/sesori_plugin_interface`):
     normalizes `BridgeSseQueuedPromptsUpdated` into a new
     `NormalizedQueuedPromptsEvent({required String sessionId, required List<QueuedSessionPrompt> prompts})`
     in `normalized_bridge_event.dart`. `SessionEventService._observeBusy`
-    fills `commandSource` through `_sessionRepository.commandSourceFor`, the
+    fills `commandSource` through `_sessionRepository.stampQueuedCommandSources`, the
     same way it stamps messages. Orchestrator delivery emits
     `SesoriSseEvent.sessionQueuedPrompts` from that normalized value, and
     `BridgeEventMapper` (`sse/`) drops its queued-prompts branch, so `sse/`
@@ -376,7 +385,6 @@ Deliberately not added:
 
 - a new database table;
 - options-cache kind lookup;
-- content-matched carry-over;
 - tracker eviction hooks or timers;
 - a client-side parser of `/name`;
 - a client-side merge of `invocation` across message updates (the bridge's
