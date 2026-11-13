@@ -3631,13 +3631,20 @@ class SessionDetailCubit(
     );
   }
 
-  /// Switches to the model, at [variant] when the model offers it, otherwise
-  /// at the previous model's variant when offered, otherwise at its default.
+  /// Switches to the model at the first variant it offers among: [variant]
+  /// (picked together with the model), the previous model's variant, and the
+  /// variant an agent declares for this model; otherwise at the model's
+  /// default.
   void selectModel({required String providerID, required String modelID, required SessionVariant? variant}) {
     if (_refuseWhenInteractionBlocked(action: "select a model")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
+    final agentModel = _resolveAgentModel(
+      agents: current.availableAgents,
+      providerID: providerID,
+      modelID: modelID,
+    );
     final newModel = AgentModel(providerID: providerID, modelID: modelID, variant: null);
     final availableVariants = _selection.availableVariants(
       providers: current.availableProviders,
@@ -3646,13 +3653,7 @@ class SessionDetailCubit(
     final resolvedVariant = _selection.switchedModelVariant(
       providers: current.availableProviders,
       model: newModel,
-      candidates: [variant?.id, current.selectedAgentModel?.variant],
-    );
-
-    final agentModel = _resolveAgentModel(
-      agents: current.availableAgents,
-      providerID: providerID,
-      modelID: modelID,
+      candidates: [variant?.id, current.selectedAgentModel?.variant, agentModel?.variant],
     );
 
     if (isClosed) return;

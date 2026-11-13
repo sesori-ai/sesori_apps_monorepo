@@ -2564,6 +2564,83 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
+      "selectModel falls back to an agent's declared variant when the previous one is not offered",
+      build: () {
+        ProviderModel model({required String id, required List<String> variants}) => ProviderModel(
+          fastMode: null,
+          id: id,
+          providerID: "openai",
+          name: id,
+          variants: variants,
+          defaultVariant: null,
+          family: null,
+          releaseDate: null,
+        );
+        when(
+          () => mockSessionApi.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            ProviderListResponse(
+              connectedOnly: false,
+              items: [
+                ProviderInfo(
+                  id: "openai",
+                  name: "OpenAI",
+                  defaultModelID: "gpt-4",
+                  models: {
+                    "gpt-4": model(id: "gpt-4", variants: ["high", "medium", "low"]),
+                    "gpt-5": model(id: "gpt-5", variants: ["low", "medium"]),
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+        when(
+          () => mockSessionApi.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            Agents(
+              agents: [
+                testAgentInfo(),
+                testAgentInfo().copyWith(
+                  name: "reviewer",
+                  description: "Reviews code",
+                  model: const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "medium"),
+                ),
+              ],
+            ),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        // gpt-5 offers no high, so the reviewer agent's declared medium wins
+        // over gpt-5's own default (low).
+        cubit.selectModel(providerID: "openai", modelID: "gpt-5", variant: null);
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel,
+          "initial model",
+          const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+        ),
+        isA<SessionDetailLoaded>().having(
+          (state) => state.selectedAgentModel,
+          "agent's declared variant kept",
+          const AgentModel(providerID: "openai", modelID: "gpt-5", variant: "medium"),
+        ),
+      ],
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
       "abort delegates to service.abortSession",
       build: buildCubit,
       act: (cubit) async {
