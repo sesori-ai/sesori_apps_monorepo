@@ -3914,15 +3914,19 @@ class SessionDetailCubit(
     final providers = derived.providers;
 
     final assistantAgentModel = _assistantAgentModel(messages: snapshot.messages, agents: agents);
-    // The transcript's own model is retained rather than validated: a session
-    // imported from a terminal must not silently resume on a different provider
-    // because a retained provider cache does not list what it ran on.
+    // The transcript's own model is retained without validation only when the
+    // catalog does not list its provider: a session imported from a terminal
+    // must not silently resume on a different provider because a retained
+    // provider cache does not know it. A provider the catalog does list judges
+    // its own models here, as the options refresh after this load would, so
+    // the composer opens on the model it keeps instead of switching to it.
+    final transcriptProviderListed = providers.any((provider) => provider.id == assistantAgentModel?.providerID);
     final reconciled = _selection.reconcile(
       agents: agents,
       providers: providers,
       agentNameCandidates: [snapshot.promptDefaults?.agent],
-      modelCandidates: [snapshot.promptDefaults?.model],
-      retainedModel: assistantAgentModel,
+      modelCandidates: [snapshot.promptDefaults?.model, assistantAgentModel],
+      retainedModel: transcriptProviderListed ? null : assistantAgentModel,
     );
 
     final initialSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();

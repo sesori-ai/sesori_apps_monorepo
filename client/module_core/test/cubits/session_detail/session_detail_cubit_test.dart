@@ -285,6 +285,86 @@ void main() {
       );
     });
 
+    group("the model a session opens on", () {
+      void stubTranscriptModel({required AgentModel model}) {
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(
+            id: sessionId,
+            promptDefaults: SessionPromptDefaults(agent: null, model: model),
+          ),
+        );
+        when(
+          () => mockSourceRepository.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [
+                MessageWithParts(
+                  info: Message.assistant(
+                    id: "msg-1",
+                    sessionID: sessionId,
+                    agent: null,
+                    modelID: model.modelID,
+                    providerID: model.providerID,
+                    sender: MessageSender.agent,
+                    time: null,
+                  ),
+                  parts: const [],
+                ),
+              ],
+              nextCursor: null,
+              userMessagesBefore: null,
+              replayedPromptDefaults: null,
+              cannotContinueMessage: null,
+            ),
+          ),
+        );
+      }
+
+      test("is the catalog's choice from the first frame when the catalog lists its provider", () async {
+        // The session ran on a model its own provider's catalog does not offer,
+        // such as a proxy alias. The options refresh replaces it, so the first
+        // frame must already show the replacement rather than switch to it.
+        stubTranscriptModel(
+          model: const AgentModel(providerID: "anthropic", modelID: "proxy-alias", variant: null),
+        );
+        final states = <SessionDetailState>[];
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        final subscription = cubit.stream.listen(states.add);
+        addTearDown(subscription.cancel);
+
+        await _awaitLoaded(cubit);
+
+        final firstLoaded = states.whereType<SessionDetailLoaded>().first;
+        expect(firstLoaded.selectedAgentModel?.providerID, "anthropic");
+        expect(firstLoaded.selectedAgentModel?.modelID, "claude-3-5-sonnet");
+        expect(firstLoaded.availableVariants.map((variant) => variant.id), ["xhigh"]);
+      });
+
+      test("keeps the transcript's model when the catalog does not list its provider", () async {
+        stubTranscriptModel(
+          model: const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+
+        await _awaitLoaded(cubit);
+
+        final loaded = cubit.state;
+        if (loaded is! SessionDetailLoaded) fail("expected a loaded session, got $loaded");
+        expect(loaded.selectedAgentModel?.providerID, "openai");
+        expect(loaded.selectedAgentModel?.modelID, "gpt-4.1");
+      });
+    });
+
     group("approval mode", () {
       Future<SessionDetailCubit> loadedCubit({
         required bool bridgeYolo,

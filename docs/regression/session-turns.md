@@ -695,8 +695,12 @@ defaults and queued client sends coherent.
   prompt defaults first and otherwise continue with the latest assistant/error
   transcript model before falling back to agent or catalog defaults. The
   transcript model remains authoritative when a retained provider cache does
-  not list it, so a terminal-imported session cannot silently resume on a
-  different provider. The selection already on screen is retained the same way,
+  not list its provider, so a terminal-imported session cannot silently resume
+  on a different provider. When the catalog lists the provider but not the
+  model (an older model or a proxy alias), the open resolves it the way the
+  options refresh would, so the composer's model pill shows its final model
+  from the first frame instead of switching after the refresh. The selection
+  already on screen is retained the same way,
   but retention is only ever a fallback: an agent the user picks, or a
   remembered default the bridge reports, replaces the model whenever the catalog
   still offers what it names, and an options refresh takes no retention at all
