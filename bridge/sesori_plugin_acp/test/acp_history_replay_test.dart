@@ -163,6 +163,52 @@ void main() {
       expect(text, contains("partial reply"));
     });
 
+    test("a replayed turn that ran an advertised command is named, others stay plain", () async {
+      final loading = plugin.getSessionMessages(sessionId);
+      await completeReplayHandshake();
+
+      final loadFrame = await waitForFrame("session/load");
+      void emitUpdate(Map<String, dynamic> update) => fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {"sessionId": sessionId, "update": update},
+      });
+      emitUpdate({
+        "sessionUpdate": "user_message_chunk",
+        "content": {"type": "text", "text": "/review src"},
+      });
+      emitUpdate({
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "reviewed"},
+      });
+      emitUpdate({
+        "sessionUpdate": "user_message_chunk",
+        "content": {"type": "text", "text": "/tmp/x is broken"},
+      });
+      // The agent advertises its commands after the history, as Hermes does.
+      emitUpdate({
+        "sessionUpdate": "available_commands_update",
+        "availableCommands": [
+          {"name": "review", "description": "Review code"},
+        ],
+      });
+      await pump();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": loadFrame["id"],
+        "error": {"code": -32602, "message": "Invalid params"},
+      });
+
+      final invocations = [
+        for (final message in await loading)
+          if (message.info case PluginMessageUser(:final invocation)) invocation,
+      ];
+      expect(invocations, const [
+        PluginCommandInvocation(name: "review", source: PluginCommandSource.command, arguments: "src"),
+        null,
+      ]);
+    });
+
     test("getSessionMessages materializes standard images through its dedicated replay client", () async {
       final loading = plugin.getSessionMessages(sessionId);
       await completeReplayHandshake();

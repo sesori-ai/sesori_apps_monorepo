@@ -156,7 +156,7 @@ class DeepSeekPlugin({
   }
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async =>
+  Future<List<PluginMessageWithParts>> replaySessionMessages({required String sessionId}) async =>
       await historyRepository.getMessages(
         client: await requireConnectedClient(),
         sessionId: sessionId,

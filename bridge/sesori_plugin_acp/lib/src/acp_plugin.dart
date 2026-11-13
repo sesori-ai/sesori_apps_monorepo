@@ -18,6 +18,7 @@ import "acp_stdio_client.dart";
 import "api/acp_agent_api.dart";
 import "models/acp_scoped_stop.dart";
 import "repositories/acp_session_config_repository.dart";
+import "repositories/mappers/acp_replay_invocation_mapper.dart";
 import "repositories/trackers/acp_child_session_tracker.dart";
 
 /// Preferred live activation method when both capabilities are advertised.
@@ -2376,10 +2377,24 @@ abstract class AcpPlugin({
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async =>
       Map.unmodifiable({..._sessionStatuses, ...childSessionTracker.childStatuses});
 
+  /// Replayed history with each advertised slash command named on its user
+  /// turn. Read after the replay, which refreshes the advertised commands.
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId,
   ) async {
+    final messages = await replaySessionMessages(sessionId: sessionId);
+    return const AcpReplayInvocationMapper().nameInvocations(
+      messages: messages,
+      commands: _commandTracker.commands,
+    );
+  }
+
+  /// The session's history as the harness replays it. Standard ACP replays
+  /// through `session/load`; a harness with its own history read overrides.
+  Future<List<PluginMessageWithParts>> replaySessionMessages({
+    required String sessionId,
+  }) async {
     // After a restart this replay can be the FIRST ACP call for a stored
     // worktree session (session-detail loads messages + detail in parallel,
     // and the messages handler hits the plugin directly), so its directory may

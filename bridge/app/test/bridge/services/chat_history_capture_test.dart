@@ -1664,6 +1664,61 @@ void main() {
         );
         expect(await storedInvocations(history: history), [review]);
       });
+
+      group("a replay that records only the arguments as their own turn", () {
+        const plan = CommandInvocation(name: "plan", source: CommandSource.command, arguments: "Write tests");
+        MessageWithParts liveCommand() {
+          final message = _messageWithText(id: "live", text: "/plan Write tests", createdAt: 100, promptId: "p1");
+          return switch (message.info) {
+            final MessageUser user => MessageWithParts(
+              info: user.copyWith(invocation: plan),
+              parts: message.parts,
+            ),
+            _ => message,
+          };
+        }
+
+        test("folds that turn into the card, and its neighbors still match their replay", () async {
+          final history = createTestChatHistory(
+            sessionRepository: _FakeSessionRepository(
+              transcript: [
+                _messageWithText(id: "replay-start", text: "Start", createdAt: null, promptId: null),
+                _messageWithText(id: "replay", text: "Write tests", createdAt: null, promptId: null),
+              ],
+            ),
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: _messageWithText(id: "live-start", text: "Start", createdAt: 50, promptId: "p0"),
+          );
+          await _captureMessageWithParts(history: history, message: liveCommand());
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(
+            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+            const ["replay-start", "replay"],
+          );
+          expect(await storedInvocations(history: history), [null, plan]);
+        });
+
+        test("leaves the card alone when the text is ambiguous", () async {
+          final history = createTestChatHistory(
+            sessionRepository: _FakeSessionRepository(
+              transcript: [
+                _messageWithText(id: "first", text: "Write tests", createdAt: 100, promptId: null),
+                _messageWithText(id: "second", text: "Write tests", createdAt: 200, promptId: null),
+              ],
+            ),
+          );
+          await _captureMessageWithParts(history: history, message: liveCommand());
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(await storedInvocations(history: history), containsAllInOrder([null, null]));
+          expect(await storedInvocations(history: history), contains(plan));
+        });
+      });
     });
 
     test("semantic replay matching preserves repeated-message multiplicity", () async {
