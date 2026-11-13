@@ -113,6 +113,7 @@ const _command = QueuedSessionSubmission.command(
   agent: "coder",
   agentModel: null,
   fastMode: false,
+  commandSource: null,
 );
 
 QueuedSessionSubmission _imageSubmission({required String promptId, required List<int> byteLengths}) =>

@@ -64,6 +64,7 @@ import "deferred_part_event_buffer.dart";
 import "load_through_outcome.dart";
 import "local_send_phase.dart";
 import "prompt_send_queue.dart";
+import "prompt_turn_shape_calculator.dart";
 import "seeded_composer.dart";
 import "session_abort_outcome.dart";
 import "session_detail_notice.dart";
@@ -147,6 +148,7 @@ class SessionDetailCubit(
   static const SessionApprovalCalculator _approval = SessionApprovalCalculator();
   static const TranscriptSnapshotCalculator _transcript = TranscriptSnapshotCalculator();
   static const ComposerDraftCalculator _draftCalculator = ComposerDraftCalculator();
+  static const PromptTurnShapeCalculator _promptTurnShapes = PromptTurnShapeCalculator();
 
   /// Shown when a catalog offers no agent at all, so the composer still names
   /// something. Backends that advertise agents always replace it.
@@ -288,6 +290,11 @@ class SessionDetailCubit(
   DateTime? get launchStartedAt => _launchStartedAt;
   DateTime? _launchStartedAt;
 
+  /// Whether this session's plugin names the command a user turn ran, as the
+  /// launch's composer or the last load reported it. It decides the shape of
+  /// the turns a state renders before the bridge confirms them.
+  bool _namesCommandInvocations = false;
+
   // The launch's first message is taken before the first frame, so a session
   // screen replacing the composer shows it where the composer left it.
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
@@ -296,6 +303,7 @@ class SessionDetailCubit(
       launchHandoff: SessionLaunchHandoff(:final acceptedFollowUps, :final composer, :final startedAt),
     )) {
       _launchStartedAt = startedAt;
+      _namesCommandInvocations = composer?.namesCommandInvocations ?? false;
       for (final AcceptedLaunchFollowUp(:submission, :since) in acceptedFollowUps) {
         _promptQueue.adoptAccepted(submission: submission, since: since, epoch: ++_parkEpoch);
       }
@@ -334,25 +342,100 @@ class SessionDetailCubit(
     unawaited(_loadMessages(isReload: false));
   }
 
-  static SessionDetailState _launchState({required SessionLaunchHandoff? launchHandoff}) => SessionDetailState.loading(
-    launchHandoff: launchHandoff,
-    seededComposer: switch (launchHandoff?.composer) {
-      final composer? => SeededComposer(composer: composer, stagedCommand: composer.unsent?.command),
-      null => null,
-    },
+  static SessionDetailState _launchState({required SessionLaunchHandoff? launchHandoff}) => _withPromptTurnShapes(
+    state: SessionDetailState.loading(
+      launchHandoff: launchHandoff,
+      seededComposer: switch (launchHandoff?.composer) {
+        final composer? => SeededComposer(composer: composer, stagedCommand: composer.unsent?.command),
+        null => null,
+      },
+    ),
+    namesCommandInvocations: launchHandoff?.composer?.namesCommandInvocations ?? false,
   );
 
   /// The one funnel every state passes through. A loaded state that already
   /// shows what replaces the launch's first message drops its bubble here, so
-  /// no emission site can keep it past its replacement.
+  /// no emission site can keep it past its replacement. Every state leaves
+  /// with the shape of each user turn it renders.
   @override
   void emit(SessionDetailState next) {
-    if (next case SessionDetailLoaded(launchHandoff: SessionLaunchHandoff(:final followUpIds))
-        when next.showsLaunchReplacement(launchFollowUpIds: followUpIds)) {
-      super.emit(next.copyWith(launchHandoff: null));
-      return;
+    if (next case SessionDetailLoaded(:final namesCommandInvocations)) {
+      _namesCommandInvocations = namesCommandInvocations;
     }
-    super.emit(next);
+    final shown = switch (next) {
+      SessionDetailLoaded(launchHandoff: SessionLaunchHandoff(:final followUpIds))
+          when next.showsLaunchReplacement(launchFollowUpIds: followUpIds) =>
+        next.copyWith(launchHandoff: null),
+      _ => next,
+    };
+    super.emit(_withPromptTurnShapes(state: shown, namesCommandInvocations: _namesCommandInvocations));
+  }
+
+  static SessionDetailState _withPromptTurnShapes({
+    required SessionDetailState state,
+    required bool namesCommandInvocations,
+  }) {
+    final shapes = switch (state) {
+      SessionDetailLoading(
+        :final launchHandoff,
+        :final launchFollowUps,
+        :final awaitingBridgeSubmissions,
+        :final queuedMessages,
+      ) =>
+        _promptTurnShapes.shapes(
+          namesCommandInvocations: namesCommandInvocations,
+          launch: launchHandoff?.submission,
+          messages: const [],
+          bridgeQueuedPrompts: const [],
+          submissions: [
+            for (final followUp in launchFollowUps) followUp.submission,
+            for (final (:submission, since: _) in awaitingBridgeSubmissions) submission,
+            ...queuedMessages,
+          ],
+        ),
+      SessionDetailLoaded(
+        :final launchHandoff,
+        :final messages,
+        :final bridgeQueuedPrompts,
+        :final localSend,
+        :final launchFollowUps,
+        :final awaitingBridgeSubmissions,
+        :final queuedMessages,
+      ) =>
+        _promptTurnShapes.shapes(
+          namesCommandInvocations: namesCommandInvocations,
+          launch: launchHandoff?.submission,
+          messages: messages,
+          bridgeQueuedPrompts: bridgeQueuedPrompts,
+          submissions: [
+            if (localSend case LocalSendSending(:final submission) || LocalSendFailed(:final submission)) submission,
+            for (final followUp in launchFollowUps) followUp.submission,
+            for (final (:submission, since: _) in awaitingBridgeSubmissions) submission,
+            ...queuedMessages,
+          ],
+        ),
+      SessionDetailHarnessUnavailable(
+        :final launchFollowUps,
+        :final awaitingBridgeSubmissions,
+        :final queuedMessages,
+      ) ||
+      SessionDetailFailed(
+        :final launchFollowUps,
+        :final awaitingBridgeSubmissions,
+        :final queuedMessages,
+      ) => _promptTurnShapes.shapes(
+        namesCommandInvocations: namesCommandInvocations,
+        launch: null,
+        messages: const [],
+        bridgeQueuedPrompts: const [],
+        submissions: [
+          for (final followUp in launchFollowUps) followUp.submission,
+          for (final (:submission, since: _) in awaitingBridgeSubmissions) submission,
+          ...queuedMessages,
+        ],
+      ),
+    };
+    return state.copyWith(promptTurnShapes: shapes);
   }
 
   /// Parks each follow-up the launch delivered, the way this screen parks its
@@ -1410,6 +1493,7 @@ class SessionDetailCubit(
               supportsPromptAttachments: snapshot.supportsPromptAttachments,
               supportsFileUploads: snapshot.supportsFileUploads,
               offersSessionMcp: snapshot.offersSessionMcp,
+              namesCommandInvocations: snapshot.namesCommandInvocations,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               session: refreshedSession,
               selectedAgent: preservedSelectedAgent,
@@ -2515,7 +2599,7 @@ class SessionDetailCubit(
 
   Future<void> sendMessage({
     required String text,
-    required String? command,
+    required CommandInfo? command,
     required ComposerInputMode inputMode,
     required List<ComposerAttachment> attachments,
   }) async {
@@ -2523,7 +2607,7 @@ class SessionDetailCubit(
     final current = state;
     final seeded = _seededComposer;
     final trimmed = text.trim();
-    final normalizedCommand = command?.normalize();
+    final normalizedCommand = command?.name.normalize();
     if (trimmed.isEmpty && normalizedCommand == null && attachments.isEmpty) return;
 
     if (_refuseWhenArchived(action: "send a prompt")) return;
@@ -2592,6 +2676,7 @@ class SessionDetailCubit(
             promptId: promptId,
             text: trimmed,
             command: normalizedCommand,
+            commandSource: command?.source,
             agent: selectedAgent,
             agentModel: selectedAgentModel,
             fastMode: fastMode,
@@ -2796,6 +2881,7 @@ class SessionDetailCubit(
         },
         fastMode: submission.fastMode,
         command: submission.command,
+        commandSource: submission.commandSource,
       );
 
       switch (result) {
@@ -3862,6 +3948,7 @@ class SessionDetailCubit(
       supportsPromptAttachments: snapshot.supportsPromptAttachments,
       supportsFileUploads: snapshot.supportsFileUploads,
       offersSessionMcp: snapshot.offersSessionMcp,
+      namesCommandInvocations: snapshot.namesCommandInvocations,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
       childStatuses: derived.childStatuses,

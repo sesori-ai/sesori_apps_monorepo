@@ -56,6 +56,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => response.future);
     outcomes = [];
@@ -149,6 +150,7 @@ void main() {
         fastMode: false,
         command: null,
         dedicatedWorktree: false,
+        commandSource: null,
       ),
     ).called(1);
   });
@@ -362,6 +364,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) async {
         sentPromptIds.add(invocation.namedArguments[#promptId] as String);
@@ -507,6 +510,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: null,
         ),
       ).called(1);
     });
@@ -555,6 +559,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((invocation) async {
         final promptId = invocation.namedArguments[#promptId] as String;

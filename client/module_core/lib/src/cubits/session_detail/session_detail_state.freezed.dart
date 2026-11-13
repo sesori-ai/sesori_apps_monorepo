@@ -21,7 +21,9 @@ mixin _$SessionDetailState {
 /// just created keeps its unsent messages and their actions in view.
  List<AwaitingBridgeSubmission> get awaitingBridgeSubmissions;/// Prompts sent before the first load that are still waiting for it, so
 /// a failed load never hides them. Retry sends them once it loads.
- List<QueuedSessionSubmission> get queuedMessages;
+ List<QueuedSessionSubmission> get queuedMessages;/// Whether each user turn this state renders is a card or a bubble, as
+/// the cubit resolved it.
+ PromptTurnShapes get promptTurnShapes;
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -33,20 +35,20 @@ $SessionDetailStateCopyWith<SessionDetailState> get copyWith => _$SessionDetailS
 @override
 bool operator ==(Object other) {
   final _this = this as SessionDetailState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailState&&const DeepCollectionEquality().equals(other.launchFollowUps, _this.launchFollowUps)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _this.awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.queuedMessages, _this.queuedMessages));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailState&&const DeepCollectionEquality().equals(other.launchFollowUps, _this.launchFollowUps)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _this.awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.queuedMessages, _this.queuedMessages)&&(identical(other.promptTurnShapes, _this.promptTurnShapes) || other.promptTurnShapes == _this.promptTurnShapes));
 }
 
 
 @override
 int get hashCode {
   final _this = this as SessionDetailState;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.launchFollowUps),const DeepCollectionEquality().hash(_this.awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_this.queuedMessages));
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.launchFollowUps),const DeepCollectionEquality().hash(_this.awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_this.queuedMessages),_this.promptTurnShapes);
 }
 
 @override
 String toString() {
   final _this = this as SessionDetailState;
-  return 'SessionDetailState(launchFollowUps: ${_this.launchFollowUps}, awaitingBridgeSubmissions: ${_this.awaitingBridgeSubmissions}, queuedMessages: ${_this.queuedMessages})';
+  return 'SessionDetailState(launchFollowUps: ${_this.launchFollowUps}, awaitingBridgeSubmissions: ${_this.awaitingBridgeSubmissions}, queuedMessages: ${_this.queuedMessages}, promptTurnShapes: ${_this.promptTurnShapes})';
 }
 
 
@@ -57,11 +59,11 @@ abstract mixin class $SessionDetailStateCopyWith<$Res>  {
   factory $SessionDetailStateCopyWith(SessionDetailState value, $Res Function(SessionDetailState) _then) = _$SessionDetailStateCopyWithImpl;
 @useResult
 $Res call({
- List<LaunchFollowUp> launchFollowUps, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages
+ List<LaunchFollowUp> launchFollowUps, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages, PromptTurnShapes promptTurnShapes
 });
 
 
-
+$PromptTurnShapesCopyWith<$Res> get promptTurnShapes;
 
 }
 /// @nodoc
@@ -74,15 +76,25 @@ class _$SessionDetailStateCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? launchFollowUps = null,Object? awaitingBridgeSubmissions = null,Object? queuedMessages = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? launchFollowUps = null,Object? awaitingBridgeSubmissions = null,Object? queuedMessages = null,Object? promptTurnShapes = null,}) {
   return _then(_self.copyWith(
 launchFollowUps: null == launchFollowUps ? _self.launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
 as List<LaunchFollowUp>,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self.awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
 as List<AwaitingBridgeSubmission>,queuedMessages: null == queuedMessages ? _self.queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,
+as List<QueuedSessionSubmission>,promptTurnShapes: null == promptTurnShapes ? _self.promptTurnShapes : promptTurnShapes // ignore: cast_nullable_to_non_nullable
+as PromptTurnShapes,
   ));
 }
-
+/// Create a copy of SessionDetailState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PromptTurnShapesCopyWith<$Res> get promptTurnShapes {
+  
+  return $PromptTurnShapesCopyWith<$Res>(_self.promptTurnShapes, (value) {
+    return _then(_self.copyWith(promptTurnShapes: value));
+  });
+}
 }
 
 
@@ -91,7 +103,7 @@ as List<QueuedSessionSubmission>,
 
 
 class SessionDetailLoading implements SessionDetailState {
-  const SessionDetailLoading({required this.launchHandoff, required this.seededComposer,  List<LaunchFollowUp> launchFollowUps = const [],  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _launchFollowUps = launchFollowUps,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_queuedMessages = queuedMessages;
+  const SessionDetailLoading({required this.launchHandoff, required this.seededComposer,  List<LaunchFollowUp> launchFollowUps = const [],  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<QueuedSessionSubmission> queuedMessages = const [], this.promptTurnShapes = const PromptTurnShapes()}): _launchFollowUps = launchFollowUps,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_queuedMessages = queuedMessages;
   
 
 /// The first message of the launch this screen took over, shown as a
@@ -122,6 +134,9 @@ class SessionDetailLoading implements SessionDetailState {
   return EqualUnmodifiableListView(_queuedMessages);
 }
 
+/// Whether each user turn this state renders is a card or a bubble, as
+/// the cubit resolved it.
+@override@JsonKey() final  PromptTurnShapes promptTurnShapes;
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
@@ -133,18 +148,18 @@ $SessionDetailLoadingCopyWith<SessionDetailLoading> get copyWith => _$SessionDet
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoading&&(identical(other.launchHandoff, launchHandoff) || other.launchHandoff == launchHandoff)&&(identical(other.seededComposer, seededComposer) || other.seededComposer == seededComposer)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoading&&(identical(other.launchHandoff, launchHandoff) || other.launchHandoff == launchHandoff)&&(identical(other.seededComposer, seededComposer) || other.seededComposer == seededComposer)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages)&&(identical(other.promptTurnShapes, promptTurnShapes) || other.promptTurnShapes == promptTurnShapes));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,launchHandoff,seededComposer,const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_queuedMessages));
+    return Object.hash(runtimeType,launchHandoff,seededComposer,const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_queuedMessages),promptTurnShapes);
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.loading(launchHandoff: $launchHandoff, seededComposer: $seededComposer, launchFollowUps: $launchFollowUps, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, queuedMessages: $queuedMessages)';
+    return 'SessionDetailState.loading(launchHandoff: $launchHandoff, seededComposer: $seededComposer, launchFollowUps: $launchFollowUps, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, queuedMessages: $queuedMessages, promptTurnShapes: $promptTurnShapes)';
 }
 
 
@@ -155,11 +170,11 @@ abstract mixin class $SessionDetailLoadingCopyWith<$Res> implements $SessionDeta
   factory $SessionDetailLoadingCopyWith(SessionDetailLoading value, $Res Function(SessionDetailLoading) _then) = _$SessionDetailLoadingCopyWithImpl;
 @override @useResult
 $Res call({
- SessionLaunchHandoff? launchHandoff, SeededComposer? seededComposer, List<LaunchFollowUp> launchFollowUps, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages
+ SessionLaunchHandoff? launchHandoff, SeededComposer? seededComposer, List<LaunchFollowUp> launchFollowUps, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages, PromptTurnShapes promptTurnShapes
 });
 
 
-$SessionLaunchHandoffCopyWith<$Res>? get launchHandoff;
+$SessionLaunchHandoffCopyWith<$Res>? get launchHandoff;@override $PromptTurnShapesCopyWith<$Res> get promptTurnShapes;
 
 }
 /// @nodoc
@@ -172,14 +187,15 @@ class _$SessionDetailLoadingCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? launchHandoff = freezed,Object? seededComposer = freezed,Object? launchFollowUps = null,Object? awaitingBridgeSubmissions = null,Object? queuedMessages = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? launchHandoff = freezed,Object? seededComposer = freezed,Object? launchFollowUps = null,Object? awaitingBridgeSubmissions = null,Object? queuedMessages = null,Object? promptTurnShapes = null,}) {
   return _then(SessionDetailLoading(
 launchHandoff: freezed == launchHandoff ? _self.launchHandoff : launchHandoff // ignore: cast_nullable_to_non_nullable
 as SessionLaunchHandoff?,seededComposer: freezed == seededComposer ? _self.seededComposer : seededComposer // ignore: cast_nullable_to_non_nullable
 as SeededComposer?,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
 as List<LaunchFollowUp>,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
 as List<AwaitingBridgeSubmission>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,
+as List<QueuedSessionSubmission>,promptTurnShapes: null == promptTurnShapes ? _self.promptTurnShapes : promptTurnShapes // ignore: cast_nullable_to_non_nullable
+as PromptTurnShapes,
   ));
 }
 
@@ -195,6 +211,15 @@ $SessionLaunchHandoffCopyWith<$Res>? get launchHandoff {
   return $SessionLaunchHandoffCopyWith<$Res>(_self.launchHandoff!, (value) {
     return _then(_self.copyWith(launchHandoff: value));
   });
+}/// Create a copy of SessionDetailState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PromptTurnShapesCopyWith<$Res> get promptTurnShapes {
+  
+  return $PromptTurnShapesCopyWith<$Res>(_self.promptTurnShapes, (value) {
+    return _then(_self.copyWith(promptTurnShapes: value));
+  });
 }
 }
 
@@ -202,7 +227,7 @@ $SessionLaunchHandoffCopyWith<$Res>? get launchHandoff {
 
 
 class SessionDetailLoaded implements SessionDetailState {
-  const SessionDetailLoaded({required this.interaction, required  List<MessageWithParts> messages, required this.olderMessagesCursor, required this.userMessagesBeforeOldest, this.isLoadingOlderMessages = false, required  List<SessionPromptIndexEntry>? promptIndex,  Map<ToolOutputKey, ToolOutputFetch> toolOutputs = const {}, required  Map<String, String> streamingText, required this.sessionStatus, required  List<SesoriQuestionAsked> pendingQuestions, required  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.session, this.isUpdatingAutoContinuation = false, required this.pluginId, required this.supportsPromptAttachments, required this.supportsFileUploads, required this.offersSessionMcp, required this.assistantAgentModel, required  List<Session> children, required  Map<String, SessionStatus> childStatuses, required this.isRootSession, required this.isArchived, required this.cannotContinueMessage, required  List<QueuedSessionSubmission> queuedMessages, required this.localSend,  List<QueuedSessionPrompt> bridgeQueuedPrompts = const [], required  Map<String, List<ComposerAttachment>> bridgePromptAttachments,  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [], required  List<AgentInfo> availableAgents, required  List<ProviderInfo> availableProviders, required  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.promptDefaults, required this.fastMode, required this.stagedCommand, this.composerRestorations = 0, required this.isRefreshing,  List<SessionVariant> availableVariants = const [], this.bridgeYolo = const YoloSettingsResponse(enabled: false), this.mainAgentRunning = false, this.isUpdatingApproval = false, required this.launchHandoff}): _messages = messages,_promptIndex = promptIndex,_toolOutputs = toolOutputs,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_bridgeQueuedPrompts = bridgeQueuedPrompts,_bridgePromptAttachments = bridgePromptAttachments,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const SessionDetailLoaded({required this.interaction, required  List<MessageWithParts> messages, required this.olderMessagesCursor, required this.userMessagesBeforeOldest, this.isLoadingOlderMessages = false, required  List<SessionPromptIndexEntry>? promptIndex,  Map<ToolOutputKey, ToolOutputFetch> toolOutputs = const {}, required  Map<String, String> streamingText, required this.sessionStatus, required  List<SesoriQuestionAsked> pendingQuestions, required  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.session, this.isUpdatingAutoContinuation = false, required this.pluginId, required this.supportsPromptAttachments, required this.supportsFileUploads, required this.offersSessionMcp, required this.namesCommandInvocations, required this.assistantAgentModel, required  List<Session> children, required  Map<String, SessionStatus> childStatuses, required this.isRootSession, required this.isArchived, required this.cannotContinueMessage, required  List<QueuedSessionSubmission> queuedMessages, required this.localSend,  List<QueuedSessionPrompt> bridgeQueuedPrompts = const [], required  Map<String, List<ComposerAttachment>> bridgePromptAttachments,  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [], required  List<AgentInfo> availableAgents, required  List<ProviderInfo> availableProviders, required  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.promptDefaults, required this.fastMode, required this.stagedCommand, this.composerRestorations = 0, required this.isRefreshing,  List<SessionVariant> availableVariants = const [], this.bridgeYolo = const YoloSettingsResponse(enabled: false), this.mainAgentRunning = false, this.isUpdatingApproval = false, required this.launchHandoff, this.promptTurnShapes = const PromptTurnShapes()}): _messages = messages,_promptIndex = promptIndex,_toolOutputs = toolOutputs,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_bridgeQueuedPrompts = bridgeQueuedPrompts,_bridgePromptAttachments = bridgePromptAttachments,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  SessionInteractionState interaction;
@@ -284,6 +309,7 @@ class SessionDetailLoaded implements SessionDetailState {
  final  bool? supportsPromptAttachments;
  final  bool? supportsFileUploads;
  final  bool offersSessionMcp;
+ final  bool namesCommandInvocations;
  final  AgentModel? assistantAgentModel;
  final  List<Session> _children;
  List<Session> get children {
@@ -395,6 +421,9 @@ class SessionDetailLoaded implements SessionDetailState {
 /// The taken launch's first message, kept until [SessionDetailLoadedLaunch.showsLaunchReplacement]
 /// holds; see [SessionDetailLoading.launchHandoff].
  final  SessionLaunchHandoff? launchHandoff;
+/// Whether each user turn this state renders is a card or a bubble, as
+/// the cubit resolved it.
+@override@JsonKey() final  PromptTurnShapes promptTurnShapes;
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
@@ -406,18 +435,18 @@ $SessionDetailLoadedCopyWith<SessionDetailLoaded> get copyWith => _$SessionDetai
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoaded&&(identical(other.interaction, interaction) || other.interaction == interaction)&&const DeepCollectionEquality().equals(other.messages, _messages)&&(identical(other.olderMessagesCursor, olderMessagesCursor) || other.olderMessagesCursor == olderMessagesCursor)&&(identical(other.userMessagesBeforeOldest, userMessagesBeforeOldest) || other.userMessagesBeforeOldest == userMessagesBeforeOldest)&&(identical(other.isLoadingOlderMessages, isLoadingOlderMessages) || other.isLoadingOlderMessages == isLoadingOlderMessages)&&const DeepCollectionEquality().equals(other.promptIndex, _promptIndex)&&const DeepCollectionEquality().equals(other.toolOutputs, _toolOutputs)&&const DeepCollectionEquality().equals(other.streamingText, _streamingText)&&(identical(other.sessionStatus, sessionStatus) || other.sessionStatus == sessionStatus)&&const DeepCollectionEquality().equals(other.pendingQuestions, _pendingQuestions)&&const DeepCollectionEquality().equals(other.pendingPermissions, _pendingPermissions)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.session, session) || other.session == session)&&(identical(other.isUpdatingAutoContinuation, isUpdatingAutoContinuation) || other.isUpdatingAutoContinuation == isUpdatingAutoContinuation)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments)&&(identical(other.supportsFileUploads, supportsFileUploads) || other.supportsFileUploads == supportsFileUploads)&&(identical(other.offersSessionMcp, offersSessionMcp) || other.offersSessionMcp == offersSessionMcp)&&(identical(other.assistantAgentModel, assistantAgentModel) || other.assistantAgentModel == assistantAgentModel)&&const DeepCollectionEquality().equals(other.children, _children)&&const DeepCollectionEquality().equals(other.childStatuses, _childStatuses)&&(identical(other.isRootSession, isRootSession) || other.isRootSession == isRootSession)&&(identical(other.isArchived, isArchived) || other.isArchived == isArchived)&&(identical(other.cannotContinueMessage, cannotContinueMessage) || other.cannotContinueMessage == cannotContinueMessage)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages)&&(identical(other.localSend, localSend) || other.localSend == localSend)&&const DeepCollectionEquality().equals(other.bridgeQueuedPrompts, _bridgeQueuedPrompts)&&const DeepCollectionEquality().equals(other.bridgePromptAttachments, _bridgePromptAttachments)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other.availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other.availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults)&&(identical(other.fastMode, fastMode) || other.fastMode == fastMode)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&(identical(other.composerRestorations, composerRestorations) || other.composerRestorations == composerRestorations)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other.availableVariants, _availableVariants)&&(identical(other.bridgeYolo, bridgeYolo) || other.bridgeYolo == bridgeYolo)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.isUpdatingApproval, isUpdatingApproval) || other.isUpdatingApproval == isUpdatingApproval)&&(identical(other.launchHandoff, launchHandoff) || other.launchHandoff == launchHandoff));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoaded&&(identical(other.interaction, interaction) || other.interaction == interaction)&&const DeepCollectionEquality().equals(other.messages, _messages)&&(identical(other.olderMessagesCursor, olderMessagesCursor) || other.olderMessagesCursor == olderMessagesCursor)&&(identical(other.userMessagesBeforeOldest, userMessagesBeforeOldest) || other.userMessagesBeforeOldest == userMessagesBeforeOldest)&&(identical(other.isLoadingOlderMessages, isLoadingOlderMessages) || other.isLoadingOlderMessages == isLoadingOlderMessages)&&const DeepCollectionEquality().equals(other.promptIndex, _promptIndex)&&const DeepCollectionEquality().equals(other.toolOutputs, _toolOutputs)&&const DeepCollectionEquality().equals(other.streamingText, _streamingText)&&(identical(other.sessionStatus, sessionStatus) || other.sessionStatus == sessionStatus)&&const DeepCollectionEquality().equals(other.pendingQuestions, _pendingQuestions)&&const DeepCollectionEquality().equals(other.pendingPermissions, _pendingPermissions)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.session, session) || other.session == session)&&(identical(other.isUpdatingAutoContinuation, isUpdatingAutoContinuation) || other.isUpdatingAutoContinuation == isUpdatingAutoContinuation)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments)&&(identical(other.supportsFileUploads, supportsFileUploads) || other.supportsFileUploads == supportsFileUploads)&&(identical(other.offersSessionMcp, offersSessionMcp) || other.offersSessionMcp == offersSessionMcp)&&(identical(other.namesCommandInvocations, namesCommandInvocations) || other.namesCommandInvocations == namesCommandInvocations)&&(identical(other.assistantAgentModel, assistantAgentModel) || other.assistantAgentModel == assistantAgentModel)&&const DeepCollectionEquality().equals(other.children, _children)&&const DeepCollectionEquality().equals(other.childStatuses, _childStatuses)&&(identical(other.isRootSession, isRootSession) || other.isRootSession == isRootSession)&&(identical(other.isArchived, isArchived) || other.isArchived == isArchived)&&(identical(other.cannotContinueMessage, cannotContinueMessage) || other.cannotContinueMessage == cannotContinueMessage)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages)&&(identical(other.localSend, localSend) || other.localSend == localSend)&&const DeepCollectionEquality().equals(other.bridgeQueuedPrompts, _bridgeQueuedPrompts)&&const DeepCollectionEquality().equals(other.bridgePromptAttachments, _bridgePromptAttachments)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.availableAgents, _availableAgents)&&const DeepCollectionEquality().equals(other.availableProviders, _availableProviders)&&const DeepCollectionEquality().equals(other.availableCommands, _availableCommands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults)&&(identical(other.fastMode, fastMode) || other.fastMode == fastMode)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&(identical(other.composerRestorations, composerRestorations) || other.composerRestorations == composerRestorations)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other.availableVariants, _availableVariants)&&(identical(other.bridgeYolo, bridgeYolo) || other.bridgeYolo == bridgeYolo)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.isUpdatingApproval, isUpdatingApproval) || other.isUpdatingApproval == isUpdatingApproval)&&(identical(other.launchHandoff, launchHandoff) || other.launchHandoff == launchHandoff)&&(identical(other.promptTurnShapes, promptTurnShapes) || other.promptTurnShapes == promptTurnShapes));
 }
 
 
 @override
 int get hashCode {
-    return Object.hashAll([runtimeType,interaction,const DeepCollectionEquality().hash(_messages),olderMessagesCursor,userMessagesBeforeOldest,isLoadingOlderMessages,const DeepCollectionEquality().hash(_promptIndex),const DeepCollectionEquality().hash(_toolOutputs),const DeepCollectionEquality().hash(_streamingText),sessionStatus,const DeepCollectionEquality().hash(_pendingQuestions),const DeepCollectionEquality().hash(_pendingPermissions),sessionTitle,session,isUpdatingAutoContinuation,pluginId,supportsPromptAttachments,supportsFileUploads,offersSessionMcp,assistantAgentModel,const DeepCollectionEquality().hash(_children),const DeepCollectionEquality().hash(_childStatuses),isRootSession,isArchived,cannotContinueMessage,const DeepCollectionEquality().hash(_queuedMessages),localSend,const DeepCollectionEquality().hash(_bridgeQueuedPrompts),const DeepCollectionEquality().hash(_bridgePromptAttachments),const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,promptDefaults,fastMode,stagedCommand,composerRestorations,isRefreshing,const DeepCollectionEquality().hash(_availableVariants),bridgeYolo,mainAgentRunning,isUpdatingApproval,launchHandoff]);
+    return Object.hashAll([runtimeType,interaction,const DeepCollectionEquality().hash(_messages),olderMessagesCursor,userMessagesBeforeOldest,isLoadingOlderMessages,const DeepCollectionEquality().hash(_promptIndex),const DeepCollectionEquality().hash(_toolOutputs),const DeepCollectionEquality().hash(_streamingText),sessionStatus,const DeepCollectionEquality().hash(_pendingQuestions),const DeepCollectionEquality().hash(_pendingPermissions),sessionTitle,session,isUpdatingAutoContinuation,pluginId,supportsPromptAttachments,supportsFileUploads,offersSessionMcp,namesCommandInvocations,assistantAgentModel,const DeepCollectionEquality().hash(_children),const DeepCollectionEquality().hash(_childStatuses),isRootSession,isArchived,cannotContinueMessage,const DeepCollectionEquality().hash(_queuedMessages),localSend,const DeepCollectionEquality().hash(_bridgeQueuedPrompts),const DeepCollectionEquality().hash(_bridgePromptAttachments),const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_availableAgents),const DeepCollectionEquality().hash(_availableProviders),const DeepCollectionEquality().hash(_availableCommands),selectedAgent,selectedAgentModel,promptDefaults,fastMode,stagedCommand,composerRestorations,isRefreshing,const DeepCollectionEquality().hash(_availableVariants),bridgeYolo,mainAgentRunning,isUpdatingApproval,launchHandoff,promptTurnShapes]);
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.loaded(interaction: $interaction, messages: $messages, olderMessagesCursor: $olderMessagesCursor, userMessagesBeforeOldest: $userMessagesBeforeOldest, isLoadingOlderMessages: $isLoadingOlderMessages, promptIndex: $promptIndex, toolOutputs: $toolOutputs, streamingText: $streamingText, sessionStatus: $sessionStatus, pendingQuestions: $pendingQuestions, pendingPermissions: $pendingPermissions, sessionTitle: $sessionTitle, session: $session, isUpdatingAutoContinuation: $isUpdatingAutoContinuation, pluginId: $pluginId, supportsPromptAttachments: $supportsPromptAttachments, supportsFileUploads: $supportsFileUploads, offersSessionMcp: $offersSessionMcp, assistantAgentModel: $assistantAgentModel, children: $children, childStatuses: $childStatuses, isRootSession: $isRootSession, isArchived: $isArchived, cannotContinueMessage: $cannotContinueMessage, queuedMessages: $queuedMessages, localSend: $localSend, bridgeQueuedPrompts: $bridgeQueuedPrompts, bridgePromptAttachments: $bridgePromptAttachments, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, launchFollowUps: $launchFollowUps, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, promptDefaults: $promptDefaults, fastMode: $fastMode, stagedCommand: $stagedCommand, composerRestorations: $composerRestorations, isRefreshing: $isRefreshing, availableVariants: $availableVariants, bridgeYolo: $bridgeYolo, mainAgentRunning: $mainAgentRunning, isUpdatingApproval: $isUpdatingApproval, launchHandoff: $launchHandoff)';
+    return 'SessionDetailState.loaded(interaction: $interaction, messages: $messages, olderMessagesCursor: $olderMessagesCursor, userMessagesBeforeOldest: $userMessagesBeforeOldest, isLoadingOlderMessages: $isLoadingOlderMessages, promptIndex: $promptIndex, toolOutputs: $toolOutputs, streamingText: $streamingText, sessionStatus: $sessionStatus, pendingQuestions: $pendingQuestions, pendingPermissions: $pendingPermissions, sessionTitle: $sessionTitle, session: $session, isUpdatingAutoContinuation: $isUpdatingAutoContinuation, pluginId: $pluginId, supportsPromptAttachments: $supportsPromptAttachments, supportsFileUploads: $supportsFileUploads, offersSessionMcp: $offersSessionMcp, namesCommandInvocations: $namesCommandInvocations, assistantAgentModel: $assistantAgentModel, children: $children, childStatuses: $childStatuses, isRootSession: $isRootSession, isArchived: $isArchived, cannotContinueMessage: $cannotContinueMessage, queuedMessages: $queuedMessages, localSend: $localSend, bridgeQueuedPrompts: $bridgeQueuedPrompts, bridgePromptAttachments: $bridgePromptAttachments, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, launchFollowUps: $launchFollowUps, availableAgents: $availableAgents, availableProviders: $availableProviders, availableCommands: $availableCommands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, promptDefaults: $promptDefaults, fastMode: $fastMode, stagedCommand: $stagedCommand, composerRestorations: $composerRestorations, isRefreshing: $isRefreshing, availableVariants: $availableVariants, bridgeYolo: $bridgeYolo, mainAgentRunning: $mainAgentRunning, isUpdatingApproval: $isUpdatingApproval, launchHandoff: $launchHandoff, promptTurnShapes: $promptTurnShapes)';
 }
 
 
@@ -428,11 +457,11 @@ abstract mixin class $SessionDetailLoadedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailLoadedCopyWith(SessionDetailLoaded value, $Res Function(SessionDetailLoaded) _then) = _$SessionDetailLoadedCopyWithImpl;
 @override @useResult
 $Res call({
- SessionInteractionState interaction, List<MessageWithParts> messages, int? olderMessagesCursor, int? userMessagesBeforeOldest, bool isLoadingOlderMessages, List<SessionPromptIndexEntry>? promptIndex, Map<ToolOutputKey, ToolOutputFetch> toolOutputs, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, Session session, bool isUpdatingAutoContinuation, String? pluginId, bool? supportsPromptAttachments, bool? supportsFileUploads, bool offersSessionMcp, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, String? cannotContinueMessage, List<QueuedSessionSubmission> queuedMessages, LocalSendPhase localSend, List<QueuedSessionPrompt> bridgeQueuedPrompts, Map<String, List<ComposerAttachment>> bridgePromptAttachments, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, SessionPromptDefaults? promptDefaults, bool fastMode, CommandInfo? stagedCommand, int composerRestorations, bool isRefreshing, List<SessionVariant> availableVariants, YoloSettingsResponse bridgeYolo, bool mainAgentRunning, bool isUpdatingApproval, SessionLaunchHandoff? launchHandoff
+ SessionInteractionState interaction, List<MessageWithParts> messages, int? olderMessagesCursor, int? userMessagesBeforeOldest, bool isLoadingOlderMessages, List<SessionPromptIndexEntry>? promptIndex, Map<ToolOutputKey, ToolOutputFetch> toolOutputs, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, Session session, bool isUpdatingAutoContinuation, String? pluginId, bool? supportsPromptAttachments, bool? supportsFileUploads, bool offersSessionMcp, bool namesCommandInvocations, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, String? cannotContinueMessage, List<QueuedSessionSubmission> queuedMessages, LocalSendPhase localSend, List<QueuedSessionPrompt> bridgeQueuedPrompts, Map<String, List<ComposerAttachment>> bridgePromptAttachments, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, SessionPromptDefaults? promptDefaults, bool fastMode, CommandInfo? stagedCommand, int composerRestorations, bool isRefreshing, List<SessionVariant> availableVariants, YoloSettingsResponse bridgeYolo, bool mainAgentRunning, bool isUpdatingApproval, SessionLaunchHandoff? launchHandoff, PromptTurnShapes promptTurnShapes
 });
 
 
-$SessionStatusCopyWith<$Res> get sessionStatus;$SessionCopyWith<$Res> get session;$AgentModelCopyWith<$Res>? get assistantAgentModel;$AgentModelCopyWith<$Res>? get selectedAgentModel;$SessionPromptDefaultsCopyWith<$Res>? get promptDefaults;$CommandInfoCopyWith<$Res>? get stagedCommand;$YoloSettingsResponseCopyWith<$Res> get bridgeYolo;$SessionLaunchHandoffCopyWith<$Res>? get launchHandoff;
+$SessionStatusCopyWith<$Res> get sessionStatus;$SessionCopyWith<$Res> get session;$AgentModelCopyWith<$Res>? get assistantAgentModel;$AgentModelCopyWith<$Res>? get selectedAgentModel;$SessionPromptDefaultsCopyWith<$Res>? get promptDefaults;$CommandInfoCopyWith<$Res>? get stagedCommand;$YoloSettingsResponseCopyWith<$Res> get bridgeYolo;$SessionLaunchHandoffCopyWith<$Res>? get launchHandoff;@override $PromptTurnShapesCopyWith<$Res> get promptTurnShapes;
 
 }
 /// @nodoc
@@ -445,7 +474,7 @@ class _$SessionDetailLoadedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? interaction = null,Object? messages = null,Object? olderMessagesCursor = freezed,Object? userMessagesBeforeOldest = freezed,Object? isLoadingOlderMessages = null,Object? promptIndex = freezed,Object? toolOutputs = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? session = null,Object? isUpdatingAutoContinuation = null,Object? pluginId = freezed,Object? supportsPromptAttachments = freezed,Object? supportsFileUploads = freezed,Object? offersSessionMcp = null,Object? assistantAgentModel = freezed,Object? children = null,Object? childStatuses = null,Object? isRootSession = freezed,Object? isArchived = null,Object? cannotContinueMessage = freezed,Object? queuedMessages = null,Object? localSend = null,Object? bridgeQueuedPrompts = null,Object? bridgePromptAttachments = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedAgentModel = freezed,Object? promptDefaults = freezed,Object? fastMode = null,Object? stagedCommand = freezed,Object? composerRestorations = null,Object? isRefreshing = null,Object? availableVariants = null,Object? bridgeYolo = null,Object? mainAgentRunning = null,Object? isUpdatingApproval = null,Object? launchHandoff = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? interaction = null,Object? messages = null,Object? olderMessagesCursor = freezed,Object? userMessagesBeforeOldest = freezed,Object? isLoadingOlderMessages = null,Object? promptIndex = freezed,Object? toolOutputs = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? session = null,Object? isUpdatingAutoContinuation = null,Object? pluginId = freezed,Object? supportsPromptAttachments = freezed,Object? supportsFileUploads = freezed,Object? offersSessionMcp = null,Object? namesCommandInvocations = null,Object? assistantAgentModel = freezed,Object? children = null,Object? childStatuses = null,Object? isRootSession = freezed,Object? isArchived = null,Object? cannotContinueMessage = freezed,Object? queuedMessages = null,Object? localSend = null,Object? bridgeQueuedPrompts = null,Object? bridgePromptAttachments = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedAgentModel = freezed,Object? promptDefaults = freezed,Object? fastMode = null,Object? stagedCommand = freezed,Object? composerRestorations = null,Object? isRefreshing = null,Object? availableVariants = null,Object? bridgeYolo = null,Object? mainAgentRunning = null,Object? isUpdatingApproval = null,Object? launchHandoff = freezed,Object? promptTurnShapes = null,}) {
   return _then(SessionDetailLoaded(
 interaction: null == interaction ? _self.interaction : interaction // ignore: cast_nullable_to_non_nullable
 as SessionInteractionState,messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
@@ -465,6 +494,7 @@ as bool,pluginId: freezed == pluginId ? _self.pluginId : pluginId // ignore: cas
 as String?,supportsPromptAttachments: freezed == supportsPromptAttachments ? _self.supportsPromptAttachments : supportsPromptAttachments // ignore: cast_nullable_to_non_nullable
 as bool?,supportsFileUploads: freezed == supportsFileUploads ? _self.supportsFileUploads : supportsFileUploads // ignore: cast_nullable_to_non_nullable
 as bool?,offersSessionMcp: null == offersSessionMcp ? _self.offersSessionMcp : offersSessionMcp // ignore: cast_nullable_to_non_nullable
+as bool,namesCommandInvocations: null == namesCommandInvocations ? _self.namesCommandInvocations : namesCommandInvocations // ignore: cast_nullable_to_non_nullable
 as bool,assistantAgentModel: freezed == assistantAgentModel ? _self.assistantAgentModel : assistantAgentModel // ignore: cast_nullable_to_non_nullable
 as AgentModel?,children: null == children ? _self._children : children // ignore: cast_nullable_to_non_nullable
 as List<Session>,childStatuses: null == childStatuses ? _self._childStatuses : childStatuses // ignore: cast_nullable_to_non_nullable
@@ -492,7 +522,8 @@ as List<SessionVariant>,bridgeYolo: null == bridgeYolo ? _self.bridgeYolo : brid
 as YoloSettingsResponse,mainAgentRunning: null == mainAgentRunning ? _self.mainAgentRunning : mainAgentRunning // ignore: cast_nullable_to_non_nullable
 as bool,isUpdatingApproval: null == isUpdatingApproval ? _self.isUpdatingApproval : isUpdatingApproval // ignore: cast_nullable_to_non_nullable
 as bool,launchHandoff: freezed == launchHandoff ? _self.launchHandoff : launchHandoff // ignore: cast_nullable_to_non_nullable
-as SessionLaunchHandoff?,
+as SessionLaunchHandoff?,promptTurnShapes: null == promptTurnShapes ? _self.promptTurnShapes : promptTurnShapes // ignore: cast_nullable_to_non_nullable
+as PromptTurnShapes,
   ));
 }
 
@@ -583,6 +614,15 @@ $SessionLaunchHandoffCopyWith<$Res>? get launchHandoff {
   return $SessionLaunchHandoffCopyWith<$Res>(_self.launchHandoff!, (value) {
     return _then(_self.copyWith(launchHandoff: value));
   });
+}/// Create a copy of SessionDetailState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PromptTurnShapesCopyWith<$Res> get promptTurnShapes {
+  
+  return $PromptTurnShapesCopyWith<$Res>(_self.promptTurnShapes, (value) {
+    return _then(_self.copyWith(promptTurnShapes: value));
+  });
 }
 }
 
@@ -590,7 +630,7 @@ $SessionLaunchHandoffCopyWith<$Res>? get launchHandoff {
 
 
 class SessionDetailHarnessUnavailable implements SessionDetailState {
-  const SessionDetailHarnessUnavailable({required this.session, required this.interaction, this.isUpdatingAutoContinuation = false,  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
+  const SessionDetailHarnessUnavailable({required this.session, required this.interaction, this.isUpdatingAutoContinuation = false,  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const [], this.promptTurnShapes = const PromptTurnShapes()}): _awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
   
 
  final  Session session;
@@ -621,6 +661,9 @@ class SessionDetailHarnessUnavailable implements SessionDetailState {
   return EqualUnmodifiableListView(_queuedMessages);
 }
 
+/// Whether each user turn this state renders is a card or a bubble, as
+/// the cubit resolved it.
+@override@JsonKey() final  PromptTurnShapes promptTurnShapes;
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
@@ -632,18 +675,18 @@ $SessionDetailHarnessUnavailableCopyWith<SessionDetailHarnessUnavailable> get co
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailHarnessUnavailable&&(identical(other.session, session) || other.session == session)&&(identical(other.interaction, interaction) || other.interaction == interaction)&&(identical(other.isUpdatingAutoContinuation, isUpdatingAutoContinuation) || other.isUpdatingAutoContinuation == isUpdatingAutoContinuation)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailHarnessUnavailable&&(identical(other.session, session) || other.session == session)&&(identical(other.interaction, interaction) || other.interaction == interaction)&&(identical(other.isUpdatingAutoContinuation, isUpdatingAutoContinuation) || other.isUpdatingAutoContinuation == isUpdatingAutoContinuation)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages)&&(identical(other.promptTurnShapes, promptTurnShapes) || other.promptTurnShapes == promptTurnShapes));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,session,interaction,isUpdatingAutoContinuation,const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_queuedMessages));
+    return Object.hash(runtimeType,session,interaction,isUpdatingAutoContinuation,const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_queuedMessages),promptTurnShapes);
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.harnessUnavailable(session: $session, interaction: $interaction, isUpdatingAutoContinuation: $isUpdatingAutoContinuation, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, launchFollowUps: $launchFollowUps, queuedMessages: $queuedMessages)';
+    return 'SessionDetailState.harnessUnavailable(session: $session, interaction: $interaction, isUpdatingAutoContinuation: $isUpdatingAutoContinuation, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, launchFollowUps: $launchFollowUps, queuedMessages: $queuedMessages, promptTurnShapes: $promptTurnShapes)';
 }
 
 
@@ -654,11 +697,11 @@ abstract mixin class $SessionDetailHarnessUnavailableCopyWith<$Res> implements $
   factory $SessionDetailHarnessUnavailableCopyWith(SessionDetailHarnessUnavailable value, $Res Function(SessionDetailHarnessUnavailable) _then) = _$SessionDetailHarnessUnavailableCopyWithImpl;
 @override @useResult
 $Res call({
- Session session, SessionInteractionState interaction, bool isUpdatingAutoContinuation, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
+ Session session, SessionInteractionState interaction, bool isUpdatingAutoContinuation, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages, PromptTurnShapes promptTurnShapes
 });
 
 
-$SessionCopyWith<$Res> get session;
+$SessionCopyWith<$Res> get session;@override $PromptTurnShapesCopyWith<$Res> get promptTurnShapes;
 
 }
 /// @nodoc
@@ -671,7 +714,7 @@ class _$SessionDetailHarnessUnavailableCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? session = null,Object? interaction = null,Object? isUpdatingAutoContinuation = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? queuedMessages = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? session = null,Object? interaction = null,Object? isUpdatingAutoContinuation = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? queuedMessages = null,Object? promptTurnShapes = null,}) {
   return _then(SessionDetailHarnessUnavailable(
 session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
 as Session,interaction: null == interaction ? _self.interaction : interaction // ignore: cast_nullable_to_non_nullable
@@ -679,7 +722,8 @@ as SessionInteractionState,isUpdatingAutoContinuation: null == isUpdatingAutoCon
 as bool,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
 as List<AwaitingBridgeSubmission>,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
 as List<LaunchFollowUp>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,
+as List<QueuedSessionSubmission>,promptTurnShapes: null == promptTurnShapes ? _self.promptTurnShapes : promptTurnShapes // ignore: cast_nullable_to_non_nullable
+as PromptTurnShapes,
   ));
 }
 
@@ -692,6 +736,15 @@ $SessionCopyWith<$Res> get session {
   return $SessionCopyWith<$Res>(_self.session, (value) {
     return _then(_self.copyWith(session: value));
   });
+}/// Create a copy of SessionDetailState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PromptTurnShapesCopyWith<$Res> get promptTurnShapes {
+  
+  return $PromptTurnShapesCopyWith<$Res>(_self.promptTurnShapes, (value) {
+    return _then(_self.copyWith(promptTurnShapes: value));
+  });
 }
 }
 
@@ -699,7 +752,7 @@ $SessionCopyWith<$Res> get session {
 
 
 class SessionDetailFailed implements SessionDetailState {
-  const SessionDetailFailed({required this.reason,  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
+  const SessionDetailFailed({required this.reason,  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const [], this.promptTurnShapes = const PromptTurnShapes()}): _awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
   
 
  final  RemoteFailureReason reason;
@@ -736,6 +789,9 @@ class SessionDetailFailed implements SessionDetailState {
   return EqualUnmodifiableListView(_queuedMessages);
 }
 
+/// Whether each user turn this state renders is a card or a bubble, as
+/// the cubit resolved it.
+@override@JsonKey() final  PromptTurnShapes promptTurnShapes;
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
@@ -747,18 +803,18 @@ $SessionDetailFailedCopyWith<SessionDetailFailed> get copyWith => _$SessionDetai
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailFailed&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailFailed&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages)&&(identical(other.promptTurnShapes, promptTurnShapes) || other.promptTurnShapes == promptTurnShapes));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_queuedMessages));
+    return Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_queuedMessages),promptTurnShapes);
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.failed(reason: $reason, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, launchFollowUps: $launchFollowUps, queuedMessages: $queuedMessages)';
+    return 'SessionDetailState.failed(reason: $reason, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, launchFollowUps: $launchFollowUps, queuedMessages: $queuedMessages, promptTurnShapes: $promptTurnShapes)';
 }
 
 
@@ -769,11 +825,11 @@ abstract mixin class $SessionDetailFailedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailFailedCopyWith(SessionDetailFailed value, $Res Function(SessionDetailFailed) _then) = _$SessionDetailFailedCopyWithImpl;
 @override @useResult
 $Res call({
- RemoteFailureReason reason, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
+ RemoteFailureReason reason, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages, PromptTurnShapes promptTurnShapes
 });
 
 
-
+@override $PromptTurnShapesCopyWith<$Res> get promptTurnShapes;
 
 }
 /// @nodoc
@@ -786,17 +842,27 @@ class _$SessionDetailFailedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? queuedMessages = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? queuedMessages = null,Object? promptTurnShapes = null,}) {
   return _then(SessionDetailFailed(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
 as RemoteFailureReason,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
 as List<AwaitingBridgeSubmission>,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
 as List<LaunchFollowUp>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,
+as List<QueuedSessionSubmission>,promptTurnShapes: null == promptTurnShapes ? _self.promptTurnShapes : promptTurnShapes // ignore: cast_nullable_to_non_nullable
+as PromptTurnShapes,
   ));
 }
 
-
+/// Create a copy of SessionDetailState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PromptTurnShapesCopyWith<$Res> get promptTurnShapes {
+  
+  return $PromptTurnShapesCopyWith<$Res>(_self.promptTurnShapes, (value) {
+    return _then(_self.copyWith(promptTurnShapes: value));
+  });
+}
 }
 
 // dart format on

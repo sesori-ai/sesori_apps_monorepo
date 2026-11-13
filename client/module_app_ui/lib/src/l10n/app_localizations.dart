@@ -4915,6 +4915,18 @@ abstract class AppLocalizations {
   /// **'Custom'**
   String get commandSourceCustom;
 
+  /// Body of the transcript card for a command, skill or MCP prompt the user ran; name is the command's name without the slash.
+  ///
+  /// In en, this message translates to:
+  /// **'You ran /{name}'**
+  String invocationCardRan(String name);
+
+  /// Screen reader label for the transcript card of a command, skill or MCP prompt the user ran.
+  ///
+  /// In en, this message translates to:
+  /// **'{source, select, command{You ran command {name}} skill{You ran skill {name}} mcp{You ran MCP prompt {name}} other{You ran {name}}}'**
+  String invocationCardSemantics(String source, String name);
+
   /// No description provided for @diffBinaryFileChanged.
   ///
   /// In en, this message translates to:

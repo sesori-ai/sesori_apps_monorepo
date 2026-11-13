@@ -123,6 +123,7 @@ export "src/cubits/session_detail/load_through_outcome.dart";
 export "src/cubits/session_detail/local_send_phase.dart";
 export "src/cubits/session_detail/pending_form_cubit.dart";
 export "src/cubits/session_detail/pending_form_state.dart";
+export "src/cubits/session_detail/prompt_turn_shape.dart";
 export "src/cubits/session_detail/seeded_composer.dart";
 export "src/cubits/session_detail/session_abort_outcome.dart";
 export "src/cubits/session_detail/session_detail_cubit.dart";

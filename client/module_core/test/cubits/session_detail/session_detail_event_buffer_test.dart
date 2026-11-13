@@ -172,6 +172,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -234,6 +235,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -325,6 +327,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -399,6 +402,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -458,6 +462,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -534,6 +539,7 @@ void main() {
           isRootSession: true,
           isArchived: false,
           cannotContinueMessage: null,
+          namesCommandInvocations: false,
         );
       }
 
@@ -606,6 +612,7 @@ void main() {
           isRootSession: true,
           isArchived: false,
           cannotContinueMessage: null,
+          namesCommandInvocations: false,
         );
       }
 
@@ -675,6 +682,7 @@ void main() {
         isRootSession: true,
         isArchived: false,
         cannotContinueMessage: null,
+        namesCommandInvocations: false,
       );
       when(
         () => mockLoadService.load(
@@ -708,6 +716,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async {
         sendCalls++;
@@ -798,6 +807,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -812,6 +822,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => accepted.future);
 
@@ -867,6 +878,7 @@ void main() {
         isRootSession: true,
         isArchived: false,
         cannotContinueMessage: null,
+        namesCommandInvocations: false,
       );
       when(
         () => mockLoadService.load(
@@ -900,6 +912,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) {
         sendCalls++;
@@ -959,6 +972,7 @@ void main() {
         isRootSession: true,
         isArchived: false,
         cannotContinueMessage: null,
+        namesCommandInvocations: false,
       );
       const unsupportedSnapshot = SessionDetailSnapshot(
         areOptionsStale: false,
@@ -983,6 +997,7 @@ void main() {
         isRootSession: true,
         isArchived: false,
         cannotContinueMessage: null,
+        namesCommandInvocations: false,
       );
       when(
         () => mockLoadService.load(
@@ -1017,6 +1032,7 @@ void main() {
           variant: any(named: "variant"),
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async {
         sendCalls++;
@@ -1114,6 +1130,7 @@ void main() {
         isRootSession: true,
         isArchived: false,
         cannotContinueMessage: null,
+        namesCommandInvocations: false,
       );
       when(
         () => mockLoadService.load(
@@ -1245,6 +1262,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -1328,6 +1346,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -1371,6 +1390,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -1447,6 +1467,7 @@ void main() {
         isRootSession: true,
         isArchived: false,
         cannotContinueMessage: null,
+        namesCommandInvocations: false,
       );
 
       when(
@@ -1878,6 +1899,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -1946,6 +1968,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -2038,6 +2061,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -2119,6 +2143,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -2201,6 +2226,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -2275,6 +2301,7 @@ void main() {
             isRootSession: true,
             isArchived: false,
             cannotContinueMessage: null,
+            namesCommandInvocations: false,
           ),
         ),
       );
@@ -2394,6 +2421,7 @@ SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, int? 
       isRootSession: true,
       isArchived: false,
       cannotContinueMessage: null,
+      namesCommandInvocations: false,
     );
 
 Future<void> _awaitStreamingText(SessionDetailCubit cubit, {required String partId, required String text}) async {

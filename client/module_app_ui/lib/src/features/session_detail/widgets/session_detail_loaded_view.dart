@@ -307,6 +307,7 @@ class SessionDetailLoadedView extends StatelessWidget {
           : context.read<SessionDetailCubit>().retryFailedSend,
       onRemoveFailedSend: canRemoveFailedSend ? context.read<SessionDetailCubit>().removeFailedSend : null,
       launchFollowUps: state.launchFollowUps,
+      promptTurnShapes: state.promptTurnShapes,
       onRetryLaunchFollowUp: readOnly || !state.interaction.canInteract
           ? null
           : context.read<SessionDetailCubit>().retryLaunchFollowUp,

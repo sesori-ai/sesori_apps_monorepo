@@ -804,6 +804,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(testSession(id: "session-cache-miss")));
 
@@ -828,6 +829,7 @@ void main() {
         fastMode: false,
         command: null,
         dedicatedWorktree: true,
+        commandSource: null,
       ),
     ).called(1);
   });
@@ -1476,6 +1478,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     );
   });
@@ -1650,6 +1653,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     );
   });
@@ -1688,6 +1692,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     );
   });
@@ -2809,6 +2814,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
 
@@ -2860,6 +2866,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
 
@@ -2898,6 +2905,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).called(1);
   });
@@ -2916,6 +2924,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
 
@@ -2942,6 +2951,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).called(1);
   });
@@ -2959,6 +2969,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(testSession(id: "session-1", title: null)));
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
@@ -2986,6 +2997,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).called(1);
   });
@@ -3006,6 +3018,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
@@ -3062,6 +3075,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
@@ -3079,6 +3093,7 @@ void main() {
         variant: any(named: "variant"),
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
     SessionLaunchHandoff? handoff;
@@ -3124,6 +3139,7 @@ void main() {
         variant: any(named: "variant"),
         fastMode: any(named: "fastMode"),
         command: null,
+        commandSource: any(named: "commandSource"),
       ),
     ).called(1);
   });
@@ -3142,6 +3158,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
 
@@ -3186,6 +3203,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
 
@@ -3235,6 +3253,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
 
@@ -3275,6 +3294,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
     // The detail screen's first state, seeded from the launch as its cubit
@@ -3386,6 +3406,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
 
@@ -3455,6 +3476,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((invocation) {
       creationCalls++;
@@ -3515,6 +3537,7 @@ void main() {
         fastMode: any(named: "fastMode"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
+        commandSource: any(named: "commandSource"),
       ),
     ).thenAnswer((_) => createCompleter.future);
 
@@ -4016,6 +4039,7 @@ void main() {
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) => Completer<ApiResponse<Session>>().future);
         await pumpPhone(tester);

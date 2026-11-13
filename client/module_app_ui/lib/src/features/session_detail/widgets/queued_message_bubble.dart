@@ -7,6 +7,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 
+import "invocation_card.dart";
 import "user_message_card.dart";
 
 sealed class const QueuedMessageBubblePresentation() {
@@ -67,6 +68,10 @@ class const QueuedMessageBubble({
   super.key,
   required final String? displayText,
   required final bool isCommand,
+
+  /// Whether the message waits as an invocation card or a bubble. A card's
+  /// status line sits under it at the leading edge, a bubble's at the trailing.
+  required final PromptTurnShape shape,
   required final int attachmentCount,
 
   /// This surface retains bounded local previews through bridge queue dispatch.
@@ -159,7 +164,14 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
     final prego = context.prego;
     final loc = context.loc;
     final presentation = widget.presentation;
-    final isCommand = widget.isCommand;
+    final card = switch (widget.shape) {
+      final InvocationPromptTurnShape card => card,
+      BubblePromptTurnShape() => null,
+    };
+    // A card already says it is a command.
+    final isCommand = widget.isCommand && card == null;
+    final edge = card == null ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final wrapEdge = card == null ? WrapAlignment.end : WrapAlignment.start;
     final displayText = widget.displayText;
     final attachmentCount = widget.attachmentCount;
     final localAttachments = widget.localAttachments;
@@ -189,7 +201,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         ],
       ),
       PendingMessageBubblePresentation(:final onCancel) => Wrap(
-        alignment: WrapAlignment.end,
+        alignment: wrapEdge,
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: PregoSpacing.xs,
         runSpacing: PregoSpacing.xs,
@@ -232,7 +244,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         color: prego.colors.textTertiary,
       ),
       UnavailableCommandBubblePresentation(:final onRemove) => Wrap(
-        alignment: WrapAlignment.end,
+        alignment: wrapEdge,
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: PregoSpacing.xs,
         runSpacing: PregoSpacing.xs,
@@ -270,11 +282,11 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
       // The harness's reason, when it gave one, reads as a second line under
       // the failure and fades in with it.
       FailedMessageBubblePresentation(:final reason, :final onRetry, :final onRemove) => Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: edge,
         mainAxisSize: MainAxisSize.min,
         children: [
           Wrap(
-            alignment: WrapAlignment.end,
+            alignment: wrapEdge,
             crossAxisAlignment: WrapCrossAlignment.center,
             spacing: PregoSpacing.xs,
             runSpacing: PregoSpacing.xs,
@@ -299,7 +311,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
                 _action(prego: prego, icon: TablerRegular.x, label: loc.sessionDetailRemoveQueued, onPressed: onRemove),
             ],
           ),
-          if (reason != null) _FailureReason(reason: reason),
+          if (reason != null) _FailureReason(reason: reason, textAlign: card == null ? TextAlign.end : TextAlign.start),
         ],
       ),
       DeliveredMessageBubblePresentation() => null,
@@ -317,28 +329,37 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         : KeyedSubtree(
             key: ValueKey(presentation.runtimeType),
             child: Padding(
-              padding: const EdgeInsetsDirectional.only(
-                end: PregoSpacing.x2l,
-                bottom: PregoSpacing.xs,
-              ),
+              padding: card == null
+                  ? const EdgeInsetsDirectional.only(end: PregoSpacing.x2l, bottom: PregoSpacing.xs)
+                  : const EdgeInsetsDirectional.only(start: PregoSpacing.x2l, bottom: PregoSpacing.xs),
               child: status,
             ),
           );
 
+    final attachments = [
+      if (localAttachments.isNotEmpty) _QueuedAttachmentPreviews(attachments: localAttachments),
+      if (attachmentCount > 0 && (localAttachments.isEmpty || displayText == null))
+        _QueuedAttachmentCount(count: attachmentCount),
+    ];
     return Column(
-      crossAxisAlignment: .end,
+      crossAxisAlignment: edge,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (presentation case DeliveredMessageBubblePresentation(:final message))
           message(outlineFade: wasOutlined ? _statusFade : null)
+        else if (card != null)
+          InvocationCard(
+            name: card.name,
+            source: card.source,
+            arguments: card.arguments,
+            attachments: attachments,
+            outlined: outlined,
+            transitionDuration: _statusFade,
+          )
         else
           UserMessageBubble(
             markdown: displayText,
-            attachments: [
-              if (localAttachments.isNotEmpty) _QueuedAttachmentPreviews(attachments: localAttachments),
-              if (attachmentCount > 0 && (localAttachments.isEmpty || displayText == null))
-                _QueuedAttachmentCount(count: attachmentCount),
-            ],
+            attachments: attachments,
             outlined: outlined,
             transitionDuration: _statusFade,
           ),
@@ -424,7 +445,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
 
 /// A failed send's reason. A long one stops at a few lines; tapping it shows
 /// the rest, and the enclosing prompt row eases the height change.
-class const _FailureReason({required final String reason}) extends StatefulWidget {
+class const _FailureReason({required final String reason, required final TextAlign textAlign}) extends StatefulWidget {
   @override
   State<_FailureReason> createState() => _FailureReasonState();
 }
@@ -458,7 +479,7 @@ class _FailureReasonState() extends State<_FailureReason> {
             child: Text(
               widget.reason,
               style: style,
-              textAlign: TextAlign.end,
+              textAlign: widget.textAlign,
               maxLines: _expanded ? null : _collapsedLines,
               overflow: _expanded ? null : TextOverflow.ellipsis,
             ),

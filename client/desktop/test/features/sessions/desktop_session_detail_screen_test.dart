@@ -152,6 +152,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     stagedCommand: null,
     isRefreshing: false,
     cannotContinueMessage: null,
+    namesCommandInvocations: false,
   );
 }
 

@@ -43,6 +43,7 @@ void main() {
       stagedCommand: null,
       isRefreshing: false,
       cannotContinueMessage: null,
+      namesCommandInvocations: false,
     );
     const loaded = state as SessionDetailLoaded;
     expect(loaded.isRefreshing, isFalse);

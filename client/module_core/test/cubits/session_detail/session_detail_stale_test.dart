@@ -430,6 +430,7 @@ void main() {
           variant: const SessionVariant(id: "low"),
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
@@ -457,6 +458,7 @@ void main() {
           variant: const SessionVariant(id: "low"),
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).called(1);
     });
@@ -505,6 +507,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
@@ -535,6 +538,7 @@ void main() {
           variant: null,
           fastMode: false,
           command: null,
+          commandSource: any(named: "commandSource"),
         ),
       ).called(1);
     });

@@ -786,4 +786,5 @@ SessionDetailState _loaded({required Map<ToolOutputKey, ToolOutputFetch> toolOut
   fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
+  namesCommandInvocations: false,
 );

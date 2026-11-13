@@ -142,7 +142,7 @@ final class _ComposerSendShortcutActivator({
 
 typedef PromptSubmitCallback = void Function({
   required ComposerDraft draft,
-  required String? command,
+  required CommandInfo? command,
   required List<ComposerAttachment> attachments,
 });
 
@@ -743,7 +743,7 @@ class _PromptInputState() extends State<PromptInput> {
     if (fromDictation) SentBubbleLanding.of(context: context).expect();
     widget.onSend(
       draft: submission,
-      command: stagedCommand?.name,
+      command: stagedCommand,
       attachments: attachments,
     );
     if (stagedCommand != null) widget.onCommandCleared();

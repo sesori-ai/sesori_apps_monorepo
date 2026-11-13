@@ -374,7 +374,50 @@ void main() {
       expect(plugin.lastRenameSessionTitle, equals("Renamed"));
     });
 
-    test("getQueuedPrompts names the source of each command this bridge sent, not a refused one", () async {
+    test("sendCommand names nothing for a plugin that does not name its runs", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final runtime = createTestPluginRuntime(plugins: [plugin])..invocationNamingPluginIds.clear();
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        runtime: runtime,
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        fastMode: false,
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "p1",
+        isDedicated: true,
+        createdAt: 10,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      await repository.sendCommand(
+        sessionId: "s1",
+        promptId: "sent",
+        command: "review",
+        commandSource: CommandSource.skill,
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+      );
+      const echo = Message.user(id: "m1", sessionID: "s1", agent: null, time: null, promptId: "sent", invocation: null);
+
+      expect(repository.stampLiveInvocation(message: echo), echo);
+    });
+
+    test("getQueuedPrompts names the source of each command this bridge sent, not a definitely refused one", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
       final repository = singlePluginSessionRepository(
@@ -410,22 +453,30 @@ void main() {
         agent: null,
         model: null,
       );
-      plugin.sendCommandError = StateError("refused");
-      await expectLater(
-        repository.sendCommand(
-          sessionId: "s1",
-          promptId: "refused",
-          command: "review",
-          commandSource: CommandSource.skill,
-          arguments: "",
-          userVisibleArguments: null,
-          variant: null,
-          fastMode: false,
-          agent: null,
-          model: null,
-        ),
-        throwsStateError,
-      );
+      // A definite refusal forgets the command; an unknown outcome keeps it, as the harness may have run it.
+      final failures = <String, Object>{
+        "refused": PluginApiException(endpoint: "command", statusCode: 400),
+        "timed-out": PluginApiException(endpoint: "command", statusCode: 504),
+        "crashed": StateError("connection dropped"),
+      };
+      for (final MapEntry(key: promptId, value: error) in failures.entries) {
+        plugin.sendCommandError = error;
+        await expectLater(
+          repository.sendCommand(
+            sessionId: "s1",
+            promptId: promptId,
+            command: "review",
+            commandSource: CommandSource.skill,
+            arguments: "",
+            userVisibleArguments: null,
+            variant: null,
+            fastMode: false,
+            agent: null,
+            model: null,
+          ),
+          throwsA(same(error)),
+        );
+      }
       PluginQueuedPrompt queued({required String id}) => PluginQueuedPrompt(
         id: id,
         dispatchState: PluginQueuedPromptDispatchState.queued,
@@ -434,11 +485,22 @@ void main() {
         attachmentCount: 0,
         createdAt: 1,
       );
-      plugin.queuedPrompts.addAll([queued(id: "sent"), queued(id: "elsewhere"), queued(id: "refused")]);
+      plugin.queuedPrompts.addAll([
+        for (final id in ["sent", "elsewhere", ...failures.keys]) queued(id: id),
+      ]);
 
       final prompts = await repository.getQueuedPrompts(sessionId: "s1");
 
-      expect([for (final prompt in prompts) prompt.commandSource], [CommandSource.mcp, null, null]);
+      expect(
+        [for (final prompt in prompts) prompt.commandSource],
+        [
+          CommandSource.mcp,
+          null,
+          null,
+          CommandSource.skill,
+          CommandSource.skill,
+        ],
+      );
     });
 
     test("getCatalogSession returns the stored project without scanning the plugin", () async {

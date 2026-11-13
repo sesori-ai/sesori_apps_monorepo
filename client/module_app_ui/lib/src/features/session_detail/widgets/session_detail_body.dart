@@ -983,7 +983,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         columnWidths: columnWidths,
       ),
       // A reload from a failed or blocked first load keeps what is still owed.
-      SessionDetailLoading(:final awaitingBridgeSubmissions, :final launchFollowUps, :final queuedMessages) =>
+      SessionDetailLoading(
+        :final awaitingBridgeSubmissions,
+        :final launchFollowUps,
+        :final queuedMessages,
+        :final promptTurnShapes,
+      ) =>
         _withOwedMessages(
           context: context,
           status: PregoLaunchStatus(
@@ -997,6 +1002,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           awaitingBridgeSubmissions: awaitingBridgeSubmissions,
           launchFollowUps: launchFollowUps,
           queuedMessages: queuedMessages,
+          promptTurnShapes: promptTurnShapes,
           columnWidths: columnWidths,
           harnessName: null,
         ),
@@ -1034,6 +1040,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         :final awaitingBridgeSubmissions,
         :final launchFollowUps,
         :final queuedMessages,
+        :final promptTurnShapes,
       ) =>
         _withOwedMessages(
           context: context,
@@ -1056,6 +1063,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           awaitingBridgeSubmissions: awaitingBridgeSubmissions,
           launchFollowUps: launchFollowUps,
           queuedMessages: queuedMessages,
+          promptTurnShapes: promptTurnShapes,
           columnWidths: columnWidths,
           harnessName: PregoBrandLogo.displayNameFor(session.pluginId),
         ),
@@ -1064,6 +1072,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         :final awaitingBridgeSubmissions,
         :final launchFollowUps,
         :final queuedMessages,
+        :final promptTurnShapes,
       ) =>
         _withOwedMessages(
           context: context,
@@ -1073,6 +1082,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           awaitingBridgeSubmissions: awaitingBridgeSubmissions,
           launchFollowUps: launchFollowUps,
           queuedMessages: queuedMessages,
+          promptTurnShapes: promptTurnShapes,
           columnWidths: columnWidths,
           harnessName: null,
         ),
@@ -1106,6 +1116,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     required List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
     required List<LaunchFollowUp> launchFollowUps,
     required List<QueuedSessionSubmission> queuedMessages,
+    required PromptTurnShapes promptTurnShapes,
     required String? harnessName,
     required SessionDetailColumnWidths? columnWidths,
   }) {
@@ -1133,6 +1144,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             onRetryLaunchFollowUp: cubit.retryLaunchFollowUp,
             onRemoveLaunchFollowUp: cubit.removeLaunchFollowUp,
             onCancelQueuedMessage: cubit.cancelQueuedMessage,
+            promptTurnShapes: promptTurnShapes,
             bottomInset: null,
           ),
         ),
@@ -1157,6 +1169,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       messages: const [],
       bridgeQueuedPrompts: const [],
       awaitingBridgeSubmissions: launchView.awaitingBridgeSubmissions,
+      // The launch view's shapes, so the first message keeps its card or bubble from its first frame.
+      promptTurnShapes: launchView.promptTurnShapes,
       sessionStatus: const SessionStatus.idle(),
       childStatuses: const {},
       children: const [],
@@ -1194,6 +1208,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       onRetryLaunchFollowUp: cubit.retryLaunchFollowUp,
       onRemoveLaunchFollowUp: cubit.removeLaunchFollowUp,
       onCancelQueuedMessage: cubit.cancelQueuedMessage,
+      promptTurnShapes: loading.promptTurnShapes,
       // The composer sits below rather than over it, so nothing covers it.
       bottomInset: composer == null ? null : 0,
     );

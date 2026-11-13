@@ -2796,6 +2796,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commandSourceCustom => 'Custom';
 
   @override
+  String invocationCardRan(String name) {
+    return 'You ran /$name';
+  }
+
+  @override
+  String invocationCardSemantics(String source, String name) {
+    String _temp0 = intl.Intl.selectLogic(
+      source,
+      {
+        'command': 'You ran command $name',
+        'skill': 'You ran skill $name',
+        'mcp': 'You ran MCP prompt $name',
+        'other': 'You ran $name',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get diffBinaryFileChanged => 'Binary file changed';
 
   @override

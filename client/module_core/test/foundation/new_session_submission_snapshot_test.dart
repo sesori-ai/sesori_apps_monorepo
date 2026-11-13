@@ -22,6 +22,7 @@ void main() {
   final command = NewSessionSubmissionSnapshot.command(
     draft: ComposerDraft.typed(text: "src"),
     command: "review",
+    commandSource: null,
   );
 
   test("a command keeps its intent when its follow-ups carry no images", () {
@@ -30,6 +31,7 @@ void main() {
       NewSessionSubmissionSnapshot.command(
         draft: ComposerDraft.typed(text: "src\n\nthen this"),
         command: "review",
+        commandSource: null,
       ),
     );
   });
@@ -106,7 +108,7 @@ void main() {
     });
 
     test("a dictated argument to a command is never marked", () {
-      final submission = NewSessionSubmissionSnapshot.command(draft: dictated, command: "review");
+      final submission = NewSessionSubmissionSnapshot.command(draft: dictated, command: "review", commandSource: null);
 
       expect(submission.outgoingText, "fix the parser");
       expect(submission.displayText, "/review fix the parser");
@@ -142,6 +144,7 @@ void main() {
             agent: null,
             agentModel: null,
             fastMode: false,
+            commandSource: null,
           ),
         ],
         unsent: null,

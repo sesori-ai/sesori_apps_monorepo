@@ -642,4 +642,5 @@ SessionDetailSnapshot _snapshot({
   isRootSession: true,
   isArchived: false,
   cannotContinueMessage: null,
+  namesCommandInvocations: false,
 );

@@ -130,6 +130,7 @@ void main() {
       supportsFileUploads: false,
       hadFocus: true,
       unsent: null,
+      namesCommandInvocations: false,
     );
     start();
     repository.handOverComposer(launchId: "launch-1", composer: composer);

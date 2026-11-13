@@ -167,6 +167,7 @@ void main() {
         fastMode: false,
         command: "review",
         dedicatedWorktree: true,
+        commandSource: CommandSource.skill,
       );
 
       final verification = verify(
@@ -181,6 +182,7 @@ void main() {
       final request = verification.captured.single as CreateSessionRequest;
       expect(request.variant, isNull);
       expect(request.pluginId, "plugin-1");
+      expect(request.commandSource, CommandSource.skill);
     });
 
     test("attachment create yields before preserving exact generated request JSON", () async {
@@ -250,6 +252,7 @@ void main() {
         fastMode: false,
         command: null,
         dedicatedWorktree: true,
+        commandSource: null,
       );
 
       final verification = verify(
@@ -321,6 +324,7 @@ void main() {
         fastMode: false,
         command: null,
         dedicatedWorktree: false,
+        commandSource: null,
       );
 
       final verification = verify(
@@ -356,6 +360,7 @@ void main() {
         variant: null,
         fastMode: false,
         command: "review",
+        commandSource: null,
       );
 
       final verification = verify(
@@ -393,6 +398,7 @@ void main() {
         variant: null,
         fastMode: false,
         command: null,
+        commandSource: null,
       );
 
       final verification = verify(
@@ -438,6 +444,7 @@ void main() {
         variant: null,
         fastMode: false,
         command: null,
+        commandSource: null,
       );
 
       final verification = verify(
@@ -479,6 +486,7 @@ void main() {
         variant: null,
         fastMode: false,
         command: null,
+        commandSource: null,
       );
 
       final verification = verify(
@@ -543,6 +551,7 @@ void main() {
         fastMode: false,
         command: null,
         dedicatedWorktree: false,
+        commandSource: null,
       );
 
       final verification = verify(

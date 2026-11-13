@@ -1904,6 +1904,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(testSession(pluginId: "degraded")));
 
@@ -1932,6 +1933,7 @@ void main() {
           fastMode: false,
           command: null,
           dedicatedWorktree: true,
+          commandSource: null,
         ),
       ).called(1);
     });
@@ -1991,6 +1993,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       );
     });
@@ -2180,6 +2183,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(testSession(pluginId: "plugin-a")));
 
@@ -2213,6 +2217,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(testSession(pluginId: "plugin-b")));
 
@@ -2331,6 +2336,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => createCompleter.future);
       final cubit = buildCubit();
@@ -2378,6 +2384,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(testSession(pluginId: "plugin-a")));
 
@@ -2429,6 +2436,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       );
     });
@@ -2449,6 +2457,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(testSession(pluginId: "plugin-a")));
 

@@ -276,6 +276,7 @@ void main() {
         launchId: "launch-1",
         startedAt: DateTime.utc(2026, 9, 27),
         followUps: const [],
+        promptTurnShapes: const PromptTurnShapes(),
       ),
     );
     final newSessionCubit = _MockNewSessionCubit();
@@ -604,6 +605,7 @@ void main() {
               launchId: "launch-1",
               startedAt: DateTime.utc(2026, 9, 27),
               followUps: const [],
+              promptTurnShapes: const PromptTurnShapes(),
             ),
           ),
         );

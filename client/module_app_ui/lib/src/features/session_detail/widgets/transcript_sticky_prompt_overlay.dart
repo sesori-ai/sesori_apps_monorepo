@@ -259,6 +259,7 @@ class _TranscriptStickyPromptOverlayState()
       content: UserMessageBubbleContent(
         markdown: text?.end,
         attachments: [UserMessageCard.attachmentsOf(message: opener)],
+        alignment: .end,
       ),
     );
   }
@@ -276,6 +277,7 @@ class _TranscriptStickyPromptOverlayState()
       content: UserMessageBubbleContent(
         markdown: preview ?? loc.transcriptStickyPromptAttachment,
         attachments: const [],
+        alignment: .end,
       ),
     );
   }

@@ -9,6 +9,7 @@ import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/new_session_options_service.dart";
 import "../../services/session_selection_calculator.dart";
+import "../session_detail/prompt_turn_shape.dart";
 
 part "new_session_state.freezed.dart";
 
@@ -137,6 +138,10 @@ sealed class NewSessionPhase with _$NewSessionPhase {
 
     /// The messages sent after [submission], as the launch holds them.
     required List<LaunchFollowUp> followUps,
+
+    /// Whether [submission] and each of [followUps] shows as a card or a
+    /// bubble, as the cubit resolved it.
+    required PromptTurnShapes promptTurnShapes,
   }) = NewSessionPhaseSending;
 
   const factory restoringSubmission({

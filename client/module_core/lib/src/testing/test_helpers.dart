@@ -533,6 +533,7 @@ void delegateSessionRepository({
       variant: any(named: "variant"),
       fastMode: any(named: "fastMode"),
       command: any(named: "command"),
+      commandSource: any(named: "commandSource"),
     ),
   ).thenAnswer(
     (invocation) => source.sendMessage(
@@ -545,6 +546,7 @@ void delegateSessionRepository({
       variant: _namedArgument<SessionVariant?>(invocation: invocation, name: #variant),
       fastMode: _namedArgument<bool>(invocation: invocation, name: #fastMode),
       command: _namedArgument<String?>(invocation: invocation, name: #command),
+      commandSource: _namedArgument<CommandSource?>(invocation: invocation, name: #commandSource),
     ),
   );
 }

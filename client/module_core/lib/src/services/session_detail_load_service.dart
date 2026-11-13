@@ -257,6 +257,7 @@ class SessionDetailLoadService({
           supportsPromptAttachments: pluginCapabilities.supportsPromptAttachments,
           supportsFileUploads: pluginCapabilities.supportsFileUploads,
           offersSessionMcp: pluginCapabilities.offersSessionMcp,
+          namesCommandInvocations: pluginCapabilities.namesCommandInvocations,
           messages: messagesPage.messages,
           olderMessagesCursor: messagesPage.nextCursor,
           userMessagesBefore: messagesPage.userMessagesBefore,
@@ -410,6 +411,7 @@ class SessionDetailLoadService({
     supportsPromptAttachments: null,
     supportsFileUploads: null,
     offersSessionMcp: true,
+    namesCommandInvocations: false,
   );
 
   /// Reads the prompt and MCP capabilities from one plugin listing. An
@@ -433,6 +435,7 @@ class SessionDetailLoadService({
               // part with the nullable field.
               null => true,
             },
+            namesCommandInvocations: plugin?.namesCommandInvocations ?? false,
           );
         case ErrorResponse(:final error):
           logw("Failed to load plugin capabilities for plugin $pluginId", error);
@@ -463,6 +466,11 @@ class const SessionDetailSnapshot({
   /// that the session's harness answers no MCP for a session, so the entry
   /// would open a dead end; true whenever that is unknown.
   required final bool offersSessionMcp,
+
+  /// Whether the session's plugin names the command, skill or MCP prompt a
+  /// user turn ran, so a command not confirmed yet can show its card. False
+  /// when plugin metadata could not be resolved.
+  required final bool namesCommandInvocations,
   required final List<MessageWithParts> messages,
 
   /// Cursor for the page before [messages], or null when the transcript is
@@ -510,7 +518,12 @@ class const SessionDetailSnapshot({
 /// user messages precede it, when the bridge counts them.
 typedef SessionMessagePage = ({List<MessageWithParts> messages, int? olderMessagesCursor, int? userMessagesBefore});
 
-typedef _PluginCapabilities = ({bool? supportsPromptAttachments, bool? supportsFileUploads, bool offersSessionMcp});
+typedef _PluginCapabilities = ({
+  bool? supportsPromptAttachments,
+  bool? supportsFileUploads,
+  bool offersSessionMcp,
+  bool namesCommandInvocations,
+});
 
 typedef _SessionDetailOptions = ({
   List<AgentInfo> agents,

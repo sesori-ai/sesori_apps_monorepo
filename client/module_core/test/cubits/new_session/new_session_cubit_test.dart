@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/new_session/new_session_composer_presentation.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/prompt_turn_shape.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/new_session_submission_snapshot.dart";
@@ -267,6 +268,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       );
       projectResponse.complete(ApiResponse.success(testProject()));
@@ -291,6 +293,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-1")));
       final store = FakeDedicatedWorktreePreferenceStore();
@@ -393,7 +396,7 @@ void main() {
             ),
           ],
           dedicatedWorktree: false,
-          command: "review",
+          command: testCommandInfo(name: "review"),
         );
       },
       // The bridge's command paths carry only text, so the send is refused
@@ -412,6 +415,7 @@ void main() {
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
           ),
         );
       },
@@ -455,6 +459,7 @@ void main() {
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
         return buildCubit();
@@ -492,6 +497,7 @@ void main() {
             fastMode: any(named: "fastMode"),
             command: null,
             dedicatedWorktree: false,
+            commandSource: any(named: "commandSource"),
           ),
         ).called(1);
       },
@@ -537,6 +543,7 @@ void main() {
               fastMode: any(named: "fastMode"),
               command: any(named: "command"),
               dedicatedWorktree: any(named: "dedicatedWorktree"),
+              commandSource: any(named: "commandSource"),
             ),
           ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
           return buildCubit();
@@ -601,6 +608,7 @@ void main() {
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
           ),
         );
       },
@@ -622,6 +630,7 @@ void main() {
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
         return buildCubit();
@@ -653,6 +662,7 @@ void main() {
             fastMode: false,
             command: null,
             dedicatedWorktree: false,
+            commandSource: null,
           ),
         ).called(1);
         verify(
@@ -684,6 +694,7 @@ void main() {
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
         return NewSessionCubit(
@@ -717,7 +728,7 @@ void main() {
         await cubit.submit(
           attachments: const [],
           draft: ComposerDraft.typed(text: ""),
-          command: "review",
+          command: testCommandInfo(name: "review"),
           dedicatedWorktree: true,
         );
       },
@@ -739,10 +750,61 @@ void main() {
             fastMode: false,
             command: "review",
             dedicatedWorktree: true,
+            commandSource: CommandSource.command,
           ),
         ).called(1);
       },
     );
+
+    for (final namesCommandInvocations in [true, false]) {
+      test("a sending command's turn shape follows namesCommandInvocations=$namesCommandInvocations", () async {
+        when(mockPluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(
+            PluginDiscoverySnapshot(
+              bridgeId: "bridge-1",
+              supportsSessionOptions: true,
+              supportsFileUploads: false,
+              plugins: [defaultPlugin.copyWith(namesCommandInvocations: namesCommandInvocations)],
+            ),
+          ),
+        );
+        when(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: any(named: "command"),
+            dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
+          ),
+        ).thenAnswer((_) => Completer<ApiResponse<Session>>().future);
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        unawaited(
+          cubit.submit(
+            draft: ComposerDraft.typed(text: ""),
+            dedicatedWorktree: false,
+            command: testCommandInfo(name: "review"),
+            attachments: const [],
+          ),
+        );
+
+        final sending = (cubit.state as NewSessionComposing).phase as NewSessionPhaseSending;
+        expect(
+          sending.promptTurnShapes.launch,
+          namesCommandInvocations
+              ? const PromptTurnShape.invocation(name: "review", source: CommandSource.command, arguments: null)
+              : const PromptTurnShape.bubble(),
+        );
+      });
+    }
 
     test("successful creation reports the workspace returned by the bridge", () async {
       when(
@@ -757,6 +819,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
@@ -801,6 +864,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.error(
@@ -884,6 +948,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => response.future);
       final cubit = buildCubit(composerDraftRepository: repository);
@@ -965,6 +1030,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => response.future);
       final cubit = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
@@ -995,6 +1061,7 @@ void main() {
           agent: null,
           agentModel: null,
           fastMode: false,
+          commandSource: null,
         ),
       ]) {
         launchRepository.addFollowUp(launchId: launchId, submission: followUp);
@@ -1035,6 +1102,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => calls++ == 0 ? firstResponse.future : secondResponse.future);
       final cubit = buildCubit();
@@ -1045,7 +1113,7 @@ void main() {
       final first = cubit.submit(
         draft: ComposerDraft.typed(text: ""),
         dedicatedWorktree: false,
-        command: command.name,
+        command: command,
         attachments: const [],
       );
       cubit.clearStagedCommand();
@@ -1096,6 +1164,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => response.future);
       final cubit = buildCubit(composerDraftRepository: repository);
@@ -1105,7 +1174,7 @@ void main() {
       final pending = cubit.submit(
         draft: ComposerDraft.typed(text: "abandoned"),
         dedicatedWorktree: false,
-        command: command.name,
+        command: command,
         attachments: const [],
       );
       cubit
@@ -1145,6 +1214,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => response.future);
       final cubit = buildCubit();
@@ -1261,6 +1331,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) {
         createCalls++;
@@ -1276,7 +1347,7 @@ void main() {
       final pendingCreate = cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: ""),
-        command: command.name,
+        command: command,
         dedicatedWorktree: true,
       );
       expect(cubit.state, composingWith<NewSessionPhaseSending>());
@@ -1305,7 +1376,7 @@ void main() {
       await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "retry"),
-        command: cubit.state.agentModelData?.stagedCommand?.name,
+        command: cubit.state.agentModelData?.stagedCommand,
         dedicatedWorktree: true,
       );
 
@@ -1321,6 +1392,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: command.name,
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).called(1);
       verify(
@@ -1335,6 +1407,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: command.name,
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).called(1);
     });
@@ -1366,6 +1439,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-no-worktree")));
       final cubit = buildCubit();
@@ -1395,6 +1469,7 @@ void main() {
           fastMode: false,
           command: null,
           dedicatedWorktree: false,
+          commandSource: null,
         ),
       ).called(1);
     });
@@ -1440,6 +1515,7 @@ void main() {
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-effort")));
         return buildCubit();
@@ -1485,6 +1561,7 @@ void main() {
             fastMode: false,
             command: null,
             dedicatedWorktree: true,
+            commandSource: null,
           ),
         ).called(1);
       },
@@ -1525,6 +1602,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-fast")));
       final cubit = buildCubit();
@@ -1559,6 +1637,7 @@ void main() {
           fastMode: true,
           command: null,
           dedicatedWorktree: false,
+          commandSource: any(named: "commandSource"),
         ),
       ).called(1);
     });
@@ -2460,6 +2539,7 @@ void main() {
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-clear")));
         return buildCubit();
@@ -2497,6 +2577,7 @@ void main() {
             fastMode: any(named: "fastMode"),
             command: any(named: "command"),
             dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
           ),
         ).thenAnswer((_) => response.future);
       });
@@ -2587,7 +2668,7 @@ void main() {
           expect(cubit.canSubmit, isTrue);
           Future<void> followUp({
             required String text,
-            required String? command,
+            required CommandInfo? command,
             required List<ComposerAttachment> attachments,
           }) => cubit.submit(
             draft: ComposerDraft.typed(text: text),
@@ -2597,7 +2678,7 @@ void main() {
           );
           await followUp(text: " second ", command: null, attachments: const []);
           await followUp(text: "third", command: null, attachments: const []);
-          await followUp(text: "", command: "review", attachments: [image]);
+          await followUp(text: "", command: testCommandInfo(), attachments: [image]);
           // The default plugin declares no attachment support.
           await followUp(text: "with an image", command: null, attachments: [image]);
           await Future<void>.delayed(Duration.zero);
@@ -2778,6 +2859,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => completer.future);
 
@@ -2813,6 +2895,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => completer.future);
 
@@ -2872,6 +2955,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) => completer.future);
 
@@ -2927,6 +3011,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-loading")));
       final cubit = buildCubit();
@@ -2959,6 +3044,7 @@ void main() {
           fastMode: false,
           command: null,
           dedicatedWorktree: false,
+          commandSource: null,
         ),
       ).called(1);
     });
@@ -3007,6 +3093,7 @@ void main() {
           fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
+          commandSource: any(named: "commandSource"),
         ),
       );
     });

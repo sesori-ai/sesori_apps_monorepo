@@ -54,6 +54,7 @@ const _loaded = SessionDetailState.loaded(
   stagedCommand: null,
   isRefreshing: false,
   cannotContinueMessage: null,
+  namesCommandInvocations: false,
 );
 
 void main() {

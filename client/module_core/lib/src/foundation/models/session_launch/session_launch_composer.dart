@@ -23,6 +23,10 @@ final class const SessionLaunchComposer({
   /// Whether the launch's bridge saves prompt files that are not inline images.
   required final bool supportsFileUploads,
 
+  /// Whether the launch's plugin names the command a user turn ran, so the
+  /// session screen shows a command not confirmed yet as its card.
+  required final bool namesCommandInvocations,
+
   /// Whether the composer had keyboard focus, so the session screen's composer
   /// takes it back on its first frame and the keyboard never drops.
   required final bool hadFocus,

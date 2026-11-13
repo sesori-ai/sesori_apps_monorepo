@@ -73,6 +73,7 @@ SessionDetailState _loadedState({
     stagedCommand: null,
     isRefreshing: false,
     cannotContinueMessage: null,
+    namesCommandInvocations: false,
   );
 }
 

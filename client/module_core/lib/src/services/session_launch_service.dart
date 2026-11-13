@@ -173,6 +173,10 @@ class SessionLaunchService({
         NewSessionTextSubmissionSnapshot() => null,
         NewSessionCommandSubmissionSnapshot(:final command) => command,
       },
+      commandSource: switch (submission) {
+        NewSessionTextSubmissionSnapshot() => null,
+        NewSessionCommandSubmissionSnapshot(:final commandSource) => commandSource,
+      },
       dedicatedWorktree: dedicatedWorktree,
     );
 
@@ -236,6 +240,7 @@ class SessionLaunchService({
           },
           fastMode: submission.fastMode,
           command: submission.command,
+          commandSource: submission.commandSource,
         );
         switch (result) {
           case SuccessResponse():

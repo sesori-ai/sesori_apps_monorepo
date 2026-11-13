@@ -719,6 +719,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
         onRetryLaunchFollowUp: null,
         onRemoveLaunchFollowUp: cubit.cancelFollowUp,
         onCancelQueuedMessage: null,
+        promptTurnShapes: phase.promptTurnShapes,
         // The composer sits below rather than over it.
         bottomInset: 0,
       ),
