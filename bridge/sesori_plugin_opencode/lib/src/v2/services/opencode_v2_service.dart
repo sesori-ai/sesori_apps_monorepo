@@ -212,12 +212,20 @@ class OpenCodeV2Service({
   }
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
-    final commands = await _repository.getCommands(
-      directory: projectId == null ? null : await _realPath(directory: projectId),
+    final directory = projectId == null ? null : await _realPath(directory: projectId);
+    final (commands, skills) = await shared.wait2(
+      _repository.getCommands(directory: directory),
+      _repository.getSkills(directory: directory),
     );
-    return commands.any((command) => command.name == compactionCommandName)
-        ? commands
-        : [...commands, PluginCommand.compaction(name: compactionCommandName)];
+    final names = {for (final command in commands) command.name};
+    return [
+      ...commands,
+      if (!names.contains(compactionCommandName)) PluginCommand.compaction(name: compactionCommandName),
+      // sendCommand runs a native command or compaction for a name it shares
+      // with a skill, so such a skill is not offered.
+      for (final skill in skills)
+        if (!names.contains(skill.name) && skill.name != compactionCommandName) skill,
+    ];
   }
 
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({required String projectId}) async {
@@ -297,29 +305,42 @@ class OpenCodeV2Service({
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
   }) async {
-    final directory = await _directory(sessionId: sessionId);
-    final nativeCommands = await _repository.getCommands(directory: directory);
-    final native = nativeCommands.any((candidate) => candidate.name == command);
-    if (!native && command != compactionCommandName) {
-      throw const PluginStaleOptionsException(
-        "sendCommand",
-        message: "OpenCode no longer offers the selected command.",
-      );
-    }
+    final kind = await _commandKind(
+      directory: await _directory(sessionId: sessionId),
+      command: command,
+    );
     await _select(sessionId: sessionId, agent: agent, model: model, variant: variant);
-    if (!native) {
-      if (arguments.trim().isNotEmpty) {
-        await _repository.addSyntheticMessage(
-          sessionId: sessionId,
-          text: arguments,
-          description: userVisibleArguments ?? "Compaction instructions",
-          resume: false,
-        );
-      }
-      await _repository.compact(sessionId: sessionId, promptId: promptId);
-    } else {
-      await _repository.sendCommand(sessionId: sessionId, command: command, arguments: arguments);
+    switch (kind) {
+      case _V2CommandKind.native:
+        await _repository.sendCommand(sessionId: sessionId, command: command, arguments: arguments);
+      case _V2CommandKind.skill:
+        await _repository.sendSkill(sessionId: sessionId, promptId: promptId, skillId: command, arguments: arguments);
+      case _V2CommandKind.compaction:
+        if (arguments.trim().isNotEmpty) {
+          await _repository.addSyntheticMessage(
+            sessionId: sessionId,
+            text: arguments,
+            description: userVisibleArguments ?? "Compaction instructions",
+            resume: false,
+          );
+        }
+        await _repository.compact(sessionId: sessionId, promptId: promptId);
     }
+  }
+
+  /// A native command wins over the compaction fallback and a skill of the same name.
+  Future<_V2CommandKind> _commandKind({required String directory, required String command}) async {
+    if ((await _repository.getCommands(directory: directory)).any((candidate) => candidate.name == command)) {
+      return _V2CommandKind.native;
+    }
+    if (command == compactionCommandName) return _V2CommandKind.compaction;
+    if ((await _repository.getSkills(directory: directory)).any((candidate) => candidate.name == command)) {
+      return _V2CommandKind.skill;
+    }
+    throw const PluginStaleOptionsException(
+      "sendCommand",
+      message: "OpenCode no longer offers the selected command.",
+    );
   }
 
   Future<void> _select({
@@ -498,7 +519,8 @@ class OpenCodeV2Service({
       V2AgentUpdated() ||
       V2CommandUpdated() ||
       V2ProviderUpdated() ||
-      V2ModelUpdated() => null,
+      V2ModelUpdated() ||
+      V2SkillUpdated() => null,
     };
     final deleted = event is V2SessionDeleted ? _tracker.session(sessionId: event.sessionID) : null;
     var changed = _tracker.apply(event: event);
@@ -685,7 +707,8 @@ class OpenCodeV2Service({
           V2AgentUpdated() ||
           V2CommandUpdated() ||
           V2ProviderUpdated() ||
-          V2ModelUpdated():
+          V2ModelUpdated() ||
+          V2SkillUpdated():
         return const [];
     }
   }
@@ -771,4 +794,10 @@ class OpenCodeV2Service({
         PluginProjectActivitySummary(id: id, activeSessions: activeSessions),
     ];
   }
+}
+
+enum _V2CommandKind() {
+  native,
+  skill,
+  compaction,
 }

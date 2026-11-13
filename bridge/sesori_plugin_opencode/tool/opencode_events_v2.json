@@ -389,6 +389,10 @@
     {
       "type": "model.updated",
       "fields": []
+    },
+    {
+      "type": "skill.updated",
+      "fields": []
     }
   ]
 }

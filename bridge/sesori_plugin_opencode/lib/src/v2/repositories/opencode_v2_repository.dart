@@ -19,6 +19,7 @@ import "../models/openapi/permission_reply.g.dart";
 import "../models/openapi/permission_request.g.dart";
 import "../models/openapi/project.g.dart";
 import "../models/openapi/prompt_input_file_attachment.g.dart";
+import "../models/openapi/prompt_input_skill_attachment.g.dart";
 import "../models/openapi/session_info.g.dart";
 import "../models/openapi/session_message_info.g.dart";
 import "../models/openapi/worktree_remove_input.g.dart";
@@ -353,6 +354,10 @@ class OpenCodeV2Repository({
     for (final command in await _api.listCommands(directory: directory)) _modelMapper.mapCommand(command: command),
   ];
 
+  Future<List<PluginCommand>> getSkills({required String? directory}) async => [
+    for (final skill in await _api.listSkills(directory: directory)) _modelMapper.mapSkill(skill: skill),
+  ];
+
   /// The native active-session endpoint is global and contains only running IDs.
   Future<Set<String>> getActiveSessionIds() async => (await _api.getActiveSessions()).keys.toSet();
 
@@ -433,6 +438,26 @@ class OpenCodeV2Repository({
         sessionId: sessionId,
         body: V2CommandBody(name: command, text: arguments, files: null, agents: null, skills: null, delivery: null),
       );
+
+  /// OpenCode 2 has no skill command; its clients attach the skill to a prompt,
+  /// and the server adds the skill's instructions to that turn.
+  Future<void> sendSkill({
+    required String sessionId,
+    required String? promptId,
+    required String skillId,
+    required String arguments,
+  }) => _api.prompt(
+    sessionId: sessionId,
+    body: V2PromptBody(
+      id: _promptMessageId(promptId: promptId),
+      text: arguments,
+      files: null,
+      agents: null,
+      skills: [PromptInputSkillAttachment(id: skillId, mention: null)],
+      delivery: null,
+      resume: null,
+    ),
+  );
 
   Future<PluginSession> renameSession({required String sessionId, required String title}) async {
     await _api.renameSession(

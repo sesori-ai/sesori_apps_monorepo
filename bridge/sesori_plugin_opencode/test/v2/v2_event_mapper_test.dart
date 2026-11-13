@@ -144,7 +144,7 @@ void main() {
   }
 
   test("agent, command, provider and model catalog announcements refresh session options", () {
-    for (final type in ["agent.updated", "command.updated", "provider.updated", "model.updated"]) {
+    for (final type in ["agent.updated", "command.updated", "provider.updated", "model.updated", "skill.updated"]) {
       expect(
         mapper.map(
           envelope: frame(type: type, data: const {}),

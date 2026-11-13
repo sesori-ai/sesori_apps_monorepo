@@ -343,8 +343,8 @@ variant, and worktree mode, and creating the session with its first input.
   changes remain MCP-tool events. A backend change that names a session refreshes
   that session's catalog; one that names none refreshes every project the plugin
   already holds a snapshot for, and never discovers for a project it does not.
-  OpenCode 2's `agent.updated`, `command.updated`, `provider.updated` and
-  `model.updated` refresh the same way: on a cold location OpenCode first
+  OpenCode 2's `agent.updated`, `command.updated`, `provider.updated`,
+  `model.updated` and `skill.updated` refresh the same way: on a cold location OpenCode first
   answers an empty or partial catalog, then announces the loaded one, and it
   announces again after an edited `opencode.json`, agent or command file
   (credential changes too, per its source; not probed live). A provider or model added to `opencode.json` while the bridge runs
@@ -357,6 +357,12 @@ variant, and worktree mode, and creating the session with its first input.
   reported, so pending permissions and forms of a location opened through a
   symlink still show. Sessions created through the symlink before this still
   list under the project, which OpenCode keys by its id, not the directory.
+- OpenCode 2 lists its skills (`GET /api/skill`) in the command picker labelled
+  Skill, after the native commands; a skill named like a native command or
+  `compact` is hidden and the command runs. Picking a skill and sending sends the typed text
+  as the prompt with the skill attached, and the reply follows the skill's
+  instructions. A skill that disappeared before sending fails with the stale
+  options error instead of sending a plain prompt.
 - A plugin may declare start warm-up work that makes later requests faster.
   The bridge runs it once a generation becomes routable and never waits on it,
   so a slow or failing warm-up neither delays the request that triggered the

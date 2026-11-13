@@ -30,6 +30,7 @@ import "../models/openapi/session_interrupt_response.g.dart";
 import "../models/openapi/session_message_info.g.dart";
 import "../models/openapi/session_messages_response.g.dart";
 import "../models/openapi/sessions_response.g.dart";
+import "../models/openapi/skill_info.g.dart";
 import "../models/openapi/worktree_remove_input.g.dart";
 import "../models/v2_data_response.dart";
 import "../models/v2_decode_exception.dart";
@@ -415,6 +416,9 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
 
   Future<List<CommandInfo>> listCommands({required String? directory}) =>
       _getList(path: "/api/command", directory: directory, fromJson: CommandInfo.fromJson);
+
+  Future<List<SkillInfo>> listSkills({required String? directory}) =>
+      _getList(path: "/api/skill", directory: directory, fromJson: SkillInfo.fromJson);
 
   Future<List<PermissionRequest>> listPermissions({required String directory}) =>
       _getList(path: "/api/permission/request", directory: directory, fromJson: PermissionRequest.fromJson);

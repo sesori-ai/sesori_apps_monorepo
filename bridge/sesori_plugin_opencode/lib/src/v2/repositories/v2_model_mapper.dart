@@ -16,6 +16,7 @@ import "../models/openapi/permission_request.g.dart";
 import "../models/openapi/project.g.dart";
 import "../models/openapi/provider_info.g.dart";
 import "../models/openapi/session_info.g.dart";
+import "../models/openapi/skill_info.g.dart";
 import "../models/v2_agent_names.dart";
 
 /// Pure v2 catalog projection with plugin-owned agent-name normalization.
@@ -143,6 +144,14 @@ class const V2ModelMapper({required final String _pluginId}) {
     description: command.description,
     provider: null,
     source: PluginCommandSource.unknown,
+  );
+
+  /// A prompt attaches a skill by its id, so the id is the command name too.
+  PluginCommand mapSkill({required SkillInfo skill}) => PluginCommand(
+    name: skill.id,
+    description: skill.description,
+    provider: null,
+    source: PluginCommandSource.skill,
   );
 
   PluginPendingPermission mapPermission({required PermissionRequest permission, required String? displaySessionId}) =>

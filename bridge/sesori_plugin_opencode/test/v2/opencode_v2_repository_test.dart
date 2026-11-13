@@ -21,6 +21,7 @@ import "package:opencode_plugin/src/v2/models/openapi/session_inbox_user.g.dart"
 import "package:opencode_plugin/src/v2/models/openapi/session_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_interrupt_response.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_message_info.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/skill_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/worktree_remove_input.g.dart";
 import "package:opencode_plugin/src/v2/models/v2_message_filter.dart";
 import "package:opencode_plugin/src/v2/models/v2_request_bodies.dart";
@@ -270,6 +271,22 @@ void main() {
     expect(commandBody.text, "fixture args");
   });
 
+  test("lists skills as skill commands and sends a skill as a prompt attachment", () async {
+    final skills = await repository.getSkills(directory: directory);
+    expect(skills.map((skill) => (skill.name, skill.description, skill.source)), [
+      ("fixture-skill", "Fixture skill", PluginCommandSource.skill),
+    ]);
+    await repository.sendSkill(
+      sessionId: "session-fixture",
+      promptId: null,
+      skillId: "fixture-skill",
+      arguments: "fixture args",
+    );
+    final body = api.promptBody ?? fail("expected a prompt body");
+    expect(body.text, "fixture args");
+    expect(body.skills?.map((skill) => skill.id), ["fixture-skill"]);
+  });
+
   test("routes mutations with native IDs and leaves synthetic presentation explicit", () async {
     final renamed = await repository.renameSession(sessionId: "session-fixture", title: "Renamed");
     expect(renamed.title, "Renamed");
@@ -509,6 +526,17 @@ class FakeV2Api({
     catalogDirectories.add(directory);
     return model;
   }
+
+  @override
+  Future<List<SkillInfo>> listSkills({required String? directory}) async => [
+    SkillInfo.fromJson(const <String, dynamic>{
+      "id": "fixture-skill",
+      "name": "Fixture skill name",
+      "description": "Fixture skill",
+      "path": "/fixture/project/.opencode/skills/fixture-skill/SKILL.md",
+      "content": "Fixture instructions",
+    }),
+  ];
 
   @override
   Future<List<CommandInfo>> listCommands({required String? directory}) async {

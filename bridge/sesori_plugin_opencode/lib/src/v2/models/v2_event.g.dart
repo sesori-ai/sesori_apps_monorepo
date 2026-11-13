@@ -266,6 +266,7 @@ sealed class V2EventData {
   const factory V2EventData.commandUpdated() = V2CommandUpdated;
   const factory V2EventData.providerUpdated() = V2ProviderUpdated;
   const factory V2EventData.modelUpdated() = V2ModelUpdated;
+  const factory V2EventData.skillUpdated() = V2SkillUpdated;
 
   /// Every wire-format type discriminator this hierarchy decodes.
   static const Set<String> knownTypes = {
@@ -314,6 +315,7 @@ sealed class V2EventData {
     "command.updated",
     "provider.updated",
     "model.updated",
+    "skill.updated",
   };
 
   /// Wire-format type discriminator for this event.
@@ -376,6 +378,7 @@ sealed class V2EventData {
       "command.updated" => V2CommandUpdated.fromJson(json),
       "provider.updated" => V2ProviderUpdated.fromJson(json),
       "model.updated" => V2ModelUpdated.fromJson(json),
+      "skill.updated" => V2SkillUpdated.fromJson(json),
       final String unknown =>
         throw FormatException("Unknown SSE event type: $unknown"),
     };
@@ -1734,6 +1737,20 @@ class V2ModelUpdated extends V2EventData {
   factory V2ModelUpdated.fromJson(Map<String, dynamic> json) {
     assert(json["type"] == "model.updated");
     return const V2ModelUpdated();
+  }
+}
+class V2SkillUpdated extends V2EventData {
+  const V2SkillUpdated();
+
+  @override
+  String get type => "skill.updated";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{"type": type};
+
+  factory V2SkillUpdated.fromJson(Map<String, dynamic> json) {
+    assert(json["type"] == "skill.updated");
+    return const V2SkillUpdated();
   }
 }
 class V2EventEnvelope {
