@@ -90,17 +90,44 @@ abstract final class const CatalogStrengthOrder() {
     return rank < 0 ? _effortLadder.length : rank;
   }
 
-  /// Ranks the model behind [id], or null when its vendor is not recognized.
-  /// A namespace prefix (`anthropic/…`, `opencode-go:…`) and a context-window
-  /// suffix (`opus[1m]`) are ignored.
-  static _StrengthRank? _rank({required String id}) {
-    var bare = id.trim().toLowerCase().replaceAll(_bracketSuffix, "");
-    final namespaceEnd = bare.lastIndexOf(RegExp("[/:]"));
-    if (namespaceEnd >= 0) bare = bare.substring(namespaceEnd + 1);
+  /// The family an OpenAI model id names through its suffix, in display case
+  /// (`gpt-5.6-sol` is `Sol`, `gpt-5.6-codex-mini` is `Codex Mini`). Null for
+  /// a bare id (`gpt-5.5`) or one that is not `gpt-<version>…`
+  /// (`gpt-default`). Reads the id the way the strength order does, so the
+  /// family and the ranking cannot disagree.
+  static String? openAiFamily(String id) {
+    final suffix = _openAiParts(bare: _bareId(id))?.suffix;
+    if (suffix == null || suffix.isEmpty) return null;
+    return [
+      for (final word in suffix.split("-"))
+        if (word.isNotEmpty) "${word[0].toUpperCase()}${word.substring(1)}",
+    ].join(" ");
+  }
 
-    if (_openAiId.firstMatch(bare) case final match?) {
-      final version = [for (final part in (match.group(1) ?? "").split(".")) int.parse(part)];
-      final suffix = match.group(2) ?? "";
+  /// [id] lowercased, without a namespace prefix (`anthropic/…`,
+  /// `opencode-go:…`) or a context-window suffix (`opus[1m]`).
+  static String _bareId(String id) {
+    final bare = id.trim().toLowerCase().replaceAll(_bracketSuffix, "");
+    final namespaceEnd = bare.lastIndexOf(RegExp("[/:]"));
+    return namespaceEnd >= 0 ? bare.substring(namespaceEnd + 1) : bare;
+  }
+
+  /// The version and suffix of a bare `gpt-<version>[-<suffix>]` id, or null
+  /// when [bare] is not one.
+  static ({List<int> version, String suffix})? _openAiParts({required String bare}) {
+    final match = _openAiId.firstMatch(bare);
+    if (match == null) return null;
+    return (
+      version: [for (final part in (match.group(1) ?? "").split(".")) int.parse(part)],
+      suffix: match.group(2) ?? "",
+    );
+  }
+
+  /// Ranks the model behind [id], or null when its vendor is not recognized.
+  static _StrengthRank? _rank({required String id}) {
+    final bare = _bareId(id);
+
+    if (_openAiParts(bare: bare) case (:final version, :final suffix)) {
       final tier = suffix.isEmpty
           ? _openAiTiers.length
           : switch (_openAiTiers.indexOf(suffix)) {

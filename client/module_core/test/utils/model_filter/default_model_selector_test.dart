@@ -78,29 +78,26 @@ void main() {
       expect(picked?.id, "latest-newer");
     });
 
-    test("breaks date ties deterministically by `id` (no unstable sort)", () {
-      // Regression: with no `id` tie-breaker, a sort that returns 0 for
-      // every comparison (all dates equal) preserves insertion order —
-      // which means a model added to the family first wins regardless of
-      // its id. With the `id` tie-breaker, the result is deterministic.
+    test("breaks date ties by catalog order, not by id", () {
       final group = [
         _model(id: "zebra", name: "Zebra", releaseDate: DateTime(2026, 4)),
         _model(id: "alpha", name: "Alpha", releaseDate: DateTime(2026, 4)),
         _model(id: "mango", name: "Mango", releaseDate: DateTime(2026, 4)),
       ];
       final picked = selector.pickFromFamily(group: group);
-      expect(picked?.id, "alpha");
+      expect(picked?.id, "zebra");
     });
 
-    test("breaks null-date ties deterministically by `id`", () {
+    test("breaks null-date ties by catalog order, not by id", () {
+      // Codex reports no release dates and lists its catalog strongest and
+      // newest first, so the first model of a family is its newest.
       final group = [
-        _model(id: "zebra", name: "Zebra", releaseDate: null),
-        _model(id: "alpha", name: "Alpha", releaseDate: null),
+        _model(id: "gpt-6.1-sol", family: "Sol", releaseDate: null),
+        _model(id: "gpt-5.6-sol", family: "Sol", releaseDate: null),
       ];
       final picked = selector.pickFromFamily(group: group);
-      expect(picked?.id, "alpha");
+      expect(picked?.id, "gpt-6.1-sol");
     });
-
     test("falls back to the model with the most recent releaseDate", () {
       final group = [
         _model(id: "old", releaseDate: DateTime(2024, 1)),
@@ -336,7 +333,7 @@ void main() {
     );
 
     test(
-      "breaks cross-family ties deterministically by id when dates are equal",
+      "breaks cross-family ties by catalog order when dates are equal",
       () {
         final models = {
           "zebra": _model(
@@ -353,7 +350,7 @@ void main() {
           ),
         };
         final picked = selector.pickFromProvider(models: models, defaultModelID: null);
-        expect(picked?.id, "alpha");
+        expect(picked?.id, "zebra");
       },
     );
 

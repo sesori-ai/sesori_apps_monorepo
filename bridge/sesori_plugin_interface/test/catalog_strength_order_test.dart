@@ -109,4 +109,26 @@ void main() {
       expect(order(["gpt-5.4", "sonnet-4.6", "gpt-5.6-sol"]), ["gpt-5.6-sol", "gpt-5.4", "sonnet-4.6"]);
     });
   });
+
+  group("CatalogStrengthOrder.openAiFamily", () {
+    test("names the suffix in display case", () {
+      expect(CatalogStrengthOrder.openAiFamily("gpt-6-astra"), "Astra");
+      expect(CatalogStrengthOrder.openAiFamily("gpt-5.6-sol"), "Sol");
+      expect(CatalogStrengthOrder.openAiFamily("gpt-5.4-mini"), "Mini");
+      expect(CatalogStrengthOrder.openAiFamily("gpt-5.6-codex-mini"), "Codex Mini");
+    });
+
+    test("is null for a bare id or one that is not gpt-<version>", () {
+      expect(CatalogStrengthOrder.openAiFamily("gpt-5.5"), isNull);
+      expect(CatalogStrengthOrder.openAiFamily("gpt-default"), isNull);
+      expect(CatalogStrengthOrder.openAiFamily("codex-auto-review"), isNull);
+    });
+
+    test("reads the id the way the strength order does", () {
+      expect(CatalogStrengthOrder.openAiFamily("openai/GPT-5.6-Sol"), "Sol");
+      expect(CatalogStrengthOrder.openAiFamily("opencode-go:gpt-6-luna"), "Luna");
+      expect(CatalogStrengthOrder.openAiFamily("gpt-5.6-terra[1m]"), "Terra");
+      expect(CatalogStrengthOrder.openAiFamily("gpt-5.5[1m]"), isNull);
+    });
+  });
 }
