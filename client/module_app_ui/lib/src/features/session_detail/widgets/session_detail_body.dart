@@ -1242,8 +1242,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     }
   }
 
-  void _showQuestionModal(SesoriQuestionAsked question) {
-    if (!_isCurrentPage) return;
+  /// Whether the question's sheet opened.
+  bool _showQuestionModal(SesoriQuestionAsked question) {
+    if (!_isCurrentPage) return false;
     final cubit = context.read<SessionDetailCubit>();
     // An archived session is audit-only, so its requests are not answerable —
     // treating them as no longer pending both keeps the modal from opening and
@@ -1257,11 +1258,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           state.pendingQuestions.any((q) => q.id == question.id);
     }
 
-    if (!isPending()) return;
+    if (!isPending()) return false;
     cubit.clearNotifications();
     if (question.interactionKind == QuestionInteractionKind.form) {
       _trackOpenSheet(
         sheet: OpenRequestSheet.question,
+        isPending: isPending,
+        onWithdrawn: null,
         closed: showPendingFormModal(
           context: context,
           requestId: question.id,
@@ -1275,7 +1278,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           onCancelUnavailable: () async {
             final success = await cubit.rejectQuestion(question.id);
             if (!mounted) return;
-            if (!success) return _showFailureAlert(context.loc.questionRejectFailed);
+            if (!success) return _showRequestFailure(context.loc.questionRejectFailed);
             _scheduleNextQuestionModal();
           },
           onSettled: () {
@@ -1284,11 +1287,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           },
         ),
       );
-      return;
+      return true;
     }
     if (question.interactionKind == QuestionInteractionKind.externalAction) {
       _trackOpenSheet(
         sheet: OpenRequestSheet.question,
+        isPending: isPending,
+        onWithdrawn: null,
         closed: showExternalActionModal(
           context: context,
           requestId: question.id,
@@ -1302,7 +1307,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           onCancelUnavailable: () async {
             final success = await cubit.rejectQuestion(question.id);
             if (!mounted) return;
-            if (!success) return _showFailureAlert(context.loc.questionRejectFailed);
+            if (!success) return _showRequestFailure(context.loc.questionRejectFailed);
             _scheduleNextQuestionModal();
           },
           onSettled: () {
@@ -1311,10 +1316,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           },
         ),
       );
-      return;
+      return true;
     }
+    var answered = false;
     _trackOpenSheet(
       sheet: OpenRequestSheet.question,
+      isPending: isPending,
+      onWithdrawn: () => answered ? null : _scheduleNextQuestionModal(),
       closed: QuestionModal.show(
         context,
         question: question,
@@ -1322,27 +1330,31 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         isPending: isPending,
         openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
         onReply: (requestId, answers) async {
+          answered = true;
           final success = await context.read<SessionDetailCubit>().replyToQuestion(
             requestId: requestId,
             sessionId: question.sessionID,
             answers: answers,
           );
           if (!mounted) return;
-          if (!success) return _showFailureAlert(context.loc.questionReplyFailed);
+          if (!success) return _showRequestFailure(context.loc.questionReplyFailed);
           _scheduleNextQuestionModal();
         },
         onReject: (requestId) async {
+          answered = true;
           final success = await context.read<SessionDetailCubit>().rejectQuestion(requestId);
           if (!mounted) return;
-          if (!success) return _showFailureAlert(context.loc.questionRejectFailed);
+          if (!success) return _showRequestFailure(context.loc.questionRejectFailed);
           _scheduleNextQuestionModal();
         },
       ),
     );
+    return true;
   }
 
-  void _showPermissionModal(SesoriPermissionAsked permission) {
-    if (!_isCurrentPage) return;
+  /// Whether the permission's sheet opened.
+  bool _showPermissionModal(SesoriPermissionAsked permission) {
+    if (!_isCurrentPage) return false;
     final cubit = context.read<SessionDetailCubit>();
     bool isPending() {
       final state = cubit.state;
@@ -1353,11 +1365,14 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           state.pendingPermissions.any((p) => p.requestID == permission.requestID);
     }
 
-    if (!isPending()) return;
+    if (!isPending()) return false;
     cubit.clearNotifications();
     final askingSession = cubit.state.hydratedSession;
+    var answered = false;
     _trackOpenSheet(
       sheet: OpenRequestSheet.permission,
+      isPending: isPending,
+      onWithdrawn: () => answered ? null : _scheduleNextPermissionModal(),
       closed: PermissionModal.show(
         context,
         permission: permission,
@@ -1381,29 +1396,60 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
               required String sessionId,
               required PermissionReply reply,
             }) async {
+              answered = true;
               final success = await context.read<SessionDetailCubit>().replyToPermission(
                 requestId: requestId,
                 sessionId: sessionId,
                 reply: reply,
               );
               if (!mounted) return;
-              if (!success) return _showFailureAlert(context.loc.permissionReplyFailed);
+              if (!success) return _showRequestFailure(context.loc.permissionReplyFailed);
               _scheduleNextPermissionModal();
             },
       ),
     );
+    return true;
   }
 
-  /// The request sheet open over the page, whose card steps aside while it is.
+  /// The kind of request whose card is folded away: while its sheet is open,
+  /// and after an answer or withdrawal until the next request of that kind
+  /// opens its own sheet. Only a sheet dismissed unanswered brings it back.
   OpenRequestSheet? _openRequestSheet;
 
-  void _trackOpenSheet({required OpenRequestSheet sheet, required Future<void> closed}) {
+  /// [onWithdrawn] opens the next sheet after the request was withdrawn; null
+  /// when the sheet schedules its successor itself.
+  void _trackOpenSheet({
+    required OpenRequestSheet sheet,
+    required bool Function() isPending,
+    required VoidCallback? onWithdrawn,
+    required Future<void> closed,
+  }) {
     setState(() => _openRequestSheet = sheet);
     unawaited(
       closed.whenComplete(() {
-        if (mounted) setState(() => _openRequestSheet = null);
+        if (!mounted) return;
+        if (!isPending() && _hasPending(sheet: sheet)) return onWithdrawn?.call();
+        _unfoldCard();
       }),
     );
+  }
+
+  bool _hasPending({required OpenRequestSheet sheet}) => switch (context.read<SessionDetailCubit>().state) {
+    SessionDetailLoaded(:final pendingQuestions, :final pendingPermissions) => switch (sheet) {
+      OpenRequestSheet.question => pendingQuestions.isNotEmpty,
+      OpenRequestSheet.permission => pendingPermissions.isNotEmpty,
+    },
+    _ => false,
+  };
+
+  void _unfoldCard() {
+    if (_openRequestSheet != null) setState(() => _openRequestSheet = null);
+  }
+
+  /// A failed reply leaves its request to the user again, so its card returns.
+  void _showRequestFailure(String message) {
+    _unfoldCard();
+    _showFailureAlert(message);
   }
 
   void _scheduleNextQuestionModal() {
@@ -1415,8 +1461,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       }
       if (pendingPermissions.isNotEmpty) {
         _scheduleModal(() => _showPermissionModal(pendingPermissions.first));
+        return;
       }
     }
+    _unfoldCard();
   }
 
   void _scheduleNextPermissionModal() {
@@ -1428,12 +1476,17 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       }
       if (pendingQuestions.isNotEmpty) {
         _scheduleModal(() => _showQuestionModal(pendingQuestions.first));
+        return;
       }
     }
+    _unfoldCard();
   }
 
-  void _scheduleModal(VoidCallback action) =>
-      Future.delayed(const Duration(milliseconds: 200), () => mounted ? action() : null);
+  /// A next sheet that cannot open, such as with another page on top, gives
+  /// the card back.
+  void _scheduleModal(bool Function() show) => Future.delayed(const Duration(milliseconds: 200), () {
+    if (mounted && !show()) _unfoldCard();
+  });
 
   bool get _isCurrentPage =>
       context.read<SessionDetailCubit>().isRouteVisible && (ModalRoute.of(context)?.isCurrent ?? false);

@@ -3561,6 +3561,76 @@ void main() {
     );
   });
 
+  testWidgets("the permission card stays folded from one sheet to the next until a sheet is dismissed", (tester) async {
+    const second = SesoriPermissionAsked(
+      requestID: "permission-2",
+      sessionID: "session-1",
+      displaySessionId: null,
+      tool: "delete_build_folder",
+      description: "Allow deleting the build folder",
+    );
+    const third = SesoriPermissionAsked(
+      requestID: "permission-3",
+      sessionID: "session-1",
+      displaySessionId: null,
+      tool: "push_release_tag",
+      description: "Allow pushing the release tag",
+    );
+    final permissions = StreamController<SesoriPermissionAsked>.broadcast();
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(permissions.close);
+    addTearDown(states.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    void emit(List<SesoriPermissionAsked> pending) {
+      state = state.copyWith(pendingPermissions: pending);
+      states.add(state);
+    }
+
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => states.stream);
+    when(() => cubit.permissionStream).thenAnswer((_) => permissions.stream);
+    when(
+      () => cubit.replyToPermission(requestId: "permission-1", sessionId: "session-1", reply: PermissionReply.once),
+    ).thenAnswer((_) async {
+      emit(const [second, third]);
+      return true;
+    });
+    final card = find.byType(SessionDetailNeedsYouCard);
+
+    /// Pumps through to the next sheet, the card never showing on the way.
+    Future<void> expectCardFoldedUntil(String tool) async {
+      for (var frame = 0; frame < 40; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(card, findsNothing, reason: "frame $frame");
+      }
+      await tester.pumpAndSettle();
+      expect(find.text(tool), findsOneWidget);
+      expect(card, findsNothing);
+    }
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    emit(const [_permission, second, third]);
+    permissions.add(_permission);
+    await tester.pumpAndSettle();
+    expect(find.text("write_release_notes"), findsOneWidget);
+    expect(card, findsNothing);
+
+    // Answered: the next request's sheet opens over a still card row.
+    await tester.tap(find.text("Allow"));
+    await expectCardFoldedUntil("delete_build_folder");
+
+    // Withdrawn, as by another device: the same.
+    emit(const [third]);
+    await expectCardFoldedUntil("push_release_tag");
+
+    // Dismissed unanswered: the card comes back.
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
+    expect(find.text("push_release_tag"), findsNothing);
+    expect(card, findsOneWidget);
+  });
+
   testWidgets("presents a queued permission after answering an active question", (tester) async {
     final questionController = StreamController<SesoriQuestionAsked>.broadcast();
     final permissionController = StreamController<SesoriPermissionAsked>.broadcast();

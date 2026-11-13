@@ -261,8 +261,11 @@ reaches the backend so the turn continues.
   as the sheet rises (a sheet that opens on arrival never shows it), so the
   transcript has settled before the user answers. When the sheet closes because
   the request was answered, answered elsewhere or withdrawn, nothing in the
-  transcript moves while it leaves. Dismissing the sheet without answering
-  brings the card back with a glide.
+  transcript moves while it leaves. While another request of the same kind is
+  still pending, such as parallel sub-agent permissions, the card stays folded
+  and that request's sheet opens next, after an answer and after a withdrawal
+  alike. Only dismissing a sheet without answering, a failed reply, or a next
+  sheet that cannot open brings the card back, with a glide.
 - When a request goes away together with a change to the transcript, such as an
   interrupted turn folding its running step, the transcript holds still while
   the card folds or the sheet leaves (200 ms) and then applies the change, so
