@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../api/claude_process_factory.dart";
 import "../api/claude_settings_api.dart";
+import "../api/claude_skills_api.dart";
 import "../api/claude_transcript_api.dart";
 import "../api/models/claude_auth_status_dto.dart";
 import "../claude_approval_registry.dart";
@@ -94,7 +95,8 @@ final class const ClaudePluginDescriptor({
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
 
   @override
-  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
+  // Each project lists its own `.claude` commands and skills.
+  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
   @override
   bool get supportsPromptAttachments => true;
@@ -306,9 +308,9 @@ final class const ClaudePluginDescriptor({
     );
     const content = ClaudeContentMapper();
     final catalogService = ClaudeCatalogService(
-      catalog: const ClaudeBackendCatalogRepository(),
+      catalog: ClaudeBackendCatalogRepository(skills: ClaudeSkillsApi(environment: host.environment)),
       processes: processes,
-      probeSessionId: _generateUuidV4(),
+      generateProbeSessionId: _generateUuidV4,
       discoveryDirectory: host.stateDirectory,
     );
     final plugin = ClaudePlugin(
@@ -352,7 +354,7 @@ final class const ClaudePluginDescriptor({
       eventDispatcher: ClaudeEventDispatcher(
         content: content,
         tools: ClaudeToolTracker(),
-        catalogModelId: ({required apiModel}) => catalogService.cached?.catalogModelId(apiModel: apiModel),
+        catalogModelId: ({required apiModel}) => catalogService.latest?.catalogModelId(apiModel: apiModel),
       ),
       history: const ClaudeHistoryMapper(content: content),
       eventBuffer: eventBuffer,

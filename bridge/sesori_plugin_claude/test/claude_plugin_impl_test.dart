@@ -13,7 +13,6 @@ import "support/claude_stream_client_test_factory.dart";
 import "support/fake_claude_process.dart";
 
 const _testIds = [
-  "99999999-8888-4777-8666-555555555555",
   "11111111-2222-4333-8444-555555555555",
   "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
 ];
@@ -28,7 +27,7 @@ void main() {
 
     tearDown(() => harness.close());
 
-    test("discovers and caches a complete global catalog outside the selected project", () async {
+    test("discovers and caches a complete catalog in the selected project", () async {
       final options = await harness.plugin.getSessionOptions(
         projectId: "/tmp/project",
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
@@ -39,48 +38,53 @@ void main() {
       expect(observed.options.providers.providers.single.models, hasLength(2));
       expect(observed.options.commands.single.name, "review");
       expect(harness.processes, hasLength(1));
-      expect(harness.specs.single.workingDirectory, harness.temporary.path);
+      expect(harness.specs.single.workingDirectory, "/tmp/project");
+      expect(harness.specs.single.purpose, ClaudeProcessPurpose.catalogProbe);
       expect(_controlSubtypes(harness.processes.single), ["initialize"]);
       expect(harness.processes.single.killed, isTrue);
       expect(await harness.plugin.listAllSessions(knownDirectories: const {}), isEmpty);
 
       // A cached read is served without spawning a second probe.
-      await harness.plugin.getCommands(projectId: null);
+      await harness.plugin.getCommands(projectId: "/tmp/project");
       expect(harness.processes, hasLength(1));
 
       await harness.plugin.getSessionOptions(
-        projectId: "/tmp/other-project",
+        projectId: "/tmp/project",
         discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
       );
       expect(harness.processes, hasLength(2));
-      expect(harness.specs.map((spec) => spec.workingDirectory), everyElement(harness.temporary.path));
+      expect(harness.specs.map((spec) => spec.workingDirectory), everyElement("/tmp/project"));
       expect(_controlSubtypes(harness.processes.last), contains("list_models"));
     });
 
-    test("shares one catalog probe across concurrent reads", () async {
+    test("lists commands without a project from the state directory", () async {
+      await harness.plugin.getCommands(projectId: null);
+
+      expect(harness.specs.single.workingDirectory, harness.temporary.path);
+    });
+
+    test("shares one catalog probe across concurrent reads of a project", () async {
       final results = await Future.wait([
         harness.plugin.getAgents(projectId: "/tmp/project"),
-        harness.plugin.getProviders(projectId: "/tmp/other-project"),
-        harness.plugin.getCommands(projectId: null),
+        harness.plugin.getProviders(projectId: "/tmp/project"),
+        harness.plugin.getCommands(projectId: "/tmp/project"),
       ]);
 
       expect(results, hasLength(3));
       expect(harness.processes, hasLength(1));
     });
 
-    test("shares one cached catalog across project ids", () async {
-      final first = await harness.plugin.getSessionOptions(
+    test("probes each project in its own directory", () async {
+      await harness.plugin.getSessionOptions(
         projectId: "/tmp/project",
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
       );
-      final second = await harness.plugin.getSessionOptions(
+      await harness.plugin.getSessionOptions(
         projectId: "/tmp/other-project",
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
       );
 
-      expect(second, first);
-      expect(harness.processes, hasLength(1));
-      expect(harness.specs.single.workingDirectory, harness.temporary.path);
+      expect(harness.specs.map((spec) => spec.workingDirectory), ["/tmp/project", "/tmp/other-project"]);
     });
 
     test("creates under the generated id and buffers creation before listening", () async {
@@ -840,6 +844,32 @@ void main() {
         PluginQuotaContinuationReadiness.unknown,
       );
       expect(harness.processes, isEmpty);
+    });
+
+    test("names a replayed command with its kind from the session project's list", () async {
+      final transcript = File("${harness.temporary.path}/projects/project/$testSessionId.jsonl");
+      transcript.parent.createSync(recursive: true);
+      transcript.writeAsStringSync(
+        jsonEncode({
+          "type": "user",
+          "sessionId": testSessionId,
+          "cwd": "/tmp/project",
+          "uuid": "command-run",
+          "timestamp": "2026-08-09T10:00:00Z",
+          "message": {
+            "role": "user",
+            "content": "<command-name>/review</command-name>\n<command-args>src</command-args>",
+          },
+        }),
+      );
+
+      final messages = await harness.plugin.getSessionMessages(testSessionId);
+
+      expect(harness.specs.single.workingDirectory, "/tmp/project");
+      expect(
+        (messages.single.info as PluginMessageUser).invocation,
+        const PluginCommandInvocation(name: "review", source: PluginCommandSource.command, arguments: "src"),
+      );
     });
 
     test("accepts a continuation that reuses the selection recorded on a quota error", () async {
@@ -1713,9 +1743,9 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       transcripts: transcripts,
       sessions: sessionService,
       catalogService: ClaudeCatalogService(
-        catalog: const ClaudeBackendCatalogRepository(),
+        catalog: ClaudeBackendCatalogRepository(skills: ClaudeSkillsApi(environment: const {})),
         processes: processRepository,
-        probeSessionId: _nextId(),
+        generateProbeSessionId: () => "99999999-8888-4777-8666-${(++_probeIndex).toString().padLeft(12, "0")}",
         discoveryDirectory: temporary.path,
       ),
       approvals: approvals,
@@ -1741,6 +1771,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
   final List<ClaudeLaunchSpec> specs = [];
   final List<FakeClaudeProcess> processes = [];
   var _idIndex = 0;
+  var _probeIndex = 0;
   bool allowApprovalWrites = true;
 
   String _nextId() => _testIds[_idIndex++];

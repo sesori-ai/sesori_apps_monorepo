@@ -97,9 +97,19 @@ variant, and worktree mode, and creating the session with its first input.
   screen-reader label read "N sub-agents, M working", and a screen reader can open the list from it.
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
-- Claude's plugin-scoped discovery runs in its host-created state directory,
-  never a selected project or the bridge process's launch directory. This keeps
-  its global option probe on a valid, stable path when projects move or disappear.
+- Claude's options are project-scoped: each project's probe runs in that
+  project's directory, so its command list holds the project's `.claude/commands`
+  and `.claude/skills` entries plus the user's and Claude's own, and another
+  project's picker never shows them. A request that names no project probes in the
+  host-created state directory, never the bridge process's launch directory.
+- A Claude catalog probe never acts on the project: it starts with all hooks
+  disabled and no MCP servers, so opening a picker runs no SessionStart hook and
+  starts no `.mcp.json` server. Failure signal: a project hook's side effect or an
+  MCP server process appearing when only a picker was opened.
+- Claude labels a listed command a skill when its name matches a skill in the
+  project's `.claude/skills` or the user's `<config dir>/skills` (frontmatter
+  `name`, else folder name); every other entry is a command. A replayed run takes
+  its kind from its session project's list.
 - Claude's catalog drops the CLI's own `default` model entry and names the
   selection instead: Opus is the default model and `high` the default effort, so
   every picker entry states what will actually run.
