@@ -226,8 +226,9 @@ Bridge core (`bridge/app`, `bridge/sesori_plugin_interface`):
   `NormalizedMessageEvent(MessageUser)` through
   `_sessionRepository.stampLiveInvocation` (P3).
 - `ChatHistoryRepository.upsertMessage` carries over a stored invocation the
-  update lacks. `replaceSessionMessages` does the same by exact id, with the
-  plugin's value winning. `_semanticMessageFingerprints` excludes
+  update lacks. `replaceSessionMessages` does the same for each imported
+  message the store matches to a stored row, by exact id or by its existing
+  content match, with the plugin's value winning. `_semanticMessageFingerprints` excludes
   `invocation` (P4). The DAO gains the small row read that `upsertMessage`
   needs.
 - Queued prompts are stamped in two places (P5):
@@ -407,8 +408,10 @@ Deliberately not added:
   echo after 256 newer commands. No current flow produces one. Accepted.
 - **Older app sending a command.** A newer surface watching the same session
   shows the "Custom" label. Accepted.
-- **Between steps 2 and the plugin steps**, a plugin with unstable ids (Codex,
-  Claude, ACP) can lose the card after a backfill. A reconnect clears
+- **Between steps 2 and the plugin steps**, a turn with no exact-id or
+  content match in the replay can still lose the card after a backfill: an
+  OpenCode 2 native command or Oh My Pi command whose replay holds the
+  expanded prompt, or a Claude command that history drops. A reconnect clears
   `syncedAt`, and the next read re-imports. Internal builds only, fixed by
   each plugin's step. Accepted inside the series.
 - **Between steps 3 and 4**, a pinned invocation opener still shows the

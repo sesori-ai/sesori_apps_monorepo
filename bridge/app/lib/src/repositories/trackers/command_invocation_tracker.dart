@@ -28,6 +28,10 @@ class CommandInvocationTracker() {
     }
   }
 
+  /// Forgets the command [promptId] sent to [sessionId].
+  void remove({required String sessionId, required String promptId}) =>
+      _invocations.remove((sessionId: sessionId, promptId: promptId));
+
   /// The command [promptId] sent to [sessionId], when this bridge sent one.
   CommandInvocation? invocationFor({required String sessionId, required String promptId}) =>
       _invocations[(sessionId: sessionId, promptId: promptId)];
