@@ -6883,7 +6883,7 @@ void main() {
     testWidgets("a lost response offers Retry without Remove", (tester) async {
       await pumpFailed(
         tester,
-        failure: PromptSendFailure.uncertain,
+        failure: const PromptSendFailure.uncertain(),
         interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       );
 
@@ -6895,7 +6895,7 @@ void main() {
     testWidgets("a blocked harness hides Retry but keeps Remove", (tester) async {
       await pumpFailed(
         tester,
-        failure: PromptSendFailure.rejected,
+        failure: const PromptSendFailure.rejected(reason: null),
         interaction: const SessionInteractionState.blocked(
           reason: SessionInteractionBlockedReason.authenticationRequired,
           displayName: "Claude Code",

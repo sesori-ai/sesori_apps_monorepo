@@ -434,32 +434,38 @@ class SessionRepository({
     return PromptModel(providerID: normalizedProviderID, modelID: normalizedModelID);
   }
 
-  static bool isStalePromptOptionsError({required ApiError error}) {
-    if (error case NonSuccessCodeError(:final rawErrorString)) {
-      if (rawErrorString != null) {
-        try {
-          final parsed = SendPromptErrorResponse.fromJson(jsonDecodeMap(rawErrorString));
-          return parsed.code == SendPromptErrorCode.staleSessionOptions;
-        } on Object {
-          // Older bridges answer with plain-text errors, which are not this
-          // structured stale-options signal.
-        }
-      }
-    }
-    return false;
-  }
+  static bool isStalePromptOptionsError({required ApiError error}) =>
+      _sendPromptErrorResponse(error: error)?.code == SendPromptErrorCode.staleSessionOptions;
 
   /// Only a client-error answer proves the prompt was not accepted. A 5xx (an
   /// OpenCode 502 can still run the prompt), a transport error or a timeout
   /// may have reached the harness anyway.
   static PromptSendFailure sendFailureFor({required ApiError error}) => switch (error) {
-    NonSuccessCodeError(errorCode: >= 400 && < 500) || NotAuthenticatedError() => PromptSendFailure.rejected,
+    NonSuccessCodeError(errorCode: >= 400 && < 500) => PromptSendFailure.rejected(
+      reason: switch (_sendPromptErrorResponse(error: error)) {
+        SendPromptErrorResponse(code: SendPromptErrorCode.refused, :final message) => message,
+        _ => null,
+      },
+    ),
+    NotAuthenticatedError() => const PromptSendFailure.rejected(reason: null),
     NonSuccessCodeError() ||
     DartHttpClientError() ||
     GenericError() ||
     EmptyResponseError() ||
-    JsonParsingError() => PromptSendFailure.uncertain,
+    JsonParsingError() => const PromptSendFailure.uncertain(),
   };
+
+  static SendPromptErrorResponse? _sendPromptErrorResponse({required ApiError error}) {
+    if (error case NonSuccessCodeError(:final rawErrorString?)) {
+      try {
+        return SendPromptErrorResponse.fromJson(jsonDecodeMap(rawErrorString));
+      } on Object {
+        // Older bridges answer with plain-text errors, which carry no
+        // structured send error.
+      }
+    }
+    return null;
+  }
 
   Future<ApiResponse<QueuedPromptResponse>> getQueuedPrompts({required String sessionId}) {
     return _api.getQueuedPrompts(sessionId: sessionId);

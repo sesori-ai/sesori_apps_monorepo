@@ -220,6 +220,36 @@ void main() {
     expect(capture.reply, PermissionReply.reject);
   });
 
+  testWidgets("wraps a long command code block instead of side-scrolling it", (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final longCommand = "touch ${List.filled(40, "segment").join("/")}; rm -rf build";
+    final router = _createRouter(
+      permission: _permission.copyWith(description: "    $longCommand\n\nWorking directory: `/work`\n\nWhy"),
+      capture: _ReplyCapture(),
+    );
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+
+    final command = find.byWidgetPredicate((widget) => widget is SelectableText && widget.data == longCommand);
+    expect(command, findsOneWidget);
+    final detail = tester.getRect(find.byKey(const Key("permission-request-detail")));
+    expect(tester.getRect(command).right, lessThanOrEqualTo(detail.right));
+    expect(tester.getSize(command).height, greaterThan(40));
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("permission-request-detail")),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is SingleChildScrollView && widget.scrollDirection == Axis.horizontal,
+        ),
+      ),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("hides always approve when the backend forbids it", (tester) async {
     final router = _createRouter(permission: _permission.copyWith(allowAlways: false), capture: _ReplyCapture());
     await tester.pumpWidget(_buildApp(router: router));

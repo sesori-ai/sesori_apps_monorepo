@@ -8,6 +8,7 @@ import "../models/openapi/form_reply.g.dart";
 import "../models/openapi/permission_request.g.dart";
 import "../models/v2_agent_names.dart";
 import "../models/v2_event.g.dart";
+import "../models/v2_execution_interrupt_reason.dart";
 import "../models/v2_message_filter.dart";
 import "../repositories/opencode_v2_activity_tracker.dart";
 import "../repositories/opencode_v2_compaction_tracker.dart";
@@ -464,11 +465,36 @@ class OpenCodeV2Service({
     final event = envelope.data;
     final sessionId = switch (event) {
       final V2SessionEventData scoped => _sessionId(event: scoped),
-      V2ServerConnected() || V2ProjectUpdated() || V2AgentUpdated() || V2CommandUpdated() => null,
+      V2ServerConnected() ||
+      V2ProjectUpdated() ||
+      V2AgentUpdated() ||
+      V2CommandUpdated() ||
+      V2ProviderUpdated() ||
+      V2ModelUpdated() => null,
     };
     final deleted = event is V2SessionDeleted ? _tracker.session(sessionId: event.sessionID) : null;
     var changed = _tracker.apply(event: event);
     final result = _mapper.map(envelope: envelope);
+    if (event case V2SessionExecutionInterrupted(
+      :final sessionID,
+      reason: V2ExecutionInterruptReason.user ||
+          V2ExecutionInterruptReason.superseded ||
+          V2ExecutionInterruptReason.inactivity,
+    )) {
+      // An interrupted execution drops its pending permissions without a
+      // `permission.replied` event (observed on 2.2.7), so retire their cards.
+      for (final permission in _tracker.withdrawPermissions(sessionId: sessionID)) {
+        changed = true;
+        result.add(
+          BridgeSsePermissionReplied(
+            requestID: permission.id,
+            sessionID: permission.sessionID,
+            displaySessionId: _tracker.rootSessionId(sessionId: permission.sessionID),
+            reply: PluginPermissionReply.reject.name,
+          ),
+        );
+      }
+    }
 
     if (sessionId != null &&
         event is! V2SessionDeleted &&
@@ -629,7 +655,9 @@ class OpenCodeV2Service({
           V2FormCancelled() ||
           V2ProjectUpdated() ||
           V2AgentUpdated() ||
-          V2CommandUpdated():
+          V2CommandUpdated() ||
+          V2ProviderUpdated() ||
+          V2ModelUpdated():
         return const [];
     }
   }

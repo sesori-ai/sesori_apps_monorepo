@@ -3265,6 +3265,24 @@ abstract class AppLocalizations {
   /// **'Type your own answer'**
   String get questionModalCustomHint;
 
+  /// No description provided for @questionModalOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get questionModalOther;
+
+  /// No description provided for @questionModalCustomEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your answer, or choose an option.'**
+  String get questionModalCustomEmpty;
+
+  /// No description provided for @questionModalChooseAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an answer to submit.'**
+  String get questionModalChooseAnswer;
+
   /// No description provided for @questionModalSubmit.
   ///
   /// In en, this message translates to:
@@ -4506,6 +4524,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed'**
   String get newSessionPluginFailed;
+
+  /// A failed harness's row in the new-session harness menu, followed by the reason its plugin gave.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed · {reason}'**
+  String newSessionPluginFailedWithReason(String reason);
 
   /// No description provided for @newSessionHarnessSettings.
   ///

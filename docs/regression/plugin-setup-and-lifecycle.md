@@ -75,7 +75,19 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   row (setup hints still win in the row). It clears on any status other than that
   degradation (restarting, ready, failed, stopping) and on a degradation that does
   not need the user. A failed runtime keeps the generic failed hint, because a
-  plugin's failure reason is a diagnostic for the log, not an instruction.
+  plugin's failure message is a diagnostic for the log, not an instruction. Only
+  a start failure the plugin explained in a sentence written for the user
+  (`PluginStartException.userFacing`) also reports that sentence as the
+  management row's `failureReason`: the harness list shows it as a second line
+  under "Failed" (two lines at most; the row opens the detail page), fading in
+  while the row eases its height, and the detail page shows it whole as its own
+  row. The plugin list includes an enabled harness that failed to start
+  (never as the default) and carries the same sentence as `failureReason`: the
+  new-session harness picker reads "Failed · <reason>" on one line, and the
+  desktop tray popover shows it in place of the generic hint. A failed or
+  unavailable harness in the picker is never picked, but a tap on it opens
+  harness settings instead of being ignored. Any other failure, and an older
+  bridge, add nothing. The reason clears with the failed state.
 - Only an authentication-required or unavailable block offers Check setup in a chat. It
   runs the same setup refresh command as harness settings' Check setup for the chat's
   harness, so a fix made elsewhere (a terminal login, a corrected gateway) clears the
@@ -241,7 +253,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
     `--opencode-no-password` is logged and ignored when the shared service is
     used; a private OpenCode 2 server whose `--version` is readable fails at
     once, before spawning, with an error naming the flag, because OpenCode 2
-    always requires a password. An unreadable version keeps the OpenCode 1 path.
+    always requires a password; the app shows that error under "Failed". An unreadable version keeps the OpenCode 1 path.
   - **Rediscovery:** the next plugin start looks for the service again.
 - Pi and Claude Code report degraded when their binary fails to spawn and ready
   on the next successful spawn. A spawn that fails because the session's
@@ -261,6 +273,13 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   retries the cold start in the background, because a cold start against a
   server that is not there has no bound of its own. An abort observed after the
   cold start still rolls back everything the start acquired.
+- Codex setup inspection classifies a bounded `codex login status`: "Not
+  logged in" is authentication-required; a zero exit with any "Logged in
+  using …" mode (ChatGPT, access token, personal access token, Bedrock,
+  workload identity) or the 0.167 API-key wording "API key configured - …" is
+  ready; anything else is unknown without echoing the output. Failure signal:
+  an API-key login on the managed runtime shows "Codex authentication could
+  not be determined" and blocks the plugin.
 - Grok Build is a direct-CLI ACP v1 harness with no managed install. An explicit
   `--grok-bin` path is authoritative; otherwise setup uses `grok` from PATH and
   requires version `1.0.5` or newer. Setup inspection and pre-start resolution

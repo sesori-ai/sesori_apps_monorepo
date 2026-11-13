@@ -25,5 +25,6 @@ Map<String, dynamic> _$SendPromptErrorResponseToJson(
 
 const _$SendPromptErrorCodeEnumMap = {
   SendPromptErrorCode.staleSessionOptions: 'staleSessionOptions',
+  SendPromptErrorCode.refused: 'refused',
   SendPromptErrorCode.unknown: 'unknown',
 };

@@ -67,7 +67,9 @@ class AntigravityInteractionService({
         question: PluginQuestionInfo(
           question: input.toolCall.title,
           header: AntigravityIdentity.displayName,
-          options: [for (final label in labels.keys) PluginQuestionOption(label: label, description: "")],
+          options: [
+            for (final label in labels.keys) PluginQuestionOption(label: label, description: "", isDefault: false),
+          ],
           multiple: false,
           custom: false,
         ),

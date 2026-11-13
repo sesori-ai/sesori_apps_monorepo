@@ -128,21 +128,24 @@ void main() {
           "type": "string",
           "key": "env",
           "title": "Environment",
+          "default": "prod",
           "options": <Object>[
             <String, dynamic>{"value": "prod", "label": "Production"},
           ],
         },
         <String, dynamic>{"type": "string", "key": "hidden", "hidden": true},
         <String, dynamic>{"type": "external", "key": "web", "url": "https://fixture.invalid"},
-        <String, dynamic>{"type": "boolean", "key": "confirm"},
+        <String, dynamic>{"type": "boolean", "key": "confirm", "default": false},
         <String, dynamic>{"type": "integer", "key": "count"},
         <String, dynamic>{"type": "number", "key": "ratio"},
         <String, dynamic>{
           "type": "multiselect",
           "key": "regions",
           "custom": true,
+          "default": <String>["us"],
           "options": <Object>[
             <String, dynamic>{"value": "eu", "label": "Europe"},
+            <String, dynamic>{"value": "us", "label": "United States"},
           ],
         },
       ],
@@ -157,8 +160,11 @@ void main() {
       "regions",
     ]);
     expect(question.questions[0].options.single.label, "Production");
+    expect(question.questions[0].options.single.isDefault, isTrue);
     expect(question.questions[0].custom, isFalse);
     expect(question.questions[1].options.map((option) => option.label), <String>["true", "false"]);
+    expect(question.questions[1].options.map((option) => option.isDefault), <bool>[false, true]);
+    expect(question.questions[4].options.map((option) => option.isDefault), <bool>[false, true]);
     expect(question.questions[2].custom, isTrue);
     expect(question.questions[3].custom, isTrue);
     expect(question.questions[4].multiple, isTrue);

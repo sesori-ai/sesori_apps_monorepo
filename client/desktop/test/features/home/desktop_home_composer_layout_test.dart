@@ -37,6 +37,7 @@ const _openCode = PluginMetadata(
   failureBlock: null,
   mcpScopes: null,
   supportsPromptAttachments: true,
+  failureReason: null,
 );
 
 const _claudeCode = PluginMetadata(
@@ -48,6 +49,7 @@ const _claudeCode = PluginMetadata(
   failureBlock: null,
   mcpScopes: null,
   supportsPromptAttachments: true,
+  failureReason: null,
 );
 
 const _frame = Duration(milliseconds: 16);

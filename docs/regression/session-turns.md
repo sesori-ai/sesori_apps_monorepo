@@ -156,7 +156,14 @@ defaults and queued client sends coherent.
   fallback with older bridges.
 - A client send that fails on the connection it started on (a non-stale error
   response or a thrown failure) is held under its message with "Couldn’t send",
-  Retry and Remove; later local sends wait behind it. Retry resends the same
+  Retry and Remove; later local sends wait behind it. When the harness refused
+  the send with a reason its plugin wrote for the user (a 409
+  `SendPromptErrorResponse` with code `refused`, such as Codex's model provider
+  mismatch), the reason fades in with the failure as a second line under
+  "Couldn’t send", the prompt row easing its height; a long reason stops at
+  four lines and tapping it shows the rest. Other failures, and older bridges'
+  plain-text answers, show no reason. The failed state and its reason live only
+  in this surface's memory, so a reload drops both, as before. Retry resends the same
   prompt id, so the bridge's dedup never runs it twice. A stale-options
   rejection still refreshes and retries once automatically, and a send cut off
   by a dropped connection is still re-sent after reconnect without a failure.
@@ -178,12 +185,17 @@ defaults and queued client sends coherent.
   provider failure appears as an inline error message and remains visible after
   refresh or reopen. Backend-provided terminal and retry error text is forwarded
   verbatim for every harness; plugins may flatten an error envelope but synthesize
-  text only when the backend supplied none. Backend-provided message timestamps
+  text only when the backend supplied none. Error notices show as plain text, so
+  the Hermes plugin unwraps the inline code spans of its recognised failure copy
+  (the backticks go, the words stay). Backend-provided message timestamps
   remain present through live updates and durable-history reloads, using the
   backend's authoritative source for each path. Internal backend command records
   are not rendered as conversation messages or used as assistant model attribution.
 - Reasoning uses an unboxed activity row with 14px body text, a bounded live-tail
-  preview, and a one-line Markdown-stripped completed preview. Tap or keyboard
+  preview, and a one-line Markdown-stripped completed preview; the live tail
+  shows rendered words too: a marker pair resolves once it closes, and the
+  opening marker of an emphasis still streaming at the start of the line is
+  hidden. Tap or keyboard
   activation opens the same full, selectable reasoning modal; its streaming
   follow/detach behavior is unchanged. A long finished thought shows a spinner
   until the modal's entry transition ends, so the ripple and transition never

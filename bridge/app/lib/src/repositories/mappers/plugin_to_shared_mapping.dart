@@ -136,7 +136,9 @@ extension PluginQuestionInfoMapping on PluginQuestionInfo {
   QuestionInfo toSharedQuestionInfo() => QuestionInfo(
     question: question,
     header: header,
-    options: options.map((o) => QuestionOption(label: o.label, description: o.description)).toList(),
+    options: options
+        .map((o) => QuestionOption(label: o.label, description: o.description, isDefault: o.isDefault))
+        .toList(),
     multiple: multiple,
     custom: custom,
   );

@@ -44,6 +44,7 @@ void main() {
           failureBlock: null,
           mcpScopes: null,
           supportsPromptAttachments: true,
+          failureReason: null,
         ),
         PluginMetadata(
           id: "plugin-a",
@@ -53,6 +54,7 @@ void main() {
           actionHint: null,
           failureBlock: null,
           mcpScopes: null,
+          failureReason: null,
         ),
       ],
     );
@@ -103,6 +105,7 @@ void main() {
                 failureBlock: null,
                 mcpScopes: null,
                 supportsPromptAttachments: true,
+                failureReason: null,
               ),
             ],
           ),
@@ -122,6 +125,7 @@ void main() {
           actionHint: null,
           failureBlock: null,
           mcpScopes: null,
+          failureReason: null,
         ),
         PluginMetadata(
           id: "codex",
@@ -131,6 +135,7 @@ void main() {
           actionHint: null,
           failureBlock: null,
           mcpScopes: null,
+          failureReason: null,
         ),
       ],
     );
@@ -625,6 +630,7 @@ const _managementPlugin = PluginManagementMetadata(
   },
   mcpScopes: null,
   actionHint: null,
+  failureReason: null,
 );
 
 const _managementResponse = PluginManagementResponse(

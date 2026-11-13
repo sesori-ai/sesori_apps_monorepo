@@ -35,6 +35,7 @@ const _ready = PluginManagementMetadata(
   },
   mcpScopes: null,
   actionHint: null,
+  failureReason: null,
 );
 
 PluginManagementMetadata _plugin({
@@ -851,6 +852,30 @@ void main() {
     expect(tester.getSize(find.byKey(const Key("harness_management_enabled_ready"))), const Size(64, 28));
     expect(tester.getSemantics(find.bySemanticsLabel("Ready harness enabled")).rect.height, 44);
   });
+
+  for (final detail in [false, true]) {
+    testWidgets("${detail ? 'detail' : 'overview'} shows a failed start's reason only when the plugin gave one", (
+      tester,
+    ) async {
+      phone(tester: tester);
+      const reason = "Remove --opencode-no-password to start OpenCode 2.";
+      publish(
+        plugins: [
+          _plugin(
+            id: "failed",
+            runtime: PluginRuntimeState.failed,
+            setup: PluginSetupState.ready,
+          ).copyWith(failureReason: reason),
+          _plugin(id: "silent", runtime: PluginRuntimeState.failed, setup: PluginSetupState.ready),
+        ],
+      );
+      await tester.pumpWidget(app(detailId: detail ? "failed" : null));
+      await tester.pumpAndSettle();
+
+      expect(find.text(reason), findsOneWidget);
+      expect(find.text("Failed"), findsNWidgets(detail ? 1 : 2));
+    });
+  }
 
   testWidgets("failed detail retains truthful unavailable status and offers a functional retry", (tester) async {
     phone(tester: tester);

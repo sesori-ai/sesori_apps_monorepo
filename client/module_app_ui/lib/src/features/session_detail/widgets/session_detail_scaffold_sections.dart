@@ -9,8 +9,8 @@ import "../../../widgets/remote_failure_view.dart";
 
 /// A pale amber card docked above the composer while the session waits on
 /// the user for a question or permission: amber means it needs you. It names
-/// what is pending, shows the first request's opening line, and its button
-/// opens the existing modal.
+/// what is pending, shows the first request's opening line, and a tap
+/// anywhere on it, like its button, opens the existing modal.
 class const SessionDetailNeedsYouCard({
   super.key,
   required final IconData icon,
@@ -35,59 +35,66 @@ class const SessionDetailNeedsYouCard({
       child: PregoPageHalo(
         radius: radius,
         reachesLayerBottom: false,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            // The light token reads cream; its dark twin is a heavy brown.
-            color: isDark ? prego.colors.fgWarningPrimary.withValues(alpha: 0.07) : prego.colors.bgWarningPrimary,
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: prego.colors.fgWarningPrimary.withValues(alpha: 0.24)),
-          ),
-          child: Padding(
-            // The button sits 8 pt into this 16 pt corner.
-            padding: const EdgeInsetsDirectional.fromSTEB(
-              PregoSpacing.lg,
-              PregoSpacing.md,
-              PregoSpacing.md,
-              PregoSpacing.md,
-            ),
-            child: Row(
-              spacing: PregoSpacing.lg,
-              children: [
-                Icon(icon, size: 16, color: prego.colors.fgWarningPrimary),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.smallWarningText),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        request,
-                        style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onPressed,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                // The light token reads cream; its dark twin is a heavy brown.
+                color: isDark ? prego.colors.fgWarningPrimary.withValues(alpha: 0.07) : prego.colors.bgWarningPrimary,
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(color: prego.colors.fgWarningPrimary.withValues(alpha: 0.24)),
+              ),
+              child: Padding(
+                // The button sits 8 pt into this 16 pt corner.
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  PregoSpacing.lg,
+                  PregoSpacing.md,
+                  PregoSpacing.md,
+                  PregoSpacing.md,
                 ),
-                ConstrainedBox(
-                  // Stacked cards' actions share a left edge.
-                  constraints: const BoxConstraints(minWidth: 72),
-                  child: PregoButtonsSolid(
-                    label: action,
-                    // Under a pointer only the leading card's action is solid; on the
-                    // phone every card's action stays bright, a white pill in both themes.
-                    hierarchy: pointer
-                        ? (leads ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary)
-                        : (isDark ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary),
-                    size: PregoButtonsSolidSize.sm,
-                    onPressed: onPressed,
-                  ),
+                child: Row(
+                  spacing: PregoSpacing.lg,
+                  children: [
+                    Icon(icon, size: 16, color: prego.colors.fgWarningPrimary),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.smallWarningText),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            request,
+                            style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    ConstrainedBox(
+                      // Stacked cards' actions share a left edge.
+                      constraints: const BoxConstraints(minWidth: 72),
+                      child: PregoButtonsSolid(
+                        label: action,
+                        // Under a pointer only the leading card's action is solid; on the
+                        // phone every card's action stays bright, a white pill in both themes.
+                        hierarchy: pointer
+                            ? (leads ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary)
+                            : (isDark ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary),
+                        size: PregoButtonsSolidSize.sm,
+                        onPressed: onPressed,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

@@ -62,7 +62,40 @@ void main() {
     final startedFact = started;
     expect(startedFact.callId, "call-spawn");
     expect(startedFact.childThreadId, "child-1");
-    expect(startedFact.agentPath, "/root/worker");
+  });
+
+  test("projects a completed multi_agent_v1 spawn call as the child's start", () {
+    CodexSubAgentRolloutFact? collab({required String tool, required List<String> receivers}) =>
+        repository.subAgentRolloutFact(
+          line: _line(
+            type: "event_msg",
+            payload: {
+              "type": "item_completed",
+              "thread_id": "parent-1",
+              "turn_id": "turn-1",
+              "item": {
+                "type": "CollabAgentToolCall",
+                "id": "call-spawn",
+                "tool": tool,
+                "status": "completed",
+                "sender_thread_id": "parent-1",
+                "receiver_thread_ids": receivers,
+                "receiver_agents": [
+                  for (final receiver in receivers) {"thread_id": receiver, "agent_nickname": "Darwin"},
+                ],
+              },
+            },
+          ),
+          previousLine: null,
+        );
+
+    final started = collab(tool: "spawn_agent", receivers: ["child-1"]);
+    if (started is! CodexSubAgentStartedActivityFact) fail("expected a started activity fact, got $started");
+    final startedFact = started;
+    expect(startedFact.callId, "call-spawn");
+    expect(startedFact.childThreadId, "child-1");
+    expect(collab(tool: "wait", receivers: ["child-1"]), isNull);
+    expect(collab(tool: "spawn_agent", receivers: []), isNull);
   });
 
   test("keeps encrypted input opaque and accepts complete plaintext NEW_TASK", () {

@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/omp_acp_api.dart";
 import "models/omp_catalog_models.dart";
+import "omp_approval_registry.dart";
 import "omp_binary.dart";
 import "omp_event_mapper.dart";
 import "omp_identity.dart";
@@ -122,6 +123,14 @@ class OmpPlugin._({
 
   @override
   bool get supportsFormElicitation => true;
+
+  @override
+  AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) => OmpApprovalRegistry(
+    client: client,
+    emit: emitActivityEvent,
+    idGenerator: null,
+    activeSessionResolver: () => activeTurnSessionId,
+  );
 
   /// From 18.18.9, ACP session deletion persists an empty untitled replacement
   /// session (https://github.com/can1357/oh-my-pi/issues/19068). An entry with

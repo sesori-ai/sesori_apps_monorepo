@@ -1,5 +1,6 @@
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:go_router/go_router.dart";
+import "package:markdown/markdown.dart" as md;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -98,6 +99,7 @@ class const PermissionModal({
       data: permission.description,
       selectable: true,
       onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
+      builders: {"pre": _WrappingCodeBlockBuilder(padding: prego.spacing.md)},
       styleSheet:
           buildSessionMarkdownStyleSheet(
             prego: prego,
@@ -198,6 +200,28 @@ class const PermissionModal({
                   ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Renders a code block (such as the command being approved) wrapped instead
+/// of side-scrolling, so no part of what the user approves sits off-screen. A
+/// long block grows the sheet's own scrollable detail area.
+class _WrappingCodeBlockBuilder({required final double padding}) extends MarkdownElementBuilder {
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final raw = element.textContent;
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: EdgeInsets.all(padding),
+        child: SelectableText(raw.endsWith("\n") ? raw.substring(0, raw.length - 1) : raw, style: preferredStyle),
       ),
     );
   }

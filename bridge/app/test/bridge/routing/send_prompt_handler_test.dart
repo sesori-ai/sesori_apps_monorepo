@@ -609,6 +609,41 @@ void main() {
       expect(parsed.code, SendPromptErrorCode.staleSessionOptions);
       expect(parsed.message, "unsupported Claude agent");
     });
+
+    test("a refusal returns 409 carrying only the plugin's user-facing reason", () async {
+      plugin.sendPromptError = PluginRefusalException(
+        "thread/resume",
+        userFacingReason: "This session uses another provider. Switch back to continue it.",
+        cause: StateError("raw backend text"),
+      );
+
+      final response = await handler.routeForTest(
+        makeRequest(
+          "POST",
+          "/session/prompt_async",
+          body: jsonEncode(
+            const SendPromptRequest(
+              promptId: null,
+              sessionId: "s1",
+              parts: [PromptPart.text(text: "Hello")],
+              variant: null,
+              agent: null,
+              model: null,
+              command: null,
+            ).toJson(),
+          ),
+        ),
+      );
+
+      expect(response.status, 409);
+      expect(response.headers["content-type"], "application/json");
+      expect(response.body, isNot(contains("raw backend text")));
+      final parsed = SendPromptErrorResponse.fromJson(
+        jsonDecode(response.body ?? fail("missing body")) as Map<String, dynamic>,
+      );
+      expect(parsed.code, SendPromptErrorCode.refused);
+      expect(parsed.message, "This session uses another provider. Switch back to continue it.");
+    });
   });
 }
 

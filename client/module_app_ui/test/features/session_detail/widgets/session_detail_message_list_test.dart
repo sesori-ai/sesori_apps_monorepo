@@ -211,9 +211,14 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     });
   }
 
-  void failSending() {
+  void failSending({String? reason}) {
     if (_localSend case LocalSendSending(:final submission)) {
-      setState(() => _localSend = LocalSendPhase.failed(submission: submission, failure: PromptSendFailure.rejected));
+      setState(
+        () => _localSend = LocalSendPhase.failed(
+          submission: submission,
+          failure: PromptSendFailure.rejected(reason: reason),
+        ),
+      );
     }
   }
 
@@ -1926,6 +1931,71 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("a refused send shows the harness's reason under Couldn't send", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialQueuedMessages: [_textSubmission(promptId: "prm_failed", text: "first")],
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.harness.beginSending();
+    await tester.pump();
+    final reason = List.filled(3, "Switch Codex back to proxy to continue it.").join(" ");
+    harnessKey.harness.failSending(reason: reason);
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn’t send"), findsOneWidget);
+    expect(find.text(reason), findsOneWidget);
+    // It reads as part of the message: no wider than a bubble's text, and ending
+    // where the status line ends rather than running across the pane.
+    final row = tester.getSize(find.byType(UserMessageBubble).last);
+    final line = tester.getRect(find.text(reason));
+    final remove = tester.getRect(find.widgetWithText(TextButton, "Remove"));
+    expect(line.width, lessThanOrEqualTo(UserMessageBubble.maxContentWidth(rowWidth: row.width)));
+    expect(line.right, moreOrLessEquals(remove.right, epsilon: 0.01));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("a long failure reason stops at four lines and opens on tap", (tester) async {
+    final reason = List.filled(6, "This session uses another model provider.").join(" ");
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => SentBubbleLanding(child: child ?? const SizedBox.shrink()),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topRight,
+            child: SizedBox(
+              width: 280,
+              child: QueuedMessageBubble(
+                displayText: "first",
+                isCommand: false,
+                attachmentCount: 0,
+                localAttachments: const [],
+                presentation: QueuedMessageBubblePresentation.failed(reason: reason, onRetry: () {}, onRemove: null),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Text reasonText() => tester.widget<Text>(find.text(reason));
+    expect(reasonText().maxLines, 4);
+
+    await tester.tap(find.text(reason));
+    await tester.pumpAndSettle();
+    expect(reasonText().maxLines, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
   group("in a narrow pane at large text", () {
     Future<void> pumpNarrowBubble(
       WidgetTester tester, {
@@ -1965,6 +2035,7 @@ void main() {
       await pumpNarrowBubble(
         tester,
         presentation: QueuedMessageBubblePresentation.failed(
+          reason: null,
           onRetry: () => retries++,
           onRemove: () => removals++,
         ),
@@ -2295,7 +2366,7 @@ void main() {
         launchFollowUps: [
           LaunchFollowUp.failed(
             submission: _textSubmission(promptId: "prm_refused", text: "refused"),
-            failure: PromptSendFailure.rejected,
+            failure: const PromptSendFailure.rejected(reason: null),
           ),
           LaunchFollowUp.queued(
             submission: _textSubmission(promptId: "prm_waiting", text: "waiting"),
@@ -2327,7 +2398,7 @@ void main() {
     state.setLaunchFollowUps([
       LaunchFollowUp.failed(
         submission: _textSubmission(promptId: "prm_refused", text: "refused"),
-        failure: PromptSendFailure.uncertain,
+        failure: const PromptSendFailure.uncertain(),
       ),
     ]);
     await tester.pumpAndSettle();
@@ -2344,7 +2415,7 @@ void main() {
         key: harnessKey,
         initialMessages: [_message(messageId: "user-1", role: "user", text: "first message")],
         initialStreamingText: const {},
-        launchFollowUps: [LaunchFollowUp.failed(submission: submission, failure: PromptSendFailure.uncertain)],
+        launchFollowUps: [LaunchFollowUp.failed(submission: submission, failure: const PromptSendFailure.uncertain())],
       ),
     );
     await tester.pumpAndSettle();

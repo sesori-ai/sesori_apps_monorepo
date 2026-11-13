@@ -159,7 +159,12 @@ class ControlStatusNotifier({
   List<ControlUnhealthyPlugin> _mapPluginMetadata(List<PluginMetadata> metadata) => [
     for (final plugin in metadata)
       if (_unhealthyState(plugin.state) case final state?)
-        ControlUnhealthyPlugin(displayName: plugin.displayName, state: state, actionHint: plugin.actionHint),
+        ControlUnhealthyPlugin(
+          displayName: plugin.displayName,
+          state: state,
+          // The plugin's own reason says more than the generic hint.
+          actionHint: plugin.failureReason ?? plugin.actionHint,
+        ),
   ];
 
   ControlUnhealthyPluginState? _unhealthyState(PluginLifecycleState state) => switch (state) {

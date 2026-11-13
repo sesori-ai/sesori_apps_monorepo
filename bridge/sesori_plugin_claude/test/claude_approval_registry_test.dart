@@ -510,6 +510,29 @@ void main() {
       expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
     });
 
+    test("a CLI withdrawal retires only that request and sends nothing back", () {
+      registry.handle(sessionId: "session-1", message: _permission());
+      registry.handle(
+        sessionId: "session-1",
+        message: _request(
+          requestId: "request-2",
+          request: {"tool_name": "Read", "input": <String, Object?>{}},
+        ),
+      );
+      events.clear();
+
+      registry.withdraw(sessionId: "session-2", requestId: "permission-request");
+      expect(events, isEmpty);
+      registry.withdraw(sessionId: "session-1", requestId: "permission-request");
+
+      expect(responses, isEmpty);
+      final replied = events.whereType<BridgeSsePermissionReplied>().single;
+      expect(replied.requestID, "br-1");
+      expect(replied.reply, PluginPermissionReply.reject.name);
+      expect(registry.pendingPermissionsForSession(sessionId: "session-1").map((pending) => pending.id), ["br-2"]);
+      expect(registry.replyPermission(id: "br-1", reply: PluginPermissionReply.once), isFalse);
+    });
+
     test("dispose cancels pending requests across sessions", () {
       registry.handle(sessionId: "session-1", message: _permission());
       registry.handle(

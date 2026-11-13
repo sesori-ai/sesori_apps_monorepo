@@ -42,6 +42,7 @@ const _managed = PluginManagementMetadata(
   },
   mcpScopes: null,
   actionHint: null,
+  failureReason: null,
 );
 
 const _externalOpenCode = PluginManagementMetadata(
@@ -59,6 +60,7 @@ const _externalOpenCode = PluginManagementMetadata(
   managementCapabilities: {PluginManagementCapability.setupRefresh},
   mcpScopes: null,
   actionHint: null,
+  failureReason: null,
 );
 
 const _authenticationRequired = PluginManagementMetadata(
@@ -77,6 +79,7 @@ const _authenticationRequired = PluginManagementMetadata(
   managementCapabilities: {PluginManagementCapability.authentication},
   mcpScopes: null,
   actionHint: "Log in to continue.",
+  failureReason: null,
 );
 
 const _response = PluginManagementResponse(

@@ -183,13 +183,16 @@ class PluginLifecycleService({
     );
   }
 
-  /// The harnesses a new session can pick: those that can start one, and
-  /// those held back after a refused request, which carry their
-  /// [PluginMetadata.failureBlock] so the user can see why and check setup.
+  /// The harnesses the new-session picker lists: those that can start a
+  /// session, those held back after a refused request, which carry their
+  /// [PluginMetadata.failureBlock] so the user can see why and check setup,
+  /// and enabled ones that failed to start, which carry their
+  /// [PluginMetadata.failureReason] when their plugin explained it.
   List<PluginMetadata> get selectableMetadataSnapshot {
     final selectableIds = {
       for (final snapshot in _lifecycleRepository.snapshot)
-        if (_isSelectable(snapshot) || _failureBlockOf(snapshot) != null) snapshot.pluginId,
+        if (_isSelectable(snapshot) || _failureBlockOf(snapshot) != null || _isEnabledFailure(snapshot))
+          snapshot.pluginId,
     };
     final defaultId = _selectableDefaultPluginId();
     return List<PluginMetadata>.unmodifiable([
@@ -1121,6 +1124,7 @@ class PluginLifecycleService({
         state: state,
         actionHint: _metadataActionHint(snapshot: snapshot, state: state),
         failureBlock: failureBlock,
+        failureReason: _failureReason(snapshot: snapshot),
       );
     }
     if (!_metadataSubject.isClosed) _metadataSubject.add(_orderedMetadata());
@@ -1155,6 +1159,7 @@ class PluginLifecycleService({
               failureBlock: failureBlock,
               supportsPromptAttachments: plugin.supportsPromptAttachments,
               mcpScopes: {for (final scope in plugin.mcpScopes) _mapMcpScope(scope: scope)},
+              failureReason: _failureReason(snapshot: snapshot),
             );
           }(),
     };
@@ -1199,6 +1204,9 @@ class PluginLifecycleService({
     PluginRuntimeFailed() => PluginLifecycleState.failed,
     PluginRuntimeDisabled() || PluginRuntimeBlocked() || null => unavailableState,
   };
+
+  bool _isEnabledFailure(PluginRuntimeSnapshot snapshot) =>
+      snapshot.accessGate == PluginRuntimeAccessGate.enabled && snapshot.state is PluginRuntimeFailed;
 
   bool _isSelectable(PluginRuntimeSnapshot snapshot) {
     if (snapshot.accessGate != PluginRuntimeAccessGate.enabled) return false;
@@ -1290,6 +1298,7 @@ class PluginLifecycleService({
       },
       mcpScopes: {for (final scope in plugin.mcpScopes) _mapMcpScope(scope: scope)},
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
+      failureReason: _failureReason(snapshot: snapshot),
     );
   }
 
@@ -1619,6 +1628,12 @@ class PluginLifecycleService({
     if (snapshot?.state case PluginRuntimeDegraded(:final actionHint?)) return actionHint;
     return _actionHint(state);
   }
+
+  /// Why a failed harness could not start, when its plugin explained it.
+  static String? _failureReason({required PluginRuntimeSnapshot? snapshot}) => switch (snapshot?.state) {
+    PluginRuntimeFailed(:final userFacingReason) => userFacingReason,
+    _ => null,
+  };
 
   static String? _actionHint(PluginLifecycleState state) => switch (state) {
     PluginLifecycleState.unavailable => "Check the bridge console to make this plugin available.",

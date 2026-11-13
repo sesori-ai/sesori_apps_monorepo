@@ -165,6 +165,7 @@ const _metadata = PluginManagementMetadata(
   managementCapabilities: {PluginManagementCapability.authentication},
   mcpScopes: null,
   actionHint: "Sign in.",
+  failureReason: null,
 );
 
 const _conflict = PluginAuthenticationConflict(

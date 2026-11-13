@@ -344,6 +344,7 @@ void main() {
               actionHint: null,
               failureBlock: null,
               mcpScopes: null,
+              failureReason: null,
             ),
           ],
         ),
@@ -575,6 +576,7 @@ void main() {
               actionHint: null,
               failureBlock: null,
               mcpScopes: null,
+              failureReason: null,
             ),
           ],
         ),
@@ -741,6 +743,7 @@ void main() {
               actionHint: null,
               failureBlock: null,
               mcpScopes: null,
+              failureReason: null,
             ),
           ],
         ),
@@ -982,6 +985,7 @@ void main() {
               actionHint: "Restart the bridge to retry.",
               failureBlock: null,
               mcpScopes: null,
+              failureReason: null,
             ),
             PluginMetadata(
               id: "codex",
@@ -991,6 +995,7 @@ void main() {
               actionHint: "Check the bridge console.",
               failureBlock: null,
               mcpScopes: null,
+              failureReason: null,
             ),
             PluginMetadata(
               id: "cursor",
@@ -1000,6 +1005,7 @@ void main() {
               actionHint: "Make this tool available on the bridge.",
               failureBlock: null,
               mcpScopes: null,
+              failureReason: null,
             ),
           ],
         ),
@@ -1024,16 +1030,18 @@ void main() {
     expect(findBrandLogo("cursor"), findsOneWidget);
     expect(find.byIcon(TablerRegular.plug), findsOneWidget);
 
-    // A row that can't be picked dims as a whole, artwork included — the marks
-    // carry their own colours, so a tint alone would leave them reading active.
-    double rowOpacity(String pluginId) => tester
-        .widget<Opacity>(find.descendant(of: _harnessRow(pluginId), matching: find.byType(Opacity)).first)
+    // A row that can't be picked dims its name and artwork — the marks carry
+    // their own colours, so a tint alone would leave them reading active — but
+    // keeps its status line readable and answers a tap with harness settings.
+    double logoOpacity(String pluginId) => tester
+        .widget<Opacity>(find.ancestor(of: findBrandLogo(pluginId).last, matching: find.byType(Opacity)).first)
         .opacity;
-    expect(rowOpacity("cursor"), lessThan(1.0));
-    expect(rowOpacity("codex"), 1.0);
-
-    expect(_harnessRowInk(tester, "failed-id").onTap, isNull);
-    expect(_harnessRowInk(tester, "cursor").onTap, isNull);
+    expect(logoOpacity("cursor"), lessThan(1.0));
+    expect(tester.widget<Text>(find.text("Third Tool")).style?.color?.a, lessThan(1.0));
+    expect(tester.widget<Text>(find.text("Unavailable")).style?.color?.a, 1.0);
+    expect(logoOpacity("codex"), 1.0);
+    expect(_harnessRowInk(tester, "failed-id").onTap, isNotNull);
+    expect(_harnessRowInk(tester, "cursor").onTap, isNotNull);
     expect(_harnessRowInk(tester, "codex").onTap, isNotNull);
     expect(find.text("failed-id"), findsNothing);
     expect(find.text("codex"), findsNothing);
@@ -1055,6 +1063,7 @@ void main() {
               actionHint: null,
               failureBlock: null,
               mcpScopes: null,
+              failureReason: null,
             ),
             PluginMetadata(
               id: "degraded-id",
@@ -1064,6 +1073,7 @@ void main() {
               actionHint: "Check the bridge console.",
               failureBlock: null,
               mcpScopes: null,
+              failureReason: null,
             ),
           ],
         ),
@@ -1101,6 +1111,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     var cleared = false;
     when(pluginRepository.listPlugins).thenAnswer(
@@ -1119,6 +1130,7 @@ void main() {
               actionHint: cleared ? null : gatewayHint,
               failureBlock: cleared ? null : PluginFailureBlock.unavailable,
               mcpScopes: null,
+              failureReason: null,
             ),
           ],
         ),
@@ -1301,6 +1313,7 @@ void main() {
                 actionHint: "Plugin $index action hint",
                 failureBlock: null,
                 mcpScopes: null,
+                failureReason: null,
               ),
           ],
         ),
@@ -1385,6 +1398,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     const toolB = PluginMetadata(
       id: "tool-b",
@@ -1394,6 +1408,7 @@ void main() {
       actionHint: "Check the bridge console.",
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
@@ -1474,6 +1489,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     const toolB = PluginMetadata(
       id: "tool-b",
@@ -1483,6 +1499,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
     final reconnectDiscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
     var discoveryCalls = 0;
@@ -1579,6 +1596,7 @@ void main() {
                 actionHint: null,
                 failureBlock: null,
                 mcpScopes: null,
+                failureReason: null,
               ),
             ],
           ),
@@ -1721,6 +1739,7 @@ void main() {
                     actionHint: null,
                     failureBlock: null,
                     mcpScopes: null,
+                    failureReason: null,
                   ),
                 ],
         ),
@@ -1776,6 +1795,7 @@ void main() {
                     actionHint: null,
                     failureBlock: null,
                     mcpScopes: null,
+                    failureReason: null,
                   ),
                 ],
         ),
@@ -1889,6 +1909,7 @@ void main() {
             actionHint: null,
             failureBlock: null,
             mcpScopes: null,
+            failureReason: null,
           ),
         ],
       ),
@@ -1973,6 +1994,7 @@ void main() {
             actionHint: null,
             failureBlock: null,
             mcpScopes: null,
+            failureReason: null,
           ),
         ],
       ),
@@ -2075,6 +2097,7 @@ void main() {
             actionHint: null,
             failureBlock: null,
             mcpScopes: null,
+            failureReason: null,
           ),
         ],
       ),
@@ -2267,6 +2290,7 @@ void main() {
             actionHint: null,
             failureBlock: null,
             mcpScopes: null,
+            failureReason: null,
           ),
         ],
       ),
@@ -3407,6 +3431,7 @@ void main() {
               failureBlock: null,
               mcpScopes: null,
               supportsPromptAttachments: true,
+              failureReason: null,
             ),
           ],
         ),

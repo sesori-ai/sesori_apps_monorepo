@@ -89,4 +89,32 @@ void main() {
       });
     }
   }
+
+  testWidgets("a tap on the card body opens the request, like its button", (tester) async {
+    var opened = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildPregoThemeData(brightness: Brightness.light),
+        home: Scaffold(
+          body: PregoPageHaloLayer(
+            child: SessionDetailNeedsYouCard(
+              icon: TablerRegular.shield,
+              label: "Permission requested",
+              request: "rm -rf build",
+              action: "Review",
+              leads: true,
+              onPressed: () => opened++,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text("rm -rf build"));
+    expect(opened, 1);
+    await tester.tap(find.byIcon(TablerRegular.shield));
+    expect(opened, 2);
+    await tester.tap(find.byType(PregoButtonsSolid));
+    expect(opened, 3);
+  });
 }

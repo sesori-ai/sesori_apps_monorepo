@@ -6,12 +6,21 @@
 /// until `start()` settles, so a throw that leaks resources would leak them
 /// under the lock with no owner left to clean up.
 class const PluginStartException(
-  /// Human-readable description of why the plugin could not start.
+  /// Human-readable description of why the plugin could not start, for logs.
   final String message, {
 
   /// The underlying error, when one exists.
   required final Object? cause,
+
+  /// Why the plugin could not start, as a sentence written for the user that
+  /// clients may show under the harness's failed status. Null when the plugin
+  /// has no such sentence. Never raw command output, stack traces, or paths.
+  required final String? userFacingReason,
 }) implements Exception {
+  /// A failure whose [message] was written for the user, so clients show it.
+  const new userFacing(String message, {required Object? cause})
+    : this(message, cause: cause, userFacingReason: message);
+
   @override
   String toString() {
     final causeDetail = cause == null ? "" : " (cause: ${cause.toString()})";
@@ -26,7 +35,7 @@ class const PluginStartException(
 /// requested" (expected — the bridge asked for it) apart from "failed to
 /// start" (an error worth surfacing loudly).
 class const PluginStartAbortedException() extends PluginStartException {
-  this : super("Plugin start aborted by the bridge.", cause: null);
+  this : super("Plugin start aborted by the bridge.", cause: null, userFacingReason: null);
 
   @override
   String toString() => "PluginStartAbortedException: $message";

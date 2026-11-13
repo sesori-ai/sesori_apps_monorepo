@@ -125,6 +125,7 @@ const _unsupportedPlugin = PluginManagementMetadata(
   managementCapabilities: {PluginManagementCapability.setupRefresh},
   mcpScopes: null,
   actionHint: null,
+  failureReason: null,
 );
 
 const _unsupportedConflict = PluginLifecycleConflict(

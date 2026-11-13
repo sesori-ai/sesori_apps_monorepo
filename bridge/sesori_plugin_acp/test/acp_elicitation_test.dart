@@ -170,7 +170,7 @@ void main() {
             },
           },
         );
-        final mapped = const AcpElicitationMapper().parse(params: request.params);
+        final mapped = const AcpElicitationMapper(customAnswerKeyFor: null).parse(params: request.params);
         expect(
           mapped,
           isA<AcpUnsupportedElicitationForm>().having(
@@ -201,7 +201,9 @@ void main() {
           },
         },
       );
-      final mapped = const AcpElicitationMapper().parse(params: request.params) as AcpSupportedElicitationForm;
+      final mapped = const AcpElicitationMapper(
+        customAnswerKeyFor: null,
+      ).parse(params: request.params) as AcpSupportedElicitationForm;
       choice["const"] = "changed";
 
       expect(

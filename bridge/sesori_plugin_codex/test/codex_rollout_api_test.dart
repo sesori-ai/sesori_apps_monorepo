@@ -1503,6 +1503,20 @@ void main() {
             "type": "response_item",
             "payload": {
               "type": "message",
+              "id": "generated-subagent-notification",
+              "role": "user",
+              "content": [
+                {
+                  "type": "input_text",
+                  "text": '<subagent_notification>\n{"agent_path":"child-1","status":{"completed":"done"}}\n</subagent_notification>',
+                },
+              ],
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
               "id": "assistant-1",
               "role": "assistant",
               "content": [

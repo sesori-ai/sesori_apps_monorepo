@@ -72,8 +72,8 @@ void main() {
               question: "Pick a tool",
               header: "Tools",
               options: [
-                PluginQuestionOption(label: "A", description: "Option A"),
-                PluginQuestionOption(label: "B", description: "Option B"),
+                PluginQuestionOption(label: "A", description: "Option A", isDefault: false),
+                PluginQuestionOption(label: "B", description: "Option B", isDefault: false),
               ],
               multiple: true,
               custom: false,

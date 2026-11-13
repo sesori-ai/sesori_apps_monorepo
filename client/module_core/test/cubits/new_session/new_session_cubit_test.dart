@@ -59,6 +59,7 @@ void main() {
       actionHint: null,
       failureBlock: null,
       mcpScopes: null,
+      failureReason: null,
     );
 
     setUpAll(registerAllFallbackValues);
@@ -436,6 +437,7 @@ void main() {
                   failureBlock: null,
                   mcpScopes: null,
                   supportsPromptAttachments: true,
+                  failureReason: null,
                 ),
               ],
             ),
@@ -517,6 +519,7 @@ void main() {
                     failureBlock: null,
                     mcpScopes: null,
                     supportsPromptAttachments: false,
+                    failureReason: null,
                   ),
                 ],
               ),
@@ -863,6 +866,7 @@ void main() {
                 failureBlock: null,
                 mcpScopes: null,
                 supportsPromptAttachments: true,
+                failureReason: null,
               ),
             ],
           ),
@@ -943,6 +947,7 @@ void main() {
                 failureBlock: null,
                 mcpScopes: null,
                 supportsPromptAttachments: true,
+                failureReason: null,
               ),
             ],
           ),
@@ -3924,6 +3929,7 @@ void main() {
                   actionHint: null,
                   failureBlock: null,
                   mcpScopes: null,
+                  failureReason: null,
                 ),
               ],
             ),
@@ -4114,6 +4120,7 @@ void main() {
           actionHint: null,
           failureBlock: null,
           mcpScopes: null,
+          failureReason: null,
         );
         when(mockPluginRepository.listPlugins).thenAnswer(
           (_) async => ApiResponse.success(

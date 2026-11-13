@@ -1614,6 +1614,10 @@ CodexRolloutCompletedItemDto _$CodexRolloutCompletedItemDtoFromJson(
           return CodexRolloutCompletedSubAgentActivityDto.fromJson(
             json
           );
+                case 'CollabAgentToolCall':
+          return CodexRolloutCompletedCollabAgentToolCallDto.fromJson(
+            json
+          );
                 case 'ContextCompaction':
           return CodexRolloutCompletedContextCompactionDto.fromJson(
             json
@@ -1666,13 +1670,12 @@ $CodexRolloutCompletedItemDtoCopyWith(CodexRolloutCompletedItemDto _, $Res Funct
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutCompletedSubAgentActivityDto implements CodexRolloutCompletedItemDto {
-  const CodexRolloutCompletedSubAgentActivityDto({required this.id, @JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown) required this.kind, @JsonKey(name: "agent_thread_id") required this.agentThreadId, @JsonKey(name: "agent_path") required this.agentPath,  String? $type}): $type = $type ?? 'SubAgentActivity';
+  const CodexRolloutCompletedSubAgentActivityDto({required this.id, @JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown) required this.kind, @JsonKey(name: "agent_thread_id") required this.agentThreadId,  String? $type}): $type = $type ?? 'SubAgentActivity';
   factory CodexRolloutCompletedSubAgentActivityDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCompletedSubAgentActivityDtoFromJson(json);
 
  final  String id;
 @JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown) final  CodexSubAgentActivityKind kind;
 @JsonKey(name: "agent_thread_id") final  String agentThreadId;
-@JsonKey(name: "agent_path") final  String agentPath;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1688,18 +1691,18 @@ $CodexRolloutCompletedSubAgentActivityDtoCopyWith<CodexRolloutCompletedSubAgentA
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompletedSubAgentActivityDto&&(identical(other.id, id) || other.id == id)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.agentThreadId, agentThreadId) || other.agentThreadId == agentThreadId)&&(identical(other.agentPath, agentPath) || other.agentPath == agentPath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompletedSubAgentActivityDto&&(identical(other.id, id) || other.id == id)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.agentThreadId, agentThreadId) || other.agentThreadId == agentThreadId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,kind,agentThreadId,agentPath);
+    return Object.hash(runtimeType,id,kind,agentThreadId);
 }
 
 @override
 String toString() {
-    return 'CodexRolloutCompletedItemDto.subAgentActivity(id: $id, kind: $kind, agentThreadId: $agentThreadId, agentPath: $agentPath)';
+    return 'CodexRolloutCompletedItemDto.subAgentActivity(id: $id, kind: $kind, agentThreadId: $agentThreadId)';
 }
 
 
@@ -1710,7 +1713,7 @@ abstract mixin class $CodexRolloutCompletedSubAgentActivityDtoCopyWith<$Res> imp
   factory $CodexRolloutCompletedSubAgentActivityDtoCopyWith(CodexRolloutCompletedSubAgentActivityDto value, $Res Function(CodexRolloutCompletedSubAgentActivityDto) _then) = _$CodexRolloutCompletedSubAgentActivityDtoCopyWithImpl;
 @useResult
 $Res call({
- String id,@JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown) CodexSubAgentActivityKind kind,@JsonKey(name: "agent_thread_id") String agentThreadId,@JsonKey(name: "agent_path") String agentPath
+ String id,@JsonKey(unknownEnumValue: CodexSubAgentActivityKind.unknown) CodexSubAgentActivityKind kind,@JsonKey(name: "agent_thread_id") String agentThreadId
 });
 
 
@@ -1727,13 +1730,94 @@ class _$CodexRolloutCompletedSubAgentActivityDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutCompletedItemDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? kind = null,Object? agentThreadId = null,Object? agentPath = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? kind = null,Object? agentThreadId = null,}) {
   return _then(CodexRolloutCompletedSubAgentActivityDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as CodexSubAgentActivityKind,agentThreadId: null == agentThreadId ? _self.agentThreadId : agentThreadId // ignore: cast_nullable_to_non_nullable
-as String,agentPath: null == agentPath ? _self.agentPath : agentPath // ignore: cast_nullable_to_non_nullable
 as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutCompletedCollabAgentToolCallDto implements CodexRolloutCompletedItemDto {
+  const CodexRolloutCompletedCollabAgentToolCallDto({required this.id, required this.tool, @JsonKey(name: "receiver_thread_ids")  List<String> receiverThreadIds = const <String>[],  String? $type}): _receiverThreadIds = receiverThreadIds,$type = $type ?? 'CollabAgentToolCall';
+  factory CodexRolloutCompletedCollabAgentToolCallDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCompletedCollabAgentToolCallDtoFromJson(json);
+
+ final  String id;
+ final  String tool;
+ final  List<String> _receiverThreadIds;
+@JsonKey(name: "receiver_thread_ids") List<String> get receiverThreadIds {
+  if (_receiverThreadIds is EqualUnmodifiableListView) return _receiverThreadIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_receiverThreadIds);
+}
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutCompletedItemDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutCompletedCollabAgentToolCallDtoCopyWith<CodexRolloutCompletedCollabAgentToolCallDto> get copyWith => _$CodexRolloutCompletedCollabAgentToolCallDtoCopyWithImpl<CodexRolloutCompletedCollabAgentToolCallDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompletedCollabAgentToolCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.tool, tool) || other.tool == tool)&&const DeepCollectionEquality().equals(other.receiverThreadIds, _receiverThreadIds));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,id,tool,const DeepCollectionEquality().hash(_receiverThreadIds));
+}
+
+@override
+String toString() {
+    return 'CodexRolloutCompletedItemDto.collabAgentToolCall(id: $id, tool: $tool, receiverThreadIds: $receiverThreadIds)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutCompletedCollabAgentToolCallDtoCopyWith<$Res> implements $CodexRolloutCompletedItemDtoCopyWith<$Res> {
+  factory $CodexRolloutCompletedCollabAgentToolCallDtoCopyWith(CodexRolloutCompletedCollabAgentToolCallDto value, $Res Function(CodexRolloutCompletedCollabAgentToolCallDto) _then) = _$CodexRolloutCompletedCollabAgentToolCallDtoCopyWithImpl;
+@useResult
+$Res call({
+ String id, String tool,@JsonKey(name: "receiver_thread_ids") List<String> receiverThreadIds
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutCompletedCollabAgentToolCallDtoCopyWithImpl<$Res>
+    implements $CodexRolloutCompletedCollabAgentToolCallDtoCopyWith<$Res> {
+  _$CodexRolloutCompletedCollabAgentToolCallDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutCompletedCollabAgentToolCallDto _self;
+  final $Res Function(CodexRolloutCompletedCollabAgentToolCallDto) _then;
+
+/// Create a copy of CodexRolloutCompletedItemDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tool = null,Object? receiverThreadIds = null,}) {
+  return _then(CodexRolloutCompletedCollabAgentToolCallDto(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
+as String,receiverThreadIds: null == receiverThreadIds ? _self._receiverThreadIds : receiverThreadIds // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 

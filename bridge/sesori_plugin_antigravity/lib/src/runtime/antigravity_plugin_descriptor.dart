@@ -369,7 +369,21 @@ class const AntigravityPluginDescriptor({
   }
 
   Never _throwRuntimeFailure({required AntigravityRuntimeResolution resolution}) {
-    final error = PluginStartException("No validated Antigravity runtime pair is available.", cause: resolution);
+    final error = PluginStartException.userFacing(switch (resolution) {
+      AntigravityRuntimeMissing() =>
+        "Sesori could not find the Antigravity runtime. Install the official runtime, then restart the harness.",
+      AntigravityRuntimePairRejected() =>
+        "The Antigravity runtime files are not a valid official pair. Install the official runtime again, then "
+            "restart the harness.",
+      AntigravityRuntimeContractRejected() =>
+        "This Antigravity runtime version is not supported. Install the version Sesori supports, then restart "
+            "the harness.",
+      AntigravityRuntimeStorageFailed() =>
+        "Sesori could not read the Antigravity runtime files. Check the bridge console, then restart the harness.",
+      AntigravityRuntimeProbeFailed() || AntigravityRuntimeSelected() =>
+        "The Antigravity runtime did not pass its startup check. Check the bridge console, then restart the "
+            "harness.",
+    }, cause: resolution);
     switch (resolution) {
       case AntigravityRuntimeStorageFailed(:final stackTrace):
         Error.throwWithStackTrace(error, stackTrace);

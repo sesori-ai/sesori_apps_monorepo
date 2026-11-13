@@ -1857,6 +1857,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get questionModalCustomHint => 'Type your own answer';
 
   @override
+  String get questionModalOther => 'Other';
+
+  @override
+  String get questionModalCustomEmpty => 'Type your answer, or choose an option.';
+
+  @override
+  String get questionModalChooseAnswer => 'Choose an answer to submit.';
+
+  @override
   String get questionModalSubmit => 'Submit answers';
 
   @override
@@ -2535,6 +2544,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionPluginFailed => 'Failed';
+
+  @override
+  String newSessionPluginFailedWithReason(String reason) {
+    return 'Failed · $reason';
+  }
 
   @override
   String get newSessionHarnessSettings => 'Harness settings';

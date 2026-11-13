@@ -21,7 +21,8 @@ class const PluginRuntimeAccess({
   required final bool startAllowed,
 });
 
-/// Runtime state of one plugin. Only [PluginRuntimeDegraded] carries data.
+/// Runtime state of one plugin. Only [PluginRuntimeDegraded] and
+/// [PluginRuntimeFailed] carry data.
 @immutable
 sealed class const PluginRuntimeState() {
   /// Short state name for logs.
@@ -85,9 +86,19 @@ final class const PluginRuntimeStopping() extends PluginRuntimeState {
   String get name => "stopping";
 }
 
-final class const PluginRuntimeFailed() extends PluginRuntimeState {
+final class const PluginRuntimeFailed({
+  /// Why the plugin failed, in words the plugin wrote for the user, when it
+  /// said. Only a failed start carries one.
+  required final String? userFacingReason,
+}) extends PluginRuntimeState {
   @override
   String get name => "failed";
+
+  @override
+  bool operator ==(Object other) => other is PluginRuntimeFailed && other.userFacingReason == userFacingReason;
+
+  @override
+  int get hashCode => Object.hash(runtimeType, userFacingReason);
 }
 
 /// Who recorded a plugin's current setup status.
@@ -1087,7 +1098,7 @@ class PluginRuntime({
           reasons: const [PluginRuntimeConflictReason.transitioning],
         );
       }
-      slot.state = const PluginRuntimeFailed();
+      slot.state = const PluginRuntimeFailed(userFacingReason: null);
       failureMessage = "$error";
     } finally {
       _settleCommandTransition(slot: slot, commandTransition: commandTransition);
@@ -1129,7 +1140,7 @@ class PluginRuntime({
     } on Object catch (error) {
       if (_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
         slot
-          ..state = const PluginRuntimeFailed()
+          ..state = const PluginRuntimeFailed(userFacingReason: null)
           ..accessGate = PluginRuntimeAccessGate.enabled;
         _settleCommandTransition(slot: slot, commandTransition: commandTransition);
       }
@@ -1213,7 +1224,7 @@ class PluginRuntime({
           reasons: const [PluginRuntimeConflictReason.transitioning],
         );
       }
-      slot.state = const PluginRuntimeFailed();
+      slot.state = const PluginRuntimeFailed(userFacingReason: null);
       failureMessage = "$error";
     } finally {
       _settleCommandTransition(slot: slot, commandTransition: commandTransition);
@@ -1943,18 +1954,23 @@ class PluginRuntime({
       _runStartWarmUp(pluginId: pluginId, plugin: started);
       return started;
     } on PluginStartAbortedException {
-      slot.state = const PluginRuntimeFailed();
+      slot.state = const PluginRuntimeFailed(userFacingReason: null);
       if (started != null && !identical(slot.plugin, started)) {
         await _shutdownFailedStart(pluginId: pluginId, plugin: started);
       }
       rethrow;
     } on PluginGenerationStartFailedException catch (error, stackTrace) {
       Log.w('Plugin "$pluginId" failed to start', error, stackTrace);
-      slot.state = const PluginRuntimeFailed();
+      slot.state = PluginRuntimeFailed(
+        userFacingReason: switch (error.cause) {
+          PluginStartException(:final userFacingReason) => userFacingReason,
+          _ => null,
+        },
+      );
       if (started != null) await _discardStartedPlugin(slot: slot, pluginId: pluginId, plugin: started);
       return null;
     } on Object catch (error, stackTrace) {
-      slot.state = const PluginRuntimeFailed();
+      slot.state = const PluginRuntimeFailed(userFacingReason: null);
       if (started == null) rethrow;
       if (_shuttingDown || abortController.isAborted) {
         await _discardStartedPlugin(slot: slot, pluginId: pluginId, plugin: started);
@@ -2088,7 +2104,7 @@ class PluginRuntime({
         // read it as unavailable; the next request starts a fresh generation.
         slot
           ..plugin = null
-          ..state = stoppedCleanly ? const PluginRuntimeStopping() : const PluginRuntimeFailed()
+          ..state = stoppedCleanly ? const PluginRuntimeStopping() : const PluginRuntimeFailed(userFacingReason: null)
           ..workState = PluginWorkState.unknown;
         _publishSnapshots();
         await _cancelAndShutdownGeneration(slot: slot, plugin: plugin);
@@ -2097,7 +2113,7 @@ class PluginRuntime({
         }
       } on Object catch (error, stackTrace) {
         if (stoppedCleanly && slot.generation == generation && slot.state is PluginRuntimeStopping) {
-          slot.state = const PluginRuntimeFailed();
+          slot.state = const PluginRuntimeFailed(userFacingReason: null);
         }
         Log.w(
           'Plugin "${slot.registration.descriptor.id}" cleanup after $reason failed',

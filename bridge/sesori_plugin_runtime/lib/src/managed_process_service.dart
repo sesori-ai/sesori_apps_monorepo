@@ -69,6 +69,8 @@ class ManagedProcessService<R>({
       throw PluginStartException(
         "[$_runtimeId] existing runtime health check failed on port $port",
         cause: probe.error,
+        // Callers fall back to a degraded start, so this never reaches the user.
+        userFacingReason: null,
       );
     }
 
@@ -126,6 +128,9 @@ class ManagedProcessService<R>({
         throw PluginStartException(
           "[$_runtimeId] port $port did not free for restart within ${timeout.inMilliseconds}ms",
           cause: null,
+          // Only an automatic restart waits here, and its failure reaches the
+          // user as the monitor's generic restart failure.
+          userFacingReason: null,
         );
       }
       await _clock.delay(duration: pollInterval);
@@ -149,6 +154,9 @@ class ManagedProcessService<R>({
       throw PluginStartException(
         "[$_runtimeId] explicit port ${policy.port} is already in use",
         cause: null,
+        userFacingReason:
+            "Port ${policy.port}, set for this harness, is already in use. Free it or choose another port, then "
+            "restart the harness.",
       );
     }
     _throwIfAborted(abort);
@@ -191,6 +199,9 @@ class ManagedProcessService<R>({
     throw PluginStartException(
       "[$_runtimeId] unable to start runtime on an available dynamic port after $attempts attempt(s)",
       cause: lastError,
+      userFacingReason:
+          "This harness could not start after trying several ports. Check the bridge console for the error, "
+          "then restart the harness.",
     );
   }
 
@@ -282,6 +293,9 @@ class ManagedProcessService<R>({
         throw PluginStartException(
           "[$_runtimeId] health check failed on port $port within ${policy.deadline.inMilliseconds}ms",
           cause: probe.error,
+          userFacingReason:
+              "This harness started but was not ready within ${policy.deadline.inSeconds} seconds. Restart it, and "
+              "check the bridge console if this keeps happening.",
         );
       }
     }
@@ -301,6 +315,7 @@ class ManagedProcessService<R>({
       throw PluginStartException(
         "[$_runtimeId] runtime exited before becoming healthy on port $port",
         cause: null,
+        userFacingReason: "This harness quit while starting. Check the bridge console for its output.",
       );
     }
 

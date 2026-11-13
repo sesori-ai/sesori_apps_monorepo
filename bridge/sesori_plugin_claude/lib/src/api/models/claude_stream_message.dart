@@ -113,6 +113,12 @@ sealed class const ClaudeStreamMessage({
         return ClaudeControlRequestMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
       case "control_response":
         return ClaudeControlResponseMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
+      case "control_cancel_request":
+        return ClaudeControlCancelRequestMessage(
+          requestId: _stringOrNull(json["request_id"]),
+          sessionId: sessionId,
+          uuid: uuid,
+        );
       default:
         return ClaudeUnknownMessage(type: type, subtype: subtype, sessionId: sessionId, uuid: uuid);
     }
@@ -533,6 +539,15 @@ final class const ClaudeControlRequestMessage({
     );
   }
 }
+
+/// The CLI withdrew a control request it sent, such as a `can_use_tool` ask
+/// that a hook, an interrupt or another client settled first. No reply is
+/// expected; a late one is ignored.
+final class const ClaudeControlCancelRequestMessage({
+  required final String? requestId,
+  required super.sessionId,
+  required super.uuid,
+}) extends ClaudeStreamMessage;
 
 /// A reply to a control request we sent.
 final class const ClaudeControlResponseMessage({

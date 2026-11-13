@@ -71,15 +71,19 @@ class const NewSessionPluginChooser({
             PregoMenuItem(
               key: Key("new_session_plugin_${plugin.id}"),
               title: plugin.displayName,
-              subtitle: _lifecycleStatus(context, state: plugin.state),
+              subtitle: _lifecycleStatus(context, plugin: plugin),
               isSelected: plugin.id == selectedPluginId,
               shortcutLabel: null,
-              isEnabled: isSelectionEnabled && plugin.isPickable,
+              isEnabled: isSelectionEnabled,
+              // It still looks unavailable, so opening settings is no surprise.
+              looksUnavailable: isSelectionEnabled && !plugin.isPickable,
               leading: PregoBrandLogo(
                 pluginId: plugin.id,
                 color: context.prego.colors.textSecondary,
               ),
-              onTap: () => onSelected(plugin.id),
+              // A harness that cannot run answers the tap with its settings,
+              // where the full reason and the way to fix it are.
+              onTap: plugin.isPickable ? () => onSelected(plugin.id) : onSettingsPressed,
             ),
         ],
       ),
@@ -88,11 +92,14 @@ class const NewSessionPluginChooser({
 
   /// What a harness row says about itself below its name. A ready harness says
   /// nothing — the absence is the good news.
-  static String? _lifecycleStatus(BuildContext context, {required PluginLifecycleState state}) => switch (state) {
+  static String? _lifecycleStatus(BuildContext context, {required PluginMetadata plugin}) => switch (plugin.state) {
     PluginLifecycleState.ready => null,
     PluginLifecycleState.degraded => context.loc.newSessionPluginDegraded,
     PluginLifecycleState.unavailable => context.loc.newSessionPluginUnavailable,
-    PluginLifecycleState.failed => context.loc.newSessionPluginFailed,
+    PluginLifecycleState.failed => switch (plugin.failureReason) {
+      final reason? => context.loc.newSessionPluginFailedWithReason(reason),
+      null => context.loc.newSessionPluginFailed,
+    },
   };
 }
 

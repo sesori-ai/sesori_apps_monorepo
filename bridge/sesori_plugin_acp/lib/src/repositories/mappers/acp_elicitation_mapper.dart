@@ -14,9 +14,9 @@ final class const AcpSupportedElicitationForm({
     for (var index = 0; index < _fields.length; index++) {
       final selected = index < answers.length ? answers[index] : const <String>[];
       final field = _fields[index];
-      final value = field.encode(selected: selected);
-      if (value == null && field.required) return const {"action": "decline"};
-      if (value != null) content[field.key] = value;
+      final entries = field.encode(selected: selected);
+      if (entries.isEmpty && field.required) return const {"action": "decline"};
+      content.addAll(entries);
     }
     return {"action": "accept", "content": content};
   }
@@ -27,14 +27,30 @@ final class const AcpUnsupportedElicitationForm({
   required final String reason,
 }) extends AcpElicitationForm;
 
+/// Finds the free-text property an agent pairs with the choice property
+/// [choiceKey] for an answer outside the listed choices, or null when none.
+typedef AcpCustomAnswerKeyResolver = String? Function({required String choiceKey, required Set<String> propertyKeys});
+
 sealed class const AcpElicitationField({required final String key, required final bool required}) {
-  Object? encode({required List<String> selected});
+  /// The response properties for [selected]; empty when unanswered.
+  Map<String, Object> encode({required List<String> selected});
+}
+
+/// A field that answers with at most one property, its own [key].
+sealed class const _SingleValueField({required super.key, required super.required}) extends AcpElicitationField {
+  Object? encodeValue({required List<String> selected});
+
+  @override
+  Map<String, Object> encode({required List<String> selected}) {
+    final value = encodeValue(selected: selected);
+    return value == null ? const {} : {key: value};
+  }
 }
 
 final class const _StringField({required super.key, required super.required, required final String? suggestedText})
-    extends AcpElicitationField {
+    extends _SingleValueField {
   @override
-  Object? encode({required List<String> selected}) {
+  Object? encodeValue({required List<String> selected}) {
     if (selected.isEmpty) return null;
     final value = selected.first;
     if (value == _suggestedTextLabel && suggestedText != null) return suggestedText;
@@ -47,12 +63,12 @@ final class const _NumberField({
   required super.required,
   required final bool integer,
   required final String? suggestedText,
-}) extends AcpElicitationField {
+}) extends _SingleValueField {
   /// Unparsable or non-finite text (NaN, Infinity, 1e999) encodes as null: the
   /// property is omitted, or the form declined when it is required. JSON cannot
   /// carry a non-finite number.
   @override
-  Object? encode({required List<String> selected}) {
+  Object? encodeValue({required List<String> selected}) {
     if (selected.isEmpty) return null;
     final suggested = suggestedText;
     final text = (selected.first == _suggestedTextLabel && suggested != null ? suggested : selected.first).trim();
@@ -62,9 +78,9 @@ final class const _NumberField({
   }
 }
 
-final class const _BooleanField({required super.key, required super.required}) extends AcpElicitationField {
+final class const _BooleanField({required super.key, required super.required}) extends _SingleValueField {
   @override
-  Object? encode({required List<String> selected}) {
+  Object? encodeValue({required List<String> selected}) {
     if (selected.isEmpty) return null;
     return switch (selected.first) {
       "Yes" => true,
@@ -74,35 +90,42 @@ final class const _BooleanField({required super.key, required super.required}) e
   }
 }
 
-final class const _EnumField({
+/// A single or multiple choice. With a [customKey], an answer that is not one
+/// of the choices is sent as that free-text property instead.
+final class const _ChoiceField({
   required super.key,
   required super.required,
+  required final bool multiple,
   required final Map<String, String> valuesByLabel,
+  required final String? customKey,
 }) extends AcpElicitationField {
   @override
-  Object? encode({required List<String> selected}) => selected.isEmpty ? null : valuesByLabel[selected.first];
-}
-
-final class const _ArrayEnumField({
-  required super.key,
-  required super.required,
-  required final Map<String, String> valuesByLabel,
-}) extends AcpElicitationField {
-  @override
-  Object? encode({required List<String> selected}) {
-    if (selected.isEmpty) return null;
+  Map<String, Object> encode({required List<String> selected}) {
     final values = <String>[];
+    final customAnswers = <String>[];
     for (final label in selected) {
       final value = valuesByLabel[label];
-      if (value == null) return null;
-      values.add(value);
+      if (value != null) {
+        values.add(value);
+      } else {
+        customAnswers.add(label);
+      }
     }
-    return values;
+    final customKey = this.customKey;
+    if (customAnswers.isNotEmpty && customKey == null) return const {};
+    final customText = customAnswers.join(", ").trim();
+    return {
+      if (values.isNotEmpty) key: multiple ? values : values.first,
+      if (customKey != null && customText.isNotEmpty) customKey: customText,
+    };
   }
 }
 
 /// Maps the standard ACP v1 `elicitation/create` form shape to Sesori questions.
-class const AcpElicitationMapper() {
+///
+/// When [customAnswerKeyFor] pairs a choice property with a free-text one, the
+/// two become one question whose free-text answer fills the paired property.
+class const AcpElicitationMapper({required final AcpCustomAnswerKeyResolver? customAnswerKeyFor}) {
   AcpElicitationForm parse({required Map<String, dynamic> params}) {
     final mode = params["mode"];
     if (mode != "form") {
@@ -131,9 +154,12 @@ class const AcpElicitationMapper() {
 
     final requestMessage = _bounded(_string(params["message"]) ?? "Input requested");
     final schemaTitle = _bounded(_string(schema["title"]) ?? requestMessage);
+    final customKeys = _customAnswerKeys(properties: properties);
+    final pairedKeys = customKeys.values.toSet();
     final questions = <PluginQuestionInfo>[];
     final fields = <AcpElicitationField>[];
     for (final entry in properties.entries) {
+      if (pairedKeys.contains(entry.key)) continue;
       final property = _map(entry.value);
       if (property == null) {
         return const AcpUnsupportedElicitationForm(reason: "property is not an object");
@@ -144,6 +170,7 @@ class const AcpElicitationMapper() {
         requestMessage: requestMessage,
         schemaTitle: schemaTitle,
         required: requiredKeys.contains(entry.key),
+        customKey: customKeys[entry.key],
       );
       if (mapped == null) {
         return AcpUnsupportedElicitationForm(
@@ -156,47 +183,71 @@ class const AcpElicitationMapper() {
     return AcpSupportedElicitationForm(questions: questions, fields: fields);
   }
 
+  /// Choice property key -> the free-text property paired with it. A pairing
+  /// counts only when both sides are well-formed: a choice list and a plain
+  /// string, so a malformed pair still maps as two separate questions.
+  Map<String, String> _customAnswerKeys({required Map<String, dynamic> properties}) {
+    final resolve = customAnswerKeyFor;
+    if (resolve == null) return const {};
+    final pairs = <String, String>{};
+    for (final entry in properties.entries) {
+      final property = _map(entry.value);
+      if (property == null || !_isChoice(property)) continue;
+      final customKey = resolve(choiceKey: entry.key, propertyKeys: properties.keys.toSet());
+      if (customKey == null || customKey == entry.key || pairs.containsValue(customKey)) continue;
+      final custom = _map(properties[customKey]);
+      if (custom == null || custom["type"] != "string" || custom.containsKey("enum") || custom.containsKey("oneOf")) {
+        continue;
+      }
+      pairs[entry.key] = customKey;
+    }
+    return pairs;
+  }
+
+  static bool _isChoice(Map<String, dynamic> property) => switch (property["type"]) {
+    "string" => property.containsKey("enum") || property.containsKey("oneOf"),
+    "array" => true,
+    _ => false,
+  };
+
   ({PluginQuestionInfo question, AcpElicitationField field})? _mapProperty({
     required String key,
     required Map<String, dynamic> property,
     required String requestMessage,
     required String schemaTitle,
     required bool required,
+    required String? customKey,
   }) {
     final title = _bounded(_string(property["title"]) ?? schemaTitle);
     final questionText = _bounded(
       _string(property["description"]) ?? _string(property["title"]) ?? requestMessage,
     );
+    final defaultValue = property["default"];
     switch (property["type"]) {
       case "array":
         final alternatives = _map(property["items"])?["anyOf"];
         if (alternatives is! List) return null;
         final choices = _constChoices(alternatives: alternatives);
         if (choices == null) return null;
-        return (
-          question: PluginQuestionInfo(
-            question: questionText,
-            header: title,
-            options: [
-              for (final choice in choices) PluginQuestionOption(label: choice.label, description: choice.description),
-            ],
-            multiple: true,
-            custom: false,
-          ),
-          field: _ArrayEnumField(
-            key: key,
-            required: required,
-            valuesByLabel: Map.unmodifiable({for (final choice in choices) choice.label: choice.value}),
-          ),
+        final defaults = defaultValue is List ? defaultValue.whereType<String>().toSet() : const <String>{};
+        return _choiceQuestion(
+          key: key,
+          questionText: questionText,
+          title: title,
+          choices: choices,
+          defaults: defaults,
+          multiple: true,
+          required: required,
+          customKey: customKey,
         );
       case "boolean":
         return (
           question: PluginQuestionInfo(
             question: questionText,
             header: title,
-            options: const [
-              PluginQuestionOption(label: "Yes", description: ""),
-              PluginQuestionOption(label: "No", description: ""),
+            options: [
+              PluginQuestionOption(label: "Yes", description: "", isDefault: defaultValue == true),
+              PluginQuestionOption(label: "No", description: "", isDefault: defaultValue == false),
             ],
             multiple: false,
             custom: false,
@@ -208,25 +259,18 @@ class const AcpElicitationMapper() {
         final hasChoices = property.containsKey("enum") || property.containsKey("oneOf");
         if (hasChoices && choices == null) return null;
         if (choices != null) {
-          return (
-            question: PluginQuestionInfo(
-              question: questionText,
-              header: title,
-              options: [
-                for (final choice in choices)
-                  PluginQuestionOption(label: choice.label, description: choice.description),
-              ],
-              multiple: false,
-              custom: false,
-            ),
-            field: _EnumField(
-              key: key,
-              required: required,
-              valuesByLabel: {for (final choice in choices) choice.label: choice.value},
-            ),
+          return _choiceQuestion(
+            key: key,
+            questionText: questionText,
+            title: title,
+            choices: choices,
+            defaults: {if (defaultValue is String) defaultValue},
+            multiple: false,
+            required: required,
+            customKey: customKey,
           );
         }
-        final suggested = _string(property["default"]);
+        final suggested = _string(defaultValue);
         return (
           question: PluginQuestionInfo(
             question: questionText,
@@ -236,6 +280,7 @@ class const AcpElicitationMapper() {
                 PluginQuestionOption(
                   label: _suggestedTextLabel,
                   description: _bounded(suggested),
+                  isDefault: true,
                 ),
             ],
             multiple: false,
@@ -244,7 +289,6 @@ class const AcpElicitationMapper() {
           field: _StringField(key: key, required: required, suggestedText: suggested),
         );
       case "number" || "integer":
-        final defaultValue = property["default"];
         final suggested = defaultValue is num ? "$defaultValue" : null;
         final bounds = switch ((property["minimum"], property["maximum"])) {
           (final num minimum, final num maximum) => " ($minimum to $maximum)",
@@ -258,7 +302,8 @@ class const AcpElicitationMapper() {
             question: "$questionText$bounds",
             header: title,
             options: [
-              if (suggested != null) PluginQuestionOption(label: _suggestedTextLabel, description: suggested),
+              if (suggested != null)
+                PluginQuestionOption(label: _suggestedTextLabel, description: suggested, isDefault: true),
             ],
             multiple: false,
             custom: true,
@@ -273,6 +318,41 @@ class const AcpElicitationMapper() {
       default:
         return null;
     }
+  }
+
+  ({PluginQuestionInfo question, AcpElicitationField field}) _choiceQuestion({
+    required String key,
+    required String questionText,
+    required String title,
+    required List<({String label, String value, String description})> choices,
+    required Set<String> defaults,
+    required bool multiple,
+    required bool required,
+    required String? customKey,
+  }) {
+    return (
+      question: PluginQuestionInfo(
+        question: questionText,
+        header: title,
+        options: [
+          for (final choice in choices)
+            PluginQuestionOption(
+              label: choice.label,
+              description: choice.description,
+              isDefault: defaults.contains(choice.value),
+            ),
+        ],
+        multiple: multiple,
+        custom: customKey != null,
+      ),
+      field: _ChoiceField(
+        key: key,
+        required: required,
+        multiple: multiple,
+        valuesByLabel: Map.unmodifiable({for (final choice in choices) choice.label: choice.value}),
+        customKey: customKey,
+      ),
+    );
   }
 
   List<({String label, String value, String description})>? _enumChoices(

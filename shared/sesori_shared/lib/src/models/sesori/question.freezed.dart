@@ -175,7 +175,9 @@ as bool,
 /// @nodoc
 mixin _$QuestionOption {
 
- String get label; String get description;
+ String get label; String get description;/// Whether the harness marks this option as its default answer; the client
+/// shows it selected when the question arrives.
+ bool get isDefault;
 /// Create a copy of QuestionOption
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -189,20 +191,20 @@ $QuestionOptionCopyWith<QuestionOption> get copyWith => _$QuestionOptionCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as QuestionOption;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is QuestionOption&&(identical(other.label, _this.label) || other.label == _this.label)&&(identical(other.description, _this.description) || other.description == _this.description));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is QuestionOption&&(identical(other.label, _this.label) || other.label == _this.label)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.isDefault, _this.isDefault) || other.isDefault == _this.isDefault));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as QuestionOption;
-  return Object.hash(runtimeType,_this.label,_this.description);
+  return Object.hash(runtimeType,_this.label,_this.description,_this.isDefault);
 }
 
 @override
 String toString() {
   final _this = this as QuestionOption;
-  return 'QuestionOption(label: ${_this.label}, description: ${_this.description})';
+  return 'QuestionOption(label: ${_this.label}, description: ${_this.description}, isDefault: ${_this.isDefault})';
 }
 
 
@@ -213,7 +215,7 @@ abstract mixin class $QuestionOptionCopyWith<$Res>  {
   factory $QuestionOptionCopyWith(QuestionOption value, $Res Function(QuestionOption) _then) = _$QuestionOptionCopyWithImpl;
 @useResult
 $Res call({
- String label, String description
+ String label, String description, bool isDefault
 });
 
 
@@ -230,11 +232,12 @@ class _$QuestionOptionCopyWithImpl<$Res>
 
 /// Create a copy of QuestionOption
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? label = null,Object? description = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? label = null,Object? description = null,Object? isDefault = null,}) {
   return _then(QuestionOption(
 label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,
+as String,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -246,11 +249,14 @@ as String,
 @JsonSerializable()
 
 class _QuestionOption implements QuestionOption {
-  const _QuestionOption({required this.label, required this.description});
+  const _QuestionOption({required this.label, required this.description, this.isDefault = false});
   factory _QuestionOption.fromJson(Map<String, dynamic> json) => _$QuestionOptionFromJson(json);
 
 @override final  String label;
 @override final  String description;
+/// Whether the harness marks this option as its default answer; the client
+/// shows it selected when the question arrives.
+@override@JsonKey() final  bool isDefault;
 
 /// Create a copy of QuestionOption
 /// with the given fields replaced by the non-null parameter values.
@@ -265,18 +271,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _QuestionOption&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _QuestionOption&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,label,description);
+    return Object.hash(runtimeType,label,description,isDefault);
 }
 
 @override
 String toString() {
-    return 'QuestionOption(label: $label, description: $description)';
+    return 'QuestionOption(label: $label, description: $description, isDefault: $isDefault)';
 }
 
 
@@ -287,7 +293,7 @@ abstract mixin class _$QuestionOptionCopyWith<$Res> implements $QuestionOptionCo
   factory _$QuestionOptionCopyWith(_QuestionOption value, $Res Function(_QuestionOption) _then) = __$QuestionOptionCopyWithImpl;
 @override @useResult
 $Res call({
- String label, String description
+ String label, String description, bool isDefault
 });
 
 
@@ -304,11 +310,12 @@ class __$QuestionOptionCopyWithImpl<$Res>
 
 /// Create a copy of QuestionOption
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? label = null,Object? description = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? label = null,Object? description = null,Object? isDefault = null,}) {
   return _then(_QuestionOption(
 label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
-as String,
+as String,isDefault: null == isDefault ? _self.isDefault : isDefault // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

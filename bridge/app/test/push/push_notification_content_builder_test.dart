@@ -130,4 +130,18 @@ void main() {
       );
     });
   });
+  test("sends a Markdown permission description as plain text", () {
+    const event = SesoriSseEvent.permissionAsked(
+      requestID: "r-1",
+      sessionID: "s-1",
+      displaySessionId: null,
+      tool: "exec",
+      description: "    git commit -m `date`\n    git push\n\nWorking directory: `` /tmp/a`b ``\n\nNeeds network",
+    );
+
+    expect(
+      contentBuilder.extractNotificationData(event: event)?.body,
+      "git commit -m `date`\ngit push\nWorking directory: /tmp/a`b\nNeeds network",
+    );
+  });
 }
