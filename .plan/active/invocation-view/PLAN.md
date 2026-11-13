@@ -355,6 +355,14 @@ Client (`client/module_core`, `client/module_app_ui`):
   - Opt in the descriptor.
 - **Codex** (after #2541). Name skills from rollout history. Because ids are
   unstable, history fill is the persistence path.
+  - The plugin names a skill from the `skill` input on the live `userMessage`
+    item and on the rollout's `UserMessage` item, with the same rule that
+    rewrites `$name args` to `/name args`, so a skill picked in the Codex CLI
+    is named too.
+  - The live echo carries the prompt id (`clientId`), so the descriptor's
+    opt-in holds (verified live with Codex 0.167.2).
+  - `/compact` is Codex's only command and adds no user turn, so there is no
+    command to name.
 - **Pi** (after #2542).
   - Correlate the echo of expanded templates and skills, so the live stamp
     and the capability work.
