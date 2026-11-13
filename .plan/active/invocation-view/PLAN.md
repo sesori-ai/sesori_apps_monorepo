@@ -356,8 +356,9 @@ Client (`client/module_core`, `client/module_app_ui`):
 - **Codex** (after #2541). Name skills from rollout history. Because ids are
   unstable, history fill is the persistence path.
 - **Pi** (after #2542).
-  - Correlate the echo of expanded templates and skills, so the live stamp
-    and the capability work.
+  - The echo of expanded templates and skills already takes the oldest
+    pending command's prompt id (#2542); step 7 verified it live, so no new
+    correlation code was needed.
   - Name skills from the `<skill name=…>` envelope. Templates rely on the
     stored stamp, since Pi ids are stable.
   - Opt in.
@@ -483,7 +484,7 @@ Deliberately not added:
 | 4 | ⚙️ [invocation-view] Pin and list command and skill runs as their card [step 4/12] | ≤ 900 | 3 |
 | 5 | ⚙️ [invocation-view] Name OpenCode command and skill runs [step 5/12] | ≤ 700 | 2, #2541, #2542 merged |
 | 6 | Codex naming from history | rough | 5 |
-| 7 | Pi correlation and naming | rough | 5 |
+| 7 | 🌿 [invocation-view] Name Pi command and skill runs [step 7/12] | ≤ 200 | 5 |
 | 8 | Claude Code naming from history | rough | 5 |
 | 9 | ACP-family naming and the DeepSeek/Hermes argument turn | rough | 5 |
 | 10 | Oh My Pi findings | rough | 9 |

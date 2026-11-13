@@ -116,7 +116,8 @@ record. A harness that doesn't declare `namesCommandInvocations` keeps the
 | OpenCode 2 skill | The user message lists the skill under `skills` without a `mention` | ✅ Named live and from OpenCode's own history: a message with exactly one unmentioned skill names it, with the message text as its arguments. Verified live on 2026-11-12 with OpenCode 2.2.7. |
 | OpenCode 1 | Commands and compaction take the message id Sesori names | ✅ Named live from the prompt id; after a reload the name comes from the bridge's history store, as OpenCode 1 message ids are stable. History doesn't name the command. Not verified live: no OpenCode 1 runtime on the test machine. |
 | Codex, Claude Code, ACP family (Cursor, Copilot, Grok, Hermes, DeepSeek, Antigravity, Oh My Pi) | The live echo carries the prompt id | ✅ Named live from the prompt id. Their history doesn't name runs yet, so after a reload the name survives only where the bridge's store matches the replayed row by id or content. Not yet verified live per harness. |
-| Pi | Expanded templates and skills echo without the prompt id | ⬜ Not implemented: keeps the bubble. |
+| Pi prompt template | Pi expands `/name args` before echoing the user turn, and stores only the expanded body | ✅ Named live: the plugin gives the expanded echo the oldest pending command's prompt id. After a reload or bridge restart the name comes from the bridge's history store, by Pi's stable message id. A template run outside Sesori isn't named, as Pi's record doesn't name it. Verified live on 2026-11-12 with Pi 1.5.2. |
+| Pi skill | Pi stores `/skill:name args` as a `<skill name=… location=…>` envelope followed by the arguments | ✅ Named live from the prompt id, and from Pi's own history: an envelope names `skill:name`, with the text after it as the arguments. Verified live on 2026-11-12 with Pi 1.5.2. |
 
 ## Bridge worktree note
 
