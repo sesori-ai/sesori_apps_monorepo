@@ -63,6 +63,7 @@ Future<_Harness> _open(
     showOrbitsPicker(
       context: tester.element(find.byType(Scaffold)),
       anchorRect: _anchor,
+      handoff: null,
       orbits: orbits,
       onModelSelected: ({required providerID, required modelID, required variant}) =>
           harness.picks.add((providerID: providerID, modelID: modelID, variant: variant)),
