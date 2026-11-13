@@ -3,7 +3,14 @@ import "dart:isolate";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
     show normalizeProjectDirectory, stripWorktreeSystemContext;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSession, PluginSessionTime;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show
+        Log,
+        PluginSession,
+        PluginSessionActivityAvailable,
+        PluginSessionActivityResult,
+        PluginSessionActivityUnavailable,
+        PluginSessionTime;
 import "package:sesori_shared/sesori_shared.dart" show unwrapDictatedText;
 
 import "../api/claude_transcript_api.dart";
@@ -33,6 +40,27 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
 
   /// Session id to transcript path over [_transcripts].
   final Map<String, String> _pathsById = {};
+
+  /// When root session [sessionId] was last active, by the same rule the
+  /// catalog lists it with: a project-directory lookup and a bounded tail
+  /// read, never a transcript scan, so a dormant plugin can answer. It runs in
+  /// an isolate like the other transcript reads. A sub-agent id is
+  /// unavailable.
+  Future<PluginSessionActivityResult> readRootSessionActivity({required String sessionId}) {
+    if (!_uuidPattern.hasMatch(sessionId)) return Future.value(const PluginSessionActivityUnavailable());
+    final transcriptApi = _transcriptApi;
+    return Isolate.run(() {
+      final path = transcriptApi.findRootTranscriptPath(sessionId: sessionId);
+      final stat = path == null ? null : transcriptApi.statFile(path: path);
+      if (path == null || stat == null) return const PluginSessionActivityUnavailable();
+      final activeAt = _rootActivity(
+        tail: transcriptApi.readTailRecords(transcriptPath: path, sessionId: sessionId),
+        id: sessionId,
+        modified: stat.modified,
+      );
+      return PluginSessionActivityAvailable(updatedAt: activeAt.millisecondsSinceEpoch);
+    });
+  }
 
   /// Every session, newest first. Scanning thousands of transcripts must not
   /// stall the bridge's event loop, so listing and parsing run in an isolate.
@@ -348,10 +376,8 @@ ClaudeSessionRecord? _readRootRecord({
   // The tail holds the newest title records and the newest timestamped one.
   // A small file is read twice, which repeats the same records in the same
   // order.
-  DateTime? activeAt;
   for (final line in tail) {
     if (line.sessionId != null && line.sessionId != id) continue;
-    activeAt = line.timestamp ?? activeAt;
     if (_mapTranscriptRecord(line) case ClaudeTranscriptTitleRecord(:final kind, :final title)) {
       titles[kind] = title;
     }
@@ -366,10 +392,24 @@ ClaudeSessionRecord? _readRootRecord({
         titles[ClaudeTranscriptTitleKind.generated] ??
         prompts.map(_promptTitle).nonNulls.firstOrNull,
     createdAt: createdAt,
-    // The file's mtime also moves when the CLI appends metadata without a turn,
-    // such as `cost-state` when its process exits, so it is only the fallback.
-    updatedAt: activeAt ?? modified,
+    updatedAt: _rootActivity(tail: tail, id: id, modified: modified),
   );
+}
+
+/// The newest timestamped record of root session [id] in its [tail]. The
+/// file's mtime also moves when the CLI appends metadata without a turn, such
+/// as `cost-state` when its process exits, so it is only the fallback.
+DateTime _rootActivity({
+  required List<ClaudeTranscriptRecordDto> tail,
+  required String id,
+  required DateTime modified,
+}) {
+  DateTime? activeAt;
+  for (final line in tail) {
+    if (line.sessionId != null && line.sessionId != id) continue;
+    activeAt = line.timestamp ?? activeAt;
+  }
+  return activeAt ?? modified;
 }
 
 /// A sub-agent transcript: a meta read, no header scan.

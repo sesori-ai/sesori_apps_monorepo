@@ -38,6 +38,7 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
       attachmentDelivery: body.attachmentDelivery,
       toolOutputDelivery: body.toolOutputDelivery,
       storedOnly: body.storedOnly,
+      backgroundRefresh: body.backgroundRefresh,
     );
     return MessageWithPartsResponse(
       messages: page.messages,

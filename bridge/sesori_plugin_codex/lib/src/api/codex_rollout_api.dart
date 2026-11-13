@@ -126,13 +126,13 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
     ];
   }
 
-  /// [sessionId]'s rollout in the date directories around [now], or null.
+  /// [sessionId]'s rollout in the date directories around [around], or null.
   /// Codex files a new rollout under `sessions/YYYY/MM/DD` for its creation
   /// date; the neighbouring days cover midnight and a UTC date.
-  String? findRecentRolloutPath({required String sessionId, required DateTime now}) {
+  String? findRolloutPathAround({required String sessionId, required DateTime around}) {
     final root = sessionsDirectory;
     if (root == null) return null;
-    for (final day in [now, now.subtract(const Duration(days: 1)), now.add(const Duration(days: 1))]) {
+    for (final day in [around, around.subtract(const Duration(days: 1)), around.add(const Duration(days: 1))]) {
       final directory = Directory(
         p.join(
           root,

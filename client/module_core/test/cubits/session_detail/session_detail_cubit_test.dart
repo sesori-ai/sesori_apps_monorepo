@@ -28,6 +28,7 @@ import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapsh
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -3162,6 +3163,111 @@ void main() {
         (cubit.state as SessionDetailLoaded).selectedAgentModel,
         const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
       );
+    });
+
+    test("session.history-refreshed refetches the open page and appends the re-read turns", () async {
+      var getMessagesCallCount = 0;
+      when(
+        () => mockSessionRepository.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer((_) async {
+        getMessagesCallCount += 1;
+        return ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [
+              testMessageWithParts(id: "stored"),
+              if (getMessagesCallCount > 1) testMessageWithParts(id: "outside"),
+            ],
+            nextCursor: null,
+            userMessagesBefore: null,
+            replayedPromptDefaults: null,
+            cannotContinueMessage: null,
+          ),
+        );
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      connectionStatus.add(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
+          health: testHealthResponse(),
+        ),
+      );
+
+      sessionEvents.add(const SesoriSessionHistoryRefreshed(sessionID: sessionId));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.isRefreshing,
+        description: "silent refresh started",
+      );
+      await _awaitNotRefreshing(cubit);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id),
+        ["stored", "outside"],
+      );
+    });
+
+    // A short transcript pages back on its own to fill the viewport, so an
+    // older page alone says nothing about where the reader is. The message list
+    // freezes what a reader scrolled away from the newest message sees.
+    test("session.history-refreshed appends the re-read turns after an older page was loaded", () async {
+      var newestPageReads = 0;
+      when(
+        () => mockSessionRepository.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer((invocation) async {
+        final isOlderPage = invocation.namedArguments[#before] != null;
+        if (!isOlderPage) newestPageReads += 1;
+        return ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [
+              testMessageWithParts(id: isOlderPage ? "older" : "newest"),
+              if (!isOlderPage && newestPageReads > 1) testMessageWithParts(id: "outside"),
+            ],
+            nextCursor: isOlderPage ? null : 5,
+            userMessagesBefore: null,
+            replayedPromptDefaults: null,
+            cannotContinueMessage: null,
+          ),
+        );
+      });
+      when(
+        () => mockSessionRepository.getPromptIndex(sessionId: any(named: "sessionId")),
+      ).thenAnswer((_) async => const SessionPromptIndexUnsupported());
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      connectionStatus.add(
+        ConnectionStatus.connected(
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
+          health: testHealthResponse(),
+        ),
+      );
+      await cubit.loadOlderMessages();
+      expect((cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id), ["older", "newest"]);
+
+      sessionEvents.add(const SesoriSessionHistoryRefreshed(sessionID: sessionId));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.isRefreshing,
+        description: "silent refresh started",
+      );
+      await _awaitNotRefreshing(cubit);
+
+      expect(newestPageReads, 2);
+      expect((cubit.state as SessionDetailLoaded).messages.map((message) => message.info.id), contains("outside"));
     });
 
     blocTest<SessionDetailCubit, SessionDetailState>(

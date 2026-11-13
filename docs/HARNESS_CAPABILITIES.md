@@ -119,8 +119,8 @@ record. A harness that doesn't declare `namesCommandInvocations` keeps the
 | Codex `/compact` | Compaction adds no user turn, only a `ContextCompaction` item | Nothing to name: no user turn. Codex has no other commands. |
 | Claude Code | Every command and skill runs as `/name args`. The CLI echoes it, and records it, as a `<command-name>/name</command-name>` + `<command-args>args</command-args>` envelope under the uuid of the stdin frame that sent it. The CLI's handshake lists the commands and skills it discovers for its working directory, without saying which is which | ✅ The plugin lists every discovered entry per project, with `/fast` filtered out (the session's fast-mode selection owns it): its probe runs in a temporary mirror holding only copies of the project's command files (`.claude/commands/**/*.md`) and skill files (`.claude/skills/<skill>/SKILL.md`), so it needs no symbolic-link privilege on Windows, with hooks and MCP servers off, so Claude lists those entries by its own rules while loading none of the project's settings, `.mcp.json` or `CLAUDE.md`, and nothing the project controls runs. The list holds the project's entries plus the user's and Claude's own, and no other project's. Not listed: commands from plugins enabled only in a project's settings, and entries in a parent folder's `.claude`. `skillOverrides` in the project's own settings is not applied; the user's is. An entry is a skill when its name matches a skill's `SKILL.md` frontmatter `name`, else its folder name, in the project's `.claude/skills` or the user's `<config dir>/skills`, else a command; skills from installed plugins are labelled commands. Named live: the plugin shows the run at dispatch under the stdin uuid, with its prompt id, so the bridge stamps it. History names the envelope as the same row, with the kind from the session project's list, else unknown ("Custom"), and above the compaction it ran into, which Claude records first. A command run in the Claude CLI, including local ones such as `/model`, is named after a reload too. Verified live on 2026-11-13 with Claude Code 2.1.323: live, reload, bridge restart and a command queued mid-turn; per-project listing, skill kinds (also for runs started in the Claude CLI) and a probe that runs no project hook, MCP server or settings helper such as `apiKeyHelper`, through a bridge restart. |
 | ACP family (Cursor, Copilot, Grok, Antigravity) | The live echo carries the prompt id. A harness that replays the turn as the `/name args` text Sesori sent records the run that way | ✅ Named live from the prompt id, and from the replay: the shared ACP layer names a replayed user turn whose only text is `/name args` for an advertised command, with the kind from the catalog, else unknown ("Custom"). Not verified live: Cursor and Grok need real accounts that can't use the test proxy, and the Copilot and Antigravity runtimes aren't installed on the test machine. |
-| Hermes `/queue` | Hermes records neither the `/queue` line nor its "Queued for the next turn" reply; the replay shows the queued text as its own user turn | ✅ Named live from the prompt id. After a reload or bridge restart the bridge's store folds that replayed argument turn into the card, so the card is the only row for it. The live-only "Queued" reply and the drained turn's live answer stay as extra rows after a re-import. Verified live on 2026-11-12 with Hermes 0.21.5. |
-| DeepSeek `/plan` | The adapter records no command line; the replay shows the command's "Plan mode on" reply, then the text as its own user turn | ✅ Named live from the prompt id; after a reload or bridge restart the argument turn folds into the card, as for Hermes. After a reload the card sits below the "Plan mode on" reply, the replay's order, instead of above it. Verified live on 2026-11-12 with the DeepSeek adapter 0.2.2. |
+| Hermes `/queue` | Hermes records neither the `/queue` line nor its "Queued for the next turn" reply; the replay shows the queued text as its own user turn | ✅ Named live from the prompt id. After a reload or bridge restart the bridge's store folds that replayed argument turn into the card, so the card is the only row for it. The plugin does not show the live-only "Queued for the next turn" reply, since the card already shows the run, so each turn appears once after a re-import. Verified live on 2026-11-13 with Hermes 0.21.5. |
+| DeepSeek `/plan` | The adapter records no command line; the replay shows the command's "Plan mode on" reply, then the text as its own user turn | ✅ Named live from the prompt id; after a reload or bridge restart the argument turn folds into the card, as for Hermes. The bridge keeps a card it named in front of the row that followed it live, so the card stays above "Plan mode on" after a reload. Verified live on 2026-11-13 with the DeepSeek adapter 0.2.2. |
 | Oh My Pi | The live echo carries the prompt id. Its history replays a command as the expanded prompt, not as `/name args` | ✅ Named live from the prompt id. The replay can't name the run, so after a reload or bridge restart the name survives only where the bridge's store matches the replayed row by id or content. Step 10 of the invocation-view series owns naming it from OMP's own record. |
 | Pi prompt template | Pi expands `/name args` before echoing the user turn, and stores only the expanded body | ✅ Named live: the plugin gives the expanded echo the oldest pending command's prompt id. After a reload or bridge restart the name comes from the bridge's history store: the plugin maps each Pi message to the same id live and on replay (`pi:<session>:user:<timestamp>:<ordinal>`, from Pi's message timestamp and order, not its entry id), so the stored row keeps its stamp. A template run outside Sesori isn't named, as Pi's record doesn't name it. Verified live on 2026-11-12 with Pi 1.5.2. |
 | Pi skill | Pi stores `/skill:name args` as a `<skill name=… location=…>` envelope followed by the arguments | ✅ Named live from the prompt id, and from Pi's own history: an envelope names `skill:name`, with the text after it as the arguments. Verified live on 2026-11-12 with Pi 1.5.2. |
@@ -474,8 +474,9 @@ in the harness's own terminal or desktop app reorders the list after the next
 pull. The bridge keeps its monotonic timestamp merge and local title overrides.
 Apart from a manual refresh, the only import is the automatic hydration import
 each harness runs when it becomes ready, until its completion marker for the
-current catalog version is recorded; after that, outside activity waits for the
-next pull.
+current catalog version is recorded; after that, outside activity reaches the
+list at the next pull. Opening a session also catches outside turns in that one
+session without an import (see "Opening a session").
 
 | Harness | Status |
 |---|---|
@@ -488,6 +489,25 @@ next pull.
 | Hermes | ✅ Sessions created through ACP, whose `updatedAt` Hermes re-reads from its database on every `session/list`. 🚫 Sessions started in the Hermes CLI or desktop app: Hermes's ACP `session/list` returns only sessions whose source is `acp` (read in the v0.21.5 source, not verified live). |
 | DeepSeek | 🚫 Sesori starts DeepSeek with a bridge-owned `--state-dir`, so sessions a DeepSeek CLI keeps in its own state are not in the store Sesori lists. |
 | Cursor, Copilot, Antigravity | Not verified: the time is the ACP `session/list` `updatedAt` each harness reports. |
+
+### Opening a session
+
+Opening a session the store already holds asks its harness for that one
+session's activity time without starting the harness. When the time is newer
+than what the store caught up to, the open shows the stored transcript at once
+and the bridge re-reads the session in the background. The turns run in the
+harness's own terminal are then appended without a pull. Otherwise the store is
+served with the harness untouched. Only apps that send `backgroundRefresh` get
+the check; older apps wait for the re-read as before. Store-only reads and
+older pages skip the check.
+
+| Harness | Status |
+|---|---|
+| Claude Code | ✅ Root sessions: the same tail-record time the catalog scan reads, from the one transcript named for the session. Sub-agent sessions are not checked. Verified live on `2.1.323` (2026-11-12): a `claude -p -c` turn made while the bridge was stopped appeared on the first open after restart, with no pull. |
+| Codex | ✅ Rollout modification time, found under the day its UUIDv7 id encodes. A session-index-only change, such as a rename in another client, is not noticed. Verified live on `0.167.2` (2026-11-12) the same way, with a `codex exec resume` turn. |
+| OpenCode | ✅ The session's `time_updated` row, from `session_v2` once OpenCode 2.x migrated the database, else `session`. Verified live on `2.2.7` (2026-11-12) the same way, with an `opencode run -c` turn. 🚫 Attach mode (`--no-auto-start`): the attached server need not use the database the bridge would resolve. |
+| Pi | ✅ Session file modification time, from the session directory configured for the session's folder. Verified live on `1.5.2` (2026-11-12): a `pi -c -p` turn made while the bridge was stopped appeared on the first open after restart, with no pull. Not supported: a terminal turn in a session that Sesori's own Pi process still holds stays hidden, because the re-read replays that process's history and Pi does not support two writers on one session file. |
+| OMP, Grok, Hermes, DeepSeek, Cursor, Copilot, Antigravity | 🚫 ACP reports activity only through `session/list` on a running agent process; there is no bounded read without starting it. Outside turns appear after the next pull. |
 
 ## Pending requests on archive
 

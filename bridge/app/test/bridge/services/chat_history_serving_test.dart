@@ -134,6 +134,28 @@ void main() {
       expect(repository.fetchCount, 2, reason: "the refreshed store is current again");
     });
 
+    test("a background re-read announces the prompt defaults a blocking read would return", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.getSessionMessages(sessionId: "ses_a");
+      final synced = await history.repository.getSyncState(sessionId: "ses_a") ?? fail("missing sync state");
+      await history.service.observeBackendActivity(
+        activity: [(sessionId: "ses_a", activityAt: synced.watermark + 5000)],
+      );
+      repository.replayedPromptDefaults = const SessionPromptDefaults(
+        agent: "build",
+        model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+      );
+      final refreshed = history.service.historyRefreshes.first;
+
+      final served = await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
+
+      expect(served.replayedPromptDefaults, isNull, reason: "the stored page is served before the re-read");
+      final refresh = await refreshed;
+      expect(refresh.sessionId, "ses_a");
+      expect(refresh.replayedPromptDefaults, repository.replayedPromptDefaults);
+    });
+
     test("live capture alone keeps serving from the plugin", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);

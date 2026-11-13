@@ -92,6 +92,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriSessionPromptDefaultsChanged.fromJson(
             json
           );
+                case 'session.history-refreshed':
+          return SesoriSessionHistoryRefreshed.fromJson(
+            json
+          );
                 case 'session.status':
           return SesoriSessionStatus.fromJson(
             json
@@ -1556,6 +1560,81 @@ $SessionPromptDefaultsCopyWith<$Res> get promptDefaults {
     return _then(_self.copyWith(promptDefaults: value));
   });
 }
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriSessionHistoryRefreshed implements SesoriSseEvent, SesoriSessionEvent {
+  const SesoriSessionHistoryRefreshed({required this.sessionID,  String? $type}): $type = $type ?? 'session.history-refreshed';
+  factory SesoriSessionHistoryRefreshed.fromJson(Map<String, dynamic> json) => _$SesoriSessionHistoryRefreshedFromJson(json);
+
+ final  String sessionID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriSessionHistoryRefreshedCopyWith<SesoriSessionHistoryRefreshed> get copyWith => _$SesoriSessionHistoryRefreshedCopyWithImpl<SesoriSessionHistoryRefreshed>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriSessionHistoryRefreshedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionHistoryRefreshed&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,sessionID);
+}
+
+@override
+String toString() {
+    return 'SesoriSseEvent.sessionHistoryRefreshed(sessionID: $sessionID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriSessionHistoryRefreshedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriSessionHistoryRefreshedCopyWith(SesoriSessionHistoryRefreshed value, $Res Function(SesoriSessionHistoryRefreshed) _then) = _$SesoriSessionHistoryRefreshedCopyWithImpl;
+@useResult
+$Res call({
+ String sessionID
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriSessionHistoryRefreshedCopyWithImpl<$Res>
+    implements $SesoriSessionHistoryRefreshedCopyWith<$Res> {
+  _$SesoriSessionHistoryRefreshedCopyWithImpl(this._self, this._then);
+
+  final SesoriSessionHistoryRefreshed _self;
+  final $Res Function(SesoriSessionHistoryRefreshed) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,}) {
+  return _then(SesoriSessionHistoryRefreshed(
+sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
 }
 
 /// @nodoc

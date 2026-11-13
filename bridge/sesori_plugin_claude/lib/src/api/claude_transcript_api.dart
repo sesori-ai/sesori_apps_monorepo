@@ -76,6 +76,22 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
     return paths;
   }
 
+  /// The root transcript `projects/<project>/<sessionId>.jsonl`, found with one
+  /// stat per project directory rather than a walk of every transcript. Null
+  /// when no project holds it.
+  String? findRootTranscriptPath({required String sessionId}) {
+    final root = projectsDirectory;
+    if (root == null) return null;
+    final directory = Directory(root);
+    if (!directory.existsSync()) return null;
+    for (final project in directory.listSync(followLinks: false)) {
+      if (project is! Directory) continue;
+      final path = p.join(project.path, "$sessionId.jsonl");
+      if (FileSystemEntity.isFileSync(path)) return path;
+    }
+    return null;
+  }
+
   /// Decodes at most [headerLineBudget] leading records.
   List<ClaudeTranscriptRecordDto> readHeader({required String transcriptPath}) {
     final file = File(transcriptPath);

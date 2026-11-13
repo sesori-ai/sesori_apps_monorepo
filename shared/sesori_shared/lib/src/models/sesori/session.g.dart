@@ -140,6 +140,7 @@ _SessionMessagesRequest _$SessionMessagesRequestFromJson(Map json) =>
             json['toolOutputDelivery'],
           ) ??
           ToolOutputDelivery.inline,
+      backgroundRefresh: json['backgroundRefresh'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$SessionMessagesRequestToJson(
@@ -153,6 +154,7 @@ Map<String, dynamic> _$SessionMessagesRequestToJson(
   'storedOnly': instance.storedOnly,
   'toolOutputDelivery':
       _$ToolOutputDeliveryEnumMap[instance.toolOutputDelivery]!,
+  'backgroundRefresh': instance.backgroundRefresh,
 };
 
 const _$MessageAttachmentDeliveryEnumMap = {

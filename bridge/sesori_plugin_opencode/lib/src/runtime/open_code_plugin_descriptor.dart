@@ -125,7 +125,9 @@ class const OpenCodePluginDescriptor({
     required PluginConfig config,
     required Map<String, String> environment,
     required PluginCatalogCancellationSignal cancellation,
-  }) {
+  }) => _productionCatalogRepository(config: config).read(environment: environment, cancellation: cancellation);
+
+  static OpenCodeCatalogRepository _productionCatalogRepository({required PluginConfig config}) {
     final operatingSystem = PlatformTarget.current().os;
     return OpenCodeCatalogRepository(
       databaseApi: OpenCodeCatalogDatabaseApi.production(),
@@ -145,7 +147,7 @@ class const OpenCodePluginDescriptor({
         null || "" => "latest",
         _ => null,
       },
-    ).read(environment: environment, cancellation: cancellation);
+    );
   }
 
   @override
@@ -643,6 +645,21 @@ class const OpenCodePluginDescriptor({
       environment: environment,
       cancellation: cancellation,
     );
+  }
+
+  /// Attach mode reports nothing, like [readCatalogSnapshot]: the attached
+  /// server need not use the database this bridge would resolve.
+  @override
+  Future<PluginSessionActivityResult> readSessionActivity({
+    required PluginConfig config,
+    required Map<String, String> environment,
+    required String sessionId,
+    required String directory,
+  }) {
+    if (config.flag(_OpenCodeConfigKey.noAutoStart)) return Future.value(const PluginSessionActivityUnavailable());
+    return _productionCatalogRepository(
+      config: config,
+    ).readSessionActivity(environment: environment, sessionId: sessionId);
   }
 
   /// Resolves an existing OpenCode runtime (a recent-enough PATH install or the

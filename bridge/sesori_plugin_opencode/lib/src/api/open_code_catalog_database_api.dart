@@ -55,19 +55,69 @@ typedef OpenCodeCatalogDatabaseWorker = FutureOr<OpenCodeCatalogDatabaseReadResu
   required String databasePath,
 });
 
+/// Isolate worker for [OpenCodeCatalogDatabaseApi.readSessionUpdatedAt],
+/// under the same sendability rules as [OpenCodeCatalogDatabaseWorker].
+typedef OpenCodeSessionActivityWorker = FutureOr<int?> Function({
+  required String databasePath,
+  required String sessionId,
+});
+
 /// Layer-1 isolate boundary around OpenCode's read-only SQLite catalog.
-class const OpenCodeCatalogDatabaseApi({required final OpenCodeCatalogDatabaseWorker _worker}) {
+class const OpenCodeCatalogDatabaseApi({
+  required final OpenCodeCatalogDatabaseWorker _worker,
+  required final OpenCodeSessionActivityWorker _sessionActivityWorker,
+}) {
   static OpenCodeCatalogDatabaseApi production() {
-    return OpenCodeCatalogDatabaseApi(worker: const _SqliteOpenCodeCatalogDatabaseWorker().read);
+    const sqlite = _SqliteOpenCodeCatalogDatabaseWorker();
+    return OpenCodeCatalogDatabaseApi(worker: sqlite.read, sessionActivityWorker: sqlite.readSessionUpdatedAt);
   }
 
   Future<OpenCodeCatalogDatabaseReadResult> read({required String databasePath}) {
     final worker = _worker;
     return Isolate.run(() => worker(databasePath: databasePath));
   }
+
+  /// One session's `time_updated` from the session table the schema keeps
+  /// current: `session_v2` once OpenCode 2.x migrated the database, whose
+  /// `session` table is then a stale copy, else `session`. Null when the row
+  /// is absent.
+  Future<int?> readSessionUpdatedAt({required String databasePath, required String sessionId}) {
+    final worker = _sessionActivityWorker;
+    return Isolate.run(() => worker(databasePath: databasePath, sessionId: sessionId));
+  }
 }
 
 class const _SqliteOpenCodeCatalogDatabaseWorker() {
+  int? readSessionUpdatedAt({required String databasePath, required String sessionId}) {
+    final Database database;
+    try {
+      database = sqlite3.open(databasePath, mode: OpenMode.readOnly);
+    } on Object catch (error) {
+      throw OpenCodeCatalogDatabaseException(message: "OpenCode session activity read failed", cause: error);
+    }
+    try {
+      final tables = {
+        for (final row in database.select(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('session', 'session_v2')",
+        ))
+          row["name"],
+      };
+      int? updatedAt(String table) {
+        if (!tables.contains(table)) return null;
+        final rows = database.select("SELECT time_updated FROM $table WHERE id = ? LIMIT 1", [sessionId]);
+        return rows.isEmpty ? null : _requiredInt(value: rows.first["time_updated"], field: "$table.time_updated");
+      }
+
+      return tables.contains("session_v2") ? updatedAt("session_v2") : updatedAt("session");
+    } on OpenCodeCatalogDatabaseException {
+      rethrow;
+    } on Object catch (error) {
+      throw OpenCodeCatalogDatabaseException(message: "OpenCode session activity read failed", cause: error);
+    } finally {
+      database.close();
+    }
+  }
+
   OpenCodeCatalogDatabaseReadResult read({required String databasePath}) {
     Database? database;
     try {

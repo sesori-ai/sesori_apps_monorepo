@@ -2488,6 +2488,25 @@ void main() {
     expect(factory.startCount, 1);
   });
 
+  test("session activity read failures and unknown plugins report unavailable without a start", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(
+      factory: factory,
+      descriptor: _FakeDescriptor(sessionActivity: () async => throw StateError("unreadable")),
+    );
+    addTearDown(runtime.dispose);
+
+    expect(
+      await runtime.readSessionActivity(pluginId: "one", sessionId: "s", directory: "/work"),
+      isA<PluginSessionActivityUnavailable>(),
+    );
+    expect(
+      await runtime.readSessionActivity(pluginId: "removed", sessionId: "s", directory: "/work"),
+      isA<PluginSessionActivityUnavailable>(),
+    );
+    expect(factory.startCount, 0);
+  });
+
   test("backend events emitted before the bridge listener attaches are replayed", () async {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
@@ -2597,6 +2616,7 @@ class const _NeverCancelled() implements PluginCatalogCancellationSignal {
 class const _FakeDescriptor({
   final Future<PluginSetupStatus> Function()? inspect,
   final Future<PluginCatalogSnapshotResult> Function()? catalogSnapshot,
+  final Future<PluginSessionActivityResult> Function()? sessionActivity,
   final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted, RuntimeInUseSignal runtimeInUse)?
   install,
   final FutureOr<bool> Function({
@@ -2639,6 +2659,16 @@ class const _FakeDescriptor({
     required PluginCatalogCancellationSignal cancellation,
   }) {
     return catalogSnapshot?.call() ?? Future.value(const PluginCatalogSnapshotUnavailable());
+  }
+
+  @override
+  Future<PluginSessionActivityResult> readSessionActivity({
+    required PluginConfig config,
+    required Map<String, String> environment,
+    required String sessionId,
+    required String directory,
+  }) {
+    return sessionActivity?.call() ?? Future.value(const PluginSessionActivityUnavailable());
   }
 
   @override

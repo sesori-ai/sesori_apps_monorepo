@@ -4,7 +4,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "hermes_turn_failure_copy.dart";
 
 /// Hermes's event mapper: the standard ACP mapping from [AcpEventMapper], plus
-/// Hermes's notices for a failed turn.
+/// Hermes's notices for a failed turn, without its live-only queue
+/// acknowledgement (see [map]).
 ///
 /// Live, Hermes sends a failure's explanation as its ordinary final response,
 /// so on the wire the notice looks like a reply, and then fails
@@ -52,6 +53,36 @@ class HermesEventMapper({
         ..["content"] = {...content, "text": withoutInlineCodeMarkers(notice: notice)},
     };
   }
+
+  /// Drops Hermes's "Queued for the next turn. (N queued)" acknowledgement.
+  ///
+  /// Hermes sends it, live only, for `/queue <text>` and for a prompt it
+  /// queues behind a running turn (`acp_adapter/commands.py::_cmd_queue`,
+  /// `acp_adapter/server.py::_claim_turn_or_queue`), then runs the text as a
+  /// turn of its own. Its history records neither the acknowledgement nor the
+  /// `/queue` line, so after a reload the row stayed beside the replay and,
+  /// standing between the run's card and its answer, kept the live answer
+  /// from matching its replayed copy. The card already shows the run.
+  ///
+  /// Hermes sends command responses without a `messageId` and every model
+  /// reply with one, so a reply with the same words stays.
+  @override
+  List<BridgeSseEvent> map(AcpNotification notification) {
+    if (notification.params["update"]
+        case {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": final String text},
+            } &&
+            final Map<Object?, Object?> update
+        when notification.method == AcpMethods.sessionUpdate &&
+            !update.containsKey("messageId") &&
+            _queuedAcknowledgement.hasMatch(text)) {
+      return const [];
+    }
+    return super.map(notification);
+  }
+
+  static final RegExp _queuedAcknowledgement = RegExp(r"^Queued for the next turn\. \(\d+ queued\)$");
 
   // The shared mapper keeps Hermes's exact wording as the shown message. The
   // error name is the notice's kind: the bridge keeps one notice per failed
