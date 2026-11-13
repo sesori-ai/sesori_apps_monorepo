@@ -493,8 +493,9 @@ session's activity time without starting the harness. When the time is newer
 than what the store caught up to, the open shows the stored transcript at once
 and the bridge re-reads the session in the background. The turns run in the
 harness's own terminal are then appended without a pull. Otherwise the store is
-served with the harness untouched. Store-only reads and older pages skip the
-check.
+served with the harness untouched. Only apps that send `backgroundRefresh` get
+the check; older apps wait for the re-read as before. Store-only reads and
+older pages skip the check.
 
 | Harness | Status |
 |---|---|

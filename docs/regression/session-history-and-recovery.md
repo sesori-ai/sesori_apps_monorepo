@@ -40,8 +40,10 @@ reconnect or restart.
 - For an app that sends `backgroundRefresh`, any read of a session that was
   backfilled before but is now behind its harness (found by the open check or
   marked by a pull) returns the stored page at once, flagged
-  `awaitingHarnessSync`, and the bridge re-reads the session in the background.
-  A read that arrives while that re-read runs is also served from the store.
+  `awaitingHarnessSync`. An open then re-reads the session in the background;
+  an older page or load-through does not, so the refresh announcement never
+  drops history the reader just paged back to. A read that arrives while that
+  re-read runs is also served from the store.
   When the re-read lands, the bridge sends `session.history-refreshed`, and the
   open view runs its silent refresh, so the new turns are appended at the end
   of the transcript without a loading state. A failed re-read is logged, and the

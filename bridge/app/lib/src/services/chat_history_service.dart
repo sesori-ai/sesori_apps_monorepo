@@ -53,8 +53,10 @@ typedef SessionMessagesPage = ({
 
   /// Whether the store served this page while behind the harness, so newer
   /// messages may be missing. Only a store-only read, a read whose backfill
-  /// the backend refused because it cannot restore the session, or a read the
-  /// backend cannot replay until the running turn ends, can report this.
+  /// the backend refused because it cannot restore the session, a read the
+  /// backend cannot replay until the running turn ends, or a
+  /// `backgroundRefresh` read served from the store while a re-read is due or
+  /// already running, can report this.
   bool awaitingHarnessSync,
 
   /// How many of the session's user messages are older than [messages].
@@ -103,9 +105,10 @@ class ChatHistoryService({
   ///
   /// [backgroundRefresh] callers refetch on [historyRefreshes]. A session
   /// that is behind its harness but was read before is served from the store
-  /// at once for them, and re-read in the background; opening one also asks
-  /// the harness, without starting it, whether it moved on. Other callers
-  /// wait for the re-read, and opening does not ask.
+  /// at once for them. Opening it re-reads it in the background, after asking
+  /// the harness, without starting it, whether it moved on; an older page
+  /// leaves the re-read to the next open. Other callers wait for the re-read,
+  /// and opening does not ask.
   Future<SessionMessagesPage> getSessionMessages({
     required String sessionId,
     required HistoryWindow window,
@@ -148,9 +151,11 @@ class ChatHistoryService({
           attachmentProjection: attachmentProjection,
           toolOutputDelivery: toolOutputDelivery,
         );
-        // Joins the running backfill, so this reader is told when it lands.
-        return _servedWhileRefreshing(
+        // An open joins the running backfill, so this reader is told when it
+        // lands.
+        return _servedBehindHarness(
           sessionId: sessionId,
+          opensSession: opensSession,
           messages: stored.messages,
           nextCursor: stored.nextCursor,
           userMessagesBefore: stored.userMessagesBefore,
@@ -195,8 +200,9 @@ class ChatHistoryService({
     if (decided case (:final page, behindHarness: true)) {
       // Waiting would hold the open on a harness start, and fail it when the
       // harness cannot start, so the reader gets the stored copy now.
-      return _servedWhileRefreshing(
+      return _servedBehindHarness(
         sessionId: sessionId,
+        opensSession: opensSession,
         messages: page.messages,
         nextCursor: page.nextCursor,
         userMessagesBefore: page.userMessagesBefore,
@@ -296,17 +302,23 @@ class ChatHistoryService({
     return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
   }
 
-  /// A stored page served behind the harness, with a background re-read
-  /// started or joined so [historyRefreshes] announces when the store lands.
-  SessionMessagesPage _servedWhileRefreshing({
+  /// A stored page served behind the harness. Opening the session starts or
+  /// joins a background re-read so [historyRefreshes] announces when the store
+  /// lands. An older page does not: the announcement makes the open view reload
+  /// its newest page, which would drop the history the reader just paged back
+  /// to. The next open re-reads instead.
+  SessionMessagesPage _servedBehindHarness({
     required String sessionId,
+    required bool opensSession,
     required List<MessageWithParts> messages,
     required int? nextCursor,
     required int userMessagesBefore,
   }) {
-    final refresh = _refreshFromHarness(sessionId: sessionId);
-    _backgroundRefreshes.add(refresh);
-    unawaited(refresh.whenComplete(() => _backgroundRefreshes.remove(refresh)));
+    if (opensSession) {
+      final refresh = _refreshFromHarness(sessionId: sessionId);
+      _backgroundRefreshes.add(refresh);
+      unawaited(refresh.whenComplete(() => _backgroundRefreshes.remove(refresh)));
+    }
     return (
       messages: messages,
       nextCursor: nextCursor,
@@ -325,23 +337,19 @@ class ChatHistoryService({
   /// Re-reads a session a read served behind its harness, then announces it
   /// on [historyRefreshes]. A failure leaves the stored transcript, still
   /// marked behind, so the next read tries again. A backend that cannot
-  /// restore the session is announced once, so an open view shows why.
+  /// restore the session is announced once, so an open view shows why, and
+  /// again only when finalizing dead tool parts changes the stored transcript.
   Future<void> _refreshFromHarness({required String sessionId}) async {
+    bool announce;
     try {
       await _backfillSessionForRead(sessionId: sessionId);
-      await _sweepUnlessTurnRunning(sessionId: sessionId);
       _cannotContinueMessages.remove(sessionId);
+      announce = true;
     } on PluginSessionUnrestorableException catch (error, stackTrace) {
       Log.w("Backend cannot restore session $sessionId; serving stored history", error, stackTrace);
-      // No backfill will finalize a dead turn's open tool parts meanwhile.
-      try {
-        await _sweepUnlessTurnRunning(sessionId: sessionId);
-      } on Object catch (sweepError, sweepStackTrace) {
-        Log.w("Failed to finalize open tool parts for session $sessionId", sweepError, sweepStackTrace);
-      }
       final message = error.message;
-      if (message == null || _cannotContinueMessages[sessionId] == message) return;
-      _cannotContinueMessages[sessionId] = message;
+      announce = message != null && _cannotContinueMessages[sessionId] != message;
+      if (message != null) _cannotContinueMessages[sessionId] = message;
     } on PluginSessionHistoryBusyException catch (error) {
       // The live stream delivers the running turn; the next read re-reads.
       Log.d("Session $sessionId is mid-turn; re-reading it after the turn (${error.message})");
@@ -350,7 +358,15 @@ class ChatHistoryService({
       Log.w("Background re-read of session $sessionId failed; serving its stored history", error, stackTrace);
       return;
     }
-    if (!_historyRefreshes.isClosed) _historyRefreshes.add(sessionId);
+    // A backend transcript reports no result for a tool whose turn died, and
+    // no backfill finalizes one while the session stays unrestorable. A failed
+    // sweep still announces what the re-read already committed.
+    try {
+      if (await _sweepUnlessTurnRunning(sessionId: sessionId)) announce = true;
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to finalize open tool parts for session $sessionId", error, stackTrace);
+    }
+    if (announce && !_historyRefreshes.isClosed) _historyRefreshes.add(sessionId);
   }
 
   /// One page answered by the store alone: no backfill, no harness contact,

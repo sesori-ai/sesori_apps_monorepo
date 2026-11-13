@@ -201,6 +201,31 @@ void main() {
       expect(reopened.awaitingHarnessSync, isTrue);
     });
 
+    test("an older page of a session behind its harness is served without a re-read", () async {
+      runtime.sessionActivityById["backend-a"] = DateTime.utc(2100).millisecondsSinceEpoch;
+      plugin.throwOnGetMessagesError = StateError("harness cannot start");
+      await history.service.getSessionMessages(sessionId: "ses_a", backgroundRefresh: true);
+      await pumpEventQueue();
+      plugin.lastGetMessagesSessionId = null;
+      final announcements = <String>[];
+      final subscription = history.service.historyRefreshes.listen(announcements.add);
+      addTearDown(subscription.cancel);
+
+      // The announcement would make the open view reload its newest page and
+      // drop the history the reader just paged back to.
+      final older = await history.service.getSessionMessages(
+        sessionId: "ses_a",
+        limit: 10,
+        before: 5,
+        backgroundRefresh: true,
+      );
+      await pumpEventQueue();
+
+      expect(older.awaitingHarnessSync, isTrue);
+      expect(plugin.lastGetMessagesSessionId, isNull);
+      expect(announcements, isEmpty);
+    });
+
     test("a backend that cannot restore the session is announced once with its explanation", () async {
       runtime.sessionActivityById["backend-a"] = DateTime.utc(2100).millisecondsSinceEpoch;
       plugin.throwOnGetMessagesError = const PluginSessionUnrestorableException(
