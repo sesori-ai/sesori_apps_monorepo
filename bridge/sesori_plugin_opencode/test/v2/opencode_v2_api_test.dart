@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
@@ -292,6 +293,22 @@ void main() {
       expect(await entry.invoke(api), isEmpty);
     });
   }
+
+  test("opens a symlinked project directory by its real path", () async {
+    final root = Directory.systemTemp.createTempSync("sesori-opencode-symlink-");
+    addTearDown(() => root.deleteSync(recursive: true));
+    final real = Directory("${root.path}/real")..createSync();
+    final link = Link("${root.path}/link")..createSync(real.path);
+    final api = makeApi(
+      handler: (request) async {
+        expect(request.url.queryParameters, <String, String>{
+          "location[directory]": real.resolveSymbolicLinksSync(),
+        });
+        return http.Response(jsonEncode(<String, dynamic>{"location": v2LocationFixture, "data": <Object>[]}), 200);
+      },
+    );
+    expect(await api.listAgents(directory: link.path), isEmpty);
+  });
 
   test("global command warmup leaves the native location unspecified", () async {
     final api = makeApi(
