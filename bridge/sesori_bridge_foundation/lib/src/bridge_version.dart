@@ -3,4 +3,4 @@
 ///
 /// `make bump-version` (`tool/sync_versions.dart`) and
 /// `bridge/app/tool/bump_version.dart` rewrite this line, so keep its shape.
-const String bridgeVersion = '1.13.0';
+const String bridgeVersion = '1.14.0';
