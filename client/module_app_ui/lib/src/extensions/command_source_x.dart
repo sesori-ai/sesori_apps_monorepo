@@ -4,8 +4,8 @@ import "package:theme_prego/module_prego.dart";
 
 import "../l10n/app_localizations.dart";
 
-/// How a run command's kind shows wherever the run does: on its card in the
-/// transcript, its pin and its row on the Prompts screen.
+/// How a command's kind shows wherever the app names it: the command picker,
+/// a run's card in the transcript, its pin and its row on the Prompts screen.
 extension CommandSourcePresentation on CommandSource {
   IconData get icon => switch (this) {
     CommandSource.command => TablerRegular.terminal,
@@ -14,7 +14,7 @@ extension CommandSourcePresentation on CommandSource {
     CommandSource.unknown => TablerRegular.slash,
   };
 
-  /// The kind's name, worded as the command picker words it.
+  /// The kind's name.
   String label({required AppLocalizations loc}) => switch (this) {
     CommandSource.command => loc.commandSourceCommand,
     CommandSource.skill => loc.commandSourceSkill,

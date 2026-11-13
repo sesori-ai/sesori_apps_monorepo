@@ -399,6 +399,23 @@ void main() {
       expect(list.entries.map((entry) => entry.searchText), ["Preview u1", "/fixture-review", "Prompt u3"]);
     });
 
+    test("words a loaded row from the index's invocation when only the index names the run", () {
+      const skill = CommandInvocation(name: "fixture-greeter", source: CommandSource.skill, arguments: "Say hello");
+      final list = _list(
+        olderMessagesCursor: 10,
+        messages: [
+          _user(
+            id: "u1",
+            parts: [_text(text: "/fixture-greeter Say hello")],
+          ),
+        ],
+        index: [_indexed(id: "u1", seq: 10, number: 1, invocation: skill)],
+      );
+
+      expect(list.entries.single.invocation, skill);
+      expect(list.entries.single.text, "Say hello");
+    });
+
     test("drops an indexed prompt inside the loaded range that the transcript does not show", () {
       final list = _list(
         olderMessagesCursor: 20,

@@ -5665,6 +5665,41 @@ void main() {
         });
       }
 
+      testWidgets("keeps a tall card's header: it takes over from the card's end, then turns to its start", (
+        tester,
+      ) async {
+        await pumpCard(
+          tester,
+          desktop: false,
+          arguments: [for (var line = 0; line < 40; line++) "Argument line $line"].join("\n\n"),
+        );
+        await _scrollRowTo(tester, rowId: "a5-0", top: pinTop);
+
+        final pinned = pinOf(tester, "u5") ?? fail("u5 is not pinned");
+        expect(pinned.fullHeight, greaterThan(transcriptStickyMaxStartHeight));
+        expect(pinned.view, const TranscriptPinEnd(fade: 1));
+        expect(
+          tester.getRect(cardCopyOf("u5")).top,
+          moreOrLessEquals(pinned.top + InvocationCard.inset, epsilon: 0.01),
+          reason: "the pin shows the card's start",
+        );
+        final titleRect = tester.getRect(find.descendant(of: cardCopyOf("u5"), matching: find.text(title)));
+        expect(titleRect.bottom, lessThan(pinned.top + pinned.height - InvocationCard.inset));
+
+        // Back to where the pin first takes over, from the card's end.
+        final position = _position(tester);
+        final own = tester.getRect(ownCardOf("u5")).inflate(InvocationCard.inset);
+        position.jumpTo(position.pixels + pinTop + pinned.height - own.bottom);
+        await tester.pumpAndSettle();
+
+        final takeover = pinOf(tester, "u5") ?? fail("u5 is not pinned");
+        expect(takeover.view, const TranscriptPinEnd(fade: 0));
+        final ownNow = tester.getRect(ownCardOf("u5"));
+        final copyNow = tester.getRect(cardCopyOf("u5"));
+        expect(copyNow.topLeft, offsetMoreOrLessEquals(ownNow.topLeft, epsilon: 0.01), reason: "nothing jumps");
+        expect(copyNow.bottom, moreOrLessEquals(ownNow.bottom, epsilon: 0.01));
+      });
+
       testWidgets("pins a bare command whole, with no room kept for arguments", (tester) async {
         await pumpCard(tester, desktop: false, arguments: null);
         await _scrollRowTo(tester, rowId: "a5-1", top: _topInset - 100);

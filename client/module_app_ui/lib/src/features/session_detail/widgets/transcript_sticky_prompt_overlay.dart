@@ -310,11 +310,8 @@ class _TranscriptStickyPromptOverlayState()
   Widget _previewCopy({required AppLocalizations loc, required SessionPromptIndexEntry entry}) {
     final key = ValueKey((unloadedPrompt: entry.messageId));
     if (entry.invocation case CommandInvocation(:final name, :final source, :final arguments)) {
-      final shown = switch (arguments) {
-        final arguments? => TranscriptStickyPromptOverlay._cut(
-          markdown: arguments,
-          budget: TranscriptStickyPromptOverlay._copyCharacterBudget,
-        ),
+      String? cut({required int budget}) => switch (arguments) {
+        final arguments? => TranscriptStickyPromptOverlay._cut(markdown: arguments, budget: budget),
         null => null,
       };
       return _cardCopy(
@@ -323,8 +320,8 @@ class _TranscriptStickyPromptOverlayState()
         id: entry.messageId,
         name: name,
         source: source,
-        spoken: shown,
-        arguments: shown,
+        spoken: cut(budget: TranscriptStickyPromptOverlay._spokenCharacterBudget),
+        arguments: cut(budget: TranscriptStickyPromptOverlay._copyCharacterBudget),
         attachments: const [],
       );
     }
@@ -738,12 +735,20 @@ class RenderTranscriptStickyPrompts({
   /// Where [pin] paints its laid-out [child] within its [bubble]: from the
   /// bubble's top, or ending at its bottom when the pin shows the end.
   static Offset _contentOf({required TranscriptPinnedPrompt pin, required RenderBox child, required Rect bubble}) {
-    final inset = _surfaceOf(child: child).inset;
-    return switch (pin.view) {
-      TranscriptPinStart() => bubble.topLeft.translate(inset, inset),
-      TranscriptPinEnd() => Offset(bubble.left + inset, bubble.bottom - inset - child.size.height),
-    };
+    final surface = _surfaceOf(child: child);
+    final inset = surface.inset;
+    return _showsStart(pin: pin, surface: surface)
+        ? bubble.topLeft.translate(inset, inset)
+        : Offset(bubble.left + inset, bubble.bottom - inset - child.size.height);
   }
+
+  /// Whether [pin] shows its copy's start. A tall card takes over from its
+  /// end, as a tall bubble does, but then turns over to its start through its
+  /// own fill, so its pin still names what ran.
+  static bool _showsStart({required TranscriptPinnedPrompt pin, required _PinSurface surface}) => switch (pin.view) {
+    TranscriptPinStart() => true,
+    TranscriptPinEnd(:final fade) => surface == _PinSurface.card && fade >= 0.5,
+  };
 
   /// The front-most pin whose bubble, or whole band across the row with [band],
   /// holds [position].
@@ -925,11 +930,22 @@ class RenderTranscriptStickyPrompts({
     context.paintChild(child, offset + _contentOf(pin: pin, child: child, bubble: bubble));
     final canvas = context.canvas;
     final surface = _surfaceOf(child: child);
+    final shown = bubble.shift(offset);
     switch (pin.view) {
       case TranscriptPinStart():
-        _paintCut(canvas: canvas, bubble: bubble.shift(offset), pin: pin, surface: surface);
+        _paintCut(canvas: canvas, bubble: shown, pin: pin, surface: surface);
+      case TranscriptPinEnd(:final fade) when surface == _PinSurface.card:
+        // The end fades out into the fill and the start fades in from it, so
+        // the words never jump from one to the other.
+        if (fade < 0.5) {
+          _paintTopCut(canvas: canvas, bubble: shown, fade: fade * 2, surface: surface);
+        } else {
+          _paintCut(canvas: canvas, bubble: shown, pin: pin, surface: surface);
+        }
+        final fill = _fillOf(surface: surface);
+        canvas.drawRect(shown, Paint()..color = fill.withValues(alpha: fill.a * (1 - (1 - fade * 2).abs())));
       case TranscriptPinEnd(:final fade):
-        _paintTopCut(canvas: canvas, bubble: bubble.shift(offset), fade: fade, surface: surface);
+        _paintTopCut(canvas: canvas, bubble: shown, fade: fade, surface: surface);
     }
   }
 

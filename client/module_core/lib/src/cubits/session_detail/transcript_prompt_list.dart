@@ -136,14 +136,16 @@ class const TranscriptPromptListBuilder() {
     final dayKeyByOpenerId = <String, DateTime?>{};
     for (final indexed in index) {
       final loadedEntry = loadedById[indexed.messageId];
+      // The run a row shows, which its text then follows.
+      final invocation = loadedEntry?.invocation ?? indexed.invocation;
       final TranscriptPromptSource source;
       final String? text;
       if (loadedEntry != null) {
         source = loadedEntry.source;
-        text = loadedEntry.text;
+        text = _rowText(invocation: invocation, text: loadedEntry.text);
       } else if (olderMessagesCursor != null && indexed.seq < olderMessagesCursor) {
         source = TranscriptPromptUnloaded(seq: indexed.seq, preview: indexed.preview);
-        text = _rowText(invocation: indexed.invocation, text: indexed.preview);
+        text = _rowText(invocation: invocation, text: indexed.preview);
       } else {
         continue;
       }
@@ -158,7 +160,7 @@ class const TranscriptPromptListBuilder() {
             TranscriptPromptOpener(
               messageId: indexed.messageId,
               text: text,
-              invocation: loadedEntry?.invocation ?? indexed.invocation,
+              invocation: invocation,
               source: source,
               createdAt: indexed.createdAt,
               dayKey: ownDay,
@@ -170,7 +172,7 @@ class const TranscriptPromptListBuilder() {
             TranscriptPromptFollowUp(
               messageId: indexed.messageId,
               text: text,
-              invocation: loadedEntry?.invocation ?? indexed.invocation,
+              invocation: invocation,
               source: source,
               createdAt: indexed.createdAt,
               // An undated follow-up belongs to its turn's day.

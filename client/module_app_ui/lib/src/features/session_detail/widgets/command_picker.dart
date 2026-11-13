@@ -7,7 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "../../../l10n/app_localizations.dart";
+import "../../../extensions/command_source_x.dart";
 
 /// The composer's slash-command picker, filtered by the search.
 ///
@@ -104,13 +104,6 @@ class _CommandPickerState() extends State<CommandPicker> {
 
 /// A command's name and source, then its description and argument hints.
 class const _CommandLabel({required final CommandPickerEntry entry}) extends StatelessWidget {
-  String _sourceLabel({required CommandSource? source, required AppLocalizations loc}) => switch (source) {
-    CommandSource.command => loc.commandSourceCommand,
-    CommandSource.mcp => loc.commandSourceMcp,
-    CommandSource.skill => loc.commandSourceSkill,
-    CommandSource.unknown || null => loc.commandSourceCustom,
-  };
-
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -134,7 +127,7 @@ class const _CommandLabel({required final CommandPickerEntry entry}) extends Sta
               style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
             ),
             PregoTag(
-              label: _sourceLabel(source: entry.command.source, loc: loc),
+              label: (entry.command.source ?? CommandSource.unknown).label(loc: loc),
             ),
           ],
         ),
