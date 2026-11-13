@@ -539,6 +539,9 @@ variant, and worktree mode, and creating the session with its first input.
   pre-sweep model remains the default. A rejected or partially applied selection fails
   before prompting. Finding no usable model returns project-scoped authentication-required
   state with local login guidance; it does not mark the whole OMP runtime unauthenticated.
+  A project folder deleted after its sessions ran falls back to the bridge launch
+  directory's options, so an old session there still opens and reloads. Failure signal:
+  reloading such a session shows the full error screen.
 - Pi likewise discovers every advertised model and its available thinking levels within
   the existing total probe deadline, so catalog size alone never makes a healthy refresh
   partial or leaves an older complete cache in place. A missing model catalog returns the
