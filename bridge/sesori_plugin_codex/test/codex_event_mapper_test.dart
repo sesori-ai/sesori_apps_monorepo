@@ -474,6 +474,14 @@ void main() {
       );
 
       expect((events[1] as BridgeSseMessagePartUpdated).part.text, "/fixture-greeter hello");
+      expect(
+        ((events[0] as BridgeSseMessageUpdated).info as PluginMessageUser).invocation,
+        const PluginCommandInvocation(
+          name: "fixture-greeter",
+          source: PluginCommandSource.skill,
+          arguments: "hello",
+        ),
+      );
     });
 
     test("item userMessage keeps a dollar word that names no picked skill", () {
@@ -495,6 +503,7 @@ void main() {
       );
 
       expect((events[1] as BridgeSseMessagePartUpdated).part.text, r"$fixture-greeter hello");
+      expect(((events[0] as BridgeSseMessageUpdated).info as PluginMessageUser).invocation, isNull);
     });
 
     test("item userMessage keeps typed text that looks like a generated context envelope", () {
