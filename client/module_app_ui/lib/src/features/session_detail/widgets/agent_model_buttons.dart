@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/services.dart" show HapticFeedback;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart"
     show FastModeControl, FastModeToggleDecision, ModelOrbits, ModelPickerSection, ModelPickerSectionBuilder;
@@ -18,7 +19,8 @@ import "model_picker.dart";
 /// [ModelPicker] for models.
 ///
 /// On touch, a catalog the orbits picker can draw ([modelOrbits]) gets one
-/// [MedallionChip] in place of the model, variant and fast-mode pills.
+/// [MedallionChip] in place of the model, variant and fast-mode pills. The chip
+/// leads the row; the agent pill and [trailing] chips sit at its end.
 ///
 /// The widget owns the menu contents, so it receives the selectable data and
 /// the selection callbacks directly rather than a "open picker" callback.
@@ -97,9 +99,8 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.selectedAgentModel;
-    final selectedAgent = widget.selectedAgent;
     // One agent is no choice: the entry appears only when there is another.
-    final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
+    final selectedAgent = widget.agents.length > 1 ? widget.selectedAgent : null;
     final compact = widget.compact;
     // Locking leaves each pill's geometry untouched, so nothing shifts as the
     // options turn read-only, and blocks its taps, hover cursor, keyboard focus
@@ -109,35 +110,43 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
       child: IgnorePointer(ignoring: widget.readOnly, child: control),
     );
     Widget slot(Widget menu) => _pickerSlot(compact: compact, child: lock(menu));
+    Widget agentMenu({required String agent, required bool hugLabel}) => _AgentMenu(
+      surfaceStyle: widget.surfaceStyle,
+      hugLabel: hugLabel,
+      agents: widget.agents,
+      selectedAgent: agent,
+      onAgentSelected: widget.onAgentSelected,
+    );
     // The pointer layout keeps its pills.
     final orbits = compact ? null : widget.modelOrbits;
     final selectors = [
-      if (hasAgentSelection)
-        slot(
-          _AgentMenu(
-            surfaceStyle: widget.surfaceStyle,
-            hugLabel: compact,
-            agents: widget.agents,
-            selectedAgent: selectedAgent,
-            onAgentSelected: widget.onAgentSelected,
-          ),
-        ),
-      if (orbits != null)
-        // The plate hugs its text rather than sharing the strip.
-        Flexible(
-          child: lock(
-            _OrbitsMenu(
-              orbits: orbits,
-              sections: _modelSections,
-              selected: selected,
-              onModelSelected: widget.onModelSelected,
-              fastModeControl: widget.fastModeControl,
-              decideFastModeToggle: widget.decideFastModeToggle,
-              onFastModeChanged: widget.onFastModeChanged,
+      if (orbits != null) ...[
+        // The chip leads and hugs its text; everything else on the line sits
+        // at the end, so the gap between them stays open.
+        Expanded(
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: lock(
+              _OrbitsMenu(
+                surfaceStyle: widget.surfaceStyle,
+                orbits: orbits,
+                sections: _modelSections,
+                selected: selected,
+                onModelSelected: widget.onModelSelected,
+                fastModeControl: widget.fastModeControl,
+                decideFastModeToggle: widget.decideFastModeToggle,
+                onFastModeChanged: widget.onFastModeChanged,
+              ),
             ),
           ),
-        )
-      else ...[
+        ),
+        if (selectedAgent != null)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _endAlignedPickerMaxWidth),
+            child: lock(agentMenu(agent: selectedAgent, hugLabel: true)),
+          ),
+      ] else ...[
+        if (selectedAgent != null) slot(agentMenu(agent: selectedAgent, hugLabel: compact)),
         slot(
           _ModelMenu(
             surfaceStyle: widget.surfaceStyle,
@@ -256,6 +265,10 @@ Widget _pickerSlot({required bool compact, required Widget child}) {
 /// A picker's glyphs, caret and padding take about 68 points; below this width
 /// its label would show only a few characters.
 const double _minLabelledPickerWidth = 96;
+
+/// How wide a picker at the end of the medallion chip's row may hug its
+/// label, so the chip keeps room for its model name.
+const double _endAlignedPickerMaxWidth = 140;
 
 /// The pill for one picker. Any pill drops to its glyph when its share of the
 /// row is too narrow for a readable label. A labelled pointer pill hugs its
@@ -384,6 +397,7 @@ Widget _modelPicker({
 /// The medallion chip and the orbits picker it opens, with the searchable
 /// [ModelPicker] behind the picker's "All N models".
 class const _OrbitsMenu({
+  required final PregoComposerSurfaceStyle surfaceStyle,
   required final ModelOrbits orbits,
   required final List<ModelPickerSection> sections,
   required final AgentModel? selected,
@@ -399,6 +413,7 @@ class const _OrbitsMenu({
       pointerWidth: 300,
       onClosed: null,
       triggerBuilder: (context, toggle) => _OrbitsChip(
+        surfaceStyle: surfaceStyle,
         orbits: orbits,
         onModelSelected: onModelSelected,
         fastModeControl: fastModeControl,
@@ -426,6 +441,7 @@ class const _OrbitsMenu({
 /// the finger over, so the same press slides on into it; a tap leaves the
 /// picker open for a second tap.
 class const _OrbitsChip({
+  required final PregoComposerSurfaceStyle surfaceStyle,
   required final ModelOrbits orbits,
   required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
   onModelSelected,
@@ -445,9 +461,12 @@ class _OrbitsChipState() extends State<_OrbitsChip> {
   /// Whether a keyboard has focused the chip, which then shows Prego's ring.
   bool _focused = false;
 
+  /// Opens the picker, answering the press, key or screen-reader tap with a
+  /// haptic at once.
   void _open({required OrbitsPointerHandoff? handoff}) {
     final box = context.findRenderObject();
     if (box is! RenderBox || !box.hasSize) return;
+    unawaited(playOrbitsHaptic(play: HapticFeedback.lightImpact));
     unawaited(
       showOrbitsPicker(
         context: context,
@@ -512,7 +531,11 @@ class _OrbitsChipState() extends State<_OrbitsChip> {
                       ]
                     : null,
               ),
-              child: MedallionChip(orbits: orbits, fast: widget.fastModeControl == FastModeControl.on),
+              child: MedallionChip(
+                orbits: orbits,
+                fast: widget.fastModeControl == FastModeControl.on,
+                surfaceStyle: widget.surfaceStyle,
+              ),
             ),
           ),
         ),

@@ -1,4 +1,4 @@
-import "package:flutter/services.dart" show LogicalKeyboardKey;
+import "package:flutter/services.dart" show LogicalKeyboardKey, SystemChannels;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -49,6 +49,8 @@ Future<List<_Pick>> _pump(
   bool readOnly = false,
   bool settle = true,
   double textScale = 1,
+  List<AgentInfo> agents = const [],
+  List<Widget> trailing = const [],
 }) async {
   tester.view
     ..physicalSize = _screen
@@ -71,8 +73,8 @@ Future<List<_Pick>> _pump(
                   data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
                   child: AgentModelButtons(
                     surfaceStyle: PregoComposerSurfaceStyle.subtle,
-                    agents: const [],
-                    selectedAgent: null,
+                    agents: agents,
+                    selectedAgent: agents.firstOrNull?.name,
                     onAgentSelected: (_) {},
                     providers: _providers,
                     selectedAgentModel: const AgentModel(providerID: "anthropic", modelID: "opus", variant: "high"),
@@ -89,7 +91,7 @@ Future<List<_Pick>> _pump(
                     onFastModeChanged: (_) {},
                     compact: mode == PregoInteractionMode.pointer,
                     readOnly: readOnly,
-                    trailing: const [],
+                    trailing: trailing,
                   ),
                 ),
               ),
@@ -103,6 +105,20 @@ Future<List<_Pick>> _pump(
   if (settle) await tester.pumpAndSettle();
   return picks;
 }
+
+/// Records each haptic the app plays, by its `HapticFeedbackType`.
+List<String> _recordHaptics(WidgetTester tester) {
+  final haptics = <String>[];
+  tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+    if (call.method == "HapticFeedback.vibrate") haptics.add("${call.arguments}");
+    return null;
+  });
+  addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+  return haptics;
+}
+
+const _openHaptic = "HapticFeedbackType.lightImpact";
+const _slideHaptic = "HapticFeedbackType.selectionClick";
 
 /// The geometry the picker lays out over the whole screen from the chip.
 OrbitGeometry _geometry(WidgetTester tester, {required ModelOrbits orbits}) {
@@ -127,6 +143,27 @@ void main() {
     expect(find.byType(PregoPickerButton), findsNothing);
     // As tall as the row's other touch pills, so the row does not jump.
     expect(tester.getSize(chip).height, 36);
+  });
+
+  testWidgets("the chip leads the row and everything else on it sits at the end", (tester) async {
+    const status = Key("status");
+    await _pump(
+      tester,
+      orbits: orbits,
+      agents: const [
+        AgentInfo(name: "build", description: null, model: null, mode: AgentMode.all),
+        AgentInfo(name: "plan", description: null, model: null, mode: AgentMode.all),
+      ],
+      trailing: const [SizedBox.square(key: status, dimension: 36)],
+    );
+    final row = tester.getRect(find.byType(AgentModelButtons));
+    final agent = tester.getRect(find.byType(PregoPickerButton));
+
+    expect(tester.getRect(chip).left, row.left);
+    expect(tester.getRect(find.byKey(status)).right, row.right);
+    expect(agent.right, tester.getRect(find.byKey(status)).left - 8);
+    // The agent pill hugs its label, leaving the gap after the chip open.
+    expect(agent.left - tester.getRect(chip).right, greaterThan(40));
   });
 
   testWidgets("the pointer layout keeps its pills for an orbit catalog", (tester) async {
@@ -173,6 +210,54 @@ void main() {
 
     expect(picks, [(providerID: "anthropic", modelID: "fable", variant: const SessionVariant(id: "xhigh"))]);
     expect(picker, findsNothing);
+  });
+
+  testWidgets("a press on the chip answers with one haptic as the picker opens", (tester) async {
+    // A long name stretches the chip into the innermost ring's last patch, so
+    // a press on its far end lands on a dot without having slid there.
+    final long = opus.copyWith(name: "Opus 5.5 with the 1M context window");
+    final wide = orbits.copyWith(rings: [fable, long, sonnet, haiku], current: long);
+    await _pump(tester, orbits: wide);
+    final haptics = _recordHaptics(tester);
+    final geometry = _geometry(tester, orbits: wide);
+
+    final end = tester.getRect(chip).topLeft + const Offset(160, 4);
+    expect(tester.getRect(chip).contains(end), isTrue);
+    expect(geometry.hitTest(end), isNotNull);
+    final gesture = await tester.startGesture(end);
+    await tester.pumpAndSettle();
+
+    expect(picker, findsOneWidget);
+    expect(haptics, [_openHaptic]);
+
+    await gesture.moveTo(geometry.dotCenter(ringIndex: 0, levelIndex: 3));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    // A selection tick on reaching the dot, and a firmer one as it picks.
+    expect(haptics, [_openHaptic, _slideHaptic, _openHaptic]);
+  });
+
+  testWidgets("a key or a screen reader opening the chip answers with a haptic too", (tester) async {
+    await _pump(tester, orbits: orbits);
+    final haptics = _recordHaptics(tester);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(haptics, [_openHaptic]);
+
+    Navigator.of(tester.element(picker)).pop();
+    await tester.pumpAndSettle();
+    final semantics = tester.ensureSemantics();
+    tester.semantics.tap(find.semantics.byLabel(RegExp("Opus 5.5")));
+    await tester.pumpAndSettle();
+    semantics.dispose();
+
+    expect(picker, findsOneWidget);
+    expect(haptics, [_openHaptic, _openHaptic]);
   });
 
   testWidgets("a press slid off the rings and released cancels", (tester) async {

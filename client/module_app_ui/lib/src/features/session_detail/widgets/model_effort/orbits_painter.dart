@@ -52,7 +52,10 @@ abstract final class OrbitsMotion() {
 /// The neutral colours of the picker, from the Prego theme. The metal comes
 /// from [OrbitMetal].
 final class OrbitPalette({required PregoColors colors}) {
-  final Color scrim = colors.bgSurface2.withValues(alpha: .87);
+  /// Strong enough that the transcript and composer behind read as
+  /// background and never compete with ring names and level words. Light
+  /// text on dark shows through a scrim more, so dark takes a little more.
+  final Color scrim = colors.bgSurface2.withValues(alpha: colors.brightness == Brightness.dark ? .97 : .96);
   final Color text = colors.textPrimary;
   final Color quietText = colors.textQuaternary;
   final Color line = colors.fgQuaternary;
@@ -73,29 +76,25 @@ final class OrbitPalette({required PregoColors colors}) {
 
 /// Text laid out once and bent along an arc at paint time, one glyph at a
 /// time.
-final class ArcText({required List<(String, TextStyle)> spans}) {
-  final List<(TextPainter glyph, double x, double baseline)> _glyphs = _layOut(spans: spans);
+final class ArcText({required String text, required TextStyle style}) {
+  final List<(TextPainter glyph, double x, double baseline)> _glyphs = _layOut(text: text, style: style);
 
-  static List<(TextPainter, double, double)> _layOut({required List<(String, TextStyle)> spans}) {
+  static List<(TextPainter, double, double)> _layOut({required String text, required TextStyle style}) {
     final line = TextPainter(
-      text: TextSpan(
-        children: [for (final (text, style) in spans) TextSpan(text: text, style: style)],
-      ),
+      text: TextSpan(text: text, style: style),
       textDirection: TextDirection.ltr,
     )..layout();
     final glyphs = <(TextPainter, double, double)>[];
     var offset = 0;
-    for (final (text, style) in spans) {
-      for (final character in text.characters) {
-        final x = line.getOffsetForCaret(TextPosition(offset: offset), Rect.zero).dx;
-        offset += character.length;
-        if (character.trim().isEmpty) continue;
-        final glyph = TextPainter(
-          text: TextSpan(text: character, style: style),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        glyphs.add((glyph, x, glyph.computeDistanceToActualBaseline(TextBaseline.alphabetic)));
-      }
+    for (final character in text.characters) {
+      final x = line.getOffsetForCaret(TextPosition(offset: offset), Rect.zero).dx;
+      offset += character.length;
+      if (character.trim().isEmpty) continue;
+      final glyph = TextPainter(
+        text: TextSpan(text: character, style: style),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      glyphs.add((glyph, x, glyph.computeDistanceToActualBaseline(TextBaseline.alphabetic)));
     }
     line.dispose();
     return glyphs;
@@ -132,40 +131,26 @@ final class OrbitLabels({
   required ModelOrbits orbits,
   required PregoTextTheme textTheme,
   required OrbitPalette palette,
-  required String fastTag,
   required String noEffortText,
   required String allModelsText,
 }) {
-  /// Each ring's name, with its FAST tag when it needs one.
+  /// Each ring's name.
   final List<ArcText> names = [
     for (final ring in orbits.rings)
       ArcText(
-        spans: [
-          (
-            ring.name,
-            textTheme.textXs.regular.copyWith(
-              fontSize: 12,
-              height: 1,
-              letterSpacing: 0,
-              color: palette.text,
-              fontWeight: ring == orbits.current ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-          if (!orbits.allRingsFast && ring.hasFastMode)
-            (
-              " $fastTag",
-              textTheme.textXs.bold.copyWith(fontSize: 8, height: 1, letterSpacing: 1, color: palette.quietText),
-            ),
-        ],
+        text: ring.name,
+        style: textTheme.textXs.regular.copyWith(
+          fontSize: 12,
+          height: 1,
+          letterSpacing: 0,
+          color: palette.text,
+          fontWeight: ring == orbits.current ? FontWeight.w700 : FontWeight.w500,
+        ),
       ),
   ];
   final ArcText noEffort = ArcText(
-    spans: [
-      (
-        noEffortText,
-        textTheme.textXs.medium.copyWith(fontSize: 10, height: 1, letterSpacing: 0, color: palette.quietText),
-      ),
-    ],
+    text: noEffortText,
+    style: textTheme.textXs.medium.copyWith(fontSize: 10, height: 1, letterSpacing: 0, color: palette.quietText),
   );
 
   /// Each ray's level word, by its index in [ModelOrbits.levels].
@@ -468,6 +453,7 @@ final class OrbitsPainter({
       center: center,
       radius: grown,
       metal: metal,
+      finish: MedallionFinish.polished,
       bladeCount: ring.bladeCount,
       litBlades: ring.litBlades(level: level),
       monogram: ring.name.characters.first,

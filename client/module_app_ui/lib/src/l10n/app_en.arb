@@ -1530,8 +1530,6 @@
   },
   "orbitsPickerFastToggle": "Fast",
   "@orbitsPickerFastToggle": {"description": "Label of the fast-mode toggle in the corner of the orbits model and effort picker."},
-  "orbitsPickerFastTag": "FAST",
-  "@orbitsPickerFastTag": {"description": "Small tag after a model name in the orbits picker when that model has fast mode."},
   "orbitsPickerNoEffort": "no effort setting",
   "@orbitsPickerNoEffort": {"description": "Shown along the ring of a model that has no effort levels in the orbits picker."},
   "orbitsPickerAllModels": "All {count} models",

@@ -360,9 +360,7 @@ mixin _$ModelOrbits {
  List<OrbitRing> get rings;/// The ladder levels any ring offers, weakest first.
  List<EffortLevel> get levels;/// How many models the catalog offers, so the picker can offer the rest
 /// when there are more than [rings].
- int get totalModels;/// Whether every ring's model has fast mode, so the picker need not tag
-/// the ones that do.
- bool get allRingsFast;/// The selected model's ring.
+ int get totalModels;/// The selected model's ring.
  OrbitRing get current;/// The selected level, or null when [current] offers no levels.
  EffortLevel? get currentLevel;
 /// Create a copy of ModelOrbits
@@ -376,20 +374,20 @@ $ModelOrbitsCopyWith<ModelOrbits> get copyWith => _$ModelOrbitsCopyWithImpl<Mode
 @override
 bool operator ==(Object other) {
   final _this = this as ModelOrbits;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ModelOrbits&&const DeepCollectionEquality().equals(other.rings, _this.rings)&&const DeepCollectionEquality().equals(other.levels, _this.levels)&&(identical(other.totalModels, _this.totalModels) || other.totalModels == _this.totalModels)&&(identical(other.allRingsFast, _this.allRingsFast) || other.allRingsFast == _this.allRingsFast)&&(identical(other.current, _this.current) || other.current == _this.current)&&(identical(other.currentLevel, _this.currentLevel) || other.currentLevel == _this.currentLevel));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ModelOrbits&&const DeepCollectionEquality().equals(other.rings, _this.rings)&&const DeepCollectionEquality().equals(other.levels, _this.levels)&&(identical(other.totalModels, _this.totalModels) || other.totalModels == _this.totalModels)&&(identical(other.current, _this.current) || other.current == _this.current)&&(identical(other.currentLevel, _this.currentLevel) || other.currentLevel == _this.currentLevel));
 }
 
 
 @override
 int get hashCode {
   final _this = this as ModelOrbits;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.rings),const DeepCollectionEquality().hash(_this.levels),_this.totalModels,_this.allRingsFast,_this.current,_this.currentLevel);
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.rings),const DeepCollectionEquality().hash(_this.levels),_this.totalModels,_this.current,_this.currentLevel);
 }
 
 @override
 String toString() {
   final _this = this as ModelOrbits;
-  return 'ModelOrbits(rings: ${_this.rings}, levels: ${_this.levels}, totalModels: ${_this.totalModels}, allRingsFast: ${_this.allRingsFast}, current: ${_this.current}, currentLevel: ${_this.currentLevel})';
+  return 'ModelOrbits(rings: ${_this.rings}, levels: ${_this.levels}, totalModels: ${_this.totalModels}, current: ${_this.current}, currentLevel: ${_this.currentLevel})';
 }
 
 
@@ -400,7 +398,7 @@ abstract mixin class $ModelOrbitsCopyWith<$Res>  {
   factory $ModelOrbitsCopyWith(ModelOrbits value, $Res Function(ModelOrbits) _then) = _$ModelOrbitsCopyWithImpl;
 @useResult
 $Res call({
- List<OrbitRing> rings, List<EffortLevel> levels, int totalModels, bool allRingsFast, OrbitRing current, EffortLevel? currentLevel
+ List<OrbitRing> rings, List<EffortLevel> levels, int totalModels, OrbitRing current, EffortLevel? currentLevel
 });
 
 
@@ -417,13 +415,12 @@ class _$ModelOrbitsCopyWithImpl<$Res>
 
 /// Create a copy of ModelOrbits
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? rings = null,Object? levels = null,Object? totalModels = null,Object? allRingsFast = null,Object? current = null,Object? currentLevel = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? rings = null,Object? levels = null,Object? totalModels = null,Object? current = null,Object? currentLevel = freezed,}) {
   return _then(ModelOrbits(
 rings: null == rings ? _self.rings : rings // ignore: cast_nullable_to_non_nullable
 as List<OrbitRing>,levels: null == levels ? _self.levels : levels // ignore: cast_nullable_to_non_nullable
 as List<EffortLevel>,totalModels: null == totalModels ? _self.totalModels : totalModels // ignore: cast_nullable_to_non_nullable
-as int,allRingsFast: null == allRingsFast ? _self.allRingsFast : allRingsFast // ignore: cast_nullable_to_non_nullable
-as bool,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
+as int,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
 as OrbitRing,currentLevel: freezed == currentLevel ? _self.currentLevel : currentLevel // ignore: cast_nullable_to_non_nullable
 as EffortLevel?,
   ));
@@ -446,7 +443,7 @@ $OrbitRingCopyWith<$Res> get current {
 
 
 class _ModelOrbits implements ModelOrbits {
-  const _ModelOrbits({required  List<OrbitRing> rings, required  List<EffortLevel> levels, required this.totalModels, required this.allRingsFast, required this.current, required this.currentLevel}): _rings = rings,_levels = levels;
+  const _ModelOrbits({required  List<OrbitRing> rings, required  List<EffortLevel> levels, required this.totalModels, required this.current, required this.currentLevel}): _rings = rings,_levels = levels;
   
 
 /// The rings in catalog order, outermost first. Always holds [current].
@@ -470,9 +467,6 @@ class _ModelOrbits implements ModelOrbits {
 /// How many models the catalog offers, so the picker can offer the rest
 /// when there are more than [rings].
 @override final  int totalModels;
-/// Whether every ring's model has fast mode, so the picker need not tag
-/// the ones that do.
-@override final  bool allRingsFast;
 /// The selected model's ring.
 @override final  OrbitRing current;
 /// The selected level, or null when [current] offers no levels.
@@ -488,18 +482,18 @@ _$ModelOrbitsCopyWith<_ModelOrbits> get copyWith => __$ModelOrbitsCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ModelOrbits&&const DeepCollectionEquality().equals(other.rings, _rings)&&const DeepCollectionEquality().equals(other.levels, _levels)&&(identical(other.totalModels, totalModels) || other.totalModels == totalModels)&&(identical(other.allRingsFast, allRingsFast) || other.allRingsFast == allRingsFast)&&(identical(other.current, current) || other.current == current)&&(identical(other.currentLevel, currentLevel) || other.currentLevel == currentLevel));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ModelOrbits&&const DeepCollectionEquality().equals(other.rings, _rings)&&const DeepCollectionEquality().equals(other.levels, _levels)&&(identical(other.totalModels, totalModels) || other.totalModels == totalModels)&&(identical(other.current, current) || other.current == current)&&(identical(other.currentLevel, currentLevel) || other.currentLevel == currentLevel));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_rings),const DeepCollectionEquality().hash(_levels),totalModels,allRingsFast,current,currentLevel);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_rings),const DeepCollectionEquality().hash(_levels),totalModels,current,currentLevel);
 }
 
 @override
 String toString() {
-    return 'ModelOrbits(rings: $rings, levels: $levels, totalModels: $totalModels, allRingsFast: $allRingsFast, current: $current, currentLevel: $currentLevel)';
+    return 'ModelOrbits(rings: $rings, levels: $levels, totalModels: $totalModels, current: $current, currentLevel: $currentLevel)';
 }
 
 
@@ -510,7 +504,7 @@ abstract mixin class _$ModelOrbitsCopyWith<$Res> implements $ModelOrbitsCopyWith
   factory _$ModelOrbitsCopyWith(_ModelOrbits value, $Res Function(_ModelOrbits) _then) = __$ModelOrbitsCopyWithImpl;
 @override @useResult
 $Res call({
- List<OrbitRing> rings, List<EffortLevel> levels, int totalModels, bool allRingsFast, OrbitRing current, EffortLevel? currentLevel
+ List<OrbitRing> rings, List<EffortLevel> levels, int totalModels, OrbitRing current, EffortLevel? currentLevel
 });
 
 
@@ -527,13 +521,12 @@ class __$ModelOrbitsCopyWithImpl<$Res>
 
 /// Create a copy of ModelOrbits
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? rings = null,Object? levels = null,Object? totalModels = null,Object? allRingsFast = null,Object? current = null,Object? currentLevel = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? rings = null,Object? levels = null,Object? totalModels = null,Object? current = null,Object? currentLevel = freezed,}) {
   return _then(_ModelOrbits(
 rings: null == rings ? _self._rings : rings // ignore: cast_nullable_to_non_nullable
 as List<OrbitRing>,levels: null == levels ? _self._levels : levels // ignore: cast_nullable_to_non_nullable
 as List<EffortLevel>,totalModels: null == totalModels ? _self.totalModels : totalModels // ignore: cast_nullable_to_non_nullable
-as int,allRingsFast: null == allRingsFast ? _self.allRingsFast : allRingsFast // ignore: cast_nullable_to_non_nullable
-as bool,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
+as int,current: null == current ? _self.current : current // ignore: cast_nullable_to_non_nullable
 as OrbitRing,currentLevel: freezed == currentLevel ? _self.currentLevel : currentLevel // ignore: cast_nullable_to_non_nullable
 as EffortLevel?,
   ));

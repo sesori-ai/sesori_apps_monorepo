@@ -7,10 +7,12 @@ import "package:theme_prego/module_prego.dart";
 
 import "orbit_metal.dart";
 
-/// The touch composer's model and effort control: a metal plate with the
-/// medallion at its leading end, the model's name with its level word under
-/// it, and an end diamond that becomes a glowing bolt in fast mode. Silver at
-/// standard speed, gold while fast.
+/// The touch composer's model and effort control: a plate on the composer's
+/// pill surface with a metal-touched rim, the medallion at its leading end,
+/// the model's name with its level word under it, and an end diamond that
+/// becomes a glowing bolt in fast mode. Silver at standard speed, gold while
+/// fast. At rest it is satin rather than polished, so it sits beside the
+/// prompt field like the other pills.
 ///
 /// The medallion is as wide as the chip is tall, which is where the orbits
 /// picker centres its rings. A new model, level or speed cross-fades in while
@@ -19,6 +21,9 @@ class const MedallionChip({
   super.key,
   required final ModelOrbits orbits,
   required final bool fast,
+
+  /// The composer's outline treatment, which the plate shares with the pills.
+  required final PregoComposerSurfaceStyle surfaceStyle,
 }) extends StatefulWidget {
   /// The height of the composer's touch pills, so the row never jumps.
   static const double height = 36;
@@ -111,6 +116,11 @@ class _MedallionChipState() extends State<MedallionChip> with SingleTickerProvid
               toText: toText,
               progress: _curve.value,
               colors: prego.colors,
+              surface: pregoComposerSurfaceDecoration(
+                prego: prego,
+                style: widget.surfaceStyle,
+                borderRadius: BorderRadius.zero,
+              ),
             ),
           ),
         ),
@@ -211,6 +221,9 @@ final class _MedallionChipPainter({
   required final _ChipText toText,
   required final double progress,
   required final PregoColors colors,
+
+  /// The composer pills' fill, outline and shadow.
+  required final BoxDecoration surface,
 }) extends CustomPainter {
   static const double _radius = MedallionChip.height / 2;
 
@@ -230,52 +243,42 @@ final class _MedallionChipPainter({
     final dark = colors.brightness == Brightness.dark;
     // The plate starts under the medallion and ends in a chamfered point.
     final plate = Path()
-      ..moveTo(_radius, 0)
-      ..lineTo(w - 10, 0)
+      ..moveTo(_radius, .5)
+      ..lineTo(w - 10, .5)
       ..lineTo(w - 1, 9)
       ..lineTo(w - 1, h - 9)
-      ..lineTo(w - 10, h)
-      ..lineTo(_radius, h)
+      ..lineTo(w - 10, h - .5)
+      ..lineTo(_radius, h - .5)
       ..close();
-    canvas
-      ..drawPath(
-        plate.shift(const Offset(0, 5)),
-        Paint()
-          ..color = const Color(0x1A1B1430)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
-      )
-      ..drawPath(
-        plate.shift(const Offset(0, 1)),
-        Paint()
-          ..color = const Color(0x290B0C10)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1),
-      )
-      ..drawPath(
+    // The pills' own fill, outline and shadow.
+    for (final shadow in surface.boxShadow ?? const <BoxShadow>[]) {
+      canvas.drawPath(plate.shift(shadow.offset), shadow.toPaint());
+    }
+    canvas.drawPath(plate, Paint()..color = surface.color ?? colors.bgSurface2);
+    if (surface.border case Border(:final top)) {
+      canvas.drawPath(
         plate,
         Paint()
-          ..shader = ui.Gradient.linear(Offset.zero, Offset(0, h), [
-            colors.bgSurface2,
-            Color.lerp(colors.bgSurface2, colors.textPrimary, .045) ?? colors.bgSurface2,
-          ]),
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = top.width
+          ..color = top.color,
       );
-    // The polished rim: a dark edge, the metal, and a sheen across it.
+    }
+    // A touch of metal along the outline, so the plate still reads as struck
+    // in silver or gold, with a faint sheen across it.
     canvas
       ..drawPath(
         plate,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.4
-          ..color = metal.edge.withValues(alpha: .75),
-      )
-      ..drawPath(
-        plate,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5
+          ..strokeWidth = 1
           ..shader = ui.Gradient.linear(
             Offset.zero,
             Offset(0, h),
-            [metal.m0, metal.m1, metal.m2, metal.m3, metal.m1, metal.m2],
+            [
+              for (final band in [metal.m0, metal.m1, metal.m2, metal.m3, metal.m1, metal.m2])
+                band.withValues(alpha: dark ? .32 : .5),
+            ],
             const [0, .22, .48, .56, .74, 1],
           ),
       )
@@ -283,36 +286,13 @@ final class _MedallionChipPainter({
         plate,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5
+          ..strokeWidth = 1
           ..shader = ui.Gradient.linear(
             Offset(w * .1, 0),
             Offset(w * .55, h),
-            const [Color(0x00FFFFFF), Color(0x94FFFFFF), Color(0x00FFFFFF)],
+            const [Color(0x00FFFFFF), Color(0x40FFFFFF), Color(0x00FFFFFF)],
             const [.36, .5, .64],
           ),
-      );
-    // An engraved line inside the rim: a shade with a highlight under it.
-    final engraving = Path()
-      ..moveTo(_radius, 2.9)
-      ..lineTo(w - 11.2, 2.9)
-      ..lineTo(w - 3.9, 10.2)
-      ..lineTo(w - 3.9, h - 10.2)
-      ..lineTo(w - 11.2, h - 2.9)
-      ..lineTo(_radius, h - 2.9);
-    canvas
-      ..drawPath(
-        engraving,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = .6
-          ..color = Color.fromRGBO(0, 0, 0, dark ? .35 : .1),
-      )
-      ..drawPath(
-        engraving.shift(const Offset(0, .7)),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = .6
-          ..color = Color.fromRGBO(255, 255, 255, dark ? .08 : 1),
       );
     _paintEndMark(canvas: canvas, center: Offset(w - 9.5, h / 2), metal: metal, fast: face.fast);
     text.paint(canvas: canvas, width: w);
@@ -321,6 +301,7 @@ final class _MedallionChipPainter({
       center: const Offset(_radius, _radius),
       radius: _radius,
       metal: metal,
+      finish: MedallionFinish.satin,
       bladeCount: face.bladeCount,
       litBlades: face.litBlades,
       monogram: face.monogram,
@@ -335,7 +316,7 @@ final class _MedallionChipPainter({
         center,
         4.6,
         Paint()
-          ..color = metal.m1.withValues(alpha: .75)
+          ..color = metal.m1.withValues(alpha: .45)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.2),
       );
       mark = Path()
@@ -355,7 +336,7 @@ final class _MedallionChipPainter({
         ..close();
     }
     canvas
-      ..drawPath(mark, Paint()..shader = metal.beadShader(bounds: mark.getBounds()))
+      ..drawPath(mark, Paint()..shader = metal.beadShader(bounds: mark.getBounds(), opacity: 1))
       ..drawPath(
         mark,
         Paint()
@@ -373,5 +354,6 @@ final class _MedallionChipPainter({
       oldDelegate.fromText != fromText ||
       oldDelegate.toText != toText ||
       oldDelegate.progress != progress ||
-      oldDelegate.colors != colors;
+      oldDelegate.colors != colors ||
+      oldDelegate.surface != surface;
 }

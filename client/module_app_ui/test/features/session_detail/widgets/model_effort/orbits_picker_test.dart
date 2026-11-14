@@ -24,6 +24,7 @@ final class _Harness() {
   final fastChanges = <bool>[];
   int allModelsOpened = 0;
   int selectionHaptics = 0;
+  int pickHaptics = 0;
 }
 
 OrbitGeometry _geometry({required ModelOrbits orbits}) => OrbitGeometry(
@@ -46,8 +47,13 @@ Future<_Harness> _open(
   addTearDown(tester.view.reset);
   final harness = _Harness();
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
-    if (call.method == "HapticFeedback.vibrate" && call.arguments == "HapticFeedbackType.selectionClick") {
-      harness.selectionHaptics++;
+    if (call.method == "HapticFeedback.vibrate") {
+      switch (call.arguments) {
+        case "HapticFeedbackType.selectionClick":
+          harness.selectionHaptics++;
+        case "HapticFeedbackType.lightImpact":
+          harness.pickHaptics++;
+      }
     }
     return null;
   });
@@ -95,6 +101,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(harness.picks, [(providerID: "anthropic", modelID: "fable", variant: const SessionVariant(id: "xhigh"))]);
+    expect(harness.pickHaptics, 1);
     expect(picker, findsNothing);
   });
 
@@ -130,6 +137,7 @@ void main() {
 
     expect(harness.picks, [(providerID: "anthropic", modelID: "fable", variant: const SessionVariant(id: "max"))]);
     expect(harness.selectionHaptics, 4);
+    expect(harness.pickHaptics, 1);
     expect(picker, findsNothing);
   });
 
@@ -144,6 +152,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(harness.picks, isEmpty);
+    expect(harness.pickHaptics, 0);
     expect(picker, findsNothing);
   });
 
@@ -204,7 +213,6 @@ void main() {
       rings: [pi],
       levels: const [EffortLevel.off, EffortLevel.low, EffortLevel.high],
       totalModels: 1,
-      allRingsFast: false,
       current: pi,
       currentLevel: EffortLevel.high,
     );

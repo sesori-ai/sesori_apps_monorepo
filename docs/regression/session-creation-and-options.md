@@ -665,7 +665,8 @@ variant, and worktree mode, and creating the session with its first input.
   qualify today.
 - On the touch composer (phone and touch iPad, in New Session and session
   detail) an eligible catalog replaces the model, effort and ⚡ pills with one
-  medallion chip; the agent pill stays beside it. The pointer layout (desktop,
+  medallion chip. The chip leads the row, and the agent pill and the trailing
+  status chips (such as YOLO) sit at its end. The pointer layout (desktop,
   and an iPad driven by a pointer) and every ineligible catalog keep the pills.
   The run-detail pills of sub-agent and archived sessions are unchanged.
 - The chip is 36 pt tall like the touch pills and hugs its text. A medallion at
@@ -674,7 +675,9 @@ variant, and worktree mode, and creating the session with its first input.
   of its own and lights none. Beside it are the model name (ellipsized when
   long) and the level word in capitals (`HIGH`, `OFF`),
   and an end diamond that turns into a bolt while fast mode is on. It is silver
-  at standard speed and gold while fast. A model, level or speed change
+  at standard speed and gold while fast. Its plate uses the composer pills'
+  fill, border and shadow with a thin metal rim, and its medallion has a satin
+  finish, so it sits quietly beside the pills. A model, level or speed change
   cross-fades the face and eases the plate to its new width; nothing snaps.
   Its text follows the system text size, bold-text and spacing settings, with
   the size capped at 1.3x.
@@ -687,7 +690,8 @@ variant, and worktree mode, and creating the session with its first input.
   chip stays in the same place with the committed choice, and it takes no
   taps, focus or keyboard activation. Nothing swaps between chip and pills or
   shifts as the composer turns live again.
-- The orbits picker opens over a scrim from the chip, its rings centred on the
+- The orbits picker opens over a near-opaque scrim from the chip, so the
+  transcript and composer behind it read as background, its rings centred on the
   medallion: one ring per ring model, outermost first in catalog order, with
   the name along the arc, and one ray per ladder level any ring offers, from the
   lowest at the low angle to the highest. Only the current choice is drawn
@@ -706,18 +710,23 @@ variant, and worktree mode, and creating the session with its first input.
   the rings still sit in catalog order. A catalog without families (an older
   bridge, Claude Code today) gets its first four models this way.
 - Press, slide and release: the picker opens as the finger lands on the chip,
-  and the same finger slides into the rings. The dot under the finger grows,
-  and entering a new dot's patch plays a selection haptic. Releasing on a level
-  dot picks that model and level together in one change; releasing on a ring's
+  with a light haptic, and the same finger slides into the rings. The dot under
+  the finger grows, and entering a new dot's patch plays a selection haptic; a
+  patch already under the finger when the picker opens does not add a second
+  one. Releasing on a level dot picks that model and level together in one
+  change, with a light haptic; releasing on a ring's
   name picks the model with the model picker's switch rule (the current level
-  when the model offers it, else its fallbacks); releasing anywhere else closes
-  the picker with no change. A second finger is ignored.
+  when the model offers it, else its fallbacks), with the same light haptic;
+  releasing anywhere else closes the picker with no change and no haptic. A
+  second finger is ignored.
 - Tap: a tap on the chip opens the picker and leaves it open, and a tap on a dot
-  or name then picks as a release would; a tap on empty space closes it. A
+  or name then picks as a release would, with the same light haptic; a tap on
+  empty space closes it.
+  Opening by keyboard or by a screen reader's tap plays the same light haptic.
+  A
   model without levels has one dot at the ring's end and is picked from
   anywhere on its ring.
-- A FAST tag sits next to the name of each ring model that has fast mode, and
-  is hidden when every ring has it. The fast toggle in the picker's bottom-right
+- The fast toggle in the picker's bottom-right
   corner shows when the current model or any ring model has fast mode. It
   answers only a press that starts on it, so a slide ending there changes
   nothing, and it uses the ⚡ pill's flow: apply, the unavailable reason, or the

@@ -50,12 +50,37 @@ enum OrbitMetal({
       ui.Gradient.linear(bounds.topLeft, bounds.bottomRight, [m0, m1, m2], const [0, .55, 1]);
 
   /// A small polished bead, lit from the upper left.
-  Shader beadShader({required Rect bounds}) => ui.Gradient.radial(
+  /// A shader ignores the paint's colour, so [opacity] fades the bead here.
+  Shader beadShader({required Rect bounds, required double opacity}) => ui.Gradient.radial(
     bounds.topLeft + Offset(bounds.width * .35, bounds.height * .3),
     bounds.longestSide * .75,
-    [m0, m1, m3],
+    [
+      for (final color in [m0, m1, m3]) color.withValues(alpha: color.a * opacity),
+    ],
     const [0, .45, 1],
   );
+}
+
+/// How much a medallion catches the light.
+enum MedallionFinish({
+  required final double shadowAlpha,
+  required final double sheenAlpha,
+  required final double glossAlpha,
+
+  /// How far the rim's bands keep their contrast, from flat mid-tone metal
+  /// (0) to the full polish (1).
+  required final double rimContrast,
+  required final double edgeAlpha,
+  required final double knurlAlpha,
+}) {
+  /// The current choice on the rings, which should catch the eye.
+  polished(shadowAlpha: .32, sheenAlpha: .65, glossAlpha: .38, rimContrast: 1, edgeAlpha: 1, knurlAlpha: 1),
+
+  /// The composer chip at rest, which sits beside the prompt field like the
+  /// other pills.
+  satin(shadowAlpha: .1, sheenAlpha: .15, glossAlpha: .2, rimContrast: .4, edgeAlpha: .5, knurlAlpha: .55);
+
+  Color _rim(OrbitMetal metal, Color band) => Color.lerp(metal.m2, band, rimContrast) ?? band;
 }
 
 /// A ring's fan on the medallion: one blade per thinking level, so OFF has
@@ -72,12 +97,14 @@ extension OrbitRingBlades on OrbitRing {
 
 /// Paints a medallion of [radius] at [center]: a knurled metal rim around dark
 /// enamel bearing a fan of [bladeCount] blades lit up to [litBlades], or the
-/// [monogram] when the model has no levels.
+/// [monogram] when the model has no levels. The [finish] sets how much it
+/// catches the light.
 void paintMedallion({
   required Canvas canvas,
   required Offset center,
   required double radius,
   required OrbitMetal metal,
+  required MedallionFinish finish,
   required int bladeCount,
   required int litBlades,
   required String monogram,
@@ -89,7 +116,7 @@ void paintMedallion({
     center + Offset(.6 * k, 1.6 * k),
     radius,
     Paint()
-      ..color = const Color(0x520B0C10)
+      ..color = const Color(0xFF0B0C10).withValues(alpha: finish.shadowAlpha)
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, 1.4 * k),
   );
   canvas.drawCircle(
@@ -99,7 +126,9 @@ void paintMedallion({
       ..shader = ui.Gradient.linear(
         Offset(center.dx, center.dy - radius),
         Offset(center.dx, center.dy + radius),
-        [metal.m0, metal.m1, metal.m2, metal.m3, metal.m1, metal.m2],
+        [
+          for (final band in [metal.m0, metal.m1, metal.m2, metal.m3, metal.m1, metal.m2]) finish._rim(metal, band),
+        ],
         const [0, .22, .48, .56, .74, 1],
       ),
   );
@@ -111,7 +140,7 @@ void paintMedallion({
       ..shader = ui.Gradient.linear(
         box.topLeft,
         Offset(box.left + box.width * .45, box.bottom),
-        const [Color(0x00FFFFFF), Color(0xA6FFFFFF), Color(0x00FFFFFF)],
+        [const Color(0x00FFFFFF), Colors.white.withValues(alpha: finish.sheenAlpha), const Color(0x00FFFFFF)],
         const [.36, .5, .64],
       ),
   );
@@ -121,14 +150,18 @@ void paintMedallion({
     Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = .55 * k
-      ..color = metal.edge,
+      ..color = metal.edge.withValues(alpha: finish.edgeAlpha),
   );
   // Knurling around the rim.
   for (var index = 0; index < 20; index++) {
     final angle = index / 20 * math.pi * 2;
     final knurl = center + Offset(math.cos(angle), math.sin(angle)) * (radius - 2.3 * k);
     final knurlBox = Rect.fromCircle(center: knurl, radius: .78 * k);
-    canvas.drawCircle(knurl, .78 * k, Paint()..shader = metal.beadShader(bounds: knurlBox));
+    canvas.drawCircle(
+      knurl,
+      .78 * k,
+      Paint()..shader = metal.beadShader(bounds: knurlBox, opacity: finish.knurlAlpha),
+    );
   }
   canvas.drawCircle(
     center,
@@ -171,7 +204,7 @@ void paintMedallion({
       ..shader = ui.Gradient.radial(
         Offset(glossBox.center.dx, glossBox.top + glossBox.height * .15),
         glossBox.width * .7,
-        const [Color(0x61FFFFFF), Color(0x00FFFFFF)],
+        [Colors.white.withValues(alpha: finish.glossAlpha), const Color(0x00FFFFFF)],
       ),
   );
   if (bladeCount == 0) {
@@ -243,7 +276,7 @@ void _paintBlades({
     ..quadraticBezierTo(hub.dx, hub.dy + length * .14, hub.dx - c, hub.dy - length * .1)
     ..close();
   canvas
-    ..drawPath(hubPath, Paint()..shader = metal.beadShader(bounds: hubPath.getBounds()))
+    ..drawPath(hubPath, Paint()..shader = metal.beadShader(bounds: hubPath.getBounds(), opacity: 1))
     ..drawPath(
       hubPath,
       Paint()

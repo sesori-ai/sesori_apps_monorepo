@@ -47,10 +47,6 @@ sealed class ModelOrbits with _$ModelOrbits {
     /// when there are more than [rings].
     required int totalModels,
 
-    /// Whether every ring's model has fast mode, so the picker need not tag
-    /// the ones that do.
-    required bool allRingsFast,
-
     /// The selected model's ring.
     required OrbitRing current,
 
