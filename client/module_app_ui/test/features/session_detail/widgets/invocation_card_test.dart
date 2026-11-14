@@ -119,7 +119,7 @@ void main() {
     }
 
     final sending = await sizeOf(
-      const QueuedMessageBubblePresentation.sending(harnessName: "Codex", sendingSince: null),
+      const QueuedMessageBubblePresentation.sending(harnessName: "Codex", sendingSince: null, reservesLine: false),
     );
     final queued = await sizeOf(QueuedMessageBubblePresentation.pending(onCancel: () {}, sentAt: DateTime(2000)));
     final confirmed = await sizeOf(

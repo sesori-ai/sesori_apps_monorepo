@@ -477,9 +477,14 @@ variant, and worktree mode, and creating the session with its first input.
   previews) at the transcript's newest-row position above the composer (live
   dictated words glide onto it first; see `voice-input.md`), while the
   unresolved URI remains `/sessions/new?project=<projectId>`. It never shows a
-  spinner page. It has no status line until about two seconds in, when "Sending
-  to `<harness>`…", or "Sending" with no harness name yet, comes in under it as
-  a slow send's does (see `session-turns.md`). The composer stays mounted with
+  spinner page. The bubble lands with room already kept below it for its status
+  line, which stays empty until about two seconds in, when "Sending to
+  `<harness>`…", or "Sending" with no harness name yet, fades into that room
+  without moving the bubble, also under reduced motion (see `session-turns.md`).
+  Only this first message of a new session keeps that room. When it is
+  delivered before "Working…" shows, the room is released and the bubble
+  eases down 22 pt.
+  The composer stays mounted with
   its text, staged images, voice
   and focus; on a pointer surface it moves once from the centred column to the
   bottom edge at the session page's composer width (240 ms, instant under

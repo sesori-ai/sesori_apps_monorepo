@@ -1051,7 +1051,8 @@ void main() {
       await tester.pump();
 
       expect(await largestStep(tester, bubble), lessThan(9));
-      expect(tester.getTopLeft(bubble).dy, moreOrLessEquals(top - 60, epsilon: 0.01));
+      // The working row's 60 less the 22 the launch kept for its line.
+      expect(tester.getTopLeft(bubble).dy, moreOrLessEquals(top - 38, epsilon: 0.01));
     });
 
     testWidgets("under reduced motion the row takes its height at once and the line still fades", (tester) async {

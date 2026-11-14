@@ -6,6 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../l10n/app_localizations.dart";
 
 import "invocation_card.dart";
 import "user_message_card.dart";
@@ -14,8 +15,15 @@ sealed class const QueuedMessageBubblePresentation() {
   /// [harnessName] is null until the harness status loads. [sendingSince] is
   /// the instant the send began when it predates this bubble, so a bubble
   /// rebuilt mid-send keeps its slow-send copy; null starts the clock now.
-  const factory sending({required String? harnessName, required DateTime? sendingSince}) =
-      SendingMessageBubblePresentation;
+  /// [reservesLine] keeps the line's room from the first frame, so the line
+  /// fades into it and moves nothing: a session's first message nearly always
+  /// outlasts the wait. Other sends usually arrive first, so they take no room
+  /// until the line shows, as the message they become has none.
+  const factory sending({
+    required String? harnessName,
+    required DateTime? sendingSince,
+    required bool reservesLine,
+  }) = SendingMessageBubblePresentation;
 
   /// [sentAt] is when the message was sent, as the Queued line follows the same
   /// clock as a send's status. Null for a message this surface has no send time
@@ -41,6 +49,7 @@ sealed class const QueuedMessageBubblePresentation() {
 final class const SendingMessageBubblePresentation({
   required final String? harnessName,
   required final DateTime? sendingSince,
+  required final bool reservesLine,
 }) extends QueuedMessageBubblePresentation;
 
 final class const PendingMessageBubblePresentation({
@@ -177,28 +186,22 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
     final localAttachments = widget.localAttachments;
     final Widget? status = switch (presentation) {
       // Absent rather than hidden, so that Cancel can't be reached before it shows.
-      SendingMessageBubblePresentation() ||
+      SendingMessageBubblePresentation(reservesLine: false) ||
       PendingMessageBubblePresentation() ||
       ReadOnlyPendingMessageBubblePresentation() when !_isStatusDue => null,
-      // The label names the harness, so it wraps rather than overflowing a
-      // narrow pane at large text.
-      SendingMessageBubblePresentation(:final harnessName) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const ExcludeSemantics(
-            child: SizedBox.square(
-              dimension: 14,
-              child: PregoActivityIndicator(color: null),
-            ),
-          ),
-          const SizedBox(width: PregoSpacing.xs),
-          Flexible(
-            child: Text(
-              harnessName != null ? loc.sessionDetailSendingToHarness(harnessName) : loc.sessionDetailSendingMessage,
-              style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary),
-            ),
-          ),
-        ],
+      SendingMessageBubblePresentation(:final harnessName, reservesLine: false) => _sendingLine(
+        prego: prego,
+        loc: loc,
+        harnessName: harnessName,
+      ),
+      // A reserved line waits unseen and unread, then fades in where it is.
+      SendingMessageBubblePresentation(:final harnessName) => ExcludeSemantics(
+        excluding: !_isStatusDue,
+        child: AnimatedOpacity(
+          opacity: _isStatusDue ? 1 : 0,
+          duration: _statusFade,
+          child: _sendingLine(prego: prego, loc: loc, harnessName: harnessName),
+        ),
       ),
       PendingMessageBubblePresentation(:final onCancel) => Wrap(
         alignment: wrapEdge,
@@ -394,6 +397,33 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
               );
             },
             child: statusRail,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// The label names the harness, so it wraps rather than overflowing a narrow
+  /// pane at large text. The spinner starts only once the line is due.
+  Widget _sendingLine({
+    required PregoDesignSystem prego,
+    required AppLocalizations loc,
+    required String? harnessName,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ExcludeSemantics(
+          child: SizedBox.square(
+            dimension: 14,
+            child: _isStatusDue ? const PregoActivityIndicator(color: null) : null,
+          ),
+        ),
+        const SizedBox(width: PregoSpacing.xs),
+        Flexible(
+          child: Text(
+            harnessName != null ? loc.sessionDetailSendingToHarness(harnessName) : loc.sessionDetailSendingMessage,
+            style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary),
           ),
         ),
       ],
