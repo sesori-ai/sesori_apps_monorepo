@@ -143,7 +143,13 @@ jobs:
       - name: Rename binary (Unix)
         if: runner.os != 'Windows'
         shell: bash
-        run: mv build/cli/bundle/bin/bridge build/cli/bundle/bin/sesori-bridge
+        run: |
+          mv build/cli/bundle/bin/bridge build/cli/bundle/bin/sesori-bridge
+          # Since Dart 3.14 the Linux launcher loads its AOT snapshot from
+          # lib/libdartaot<executable name>.so, so the library must follow the rename.
+          if [ -f build/cli/bundle/lib/libdartaotbridge.so ]; then
+            mv build/cli/bundle/lib/libdartaotbridge.so build/cli/bundle/lib/libdartaotsesori-bridge.so
+          fi
         working-directory: bridge/app
 
       - name: Rename binary (Windows)
@@ -218,6 +224,23 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: tar -czf ${{ matrix.asset_name }}.tar.gz -C build/cli/bundle .
+        working-directory: bridge/app
+
+      # A launcher that cannot find its snapshot still exits 0 with the Dart VM
+      # usage, so check for the CLI's own output.
+      - name: Smoke-test archived binary (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          smoke_dir="$(mktemp -d)"
+          trap 'rm -rf "$smoke_dir"' EXIT
+          tar -xzf "${{ matrix.asset_name }}.tar.gz" -C "$smoke_dir"
+          help_output="$("$smoke_dir/bin/sesori-bridge" --help 2>&1)"
+          if ! grep -q "Sesori Bridge CLI" <<<"$help_output"; then
+            echo "::error::Archived sesori-bridge did not start the bridge CLI:" >&2
+            echo "$help_output" >&2
+            exit 1
+          fi
         working-directory: bridge/app
 
       - name: Verify signed macOS archive
