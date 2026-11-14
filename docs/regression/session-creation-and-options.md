@@ -659,9 +659,9 @@ variant, and worktree mode, and creating the session with its first input.
   exactly one provider has available models, every effort it reports (ignoring
   `none`) is an exact level of the ladder `off, minimal, low, medium, high,
   xhigh, max, ultra`, at least one model reports a level, and a model is
-  selected. `off` (Pi and Oh My Pi's thinking off) is the weakest level. One
-  effort name off the ladder (`mid`, `highest`) makes the whole catalog
-  ineligible. See `docs/HARNESS_CAPABILITIES.md` for which harnesses
+  selected. `off` (Pi's thinking off) is the weakest level. One
+  effort name off the ladder (`mid`, `highest`, Oh My Pi's `auto`) makes the
+  whole catalog ineligible, so no level the orbits cannot draw is hidden. See `docs/HARNESS_CAPABILITIES.md` for which harnesses
   qualify today.
 - On the touch composer (phone and touch iPad, in New Session and session
   detail) an eligible catalog replaces the model, effort and ⚡ pills with one
@@ -791,8 +791,9 @@ mixed fast-mode support across the rings, a model name that ellipsizes, the
 largest text size, reduced motion, light and dark, a landscape phone, the soft
 keyboard up while pressing the chip, and a fast slide that crosses several
 patches before release. Also vary a catalog that just misses eligibility (a
-second provider, one off-ladder effort name, no levels at all), and a Pi or
-Oh My Pi catalog with one provider, whose `off` level must show as `OFF`.
+second provider, one off-ladder effort name, no levels at all), a Pi catalog
+with one provider, whose `off` level must show as `OFF`, and an Oh My Pi
+catalog, which keeps the pills because it offers `auto`.
 For the command picker, vary light/dark mode, narrow widths, large text, long
 command names, every source label, missing descriptions/hints, empty/no-match
 results, and scrolling a large catalog with the keyboard open. For both
@@ -971,8 +972,9 @@ startup-extension file failure, retry once the filesystem is usable.
   models" shows when every model has a ring, or does not open the model picker;
   the list it opens folds families, or the model pill's list stops folding
   them.
-- A Pi or Oh My Pi catalog with one provider falls back to the pills, `OFF`
-  lights a blade, or dark mode draws the hollow dots as dark holes.
+- A Pi catalog with one provider falls back to the pills, `OFF` lights a
+  blade, an Oh My Pi catalog (it offers `auto`) shows the chip, or dark mode
+  draws the hollow dots as dark holes.
 - The ripple overshoots or plays under reduced motion, or rings overflow the
   screen on a small or landscape phone.
 - Codex's model picker shows the oldest model of a family by default, a bare id
