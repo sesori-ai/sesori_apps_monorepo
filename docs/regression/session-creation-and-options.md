@@ -481,6 +481,9 @@ variant, and worktree mode, and creating the session with its first input.
   line, which stays empty until about two seconds in, when "Sending to
   `<harness>`…", or "Sending" with no harness name yet, fades into that room
   without moving the bubble, also under reduced motion (see `session-turns.md`).
+  Only this first message of a new session keeps that room. When it is
+  delivered before "Working…" shows, the room is released and the bubble
+  eases down 22 pt.
   The composer stays mounted with
   its text, staged images, voice
   and focus; on a pointer surface it moves once from the centred column to the
