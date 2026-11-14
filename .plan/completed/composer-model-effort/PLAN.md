@@ -2,10 +2,14 @@
 
 ## Status and scope
 
-- Design agreed with the owner over 17 review rounds; the decisions below
+- Design agreed with the owner over 18 review rounds; the decisions below
   (D1–D10) are the complete record. Round 15 settled the picker; round 16
   settled how many rings show and which harnesses get them; round 17 settled
-  the dark look, the OFF level and the full model list (D10).
+  the dark look, the OFF level and the full model list (D10). Round 18 kept
+  orbits wherever the catalog fits, on the condition that every model and
+  level stays reachable, so Oh My Pi (`auto` on every model) keeps the pills.
+- Steps 1–8 merged; step 9 records the L3 matrix, which passed on
+  2026-11-14 (see L3 results), and retires the plan.
 - Phase 1 is detailed below. Later phases are intent only; each becomes its
   own plan when it starts.
 - Phase 1 ships on the touch composer layout (`AgentModelButtons.compact ==
@@ -27,8 +31,9 @@ picks model and effort together. Every other catalog keeps today's pills.
   level (ignoring `none`) is on the shared ladder `off, minimal, low, medium,
   high, xhigh, max, ultra`, at least one model reports a level, and a model is
   selected. Decided from the data, never from the harness name or a plugin
-  flag. No wire change. Today this matches Claude Code and Codex, and Pi and
-  Oh My Pi with one provider in use (D10).
+  flag. No wire change. Today this matches Claude Code and Codex, and Pi with
+  one provider in use (D10). Oh My Pi keeps the pills: its `auto` level is
+  off the ladder (round 18).
 - **D2 Rings (round 16, Q1 A with the owner's note).** "Do latest 4 from each
   category: Latest Luna, Latest Terra, Latest Sol, Latest Astra." Group the
   available models by `family ?? id` in order of first appearance in the
@@ -104,7 +109,8 @@ picks model and effort together. Every other catalog keeps today's pills.
   - Dark mode, variant C "tinted bead": hollow dots and the "All N models"
     pill fill with `fgQuaternary` and a `fgSecondary` edge, and the level
     words use `textTertiary`. Light mode is unchanged.
-  - `off` joins the ladder as its weakest level, so Pi and Oh My Pi qualify.
+  - `off` joins the ladder as its weakest level, so Pi qualifies (Oh My Pi
+    still does not; see D1).
     OFF has no blade on the medallion and lights none.
   - "All N models" opens the model picker listing every model, not one per
     family; the model pill's picker is unchanged.
@@ -307,9 +313,18 @@ proxy where they accept it).
 | Claude Code, iOS simulator, light and dark | Chip shows model and level; orbits open with the ripple; slide and release picks model and level in one go; a no-level model ring works; fast toggle with confirmation; the sent prompt carries the picked variant and fast mode. |
 | Codex, iOS simulator | Rings are the latest model of each family; "All N models" opens the regular picker listing every model; picking a model outside the top four makes it take the fourth slot, with the rings kept in strength order (strongest outermost), so it is not necessarily drawn innermost |
 | New session to session detail, iOS simulator | Both composers behave the same; during the launch hand-off the locked chip stays in place with no swap. |
-| Pi and Oh My Pi, each with one provider, iOS simulator | Orbits with an OFF ray; picking OFF sends `off`, and the chip reads OFF with no blade lit. |
+| Pi with one provider, and Oh My Pi, iOS simulator | Pi: orbits with an OFF ray; picking OFF sends `off`, and the chip reads OFF with no blade lit. Oh My Pi keeps the pills (its `auto` level). |
 | One non-orbit harness (OpenCode with several providers, or Hermes), iOS simulator | Today's pills, unchanged. |
 | Chip polish (step 8), Claude Code, iOS simulator, light and dark | The chip's plate blends with the composer pills; the chip leads the row with the agent pill and YOLO end-aligned; the scrim keeps ring names and level words readable over a busy transcript; ring names carry no FAST tag; a haptic on chip press (one, even when the press starts over a patch), on sliding onto a new target, and on a pick by release or tap of a dot or name. |
+
+## L3 results (2026-11-14)
+
+All cells passed on a headless iOS simulator against a local bridge, with live
+Claude Code, Codex, Pi, Oh My Pi and OpenCode through the local test proxy.
+The run used step 8's final head (`be5288ef37`, squash-merged as
+`1715b670e1`), before #2579. The proxy account has fast mode disabled, so the Claude fast confirmation
+rests on its widget tests. The one finding, the first message's bubble rising
+22 pt when its sending caption appeared, was fixed in #2579.
 
 ## Risks and accepted behaviour
 
@@ -330,7 +345,9 @@ proxy where they accept it).
 ## Later phases (rough intent only)
 
 - Other harnesses: the model list sheet with an effort footer (round 10,
-  option A), which also becomes the "All N models" destination.
+  option A), which also becomes the "All N models" destination. Once that
+  list can pick an effort, orbits can take catalogs with a level they do not
+  draw, such as Oh My Pi's `auto`.
 - Pointer layout (desktop): adapt the chip and picker to mouse and keyboard.
 - Claude Code families and context-window variants, if its ring fallback
   turns out to hide models people use.

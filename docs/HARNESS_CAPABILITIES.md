@@ -673,7 +673,8 @@ name rejects the whole catalog. The pointer layout always keeps the pills.
 | Copilot | ✅ Typically: one provider. A model's levels are known only once it has been the current model, so the others show as rings without levels. |
 | DeepSeek | ✅ Only when exactly one upstream provider is in use; it reports one provider per upstream provider. |
 | OpenCode | ✅ Rarely: only with exactly one usable connected provider; it reports one provider per connected provider. |
-| Pi, OMP | ✅ Only when exactly one provider is in use; their `off` (thinking off) is the weakest level. |
+| Pi | ✅ Only when exactly one provider is in use; its `off` (thinking off) is the weakest level. |
+| OMP | ⬜ Keeps the pills: every model offers `auto`, which has no place on the ladder, and orbits must not hide a level the "All N models" list cannot pick. On macOS it also adds an on-device provider. |
 | Hermes | ⬜ Keeps the pills: it reports no effort levels (see Option pickers). |
 
 ## Agent selection and harness modes
