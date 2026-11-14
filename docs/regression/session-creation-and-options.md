@@ -166,6 +166,19 @@ variant, and worktree mode, and creating the session with its first input.
   last, ties by name; other plugins backend order. DeepSeek model ids are opaque,
   so its models keep DeepSeek's order. The model picker never reorders models:
   it shows each plugin's declared order.
+- The model picker groups available models by their reported family: each row
+  shows its family under the name, and with an empty search it lists one model
+  per family plus the selected model; search reaches the rest. A family's
+  representative is its newest release; models without dates, or with the same
+  date, go to the one listed first. Codex reports the family from the model id's
+  suffix in display case (`gpt-5.6-sol` is `Sol`, `gpt-5.6-codex-mini` is
+  `Codex Mini`); a bare id (`gpt-5.5`) or one it cannot parse (`gpt-default`)
+  is its own family with no subtitle. So Codex's picker shows the newest model
+  of each family, not the oldest.
+- A provider with no available declared default starts on its newest dated
+  model; in an undated catalog that is the first-listed model (plugins list
+  strongest and newest first), never the alphabetically first id. A declared
+  default or a remembered pick still wins.
 - One rule decides what a selection reconciles to, on every surface. A model the
   backend reports unavailable is treated as absent everywhere: it is neither
   selectable nor a source of variants, whether the screen is New Session or a
@@ -604,7 +617,9 @@ variant, and worktree mode, and creating the session with its first input.
 
 - A model advertises fast mode through `ProviderModel.fastMode`. The composer
   shows the ⚡ pill next to the effort pill, in New Session and in session
-  detail, only when that support is available or unavailable. An absent or
+  detail, only when that support is available or unavailable. On a touch
+  composer with the medallion chip (below), the chip's bolt and the orbits
+  picker's toggle take the pill's place with the same rules. An absent or
   unknown value (older bridge, harness without fast mode, a model without it)
   shows no pill.
 - Available: the pill's bolt is yellow while on, in both themes, and neutral
@@ -638,13 +653,92 @@ variant, and worktree mode, and creating the session with its first input.
   coverage (L3) toggles fast mode on a live Codex and Claude session with a
   warm and a cold cache and reopens the session to confirm the choice persists.
 
+### Medallion chip and orbits picker
+
+- Eligibility is decided from the catalog alone, never from the harness name:
+  exactly one provider has available models, every effort it reports (ignoring
+  `none`) is an exact level of the ladder `minimal, low, medium, high, xhigh,
+  max, ultra`, at least one model reports a level, and a model is selected.
+  One effort name off the ladder (`off`, `mid`, `highest`) makes the whole
+  catalog ineligible. See `docs/HARNESS_CAPABILITIES.md` for which harnesses
+  qualify today.
+- On the touch composer (phone and touch iPad, in New Session and session
+  detail) an eligible catalog replaces the model, effort and ⚡ pills with one
+  medallion chip; the agent pill stays beside it. The pointer layout (desktop,
+  and an iPad driven by a pointer) and every ineligible catalog keep the pills.
+  The run-detail pills of sub-agent and archived sessions are unchanged.
+- The chip is 36 pt tall like the touch pills and hugs its text. A medallion at
+  its leading end shows one blade per level of the model, lit up to the current
+  level, or the model's initial for a model without levels. Beside it are the
+  model name (ellipsized when long) and the level word in capitals (`HIGH`),
+  and an end diamond that turns into a bolt while fast mode is on. It is silver
+  at standard speed and gold while fast. A model, level or speed change
+  cross-fades the face and eases the plate to its new width; nothing snaps.
+  Its text follows the system text size, bold-text and spacing settings, with
+  the size capped at 1.3x.
+- The chip is one control: a keyboard focuses it with Tab and shows the focus
+  ring, and Enter or Space opens the picker; a screen reader reads it as a
+  button naming the model and level. Pressing the chip or the picker leaves an
+  open soft keyboard up, so the composer stays under the finger.
+- Read-only states keep the chip, as they keep the pills: while a new session
+  is sending and during the launch hand-off to the session screen, the same
+  chip stays in the same place with the committed choice, and it takes no
+  taps, focus or keyboard activation. Nothing swaps between chip and pills or
+  shifts as the composer turns live again.
+- The orbits picker opens over a scrim from the chip, its rings centred on the
+  medallion: one ring per ring model, outermost first in catalog order, with
+  the name along the arc, and one ray per ladder level any ring offers, from the
+  lowest at the low angle to the highest. Only the current choice is drawn
+  filled: the medallion on its dot and a polished trail along its ring; every
+  other dot is the same hollow dot. Entry is a ripple of about 0.34 s from the
+  medallion with no overshoot; under reduced motion it is a plain fade. On a
+  small overlay (narrow or landscape phone) the rings shrink to fit.
+- The rings are the latest model of each family, up to four: families in order
+  of first appearance in the catalog, each represented by the same model the
+  model picker shows for it. When the selected model is not among them, it is
+  added when there are fewer than four, otherwise it takes the fourth's place;
+  the rings still sit in catalog order. A catalog without families (an older
+  bridge, Claude Code today) gets its first four models this way.
+- Press, slide and release: the picker opens as the finger lands on the chip,
+  and the same finger slides into the rings. The dot under the finger grows,
+  and entering a new dot's patch plays a selection haptic. Releasing on a level
+  dot picks that model and level together in one change; releasing on a ring's
+  name picks the model with the model picker's switch rule (the current level
+  when the model offers it, else its fallbacks); releasing anywhere else closes
+  the picker with no change. A second finger is ignored.
+- Tap: a tap on the chip opens the picker and leaves it open, and a tap on a dot
+  or name then picks as a release would; a tap on empty space closes it. A
+  model without levels has one dot at the ring's end and is picked from
+  anywhere on its ring.
+- A FAST tag sits next to the name of each ring model that has fast mode, and
+  is hidden when every ring has it. The fast toggle in the picker's bottom-right
+  corner shows when the current model or any ring model has fast mode. It
+  answers only a press that starts on it, so a slide ending there changes
+  nothing, and it uses the ⚡ pill's flow: apply, the unavailable reason, or the
+  cache-reset confirmation. When the current model has no fast mode, a tap says
+  so ("`<model>` has no fast mode.") instead of doing nothing.
+- "All N models" shows only when the catalog has more available models than
+  rings. It closes the orbits and opens the regular model picker anchored at
+  the chip, dismissing the soft keyboard first as the model pill does.
+- Each dot, name, the "All N models" pill and the fast toggle is a labelled
+  button for screen readers.
+- A level picked in New Session is remembered like a level picked from the
+  effort pill, so a later model switch keeps it when the new model offers it.
+- Coverage: eligibility, ring selection, the current-model swap, the no-family
+  fallback and the single-change selection run as unit tests. Geometry and hit
+  testing, the chip on touch versus pointer and ineligible catalogs, the locked
+  chip, press-slide-release, release outside, tap then tap, a name pick, a ring
+  without levels, the "All N models" hand-off, the fast toggle, semantics and
+  the width easing run as widget tests. Release coverage (L3) drives the chip
+  on a headless iOS simulator.
+
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
-| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a lowercase `color-animal` worktree on a detached HEAD at the base tip, no branch, and a baseline; a gated metadata request does not gate a queryable create response. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. Pi startup dialog fixtures: answer questions before initial history, cancel catalog-probe dialogs without granting access, and preserve queued commands and partial UTF-8 bytes when native RPC takes over. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders the submitted message as a sending bubble at the unresolved route above the same live composer (on desktop moved to the bottom edge), a second Send queues a follow-up below it instead of a second session, waits up to 180 s for a cold create, and replaces with the durable session with the composer and every bubble in place; a success or failure landing mid-recording, during an image pick or paste, or mid-word on an Android keyboard waits for it to settle, and the session screen's draft or the restored draft then holds the result with the caret where it was; the option pills keep their size while read-only; follow-ups send in press order after the first message; a Stop pressed while they still wait, during creation, returns them to the composer in order with none sent after it, and a refused Stop lets them send; a message sent from the session screen before its first load sends after them, or stays in view for Retry when that load fails, or under the blocked notice with Cancel and Remove when that load finds the harness blocked; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title arrives through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; switching project while composing keeps the text, images, staged command and picks in the same composer, refreshes the pills in place, falls back for a pick the project lacks and restores it on switching back, ignores the old project's late answers, waits for the new options before Send, and starts the session in the project shown; loading keeps the layout with shimmering pills and a failure shows one retry; a connection blip holds the no-harness notice, the loaded or loading option pills, the login card and the "project cannot be checked" card still until the bridge answers, with picks and Send waiting for it, and Recheck pressed meanwhile counts; a Recheck on either card that waits on a slow bridge turns into a spinner in place after about 300 ms and back on its answer; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; the project picker opens as a phone sheet with the keyboard down until its search is tapped, then searches over the keyboard, and as an iPad and desktop popover, and its "Open folder…" adds a folder and switches the page to it; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, and a successful Recheck brings it back, each in a cross-fade with no jump around it, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains hold-to-talk voice capture; desktop remains text-first with a click-to-talk mic and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. On a bridge with "No project", both pickers offer it only in their footer and pick it, the home defaults to it after a filter and before the newest session's project, and a desktop bridge with only "No project" shows the composer in it; a bridge without it shows neither. A project picked in the composer, or a session started in one, is not where the next New session opens: after Back and after a relaunch it opens in the default again. |
+| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a lowercase `color-animal` worktree on a detached HEAD at the base tip, no branch, and a baseline; a gated metadata request does not gate a queryable create response. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. Pi startup dialog fixtures: answer questions before initial history, cancel catalog-probe dialogs without granting access, and preserve queued commands and partial UTF-8 bytes when native RPC takes over. Codex models report their family from the model id. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders the submitted message as a sending bubble at the unresolved route above the same live composer (on desktop moved to the bottom edge), a second Send queues a follow-up below it instead of a second session, waits up to 180 s for a cold create, and replaces with the durable session with the composer and every bubble in place; a success or failure landing mid-recording, during an image pick or paste, or mid-word on an Android keyboard waits for it to settle, and the session screen's draft or the restored draft then holds the result with the caret where it was; the option pills keep their size while read-only; follow-ups send in press order after the first message; a Stop pressed while they still wait, during creation, returns them to the composer in order with none sent after it, and a refused Stop lets them send; a message sent from the session screen before its first load sends after them, or stays in view for Retry when that load fails, or under the blocked notice with Cancel and Remove when that load finds the harness blocked; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title arrives through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; switching project while composing keeps the text, images, staged command and picks in the same composer, refreshes the pills in place, falls back for a pick the project lacks and restores it on switching back, ignores the old project's late answers, waits for the new options before Send, and starts the session in the project shown; loading keeps the layout with shimmering pills and a failure shows one retry; a connection blip holds the no-harness notice, the loaded or loading option pills, the login card and the "project cannot be checked" card still until the bridge answers, with picks and Send waiting for it, and Recheck pressed meanwhile counts; a Recheck on either card that waits on a slow bridge turns into a spinner in place after about 300 ms and back on its answer; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; the project picker opens as a phone sheet with the keyboard down until its search is tapped, then searches over the keyboard, and as an iPad and desktop popover, and its "Open folder…" adds a folder and switches the page to it; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, and a successful Recheck brings it back, each in a cross-fade with no jump around it, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains hold-to-talk voice capture; desktop remains text-first with a click-to-talk mic and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. On a bridge with "No project", both pickers offer it only in their footer and pick it, the home defaults to it after a filter and before the newest session's project, and a desktop bridge with only "No project" shows the composer in it; a bridge without it shows neither. A project picked in the composer, or a session started in one, is not where the next New session opens: after Back and after a relaunch it opens in the default again. On an orbit-eligible catalog (at least Claude Code and Codex) the phone composer shows the medallion chip in New Session and session detail: one press-slide-release picks a model and level that the next prompt carries, tap then tap picks too, a release outside changes nothing, the picker's fast toggle confirms a warm-cache switch, and "All N models" opens the model picker; the chip stays in place, locked, while sending and through the launch hand-off; Codex's rings and model picker show the newest model of each family; an ineligible harness (Pi) keeps its pills. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, with queued follow-ups and unsent composer content appended in typed order, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied worktree paths are skipped and path exhaustion uses a suffix; a dedicated worktree starts on a detached HEAD at the base tip with no branch created; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -671,6 +765,13 @@ For composer effort pickers, vary full-height and small/keyboard-constrained
 viewports, a selected low effort, and reopening after scrolling: the strongest
 options start visible at the bottom, the lowest remain reachable above, and
 selection still dispatches the exact variant that was tapped.
+For the medallion chip and orbits picker, vary a catalog with fewer and more
+models than rings, a selected model outside the rings, a model without levels,
+mixed fast-mode support across the rings, a model name that ellipsizes, the
+largest text size, reduced motion, light and dark, a landscape phone, the soft
+keyboard up while pressing the chip, and a fast slide that crosses several
+patches before release. Also vary a catalog that just misses eligibility (a
+second provider, one off-ladder effort name, no levels at all).
 For the command picker, vary light/dark mode, narrow widths, large text, long
 command names, every source label, missing descriptions/hints, empty/no-match
 results, and scrolling a large catalog with the keyboard open. For both
@@ -833,6 +934,25 @@ startup-extension file failure, retry once the filesystem is usable.
   unavailable one, sends `fastMode: true` for a model that cannot run it, or
   switches without confirmation while the prompt cache is warm; the choice is
   lost on reopen or not synchronized from another surface.
+- An eligible catalog shows pills on the touch composer, an ineligible one or
+  the pointer layout shows the chip, or the chip and pills swap or shift when
+  the composer turns read-only or live during sending and the launch hand-off.
+- A locked chip opens the picker, takes focus, or shows press feedback.
+- The chip snaps to a new width or text, overflows at a large text size, or
+  names a level the model does not run.
+- The picker needs a second press after the chip's press, picks on a slide that
+  was released outside, closes on the first tap, changes speed after a slide
+  that ended on the fast toggle, or misses the haptic on entering a patch.
+- A picked model and level arrive as two changes (one transient state between
+  them), or the prompt runs another level than the one picked.
+- The rings omit the selected model, show two models of one family, show an
+  older model of a family than the model picker, or exceed four rings; "All N
+  models" shows when every model has a ring, or does not open the model picker.
+- The ripple overshoots or plays under reduced motion, or rings overflow the
+  screen on a small or landscape phone.
+- Codex's model picker shows the oldest model of a family by default, a bare id
+  gains a family subtitle, or an undated catalog starts on the alphabetically
+  first model instead of the first listed.
 
 ## Known Limitations
 
@@ -850,6 +970,12 @@ startup-extension file failure, retry once the filesystem is usable.
 - Copilot's ACP catalog probe closes its scratch session, but the pinned CLI has
   no deletion method; low-impact upstream history residue can remain in the
   user's normal Copilot home.
+- The medallion chip and orbits picker are touch-only; the pointer layout keeps
+  the pills. Claude Code reports no model families, so a Claude catalog with
+  more than four models shows its first four, plus the selected model.
+- An app from before Codex reported families still ranks undated ties by id, so
+  its Codex model picker shows the oldest model of each family by default until
+  the app updates; the selected and default models are unaffected.
 - Grok model and reasoning discovery uses its supported CLI's legacy ACP model
   surface. Accounts and custom configurations can legitimately advertise one
   model or no reasoning variants; absence is not a failure.
@@ -874,6 +1000,9 @@ startup-extension file failure, retry once the filesystem is usable.
 - Grok: `bridge/sesori_plugin_grok/lib/src/services/`,
   `bridge/sesori_plugin_grok/lib/src/repositories/`,
   `bridge/sesori_plugin_grok/lib/src/trackers/`, and package tests
+- Codex families: `bridge/sesori_plugin_interface/lib/src/models/catalog_strength_order.dart`
+  (`openAiFamily`), `bridge/sesori_plugin_codex/lib/src/repositories/codex_model_repository.dart`,
+  and their tests
 - Contracts: `bridge/sesori_plugin_interface/lib/src/models/plugin_session_options.dart`,
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`,
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin.dart`, and
@@ -882,6 +1011,9 @@ startup-extension file failure, retry once the filesystem is usable.
   (the single owner of selection reconciliation),
   `client/module_core/lib/src/services/new_session_options_service.dart`,
   `client/module_core/lib/src/services/fast_mode_toggle_calculator.dart`,
+  `client/module_core/lib/src/services/model_orbits_calculator.dart`,
+  `client/module_core/lib/src/utils/model_filter/default_model_selector.dart`,
+  `client/module_app_ui/lib/src/features/session_detail/widgets/model_effort/`,
   `client/module_app_ui/lib/src/features/session_detail/widgets/agent_model_buttons.dart`,
   `client/module_core/lib/src/services/session_detail_load_service.dart`,
   `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`,
@@ -889,6 +1021,9 @@ startup-extension file failure, retry once the filesystem is usable.
   `client/app/lib/features/new_session/new_session_screen.dart`, and
   `client/desktop/lib/features/new_session/desktop_new_session_screen.dart`
 - Client tests: `client/module_app_ui/test/features/session_detail/widgets/agent_model_buttons_test.dart`,
+  `client/module_app_ui/test/features/session_detail/widgets/model_effort/`,
+  `client/module_core/test/services/model_orbits_calculator_test.dart`,
+  `client/module_core/test/utils/model_filter/default_model_selector_test.dart`,
   `client/app/test/features/new_session/new_session_screen_test.dart`,
   `client/desktop/test/features/new_session/desktop_new_session_screen_test.dart`,
   `client/desktop/test/core/routing/desktop_router_test.dart`, and, for read-only run details,
