@@ -207,7 +207,7 @@ SessionDetailLoaded _loadedState({
     bridgePromptAttachments: const {},
     localSend: const LocalSendPhase.idle(),
     availableAgents: [testAgentInfo()],
-    availableProviders: [provider],
+    availableProviders: testProviderListResponse().items,
     availableCommands: const [],
     selectedAgent: "coder",
     selectedAgentModel: AgentModel(

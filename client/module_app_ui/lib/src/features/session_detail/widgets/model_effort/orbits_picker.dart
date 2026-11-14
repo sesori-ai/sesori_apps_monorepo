@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/gestures.dart" show kTouchSlop;
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show FastModeControl, FastModeToggleDecision, ModelOrbits, logw;
@@ -18,9 +19,12 @@ import "orbits_painter.dart";
 ///
 /// One press, slide and release picks a model and its effort together, and so
 /// does one tap. Releasing anywhere else closes the picker without a change.
+/// A press that began on the chip arrives as [handoff], so the same finger
+/// slides on into the picker without a second press.
 Future<void> showOrbitsPicker({
   required BuildContext context,
   required Rect anchorRect,
+  required OrbitsPointerHandoff? handoff,
   required ModelOrbits orbits,
   required void Function({required String providerID, required String modelID, required SessionVariant? variant})
   onModelSelected,
@@ -41,6 +45,7 @@ Future<void> showOrbitsPicker({
       builder: (context, animation) => OrbitsPicker(
         animation: animation,
         anchorRect: localAnchor,
+        handoff: handoff,
         orbits: orbits,
         onModelSelected: onModelSelected,
         onShowAllModels: onShowAllModels,
@@ -57,6 +62,10 @@ final class _OrbitsPickerRoute({
   required final String label,
   required final Widget Function(BuildContext context, Animation<double> animation) builder,
 }) extends PopupRoute<void> {
+  // Focus stays where it was, so an open keyboard stays up and the chip does
+  // not slide away from under the finger.
+  this : super(requestFocus: false);
+
   @override
   String get barrierLabel => label;
 
@@ -74,8 +83,64 @@ final class _OrbitsPickerRoute({
   Duration get reverseTransitionDuration => reducedMotion ? OrbitsMotion.fade : OrbitsMotion.close;
 
   @override
-  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) =>
-      Material(type: MaterialType.transparency, child: builder(context, animation));
+  Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) => Material(
+    type: MaterialType.transparency,
+    // Part of the composer: a touch here leaves the prompt field focused.
+    child: TextFieldTapRegion(child: builder(context, animation)),
+  );
+}
+
+/// Where a finger that pressed the chip is now.
+sealed class const OrbitsHandoffPhase();
+
+final class const OrbitsHandoffPressing({required final Offset position}) extends OrbitsHandoffPhase;
+
+final class const OrbitsHandoffReleased({required final Offset position}) extends OrbitsHandoffPhase;
+
+final class const OrbitsHandoffCancelled() extends OrbitsHandoffPhase;
+
+/// A press that began on the chip, carried into the picker. The chip keeps
+/// receiving that finger's events after the picker opens over it, so it
+/// reports them here (global coordinates) and the picker follows the same
+/// finger without a second press.
+final class OrbitsPointerHandoff({required final int pointer, required final Offset start}) {
+  OrbitsHandoffPhase _phase = OrbitsHandoffPressing(position: start);
+  VoidCallback? _follower;
+  bool _travelled = false;
+
+  /// Where the finger is now.
+  OrbitsHandoffPhase get phase => _phase;
+
+  /// Whether the finger has ever moved past touch slop from [start]. A
+  /// release before that was a tap, which leaves the picker open for a
+  /// second one. Tracked here, because the picker may attach after the
+  /// finger has already moved.
+  bool get travelled => _travelled;
+
+  /// Calls [follower] whenever the finger moves, lifts or is cancelled; null
+  /// stops following.
+  void follow({required VoidCallback? follower}) => _follower = follower;
+
+  void move({required Offset position}) {
+    _track(position);
+    _report(OrbitsHandoffPressing(position: position));
+  }
+
+  void release({required Offset position}) {
+    _track(position);
+    _report(OrbitsHandoffReleased(position: position));
+  }
+
+  void _track(Offset position) {
+    if ((position - start).distance > kTouchSlop) _travelled = true;
+  }
+
+  void cancel() => _report(const OrbitsHandoffCancelled());
+
+  void _report(OrbitsHandoffPhase phase) {
+    _phase = phase;
+    _follower?.call();
+  }
 }
 
 /// The orbits picker: one ring per model, effort as the angle along the ring,
@@ -88,6 +153,9 @@ class const OrbitsPicker({
 
   /// The chip the picker opened from, in the picker's coordinates.
   required final Rect anchorRect,
+
+  /// The press on the chip that opened the picker, if a finger did.
+  required final OrbitsPointerHandoff? handoff,
   required final ModelOrbits orbits,
   required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
   onModelSelected,
@@ -126,6 +194,21 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
       widget.fastModeControl != FastModeControl.hidden || widget.orbits.rings.any((ring) => ring.hasFastMode);
 
   @override
+  void initState() {
+    super.initState();
+    final handoff = widget.handoff;
+    if (handoff == null) return;
+    // The finger that opened the picker is already down. Its events keep going
+    // to the chip, which reports them through the handoff; the picker can
+    // follow them once it has a size.
+    _pointer = handoff.pointer;
+    handoff.follow(follower: _followHandoff);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _followHandoff();
+    });
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final prego = context.prego;
@@ -145,6 +228,7 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
 
   @override
   void dispose() {
+    widget.handoff?.follow(follower: null);
     _hotGrow.dispose();
     _labels?.dispose();
     super.dispose();
@@ -231,7 +315,35 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
 
   void _onPointerUp({required PointerUpEvent event, required OrbitGeometry geometry}) {
     if (event.pointer != _pointer) return;
-    final target = _hitTest(geometry: geometry, position: event.localPosition);
+    _release(
+      target: _hitTest(geometry: geometry, position: event.localPosition),
+    );
+  }
+
+  void _followHandoff() {
+    final handoff = widget.handoff;
+    final box = context.findRenderObject();
+    if (handoff == null || handoff.pointer != _pointer || box is! RenderBox || !box.hasSize) return;
+    final geometry = _geometry(box.size);
+    OrbitTarget? targetAt(Offset position) => _hitTest(geometry: geometry, position: box.globalToLocal(position));
+
+    switch (handoff.phase) {
+      case OrbitsHandoffPressing(:final position):
+        _setHot(targetAt(position));
+      case OrbitsHandoffReleased(:final position):
+        final target = targetAt(position);
+        // A tap on the chip opens the picker and leaves it open.
+        if (handoff.travelled) {
+          _release(target: target);
+        } else {
+          _endGesture();
+        }
+      case OrbitsHandoffCancelled():
+        _endGesture();
+    }
+  }
+
+  void _release({required OrbitTarget? target}) {
     final pressed = _pressed;
     _endGesture();
     switch (target) {

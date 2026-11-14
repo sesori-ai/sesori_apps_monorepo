@@ -912,7 +912,28 @@ ProviderListResponse testProviderListResponse() => const ProviderListResponse(
         ),
       },
     ),
+    testSecondProvider,
   ],
+);
+
+/// A second provider makes a catalog OpenCode-shaped rather than
+/// orbit-shaped, so touch composers keep the model and effort pills.
+const ProviderInfo testSecondProvider = ProviderInfo(
+  id: "openai",
+  name: "OpenAI",
+  defaultModelID: "gpt-test",
+  models: {
+    "gpt-test": ProviderModel(
+      fastMode: null,
+      id: "gpt-test",
+      providerID: "openai",
+      name: "GPT Test",
+      variants: [],
+      defaultVariant: null,
+      family: null,
+      releaseDate: null,
+    ),
+  },
 );
 
 AuthUser testAuthUser() => const AuthUser(

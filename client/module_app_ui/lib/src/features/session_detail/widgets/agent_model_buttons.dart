@@ -2,18 +2,23 @@ import "dart:async";
 
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart"
-    show FastModeControl, FastModeToggleDecision, ModelPickerSection, ModelPickerSectionBuilder;
+    show FastModeControl, FastModeToggleDecision, ModelOrbits, ModelPickerSection, ModelPickerSectionBuilder;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "fast_mode_toggle.dart";
+import "model_effort/medallion_chip.dart";
+import "model_effort/orbits_picker.dart";
 import "model_picker.dart";
 
 /// Composer header exposing the available agent / model / variant selections
 /// as solid pill buttons ([PregoPickerButton]). Tapping a pill opens its popup
 /// beside it: a [PregoAnchorMenu] for agents and variants, and a searchable
 /// [ModelPicker] for models.
+///
+/// On touch, a catalog the orbits picker can draw ([modelOrbits]) gets one
+/// [MedallionChip] in place of the model, variant and fast-mode pills.
 ///
 /// The widget owns the menu contents, so it receives the selectable data and
 /// the selection callbacks directly rather than a "open picker" callback.
@@ -29,6 +34,9 @@ class const AgentModelButtons({
   onModelSelected,
   required final List<SessionVariant> availableVariants,
   required final ValueChanged<SessionVariant> onVariantSelected,
+
+  /// The orbits picker's content, or null when the catalog does not fit it.
+  required final ModelOrbits? modelOrbits,
 
   /// How the fast-mode pill shows for the selected model.
   required final FastModeControl fastModeControl,
@@ -101,6 +109,8 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
       child: IgnorePointer(ignoring: widget.readOnly, child: control),
     );
     Widget slot(Widget menu) => _pickerSlot(compact: compact, child: lock(menu));
+    // The pointer layout keeps its pills.
+    final orbits = compact ? null : widget.modelOrbits;
     final selectors = [
       if (hasAgentSelection)
         slot(
@@ -112,35 +122,52 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
             onAgentSelected: widget.onAgentSelected,
           ),
         ),
-      slot(
-        _ModelMenu(
-          surfaceStyle: widget.surfaceStyle,
-          hugLabel: compact,
-          sections: _modelSections,
-          selected: selected,
-          providers: widget.providers,
-          onModelSelected: widget.onModelSelected,
-        ),
-      ),
-      if (widget.availableVariants.isNotEmpty)
+      if (orbits != null)
+        // The plate hugs its text rather than sharing the strip.
+        Flexible(
+          child: lock(
+            _OrbitsMenu(
+              orbits: orbits,
+              sections: _modelSections,
+              selected: selected,
+              onModelSelected: widget.onModelSelected,
+              fastModeControl: widget.fastModeControl,
+              decideFastModeToggle: widget.decideFastModeToggle,
+              onFastModeChanged: widget.onFastModeChanged,
+            ),
+          ),
+        )
+      else ...[
         slot(
-          _VariantMenu(
+          _ModelMenu(
             surfaceStyle: widget.surfaceStyle,
             hugLabel: compact,
-            availableVariants: widget.availableVariants,
-            selectedVariant: selected?.variant,
-            onVariantSelected: widget.onVariantSelected,
+            sections: _modelSections,
+            selected: selected,
+            providers: widget.providers,
+            onModelSelected: widget.onModelSelected,
           ),
         ),
-      if (widget.fastModeControl != FastModeControl.hidden)
-        lock(
-          _FastModeButton(
-            surfaceStyle: widget.surfaceStyle,
-            control: widget.fastModeControl,
-            decide: widget.decideFastModeToggle,
-            onFastModeChanged: widget.onFastModeChanged,
+        if (widget.availableVariants.isNotEmpty)
+          slot(
+            _VariantMenu(
+              surfaceStyle: widget.surfaceStyle,
+              hugLabel: compact,
+              availableVariants: widget.availableVariants,
+              selectedVariant: selected?.variant,
+              onVariantSelected: widget.onVariantSelected,
+            ),
           ),
-        ),
+        if (widget.fastModeControl != FastModeControl.hidden)
+          lock(
+            _FastModeButton(
+              surfaceStyle: widget.surfaceStyle,
+              control: widget.fastModeControl,
+              decide: widget.decideFastModeToggle,
+              onFastModeChanged: widget.onFastModeChanged,
+            ),
+          ),
+      ],
       ...widget.trailing,
     ];
     final row = _pillRow(compact: compact, reachesLayerBottom: false, pills: selectors);
@@ -325,14 +352,157 @@ class const _ModelMenu({
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
       ),
-      contentBuilder: (context, close) => ModelPicker(
-        sections: sections,
-        selected: selected,
-        onModelSelected: ({required String providerID, required String modelID, required SessionVariant? variant}) {
-          close();
-          onModelSelected(providerID: providerID, modelID: modelID, variant: variant);
+      contentBuilder: (context, close) =>
+          _modelPicker(sections: sections, selected: selected, onModelSelected: onModelSelected, close: close),
+    );
+  }
+}
+
+Widget _modelPicker({
+  required List<ModelPickerSection> sections,
+  required AgentModel? selected,
+  required void Function({required String providerID, required String modelID, required SessionVariant? variant})
+  onModelSelected,
+  required VoidCallback close,
+}) => ModelPicker(
+  sections: sections,
+  selected: selected,
+  onModelSelected: ({required String providerID, required String modelID, required SessionVariant? variant}) {
+    close();
+    onModelSelected(providerID: providerID, modelID: modelID, variant: variant);
+  },
+  onClose: close,
+);
+
+/// The medallion chip and the orbits picker it opens, with the searchable
+/// [ModelPicker] behind the picker's "All N models".
+class const _OrbitsMenu({
+  required final ModelOrbits orbits,
+  required final List<ModelPickerSection> sections,
+  required final AgentModel? selected,
+  required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
+  onModelSelected,
+  required final FastModeControl fastModeControl,
+  required final FastModeToggleDecision? Function() decideFastModeToggle,
+  required final ValueChanged<bool> onFastModeChanged,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return PregoPickerPopover(
+      pointerWidth: 300,
+      onClosed: null,
+      triggerBuilder: (context, toggle) => _OrbitsChip(
+        orbits: orbits,
+        onModelSelected: onModelSelected,
+        fastModeControl: fastModeControl,
+        decideFastModeToggle: decideFastModeToggle,
+        onFastModeChanged: onFastModeChanged,
+        onShowAllModels: () {
+          // The list wants the keyboard's space, as the model pill's does.
+          FocusManager.instance.primaryFocus?.unfocus();
+          toggle();
         },
-        onClose: close,
+      ),
+      contentBuilder: (context, close) =>
+          _modelPicker(sections: sections, selected: selected, onModelSelected: onModelSelected, close: close),
+    );
+  }
+}
+
+/// The chip as a button. A press opens the orbits picker at once and hands
+/// the finger over, so the same press slides on into it; a tap leaves the
+/// picker open for a second tap.
+class const _OrbitsChip({
+  required final ModelOrbits orbits,
+  required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
+  onModelSelected,
+  required final FastModeControl fastModeControl,
+  required final FastModeToggleDecision? Function() decideFastModeToggle,
+  required final ValueChanged<bool> onFastModeChanged,
+  required final VoidCallback onShowAllModels,
+}) extends StatefulWidget {
+  @override
+  State<_OrbitsChip> createState() => _OrbitsChipState();
+}
+
+class _OrbitsChipState() extends State<_OrbitsChip> {
+  /// The finger that opened the picker, while it is down.
+  OrbitsPointerHandoff? _handoff;
+
+  /// Whether a keyboard has focused the chip, which then shows Prego's ring.
+  bool _focused = false;
+
+  void _open({required OrbitsPointerHandoff? handoff}) {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    unawaited(
+      showOrbitsPicker(
+        context: context,
+        anchorRect: box.localToGlobal(Offset.zero) & box.size,
+        handoff: handoff,
+        orbits: widget.orbits,
+        onModelSelected: widget.onModelSelected,
+        onShowAllModels: widget.onShowAllModels,
+        fastModeControl: widget.fastModeControl,
+        decideFastModeToggle: widget.decideFastModeToggle,
+        onFastModeChanged: widget.onFastModeChanged,
+      ),
+    );
+  }
+
+  void _onPointerDown(PointerDownEvent event) {
+    if (_handoff != null) return;
+    final handoff = OrbitsPointerHandoff(pointer: event.pointer, start: event.position);
+    _handoff = handoff;
+    _open(handoff: handoff);
+  }
+
+  /// The hand-off [event] belongs to; [ends] lets go of it.
+  OrbitsPointerHandoff? _handoffOf({required PointerEvent event, required bool ends}) {
+    final handoff = _handoff;
+    if (handoff == null || handoff.pointer != event.pointer) return null;
+    if (ends) _handoff = null;
+    return handoff;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final orbits = widget.orbits;
+    final level = orbits.currentLevel;
+    final loc = context.loc;
+    final colors = context.prego.colors;
+    // Enter and Space open the picker from a focused chip, as they did the pills.
+    final activate = CallbackAction<Intent>(onInvoke: (_) => _open(handoff: null));
+    return Semantics(
+      button: true,
+      label: level == null ? orbits.current.name : loc.orbitsPickerLevel(orbits.current.name, level.wireId),
+      onTap: () => _open(handoff: null),
+      excludeSemantics: true,
+      // Part of the composer: pressing it leaves the prompt field focused, so
+      // an open keyboard stays up and the chip stays under the finger.
+      child: TextFieldTapRegion(
+        child: Listener(
+          onPointerDown: _onPointerDown,
+          onPointerMove: (event) => _handoffOf(event: event, ends: false)?.move(position: event.position),
+          onPointerUp: (event) => _handoffOf(event: event, ends: true)?.release(position: event.position),
+          onPointerCancel: (event) => _handoffOf(event: event, ends: true)?.cancel(),
+          child: FocusableActionDetector(
+            onFocusChange: (focused) => setState(() => _focused = focused),
+            actions: {ActivateIntent: activate, ButtonActivateIntent: activate},
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(MedallionChip.height / 2),
+                boxShadow: _focused
+                    ? [
+                        BoxShadow(color: colors.focusRing, spreadRadius: 4),
+                        BoxShadow(color: colors.bgSurface1, spreadRadius: 2),
+                      ]
+                    : null,
+              ),
+              child: MedallionChip(orbits: orbits, fast: widget.fastModeControl == FastModeControl.on),
+            ),
+          ),
+        ),
       ),
     );
   }

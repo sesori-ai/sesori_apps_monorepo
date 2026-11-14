@@ -87,6 +87,7 @@ Widget _buildApp({
               onModelSelected: onModelSelected,
               availableVariants: const [],
               onVariantSelected: (_) {},
+              modelOrbits: null,
               fastModeControl: FastModeControl.hidden,
               decideFastModeToggle: () => null,
               onFastModeChanged: (_) {},

@@ -286,6 +286,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
         onModelSelected: cubit.selectModel,
         availableVariants: data.availableVariants,
         onVariantSelected: cubit.selectVariant,
+        modelOrbits: data.modelOrbits,
         fastModeControl: data.fastModeControl,
         decideFastModeToggle: cubit.fastModeToggleDecision,
         onFastModeChanged: cubit.setFastMode,
