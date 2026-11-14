@@ -2,14 +2,14 @@
 
 ## Status and scope
 
-- Design agreed with the owner over 17 review rounds; the decisions below
+- Design agreed with the owner over 18 review rounds; the decisions below
   (D1–D10) are the complete record. Round 15 settled the picker; round 16
   settled how many rings show and which harnesses get them; round 17 settled
   the dark look, the OFF level and the full model list (D10). Round 18 kept
   orbits wherever the catalog fits, on the condition that every model and
   level stays reachable, so Oh My Pi (`auto` on every model) keeps the pills.
-- Complete: steps 1–9 merged and the L3 matrix passed on 2026-11-14 (see
-  L3 results).
+- Steps 1–8 merged; step 9 records the L3 matrix, which passed on
+  2026-11-14 (see L3 results), and retires the plan.
 - Phase 1 is detailed below. Later phases are intent only; each becomes its
   own plan when it starts.
 - Phase 1 ships on the touch composer layout (`AgentModelButtons.compact ==
@@ -31,8 +31,9 @@ picks model and effort together. Every other catalog keeps today's pills.
   level (ignoring `none`) is on the shared ladder `off, minimal, low, medium,
   high, xhigh, max, ultra`, at least one model reports a level, and a model is
   selected. Decided from the data, never from the harness name or a plugin
-  flag. No wire change. Today this matches Claude Code and Codex, and Pi and
-  Oh My Pi with one provider in use (D10).
+  flag. No wire change. Today this matches Claude Code and Codex, and Pi with
+  one provider in use (D10). Oh My Pi keeps the pills: its `auto` level is
+  off the ladder (round 18).
 - **D2 Rings (round 16, Q1 A with the owner's note).** "Do latest 4 from each
   category: Latest Luna, Latest Terra, Latest Sol, Latest Astra." Group the
   available models by `family ?? id` in order of first appearance in the
@@ -108,7 +109,8 @@ picks model and effort together. Every other catalog keeps today's pills.
   - Dark mode, variant C "tinted bead": hollow dots and the "All N models"
     pill fill with `fgQuaternary` and a `fgSecondary` edge, and the level
     words use `textTertiary`. Light mode is unchanged.
-  - `off` joins the ladder as its weakest level, so Pi and Oh My Pi qualify.
+  - `off` joins the ladder as its weakest level, so Pi qualifies (Oh My Pi
+    still does not; see D1).
     OFF has no blade on the medallion and lights none.
   - "All N models" opens the model picker listing every model, not one per
     family; the model pill's picker is unchanged.
@@ -319,7 +321,8 @@ proxy where they accept it).
 
 All cells passed on a headless iOS simulator against a local bridge, with live
 Claude Code, Codex, Pi, Oh My Pi and OpenCode through the local test proxy.
-The proxy account has fast mode disabled, so the Claude fast confirmation
+The run used step 8's final head (`be5288ef37`, squash-merged as
+`1715b670e1`), before #2579. The proxy account has fast mode disabled, so the Claude fast confirmation
 rests on its widget tests. The one finding, the first message's bubble rising
 22 pt when its sending caption appeared, was fixed in #2579.
 

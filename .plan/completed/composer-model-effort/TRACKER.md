@@ -10,6 +10,6 @@
 | 6 | 🌱 Regression documents | Merged | #2573 |
 | 7 | ⚙️ Dark beads, OFF level and the full model list | Merged | #2575 |
 | 8 | 🌿 Chip polish | Merged | #2577 |
-| 9 | 🌱 L3 matrix and retirement | Merged | (this PR) |
+| 9 | 🌱 L3 matrix and retirement | In this PR | (this PR) |
 
 Steps 2 and 3 are independent. Step 4 depends on 3; step 5 on 3 and 4.

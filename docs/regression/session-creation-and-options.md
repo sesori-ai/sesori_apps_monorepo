@@ -659,9 +659,10 @@ variant, and worktree mode, and creating the session with its first input.
   exactly one provider has available models, every effort it reports (ignoring
   `none`) is an exact level of the ladder `off, minimal, low, medium, high,
   xhigh, max, ultra`, at least one model reports a level, and a model is
-  selected. `off` (Pi's thinking off) is the weakest level. One
-  effort name off the ladder (`mid`, `highest`, Oh My Pi's `auto`) makes the
-  whole catalog ineligible, so no level the orbits cannot draw is hidden. See `docs/HARNESS_CAPABILITIES.md` for which harnesses
+  selected. `off` (Pi's thinking off) is the weakest level. One effort name
+  off the ladder (`mid`, `highest`, Oh My Pi's `auto`) makes the whole
+  catalog ineligible: orbits must not hide a level the "All N models" list
+  cannot pick. See `docs/HARNESS_CAPABILITIES.md` for which harnesses
   qualify today.
 - On the touch composer (phone and touch iPad, in New Session and session
   detail) an eligible catalog replaces the model, effort and ⚡ pills with one
