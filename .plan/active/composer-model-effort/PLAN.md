@@ -2,9 +2,10 @@
 
 ## Status and scope
 
-- Design agreed with the owner over 16 review rounds; the decisions below
-  (D1–D9) are the complete record. Round 15 settled the picker; round 16
-  settled how many rings show and which harnesses get them.
+- Design agreed with the owner over 17 review rounds; the decisions below
+  (D1–D10) are the complete record. Round 15 settled the picker; round 16
+  settled how many rings show and which harnesses get them; round 17 settled
+  the dark look, the OFF level and the full model list (D10).
 - Phase 1 is detailed below. Later phases are intent only; each becomes its
   own plan when it starts.
 - Phase 1 ships on the touch composer layout (`AgentModelButtons.compact ==
@@ -23,10 +24,11 @@ picks model and effort together. Every other catalog keeps today's pills.
 
 - **D1 Orbit-shaped catalog (round 16, Q2 A).** Orbits appear for any harness
   whose catalog has exactly one provider with available models, every reported
-  level (ignoring `none`) is on the shared ladder `minimal, low, medium, high,
-  xhigh, max, ultra`, at least one model reports a level, and a model is
+  level (ignoring `none`) is on the shared ladder `off, minimal, low, medium,
+  high, xhigh, max, ultra`, at least one model reports a level, and a model is
   selected. Decided from the data, never from the harness name or a plugin
-  flag. No wire change. Today this matches Claude Code and Codex.
+  flag. No wire change. Today this matches Claude Code and Codex, and Pi and
+  Oh My Pi with one provider in use (D10).
 - **D2 Rings (round 16, Q1 A with the owner's note).** "Do latest 4 from each
   category: Latest Luna, Latest Terra, Latest Sol, Latest Astra." Group the
   available models by `family ?? id` in order of first appearance in the
@@ -39,7 +41,7 @@ picks model and effort together. Every other catalog keeps today's pills.
 - **D3 "All N models".** Shown when the catalog has more available models than
   rings. It closes the orbits and opens today's `ModelPicker` popover from the
   chip ("the all 8 models I guess opens the regular picker like the other
-  harnesses").
+  harnesses"), listing every model (D10).
 - **D4 Codex reports families.**
   - A new public `CatalogStrengthOrder.openAiFamily(String id)` in the plugin
     interface reuses the existing OpenAI id parse (lowercasing, namespace and
@@ -77,7 +79,7 @@ picks model and effort together. Every other catalog keeps today's pills.
     read-only (launch hand-off), the same chip is shown locked, so nothing
     swaps or shifts.
   - Picker: rings centred near the chip at the bottom-left; one ray per
-    ladder level any ring offers, from the lowest (MINIMAL or LOW, lower
+    ladder level any ring offers, from the lowest (OFF, MINIMAL or LOW, lower
     angle) to the highest (MAX or ULTRA); ULTRA gets its own ray.
   - Only the current choice is drawn: the medallion on its dot and a polished
     trail along its ring up to it. Every other dot is the same hollow 11 pt
@@ -98,6 +100,14 @@ picks model and effort together. Every other catalog keeps today's pills.
     fast-mode decision and cache-reset confirmation.
 - **D9 No sound, no analytics event in phase 1.** The chosen model and effort
   are not reported today, and adding them is a separate analytics decision.
+- **D10 Round 17.**
+  - Dark mode, variant C "tinted bead": hollow dots and the "All N models"
+    pill fill with `fgQuaternary` and a `fgSecondary` edge, and the level
+    words use `textTertiary`. Light mode is unchanged.
+  - `off` joins the ladder as its weakest level, so Pi and Oh My Pi qualify.
+    OFF has no blade on the medallion and lights none.
+  - "All N models" opens the model picker listing every model, not one per
+    family; the model pill's picker is unchanged.
 
 ## Current behaviour (origin/main fc48f071ef, 2026-11-13)
 
@@ -269,7 +279,13 @@ in the model picker, and the first-listed default for undated catalogs.
 the touch composer (Claude Code, Codex) and that the others keep the pills
 until the list sheet lands.
 
-### Step 7 — L3 matrix and retirement (🌱)
+### Step 7 — Dark beads, OFF level and the full model list (⚙️)
+
+D10: the dark palette, `EffortLevel.off` with its ray word, chip word, blade
+rule and screen-reader label, and the model picker listing every model when
+opened from the orbits. Docs follow.
+
+### Step 8 — L3 matrix and retirement (🌱)
 
 Run the matrix below, record it, move the plan to `.plan/completed/`.
 
@@ -281,10 +297,11 @@ proxy where they accept it).
 
 | Cell | Check |
 |---|---|
-| Claude Code, iOS simulator | Chip shows model and level; orbits open with the ripple; slide and release picks model and level in one go; a no-level model ring works; fast toggle with confirmation; the sent prompt carries the picked variant and fast mode. |
-| Codex, iOS simulator | Rings are the latest model of each family; "All N models" opens the regular picker, which shows the newest of each family; picking a model outside the rings makes it the fourth ring; FAST tags hidden when every ring has fast mode. |
+| Claude Code, iOS simulator, light and dark | Chip shows model and level; orbits open with the ripple; slide and release picks model and level in one go; a no-level model ring works; fast toggle with confirmation; the sent prompt carries the picked variant and fast mode. |
+| Codex, iOS simulator | Rings are the latest model of each family; "All N models" opens the regular picker listing every model; picking a model outside the top four makes it take the fourth slot, with the rings kept in strength order (strongest outermost), so it is not necessarily drawn innermost; FAST tags hidden when every ring has fast mode. |
 | New session to session detail, iOS simulator | Both composers behave the same; during the launch hand-off the locked chip stays in place with no swap. |
-| One non-orbit harness (OpenCode or Pi), iOS simulator | Today's pills, unchanged. |
+| Pi and Oh My Pi, each with one provider, iOS simulator | Orbits with an OFF ray; picking OFF sends `off`, and the chip reads OFF with no blade lit. |
+| One non-orbit harness (OpenCode with several providers, or Hermes), iOS simulator | Today's pills, unchanged. |
 
 ## Risks and accepted behaviour
 

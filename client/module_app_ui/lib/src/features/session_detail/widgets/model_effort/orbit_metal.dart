@@ -2,6 +2,7 @@ import "dart:math" as math;
 import "dart:ui" as ui;
 
 import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart" show EffortLevel, OrbitRing;
 import "package:theme_prego/module_prego.dart";
 
 /// The metal the model and effort controls are struck in: silver at standard
@@ -55,6 +56,18 @@ enum OrbitMetal({
     [m0, m1, m3],
     const [0, .45, 1],
   );
+}
+
+/// A ring's fan on the medallion: one blade per thinking level, so OFF has
+/// none and lights none.
+extension OrbitRingBlades on OrbitRing {
+  int get bladeCount => levels.where((entry) => entry.level != EffortLevel.off).length;
+
+  /// The blades lit at [level]: every blade up to and including it.
+  int litBlades({required EffortLevel? level}) {
+    if (level == null) return 0;
+    return levels.where((entry) => entry.level != EffortLevel.off && entry.level.index <= level.index).length;
+  }
 }
 
 /// Paints a medallion of [radius] at [center]: a knurled metal rim around dark

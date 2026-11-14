@@ -15,13 +15,13 @@ const _screen = Size(393, 700);
 
 typedef _Pick = ({String providerID, String modelID, SessionVariant? variant});
 
-ProviderModel _model(OrbitRing ring) => ProviderModel(
+ProviderModel _model(OrbitRing ring, {String? family}) => ProviderModel(
   id: ring.modelID,
   providerID: ring.providerID,
   name: ring.name,
   variants: [for (final level in ring.levels) level.variant.id],
   defaultVariant: null,
-  family: null,
+  family: family,
   fastMode: ring.fastMode,
   releaseDate: null,
 );
@@ -31,7 +31,12 @@ final _providers = [
     id: "anthropic",
     name: "Anthropic",
     models: {
-      for (final ring in [fable, opus, sonnet, haiku]) ring.modelID: _model(ring),
+      fable.modelID: _model(fable),
+      opus.modelID: _model(opus, family: "Opus"),
+      // An older Opus, which the model list folds into its family by default.
+      "opus-4-1": _model(opus, family: "Opus").copyWith(id: "opus-4-1", name: "Opus 4.1"),
+      sonnet.modelID: _model(sonnet),
+      haiku.modelID: _model(haiku),
     },
     defaultModelID: "opus",
   ),
@@ -221,6 +226,18 @@ void main() {
 
     expect(picker, findsNothing);
     expect(find.byType(ModelPicker), findsOneWidget);
+    // Every model, not one per family.
+    expect(find.descendant(of: find.byType(ModelPicker), matching: find.text("Opus 4.1")), findsOneWidget);
+  });
+
+  testWidgets("the model pill's list keeps one model per family until a search", (tester) async {
+    await _pump(tester, orbits: null);
+
+    await tester.tap(find.byType(PregoPickerButton).first);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ModelPicker), findsOneWidget);
+    expect(find.descendant(of: find.byType(ModelPicker), matching: find.text("Opus 4.1")), findsNothing);
   });
 
   testWidgets("larger reader text grows the chip's text, up to what fits the pill height", (tester) async {

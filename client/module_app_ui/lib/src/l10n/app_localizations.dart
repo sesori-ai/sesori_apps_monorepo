@@ -3601,6 +3601,12 @@ abstract class AppLocalizations {
   /// **'{model}, {level} effort'**
   String orbitsPickerLevel(String model, String level);
 
+  /// Screen-reader label of the OFF level dot in the orbits picker, where the model runs with thinking off.
+  ///
+  /// In en, this message translates to:
+  /// **'{model}, effort off'**
+  String orbitsPickerLevelOff(String model);
+
   /// No description provided for @sessionDetailModelSearch.
   ///
   /// In en, this message translates to:

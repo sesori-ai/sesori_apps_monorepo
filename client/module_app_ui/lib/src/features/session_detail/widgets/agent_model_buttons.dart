@@ -352,20 +352,27 @@ class const _ModelMenu({
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
       ),
-      contentBuilder: (context, close) =>
-          _modelPicker(sections: sections, selected: selected, onModelSelected: onModelSelected, close: close),
+      contentBuilder: (context, close) => _modelPicker(
+        sections: sections,
+        showsEveryModel: false,
+        selected: selected,
+        onModelSelected: onModelSelected,
+        close: close,
+      ),
     );
   }
 }
 
 Widget _modelPicker({
   required List<ModelPickerSection> sections,
+  required bool showsEveryModel,
   required AgentModel? selected,
   required void Function({required String providerID, required String modelID, required SessionVariant? variant})
   onModelSelected,
   required VoidCallback close,
 }) => ModelPicker(
   sections: sections,
+  showsEveryModel: showsEveryModel,
   selected: selected,
   onModelSelected: ({required String providerID, required String modelID, required SessionVariant? variant}) {
     close();
@@ -403,8 +410,14 @@ class const _OrbitsMenu({
           toggle();
         },
       ),
-      contentBuilder: (context, close) =>
-          _modelPicker(sections: sections, selected: selected, onModelSelected: onModelSelected, close: close),
+      // Opened from "All N models", so it lists every model, not one per family.
+      contentBuilder: (context, close) => _modelPicker(
+        sections: sections,
+        showsEveryModel: true,
+        selected: selected,
+        onModelSelected: onModelSelected,
+        close: close,
+      ),
     );
   }
 }

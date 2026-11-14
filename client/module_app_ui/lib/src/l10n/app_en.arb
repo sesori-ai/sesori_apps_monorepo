@@ -1544,6 +1544,11 @@
     "description": "Screen-reader label of one level dot in the orbits picker. The level is the effort id the harness reports, such as high or xhigh.",
     "placeholders": {"model": {"type": "String"}, "level": {"type": "String"}}
   },
+  "orbitsPickerLevelOff": "{model}, effort off",
+  "@orbitsPickerLevelOff": {
+    "description": "Screen-reader label of the OFF level dot in the orbits picker, where the model runs with thinking off.",
+    "placeholders": {"model": {"type": "String"}}
+  },
   "sessionDetailModelSearch": "Search models...",
   "subAgentsTitle": "Sub-agents",
   "subAgentsSummary": "{count, plural, =1{1 sub-agent} other{{count} sub-agents}}, {running} working",

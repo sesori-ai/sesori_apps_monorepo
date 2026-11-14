@@ -7,7 +7,8 @@
 | 3 | ⚙️ Orbit model and selection | Merged | #2569 (+#2570) |
 | 4 | 🚧 Orbits picker | Merged | #2571 |
 | 5 | ⚙️ Medallion chip in the composer | Merged | #2572 |
-| 6 | 🌱 Regression documents | In review | #2573 |
-| 7 | 🌱 L3 matrix and retirement | Not started | |
+| 6 | 🌱 Regression documents | Merged | #2573 |
+| 7 | ⚙️ Dark beads, OFF level and the full model list | In review | (this PR) |
+| 8 | 🌱 L3 matrix and retirement | Not started | |
 
 Steps 2 and 3 are independent. Step 4 depends on 3; step 5 on 3 and 4.
