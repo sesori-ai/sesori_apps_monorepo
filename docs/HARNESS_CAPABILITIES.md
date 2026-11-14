@@ -655,6 +655,27 @@ availability. If the opt-in or re-read fails, the failure is logged and fast
 mode stays offered. The transient `network_error` and `pending` reasons also
 keep it offered, with a log. Per-turn reasons from result messages are not tracked.
 
+## Model and effort orbits (touch composer)
+
+The touch composer (phone and touch iPad) replaces the model, effort and ⚡
+pills with the medallion chip and its orbits picker when the catalog fits, and
+keeps the pills otherwise. The client decides from the catalog alone, never the
+harness name: exactly one provider has available models, every effort it
+reports (`none` ignored) is an exact level of `minimal, low, medium, high,
+xhigh, max, ultra`, and at least one model reports a level. One other effort
+name rejects the whole catalog. The pointer layout always keeps the pills.
+
+| Harness | Status |
+|---|---|
+| Claude | ✅ Always: one provider and the closed level set `low` to `max`. |
+| Codex, Grok, Cursor | ✅ Typically: one provider; levels pass through from the backend, so an off-ladder name would bring back the pills. |
+| Antigravity | ✅ When at least one account model has High, Medium and Low variants; one provider. |
+| Copilot | ✅ Typically: one provider. A model's levels are known only once it has been the current model, so the others show as rings without levels. |
+| DeepSeek | ✅ Only when exactly one upstream provider is in use; it reports one provider per upstream provider. |
+| OpenCode | ✅ Rarely: only with exactly one usable connected provider; it reports one provider per connected provider. |
+| Pi, OMP | ⬜ Keep the pills: they list `off`, which is not on the ladder. |
+| Hermes | ⬜ Keeps the pills: it reports no effort levels (see Option pickers). |
+
 ## Agent selection and harness modes
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
