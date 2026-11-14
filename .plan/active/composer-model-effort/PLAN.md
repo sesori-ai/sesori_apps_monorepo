@@ -309,6 +309,7 @@ proxy where they accept it).
 | New session to session detail, iOS simulator | Both composers behave the same; during the launch hand-off the locked chip stays in place with no swap. |
 | Pi and Oh My Pi, each with one provider, iOS simulator | Orbits with an OFF ray; picking OFF sends `off`, and the chip reads OFF with no blade lit. |
 | One non-orbit harness (OpenCode with several providers, or Hermes), iOS simulator | Today's pills, unchanged. |
+| Chip polish (step 8), Claude Code, iOS simulator, light and dark | The chip's plate blends with the composer pills; the chip leads the row with the agent pill and YOLO end-aligned; the scrim keeps ring names and level words readable over a busy transcript; ring names carry no FAST tag; a haptic on chip press (one, even when the press starts over a patch), on sliding onto a new target, and on a pick by release or tap of a dot or name. |
 
 ## Risks and accepted behaviour
 

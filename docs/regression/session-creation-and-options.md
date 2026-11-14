@@ -716,10 +716,12 @@ variant, and worktree mode, and creating the session with its first input.
   one. Releasing on a level dot picks that model and level together in one
   change, with a light haptic; releasing on a ring's
   name picks the model with the model picker's switch rule (the current level
-  when the model offers it, else its fallbacks); releasing anywhere else closes
-  the picker with no change. A second finger is ignored.
+  when the model offers it, else its fallbacks), with the same light haptic;
+  releasing anywhere else closes the picker with no change and no haptic. A
+  second finger is ignored.
 - Tap: a tap on the chip opens the picker and leaves it open, and a tap on a dot
-  or name then picks as a release would; a tap on empty space closes it.
+  or name then picks as a release would, with the same light haptic; a tap on
+  empty space closes it.
   Opening by keyboard or by a screen reader's tap plays the same light haptic.
   A
   model without levels has one dot at the ring's end and is picked from

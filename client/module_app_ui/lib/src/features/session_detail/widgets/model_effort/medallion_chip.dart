@@ -336,7 +336,7 @@ final class _MedallionChipPainter({
         ..close();
     }
     canvas
-      ..drawPath(mark, Paint()..shader = metal.beadShader(bounds: mark.getBounds()))
+      ..drawPath(mark, Paint()..shader = metal.beadShader(bounds: mark.getBounds(), opacity: 1))
       ..drawPath(
         mark,
         Paint()

@@ -50,10 +50,13 @@ enum OrbitMetal({
       ui.Gradient.linear(bounds.topLeft, bounds.bottomRight, [m0, m1, m2], const [0, .55, 1]);
 
   /// A small polished bead, lit from the upper left.
-  Shader beadShader({required Rect bounds}) => ui.Gradient.radial(
+  /// A shader ignores the paint's colour, so [opacity] fades the bead here.
+  Shader beadShader({required Rect bounds, required double opacity}) => ui.Gradient.radial(
     bounds.topLeft + Offset(bounds.width * .35, bounds.height * .3),
     bounds.longestSide * .75,
-    [m0, m1, m3],
+    [
+      for (final color in [m0, m1, m3]) color.withValues(alpha: color.a * opacity),
+    ],
     const [0, .45, 1],
   );
 }
@@ -157,9 +160,7 @@ void paintMedallion({
     canvas.drawCircle(
       knurl,
       .78 * k,
-      Paint()
-        ..shader = metal.beadShader(bounds: knurlBox)
-        ..color = Color.fromRGBO(0, 0, 0, finish.knurlAlpha),
+      Paint()..shader = metal.beadShader(bounds: knurlBox, opacity: finish.knurlAlpha),
     );
   }
   canvas.drawCircle(
@@ -275,7 +276,7 @@ void _paintBlades({
     ..quadraticBezierTo(hub.dx, hub.dy + length * .14, hub.dx - c, hub.dy - length * .1)
     ..close();
   canvas
-    ..drawPath(hubPath, Paint()..shader = metal.beadShader(bounds: hubPath.getBounds()))
+    ..drawPath(hubPath, Paint()..shader = metal.beadShader(bounds: hubPath.getBounds(), opacity: 1))
     ..drawPath(
       hubPath,
       Paint()
