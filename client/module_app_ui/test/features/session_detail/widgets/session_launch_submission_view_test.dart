@@ -6,6 +6,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/queued_message_bubble.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/session_launch_submission_view.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/user_message_card.dart";
 import "package:sesori_app_ui/src/l10n/app_localizations.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
@@ -138,21 +139,49 @@ void main() {
     expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsOneWidget);
   });
 
-  testWidgets("a send under two seconds old names the harness when it reaches two seconds", (tester) async {
-    final loc = await _pump(
-      tester,
-      submission: NewSessionSubmissionSnapshot.text(
-        draft: ComposerDraft.typed(text: "Hi"),
-        attachments: const [],
-      ),
-      transcriptWidth: null,
-      sendingSince: clock.now().subtract(const Duration(milliseconds: 1500)),
-    );
-    expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsNothing);
+  for (final reduceMotion in [false, true]) {
+    testWidgets(
+      "a send under two seconds old fades its line into room kept for it, moving nothing"
+      "${reduceMotion ? " under reduced motion" : ""}",
+      (tester) async {
+        if (reduceMotion) {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+            reduceMotion: true,
+          );
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        }
+        final semantics = tester.ensureSemantics();
+        final loc = await _pump(
+          tester,
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "Hi"),
+            attachments: const [],
+          ),
+          transcriptWidth: null,
+          sendingSince: clock.now().subtract(const Duration(milliseconds: 1500)),
+        );
+        final line = find.text(loc.sessionDetailSendingToHarness("Claude"));
+        final bubble = find.byType(UserMessageBubble);
+        double lineOpacity() => tester
+            .widgetList<FadeTransition>(find.ancestor(of: line, matching: find.byType(FadeTransition)))
+            .fold(1, (opacity, fade) => opacity * fade.opacity.value);
+        final top = tester.getTopLeft(bubble).dy;
+        expect(lineOpacity(), 0);
+        expect(find.bySemanticsLabel(loc.sessionDetailSendingToHarness("Claude")), findsNothing);
+        expect(find.byType(PregoActivityIndicator), findsNothing);
 
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsOneWidget);
-  });
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.byType(PregoActivityIndicator), findsOneWidget);
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(tester.getTopLeft(bubble).dy, top, reason: "Frame $i");
+        }
+        expect(lineOpacity(), 1);
+        expect(find.bySemanticsLabel(loc.sessionDetailSendingToHarness("Claude")), findsOneWidget);
+        semantics.dispose();
+      },
+    );
+  }
 
   testWidgets("a message accepted but not yet listed reads as still sending, not as queued", (tester) async {
     QueuedSessionSubmission submission({required String promptId}) => QueuedSessionSubmission.text(

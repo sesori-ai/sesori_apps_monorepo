@@ -1351,6 +1351,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             presentation: QueuedMessageBubblePresentation.sending(
               harnessName: PregoBrandLogo.displayNameFor(pluginId),
               sendingSince: startedAt,
+              reservesLine: true,
             ),
           ),
         ),
@@ -1387,6 +1388,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                 QueuedPromptDispatchState.dispatched => QueuedMessageBubblePresentation.sending(
                   harnessName: widget.harnessName,
                   sendingSince: _promptSentAt[entryId],
+                  // The launch's first message keeps the room its bubble had.
+                  reservesLine: entryId == _launchSlotRowId,
                 ),
                 QueuedPromptDispatchState.queued || QueuedPromptDispatchState.unknown =>
                   onCancel == null
@@ -1443,6 +1446,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               _TransientStage.sending => QueuedMessageBubblePresentation.sending(
                 harnessName: widget.harnessName,
                 sendingSince: _promptSentAt[entryId],
+                reservesLine: false,
               ),
               _TransientStage.failed => QueuedMessageBubblePresentation.failed(
                 reason: switch (widget.localSend) {
@@ -1458,6 +1462,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               _TransientStage.awaitingBridge => QueuedMessageBubblePresentation.sending(
                 harnessName: widget.harnessName,
                 sendingSince: _promptSentAt[entryId],
+                reservesLine: false,
               ),
               _TransientStage.pending when submission is UnavailableQueuedCommandSubmission =>
                 QueuedMessageBubblePresentation.commandUnavailable(

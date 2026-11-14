@@ -885,7 +885,9 @@ defaults and queued client sends coherent.
   and removal action.
 - A session this surface just created shows its first message as the oldest
   transient row: a sending bubble named after the launch's harness, timed from
-  the moment Send was pressed. It is released in the same update that first
+  the moment Send was pressed. Unlike a later send's, it keeps its status line's
+  room before the line shows, as the launch view did, so the line fades in
+  without moving it. It is released in the same update that first
   shows a renderable user message, or a bridge-queued prompt that is neither one
   of the launch's own follow-ups nor a prompt sent from the session screen, so
   the bubble and its replacement never show together. A stop removes it, and while it shows the transcript is not empty.

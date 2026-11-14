@@ -93,12 +93,20 @@ class const SessionLaunchSubmissionView({
             NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
             NewSessionCommandSubmissionSnapshot() => const <ComposerAttachment>[],
           },
-          presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: sendingSince),
+          presentation: QueuedMessageBubblePresentation.sending(
+            harnessName: harnessName,
+            sendingSince: sendingSince,
+            reservesLine: true,
+          ),
         ),
       for (final (:submission, :since) in awaitingBridgeSubmissions)
         queued(
           submission: submission,
-          presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: since),
+          presentation: QueuedMessageBubblePresentation.sending(
+            harnessName: harnessName,
+            sendingSince: since,
+            reservesLine: false,
+          ),
         ),
       for (final followUp in launchFollowUps)
         queued(
@@ -184,6 +192,7 @@ QueuedMessageBubblePresentation launchFollowUpPresentation({
     SendingLaunchFollowUp(:final since) => QueuedMessageBubblePresentation.sending(
       harnessName: harnessName,
       sendingSince: since,
+      reservesLine: false,
     ),
     QueuedLaunchFollowUp(:final since) when onRemove != null => QueuedMessageBubblePresentation.pending(
       onCancel: () => onRemove(promptId: promptId),
@@ -194,6 +203,7 @@ QueuedMessageBubblePresentation launchFollowUpPresentation({
     AcceptedLaunchFollowUp(:final since) => QueuedMessageBubblePresentation.sending(
       harnessName: harnessName,
       sendingSince: since,
+      reservesLine: false,
     ),
     // A lost response may already have reached the bridge, so only an
     // authoritative rejection can be removed; Retry is safe either way,

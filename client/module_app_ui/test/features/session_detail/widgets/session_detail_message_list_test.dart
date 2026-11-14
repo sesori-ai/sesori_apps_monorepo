@@ -753,9 +753,8 @@ void main() {
     );
 
     double opacityOf(WidgetTester tester, Finder line) => tester
-        .widget<FadeTransition>(find.ancestor(of: line, matching: find.byType(FadeTransition)).first)
-        .opacity
-        .value;
+        .widgetList<FadeTransition>(find.ancestor(of: line, matching: find.byType(FadeTransition)))
+        .fold(1, (opacity, fade) => opacity * fade.opacity.value);
 
     Future<_SessionDetailMessageListHarnessState> pumpChat(WidgetTester tester) => _pumpTurns(
       tester,
@@ -1259,9 +1258,8 @@ void main() {
     );
 
     double opacityOf(WidgetTester tester, Finder line) => tester
-        .widget<FadeTransition>(find.ancestor(of: line, matching: find.byType(FadeTransition)).first)
-        .opacity
-        .value;
+        .widgetList<FadeTransition>(find.ancestor(of: line, matching: find.byType(FadeTransition)))
+        .fold(1, (opacity, fade) => opacity * fade.opacity.value);
 
     /// Sends a message and lets a harness list it as queued, as Claude's does,
     /// [listedAfter] later.
@@ -2132,7 +2130,11 @@ void main() {
       const harnessName = "A Very Long Custom Harness Name";
       await pumpNarrowBubble(
         tester,
-        presentation: const QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: null),
+        presentation: const QueuedMessageBubblePresentation.sending(
+          harnessName: harnessName,
+          sendingSince: null,
+          reservesLine: false,
+        ),
       );
       await tester.pump(const Duration(seconds: 3));
 
@@ -2144,7 +2146,11 @@ void main() {
     testWidgets("a slow send with no harness name yet just says it is sending", (tester) async {
       await pumpNarrowBubble(
         tester,
-        presentation: const QueuedMessageBubblePresentation.sending(harnessName: null, sendingSince: null),
+        presentation: const QueuedMessageBubblePresentation.sending(
+          harnessName: null,
+          sendingSince: null,
+          reservesLine: false,
+        ),
       );
       expect(find.text("Sending"), findsNothing);
 
