@@ -73,7 +73,6 @@ void main() {
         EffortLevel.high,
         EffortLevel.xhigh,
       ]);
-      expect(orbits?.allRingsFast, isTrue);
     });
 
     test("carry each model's name, fast mode, and levels weakest first", () {
@@ -198,31 +197,6 @@ void main() {
 
       expect(_ringIDs(orbits), ["a"]);
       expect(orbits?.totalModels, 1);
-    });
-
-    test("report whether every ring has fast mode", () {
-      List<ProviderInfo> withSecond({required FastModeSupport? fastMode}) => [
-        _provider(
-          models: [
-            _model(id: "a"),
-            _model(id: "b", fastMode: fastMode),
-          ],
-        ),
-      ];
-
-      bool? allFast({required FastModeSupport? fastMode}) => _calculator
-          .orbits(
-            providers: withSecond(fastMode: fastMode),
-            selected: _selected(modelID: "a"),
-          )
-          ?.allRingsFast;
-
-      expect(
-        allFast(fastMode: const FastModeSupport.unavailable(reason: FastModeUnavailableReason.notOnPlan)),
-        isTrue,
-      );
-      expect(allFast(fastMode: null), isFalse);
-      expect(allFast(fastMode: const FastModeSupport.unknown()), isFalse);
     });
   });
 

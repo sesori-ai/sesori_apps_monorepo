@@ -42,7 +42,6 @@ ModelOrbits claudeOrbits({
   rings: [fable, opus, sonnet, haiku],
   levels: _ladder,
   totalModels: totalModels,
-  allRingsFast: false,
   current: current,
   currentLevel: currentLevel,
 );

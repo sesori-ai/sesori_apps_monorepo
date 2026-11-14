@@ -3577,12 +3577,6 @@ abstract class AppLocalizations {
   /// **'Fast'**
   String get orbitsPickerFastToggle;
 
-  /// Small tag after a model name in the orbits picker when that model has fast mode.
-  ///
-  /// In en, this message translates to:
-  /// **'FAST'**
-  String get orbitsPickerFastTag;
-
   /// Shown along the ring of a model that has no effort levels in the orbits picker.
   ///
   /// In en, this message translates to:

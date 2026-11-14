@@ -58,7 +58,6 @@ class const ModelOrbitsCalculator() {
       rings: rings,
       levels: EffortLevel.values.where(offeredLevels.contains).toList(growable: false),
       totalModels: models.length,
-      allRingsFast: rings.every((ring) => _hasFastMode(support: ring.fastMode)),
       current: current,
       currentLevel: current.levels.firstWhereOrNull((level) => level.variant.id == selected.variant)?.level,
     );
@@ -102,9 +101,4 @@ class const ModelOrbitsCalculator() {
     }
     return representatives..sortBy<num>(models.indexOf);
   }
-
-  bool _hasFastMode({required FastModeSupport? support}) => switch (support) {
-    FastModeAvailable() || FastModeUnavailable() => true,
-    null || FastModeSupportUnknown() => false,
-  };
 }

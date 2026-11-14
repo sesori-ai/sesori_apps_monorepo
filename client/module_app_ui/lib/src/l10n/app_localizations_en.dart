@@ -2033,9 +2033,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get orbitsPickerFastToggle => 'Fast';
 
   @override
-  String get orbitsPickerFastTag => 'FAST';
-
-  @override
   String get orbitsPickerNoEffort => 'no effort setting';
 
   @override

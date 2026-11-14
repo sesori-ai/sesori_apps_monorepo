@@ -139,7 +139,6 @@ void main() {
           rings: rings,
           levels: EffortLevel.values,
           totalModels: 4,
-          allRingsFast: false,
           current: rings.first,
           currentLevel: EffortLevel.off,
         ),

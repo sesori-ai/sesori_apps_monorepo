@@ -58,6 +58,17 @@ Future<void> showOrbitsPicker({
   );
 }
 
+/// Plays [play], one of [HapticFeedback]'s patterns, for the medallion chip
+/// and the orbits picker. A platform failure is logged, never thrown at the
+/// gesture.
+Future<void> playOrbitsHaptic({required Future<void> Function() play}) async {
+  try {
+    await play();
+  } on Object catch (error, stackTrace) {
+    logw("Failed to play orbits haptic feedback", error, stackTrace);
+  }
+}
+
 final class _OrbitsPickerRoute({
   required final bool reducedMotion,
   required final String label,
@@ -221,7 +232,6 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
       orbits: widget.orbits,
       textTheme: prego.textTheme,
       palette: palette,
-      fastTag: loc.orbitsPickerFastTag,
       noEffortText: loc.orbitsPickerNoEffort,
       allModelsText: loc.orbitsPickerAllModels(widget.orbits.totalModels),
     );
@@ -249,7 +259,9 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
         : null,
   );
 
-  void _setHot(OrbitTarget? target) {
+  /// Lights up [target] under the finger, with a selection [haptic] when it
+  /// is new.
+  void _setHot({required OrbitTarget? target, required bool haptic}) {
     // Only things a slide can pick light up under the finger.
     final hot = target is OrbitFastToggleTarget ? null : target;
     if (hot == _hot) return;
@@ -258,15 +270,7 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
       _hot = hot;
     });
     _hotGrow.forward(from: 0);
-    if (hot != null) unawaited(_selectionHaptic());
-  }
-
-  static Future<void> _selectionHaptic() async {
-    try {
-      await HapticFeedback.selectionClick();
-    } on Object catch (error, stackTrace) {
-      logw("Failed to play orbits picker haptic feedback", error, stackTrace);
-    }
+    if (hot != null && haptic) unawaited(playOrbitsHaptic(play: HapticFeedback.selectionClick));
   }
 
   /// Hit tests what is drawn: while the ripple settles, each ring is still
@@ -306,12 +310,15 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
     _pointer = event.pointer;
     final target = _hitTest(geometry: geometry, position: event.localPosition);
     _pressed = target;
-    _setHot(target);
+    _setHot(target: target, haptic: true);
   }
 
   void _onPointerMove({required PointerMoveEvent event, required OrbitGeometry geometry}) {
     if (event.pointer != _pointer) return;
-    _setHot(_hitTest(geometry: geometry, position: event.localPosition));
+    _setHot(
+      target: _hitTest(geometry: geometry, position: event.localPosition),
+      haptic: true,
+    );
   }
 
   void _onPointerUp({required PointerUpEvent event, required OrbitGeometry geometry}) {
@@ -330,7 +337,9 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
 
     switch (handoff.phase) {
       case OrbitsHandoffPressing(:final position):
-        _setHot(targetAt(position));
+        // The chip already answered the press, so a finger that has not
+        // moved yet gets no second haptic for where it landed.
+        _setHot(target: targetAt(position), haptic: handoff.travelled);
       case OrbitsHandoffReleased(:final position):
         final target = targetAt(position);
         // A tap on the chip opens the picker and leaves it open.
@@ -366,7 +375,7 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
   void _endGesture() {
     _pointer = null;
     _pressed = null;
-    _setHot(null);
+    _setHot(target: null, haptic: false);
   }
 
   void _activate(OrbitTarget target) {
@@ -388,6 +397,7 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
   }
 
   void _pick({required String providerID, required String modelID, required SessionVariant? variant}) {
+    unawaited(playOrbitsHaptic(play: HapticFeedback.lightImpact));
     widget.onModelSelected(providerID: providerID, modelID: modelID, variant: variant);
     _close();
   }

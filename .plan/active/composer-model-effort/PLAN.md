@@ -94,8 +94,8 @@ picks model and effort together. Every other catalog keeps today's pills.
     time the finger enters a new patch. Release on a patch picks it; release
     outside cancels. A tap on a patch also picks it. Taps are never ignored: a
     blocked pick shows the reason.
-  - Model names sit inside their rings along the arc. The FAST tag next to a
-    name is hidden when every ring model has fast mode.
+  - Model names sit inside their rings along the arc, with no fast-mode tag;
+    the fast toggle is the one fast-mode control.
   - Fast mode toggle in the bottom-right corner of the picker, using today's
     fast-mode decision and cache-reset confirmation.
 - **D9 No sound, no analytics event in phase 1.** The chosen model and effort
@@ -162,7 +162,7 @@ picks model and effort together. Every other catalog keeps today's pills.
     `EffortLevel` with the original `SessionVariant`), and its
     `FastModeSupport`.
   - `ModelOrbits`: `rings` (outermost first), `levels` (ladder levels any ring
-    offers, in ladder order), `totalModels`, `allRingsFast`, a non-nullable
+    offers, in ladder order), `totalModels`, a non-nullable
     `current` ring and `EffortLevel? currentLevel` (null for a model with no
     levels). The widgets derive nothing.
 - `client/module_core/lib/src/services/model_orbits_calculator.dart`: const
@@ -257,8 +257,8 @@ new-session intent recording. No user-visible change.
 
 ### Step 4 — Orbits picker (🚧)
 
-`OrbitGeometry`, `OrbitsPicker` with painter, ripple, gestures, haptics, FAST
-tags, fast toggle, "All N models", and semantics (each patch a labelled
+`OrbitGeometry`, `OrbitsPicker` with painter, ripple, gestures, haptics, fast
+toggle, "All N models", and semantics (each patch a labelled
 button). Widget tests for tap, slide-release, release-outside and the "All"
 entry; PR visuals come from widget-test goldens, with no demo screen in
 production code. Not mounted yet, so no user-visible change.
@@ -285,7 +285,14 @@ D10: the dark palette, `EffortLevel.off` with its ray word, chip word, blade
 rule and screen-reader label, and the model picker listing every model when
 opened from the orbits. Docs follow.
 
-### Step 8 — L3 matrix and retirement (🌱)
+### Step 8 — Chip polish (🌿)
+
+User feedback on step 7: the chip at rest takes the composer pills' surface
+and a satin medallion so it blends in; on touch it leads the row with the
+agent pill and trailing chips end-aligned; a near-opaque picker scrim; no
+FAST tags; a haptic when the chip opens the picker and when a release picks.
+
+### Step 9 — L3 matrix and retirement (🌱)
 
 Run the matrix below, record it, move the plan to `.plan/completed/`.
 
@@ -298,7 +305,7 @@ proxy where they accept it).
 | Cell | Check |
 |---|---|
 | Claude Code, iOS simulator, light and dark | Chip shows model and level; orbits open with the ripple; slide and release picks model and level in one go; a no-level model ring works; fast toggle with confirmation; the sent prompt carries the picked variant and fast mode. |
-| Codex, iOS simulator | Rings are the latest model of each family; "All N models" opens the regular picker listing every model; picking a model outside the top four makes it take the fourth slot, with the rings kept in strength order (strongest outermost), so it is not necessarily drawn innermost; FAST tags hidden when every ring has fast mode. |
+| Codex, iOS simulator | Rings are the latest model of each family; "All N models" opens the regular picker listing every model; picking a model outside the top four makes it take the fourth slot, with the rings kept in strength order (strongest outermost), so it is not necessarily drawn innermost |
 | New session to session detail, iOS simulator | Both composers behave the same; during the launch hand-off the locked chip stays in place with no swap. |
 | Pi and Oh My Pi, each with one provider, iOS simulator | Orbits with an OFF ray; picking OFF sends `off`, and the chip reads OFF with no blade lit. |
 | One non-orbit harness (OpenCode with several providers, or Hermes), iOS simulator | Today's pills, unchanged. |
