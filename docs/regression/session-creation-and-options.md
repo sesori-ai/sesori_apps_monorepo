@@ -728,7 +728,8 @@ variant, and worktree mode, and creating the session with its first input.
   the chip, dismissing the soft keyboard first as the model pill does. Opened
   from there, the picker lists every available model rather than one per
   family; search still filters it. The model pill's picker keeps one model per
-  family until a search.
+  family, plus the selected model when it is not that family's
+  representative, until a search.
 - Each dot, name, the "All N models" pill and the fast toggle is a labelled
   button for screen readers; the OFF dot reads "`<model>`, effort off".
 - A level picked in New Session is remembered like a level picked from the

@@ -300,7 +300,7 @@ proxy where they accept it).
 | Claude Code, iOS simulator, light and dark | Chip shows model and level; orbits open with the ripple; slide and release picks model and level in one go; a no-level model ring works; fast toggle with confirmation; the sent prompt carries the picked variant and fast mode. |
 | Codex, iOS simulator | Rings are the latest model of each family; "All N models" opens the regular picker listing every model; picking a model outside the top four makes it take the fourth slot, with the rings kept in strength order (strongest outermost), so it is not necessarily drawn innermost; FAST tags hidden when every ring has fast mode. |
 | New session to session detail, iOS simulator | Both composers behave the same; during the launch hand-off the locked chip stays in place with no swap. |
-| Pi with one provider, iOS simulator | Orbits with an OFF ray; picking OFF sends `off`, and the chip reads OFF with no blade lit. |
+| Pi and Oh My Pi, each with one provider, iOS simulator | Orbits with an OFF ray; picking OFF sends `off`, and the chip reads OFF with no blade lit. |
 | One non-orbit harness (OpenCode with several providers, or Hermes), iOS simulator | Today's pills, unchanged. |
 
 ## Risks and accepted behaviour
