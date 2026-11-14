@@ -657,10 +657,11 @@ variant, and worktree mode, and creating the session with its first input.
 
 - Eligibility is decided from the catalog alone, never from the harness name:
   exactly one provider has available models, every effort it reports (ignoring
-  `none`) is an exact level of the ladder `minimal, low, medium, high, xhigh,
-  max, ultra`, at least one model reports a level, and a model is selected.
-  One effort name off the ladder (`off`, `mid`, `highest`) makes the whole
-  catalog ineligible. See `docs/HARNESS_CAPABILITIES.md` for which harnesses
+  `none`) is an exact level of the ladder `off, minimal, low, medium, high,
+  xhigh, max, ultra`, at least one model reports a level, and a model is
+  selected. `off` (Pi and Oh My Pi's thinking off) is the weakest level. One
+  effort name off the ladder (`mid`, `highest`) makes the whole catalog
+  ineligible. See `docs/HARNESS_CAPABILITIES.md` for which harnesses
   qualify today.
 - On the touch composer (phone and touch iPad, in New Session and session
   detail) an eligible catalog replaces the model, effort and ⚡ pills with one
@@ -669,8 +670,9 @@ variant, and worktree mode, and creating the session with its first input.
   The run-detail pills of sub-agent and archived sessions are unchanged.
 - The chip is 36 pt tall like the touch pills and hugs its text. A medallion at
   its leading end shows one blade per level of the model, lit up to the current
-  level, or the model's initial for a model without levels. Beside it are the
-  model name (ellipsized when long) and the level word in capitals (`HIGH`),
+  level, or the model's initial for a model without levels. `OFF` has no blade
+  of its own and lights none. Beside it are the model name (ellipsized when
+  long) and the level word in capitals (`HIGH`, `OFF`),
   and an end diamond that turns into a bolt while fast mode is on. It is silver
   at standard speed and gold while fast. A model, level or speed change
   cross-fades the face and eases the plate to its new width; nothing snaps.
@@ -690,7 +692,11 @@ variant, and worktree mode, and creating the session with its first input.
   the name along the arc, and one ray per ladder level any ring offers, from the
   lowest at the low angle to the highest. Only the current choice is drawn
   filled: the medallion on its dot and a polished trail along its ring; every
-  other dot is the same hollow dot. Entry is a ripple of about 0.34 s from the
+  other dot is the same hollow dot. In dark mode the hollow dots and the
+  "All N models" pill are tinted beads a little lighter than the track, with
+  a lighter edge, and the level words are brighter; light mode keeps white
+  dots. Up to eight levels (`OFF` to `ULTRA`) fit a ring without overlapping
+  patches. Entry is a ripple of about 0.34 s from the
   medallion with no overshoot; under reduced motion it is a plain fade. On a
   small overlay (narrow or landscape phone) the rings shrink to fit.
 - The rings are the latest model of each family, up to four: families in order
@@ -719,9 +725,12 @@ variant, and worktree mode, and creating the session with its first input.
   so ("`<model>` has no fast mode.") instead of doing nothing.
 - "All N models" shows only when the catalog has more available models than
   rings. It closes the orbits and opens the regular model picker anchored at
-  the chip, dismissing the soft keyboard first as the model pill does.
+  the chip, dismissing the soft keyboard first as the model pill does. Opened
+  from there, the picker lists every available model rather than one per
+  family; search still filters it. The model pill's picker keeps one model per
+  family until a search.
 - Each dot, name, the "All N models" pill and the fast toggle is a labelled
-  button for screen readers.
+  button for screen readers; the OFF dot reads "`<model>`, effort off".
 - A level picked in New Session is remembered like a level picked from the
   effort pill, so a later model switch keeps it when the new model offers it.
 - Coverage: eligibility, ring selection, the current-model swap, the no-family
@@ -729,7 +738,8 @@ variant, and worktree mode, and creating the session with its first input.
   testing, the chip on touch versus pointer and ineligible catalogs, the locked
   chip, press-slide-release, release outside, tap then tap, a name pick, a ring
   without levels, the "All N models" hand-off, the fast toggle, semantics and
-  the width easing run as widget tests. Release coverage (L3) drives the chip
+  the width easing, the OFF level, an eight-level ring's patches, the full
+  list behind "All N models" and the dark palette run as widget tests. Release coverage (L3) drives the chip
   on a headless iOS simulator.
 
 ## Regression Levels
@@ -771,7 +781,8 @@ mixed fast-mode support across the rings, a model name that ellipsizes, the
 largest text size, reduced motion, light and dark, a landscape phone, the soft
 keyboard up while pressing the chip, and a fast slide that crosses several
 patches before release. Also vary a catalog that just misses eligibility (a
-second provider, one off-ladder effort name, no levels at all).
+second provider, one off-ladder effort name, no levels at all), and a Pi or
+Oh My Pi catalog with one provider, whose `off` level must show as `OFF`.
 For the command picker, vary light/dark mode, narrow widths, large text, long
 command names, every source label, missing descriptions/hints, empty/no-match
 results, and scrolling a large catalog with the keyboard open. For both
@@ -947,7 +958,11 @@ startup-extension file failure, retry once the filesystem is usable.
   them), or the prompt runs another level than the one picked.
 - The rings omit the selected model, show two models of one family, show an
   older model of a family than the model picker, or exceed four rings; "All N
-  models" shows when every model has a ring, or does not open the model picker.
+  models" shows when every model has a ring, or does not open the model picker;
+  the list it opens folds families, or the model pill's list stops folding
+  them.
+- A Pi or Oh My Pi catalog with one provider falls back to the pills, `OFF`
+  lights a blade, or dark mode draws the hollow dots as dark holes.
 - The ripple overshoots or plays under reduced motion, or rings overflow the
   screen on a small or landscape phone.
 - Codex's model picker shows the oldest model of a family by default, a bare id

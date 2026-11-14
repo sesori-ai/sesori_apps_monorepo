@@ -5,6 +5,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/orbit_geometry.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/orbits_painter.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/orbits_picker.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart"
     show EffortLevel, FastModeControl, FastModeToggleApply, FastModeToggleDecision, ModelOrbits;
@@ -190,6 +191,48 @@ void main() {
       tester.getSemantics(find.bySemanticsLabel("Fable 5.1, low effort")),
       isSemantics(isButton: true, isSelected: false, hasTapAction: true),
     );
+  });
+
+  testWidgets("draws OFF as the weakest level and picks it", (tester) async {
+    final pi = orbitRing(
+      modelID: "pi",
+      name: "Pi Model",
+      levels: const [EffortLevel.off, EffortLevel.low, EffortLevel.high],
+      fast: false,
+    );
+    final offOrbits = ModelOrbits(
+      rings: [pi],
+      levels: const [EffortLevel.off, EffortLevel.low, EffortLevel.high],
+      totalModels: 1,
+      allRingsFast: false,
+      current: pi,
+      currentLevel: EffortLevel.high,
+    );
+    final harness = await _open(tester, orbits: offOrbits);
+
+    expect(
+      tester.getSemantics(find.bySemanticsLabel("Pi Model, effort off")),
+      isSemantics(isButton: true, isSelected: false, hasTapAction: true),
+    );
+    await tester.tapAt(_geometry(orbits: offOrbits).dotCenter(ringIndex: 0, levelIndex: 0));
+    await tester.pumpAndSettle();
+
+    expect(harness.picks, [(providerID: "anthropic", modelID: "pi", variant: const SessionVariant(id: "off"))]);
+  });
+
+  test("dark mode tints the hollow dots and the All pill, light mode keeps its look", () {
+    final dark = PregoDesignSystem.dark.colors;
+    final darkPalette = OrbitPalette(colors: dark);
+    expect(darkPalette.bead, dark.fgQuaternary);
+    expect(darkPalette.beadEdge, dark.fgSecondary);
+    expect(darkPalette.levelText, dark.textTertiary);
+    expect(darkPalette.surface, dark.alphaWhite100);
+
+    final light = PregoDesignSystem.light.colors;
+    final lightPalette = OrbitPalette(colors: light);
+    expect(lightPalette.bead, light.alphaWhite100);
+    expect(lightPalette.beadEdge, light.fgQuaternary);
+    expect(lightPalette.levelText, light.textQuaternary);
   });
 
   group("fast toggle", () {

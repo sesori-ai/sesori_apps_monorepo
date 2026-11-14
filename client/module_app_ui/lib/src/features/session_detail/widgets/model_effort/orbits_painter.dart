@@ -1,7 +1,7 @@
 import "dart:math" as math;
 
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show ModelOrbits, OrbitRing;
+import "package:sesori_dart_core/sesori_dart_core.dart" show EffortLevel, ModelOrbits, OrbitRing;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -58,8 +58,17 @@ final class OrbitPalette({required PregoColors colors}) {
   final Color line = colors.fgQuaternary;
   final Color track = colors.bgQuaternary;
 
-  /// The fill of hollow dots and the "All" pill.
+  /// The fill of the fast toggle and the thin highlight along each track.
   final Color surface = colors.alphaWhite100;
+
+  /// The fill and edge of hollow dots and the "All" pill. In dark the light
+  /// theme's fill would read as a hole in the track, so they are tinted beads
+  /// a little lighter than it.
+  final Color bead = colors.brightness == Brightness.dark ? colors.fgQuaternary : colors.alphaWhite100;
+  final Color beadEdge = colors.brightness == Brightness.dark ? colors.fgSecondary : colors.fgQuaternary;
+
+  /// The level words along the rays.
+  final Color levelText = colors.brightness == Brightness.dark ? colors.textTertiary : colors.textQuaternary;
 }
 
 /// Text laid out once and bent along an arc at paint time, one glyph at a
@@ -169,7 +178,7 @@ final class OrbitLabels({
             fontSize: 9.5,
             height: 1,
             letterSpacing: 1.1,
-            color: palette.quietText,
+            color: palette.levelText,
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -351,7 +360,7 @@ final class OrbitsPainter({
       final center = geometry.levellessDotCenter(ringIndex: ringIndex);
       final target = OrbitNameTarget(ringIndex: ringIndex);
       if (isCurrent) {
-        _paintMedallion(canvas: canvas, ring: ring, center: center, radius: 11, target: target, litBlades: 0);
+        _paintMedallion(canvas: canvas, ring: ring, center: center, radius: 11, target: target, level: null);
       } else {
         _paintHollowDot(canvas: canvas, center: center, target: target);
       }
@@ -407,7 +416,7 @@ final class OrbitsPainter({
           center: center,
           radius: 12.5,
           target: target,
-          litBlades: levelIndex + 1,
+          level: ring.levels[levelIndex].level,
         );
       } else {
         _paintHollowDot(canvas: canvas, center: center, target: target);
@@ -426,12 +435,12 @@ final class OrbitsPainter({
   void _paintHollowDot({required Canvas canvas, required Offset center, required OrbitTarget target}) {
     final radius = _dotRadius * (1 + _hotGrowth * _growth(target));
     canvas
-      ..drawCircle(center, radius, Paint()..color = palette.surface)
+      ..drawCircle(center, radius, Paint()..color = palette.bead)
       ..drawCircle(
         center,
         radius,
         Paint()
-          ..color = palette.line
+          ..color = palette.beadEdge
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.2,
       );
@@ -443,7 +452,7 @@ final class OrbitsPainter({
     required Offset center,
     required double radius,
     required OrbitTarget target,
-    required int litBlades,
+    required EffortLevel? level,
   }) {
     // The current choice grows less than a hollow dot: it is already large.
     final grown = radius * (1 + _hotGrowth * .4 * _growth(target));
@@ -459,8 +468,8 @@ final class OrbitsPainter({
       center: center,
       radius: grown,
       metal: metal,
-      bladeCount: ring.levels.length,
-      litBlades: litBlades,
+      bladeCount: ring.bladeCount,
+      litBlades: ring.litBlades(level: level),
       monogram: ring.name.characters.first,
     );
   }
@@ -476,11 +485,11 @@ final class OrbitsPainter({
     );
     final isHot = hot == const OrbitAllModelsTarget();
     canvas
-      ..drawRRect(pill, Paint()..color = isHot ? palette.track : palette.surface)
+      ..drawRRect(pill, Paint()..color = isHot ? palette.track : palette.bead)
       ..drawRRect(
         pill,
         Paint()
-          ..color = palette.line
+          ..color = palette.beadEdge
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1,
       );

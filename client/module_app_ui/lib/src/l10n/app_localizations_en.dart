@@ -2049,6 +2049,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String orbitsPickerLevelOff(String model) {
+    return '$model, effort off';
+  }
+
+  @override
   String get sessionDetailModelSearch => 'Search models...';
 
   @override

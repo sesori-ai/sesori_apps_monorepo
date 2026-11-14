@@ -3,6 +3,8 @@ enum EffortLevel({
   /// The variant id a harness reports for this level.
   required final String wireId,
 }) {
+  /// Thinking off, as Pi and Oh My Pi report it: the weakest level.
+  off(wireId: "off"),
   minimal(wireId: "minimal"),
   low(wireId: "low"),
   medium(wireId: "medium"),

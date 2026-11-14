@@ -6,12 +6,17 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 
 /// The composer's model picker, grouped by provider: each provider's
-/// representative models, or every model that matches the search.
+/// representative models, or every model with [showsEveryModel], or every
+/// model that matches the search.
 class const ModelPicker({
   super.key,
 
   /// Sorted and grouped by the caller, which keeps them across rebuilds.
   required final List<ModelPickerSection> sections,
+
+  /// Lists every model rather than one per family, as the orbits picker's
+  /// "All N models" asks for.
+  required final bool showsEveryModel,
   required final AgentModel? selected,
   required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
   onModelSelected,
@@ -39,7 +44,10 @@ class _ModelPickerState() extends State<ModelPicker> {
     final rows = <PregoPickerSearchRow>[];
     for (final section in widget.sections) {
       final models = section.models
-          .where((model) => query.isEmpty ? model.visibleByDefault : model.searchText.contains(query))
+          .where(
+            (model) =>
+                query.isEmpty ? widget.showsEveryModel || model.visibleByDefault : model.searchText.contains(query),
+          )
           .toList();
       if (models.isEmpty) continue;
       rows.add(PregoPickerSearchHeading(text: section.providerName));

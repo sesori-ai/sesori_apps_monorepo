@@ -3,7 +3,8 @@ import "dart:async";
 import "package:flutter/gestures.dart" show kTouchSlop;
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show FastModeControl, FastModeToggleDecision, ModelOrbits, logw;
+import "package:sesori_dart_core/sesori_dart_core.dart"
+    show EffortLevel, FastModeControl, FastModeToggleDecision, ModelOrbits, logw;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -508,10 +509,10 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
           target(
             center: geometry.dotCenter(ringIndex: ringIndex, levelIndex: levelIndex),
             size: dotSize,
-            label: loc.orbitsPickerLevel(
-              orbits.rings[ringIndex].name,
-              orbits.rings[ringIndex].levels[levelIndex].level.wireId,
-            ),
+            label: switch (orbits.rings[ringIndex].levels[levelIndex].level) {
+              EffortLevel.off => loc.orbitsPickerLevelOff(orbits.rings[ringIndex].name),
+              final level => loc.orbitsPickerLevel(orbits.rings[ringIndex].name, level.wireId),
+            },
             selected:
                 orbits.rings[ringIndex] == orbits.current &&
                 orbits.rings[ringIndex].levels[levelIndex].level == orbits.currentLevel,

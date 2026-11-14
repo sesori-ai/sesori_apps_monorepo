@@ -262,6 +262,30 @@ void main() {
       expect(orbits, isNull);
     });
 
+    test("accepts a Pi catalog with off as the weakest level", () {
+      final orbits = _calculator.orbits(
+        providers: [
+          _provider(
+            models: [
+              _model(id: "a", variants: ["high", "off", "minimal", "low"]),
+              _model(id: "b", variants: ["off"]),
+            ],
+          ),
+        ],
+        selected: _selected(modelID: "a", variant: "off"),
+      );
+
+      expect(_ringIDs(orbits), ["a", "b"]);
+      expect(orbits?.current.levels.map((level) => level.level), [
+        EffortLevel.off,
+        EffortLevel.minimal,
+        EffortLevel.low,
+        EffortLevel.high,
+      ]);
+      expect(orbits?.currentLevel, EffortLevel.off);
+      expect(orbits?.levels.first, EffortLevel.off);
+    });
+
     test("rejects a catalog where no model reports a level", () {
       final orbits = _calculator.orbits(
         providers: [
@@ -348,6 +372,8 @@ void main() {
       for (final level in EffortLevel.values) {
         expect(EffortLevel.tryParse(value: level.wireId), level);
       }
+      expect(EffortLevel.tryParse(value: "off"), EffortLevel.off);
+      expect(EffortLevel.values.first, EffortLevel.off);
       expect(EffortLevel.tryParse(value: "none"), isNull);
       expect(EffortLevel.tryParse(value: "High"), isNull);
     });

@@ -129,6 +129,42 @@ void main() {
       expect(geometry.hitTest(const Offset(330, 610)), const OrbitFastToggleTarget());
     });
 
+    test("fits the whole ladder, OFF to ULTRA, with every patch its own", () {
+      final rings = [
+        for (final name in ["A", "B", "C", "D"])
+          orbitRing(modelID: name, name: name, levels: EffortLevel.values, fast: false),
+      ];
+      final full = _geometry(
+        orbits: ModelOrbits(
+          rings: rings,
+          levels: EffortLevel.values,
+          totalModels: 4,
+          allRingsFast: false,
+          current: rings.first,
+          currentLevel: EffortLevel.off,
+        ),
+      );
+
+      expect(full.scale, 1);
+      expect(full.rayAngles.first, 86);
+      expect(full.rayAngles.last, closeTo(18, 1e-9));
+      for (var ringIndex = 0; ringIndex < rings.length; ringIndex++) {
+        final name = full.namePatch(ringIndex: ringIndex);
+        expect(name.fromAngle, greaterThan(name.toAngle));
+        var reached = name.toAngle;
+        for (var levelIndex = 0; levelIndex < EffortLevel.values.length; levelIndex++) {
+          final patch = full.levelPatch(ringIndex: ringIndex, levelIndex: levelIndex);
+          expect(patch.fromAngle, reached);
+          expect(patch.toAngle, lessThan(patch.fromAngle));
+          reached = patch.toAngle;
+          expect(
+            full.hitTest(full.dotCenter(ringIndex: ringIndex, levelIndex: levelIndex)),
+            OrbitLevelTarget(ringIndex: ringIndex, levelIndex: levelIndex),
+          );
+        }
+      }
+    });
+
     test("offers the All pill only when the catalog has more models than rings", () {
       expect(geometry.showsAllModels, isFalse);
       expect(geometry.hitTest(geometry.allModelsCenter), isNull);

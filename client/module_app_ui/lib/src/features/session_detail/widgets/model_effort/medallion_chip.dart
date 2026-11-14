@@ -37,8 +37,8 @@ _Face _faceOf({required ModelOrbits orbits, required bool fast}) {
   return (
     name: ring.name,
     word: level?.wireId.toUpperCase(),
-    bladeCount: ring.levels.length,
-    litBlades: level == null ? 0 : ring.levels.indexWhere((entry) => entry.level == level) + 1,
+    bladeCount: ring.bladeCount,
+    litBlades: ring.litBlades(level: level),
     monogram: ring.name.characters.take(1).toString(),
     fast: fast,
   );
