@@ -135,18 +135,6 @@ final class const _SheetGeometry({required final double halfHeight, required fin
   };
 }
 
-/// What a scroll view inside the sheet drives when its drag moves the sheet.
-abstract interface class _SheetDragTarget() {
-  /// Whether the sheet is below full height, so a drag up grows it first.
-  bool get canGrow;
-
-  /// Moves the sheet by the finger's movement; positive [fingerDy] is down.
-  void dragBy(double fingerDy);
-
-  /// Ends a drag; positive [fingerVelocity] is down, in points per second.
-  void release({required double fingerVelocity});
-}
-
 class const _PregoDetentSheet({
   required final _PregoDetentSheetRoute<Object?> route,
   required final Animation<double> animation,
@@ -155,10 +143,7 @@ class const _PregoDetentSheet({
   State<_PregoDetentSheet> createState() => _PregoDetentSheetState();
 }
 
-class _PregoDetentSheetState()
-    extends State<_PregoDetentSheet>
-    with SingleTickerProviderStateMixin
-    implements _SheetDragTarget {
+class _PregoDetentSheetState() extends State<_PregoDetentSheet> with SingleTickerProviderStateMixin {
   /// The sheet's height in points while it isn't resting.
   late final AnimationController _height = AnimationController.unbounded(vsync: this);
   late final CurvedAnimation _presence = CurvedAnimation(parent: widget.animation, curve: Curves.easeOutCubic);
@@ -187,13 +172,13 @@ class _PregoDetentSheetState()
     _Following() || _Settling() => _height.value.clamp(0.0, geometry.fullHeight),
   };
 
-  @override
+  /// Whether the sheet is below full height, so a drag up grows it first.
   bool get canGrow {
     final geometry = _SheetGeometry.of(context);
     return _heightIn(geometry) < geometry.fullHeight - _tolerance;
   }
 
-  @override
+  /// Moves the sheet by the finger's movement; positive [fingerDy] is down.
   void dragBy(double fingerDy) {
     final geometry = _SheetGeometry.of(context);
     final height = _heightIn(geometry);
@@ -202,7 +187,7 @@ class _PregoDetentSheetState()
     _height.value = (height - fingerDy).clamp(0.0, geometry.fullHeight);
   }
 
-  @override
+  /// Ends a drag; positive [fingerVelocity] is down, in points per second.
   void release({required double fingerVelocity}) {
     if (_motion is! _Following) return;
     final geometry = _SheetGeometry.of(context);
@@ -243,7 +228,9 @@ class _PregoDetentSheetState()
   /// Springs from the current height to [detent], starting at [velocity]
   /// (points per second, positive up). Reduced motion lands there at once.
   void _settleTo({required _Detent detent, required double velocity}) {
-    if (prefersReducedMotion(context)) {
+    // The preference read when the sheet opened, so a sheet that opened
+    // without motion also settles without it.
+    if (widget.route.reducedMotion) {
       _height.stop();
       setState(() => _motion = _Resting(detent: detent));
       return;
@@ -354,7 +341,7 @@ class _PregoDetentSheetState()
 }
 
 /// Gives the sheet's scroll views [_SheetScrollPosition]s.
-class _SheetScrollController({required final _SheetDragTarget sheet}) extends ScrollController {
+class _SheetScrollController({required final _PregoDetentSheetState sheet}) extends ScrollController {
   @override
   ScrollPosition createScrollPosition(ScrollPhysics physics, ScrollContext context, ScrollPosition? oldPosition) {
     return _SheetScrollPosition(physics: physics, context: context, oldPosition: oldPosition, sheet: sheet);
@@ -368,7 +355,7 @@ class _SheetScrollPosition({
   required super.physics,
   required super.context,
   required super.oldPosition,
-  required final _SheetDragTarget sheet,
+  required final _PregoDetentSheetState sheet,
 }) extends ScrollPositionWithSingleContext {
   /// Whether the current drag has moved the sheet, so its release settles the
   /// sheet instead of flinging the list.
