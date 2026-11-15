@@ -20,6 +20,8 @@ import "models/codex_session_record.dart";
 
 /// Layer-2 aggregation, mapping, selection, and deletion for the rollout catalog.
 class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
+  static const Duration _activityRevertWindow = Duration(days: 30);
+
   /// Every recognized rollout of the last scan by path, with its parsed
   /// header, so a rescan only parses new or growing rollouts.
   final Map<String, _CachedRollout> _rollouts = {};
@@ -226,8 +228,10 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
 
   /// A rollout from its creation-date directories only, for a live tail
   /// polling for a rollout Codex had not written when the tail started.
-  String? findRecentRolloutPath({required String sessionId}) =>
-      _rolloutApi.findNewestRolloutPathSince(sessionId: sessionId, since: DateTime.now());
+  String? findRecentRolloutPath({required String sessionId}) {
+    final now = DateTime.now();
+    return _rolloutApi.findNewestRolloutPathBetween(sessionId: sessionId, oldest: now, newest: now);
+  }
 
   /// [sessionId]'s current rollout modification time, located from the id
   /// alone with no scan, so a dormant plugin can answer. Codex thread ids are
@@ -237,10 +241,24 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
   /// folds in the session index and creation time; the mtime alone suffices
   /// here because every turn appends to the current rollout, moving it past
   /// both.
+  ///
+  /// A revert writes a new rollout in that day's folder. Only the last
+  /// [_activityRevertWindow] of folders is searched for one, so an old thread
+  /// costs a bounded walk; past that the creation-date folders answer.
+  // ponytail: a revert made outside Sesori over a month ago and never opened
+  // since is missed; search the days since the client's watermark if it matters.
   PluginSessionActivityResult readSessionActivity({required String sessionId}) {
     final createdAt = codexUuidV7Time(id: sessionId);
     if (createdAt == null) return const PluginSessionActivityUnavailable();
-    final rolloutPath = _rolloutApi.findNewestRolloutPathSince(sessionId: sessionId, since: createdAt);
+    final now = DateTime.now();
+    final windowStart = now.subtract(_activityRevertWindow);
+    final rolloutPath =
+        _rolloutApi.findNewestRolloutPathBetween(
+          sessionId: sessionId,
+          oldest: createdAt.isAfter(windowStart) ? createdAt : windowStart,
+          newest: now,
+        ) ??
+        _rolloutApi.findNewestRolloutPathBetween(sessionId: sessionId, oldest: createdAt, newest: createdAt);
     final modified = rolloutPath == null ? null : _rolloutApi.lastModified(rolloutPath: rolloutPath);
     return modified == null
         ? const PluginSessionActivityUnavailable()

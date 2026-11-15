@@ -16,7 +16,7 @@ class const CodexRolloutFileName({
     if (!fileName.startsWith(_prefix) || !fileName.endsWith(_suffix)) return null;
     final core = fileName.substring(_prefix.length, fileName.length - _suffix.length);
     // The timestamp is 19 characters, followed by a dash and the ids.
-    if (core.length < 20 || core[19] != "-") return null;
+    if (core.length < 20 || core[19] != "-" || !_timestampPattern.hasMatch(core.substring(0, 19))) return null;
     final ids = core.substring(20);
     final separator = ids.indexOf("_");
     final threadId = separator < 0 ? ids : ids.substring(0, separator);
@@ -35,6 +35,7 @@ class const CodexRolloutFileName({
 
   static const String _prefix = "rollout-";
   static const String _suffix = ".jsonl";
+  static final RegExp _timestampPattern = RegExp(r"^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$");
   static final RegExp _uuidPattern = RegExp(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
     caseSensitive: false,

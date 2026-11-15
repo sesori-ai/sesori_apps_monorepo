@@ -85,6 +85,7 @@ void main() {
         "rollout-2026-11-15T12-32-41-$_sourceId.json",
         "session-2026-11-15T12-32-41-$_sourceId.jsonl",
         "rollout-$_sourceId.jsonl",
+        "rollout-2026-11-15X12-32-41-$_sourceId.jsonl",
       ]) {
         expect(CodexRolloutFileName.tryParse(fileName: name), isNull, reason: name);
       }
@@ -155,11 +156,37 @@ void main() {
   });
 
   test("session activity comes from a revert rollout filed on a later day", () {
-    final laterDay = Directory(p.join(codexHome.path, "sessions", "2026", "11", "16"))..createSync(recursive: true);
+    // Tomorrow's folder: later than the fixture's day and inside the recent
+    // window on any run date.
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final laterDay = Directory(
+      p.join(
+        codexHome.path,
+        "sessions",
+        tomorrow.year.toString(),
+        tomorrow.month.toString().padLeft(2, "0"),
+        tomorrow.day.toString().padLeft(2, "0"),
+      ),
+    )..createSync(recursive: true);
     final revert = File(p.join(sessionDay.path, _revertRollout)).renameSync(p.join(laterDay.path, _revertRollout));
     File(p.join(sessionDay.path, _originalRollout)).setLastModifiedSync(DateTime.utc(2026, 11, 15, 21));
     final revertModified = DateTime.utc(2026, 11, 16, 9);
     revert.setLastModifiedSync(revertModified);
+
+    expect(
+      catalogRepository.readSessionActivity(sessionId: _sourceId),
+      isA<PluginSessionActivityAvailable>().having(
+        (activity) => activity.updatedAt,
+        "updatedAt",
+        revertModified.millisecondsSinceEpoch,
+      ),
+    );
+  });
+
+  test("session activity of an older thread comes from its creation-date folder", () {
+    final revertModified = DateTime.utc(2026, 11, 15, 22);
+    File(p.join(sessionDay.path, _revertRollout)).setLastModifiedSync(revertModified);
 
     expect(
       catalogRepository.readSessionActivity(sessionId: _sourceId),

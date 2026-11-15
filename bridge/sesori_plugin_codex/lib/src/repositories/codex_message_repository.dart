@@ -45,7 +45,10 @@ class CodexMessageRepository({
     final List<CodexRolloutLineDto> history;
     try {
       final ownHistory = trimForkedParentHistory(lines: _rolloutApi.readTranscript(rolloutPath: rolloutPath));
-      history = [..._readInheritedHistory(lines: ownHistory, sessionId: sessionId), ...ownHistory];
+      history = [
+        ..._readInheritedHistory(lines: ownHistory, rolloutPath: rolloutPath, sessionId: sessionId),
+        ...ownHistory,
+      ];
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
@@ -68,19 +71,20 @@ class CodexMessageRepository({
   /// is missing (deleted with its own thread) leaves only the later history.
   List<CodexRolloutLineDto> _readInheritedHistory({
     required List<CodexRolloutLineDto> lines,
+    required String rolloutPath,
     required String sessionId,
   }) {
     final prefixes = <List<CodexRolloutLineDto>>[];
-    final visitedRolloutIds = <String>{};
+    final visitedPaths = {rolloutPath};
     var base = _historyBase(lines: lines);
     while (base != null) {
-      if (!visitedRolloutIds.add(base.rolloutId)) {
-        Log.w("[codex] history base cycle at rollout ${base.rolloutId} for $sessionId; ignoring older history");
-        break;
-      }
       final basePath = _rolloutApi.findRolloutPathByRolloutId(rolloutId: base.rolloutId);
       if (basePath == null) {
         Log.w("[codex] history base rollout ${base.rolloutId} for $sessionId not found; ignoring older history");
+        break;
+      }
+      if (!visitedPaths.add(basePath)) {
+        Log.w("[codex] history base cycle at rollout ${base.rolloutId} for $sessionId; ignoring older history");
         break;
       }
       final prefix = _rolloutApi.readTranscriptPrefix(rolloutPath: basePath, endByteOffset: base.endByteOffset);

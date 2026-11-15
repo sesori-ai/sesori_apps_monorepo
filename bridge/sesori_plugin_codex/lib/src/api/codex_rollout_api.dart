@@ -137,31 +137,34 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
     return _listRolloutFiles(directory: root, recursive: true, test: (_) => true);
   }
 
-  /// [sessionId]'s newest rollout filed on or after [since], or null, without
-  /// listing every rollout. Codex files each rollout under `sessions/YYYY/MM/DD`
-  /// for its own creation date, so a revert's rollout sits on a later day than
-  /// the thread's first one. Days are searched newest first, one day past
-  /// each end to cover midnight and a UTC date.
-  String? findNewestRolloutPathSince({required String sessionId, required DateTime since}) {
+  /// [sessionId]'s newest rollout filed from [oldest] to [newest], or null,
+  /// without listing every rollout. Codex files each rollout under
+  /// `sessions/YYYY/MM/DD` for its own creation date, so a revert's rollout
+  /// sits on a later day than the thread's first one. Days are searched
+  /// newest first, one day past each end to cover midnight and a UTC date.
+  String? findNewestRolloutPathBetween({
+    required String sessionId,
+    required DateTime oldest,
+    required DateTime newest,
+  }) {
     final root = sessionsDirectory;
     if (root == null) return null;
-    final first = DateTime(since.year, since.month, since.day - 1);
-    final now = DateTime.now();
+    final first = DateTime(oldest.year, oldest.month, oldest.day - 1);
     for (
-      var day = DateTime(now.year, now.month, now.day + 1);
+      var day = DateTime(newest.year, newest.month, newest.day + 1);
       !day.isBefore(first);
       day = DateTime(day.year, day.month, day.day - 1)
     ) {
       String? newestPath;
-      CodexRolloutFileName? newest;
+      CodexRolloutFileName? newestName;
       for (final path in _listRolloutFiles(
         directory: _dayDirectory(root: root, day: day),
         recursive: false,
         test: (name) => name.threadId == sessionId,
       )) {
         final name = CodexRolloutFileName.tryParse(fileName: p.basename(path));
-        if (name == null || (newest != null && !name.isNewerThan(other: newest))) continue;
-        newest = name;
+        if (name == null || (newestName != null && !name.isNewerThan(other: newestName))) continue;
+        newestName = name;
         newestPath = path;
       }
       if (newestPath != null) return newestPath;
