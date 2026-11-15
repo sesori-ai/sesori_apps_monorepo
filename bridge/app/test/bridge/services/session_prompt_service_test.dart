@@ -22,6 +22,7 @@ import "package:test/test.dart";
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_continuation_test_support.dart";
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
 
@@ -62,6 +63,7 @@ void main() {
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         sessionOptionsService: optionsService,
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        chatHistory: createTestChatHistory().service,
       );
       await insertTestSession(
         db: db,
@@ -517,6 +519,7 @@ void main() {
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         sessionOptionsService: FakeSessionOptionsService(),
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: uploadsRoot),
+        chatHistory: createTestChatHistory().service,
       );
       await insertTestSession(
         db: db,

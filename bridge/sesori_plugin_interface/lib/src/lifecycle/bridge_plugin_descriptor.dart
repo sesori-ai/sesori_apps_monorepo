@@ -15,6 +15,7 @@ import "plugin_mcp_scope_kind.dart";
 import "plugin_option.dart";
 import "plugin_project_ownership.dart";
 import "plugin_residency_policy.dart";
+import "plugin_session_branching.dart";
 import "plugin_session_options_scope.dart";
 import "plugin_setup_status.dart";
 import "plugin_state_storage.dart";
@@ -122,6 +123,15 @@ abstract class const BridgePluginDescriptor() {
   /// offer MCP only where the harness answers, so a harness that manages MCP
   /// per session shows no harness-wide entry. The default declares none.
   Set<PluginMcpScopeKind> get mcpScopes => const {};
+
+  /// The message-level branching operations the started plugin implements.
+  ///
+  /// Must match the optional interfaces of the plugin returned by [start]
+  /// ([PluginSessionBranching.rewind] for `SessionRewindPluginApi`). The
+  /// bridge publishes this set to clients as declared and reads it while the
+  /// plugin is dormant; each call is still gated on the interface itself. The
+  /// default declares none.
+  Set<PluginSessionBranching> get sessionBranching => const {};
 
   /// Inspects whether this plugin's runtime and authentication are already set
   /// up without installing, starting, or initiating a login flow.

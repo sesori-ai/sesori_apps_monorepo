@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show Log, PluginRefusalException, PluginStaleOptionsException;
+    show Log, PluginBranchPointUnavailableException, PluginRefusalException, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/accepted_prompts_repository.dart";
@@ -11,7 +11,9 @@ import "../repositories/random_hex_id.dart";
 import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
+import "chat_history_service.dart";
 import "prompt_part_delivery_service.dart";
+import "session_branch_refused_exception.dart";
 import "session_mutation_dispatcher.dart";
 import "session_operation_dispatcher.dart";
 import "session_options_service.dart";
@@ -24,6 +26,19 @@ class const SessionPromptDefaultsChange({
   required final SessionPromptDefaults promptDefaults,
 });
 
+/// What a send asks its session's plugin to do with the prompt.
+sealed class const _PromptSend();
+
+final class const _PromptSendPrompt() extends _PromptSend;
+
+final class const _PromptSendCommand({
+  required final String command,
+  required final CommandSource? commandSource,
+}) extends _PromptSend;
+
+/// An edit: rewind to before [beforeMessageId], then send the prompt.
+final class const _PromptSendRewind({required final String beforeMessageId}) extends _PromptSend;
+
 class SessionPromptService({
   required final SessionRepository _sessionRepository,
   required final AcceptedPromptsRepository _acceptedPromptsRepository,
@@ -34,6 +49,7 @@ class SessionPromptService({
   required final SessionViewService _views,
   required final SessionMutationDispatcher _mutations,
   required final PromptPartDeliveryService _promptPartDelivery,
+  required final ChatHistoryService _chatHistory,
 }) {
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
@@ -52,11 +68,15 @@ class SessionPromptService({
     required CommandSource? commandSource,
   }) {
     final normalizedCommand = command?.trim();
+    final send = normalizedCommand == null || normalizedCommand.isEmpty
+        ? const _PromptSendPrompt()
+        : _PromptSendCommand(command: normalizedCommand, commandSource: commandSource);
     return _dispatcher.dispatch(
       sessionId: sessionId,
-      operation: normalizedCommand == null || normalizedCommand.isEmpty
-          ? SessionOperation.sendPrompt
-          : SessionOperation.sendCommand,
+      operation: switch (send) {
+        _PromptSendCommand() => SessionOperation.sendCommand,
+        _PromptSendPrompt() || _PromptSendRewind() => SessionOperation.sendPrompt,
+      },
       body: () => _sendPrompt(
         sessionId: sessionId,
         // Clients that predate prompt ids omit them; plugins always receive
@@ -67,9 +87,60 @@ class SessionPromptService({
         fastMode: fastMode,
         agent: agent,
         model: model,
-        normalizedCommand: normalizedCommand,
-        commandSource: commandSource,
+        send: send,
       ),
+    );
+  }
+
+  /// Edits [messageId], a prompt that opens a turn: removes it and every
+  /// later message from the session's conversation, then sends [parts] in its
+  /// place. Files are never touched.
+  ///
+  /// A send in every other respect: the same archived rejection, [promptId]
+  /// dedupe (a retry of an accepted edit succeeds without rewinding again),
+  /// attachment delivery and prompt defaults. Refusals are
+  /// [SessionBranchRefusedException]s.
+  Future<void> rewindAndSendPrompt({
+    required String sessionId,
+    required String messageId,
+    required String promptId,
+    required List<PromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) {
+    return _dispatcher.dispatch(
+      sessionId: sessionId,
+      operation: SessionOperation.rewindSession,
+      body: () async {
+        try {
+          await _sendPrompt(
+            sessionId: sessionId,
+            promptId: promptId,
+            parts: parts,
+            variant: variant,
+            fastMode: fastMode,
+            agent: agent,
+            model: model,
+            send: _PromptSendRewind(beforeMessageId: messageId),
+          );
+        } on StaleSessionPromptOptionsException catch (error) {
+          throw SessionBranchRefusedException(
+            code: SessionBranchErrorCode.staleSessionOptions,
+            message: error.message,
+            cause: error.cause,
+            causeStackTrace: error.causeStackTrace,
+          );
+        } on SessionPromptRefusedException catch (error) {
+          throw SessionBranchRefusedException(
+            code: SessionBranchErrorCode.refused,
+            message: error.userFacingReason,
+            cause: error.cause,
+            causeStackTrace: error.causeStackTrace,
+          );
+        }
+      },
     );
   }
 
@@ -89,8 +160,7 @@ class SessionPromptService({
     fastMode: fastMode,
     agent: agent,
     model: model,
-    normalizedCommand: null,
-    commandSource: null,
+    send: const _PromptSendPrompt(),
   );
 
   Future<void> _sendPrompt({
@@ -101,8 +171,7 @@ class SessionPromptService({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
-    required String? normalizedCommand,
-    required CommandSource? commandSource,
+    required _PromptSend send,
   }) async {
     // Inside the dispatched body, so this cannot race a concurrent archive on
     // the same family lane.
@@ -122,49 +191,50 @@ class SessionPromptService({
         Log.w("Could not publish quota cancellation before prompt for session $sessionId", error, stackTrace);
       }
     }
-    if (normalizedCommand == null || normalizedCommand.isEmpty) {
-      // After the accepted check, so a repeated prompt saves no files again.
-      // A command sends only its text, so it saves nothing.
-      final deliverableParts = await _promptPartDelivery.deliverableParts(
-        sessionId: sessionId,
-        inlineImages: await _sessionRepository.inlineImagesSupportedForSession(sessionId: sessionId),
-        parts: parts,
-      );
-      await _sendMappingRejections(
-        sessionId: sessionId,
-        send: () => _sessionRepository.sendPrompt(
+    await _sendMappingRejections(
+      sessionId: sessionId,
+      send: switch (send) {
+        _PromptSendPrompt() => () async => await _sessionRepository.sendPrompt(
           sessionId: sessionId,
           promptId: promptId,
-          parts: deliverableParts,
+          parts: await _deliverableParts(sessionId: sessionId, parts: parts),
           variant: variant,
           fastMode: fastMode,
           agent: agent,
           model: model,
         ),
-      );
-    } else {
-      final textPart = parts.whereType<PromptPartText>().firstOrNull;
-      final arguments = textPart?.text;
-      // Per the BridgePluginApi contract, sendCommand completes once the
-      // backend has accepted the command — not when its run finishes — so
-      // awaiting it here never holds the phone's relay request open for the
-      // duration of the command's agent run.
-      await _sendMappingRejections(
-        sessionId: sessionId,
-        send: () => _sessionRepository.sendCommand(
+        _PromptSendCommand(:final command, :final commandSource) => () {
+          final arguments = parts.whereType<PromptPartText>().firstOrNull?.text;
+          // Per the BridgePluginApi contract, sendCommand completes once the
+          // backend has accepted the command — not when its run finishes — so
+          // awaiting it here never holds the phone's relay request open for
+          // the duration of the command's agent run. A command sends only its
+          // text, so it saves no files.
+          return _sessionRepository.sendCommand(
+            sessionId: sessionId,
+            promptId: promptId,
+            command: command,
+            arguments: arguments ?? '',
+            userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
+            variant: variant,
+            fastMode: fastMode,
+            agent: agent,
+            model: model,
+            commandSource: commandSource,
+          );
+        },
+        _PromptSendRewind(:final beforeMessageId) => () => _rewindAndSend(
           sessionId: sessionId,
+          beforeMessageId: beforeMessageId,
           promptId: promptId,
-          command: normalizedCommand,
-          arguments: arguments ?? '',
-          userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
+          parts: parts,
           variant: variant,
           fastMode: fastMode,
           agent: agent,
           model: model,
-          commandSource: commandSource,
         ),
-      );
-    }
+      },
+    );
     try {
       await _acceptedPromptsRepository.recordAccepted(sessionId: sessionId, promptId: promptId);
     } catch (error, stackTrace) {
@@ -196,6 +266,84 @@ class SessionPromptService({
       throw StaleSessionPromptOptionsException(cause: error, causeStackTrace: stackTrace);
     } on PluginRefusalException catch (error, stackTrace) {
       throw SessionPromptRefusedException(cause: error, causeStackTrace: stackTrace);
+    }
+  }
+
+  /// The parts the plugin receives: files it can't take inline are saved and
+  /// named by path. Called only once a send is going ahead, after the accepted
+  /// check, so a repeated or refused prompt saves no files.
+  Future<List<PromptPart>> _deliverableParts({required String sessionId, required List<PromptPart> parts}) async =>
+      await _promptPartDelivery.deliverableParts(
+        sessionId: sessionId,
+        inlineImages: await _sessionRepository.inlineImagesSupportedForSession(sessionId: sessionId),
+        parts: parts,
+      );
+
+  /// Checks the edit, rewinds and sends through the plugin, then removes the
+  /// rewound messages from the store and every client by exact id. The ids are
+  /// read before the send, so the edited prompt's own messages, which may be
+  /// captured before the plugin returns, are never among them.
+  Future<void> _rewindAndSend({
+    required String sessionId,
+    required String beforeMessageId,
+    required String promptId,
+    required List<PromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    if (await _sessionRepository.isSessionRunning(sessionId: sessionId)) {
+      throw const SessionBranchRefusedException(
+        code: SessionBranchErrorCode.sessionBusy,
+        message: null,
+        cause: null,
+        causeStackTrace: null,
+      );
+    }
+    final removal = await _chatHistory.removalForRewind(sessionId: sessionId, messageId: beforeMessageId);
+    final removedMessageIds = switch (removal) {
+      RewindRemovalLaterTurn(:final removedMessageIds) => removedMessageIds,
+      // Nothing before the first turn is kept, so there is no native point to
+      // rewind to. Refused until a first-turn edit swaps in a fresh harness
+      // session.
+      RewindRemovalFirstTurn() || RewindRemovalNotTurnOpener() => throw const SessionBranchRefusedException(
+        code: SessionBranchErrorCode.branchPointUnavailable,
+        message: null,
+        cause: null,
+        causeStackTrace: null,
+      ),
+    };
+    try {
+      await _sessionRepository.rewindAndSendPrompt(
+        sessionId: sessionId,
+        beforeMessageId: beforeMessageId,
+        promptId: promptId,
+        parts: await _deliverableParts(sessionId: sessionId, parts: parts),
+        variant: variant,
+        fastMode: fastMode,
+        agent: agent,
+        model: model,
+      );
+    } on PluginBranchPointUnavailableException catch (error, stackTrace) {
+      throw SessionBranchRefusedException(
+        code: SessionBranchErrorCode.branchPointUnavailable,
+        message: error.userFacingReason,
+        cause: error,
+        causeStackTrace: stackTrace,
+      );
+    }
+    try {
+      final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+      if (session == null) {
+        Log.w("Session $sessionId disappeared after its edit; its rewound messages stay stored");
+        return;
+      }
+      _mutations.messagesRewound(session: session, removedMessageIds: removedMessageIds);
+    } on Object catch (error, stackTrace) {
+      // The plugin already owns the edit; failing it would only make the
+      // client retry it. The next backfill drops the rewound messages.
+      Log.w("Could not publish the rewound messages of session $sessionId", error, stackTrace);
     }
   }
 

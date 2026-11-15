@@ -643,6 +643,7 @@ class const BridgeRuntimeRunner._() {
             namesCommandInvocations: descriptor.namesCommandInvocations,
             busyPromptHandling: descriptor.busyPromptHandling,
             mcpScopes: descriptor.mcpScopes,
+            sessionBranching: descriptor.sessionBranching,
           ),
       ];
       final uncontrollableDisabledPluginIds = PluginLifecycleService.uncontrollableDisabledPluginIds(
