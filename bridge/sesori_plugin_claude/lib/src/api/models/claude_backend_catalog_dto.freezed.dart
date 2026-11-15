@@ -18,7 +18,7 @@ mixin _$ClaudeBackendCatalogDto {
 
 @JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> get commands;@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> get models;/// Why the account cannot use fast mode right now; absent when nothing
 /// blocks it (verified against CLI 2.1.281).
-@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) String? get fastModeDisabledReason;
+@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) String? get fastModeDisabledReason;@JsonKey(fromJson: _accountOrNull) ClaudeAccountDto? get account;
 /// Create a copy of ClaudeBackendCatalogDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,14 +30,14 @@ $ClaudeBackendCatalogDtoCopyWith<ClaudeBackendCatalogDto> get copyWith => _$Clau
 @override
 bool operator ==(Object other) {
   final _this = this as ClaudeBackendCatalogDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, _this.commands)&&const DeepCollectionEquality().equals(other.models, _this.models)&&(identical(other.fastModeDisabledReason, _this.fastModeDisabledReason) || other.fastModeDisabledReason == _this.fastModeDisabledReason));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, _this.commands)&&const DeepCollectionEquality().equals(other.models, _this.models)&&(identical(other.fastModeDisabledReason, _this.fastModeDisabledReason) || other.fastModeDisabledReason == _this.fastModeDisabledReason)&&(identical(other.account, _this.account) || other.account == _this.account));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as ClaudeBackendCatalogDto;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.commands),const DeepCollectionEquality().hash(_this.models),_this.fastModeDisabledReason);
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.commands),const DeepCollectionEquality().hash(_this.models),_this.fastModeDisabledReason,_this.account);
 }
 
 
@@ -49,11 +49,11 @@ abstract mixin class $ClaudeBackendCatalogDtoCopyWith<$Res>  {
   factory $ClaudeBackendCatalogDtoCopyWith(ClaudeBackendCatalogDto value, $Res Function(ClaudeBackendCatalogDto) _then) = _$ClaudeBackendCatalogDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> commands,@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> models,@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) String? fastModeDisabledReason
+@JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> commands,@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> models,@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) String? fastModeDisabledReason,@JsonKey(fromJson: _accountOrNull) ClaudeAccountDto? account
 });
 
 
-
+$ClaudeAccountDtoCopyWith<$Res>? get account;
 
 }
 /// @nodoc
@@ -66,15 +66,28 @@ class _$ClaudeBackendCatalogDtoCopyWithImpl<$Res>
 
 /// Create a copy of ClaudeBackendCatalogDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? commands = null,Object? models = null,Object? fastModeDisabledReason = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? commands = null,Object? models = null,Object? fastModeDisabledReason = freezed,Object? account = freezed,}) {
   return _then(ClaudeBackendCatalogDto(
 commands: null == commands ? _self.commands : commands // ignore: cast_nullable_to_non_nullable
 as List<ClaudeCommandDto>,models: null == models ? _self.models : models // ignore: cast_nullable_to_non_nullable
 as List<ClaudeModelDto>,fastModeDisabledReason: freezed == fastModeDisabledReason ? _self.fastModeDisabledReason : fastModeDisabledReason // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,account: freezed == account ? _self.account : account // ignore: cast_nullable_to_non_nullable
+as ClaudeAccountDto?,
   ));
 }
+/// Create a copy of ClaudeBackendCatalogDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ClaudeAccountDtoCopyWith<$Res>? get account {
+    if (_self.account == null) {
+    return null;
+  }
 
+  return $ClaudeAccountDtoCopyWith<$Res>(_self.account!, (value) {
+    return _then(_self.copyWith(account: value));
+  });
+}
 }
 
 
@@ -83,7 +96,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _ClaudeBackendCatalogDto implements ClaudeBackendCatalogDto {
-  const _ClaudeBackendCatalogDto({@JsonKey(fromJson: _commandsOrEmpty) required  List<ClaudeCommandDto> commands, @JsonKey(fromJson: _modelsOrEmpty) required  List<ClaudeModelDto> models, @JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) required this.fastModeDisabledReason}): _commands = commands,_models = models;
+  const _ClaudeBackendCatalogDto({@JsonKey(fromJson: _commandsOrEmpty) required  List<ClaudeCommandDto> commands, @JsonKey(fromJson: _modelsOrEmpty) required  List<ClaudeModelDto> models, @JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) required this.fastModeDisabledReason, @JsonKey(fromJson: _accountOrNull) required this.account}): _commands = commands,_models = models;
   factory _ClaudeBackendCatalogDto.fromJson(Map<String, dynamic> json) => _$ClaudeBackendCatalogDtoFromJson(json);
 
  final  List<ClaudeCommandDto> _commands;
@@ -103,6 +116,7 @@ class _ClaudeBackendCatalogDto implements ClaudeBackendCatalogDto {
 /// Why the account cannot use fast mode right now; absent when nothing
 /// blocks it (verified against CLI 2.1.281).
 @override@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) final  String? fastModeDisabledReason;
+@override@JsonKey(fromJson: _accountOrNull) final  ClaudeAccountDto? account;
 
 /// Create a copy of ClaudeBackendCatalogDto
 /// with the given fields replaced by the non-null parameter values.
@@ -114,13 +128,13 @@ _$ClaudeBackendCatalogDtoCopyWith<_ClaudeBackendCatalogDto> get copyWith => __$C
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, _commands)&&const DeepCollectionEquality().equals(other.models, _models)&&(identical(other.fastModeDisabledReason, fastModeDisabledReason) || other.fastModeDisabledReason == fastModeDisabledReason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeBackendCatalogDto&&const DeepCollectionEquality().equals(other.commands, _commands)&&const DeepCollectionEquality().equals(other.models, _models)&&(identical(other.fastModeDisabledReason, fastModeDisabledReason) || other.fastModeDisabledReason == fastModeDisabledReason)&&(identical(other.account, account) || other.account == account));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_commands),const DeepCollectionEquality().hash(_models),fastModeDisabledReason);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_commands),const DeepCollectionEquality().hash(_models),fastModeDisabledReason,account);
 }
 
 
@@ -132,11 +146,11 @@ abstract mixin class _$ClaudeBackendCatalogDtoCopyWith<$Res> implements $ClaudeB
   factory _$ClaudeBackendCatalogDtoCopyWith(_ClaudeBackendCatalogDto value, $Res Function(_ClaudeBackendCatalogDto) _then) = __$ClaudeBackendCatalogDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> commands,@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> models,@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) String? fastModeDisabledReason
+@JsonKey(fromJson: _commandsOrEmpty) List<ClaudeCommandDto> commands,@JsonKey(fromJson: _modelsOrEmpty) List<ClaudeModelDto> models,@JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) String? fastModeDisabledReason,@JsonKey(fromJson: _accountOrNull) ClaudeAccountDto? account
 });
 
 
-
+@override $ClaudeAccountDtoCopyWith<$Res>? get account;
 
 }
 /// @nodoc
@@ -149,11 +163,154 @@ class __$ClaudeBackendCatalogDtoCopyWithImpl<$Res>
 
 /// Create a copy of ClaudeBackendCatalogDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? commands = null,Object? models = null,Object? fastModeDisabledReason = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? commands = null,Object? models = null,Object? fastModeDisabledReason = freezed,Object? account = freezed,}) {
   return _then(_ClaudeBackendCatalogDto(
 commands: null == commands ? _self._commands : commands // ignore: cast_nullable_to_non_nullable
 as List<ClaudeCommandDto>,models: null == models ? _self._models : models // ignore: cast_nullable_to_non_nullable
 as List<ClaudeModelDto>,fastModeDisabledReason: freezed == fastModeDisabledReason ? _self.fastModeDisabledReason : fastModeDisabledReason // ignore: cast_nullable_to_non_nullable
+as String?,account: freezed == account ? _self.account : account // ignore: cast_nullable_to_non_nullable
+as ClaudeAccountDto?,
+  ));
+}
+
+/// Create a copy of ClaudeBackendCatalogDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ClaudeAccountDtoCopyWith<$Res>? get account {
+    if (_self.account == null) {
+    return null;
+  }
+
+  return $ClaudeAccountDtoCopyWith<$Res>(_self.account!, (value) {
+    return _then(_self.copyWith(account: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$ClaudeAccountDto {
+
+@JsonKey(fromJson: _stringOrNull) String? get subscriptionType;@JsonKey(fromJson: _stringOrNull) String? get apiProvider;
+/// Create a copy of ClaudeAccountDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ClaudeAccountDtoCopyWith<ClaudeAccountDto> get copyWith => _$ClaudeAccountDtoCopyWithImpl<ClaudeAccountDto>(this as ClaudeAccountDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as ClaudeAccountDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeAccountDto&&(identical(other.subscriptionType, _this.subscriptionType) || other.subscriptionType == _this.subscriptionType)&&(identical(other.apiProvider, _this.apiProvider) || other.apiProvider == _this.apiProvider));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as ClaudeAccountDto;
+  return Object.hash(runtimeType,_this.subscriptionType,_this.apiProvider);
+}
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $ClaudeAccountDtoCopyWith<$Res>  {
+  factory $ClaudeAccountDtoCopyWith(ClaudeAccountDto value, $Res Function(ClaudeAccountDto) _then) = _$ClaudeAccountDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(fromJson: _stringOrNull) String? subscriptionType,@JsonKey(fromJson: _stringOrNull) String? apiProvider
+});
+
+
+
+
+}
+/// @nodoc
+class _$ClaudeAccountDtoCopyWithImpl<$Res>
+    implements $ClaudeAccountDtoCopyWith<$Res> {
+  _$ClaudeAccountDtoCopyWithImpl(this._self, this._then);
+
+  final ClaudeAccountDto _self;
+  final $Res Function(ClaudeAccountDto) _then;
+
+/// Create a copy of ClaudeAccountDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? subscriptionType = freezed,Object? apiProvider = freezed,}) {
+  return _then(ClaudeAccountDto(
+subscriptionType: freezed == subscriptionType ? _self.subscriptionType : subscriptionType // ignore: cast_nullable_to_non_nullable
+as String?,apiProvider: freezed == apiProvider ? _self.apiProvider : apiProvider // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _ClaudeAccountDto implements ClaudeAccountDto {
+  const _ClaudeAccountDto({@JsonKey(fromJson: _stringOrNull) required this.subscriptionType, @JsonKey(fromJson: _stringOrNull) required this.apiProvider});
+  factory _ClaudeAccountDto.fromJson(Map<String, dynamic> json) => _$ClaudeAccountDtoFromJson(json);
+
+@override@JsonKey(fromJson: _stringOrNull) final  String? subscriptionType;
+@override@JsonKey(fromJson: _stringOrNull) final  String? apiProvider;
+
+/// Create a copy of ClaudeAccountDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ClaudeAccountDtoCopyWith<_ClaudeAccountDto> get copyWith => __$ClaudeAccountDtoCopyWithImpl<_ClaudeAccountDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeAccountDto&&(identical(other.subscriptionType, subscriptionType) || other.subscriptionType == subscriptionType)&&(identical(other.apiProvider, apiProvider) || other.apiProvider == apiProvider));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,subscriptionType,apiProvider);
+}
+
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ClaudeAccountDtoCopyWith<$Res> implements $ClaudeAccountDtoCopyWith<$Res> {
+  factory _$ClaudeAccountDtoCopyWith(_ClaudeAccountDto value, $Res Function(_ClaudeAccountDto) _then) = __$ClaudeAccountDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(fromJson: _stringOrNull) String? subscriptionType,@JsonKey(fromJson: _stringOrNull) String? apiProvider
+});
+
+
+
+
+}
+/// @nodoc
+class __$ClaudeAccountDtoCopyWithImpl<$Res>
+    implements _$ClaudeAccountDtoCopyWith<$Res> {
+  __$ClaudeAccountDtoCopyWithImpl(this._self, this._then);
+
+  final _ClaudeAccountDto _self;
+  final $Res Function(_ClaudeAccountDto) _then;
+
+/// Create a copy of ClaudeAccountDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? subscriptionType = freezed,Object? apiProvider = freezed,}) {
+  return _then(_ClaudeAccountDto(
+subscriptionType: freezed == subscriptionType ? _self.subscriptionType : subscriptionType // ignore: cast_nullable_to_non_nullable
+as String?,apiProvider: freezed == apiProvider ? _self.apiProvider : apiProvider // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
