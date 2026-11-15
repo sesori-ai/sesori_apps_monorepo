@@ -459,11 +459,9 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
-  /// Makes [sessionId] a child of [parentSessionId]. Only a root can be
-  /// pinned, so this drops the session's pin.
   Future<void> setParentSessionId({required String sessionId, required String parentSessionId}) async {
     await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
-      SessionTableCompanion(parentSessionId: Value(parentSessionId), pinned: const Value(false)),
+      SessionTableCompanion(parentSessionId: Value(parentSessionId)),
     );
   }
 

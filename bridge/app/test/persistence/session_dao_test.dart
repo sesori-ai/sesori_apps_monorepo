@@ -420,15 +420,6 @@ void main() {
 
         expect(await pinnedOf("root"), isFalse);
       });
-
-      test("setParentSessionId drops the pin", () async {
-        await insertRow(id: "parent");
-        await insertRow(id: "root", pinned: true);
-
-        await dao.setParentSessionId(sessionId: "root", parentSessionId: "parent");
-
-        expect(await pinnedOf("root"), isFalse);
-      });
     });
 
     test("getSessionsByIds returns expected sessions", () async {
