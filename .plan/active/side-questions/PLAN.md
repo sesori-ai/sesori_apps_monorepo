@@ -42,6 +42,11 @@ other harness gets an honest reason when the user taps the entry.
 - Round 3, Q3 (2026-11-15): sending from a side chat back to its session never
   archives anything and shows no archive switch. That send is owned by the
   session-send plan.
+- 2026-11-15: side-question answers don't stream, on any harness. Every
+  harness shows "Thinking…" and then the whole answer at once, because Claude
+  Code's `side_question` returns its answer in one piece. This includes the
+  phase-2 fork fallback, even where a fork could stream, so the behaviour stays
+  uniform.
 
 The following are separate plans owned elsewhere. This plan only notes the
 seams:
@@ -200,8 +205,10 @@ Checked in the upstream source at the tag, and in the local 0.169.0 schema.
 2. The bridge asks the harness, passing this side chat's earlier exchanges as
    history. The main session keeps running: Sesori neither queues the main turn
    nor waits on it.
-3. The answer arrives in one piece. The sheet shows "Thinking…" while it waits.
-   There is no streaming, because neither native seam streams.
+3. The answer arrives in one piece. The sheet shows "Thinking…" while it waits,
+   then the whole answer. No harness streams side answers, including the
+   phase-2 fallback: Claude Code's `side_question` returns all at once, and
+   every harness behaves the same way (see Decisions).
 4. On success, the bridge stores the exchange: question, answer and optional
    notice. A refused or failed ask is not stored. The sheet shows why in place,
    with Retry, and the question stays in the field.
@@ -224,7 +231,9 @@ Checked in the upstream source at the tag, and in the local 0.169.0 schema.
   /// Answers [question] from what the session already knows, without running
   /// tools and without writing to the session's transcript, while any running
   /// turn continues. [history] is this side chat's earlier exchanges, oldest
-  /// first. May make an idle session resident; never starts or queues a turn.
+  /// first. May make an idle session resident; never starts or queues a turn,
+  /// and never changes or restarts a running one. Returns the whole answer at
+  /// once; side answers never stream.
   Future<PluginSideAnswer> askSideQuestion({
     required String sessionId,
     required String question,
@@ -274,6 +283,13 @@ because Claude takes a list and Codex needs the history inside one prompt.
 - **Layers.**
   - `SideChatDao` is a dumb insert plus a list for one session.
   - `SideChatRepository` maps rows to wire models and groups them into chats.
+    `listForSession({sessionId})` returns `SideChatListResponse`.
+    `historyFor({sessionId, sideChatId})` returns the chat's
+    `PluginSideExchange`s oldest first, or none for a null id.
+    `recordExchange({sessionId, sideChatId?, question, answer, notice, askedAt})`
+    mints the side-chat id when it is null and the exchange id, both with
+    `randomHexId` (`repositories/random_hex_id.dart`), writes the row, and
+    returns `(sideChatId, SideChatExchange)`.
   - `SessionRepository.askSideQuestion` is a thin plugin-backed operation, under
     the new `SessionOperation.askSideQuestion`. It is the one owner of "this
     harness supports it":
@@ -287,8 +303,12 @@ because Claude takes a list and Codex needs the history inside one prompt.
        prompt.
     4. Match on `SideQuestionPluginApi`. If it doesn't match, return
        `harnessUnsupported`.
-    5. Map the `PluginSideAnswer` to a repository result, using a mapper in
-       `repositories/mappers/` (`PluginSideAnswerMapper`).
+    5. Map the `PluginSideAnswer` to `SideQuestionAskResult`, using
+       `PluginSideAnswerMapper` in `repositories/mappers/`.
+       `SideQuestionAskResult` is a sealed repository model in
+       `repositories/models/`: `SideQuestionAnswered({text, notice})` or
+       `SideQuestionRefused({SideQuestionRefusal reason})`, where the reason
+       is already the `sesori_shared` wire enum.
   - `SideQuestionService` orchestrates one ask:
     1. Call `ArchivedSessionValidator.requireNotArchived`. This is the single
        archive rule. The existing handler path turns its exception into the
@@ -296,16 +316,27 @@ because Claude takes a list and Codex needs the history inside one prompt.
     2. The returned stored session must be a root session. A child session
        throws a `PluginOperationException`, which is a 400; the client never
        offers the entry there.
-    3. Read the side chat's history from `SideChatRepository`.
+    3. Read the side chat's history from `SideChatRepository.historyFor`.
     4. Call `SessionRepository.askSideQuestion`.
-    5. On an answer, write the exchange and return it. A refusal is returned
-       unchanged. The service does no mapping.
+    5. On `SideQuestionAnswered`, call `SideChatRepository.recordExchange` and
+       return `AskSideQuestionResponse.answered` with what it returns. On
+       `SideQuestionRefused`, return `AskSideQuestionResponse.refused` with its
+       reason. The service only picks the response variant; all DTO mapping
+       stays in the two repositories.
+    - **Not on a session lane.** The service does not use
+      `SessionOperationDispatcher`. A family lane would hold that session's
+      prompts, aborts and replies for up to 3 minutes behind the ask, and a
+      side question writes nothing the lane protects. The only races are an
+      archive or a delete during an ask. An archive leaves one more stored
+      exchange on a now read-only chat, which is harmless. A delete makes the
+      insert fail its foreign key, and that request fails, which is correct for
+      a deleted session.
 - **Routes.** Both are `BodyRequestHandler`s with Freezed bodies from
   `sesori_shared`:
   - `POST /session/side-chats` takes a `SessionIdRequest` and returns
-    `SideChatListResponse`.
+    `SideChatListResponse` from `SideChatRepository.listForSession`.
   - `POST /session/side-question` takes an `AskSideQuestionRequest` and returns
-    `AskSideQuestionResponse`.
+    `AskSideQuestionResponse` from `SideQuestionService`.
 
   The names are kebab-case, like `/session/external-actions` and
   `/session/tool-output`.
@@ -367,13 +398,29 @@ because Claude takes a list and Codex needs the history inside one prompt.
   - It has its own 3-minute timeout. On timeout it writes
     `control_cancel_request` for that request id, so the CLI stops working on
     an ask nobody waits for.
-- **Repository: `ClaudeSessionProcessRepository.sendSideQuestion({sessionId, ...})`.**
+- **Repository: `ClaudeSessionProcessRepository.sendSideQuestion({sessionId, question, history})`.**
   It sits next to `interrupt`.
-  - It calls `ensureResident` first; a fresh `--resume` answers correctly. Then
-    it sends.
+  - It requires a resident process and throws otherwise, like
+    `sendControlRequest`. It never starts or reconfigures a process.
   - It maps the DTO, or the typed exception, to `PluginSideAnswer` through
     `ClaudeSideAnswerMapper` in `repositories/mappers/`.
-- **Plugin impl.** It only delegates.
+- **Service: `ClaudeSessionService.askSideQuestion({sessionId, directory, question, history})`.**
+  The service already owns process residency for turns, so it owns it here.
+  - If `_processes.isResident(sessionId)`, it sends as is. It never calls
+    `ensureResident` on a resident process: that path reapplies the model and
+    permission selection, and tears the process down when the effort differs,
+    which would kill the running main turn.
+  - Otherwise it calls `ensureResident` with `createNew: false`,
+    `purpose: session`, a null model, effort and permission mode,
+    `fastMode: false`, and `_approvals.allowedToolsForSession`, as the catalog
+    probe does with its nulls. A fresh `--resume` answers correctly. A later
+    prompt applies its own selection; if that restarts the process while an
+    ask is still waiting, the ask fails and shows Retry.
+  - Then it calls `_processes.sendSideQuestion`.
+- **Plugin impl.** For a session it created that has no turn yet
+  (`_unstartedSessions`), it returns `noTurnYet` without starting a process.
+  Otherwise it resolves the directory with `_directoryForSession`, as prompts
+  do, and delegates to `ClaudeSessionService.askSideQuestion`.
 - Mapping:
   - A non-empty `response` with `synthetic: false` becomes `PluginSideAnswered`.
     Its `notice` is `refusal_fallback?.content`.
@@ -400,32 +447,45 @@ The Codex adapter follows the plugin's own chain: API, then
   - It returns a Freezed `CodexThreadSampleDto` in `api/models/`.
   - The client timeout is 40 s, so the server's own 30 s "timed out" error
     arrives first.
-- **Repository: `CodexThreadRepository.sampleThread`.** It maps the DTO, and
-  maps the "method not found", "requires experimentalApi" and "sample source
-  must be idle" errors to a typed result.
+- **API: `CodexAppServerApi.readThreadTurns({threadId})`.** It sends
+  `thread/read` with `includeTurns: true` and returns the existing
+  `CodexThreadEnvelopeDto`. The existing `readThread` stays as it is: it sends
+  `includeTurns: false` for sub-agent parentage, and `CodexThreadRecord` has no
+  turns.
+- **Repository: `CodexThreadRepository.sampleThread`.** It returns
+  `PluginSideAnswer`, mapped by `CodexSideAnswerMapper` in
+  `repositories/mappers/`, the same shape as Claude. The mapper takes the DTO,
+  or one of the "method not found", "requires experimentalApi" and "sample
+  source must be idle" errors (see Mapping).
+- **Repository: `CodexThreadRepository.latestTurnId({threadId})`.** It calls
+  `readThreadTurns` and returns the last turn's id, or null when the thread has
+  no turn.
 - **Service: `CodexSessionService.askSideQuestion`.**
   1. `resumeThreadIfNeeded` (`codex_session_service.dart:576`) makes sure the
      thread is loaded.
   2. `expectedTurnId` is the running turn id that the plugin impl passes in,
      from `_activeTurnByThread[threadId]`, if one runs.
-  3. Otherwise the service reads the thread with turns, through the existing
-     `CodexThreadRepository.readThread` (`thread/read`), and takes the last
-     turn. This is the one source for the idle case. No new state records
-     finished turns.
+  3. Otherwise it is `CodexThreadRepository.latestTurnId`. This is the one
+     source for the idle case. No new state records finished turns.
   4. With no turn at all, it returns `noTurnYet`.
+  5. It builds the prompt with the builder below; a null prompt returns
+     `tooLong`. Then it calls `sampleThread` and returns its answer.
 - **Plugin impl.** It only passes in the active turn id and delegates.
-- **Prompt builder.** `CodexSideQuestionPromptBuilder` owns the template and
-  the byte budget.
+- **Prompt builder.** `CodexSideQuestionPromptBuilder`
+  (`services/codex_side_question_prompt_builder.dart`) owns the template and
+  the byte budget. It has no dependencies; the service holds it as a `const`
+  collaborator, the way `SessionRepository` holds its mappers. It returns the
+  prompt, or null when it can't fit.
 - History goes inside the prompt with one fixed template. The earlier exchanges
   come oldest first, labelled as earlier side questions that are not part of
   the main conversation. Then the new question, with a line asking for an
   answer from what the session already knows, without tools.
   - To fit the 4,000-byte cap, it drops the oldest exchanges first, then
     shortens the oldest remaining answer.
-  - If the template plus the question alone are over the cap, it returns
-    `tooLong`.
+  - If the template plus the question alone are over the cap, it returns null,
+    which the service turns into `tooLong`.
   - The template text is plugin-owned and covered by a unit test.
-- Mapping:
+- Mapping (`CodexSideAnswerMapper`):
   - `text` non-null becomes `PluginSideAnswered` with a null notice.
   - `text` null becomes `noAnswer`.
   - "method not found", "requires experimentalApi" and "sample source must be
@@ -454,10 +514,14 @@ The Codex adapter follows the plugin's own chain: API, then
   - `unresolved`, when the plugin listing failed or the plugin is unknown.
 
   The value is carried on `SessionDetailSnapshot` and `SessionDetailLoaded`.
-  `SessionDetailCubit` gains nothing else.
+  In this step `SessionDetailCubit` gains nothing else; step 10 adds the
+  composer mode.
 - `SideChatCubit` lives in `cubits/side_chat/` and is created when the sheet or
-  panel opens. It gets the session id, plugin id, availability and archived
-  flag. It loads the chats on open, and never polls.
+  panel opens. It gets the session id, plugin id, availability, archived flag
+  and a nullable `initialQuestion`. It loads the chats on open, and never
+  polls. With an `initialQuestion` it starts on a new chat and asks it once
+  the load finishes; this is how `/btw` mode hands over its text, so no cubit
+  depends on another.
   - Its state is sealed:
     - `SideChatLoading`.
     - `SideChatLoadFailed`, with Retry.
@@ -500,6 +564,17 @@ switches it into side-question mode.
   cubit enters it when the composer text starts with "/btw " and the session is
   `available`. Matching is on the exact prefix "/btw " (any letter case), at
   the start of the text only.
+- **How the text flows.** The text field's controller stays in the widget. The
+  cubit already receives every edit through `onDraftChanged` →
+  `saveComposerDraft`; the prefix check runs there, as a private cubit method,
+  not in the widget. On a match the cubit enters the mode, saves the draft
+  without the prefix, and bumps the existing `composerRestorations` counter,
+  so the field takes the stripped text through the seam it already uses for
+  restored drafts. On Send in this mode the widget calls
+  `SessionDetailCubit.submitSideQuestion()`. It leaves the mode, clears the
+  draft, and returns the trimmed text, or null when it is empty. The widget
+  then opens the sheet or panel with that text as the `SideChatCubit`'s
+  `initialQuestion`.
 - **What changes on screen.** The "/btw " prefix is removed from the field and
   the caret stays after the text that remains. The strip above the input,
   which today shows a staged command's chip (`prompt_input.dart`, the
@@ -514,8 +589,8 @@ switches it into side-question mode.
 - **Sending.** Send in this mode does not send a prompt. It opens the side sheet
   on a phone, or the panel on desktop, on a new side chat, asks the typed text
   there, and clears the main composer. The sheet then shows the question and
-  "Thinking…" until the answer arrives in one piece (neither native seam
-  streams; see Behaviour).
+  "Thinking…" until the whole answer arrives at once (no harness streams side
+  answers; see Behaviour).
 - **The `/` picker.** On `available` sessions, the command picker also lists a
   Sesori row, "btw: ask a side question", above the harness's commands.
   Picking it enters the same mode with an empty field.
@@ -600,7 +675,9 @@ Deliberately not added:
   list until reopen, which is low.
 - **No cancel route or cancel button.** The plugins bound every ask: 3 minutes
   for Claude with a CLI cancel, and the 30 s server deadline for Codex.
-- **No streaming.** Neither seam streams.
+- **No streaming, on any harness.** Claude Code's `side_question` returns the
+  whole answer at once, so every harness, including the phase-2 fallback,
+  shows "Thinking…" and then the whole answer.
 - **No client-sent history.** The bridge reads it from its database.
 - **No per-harness busy tracking or concurrency limit.** Claude has none
   locally, and with `allowInProgressTurn` Codex samples mid-turn.
@@ -665,7 +742,10 @@ only. Report the split in the PR.
   - Success, synthetic, null and fallback-notice mapping.
   - The unsupported-subtype mapping.
   - Timeout writing `control_cancel_request`.
-  - `ensureResident` before send.
+  - A resident process is used as is, with no selection change or teardown,
+    while a turn runs.
+  - A non-resident session is resumed before the send.
+  - An unstarted session returns `noTurnYet` without a process.
 - A live probe against the pinned CLI, recorded in the PR:
   - Ask mid-turn.
   - Ask after a cold resume.
@@ -694,7 +774,8 @@ existing Codex regression entries are the check.
 
 **Includes:**
 
-- `sampleThread`, plus resolving the thread and turn.
+- `sampleThread`, plus resolving the thread and turn (`readThreadTurns`,
+  `latestTurnId`).
 - The history-in-prompt template with its byte budget.
 - The mapping and the descriptor flag.
 - Updated Codex rows in `HARNESS_CAPABILITIES.md`.
@@ -787,8 +868,9 @@ desktop-specific UI.
 
 - The sealed composer mode in `SessionDetailCubit`, unless the edit-and-fork
   plan has already added it; then only its `sideQuestion` variant.
-- Prefix detection, leaving the mode, and send-to-side-chat, as described in
-  Client UX.
+- Prefix detection in `saveComposerDraft`, leaving the mode, and
+  `submitSideQuestion()` handing the text to the sheet's `SideChatCubit` as
+  `initialQuestion`, as described in Client UX.
 - The "Side question" strip and the darker border in `PromptInput`, through
   the staged-command header slot.
 - The Sesori "btw" row in the command picker.
@@ -832,6 +914,8 @@ wording.
     tools. Any permission request is denied.
   - The fork is deleted after the answer, and is never imported into the
     catalog.
+  - It returns the whole answer at once, like the native seams, even where the
+    fork could stream.
   - The plugin declares `supportsSideQuestions`, so the client needs no change.
 - **Phase 3: "Send to main session".** This is owned by the merge plan, and
   fills the answer-actions slot.
@@ -923,7 +1007,15 @@ names only collaboration mode. Step 5 updates it to mention `thread/sample`.
 
 ## Product questions
 
-All answered (round 2 B1 = D, round 3 Q1 = B; see Decisions). None is open.
+Round 2 B1 = D and round 3 Q1 = B are answered (see Decisions). One is open:
+
+- **Where archived sessions reopen their side chats.** Behaviour item 7 says
+  archived sessions show their side chats read-only, but an archived session
+  shows `SessionDetailArchivedNotice` where the composer was
+  (`session_detail_loaded_view.dart`), so the options-pill button, the only
+  entry, isn't there. Found by the 2026-11-15 architecture review. It needs an
+  entry choice (for example an action on the archived notice, or the session
+  overflow menu) before step 8.
 
 ## Review record
 
@@ -951,3 +1043,28 @@ Per the skill, the fixes were not reviewed again.
 2026-11-15: updated for round 2 (B1 = D) and round 3 (Q1 = B). The change is
 client-only (the `/btw` mode step) and adds no layer or contract, so it was not
 sent for another review.
+
+`architecture-plan-review`, second pass (2026-11-15): rejected with six
+findings, all applied:
+
+1. Claude residency moves into `ClaudeSessionService.askSideQuestion`. The
+   repository's `sendSideQuestion` had none of the inputs `ensureResident`
+   needs, and `ensureResident` on a resident process reapplies the selection
+   and can tear the process down, killing the main turn. A resident process is
+   now used as is, and an unstarted session returns `noTurnYet`.
+2. The idle Codex turn comes from a new `readThreadTurns` and `latestTurnId`.
+   The existing `readThread` sends `includeTurns: false` and models no turns.
+3. Codex answer mapping sits in `CodexSideAnswerMapper`, under the
+   repository. The service owns `noTurnYet` and `tooLong`, and the prompt
+   builder has a location and an owner.
+4. The bridge repository result is the named `SideQuestionAskResult`, and
+   `SideChatRepository.recordExchange` mints the ids.
+5. `SideQuestionService` explicitly stays off `SessionOperationDispatcher`
+   lanes, with the archive and delete races accepted.
+6. `/btw` mode hands its text to `SideChatCubit` through `initialQuestion`
+   and `submitSideQuestion()`, with no cubit-to-cubit dependency. Prefix
+   detection stays in the cubit, through the existing `composerRestorations`
+   seam.
+
+Also recorded: answers never stream on any harness (see Decisions). Per the
+skill, the fixes were not reviewed again.

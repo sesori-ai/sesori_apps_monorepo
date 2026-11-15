@@ -17,7 +17,9 @@
 
 ## Product questions
 
-All answered: entry points D (button and `/btw`, round 2), `/btw` composer mode B (round 3).
+Answered: entry points D (button and `/btw`, round 2), `/btw` composer mode B (round 3), no streaming on any harness (2026-11-15).
+
+Open: where archived sessions reopen their read-only side chats; they have no composer, so no entry button (see PLAN.md, Product questions). Needed before step 8.
 
 ## Verification results
 
