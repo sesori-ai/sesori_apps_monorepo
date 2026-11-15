@@ -157,6 +157,19 @@ class MessageImageRepository({
     });
   }
 
+  /// The whole image [attachment] holds: a stored image's original, and an
+  /// inline or remote image as it is, since those come whole as thumbnails.
+  Future<MessageImageLoadResult> loadWhole({
+    required String sessionId,
+    required MessageAttachment attachment,
+  }) => load(
+    sessionId: sessionId,
+    attachment: attachment,
+    rendition: attachment is MessageAttachmentStoredImage
+        ? SessionAttachmentRendition.original
+        : SessionAttachmentRendition.thumbnail,
+  );
+
   Future<MessageImageLoadResult> _loadInline({
     required String mime,
     required String base64Data,
