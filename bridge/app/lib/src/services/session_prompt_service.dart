@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/accepted_prompts_repository.dart";
+import "../repositories/models/deliverable_prompt_part.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/random_hex_id.dart";
 import "../repositories/session_continuation_repository.dart";
@@ -273,12 +274,14 @@ class SessionPromptService({
   /// named by path. Called only once a send is going ahead, after the accepted
   /// check and the session's own checks (archived, busy, turn), so a repeated
   /// prompt, or one those checks refuse, saves no files.
-  Future<List<PromptPart>> _deliverableParts({required String sessionId, required List<PromptPart> parts}) async =>
-      await _promptPartDelivery.deliverableParts(
-        sessionId: sessionId,
-        inlineImages: await _sessionRepository.inlineImagesSupportedForSession(sessionId: sessionId),
-        parts: parts,
-      );
+  Future<List<DeliverablePromptPart>> _deliverableParts({
+    required String sessionId,
+    required List<PromptPart> parts,
+  }) async => await _promptPartDelivery.deliverableParts(
+    sessionId: sessionId,
+    inlineImages: await _sessionRepository.inlineImagesSupportedForSession(sessionId: sessionId),
+    parts: parts,
+  );
 
   /// Checks the edit, then returns the send that rewinds through the plugin
   /// and removes the rewound messages from the store and every client by

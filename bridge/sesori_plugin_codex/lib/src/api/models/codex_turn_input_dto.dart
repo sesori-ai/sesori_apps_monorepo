@@ -11,11 +11,6 @@ sealed class CodexTurnInputDto with _$CodexTurnInputDto {
     @JsonKey(name: "text_elements") @Default(<Object?>[]) List<Object?> textElements,
   }) = CodexTurnTextInputDto;
 
-  @FreezedUnionValue("localImage")
-  const factory localImage({
-    required String path,
-  }) = CodexTurnLocalImageInputDto;
-
   @FreezedUnionValue("image")
   const factory image({
     required String url,

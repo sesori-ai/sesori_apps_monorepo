@@ -25,6 +25,7 @@ import "package:sesori_dart_core/src/foundation/models/session_launch/session_la
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_composer.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_handoff.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/foundation/models/side_question_availability.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
@@ -262,6 +263,7 @@ void main() {
             supportsPromptAttachments: supportsPromptAttachments,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: snapshotMessages,
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -297,6 +299,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -349,6 +352,7 @@ void main() {
             supportsPromptAttachments: supportsPromptAttachments,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: messages,
             olderMessagesCursor: null,
             userMessagesBefore: null,

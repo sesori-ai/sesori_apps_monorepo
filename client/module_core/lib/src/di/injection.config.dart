@@ -46,6 +46,7 @@ import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i734;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
+import 'package:sesori_dart_core/src/api/side_chat_api.dart' as _i617;
 import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
     as _i64;
 import 'package:sesori_dart_core/src/api/storage/feedback_prompt_storage.dart'
@@ -186,6 +187,8 @@ import 'package:sesori_dart_core/src/repositories/session_launch_repository.dart
     as _i818;
 import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
+import 'package:sesori_dart_core/src/repositories/side_chat_repository.dart'
+    as _i334;
 import 'package:sesori_dart_core/src/repositories/view_declaration_repository.dart'
     as _i143;
 import 'package:sesori_dart_core/src/repositories/voice_mode_repository.dart'
@@ -693,6 +696,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i603.SessionApi>(
       () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
+    gh.lazySingleton<_i617.SideChatApi>(
+      () => _i617.SideChatApi(client: gh<_i857.RelayHttpApiClient>()),
+    );
     gh.lazySingleton<_i143.ViewDeclarationRepository>(
       () => _i143.ViewDeclarationRepository(api: gh<_i37.ViewDeclarationApi>()),
     );
@@ -705,6 +711,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i703.ProjectListService>(
       () => _i703.ProjectListService(repository: gh<_i80.ProjectRepository>()),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i334.SideChatRepository>(
+      () => _i334.SideChatRepository(api: gh<_i617.SideChatApi>()),
     );
     gh.lazySingleton<_i204.ProductAnalyticsService>(
       () => _i204.ProductAnalyticsService(

@@ -41,7 +41,6 @@ import "package:sesori_shared/sesori_shared.dart"
         ProjectActivitySummary,
         ProjectKind,
         PromptModel,
-        PromptPart,
         QueuedSessionPrompt,
         Session,
         SessionAbortNotPerformedRefusal,
@@ -67,6 +66,7 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/projects_table.dart" show ProjectDto;
 import "../api/database/tables/session_table.dart" show SessionDto;
 import "../runtime/plugin_runtime.dart";
+import "mappers/deliverable_prompt_part_mapper.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_message_mapper.dart";
@@ -74,9 +74,9 @@ import "mappers/plugin_session_status_mapper.dart";
 import "mappers/plugin_side_answer_mapper.dart";
 import "mappers/plugin_to_shared_mapping.dart";
 import "mappers/project_catalog_mapper.dart";
-import "mappers/prompt_part_mapper.dart";
 import "mappers/session_catalog_mapper.dart";
 import "mappers/stored_session_mapper.dart";
+import "models/deliverable_prompt_part.dart";
 import "models/project_not_found_exception.dart";
 import "models/session_abort_result.dart";
 import "models/session_continuation_record.dart";
@@ -281,7 +281,7 @@ class SessionRepository({
     required String projectId,
     required String directory,
     required String? parentSessionId,
-    required List<PromptPart> parts,
+    required List<DeliverablePromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
     required String? agent,
@@ -507,7 +507,7 @@ class SessionRepository({
   Future<void> sendPrompt({
     required String sessionId,
     required String promptId,
-    required List<PromptPart> parts,
+    required List<DeliverablePromptPart> parts,
     required SessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -536,7 +536,7 @@ class SessionRepository({
     required String sessionId,
     required String beforeMessageId,
     required String promptId,
-    required List<PromptPart> parts,
+    required List<DeliverablePromptPart> parts,
     required SessionVariant? variant,
     required bool fastMode,
     required String? agent,
@@ -1363,6 +1363,10 @@ class SessionRepository({
       };
     },
   );
+
+  /// Whether [pluginId]'s backend is running, so a missing status from it
+  /// means its status read failed rather than that it has no turn.
+  bool isPluginActive({required String pluginId}) => _runtime.activePluginIds.contains(pluginId);
 
   Future<SessionStatusResponse> getSessionStatuses() async {
     final results = await Future.wait(

@@ -447,30 +447,32 @@ The Codex adapter follows the plugin's own chain: API, then
   - It returns a Freezed `CodexThreadSampleDto` in `api/models/`.
   - The client timeout is 40 s, so the server's own 30 s "timed out" error
     arrives first.
-- **API: `CodexAppServerApi.readThreadTurns({threadId})`.** It sends
-  `thread/read` with `includeTurns: true` and returns the existing
-  `CodexThreadEnvelopeDto`. The existing `readThread` stays as it is: it sends
-  `includeTurns: false` for sub-agent parentage, and `CodexThreadRecord` has no
-  turns.
+- **API: `CodexAppServerApi.listLatestTurn({threadId})`.** As built in step 5,
+  it sends `thread/turns/list` with `limit: 1`, `sortDirection: desc` and
+  `itemsView: notLoaded` (present since 0.139), instead of `thread/read` with
+  `includeTurns: true`, which would load every turn's items on each ask. Live
+  on 0.169.0 it reports a running turn too. A thread with no prompt yet fails
+  with "thread … is not materialized yet", which means no turn.
 - **Repository: `CodexThreadRepository.sampleThread`.** It returns
   `PluginSideAnswer`, mapped by `CodexSideAnswerMapper` in
   `repositories/mappers/`, the same shape as Claude. The mapper takes the DTO,
-  or one of the "method not found", "requires experimentalApi" and "sample
-  source must be idle" errors (see Mapping).
+  or one of the "unknown variant `thread/sample`" and "sample source must be
+  idle" errors (see Mapping).
 - **Repository: `CodexThreadRepository.latestTurnId({threadId})`.** It calls
-  `readThreadTurns` and returns the last turn's id, or null when the thread has
-  no turn.
+  `listLatestTurn` and returns that turn's id, or null when the thread has no
+  turn.
 - **Service: `CodexSessionService.askSideQuestion`.**
-  1. `resumeThreadIfNeeded` (`codex_session_service.dart:576`) makes sure the
-     thread is loaded.
-  2. `expectedTurnId` is the running turn id that the plugin impl passes in,
+  1. `expectedTurnId` is the running turn id that the plugin impl passes in,
      from `_activeTurnByThread[threadId]`, if one runs.
-  3. Otherwise it is `CodexThreadRepository.latestTurnId`. This is the one
+  2. Otherwise it is `CodexThreadRepository.latestTurnId`. This is the one
      source for the idle case. No new state records finished turns.
-  4. With no turn at all, it returns `noTurnYet`.
-  5. It builds the prompt with the builder below; a null prompt returns
+  3. With no turn at all, it returns `noTurnYet`.
+  4. It builds the prompt with the builder below; a null prompt returns
      `tooLong`. Then it calls `sampleThread` and returns its answer.
-- **Plugin impl.** It only passes in the active turn id and delegates.
+- **Plugin impl.** It makes the thread resident with `resumeThreadIfNeeded`
+  and applies the resume the way the reconnect restore does, so a cold resume
+  records the thread's model and directory, and a turn still running becomes
+  the active turn. Then it passes in the active turn id and delegates.
 - **Prompt builder.** `CodexSideQuestionPromptBuilder`
   (`services/codex_side_question_prompt_builder.dart`) owns the template and
   the byte budget. It has no dependencies; the service holds it as a `const`
@@ -488,9 +490,10 @@ The Codex adapter follows the plugin's own chain: API, then
 - Mapping (`CodexSideAnswerMapper`):
   - `text` non-null becomes `PluginSideAnswered` with a null notice.
   - `text` null becomes `noAnswer`.
-  - "method not found", "requires experimentalApi" and "sample source must be
-    idle" become `harnessUpdateRequired`. These come from PATH Codex 0.139 to
-    0.168, which can't sample mid-turn.
+  - "unknown variant `thread/sample`" (before 0.164.0) and "sample source must
+    be idle" (0.164.0 to 0.168.x, which ignore `allowInProgressTurn`) become
+    `harnessUpdateRequired`. Sesori always sends `experimentalApi`, so the
+    "requires experimentalApi" error can't happen and isn't mapped.
   - Other errors are thrown.
 - `thread/sample/cancel` isn't used in phase 1. The 30 s server deadline bounds
   an abandoned ask, and exposing request ids would mean changing the transport
@@ -774,7 +777,7 @@ existing Codex regression entries are the check.
 
 **Includes:**
 
-- `sampleThread`, plus resolving the thread and turn (`readThreadTurns`,
+- `sampleThread`, plus resolving the thread and turn (`listLatestTurn`,
   `latestTurnId`).
 - The history-in-prompt template with its byte budget.
 - The mapping and the descriptor flag.
