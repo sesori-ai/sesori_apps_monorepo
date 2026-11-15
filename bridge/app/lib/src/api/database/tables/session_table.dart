@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../converters/agent_model_converter.dart";
 import "../database.dart";
 import "projects_table.dart";
+import "scheduled_tasks_table.dart";
 
 part "session_table.freezed.dart";
 
@@ -81,6 +82,11 @@ class SessionTable() extends Table {
   /// Only an unarchived root is pinned; archiving drops the pin.
   BoolColumn get pinned => boolean().withDefault(const Constant(false))();
 
+  /// The task whose run started this session. Null for every other session,
+  /// and once that task is deleted, leaving an ordinary session.
+  TextColumn get scheduledTaskId =>
+      text().nullable().references(ScheduledTasksTable, #id, onDelete: KeyAction.setNull)();
+
   @override
   bool get withoutRowId => true;
 
@@ -116,5 +122,6 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required String? catalogTitle,
     required SessionApprovalMode? approvalOverride,
     required bool pinned,
+    required String? scheduledTaskId,
   }) = _SessionDto;
 }

@@ -2809,6 +2809,7 @@ class _CountingSessionDao({required final Set<String> tombstones, required final
       catalogTitle: null,
       approvalOverride: null,
       pinned: false,
+      scheduledTaskId: null,
     );
   }
 

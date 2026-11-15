@@ -1874,6 +1874,10 @@ class SessionRepository({
     );
   }
 
+  /// Whether [pluginId] is a registered harness the user has not disabled. It
+  /// may still be starting or need setup.
+  bool isPluginEligible({required String pluginId}) => _runtime.eligiblePluginIds.contains(pluginId);
+
   Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) {
     return _runtime.use(
       pluginId: pluginId,

@@ -533,6 +533,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           catalogTitle: "last-committed-sentinel",
           approvalOverride: null,
           pinned: false,
+          scheduledTaskId: null,
         ),
       ],
     );

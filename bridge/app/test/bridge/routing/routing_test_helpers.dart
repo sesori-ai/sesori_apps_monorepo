@@ -183,6 +183,7 @@ class FakeSessionDao() {
       catalogTitle: null,
       approvalOverride: null,
       pinned: false,
+      scheduledTaskId: null,
     );
   }
 
@@ -305,6 +306,9 @@ class FakeSessionRepository({
   bool inlineImagesSupported({required String pluginId}) => true;
 
   @override
+  bool isPluginEligible({required String pluginId}) => eligiblePluginIds.contains(pluginId);
+
+  @override
   Future<bool> inlineImagesSupportedForSession({required String sessionId}) async => true;
 
   @override
@@ -345,6 +349,7 @@ class FakeSessionRepository({
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
   String? projectPathResult;
+  Set<String> eligiblePluginIds = {"fake"};
   Object? publicationError;
 
   @override
