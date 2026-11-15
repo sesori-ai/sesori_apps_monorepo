@@ -3745,6 +3745,216 @@ abstract class AppLocalizations {
   /// **'Failed to unpin session'**
   String get sessionListUnpinFailed;
 
+  /// Session menu entry that opens the sheet for sending this session's work into another session.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to another session…'**
+  String get sessionListSendToSession;
+
+  /// Title of the sheet that sends a session's work into another session.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to another session'**
+  String get sendSessionTitle;
+
+  /// Label of the send sheet's row that shows the session to send into.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get sendSessionTo;
+
+  /// Shown in the send sheet's To row before a session is chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a session'**
+  String get sendSessionChooseTarget;
+
+  /// Switch in the send sheet: whether the sent session is archived once the send succeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive this session after sending'**
+  String get sendSessionArchiveAfter;
+
+  /// Button that sends the session into the chosen one.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get sendSessionSend;
+
+  /// Title of the sheet that picks the session to send into.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a session'**
+  String get sessionPickerTitle;
+
+  /// Hint in the session picker's search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions'**
+  String get sessionPickerSearchHint;
+
+  /// Shown as the session picker's list when no session matches the search.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions match'**
+  String get sessionPickerNoMatches;
+
+  /// Under a session in the session picker: it is working now, and a send joins the running turn.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get sessionPickerRunning;
+
+  /// Under a session in the session picker: it is working now, and its harness stops the running turn to take a send.
+  ///
+  /// In en, this message translates to:
+  /// **'Running: sending stops its current turn'**
+  String get sessionPickerRunningStopsTurn;
+
+  /// Alert when the user tries to send a session that is still working. {source} is the session's title.
+  ///
+  /// In en, this message translates to:
+  /// **'“{source}” is still working. Send it when it finishes.'**
+  String sendSessionSourceBusy(String source);
+
+  /// Action on the still-working alert that stops the session.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get sendSessionStop;
+
+  /// Error alert when stopping the session from the still-working alert failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t stop “{source}”'**
+  String sendSessionStopFailed(String source);
+
+  /// Alert while a send runs. {source} is the sent session's title, {target} the receiving session's.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending to “{target}”. “{source}” is writing a summary first.'**
+  String sendSessionSending(String source, String target);
+
+  /// Alert when a send succeeded. {target} is the receiving session's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to “{target}”'**
+  String sendSessionSent(String target);
+
+  /// Action on the sent alert that opens the receiving session.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get sendSessionOpen;
+
+  /// Alert when the computer's Sesori Bridge is too old to send sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori on this computer to send sessions.'**
+  String get sendSessionUnsupported;
+
+  /// Alert when the computer's answer to a send was lost, so the app cannot tell whether it arrived.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the send. Check “{target}”.'**
+  String sendSessionUnconfirmed(String target);
+
+  /// Error alert when a send failed for a reason with no more specific copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send “{source}”'**
+  String sendSessionFailed(String source);
+
+  /// Error alert when the bridge refused a send into the same session.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: a session can\'t be sent into itself.'**
+  String get sendSessionFailedSameSession;
+
+  /// Error alert when the sent session was archived.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{source}” is archived.'**
+  String sendSessionFailedSourceArchived(String source);
+
+  /// Error alert when the receiving session was archived.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{target}” is archived.'**
+  String sendSessionFailedTargetArchived(String target);
+
+  /// Error alert when the sent session belongs to a sub-agent, which cannot be sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{source}” is a sub-agent\'s session.'**
+  String sendSessionFailedSourceNotRoot(String source);
+
+  /// Error alert when the sent session started working before the bridge could send it.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{source}” is still working.'**
+  String sendSessionFailedSourceBusy(String source);
+
+  /// Error alert when the sent session has a pending question or permission.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{source}” is waiting for your answer.'**
+  String sendSessionFailedSourceAwaitingInput(String source);
+
+  /// Error alert when the sent session's harness could not be reached or refused the summary request.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{source}” didn\'t respond.'**
+  String sendSessionFailedSourceUnavailable(String source);
+
+  /// Error alert when the sent session has no conversation yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{source}” has nothing to send yet.'**
+  String sendSessionFailedSourceEmpty(String source);
+
+  /// Error alert when the summary turn was stopped before it finished.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: the summary was stopped.'**
+  String get sendSessionFailedSummaryStopped;
+
+  /// Error alert when the summary turn ended with an error.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: the summary failed.'**
+  String get sendSessionFailedSummaryFailed;
+
+  /// Error alert when the summary turn did not finish in time.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: the summary took too long.'**
+  String get sendSessionFailedSummaryTimedOut;
+
+  /// Error alert when the summary turn finished without any text.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: the summary came back empty.'**
+  String get sendSessionFailedSummaryMissing;
+
+  /// Error alert when the bridge could not read the sent session's conversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{source}”\'s conversation couldn\'t be read.'**
+  String sendSessionFailedTranscriptUnavailable(String source);
+
+  /// Error alert when the receiving session's harness refused the prompt without a reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{target}” didn\'t accept it.'**
+  String sendSessionFailedTargetRefused(String target);
+
+  /// Error alert when the receiving session's harness refused the prompt. {reason} is the harness's own reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: {reason}'**
+  String sendSessionFailedTargetRefusedReason(String reason);
+
   /// Extra line of the delete question when the session being deleted is pinned.
   ///
   /// In en, this message translates to:

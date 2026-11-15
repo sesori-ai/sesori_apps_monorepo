@@ -10,12 +10,16 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
+import "../../widgets/bridge_update_sheet.dart";
+import "../project_list/project_path_labels.dart";
 import "rename_session_dialog.dart";
+import "send_session_sheet.dart";
 
 part "session_cleanup_alerts.dart";
 part "session_cleanup_dialogs.dart";
 part "session_force_dialog.dart";
 part "session_list_actions.dart";
+part "session_send_flow.dart";
 
 typedef SessionDeletedRouteHandler = void Function({
   required BuildContext context,
@@ -61,6 +65,12 @@ class const SessionListActionDispatcher({
 
   /// Told when the user marks a session unread, never when they mark it read.
   required final SessionMarkedUnreadHandler? onSessionMarkedUnread,
+
+  /// Opens the session a send went into, from the sent alert.
+  required final SentSessionOpener openSession,
+
+  /// Builds the send sheet's session search.
+  required final SessionSearchCubitFactory createSessionSearch,
 }) {
   /// The long-press actions for [session], rendered by [SessionTile] in a
   /// [PregoAnchorMenu] anchored to the row, and a session page's menu.
@@ -111,6 +121,24 @@ class const SessionListActionDispatcher({
           isSelected: false,
           shortcutLabel: null,
           onTap: () => _setRead(context: context, actions: actions, session: session, read: markRead),
+        ),
+      // Only an unarchived top-level session has a conversation of its own
+      // to hand on.
+      if (!isArchived && session.parentID == null)
+        PregoMenuItem(
+          leadingIcon: TablerRegular.send,
+          title: loc.sessionListSendToSession,
+          subtitle: null,
+          isSelected: false,
+          shortcutLabel: null,
+          onTap: () => _sendToAnother(
+            context: context,
+            actions: actions,
+            source: session,
+            isRunning: isRunning,
+            createSearch: createSessionSearch,
+            openSession: openSession,
+          ),
         ),
       // Archiving is permanent, so an already-archived row has no archive
       // action left to offer.

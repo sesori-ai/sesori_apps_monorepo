@@ -1,11 +1,16 @@
+import "dart:async";
+
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 
 import "../api/session_api.dart";
+import "../capabilities/relay/relay_client.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/composer/prompt_send_failure.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
+import "../logging/logging.dart";
+import "models/send_to_session_result.dart";
 import "models/session_abort_not_accepted_exception.dart";
 import "models/session_abort_rejected_exception.dart";
 import "models/session_cleanup_rejection.dart";
@@ -69,6 +74,36 @@ class SessionRepository({
       ErrorResponse(:final error) when _isMissingRoute(error: error) => const SessionPinUnsupported(),
       ErrorResponse(:final error) => SessionPinFailure(error: error),
     };
+  }
+
+  Future<SendToSessionResult> sendToSession({required String sourceSessionId, required String targetSessionId}) async {
+    final response = await _api.sendToSession(sourceSessionId: sourceSessionId, targetSessionId: targetSessionId);
+    return switch (response) {
+      SuccessResponse() => const SendToSessionSent(),
+      // COMPATIBILITY 2026-11-15 (v1.14.0): Bridges before session sending
+      // have no /session/send-to-session route and answer with the router's
+      // route-not-found 404. Remove the unsupported result once the minimum
+      // supported bridge has the route.
+      ErrorResponse(:final error) when _isMissingRoute(error: error) => const SendToSessionUnsupported(),
+      ErrorResponse(:final NonSuccessCodeError error) when error.errorCode == 409 => _sendRefusal(error: error),
+      // The request went out, so the bridge may have sent it.
+      ErrorResponse(:final DartHttpClientError error)
+          when error.innerError is TimeoutException || error.innerError is RelayResponseLostException =>
+        SendToSessionUnconfirmed(error: error),
+      ErrorResponse(:final error) => SendToSessionFailed(error: error),
+    };
+  }
+
+  static SendToSessionResult _sendRefusal({required NonSuccessCodeError error}) {
+    final body = error.rawErrorString;
+    if (body == null) return SendToSessionFailed(error: error);
+    try {
+      final refusal = SendToSessionErrorResponse.fromJson(jsonDecodeMap(body));
+      return SendToSessionRefused(code: refusal.code, message: refusal.message);
+    } on Object catch (parseError, stackTrace) {
+      logw("Failed to parse the send-to-session refusal", parseError, stackTrace);
+      return SendToSessionFailed(error: error);
+    }
   }
 
   Future<ApiResponse<void>> deleteSession({

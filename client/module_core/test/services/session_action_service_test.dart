@@ -1,6 +1,7 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
+import "package:sesori_dart_core/src/repositories/models/send_to_session_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
 import "package:sesori_dart_core/src/services/models/session_cleanup_outcome.dart";
 import "package:sesori_dart_core/src/services/models/session_delete_result.dart";
@@ -122,5 +123,27 @@ void main() {
 
       expect(unseen.currentSessionUnseen[projectId]?.containsKey("s1"), isFalse);
     });
+  });
+
+  group("sendToSession", () {
+    // Each outcome reaches the caller as the repository gave it.
+    final outcomes = <SendToSessionResult>[
+      const SendToSessionSent(),
+      const SendToSessionRefused(code: SendToSessionErrorCode.sourceBusy, message: null),
+      SendToSessionFailed(error: ApiError.generic()),
+      const SendToSessionUnsupported(),
+      SendToSessionUnconfirmed(error: ApiError.generic()),
+    ];
+    for (final outcome in outcomes) {
+      test("returns ${outcome.runtimeType.toString()}", () async {
+        when(
+          () => sessionRepository.sendToSession(sourceSessionId: "source", targetSessionId: "target"),
+        ).thenAnswer((_) async => outcome);
+
+        final result = await actions.sendToSession(sourceSessionId: "source", targetSessionId: "target");
+
+        expect(result, same(outcome));
+      });
+    }
   });
 }

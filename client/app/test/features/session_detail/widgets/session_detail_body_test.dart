@@ -450,6 +450,8 @@ void main() {
       onSessionArchived: null,
       onSessionDeleted: null,
       onSessionMarkedUnread: ({required context, required session}) => left.add(session.id),
+      openSession: _openNothing,
+      createSessionSearch: _searchNothing,
     );
 
     await tester.pumpWidget(
@@ -7146,3 +7148,11 @@ Uint8List? _bytesOf(ComposerAttachment? attachment) => switch (attachment) {
   ComposerImageAttachment(:final bytes) || ComposerFileAttachment(:final bytes) => bytes,
   ComposerHostFileAttachment() || null => null,
 };
+
+void _openNothing({required String projectId, required String projectName, required Session session}) {}
+
+SessionSearchCubit _searchNothing({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) => throw UnimplementedError("These tests do not send sessions");
