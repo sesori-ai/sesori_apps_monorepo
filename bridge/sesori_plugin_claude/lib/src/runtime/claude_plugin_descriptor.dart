@@ -101,6 +101,10 @@ final class const ClaudePluginDescriptor({
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
 
+  /// Claude runs `/compact` on request.
+  @override
+  bool get supportsCompactionOnRequest => true;
+
   @override
   bool get supportsPromptAttachments => true;
 

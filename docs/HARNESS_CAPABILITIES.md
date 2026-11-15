@@ -1009,10 +1009,41 @@ harness exposes it.
 | Codex | ✅ Live from `item/started`, timed from `startedAtMs` or the bridge's stamp, settling in place at `item/completed`. Codex reports no failure, tokens or trigger, so a missing completion is left to the bridge sweep's note and the row has no details. | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
 | DeepSeek | ✅ Live only, from `compaction_started`, timed from the bridge's stamp and settling at `compaction_completed`. The statuses carry no ids, tokens, trigger or failure kind, and DeepSeek's history has no compaction record, so the row has no details, a warning or turn end leaves it to the bridge sweep's note, and it survives one history re-import, then disappears. | ⬜ The runtime reports no summary. |
 | OMP | ✅ Automatic compaction only, live from `_omp/compaction/start`, timed from the bridge's stamp (OMP sends no time), settling in place at `_omp/compaction/end` as completed with "· auto", or as a failure note reading "stopped" for an abort, "nothing to compact yet" for OMP's benign skip, and no reason for an error (logged locally). A compaction outside a prompt (the opt-in idle compaction) reports the session busy to status reads until it ends, so a history read keeps the row running, but sends no live busy status and so no completion notification; OMP holds a prompt sent meanwhile until it ends. When a method fails and OMP falls back to the next preferred one, the fallback gets its own row under the failure note. No freed count (OMP reports only the tokens before), and the row is live only. 🚫 A manual `/compact` sends no ACP signal, so it shows no row. | ⬜ The ACP notifications carry no summary; what history replay shows of OMP's stored summary was not verified. |
-| Antigravity, Copilot, Cursor, Hermes, Grok | ⬜ | ⬜ The ACP session updates Sesori consumes (message, thought and user chunks, tool calls, plan, commands, session info) have no compaction variant, so a compaction, such as Cursor's `/summarize` behind Sesori's `compact` command, arrives as ordinary agent text. A row needs a harness extension signal; none was probed live. |
+| Antigravity, Copilot, Cursor, Hermes, Grok | ⬜ | ⬜ The ACP session updates Sesori consumes (message, thought and user chunks, tool calls, plan, commands, session info) have no compaction variant, so a compaction, such as Cursor's `/summarize` behind Sesori's `compact` command, arrives as ordinary agent text. A row needs a harness extension signal. Grok 1.0.30 sends `_x.ai/session_notification` `sessionUpdate: "auto_compact_completed"` with `tokens_before` and `tokens_after` after a `/compact` (probed live 2026-11-15); Sesori does not consume it yet. The others were not probed for one. |
 
 A row without a summary is inert. Apps at v1.9.0 or older ignore the
 compaction state and show no row.
+
+## Compaction on request
+
+The bridge can ask a harness to compact a session's context without a client
+command, through `compactSession`; scheduled tasks use it before a run resumes a
+quiet session. It only starts a compaction on a quiet session: a session that
+is running, retrying, holding queued prompts or waiting for input answers
+"busy", and the request never stops or queues behind that work. A harness that
+cannot compact answers "unsupported". Each plugin's descriptor declares
+`supportsCompactionOnRequest` for the verified harness, but the running
+plugin's answer is authoritative.
+
+| Harness | Compaction on request |
+|---|---|
+| Claude | ✅ `/compact` as a turn, with the session's applied model, effort, permission mode and fast mode. A sub-agent session is unsupported. |
+| Codex | ✅ Native `thread/compact/start`. |
+| OpenCode v2 | ✅ Native `POST /api/session/{id}/compact`. |
+| OpenCode v1 | 🚫 v1 compaction needs the session's model, which only a client's command carries; v1 is being retired, so it answers unsupported. |
+| Pi | ✅ RPC `compact`. |
+| Cursor | ✅ Native `/summarize`. |
+| Copilot | ✅ `/compact`, advertised and verified after a real turn on 1.0.109 ("Compacted conversation history"). |
+| Hermes | ✅ `/compress`, verified on v0.21.5. A real compression may start a new Hermes session id; this was not observed. |
+| OMP | ✅ `/compact`, handled natively on 18.20.2. A compaction with real history was not exercised; an empty session answers "Nothing to compact". |
+| Grok | ✅ `/compact`, verified on an idle session on 1.0.30. |
+| DeepSeek | ✅ `compact` from `deepseek/catalog` on 0.2.2. A compaction with real history was not exercised; an empty session answers "No compactable history yet." |
+| Antigravity | 🚫 1.4.5 advertises only `logout`, `plan` and `usage`; `/compact` reaches the model as plain text. A signed-in account was not probed. |
+
+The ACP plugins (Copilot, Cursor, Hermes, OMP, Grok, DeepSeek, Antigravity)
+send the command only when the session's command list advertises it, and
+answer unsupported otherwise, so an Antigravity version that adds `/compact`
+works without a bridge change.
 
 ## Command limitations
 

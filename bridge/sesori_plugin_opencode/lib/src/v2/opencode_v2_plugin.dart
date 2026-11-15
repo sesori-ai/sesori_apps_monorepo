@@ -286,6 +286,30 @@ class OpenCodeV2Plugin._({
     model: model,
     variant: variant,
   );
+
+  /// Posts OpenCode's session compaction through the compaction command.
+  @override
+  Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    switch ((await getSessionStatuses())[sessionId]) {
+      case PluginSessionStatusBusy() || PluginSessionStatusRetry():
+        return PluginCompactionResult.sessionBusy;
+      case PluginSessionStatusIdle() || null:
+        break;
+    }
+    await sendCommand(
+      sessionId: sessionId,
+      promptId: promptId,
+      command: OpenCodeV2Service.compactionCommandName,
+      arguments: "",
+      userVisibleArguments: null,
+      variant: null,
+      fastMode: false,
+      agent: null,
+      model: null,
+    );
+    return PluginCompactionResult.accepted;
+  }
+
   @override
   Future<PluginAbortResult> abortSession({
     required String sessionId,
@@ -326,6 +350,6 @@ class OpenCodeV2Plugin._({
   @override
   Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
   @override
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      PluginQuotaContinuationReadiness.unavailable;
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
+      PluginSessionReadiness.unavailable;
 }

@@ -72,6 +72,10 @@ final class const CopilotPluginDescriptor({
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
 
+  /// Copilot advertises a native `/compact` over ACP (verified 1.0.109).
+  @override
+  bool get supportsCompactionOnRequest => true;
+
   @override
   bool get supportsPromptAttachments => true;
 

@@ -59,6 +59,10 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
 
+  /// Grok Build advertises a native `/compact` over ACP (verified 1.0.30).
+  @override
+  bool get supportsCompactionOnRequest => true;
+
   @override
   bool get supportsPromptAttachments => false;
 

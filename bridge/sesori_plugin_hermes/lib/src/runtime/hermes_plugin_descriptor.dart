@@ -69,6 +69,10 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
 
+  /// Hermes advertises a native `/compress` over ACP (verified v0.21.5).
+  @override
+  bool get supportsCompactionOnRequest => true;
+
   /// Hermes advertises `prompt_capabilities.image` at initialize, so the
   /// phone attachment flow works against this backend as-is.
   @override

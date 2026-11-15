@@ -293,8 +293,8 @@ final class PiPlugin._({
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => _sessionService.sessionStatuses;
 
   @override
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) =>
-      _sessionService.getQuotaContinuationReadiness(sessionId: sessionId);
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) =>
+      _sessionService.getSessionReadiness(sessionId: sessionId);
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
@@ -435,6 +435,33 @@ final class PiPlugin._({
         stackTrace,
       );
     }
+  }
+
+  /// Runs Pi's RPC `compact` the way the catalog's compaction command does,
+  /// keeping the session's current model and thinking level.
+  @override
+  Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    switch (await getSessionReadiness(sessionId: sessionId)) {
+      case PluginSessionReadiness.busy ||
+          PluginSessionReadiness.retrying ||
+          PluginSessionReadiness.queued ||
+          PluginSessionReadiness.awaitingInput:
+        return PluginCompactionResult.sessionBusy;
+      case PluginSessionReadiness.idle || PluginSessionReadiness.unavailable || PluginSessionReadiness.unknown:
+        break;
+    }
+    await sendCommand(
+      sessionId: sessionId,
+      promptId: promptId,
+      command: PiCatalogService.compactionCommandName,
+      arguments: "",
+      userVisibleArguments: null,
+      variant: null,
+      fastMode: false,
+      agent: null,
+      model: null,
+    );
+    return PluginCompactionResult.accepted;
   }
 
   @override

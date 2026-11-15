@@ -46,6 +46,7 @@ void main() {
           supportsPromptAttachments: false,
           namesCommandInvocations: false,
           supportsSideQuestions: false,
+          supportsCompactionOnRequest: false,
           busyPromptHandling: PluginBusyPromptHandling.steer,
           mcpScopes: noMcpScopes,
           sessionBranching: noSessionBranching,

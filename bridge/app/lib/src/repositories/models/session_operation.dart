@@ -38,5 +38,6 @@ enum SessionOperation() {
   observeQuotaInterruption,
   cancelQuotaContinuation,
   continueAfterQuota,
-  getQuotaContinuationReadiness,
+  getSessionReadiness,
+  compactSession,
 }
