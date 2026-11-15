@@ -5,6 +5,7 @@ import "../api/models/codex_rollout_dto.dart";
 import "../api/models/codex_sub_agent_item_dto.dart";
 import "../codex_config_reader.dart";
 import "../models/codex_replay_tool_disposition.dart";
+import "../models/codex_rewind_refusal.dart";
 import "codex_sub_agent_tracker.dart";
 import "codex_tool_lifecycle_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
@@ -92,6 +93,32 @@ class CodexMessageRepository({
       base = _historyBase(lines: prefix);
     }
     return [for (final prefix in prefixes.reversed) ...prefix];
+  }
+
+  /// The native turn a rewind at the user message [messageId] removes from.
+  ///
+  /// A user message's id is its `UserMessage` item id, which the rollout
+  /// records with the item's turn. Codex reverts whole turns, so only the
+  /// first user item of a turn can be edited: a later one was steered in
+  /// while the turn ran. Throws [PluginBranchPointUnavailableException] for
+  /// any other message.
+  String rewindTurnId({required CodexPreparedMessageRead read, required String messageId}) {
+    final turnsWithUserItem = <String>{};
+    for (final line in read._lines) {
+      if (line case CodexRolloutEventMessageLineDto(
+        payload: CodexRolloutItemCompletedEventDto(:final turnId, item: CodexRolloutCompletedUserMessageDto(:final id)),
+      )) {
+        final opensTurn = turnsWithUserItem.add(turnId);
+        if (id != messageId) continue;
+        if (!opensTurn) throw CodexRewindRefusal.midTurn.toException(cause: null);
+        return turnId;
+      }
+    }
+    // Rollouts from Codex before `UserMessage` items name their user messages
+    // by replay-local or response-item ids, and are legacy threads that
+    // `thread/revert` refuses anyway.
+    throw (turnsWithUserItem.isEmpty ? CodexRewindRefusal.legacySession : CodexRewindRefusal.unknownMessage)
+        .toException(cause: null);
   }
 
   /// Only a rollout's leading `session_meta` describes its own base; any
