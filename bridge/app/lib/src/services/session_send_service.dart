@@ -2,7 +2,8 @@ import "dart:async";
 import "dart:convert" show utf8;
 
 import "package:clock/clock.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgeSseSessionError, BridgeSseSessionIdle, Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show BridgeSseSessionError, BridgeSseSessionIdle, Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/mappers/session_transcript_markdown_builder.dart";

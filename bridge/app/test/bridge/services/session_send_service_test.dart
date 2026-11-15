@@ -527,7 +527,17 @@ final class _Prompts() implements SessionPromptService {
     required PromptModel? model,
   }) async {
     if (summaryFailure case final failure?) throw failure;
-    sends.add(_record(sessionId: sessionId, reserved: true, parts: parts, variant: variant, fastMode: fastMode, agent: agent, model: model));
+    sends.add(
+      _record(
+        sessionId: sessionId,
+        reserved: true,
+        parts: parts,
+        variant: variant,
+        fastMode: fastMode,
+        agent: agent,
+        model: model,
+      ),
+    );
     onSummaryAccepted?.call(promptId);
   }
 
@@ -544,7 +554,17 @@ final class _Prompts() implements SessionPromptService {
     required CommandSource? commandSource,
   }) async {
     if (targetFailure case final failure?) throw failure;
-    sends.add(_record(sessionId: sessionId, reserved: false, parts: parts, variant: variant, fastMode: fastMode, agent: agent, model: model));
+    sends.add(
+      _record(
+        sessionId: sessionId,
+        reserved: false,
+        parts: parts,
+        variant: variant,
+        fastMode: fastMode,
+        agent: agent,
+        model: model,
+      ),
+    );
   }
 
   static _Send _record({
@@ -558,7 +578,10 @@ final class _Prompts() implements SessionPromptService {
   }) => (
     sessionId: sessionId,
     reserved: reserved,
-    text: [for (final part in parts) if (part case PromptPartText(:final text)) text].join(),
+    text: [
+      for (final part in parts)
+        if (part case PromptPartText(:final text)) text,
+    ].join(),
     agent: agent,
     model: model,
     variant: variant,

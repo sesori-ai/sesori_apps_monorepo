@@ -42,8 +42,7 @@ void main() {
     final response = await handler.routeForTest(request(source: "a", target: "b"));
 
     expect(response.status, 409);
-    final body = SendToSessionErrorResponse.fromJson(jsonDecode(response.body ?? "") as Map<String, dynamic>);
-    expect(body, const SendToSessionErrorResponse(code: SendToSessionErrorCode.targetRefused, message: "The target is read-only."));
+    expect(jsonDecode(response.body ?? ""), {"code": "targetRefused", "message": "The target is read-only."});
   });
 
   test("answers 404 for a missing session", () async {
