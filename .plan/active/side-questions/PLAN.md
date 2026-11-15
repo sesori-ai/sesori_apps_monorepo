@@ -47,6 +47,14 @@ other harness gets an honest reason when the user taps the entry.
   Code's `side_question` returns its answer in one piece. This includes the
   phase-2 fork fallback, even where a fork could stream, so the behaviour stays
   uniform.
+- Round 4, q2 (2026-11-15): **A**. An archived session's notice shows a
+  "Side chats (N)" link, only when the session has side chats. It sits where
+  the composer's side-question button used to be and opens the side-chat sheet
+  (the panel on desktop) read-only. See Client UX, Archived entry.
+- Round 4, q3 (2026-11-15): **A**. Codex threads saved as attached threads of a
+  parent (side chats made in Codex's own terminal) are hidden from Sesori's
+  Codex session list, as Codex's own list hides them. This is a small Codex
+  plugin change outside this plan's steps, shipped as its own PR.
 
 The following are separate plans owned elsewhere. This plan only notes the
 seams:
@@ -639,6 +647,22 @@ is used by both shells.
 - **Archived sessions.** Instead of the input it says: "This session is
   archived. Its side chats are read-only."
 
+**Archived entry (round 4, q2 = A).** An archived session has no composer, so
+the options-pill button isn't there.
+
+- `SessionDetailArchivedNotice` shows a "Side chats (N)" link where the
+  composer's button used to be, only when the session has at least one side
+  chat. Tapping it opens the same sheet (the panel on desktop) on the newest
+  chat, read-only, with the earlier list available.
+- The count comes from one `listSideChats` call when an archived session's
+  detail loads, made only when the bridge supports side questions
+  (`PluginListResponse.supportsSideQuestions`), whatever the harness flag says,
+  since stored chats stay readable. It is carried only for archived sessions.
+  With no chats, a failed call or an older bridge, there is no link, and the
+  notice looks as it does today. No reason is needed, because nothing tappable
+  is shown.
+- The link fades in when the count arrives, without moving the notice's text.
+
 **Desktop panel.**
 
 - It is a trailing floating panel over the session page, about 380 pt wide and
@@ -830,11 +854,14 @@ analytics outcome.
 - `SideChatView`.
 - The composer entry, with its reasons.
 - The sheet wiring in the mobile session screen.
+- The archived entry: the "Side chats (N)" link on the archived notice, opening
+  the sheet read-only (see Client UX, Archived entry). If the step runs over
+  the soft cap, split this into its own PR after the rest of step 8.
 - Localised strings.
 
 **Checks:**
 
-- Widget tests.
+- Widget tests, including the archived link's presence rules.
 - A headless iOS simulator recording against a fixture or dev account. It
   shows:
   - asking while the main turn streams,
@@ -1007,15 +1034,8 @@ names only collaboration mode. Step 5 updates it to mention `thread/sample`.
 
 ## Product questions
 
-Round 2 B1 = D and round 3 Q1 = B are answered (see Decisions). One is open:
-
-- **Where archived sessions reopen their side chats.** Behaviour item 7 says
-  archived sessions show their side chats read-only, but an archived session
-  shows `SessionDetailArchivedNotice` where the composer was
-  (`session_detail_loaded_view.dart`), so the options-pill button, the only
-  entry, isn't there. Found by the 2026-11-15 architecture review. It needs an
-  entry choice (for example an action on the archived notice, or the session
-  overflow menu) before step 8.
+None open. Round 2 B1 = D, round 3 Q1 = B, and round 4 q2 = A (archived
+entry) and q3 = A (hide Codex attached threads) are answered (see Decisions).
 
 ## Review record
 
