@@ -1122,9 +1122,11 @@ on, so each request was approved automatically, and in Ask mode it would have
 been a prompt. Pi read it on DeepSeek V4.1 Flash, because the machine's OpenAI
 login for Pi had expired. Sesori's ACP client advertises
 `fs.readTextFile: false`, so ACP harnesses read through their own tools.
-Claude Code was rechecked on 2026-11-15 through the local debug server: one
-prompt attached a `.txt` and named a file under `~/.sesori/transcripts`, Claude
-read and quoted both, and the bridge log held no permission request.
+Claude Code was rechecked on 2026-11-15 through the local debug server, on a
+session set to Ask: one prompt attached a `.txt` and named a file under
+`~/.sesori/transcripts`, Claude read and quoted both, and no permission request
+was raised. A read of a file outside both folders in the same session did raise
+one.
 
 ## Sub-agents
 
