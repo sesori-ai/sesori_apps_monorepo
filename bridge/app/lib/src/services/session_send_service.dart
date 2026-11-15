@@ -117,18 +117,16 @@ class SessionSendService({
           if (await _sourceRefusal(sessionId: source.id, pluginId: source.pluginId) case final code?) {
             throw _rejected(code: code);
           }
-          final defaults = source.promptDefaults;
-          final model = defaults?.model;
-          final variant = model?.variant;
+          final defaults = _promptSettings(defaults: source.promptDefaults);
           try {
             await _prompts.sendPromptAlreadyReserved(
               sessionId: source.id,
               promptId: promptId,
               parts: [PromptPart.text(text: _summaryRequestText(targetTitle: target.title))],
-              variant: variant == null ? null : SessionVariant(id: variant),
-              fastMode: defaults?.fastMode ?? false,
-              agent: defaults?.agent,
-              model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
+              variant: defaults.variant,
+              fastMode: defaults.fastMode,
+              agent: defaults.agent,
+              model: defaults.model,
             );
           } on Object catch (error, stackTrace) {
             throw SessionSendRejectedException(
@@ -311,9 +309,7 @@ class SessionSendService({
     }
     Log.i("Saved the transcript of session ${source.id} for ${target.id} at $transcriptPath (${bytes.length} bytes)");
 
-    final defaults = target.promptDefaults;
-    final model = defaults?.model;
-    final variant = model?.variant;
+    final defaults = _promptSettings(defaults: target.promptDefaults);
     try {
       await _prompts.sendPrompt(
         sessionId: target.id,
@@ -329,10 +325,10 @@ class SessionSendService({
             ),
           ),
         ],
-        variant: variant == null ? null : SessionVariant(id: variant),
-        fastMode: defaults?.fastMode ?? false,
-        agent: defaults?.agent,
-        model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
+        variant: defaults.variant,
+        fastMode: defaults.fastMode,
+        agent: defaults.agent,
+        model: defaults.model,
         command: null,
         commandSource: null,
       );
@@ -373,6 +369,20 @@ class SessionSendService({
     return "This is a handoff from $source ($harnessName, in `$sourceDirectory`). Its agent wrote this summary:\n\n"
         "$summary\n\n"
         "The full transcript is at `$transcriptPath`. Read it only if you need details the summary leaves out.";
+  }
+
+  /// A session's remembered prompt settings, as a prompt to it takes them.
+  static ({SessionVariant? variant, bool fastMode, String? agent, PromptModel? model}) _promptSettings({
+    required SessionPromptDefaults? defaults,
+  }) {
+    final model = defaults?.model;
+    final variant = model?.variant;
+    return (
+      variant: variant == null ? null : SessionVariant(id: variant),
+      fastMode: defaults?.fastMode ?? false,
+      agent: defaults?.agent,
+      model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
+    );
   }
 
   static String? _nonBlank({required String? text}) {
