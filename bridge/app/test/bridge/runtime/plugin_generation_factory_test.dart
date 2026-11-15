@@ -705,6 +705,9 @@ class _GatedDescriptor({
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
   @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
+  @override
   List<PluginOption> get options => const [];
 
   @override
@@ -759,6 +762,9 @@ class _RecordingDescriptor() extends BridgePluginDescriptor {
 
   @override
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
+
+  @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
 
   @override
   List<PluginOption> get options => const [];

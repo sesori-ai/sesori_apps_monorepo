@@ -467,6 +467,9 @@ class const _TestDescriptor({
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
   @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
+  @override
   List<PluginOption> get options => const [];
 
   @override

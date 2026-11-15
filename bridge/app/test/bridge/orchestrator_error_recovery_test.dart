@@ -45,6 +45,7 @@ void main() {
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
           namesCommandInvocations: false,
+          busyPromptHandling: PluginBusyPromptHandling.steer,
           mcpScopes: noMcpScopes,
         ),
       ],
