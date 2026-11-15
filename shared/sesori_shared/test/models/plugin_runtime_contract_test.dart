@@ -76,6 +76,26 @@ void main() {
     expect(future.mcpScopes, {McpScopeKind.session, McpScopeKind.unknown});
   });
 
+  test("plugin metadata decodes omitted session branching as none and an unknown operation as unknown", () {
+    final legacy = PluginMetadata.fromJson(const {
+      "id": "legacy",
+      "displayName": "Legacy",
+      "isDefault": true,
+      "state": "ready",
+    });
+    final future = PluginMetadata.fromJson(const {
+      "id": "future",
+      "displayName": "Future",
+      "isDefault": false,
+      "state": "ready",
+      "sessionBranching": ["rewind", "splice"],
+    });
+
+    expect(legacy.sessionBranching, isEmpty);
+    expect(future.sessionBranching, {SessionBranchingOperation.rewind, SessionBranchingOperation.unknown});
+    expect(PluginMetadata.fromJson(future.toJson()).sessionBranching, future.sessionBranching);
+  });
+
   test("plugin discovery omits a null bridge ID and decodes a missing one as null", () {
     const response = PluginListResponse(bridgeId: null, plugins: []);
 
