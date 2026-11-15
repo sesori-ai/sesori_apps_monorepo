@@ -531,7 +531,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
           // The desktop root owns its single connection banner.
           banner: null,
           aboveComposer: null,
-          submitAppearance: null,
+          submitAction: null,
           pageChrome: const NewSessionPageChrome(
             maxContentWidth: desktopComposerWidth,
             transcriptWidth: desktopTranscriptWidth,

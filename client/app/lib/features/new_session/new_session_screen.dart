@@ -87,7 +87,7 @@ class const NewSessionScreen({
       },
       banner: ConnectionBanner.maybeFor(context),
       aboveComposer: null,
-      submitAppearance: null,
+      submitAction: null,
       pageChrome: null,
     );
   }

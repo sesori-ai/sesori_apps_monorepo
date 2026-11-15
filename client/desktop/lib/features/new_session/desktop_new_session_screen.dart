@@ -71,7 +71,7 @@ class const DesktopNewSessionView({
         // The desktop root owns its single connection banner.
         banner: null,
         aboveComposer: null,
-        submitAppearance: null,
+        submitAction: null,
         pageChrome: NewSessionPageChrome(
           maxContentWidth: desktopComposerWidth,
           transcriptWidth: desktopTranscriptWidth,

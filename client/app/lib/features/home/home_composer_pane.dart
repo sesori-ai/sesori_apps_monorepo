@@ -203,7 +203,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
           ),
           banner: ConnectionBanner.maybeFor(context),
           aboveComposer: null,
-          submitAppearance: null,
+          submitAction: null,
           pageChrome: null,
         ),
         // A list still loading may yet name it.

@@ -223,15 +223,15 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
       });
 
-      NewSessionCubit buildTaskCubit() => buildCubit(
+      NewSessionCubit buildTaskCubit({String pluginId = "plugin-1"}) => buildCubit(
         composerDraftRepository: drafts,
         dedicatedWorktreePreferenceStore: worktreePreference,
-        purpose: const NewSessionPurpose.editTask(
+        purpose: NewSessionPurpose.editTask(
           initialSelection: TaskComposerSelection(
             project: project,
             harness: TaskComposerHarnessChoice(
-              pluginId: "plugin-1",
-              picks: NewSessionSelectionIntent(
+              pluginId: pluginId,
+              picks: const NewSessionSelectionIntent(
                 agentName: null,
                 model: NewSessionModelIntent(providerId: "openai", modelId: "gpt-test"),
                 variant: null,
@@ -338,6 +338,66 @@ void main() {
         );
         expect(worktreePreference.writes, isEmpty);
         expect(drafts.readForNewSession().text, "unsent");
+      });
+
+      test("opens on the task's harness before any composer has met the computer", () async {
+        selectionTracker = NewSessionSelectionTracker();
+        const taskPlugin = PluginMetadata(
+          id: "plugin-2",
+          displayName: "Plugin Two",
+          isDefault: false,
+          state: PluginLifecycleState.ready,
+          actionHint: null,
+          failureBlock: null,
+          mcpScopes: null,
+          failureReason: null,
+        );
+        when(mockPluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(
+            PluginDiscoverySnapshot(
+              bridgeId: "bridge-1",
+              supportsSessionOptions: true,
+              supportsFileUploads: false,
+              supportsSideQuestions: false,
+              plugins: const [defaultPlugin, taskPlugin],
+            ),
+          ),
+        );
+        final cubit = buildTaskCubit(pluginId: "plugin-2");
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        expect(cubit.state.agentModelData?.plugin?.id, "plugin-2");
+        expect(cubit.state.agentModelData?.agentModel?.modelID, "gpt-test");
+      });
+
+      test("Save waits for the task's choices to load", () async {
+        final providers = Completer<ApiResponse<ProviderListResponse>>();
+        when(
+          () => mockSessionApi.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) => providers.future);
+        final cubit = buildTaskCubit();
+        addTearDown(cubit.close);
+        for (var turn = 0; turn < 50 && !cubit.canCreateSession; turn++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        expect(cubit.canCreateSession, isTrue);
+        expect(cubit.canSubmit, isFalse);
+
+        await cubit.submit(
+          draft: ComposerDraft.typed(text: "Triage new issues"),
+          dedicatedWorktree: false,
+          command: null,
+          attachments: const [],
+        );
+        expect(cubit.state.phase, isNot(isA<NewSessionPhaseTaskSubmitted>()));
+
+        providers.complete(ApiResponse.success(testProviderListResponse()));
+        await waitForComposer(cubit);
+        expect(cubit.canSubmit, isTrue);
       });
     });
 

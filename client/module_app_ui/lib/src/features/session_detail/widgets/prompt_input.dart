@@ -152,9 +152,10 @@ typedef VoiceTranscriptionFinishedCallback = void Function({
   required AnalyticsVoiceMode mode,
 });
 
-/// What the composer's send button says and shows, for a composer whose
-/// submit is not a send.
-class const PromptSubmitAppearance({required final String label, required final IconData icon});
+/// A submit that hands the composer's content over instead of sending it, such
+/// as saving a task: its button says [label] and shows [icon], and the composer
+/// keeps what it holds, as the caller decides whether that is done with.
+class const PromptSubmitAction({required final String label, required final IconData icon});
 
 class const PromptInput({
   super.key,
@@ -170,8 +171,8 @@ class const PromptInput({
   required final bool canSend,
   required final PromptSubmitCallback onSend,
 
-  /// Null for Send with its arrow.
-  required final PromptSubmitAppearance? submitAppearance,
+  /// Null for Send with its arrow, which empties the composer once it goes.
+  required final PromptSubmitAction? submitAction,
 
   /// Told what became of a dictation's words, once that is decided.
   required final VoiceTranscriptionFinishedCallback? onVoiceTranscriptionFinished,
@@ -748,12 +749,14 @@ class _PromptInputState() extends State<PromptInput> {
 
     // Here rather than before this method: a refusal above leaves the words
     // for the box, with no bubble expected.
-    if (fromDictation) SentBubbleLanding.of(context: context).expect();
+    final handsOver = widget.submitAction != null;
+    if (fromDictation && !handsOver) SentBubbleLanding.of(context: context).expect();
     widget.onSend(
       draft: submission,
       command: stagedCommand,
       attachments: attachments,
     );
+    if (handsOver) return true;
     if (stagedCommand != null) widget.onCommandCleared();
 
     _startPasteGeneration();
@@ -2740,6 +2743,7 @@ class _PromptInputState() extends State<PromptInput> {
                   excludeFromSemantics: true,
                   child: PregoVoiceSendButton(
                     label: _submitLabel(loc),
+                    icon: _submitIcon,
                     enabled: _voicePresentation == _VoicePresentation.recording,
                     onPressed: () => unawaited(_handleRecordEnd()),
                   ),
@@ -3571,12 +3575,14 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  String _submitLabel(AppLocalizations loc) => widget.submitAppearance?.label ?? loc.sessionDetailSend;
+  String _submitLabel(AppLocalizations loc) => widget.submitAction?.label ?? loc.sessionDetailSend;
+
+  IconData get _submitIcon => widget.submitAction?.icon ?? TablerRegular.arrow_up;
 
   /// Send's look for [onPressed], with no screen reader node of its own.
   Widget _buildSendLook({required VoidCallback? onPressed}) {
     return PregoButtonsSolid.iconOnly(
-      leadingIcon: widget.submitAppearance?.icon ?? TablerRegular.arrow_up,
+      leadingIcon: _submitIcon,
       semanticLabel: null,
       hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
       size: _actionSize,

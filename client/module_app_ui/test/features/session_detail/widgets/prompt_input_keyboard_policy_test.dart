@@ -14,6 +14,7 @@ void main() {
     await _pumpComposer(
       tester: tester,
       sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+      submitAction: null,
       onSend: ({required draft, required command, required attachments}) {
         sendCount++;
         sentText = draft.text;
@@ -39,11 +40,30 @@ void main() {
     expect(tester.widget<TextField>(field).controller?.text, "First line\nSecond line");
   });
 
+  testWidgets("a submit action hands the words over and keeps them in the box", (tester) async {
+    String? sentText;
+    await _pumpComposer(
+      tester: tester,
+      sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+      submitAction: const PromptSubmitAction(label: "Save task", icon: Icons.check),
+      onSend: ({required draft, required command, required attachments}) => sentText = draft.text,
+    );
+
+    final field = find.byType(TextField);
+    await tester.enterText(field, "Triage new issues");
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(sentText, "Triage new issues");
+    expect(tester.widget<TextField>(field).controller?.text, "Triage new issues");
+  });
+
   testWidgets("desktop Enter preserves an active IME composition", (tester) async {
     var sendCount = 0;
     await _pumpComposer(
       tester: tester,
       sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+      submitAction: null,
       onSend: ({required draft, required command, required attachments}) => sendCount++,
     );
 
@@ -75,6 +95,7 @@ void main() {
     await _pumpComposer(
       tester: tester,
       sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
+      submitAction: null,
       onSend: ({required draft, required command, required attachments}) => sendCount++,
     );
 
@@ -95,6 +116,7 @@ void main() {
 Future<void> _pumpComposer({
   required WidgetTester tester,
   required ComposerSendKeyPolicy sendKeyPolicy,
+  required PromptSubmitAction? submitAction,
   required PromptSubmitCallback onSend,
 }) async {
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
@@ -130,7 +152,7 @@ Future<void> _pumpComposer({
             isBusy: false,
             hasMessages: true,
             canSend: true,
-            submitAppearance: null,
+            submitAction: submitAction,
             onSend: onSend,
             onVoiceTranscriptionFinished: null,
             onDraftChanged: (_) {},

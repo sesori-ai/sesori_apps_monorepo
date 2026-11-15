@@ -220,7 +220,10 @@ class NewSessionCubit({
           final heldBackOnScreen = data.bridgeId == beforeDiscovery?.backendScope.lastIdentifiedBridgeId
               ? data.plugins.firstWhereOrNull((plugin) => plugin.id == onScreenId && plugin.failureBlock != null)
               : null;
-          final selectedPlugin = heldBackOnScreen ?? data.selected;
+          final selectedPlugin =
+              heldBackOnScreen ??
+              _taskHarnessOnFirstDiscovery(onScreen: beforeDiscovery?.plugin, plugins: data.plugins) ??
+              data.selected;
           final source = data.optionsSource;
           final retained =
               _canRetainOptions(
@@ -263,6 +266,23 @@ class NewSessionCubit({
       loge("New session: failed to discover plugins", error, stackTrace);
       _emitDiscoveryError(reason: RemoteFailureReason.unknown);
     }
+  }
+
+  /// The harness a task was saved with, for the discovery that opens its
+  /// editor. The remembered pick's computer says nothing of the task's, so it
+  /// is matched by id alone; held back, it stays so its notice shows instead
+  /// of the task quietly moving to another harness.
+  PluginMetadata? _taskHarnessOnFirstDiscovery({
+    required PluginMetadata? onScreen,
+    required List<PluginMetadata> plugins,
+  }) {
+    if (onScreen != null) return null;
+    return switch (_purpose) {
+      NewSessionEditTask(initialSelection: TaskComposerSelection(harness: final harness?)) => plugins.firstWhereOrNull(
+        (plugin) => plugin.id == harness.pluginId && plugin.isPickable,
+      ),
+      NewSessionEditTask() || NewSessionStartSession() => null,
+    };
   }
 
   /// Takes in a harness set up, enabled or turned off since discovery, in
@@ -924,8 +944,19 @@ class NewSessionCubit({
   }
 
   /// Whether Send does anything now: it creates the session, or, while the
-  /// first message is sending, queues a follow-up.
-  bool get canSubmit => canCreateSession || state.phase is NewSessionPhaseSending;
+  /// first message is sending, queues a follow-up. A task's Save also waits
+  /// for the harness' options, so the choices it hands back are the task's
+  /// restored ones rather than defaults standing in for them.
+  bool get canSubmit => switch (_purpose) {
+    NewSessionStartSession() => canCreateSession || state.phase is NewSessionPhaseSending,
+    NewSessionEditTask() => canCreateSession && _optionsSettled,
+  };
+
+  /// The harness listed its options, or has none to list.
+  bool get _optionsSettled => switch (state.agentModelData?.optionsState) {
+    final options? => options.data != null || options is NewSessionOptionsUnsupportedState,
+    null => false,
+  };
 
   NewSessionComposerPresentation get composerPresentation {
     final data = state.agentModelData;
@@ -1258,7 +1289,7 @@ class NewSessionCubit({
   /// Hands a task's choices back for saving; nothing starts here.
   void _submitTask({required ComposerDraft draft, required bool dedicatedWorktree, required CommandInfo? command}) {
     final current = state;
-    if (!canCreateSession || current is! NewSessionComposing) return;
+    if (!canSubmit || current is! NewSessionComposing) return;
     final data = current.config.agentModelData;
     final plugin = data.plugin;
     if (plugin == null) return;

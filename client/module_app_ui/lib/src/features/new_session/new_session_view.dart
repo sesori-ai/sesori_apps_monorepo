@@ -74,7 +74,7 @@ class const NewSessionView({
   required final Widget? aboveComposer,
 
   /// Null for Send.
-  required final PromptSubmitAppearance? submitAppearance,
+  required final PromptSubmitAction? submitAction,
 }) extends StatefulWidget {
   @override
   State<NewSessionView> createState() => _NewSessionViewState();
@@ -612,7 +612,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                 ? null
                 : composerData?.supportsFileUploads,
             isBusy: false,
-            submitAppearance: widget.submitAppearance,
+            submitAction: widget.submitAction,
             onSend: ({required draft, required command, required attachments}) =>
                 context.read<NewSessionCubit>().submit(
                   draft: draft,

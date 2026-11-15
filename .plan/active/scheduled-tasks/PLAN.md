@@ -604,11 +604,14 @@ What it means:
   As built in step 7: `startSession(project)` carries its project and the
   task selection carries its own, so the cubit takes only the purpose. A
   task's draft lives in the cubit only (one task's unsaved text never shows in
-  another's composer), and its picks go to a seeded
-  `NewSessionSelectionTracker` of its own. The submitted selection is the
-  `NewSessionPhase.taskSubmitted` phase, so the composer stays editable after
-  a failed save; `TaskComposerSubmission` keeps identity equality, so saving
-  the same choices twice reaches the listener twice.
+  another's composer), and its picks go to a `NewSessionSelectionTracker` of
+  its own, seeded with the task's harness and picks when it has them. First
+  discovery opens on that harness by id. Save waits for the harness' options
+  and hands the content over through `PromptSubmitAction`, so the composer
+  keeps it. The submitted selection is the `NewSessionPhase.taskSubmitted`
+  phase, so the composer stays editable after a failed save;
+  `TaskComposerSubmission` keeps identity equality, so saving the same
+  choices twice reaches the listener twice.
 - `NewSessionView` gains a header slot above the composer (the When and Each
   run lines) and a submit label/icon (Save task) passed down to `PromptInput`.
 - `ScheduledTaskEditorCubit` owns When and Each run state, defaults,
