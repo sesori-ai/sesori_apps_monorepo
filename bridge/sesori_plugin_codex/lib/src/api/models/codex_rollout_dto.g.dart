@@ -247,6 +247,7 @@ _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
       ),
       agentNickname: json['agent_nickname'] as String?,
       agentPath: json['agent_path'] as String?,
+      attachedThread: json['attached_thread'] as bool? ?? false,
     );
 
 const _$CodexRolloutThreadSourceEnumMap = {

@@ -240,6 +240,10 @@ sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMet
     required CodexRolloutThreadSource? threadSource,
     @JsonKey(name: "agent_nickname") required String? agentNickname,
     @JsonKey(name: "agent_path") required String? agentPath,
+
+    /// A fork Codex keeps attached to `forked_from_id`, such as a side chat
+    /// from its terminal workspace. Codex writes the key only when true.
+    @JsonKey(name: "attached_thread") @Default(false) bool attachedThread,
   }) = _CodexRolloutSessionMetadataPayloadDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutSessionMetadataPayloadDtoFromJson(json);
