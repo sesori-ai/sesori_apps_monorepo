@@ -208,12 +208,15 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
 
 ### P2. Wire contract (sesori_shared)
 
-- `ScheduledTask`: `id`, `name`, `prompt` (text parts and optional staged
-  command with its `CommandSource`), `projectId`, `pluginId`, `agent`, `model`,
-  `variant`, `fastMode`, `dedicatedWorktree`, `schedule`, `timeZone` (IANA
-  name), `missedRunPolicy` (`runWhenBack`, `waitForNext`), `runMode`,
-  `approvalMode` (`ask`, `approveAll`), `enabled`, `nextRunAt` (UTC, null when
-  paused or done), `lastRun` (summary, nullable).
+- `ScheduledTask`: `id`, `definition`, `enabled`, `nextRunAt` (null when
+  paused or done), `lastRun` (the newest run row, nullable). The user-editable
+  part is one `ScheduledTaskDefinition` (`name`, `prompt`, `projectId`,
+  `pluginId`, `agent`, `model`, `variant`, `fastMode`, `dedicatedWorktree`,
+  `schedule`, `timeZone` (IANA name), `missedRunPolicy` (`runWhenBack`,
+  `waitForNext`), `runMode`, `approvalMode` (`ask`, `approveAll`)), which the
+  create and update requests carry whole (step 2).
+- `ScheduledTaskPrompt` sealed: `text(text)` | `command(name, source,
+  arguments?)` | `unknown` fallback. No attachments in v1, so no part list.
 - `TaskSchedule` sealed: `once(localDateTime)`, `daily(time)`,
   `weekdays(time)`, `weekly(days, time)`, `everyHours(hours 1–12,
   startLocalDateTime)`, plus an `unknown` fallback union so an app older than a
@@ -224,15 +227,18 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   target session id is bridge state, not editable wire input.
 - `ScheduledTaskRun`: `id`, `scheduledFor`, `outcome` sealed:
   `started(sessionId: String?, late)` (null honestly means the session was
-  deleted since) | `skipped(previousRunActive)` | `missed` | `failed(reason)` |
+  deleted since) | `skipped` (the previous run was still going; it is the only
+  skip reason, so it carries no field) | `missed` | `failed(reason)` |
   `unknown` fallback; `reason` is a closed enum (`projectMissing`,
   `harnessUnavailable`, `modelUnavailable`, `startFailed`).
 - Every wire enum (`missedRunPolicy`, `approvalMode`, failure `reason`, mark
   `kind`) has an `unknownEnumValue` fallback, so a newer bridge never breaks an
   older app's list or history.
 - Every instant the app shows (`nextRunAt`, run `scheduledFor`) travels as UTC
-  plus the task zone's UTC offset at that instant (`…OffsetMinutes`). The app
-  renders wall-clock time from the pair and needs no time-zone database.
+  plus the task zone's UTC offset at that instant, as one
+  `ScheduledTaskInstant(at, offsetMinutes)` value so neither half can be
+  missing alone. The app renders wall-clock time from the pair and needs no
+  time-zone database.
 - `Session.scheduledTask`: nullable `SessionScheduledTaskMark(taskId, name,
   kind: recurring|once)`. Null honestly means "not a task run", including from
   bridges before this feature, so no compatibility default is needed.
@@ -246,11 +252,21 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   to `unknown`) and a new nullable `NotificationData.taskId`. Step 6 confirms
   the auth server's `/notifications/send` passes an unknown event type and
   extra `data` fields through unchanged; if it does not, that becomes an
-  explicit cross-repo dependency before step 6 merges.
+  explicit cross-repo dependency before step 6 merges. Both wire additions
+  land in step 6 with that check, not in step 2: the new required
+  `NotificationData.taskId` touches every push call site that step 6 changes
+  anyway.
 - Routes, all new (exact paths follow `request_router.dart` conventions):
   list tasks, create, update, delete, set enabled, run now, list a task's runs.
   Validation errors are typed responses (unknown zone, unknown project/harness,
-  hours out of range, empty prompt).
+  hours out of range, empty prompt). Step 2 ships every body: the list, task,
+  run and run-list responses, `CreateScheduledTaskRequest`,
+  `UpdateScheduledTaskRequest`, `SetScheduledTaskEnabledRequest`, one
+  `ScheduledTaskIdRequest` (delete, run now, list runs) and
+  `ScheduledTaskErrorResponse` whose `ScheduledTaskErrorCode` also covers
+  empty name, invalid schedule fields, a past one-off time, values the bridge
+  does not know (`unsupportedByBridge`), a missing task and the Run now
+  refusal (`previousRunActive`).
 - One new SSE event, `scheduledTasks.changed` (no payload beyond the bridge's
   usual envelope). The Orchestrator emits it from `ScheduledTaskService`'s and
   `ScheduledTaskRunService`'s change streams on create, update, delete,
@@ -320,7 +336,10 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   DST and the bridge host's own zone is irrelevant. An unknown zone is rejected
   at save.
 - The bridge app adds the `timezone` package and initializes its database once
-  in bridge startup, before the scheduler starts.
+  in bridge startup, before the scheduler starts. It loads `latest_all`, since
+  devices can report link names such as `UTC` or `Asia/Calcutta` that the
+  smaller `latest` set lacks; the database is process-wide, so the Claude
+  plugin's quota mapper loads the same set instead of replacing it (step 2).
 - Wall-clock presets (once, daily, weekdays, weekly): a local time that does
   not exist (spring-forward gap) runs at the same offset into the gap after the
   jump (02:30 → 03:30); a repeated local time (fall-back) runs once, at the
