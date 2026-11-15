@@ -95,6 +95,7 @@ class CodexPlugin._({
     McpAuthenticationPluginApi,
     FormInteractionPluginApi,
     SessionExternalActionsPluginApi,
+    SessionRewindPluginApi,
     SideQuestionPluginApi {
   @override
   Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
@@ -1084,6 +1085,39 @@ class CodexPlugin._({
     required ({String providerID, String modelID})? model,
   }) async {
     await _connectedClient();
+    await _startTurn(
+      threadId: sessionId,
+      promptId: promptId,
+      parts: parts,
+      model: model,
+      variant: variant,
+      fastMode: fastMode,
+      collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
+    );
+  }
+
+  /// `thread/revert` to just before the turn [beforeMessageId] opens, then
+  /// the ordinary `turn/start`. The revert runs before the turn's rollout
+  /// tail starts, because it moves the thread to a new rollout.
+  @override
+  Future<void> rewindAndSendPrompt({
+    required String sessionId,
+    required String beforeMessageId,
+    required String promptId,
+    required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    await _connectedClient();
+    final evidenceRevision = _turnEvidenceRevisionByThread[sessionId] ?? 0;
+    final resumed = await _sessionService.revertBeforeMessage(
+      threadId: sessionId,
+      beforeMessageId: beforeMessageId,
+      parts: parts,
+    );
+    _applyResumedThread(threadId: sessionId, resumed: resumed, evidenceRevision: evidenceRevision);
     await _startTurn(
       threadId: sessionId,
       promptId: promptId,

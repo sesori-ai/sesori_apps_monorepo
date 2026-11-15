@@ -280,6 +280,17 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     return CodexTurnStartResponseDto.fromJson(result.cast<String, dynamic>());
   }
 
+  /// Removes [beforeTurnId] and every later turn from the loaded thread's
+  /// persisted history. Codex writes the kept history to a new rollout and
+  /// leaves local files alone.
+  Future<void> revertThread({required String threadId, required String beforeTurnId}) async {
+    await _client.request(
+      method: "thread/revert",
+      params: {"threadId": threadId, "beforeTurnId": beforeTurnId},
+      timeout: codexRequestTimeout,
+    );
+  }
+
   /// The thread's newest turn, without its items, as a one-turn page.
   Future<CodexThreadTurnsPageDto> listLatestTurn({required String threadId}) async {
     final result = await _client.request(

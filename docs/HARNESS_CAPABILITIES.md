@@ -307,6 +307,19 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
 - `control_cancel_request` ends the ask with "Side question cancelled". Sesori
   sends it when its own 3-minute wait ends, below the CLI's 11-minute deadline.
 
+## Edit and fork
+
+Editing rewinds the conversation in place: the edited message and everything
+after it leave the session, then the edited message is sent. Files are never
+touched. An edit of a session's first message swaps in a new harness session
+under the same Sesori session on every harness that offers Edit. Edits run only
+on a message that opens a turn; a follow-up sent while the agent was working is
+refused with a reason.
+
+| Harness | Edit and resend (rewind in place) | Fork from a message |
+|---|---|---|
+| Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start` (verified 0.167.2). Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ⬜ `thread/fork {lastTurnId}` |
+
 ## Explicit shell-command presentation
 
 Ordinary tools retain name, bounded title, status and attachments; only
