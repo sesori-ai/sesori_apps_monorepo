@@ -2,10 +2,19 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-MessageWithParts _user({required String id, MessageHandoff? handoff, String text = "Fix the build"}) => MessageWithParts(
-  info: Message.user(invocation: null, handoff: handoff, id: id, sessionID: "s", agent: null, time: null, promptId: null),
-  parts: [MessagePart.text(id: "$id-text", sessionID: "s", messageID: id, text: text)],
-);
+MessageWithParts _user({required String id, MessageHandoff? handoff, String text = "Fix the build"}) =>
+    MessageWithParts(
+      info: Message.user(
+        invocation: null,
+        handoff: handoff,
+        id: id,
+        sessionID: "s",
+        agent: null,
+        time: null,
+        promptId: null,
+      ),
+      parts: [MessagePart.text(id: "$id-text", sessionID: "s", messageID: id, text: text)],
+    );
 
 MessageWithParts _agent({required String id, required List<MessagePart> parts}) => MessageWithParts(
   info: Message.assistant(
@@ -47,7 +56,10 @@ void main() {
       final handoffs = _build(
         messages: [
           _user(id: "request", handoff: _sent),
-          _agent(id: "reply", parts: [_text(text: "Goal: fix")]),
+          _agent(
+            id: "reply",
+            parts: [_text(text: "Goal: fix")],
+          ),
         ],
         isBusy: true,
       );
@@ -64,10 +76,22 @@ void main() {
       final handoffs = _build(
         messages: [
           _user(id: "earlier"),
-          _agent(id: "earlier-reply", parts: [_text(text: "Done.")]),
+          _agent(
+            id: "earlier-reply",
+            parts: [_text(text: "Done.")],
+          ),
           _user(id: "request", handoff: _sent),
-          _agent(id: "reply-1", parts: [_text(text: "Goal: fix")]),
-          _agent(id: "reply-2", parts: [_text(text: "  "), _text(text: "Next: test ")]),
+          _agent(
+            id: "reply-1",
+            parts: [_text(text: "Goal: fix")],
+          ),
+          _agent(
+            id: "reply-2",
+            parts: [
+              _text(text: "  "),
+              _text(text: "Next: test "),
+            ],
+          ),
         ],
         isBusy: false,
       );
@@ -84,7 +108,10 @@ void main() {
       final handoffs = _build(
         messages: [
           _user(id: "request", handoff: _sent),
-          _agent(id: "reply", parts: [_text(text: "Goal: fix")]),
+          _agent(
+            id: "reply",
+            parts: [_text(text: "Goal: fix")],
+          ),
           _user(id: "next"),
         ],
         isBusy: true,
@@ -99,11 +126,17 @@ void main() {
       final withReply = _build(
         messages: [
           _user(id: "request", handoff: _notSent),
-          _agent(id: "reply", parts: [_text(text: "Partial")]),
+          _agent(
+            id: "reply",
+            parts: [_text(text: "Partial")],
+          ),
         ],
         isBusy: false,
       );
-      final withoutReply = _build(messages: [_user(id: "request", handoff: _notSent)], isBusy: false);
+      final withoutReply = _build(
+        messages: [_user(id: "request", handoff: _notSent)],
+        isBusy: false,
+      );
 
       expect(withReply.markers["request"]?.status, TranscriptHandoffMarkerStatus.notSent);
       expect(withReply.markers["request"]?.summary, "Partial");
@@ -116,9 +149,18 @@ void main() {
       final handoffs = _build(
         messages: [
           _user(id: "request", handoff: _sent),
-          _agent(id: "step", parts: [_text(text: "Goal: fix"), _runningTool()]),
+          _agent(
+            id: "step",
+            parts: [
+              _text(text: "Goal: fix"),
+              _runningTool(),
+            ],
+          ),
           _user(id: "steer", text: "Also mention the tests"),
-          _agent(id: "after", parts: [_text(text: "Tests: green")]),
+          _agent(
+            id: "after",
+            parts: [_text(text: "Tests: green")],
+          ),
         ],
         isBusy: true,
       );
@@ -135,7 +177,10 @@ void main() {
           _user(id: "earlier"),
           _agent(id: "mid-step", parts: [_runningTool()]),
           _user(id: "request", handoff: _sent),
-          _agent(id: "reply", parts: [_text(text: "Goal: fix")]),
+          _agent(
+            id: "reply",
+            parts: [_text(text: "Goal: fix")],
+          ),
         ],
         isBusy: false,
       );
@@ -156,7 +201,10 @@ void main() {
               transcriptPath: "/tmp/t.md",
             ),
           ),
-          _agent(id: "reply", parts: [_text(text: "On it")]),
+          _agent(
+            id: "reply",
+            parts: [_text(text: "On it")],
+          ),
         ],
         isBusy: false,
       );
@@ -174,7 +222,10 @@ void main() {
       final handoffs = _build(
         messages: [
           _user(id: "plain"),
-          _agent(id: "reply", parts: [_text(text: "Done.")]),
+          _agent(
+            id: "reply",
+            parts: [_text(text: "Done.")],
+          ),
           _user(id: "later", handoff: const MessageHandoff.unknown()),
         ],
         isBusy: false,

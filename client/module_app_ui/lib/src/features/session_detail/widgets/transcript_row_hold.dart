@@ -31,7 +31,8 @@ void holdTranscriptRowTop({required BuildContext context, required double growth
     return;
   }
   final position = scrollable.position;
-  if (position.maxScrollExtent <= position.minScrollExtent || position.userScrollDirection != ScrollDirection.idle) return;
+  final canScroll = position.maxScrollExtent > position.minScrollExtent;
+  if (!canScroll || position.userScrollDirection != ScrollDirection.idle) return;
   final double shift;
   if (growth < 0) {
     shift = max(growth, position.minScrollExtent - position.pixels);

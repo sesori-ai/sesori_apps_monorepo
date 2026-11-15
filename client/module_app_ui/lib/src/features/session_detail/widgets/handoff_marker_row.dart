@@ -70,9 +70,13 @@ class const HandoffMarkerRow({super.key, required final TranscriptHandoffMarker 
             child: KeyedSubtree(
               key: ValueKey(status),
               child: switch (status) {
-                TranscriptHandoffMarkerStatus.writing => TranscriptLiveLabel(
-                  label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+                // Not the live row's label, which fills its line: this one stays centred.
+                TranscriptHandoffMarkerStatus.writing => PregoShimmer(
+                  appearDelay: Duration.zero,
+                  baseColor: color,
+                  highlightColor: prego.colors.textPrimary,
                   semanticLabel: label,
+                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
                 ),
                 TranscriptHandoffMarkerStatus.sent || TranscriptHandoffMarkerStatus.notSent => Text(
                   label,
@@ -146,5 +150,9 @@ class const HandoffMarkerRow({super.key, required final TranscriptHandoffMarker 
   );
 
   static Future<void> _showSummary({required BuildContext context, required String summary}) =>
-      showTranscriptMarkdownSheet(context: context, title: context.loc.transcriptHandoffSummaryTitle, markdown: summary);
+      showTranscriptMarkdownSheet(
+        context: context,
+        title: context.loc.transcriptHandoffSummaryTitle,
+        markdown: summary,
+      );
 }

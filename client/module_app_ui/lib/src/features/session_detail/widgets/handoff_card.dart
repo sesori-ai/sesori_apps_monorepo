@@ -375,7 +375,10 @@ class _RenderCollapsibleSummary({
               ..shader = LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [_fadeColor.withValues(alpha: 0), _fadeColor.withValues(alpha: _fadeColor.a * fade)],
+                colors: [
+                  _fadeColor.withValues(alpha: 0),
+                  _fadeColor.withValues(alpha: _fadeColor.a * fade),
+                ],
               ).createShader(rect),
           );
         }

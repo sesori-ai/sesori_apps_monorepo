@@ -46,7 +46,9 @@ void main() {
       await tester.pumpWidget(
         _app(
           child: Center(
-            child: HandoffMarkerRow(marker: _marker(status: status, summary: "Done.")),
+            child: HandoffMarkerRow(
+              marker: _marker(status: status, summary: "Done."),
+            ),
           ),
         ),
       );
@@ -58,21 +60,29 @@ void main() {
 
   testWidgets("the marker offers Open only once the summary is sent", (tester) async {
     await tester.pumpWidget(
-      _app(child: HandoffMarkerRow(marker: _marker(status: TranscriptHandoffMarkerStatus.writing, summary: null))),
+      _app(
+        child: HandoffMarkerRow(marker: _marker(status: TranscriptHandoffMarkerStatus.writing, summary: null)),
+      ),
     );
     await tester.pump(const Duration(seconds: 1));
     expect(find.text("Writing a summary for Codex review…"), findsWidgets);
     expect(find.byKey(const ValueKey("handoff-marker.open")), findsNothing);
 
     await tester.pumpWidget(
-      _app(child: HandoffMarkerRow(marker: _marker(status: TranscriptHandoffMarkerStatus.sent, summary: "Done."))),
+      _app(
+        child: HandoffMarkerRow(
+          marker: _marker(status: TranscriptHandoffMarkerStatus.sent, summary: "Done."),
+        ),
+      ),
     );
     await tester.pump(const Duration(seconds: 1));
     expect(find.text("Summary sent to Codex review"), findsOneWidget);
     expect(find.byKey(const ValueKey("handoff-marker.open")), findsOneWidget);
 
     await tester.pumpWidget(
-      _app(child: HandoffMarkerRow(marker: _marker(status: TranscriptHandoffMarkerStatus.notSent, summary: null))),
+      _app(
+        child: HandoffMarkerRow(marker: _marker(status: TranscriptHandoffMarkerStatus.notSent, summary: null)),
+      ),
     );
     await tester.pump(const Duration(seconds: 1));
     expect(find.text("Couldn't send to Codex review"), findsOneWidget);
@@ -97,7 +107,9 @@ void main() {
     );
     // Brings the card's bottom 100 above the screen's, or as near as the list allows.
     const cardBottom = 12 * 120 - 100.0;
-    controller.jumpTo(controller.position.maxScrollExtent < cardBottom ? controller.position.maxScrollExtent : cardBottom);
+    controller.jumpTo(
+      controller.position.maxScrollExtent < cardBottom ? controller.position.maxScrollExtent : cardBottom,
+    );
     await tester.pumpAndSettle();
     return controller;
   }

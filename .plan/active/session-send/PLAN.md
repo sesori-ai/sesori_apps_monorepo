@@ -801,6 +801,15 @@ docs.
 - **Risk and test focus:** medium. Watch for jumps when the summary turn ends, when the card expands near the bottom
   of the list, and when older pages load above a marker.
 - **Expected result:** handoffs read as a marker in the source and a card in the target. No database change.
+- **As built:**
+  - The folding lives in a separate `TranscriptHandoffBuilder`, layered on the turns the turn builder already
+    splits. The shared turn builder, the prompt list and their exhaustive switches stay untouched.
+  - The handoff stamp names only the session, so Open and the card's header read the session first, to find its
+    project and whether it is archived. A session that can't be read answers the tap with an alert.
+  - "Show less" tapped while the card's top is scrolled off screen keeps the toggle under the finger, and the top
+    comes down to it. Holding the top there would throw the card off the screen. Otherwise the top stays put, as
+    planned.
+  - A transcript shorter than the screen can't scroll, so there the card grows upward into the empty space.
 
 ### Step 9: archive the source after sending
 

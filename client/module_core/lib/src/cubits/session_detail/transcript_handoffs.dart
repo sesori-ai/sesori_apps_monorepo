@@ -121,10 +121,17 @@ class const TranscriptHandoffBuilder() {
     }
     final cards = <String, TranscriptHandoffCard>{
       for (final message in messages)
-        if (message.info case MessageUser(
-          :final id,
-          handoff: MessageHandoffReceived(:final sourceSessionId, :final sourceTitle, :final summary, :final transcriptPath),
-        ) when !folded.contains(id))
+        if (message.info
+            case MessageUser(
+              :final id,
+              handoff: MessageHandoffReceived(
+                :final sourceSessionId,
+                :final sourceTitle,
+                :final summary,
+                :final transcriptPath,
+              ),
+            )
+            when !folded.contains(id))
           id: TranscriptHandoffCard(
             sourceSessionId: sourceSessionId,
             sourceTitle: sourceTitle,
