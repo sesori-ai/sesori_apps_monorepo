@@ -606,9 +606,10 @@ fallback lands.
 
 ## Steps
 
-Phase 1 is seventeen PRs. Titles use `<emoji> [session-edit-fork] <description> [step <x>/17]`, where `<x>` is the PR
-ordinal: steps 1 to 9 keep their number, 9.b is 10, step 10 is 11, step 11 is 12, 11.b is 13, and steps 12 to 15 are 14
-to 17.
+Phase 1 is eighteen PRs. Titles use `<emoji> [session-edit-fork] <description> [step <x>/18]`, where `<x>` is the PR
+ordinal: steps 1 and 2 keep their number, 3.a is 3, 3.b is 4, steps 4 to 9 are 5 to 10, 9.b is 11, step 10 is 12, step
+11 is 13, 11.b is 14, and steps 12 to 15 are 15 to 18. Steps 5 and 9 merged before the last renumbering, under the
+titles "step 5/17" and "step 9/17".
 
 Merge gate and testing rule for every implementer brief: right before `gh pr merge`, re-fetch the inline comments and
 confirm each one on the head commit has a reply or a fix, confirm Codex's completion comment names that head, and wait
@@ -618,11 +619,11 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 1: raise the plan
 
-`🌱 [session-edit-fork] Raise the session edit and fork plan [step 1/17]`. This file and `TRACKER.md`. Docs only.
+`🌱 [session-edit-fork] Raise the session edit and fork plan [step 1/18]`. This file and `TRACKER.md`. Docs only.
 
 ### Step 2: message menu with Copy and Select text
 
-`⚙️ [session-edit-fork] Add a long-press and right-click menu to transcript messages [step 2/17]`
+`⚙️ [session-edit-fork] Add a long-press and right-click menu to transcript messages [step 2/18]`
 
 - **What:** the `module_prego` context-menu interaction wrapper, and `TranscriptMessageMenu` on user bubbles and agent
   reply cards, phone and desktop, with "Copy" and "Select text". The session row moves onto the same wrapper.
@@ -638,7 +639,10 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 3: edit contract and bridge route
 
-`🚧 [session-edit-fork] Add the bridge route that rewinds a session and resends an edited message [step 3/17]`
+Split at implementation into 3.a, `⚙️ [session-edit-fork] Declare session branching on plugins and add the rewind wire
+models [step 3/18]` (#2606: plugin interface, capability flow, wire models), and 3.b, `🚧 [session-edit-fork] Add the
+bridge route that rewinds a session and resends an edited message [step 4/18]` (#2602: route, service, history removal,
+mutation pipeline).
 
 - **What:** `PluginSessionBranching`, `SessionRewindPluginApi`, `PluginBranchPointUnavailableException`; descriptor
   getter and its flow into `PluginMetadata.sessionBranching`; `RewindSessionRequest`; `RewindSessionHandler`;
@@ -654,7 +658,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 4: first-message edits replace the harness session
 
-`🚧 [session-edit-fork] Edit a session's first message by swapping in a new harness session [step 4/17]`
+`🚧 [session-edit-fork] Edit a session's first message by swapping in a new harness session [step 5/18]`
 
 - **What:** `SessionRepository.replaceBackendSession` and its use from `rewindAndSendPrompt` for a first-turn edit, as
   in "Harness-session swap": `useAndCommit` with `createSession` and a rebinding commit, removal of a stray imported
@@ -674,7 +678,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 5: Codex reads reverted and forked rollouts
 
-`🚧 [session-edit-fork] Read Codex history across revert and fork rollouts [step 5/17]`
+`🚧 [session-edit-fork] Read Codex history across revert and fork rollouts [step 6/18]`
 
 - **What:** teach the Codex plugin the `<threadId>_<rolloutId>` rollout names and `session_meta.history_base`, so
   history follows the kept prefix of a reverted or forked thread (resolving the base rollout in the sessions and
@@ -693,7 +697,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 6: Codex native edit
 
-`⚙️ [session-edit-fork] Rewind and resend Codex sessions natively [step 6/17]`
+`⚙️ [session-edit-fork] Rewind and resend Codex sessions natively [step 7/18]`
 
 - **What:** `CodexPluginImpl` implements `SessionRewindPluginApi` and only delegates. `thread/revert` gets a wrapper in
   `CodexAppServerApi`, reached only through a new `CodexThreadRepository.revertThread` (beside `resumeThread` and
@@ -708,16 +712,20 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
   a follow-up steered in after commentary or reasoning, and reverting that native turn would remove more than the store
   does. A target that is not its native turn's first user item is refused with the mid-turn reason. After its own
   revert the plugin refreshes the catalog's current rollout at once (the step 5 reader otherwise keeps the old file
-  until the next scan). `docs/HARNESS_CAPABILITIES.md` gets the edit row.
+  until the next scan). The revert is destructive before the resend, so the plugin validates everything that can fail
+  (attachments, options, the thread loaded) before `thread/revert`. If `turn/start` still fails after a successful
+  revert, the bridge reconciles before returning the failure: it backfills the session from the harness and publishes
+  the removal of the stored messages the harness no longer has, so clients don't keep showing history the harness has
+  dropped (the client keeps the edited text in the composer). `docs/HARNESS_CAPABILITIES.md` gets the edit row.
 - **Risk and test focus:** paginated versus legacy threads; ephemeral threads refused; a follow-up steered after
-  commentary refused; revert's reload not dropping subscriptions; history after revert agrees with the store. Live
+  commentary refused; a successful revert followed by a failed resend; revert's reload not dropping subscriptions; history after revert agrees with the store. Live
   plugin check at the pinned version.
 - **Expected result:** Codex sessions report `rewind`.
 - **Estimate:** ~600 lines.
 
 ### Step 7: Claude reads the active branch of a transcript
 
-`🚧 [session-edit-fork] Read the active branch of Claude Code transcripts [step 7/17]`
+`🚧 [session-edit-fork] Read the active branch of Claude Code transcripts [step 8/18]`
 
 - **What:** parse `parentUuid` (and `last-prompt.leafUuid`) in the Claude transcript record DTO;
   `ClaudeTranscriptApi.readTranscript` stays a raw record reader, and `ClaudeTranscriptCatalogRepository` builds history
@@ -732,7 +740,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 8: Claude native edit
 
-`🚧 [session-edit-fork] Rewind and resend Claude Code sessions natively [step 8/17]`
+`🚧 [session-edit-fork] Rewind and resend Claude Code sessions natively [step 9/18]`
 
 - **What:** `ClaudePluginImpl` implements `SessionRewindPluginApi` and only delegates: `ClaudeSessionService` runs the
   sequence and `ClaudeSessionProcessRepository` launches a new `ClaudeSessionLaunch` variant that resumes at a chain
@@ -749,7 +757,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 9: restore a message's text and attachments into a composer
 
-`⚙️ [session-edit-fork] Bring a sent message's text and attachments back into the composer [step 9/17]`
+`⚙️ [session-edit-fork] Bring a sent message's text and attachments back into the composer [step 10/18]`
 
 - **What:** the saved-file note builder and parser in `sesori_shared` (the bridge's `PromptPartDeliveryService` uses
   the moved builder); `ComposerHostFileAttachment` and its `PromptPart.filePath` send path, with `bytes`/`mime` moved
@@ -766,7 +774,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 9.b: retire the plugin-side file-path prompt part
 
-`🌿 [session-edit-fork] Retire the unreachable file-path prompt part from plugins [step 10/17]`
+`🌿 [session-edit-fork] Retire the unreachable file-path prompt part from plugins [step 11/18]`
 
 - **What:** step 9 made the bridge's `PromptPartDeliveryService` turn every `PromptPart.filePath` into the shared
   saved-file note, so no `PluginPromptPartFilePath` reaches a plugin any more. Remove that plugin prompt part and its
@@ -780,7 +788,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 10: client edit flow
 
-`🚧 [session-edit-fork] Edit and resend earlier messages from the transcript [step 11/17]`
+`🚧 [session-edit-fork] Edit and resend earlier messages from the transcript [step 12/18]`
 
 - **What:** "Edit and resend" in the message menu; edit mode in `SessionDetailCubit` (it owns the composer draft and
   restorations, and a sibling cubit couldn't depend on it) with saved draft, restored attachments, banner, Cancel, and
@@ -799,7 +807,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 11: fork contract, origin link and bridge route
 
-`🚧 [session-edit-fork] Fork a session from a message on the bridge [step 12/17]`
+`🚧 [session-edit-fork] Fork a session from a message on the bridge [step 13/18]`
 
 - **What:** `SessionForkPluginApi`; `ForkSessionRequest` with `ForkPoint`; `ForkSessionHandler`; `SessionForkService`;
   `ChatHistoryService.forkBoundary` (including the archive audit record and `nothingToFork`);
@@ -816,7 +824,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 11.b: recreate an archived origin's removed worktree for a fork
 
-`⚙️ [session-edit-fork] Recreate an archived session's worktree when it is forked [step 13/17]`
+`⚙️ [session-edit-fork] Recreate an archived session's worktree when it is forked [step 14/18]`
 
 - **What:** decision 14, as in "Fork flow" step 1: `WorktreeRepository.worktreeExists` and a worktree add at the
   origin's old path on the kept branch, used by `SessionForkService` for an archived origin whose dedicated worktree is
@@ -833,7 +841,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 12: Codex native fork
 
-`⚙️ [session-edit-fork] Fork Codex sessions from a turn [step 14/17]`
+`⚙️ [session-edit-fork] Fork Codex sessions from a turn [step 15/18]`
 
 - **What:** `CodexPluginImpl` implements `SessionForkPluginApi` and delegates to `CodexSessionService`, which calls a
   new `CodexThreadRepository.forkThread` over a `CodexAppServerApi` `thread/fork {lastTurnId}` wrapper (not
@@ -852,7 +860,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 13: Claude native fork
 
-`🚧 [session-edit-fork] Fork Claude Code sessions from a message [step 15/17]`
+`🚧 [session-edit-fork] Fork Claude Code sessions from a message [step 16/18]`
 
 - **What:** `ClaudePluginImpl` implements `SessionForkPluginApi` and delegates to `ClaudeSessionService` (the turn's
   last chain record comes from `ClaudeTranscriptCatalogRepository`): choose the new session id, have
@@ -872,7 +880,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 14: client fork flow
 
-`⚙️ [session-edit-fork] Fork from a message or the session menu and show where a fork came from [step 16/17]`
+`⚙️ [session-edit-fork] Fork from a message or the session menu and show where a fork came from [step 17/18]`
 
 - **What:** "Fork from here" in the message menu and "Fork" in `sessionMenuEntries` (gated by
   `SessionActionsCubit.canFork`); `SessionDetailCubit` and `SessionActionsCubit` both call
@@ -892,7 +900,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 15: reconcile docs, verify and retire
 
-`🌱 [session-edit-fork] Reconcile edit and fork docs and retire the plan [step 17/17]`
+`🌱 [session-edit-fork] Reconcile edit and fork docs and retire the plan [step 18/18]`
 
 The plan-maker lifecycle asks for the regression reconciliation and the verified retirement as the last two steps. They
 are folded into one here because each feature step already updates its regression and harness rows; if reconciliation

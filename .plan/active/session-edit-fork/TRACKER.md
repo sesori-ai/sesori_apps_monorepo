@@ -2,16 +2,17 @@
 
 | Step | Status | PR |
 | --- | --- | --- |
-| 1 Raise the plan | Merged | #2585 |
+| 1 Raise the plan | Merged | #2585, #2604 |
 | 2 Message menu with Copy and Select text | In review | #2595 |
-| 3 Edit contract and bridge route | In review | #2602 |
+| 3.a Branching contract and rewind wire models | In review | #2606 |
+| 3.b Rewind route and bridge edit flow | In review (stacked on 3.a) | #2602 |
 | 4 First-message edits replace the harness session | Not started | |
-| 5 Codex reads reverted and forked rollouts | In review | #2592 |
+| 5 Codex reads reverted and forked rollouts | Merged | #2592 |
 | 6 Codex native edit | Not started | |
 | 7 Claude reads the active branch of a transcript | In review | #2596 |
 | 8 Claude native edit | Not started | |
 | 9 Restore a message's text and attachments into a composer | Merged | #2594 |
-| 9.b Retire the plugin-side file-path prompt part | Not started | |
+| 9.b Retire the plugin-side file-path prompt part | In review | #2609 |
 | 10 Client edit flow | Not started | |
 | 11 Fork contract, origin link and bridge route | Not started | |
 | 11.b Recreate an archived origin's worktree for a fork | Not started | |
