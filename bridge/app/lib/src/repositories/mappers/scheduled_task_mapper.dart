@@ -1,6 +1,5 @@
 import "dart:convert";
 
-import "package:drift/drift.dart" show Value;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../api/database/database.dart";
@@ -43,30 +42,47 @@ class const ScheduledTaskMapper() {
     );
   }
 
-  /// The definition's columns, for an insert or an update.
-  ScheduledTasksTableCompanion definitionColumns({required ScheduledTaskDefinition definition}) {
+  /// A task row holding [definition] and the given bridge state, in storage
+  /// units.
+  ScheduledTaskDto taskDto({
+    required String id,
+    required ScheduledTaskDefinition definition,
+    required bool enabled,
+    required int? nextDueAt,
+    required String? targetSessionId,
+    required int? completedAt,
+    required int createdAt,
+    required int updatedAt,
+  }) {
     final (runMode, autoCompact) = switch (definition.runMode) {
       TaskRunModeNewSession() => (ScheduledTaskRunModeKind.newSession, false),
       TaskRunModeSameSession(:final autoCompact) => (ScheduledTaskRunModeKind.sameSession, autoCompact),
       TaskRunModeUnknown() => throw ArgumentError.value(definition.runMode, "runMode", "unknown run mode"),
     };
     final model = definition.model;
-    return ScheduledTasksTableCompanion(
-      name: Value(definition.name),
-      promptJson: Value(jsonEncode(definition.prompt.toJson())),
-      projectId: Value(definition.projectId),
-      pluginId: Value(definition.pluginId),
-      agent: Value(definition.agent),
-      modelJson: Value(model == null ? null : jsonEncode(model.toJson())),
-      variant: Value(definition.variant?.id),
-      fastMode: Value(definition.fastMode),
-      dedicatedWorktree: Value(definition.dedicatedWorktree),
-      scheduleJson: Value(jsonEncode(definition.schedule.toJson())),
-      timeZone: Value(definition.timeZone),
-      missedRunPolicy: Value(definition.missedRunPolicy),
-      runMode: Value(runMode),
-      autoCompact: Value(autoCompact),
-      approvalMode: Value(definition.approvalMode),
+    return ScheduledTaskDto(
+      id: id,
+      name: definition.name,
+      promptJson: jsonEncode(definition.prompt.toJson()),
+      projectId: definition.projectId,
+      pluginId: definition.pluginId,
+      agent: definition.agent,
+      modelJson: model == null ? null : jsonEncode(model.toJson()),
+      variant: definition.variant?.id,
+      fastMode: definition.fastMode,
+      dedicatedWorktree: definition.dedicatedWorktree,
+      scheduleJson: jsonEncode(definition.schedule.toJson()),
+      timeZone: definition.timeZone,
+      missedRunPolicy: definition.missedRunPolicy,
+      runMode: runMode,
+      autoCompact: autoCompact,
+      approvalMode: definition.approvalMode,
+      enabled: enabled,
+      nextDueAt: nextDueAt,
+      targetSessionId: targetSessionId,
+      completedAt: completedAt,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
 

@@ -7,12 +7,7 @@ import "../repositories/models/scheduled_task_record.dart";
 import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
 import "scheduled_task_occurrence_calculator.dart";
-
-/// A task request the bridge refuses, with the code the app explains.
-final class const ScheduledTaskRequestException({required final ScheduledTaskErrorCode code}) implements Exception {
-  @override
-  String toString() => "ScheduledTaskRequestException(${code.name})";
-}
+import "scheduled_task_request_exception.dart";
 
 /// Creates, edits, pauses and deletes tasks, and keeps each task's next due
 /// time. Every change is announced on [changes].

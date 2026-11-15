@@ -1,10 +1,8 @@
 import "dart:math";
 
-import "package:drift/drift.dart" show Value;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/database/daos/scheduled_task_dao.dart";
-import "../api/database/database.dart";
 import "mappers/scheduled_task_mapper.dart";
 import "models/scheduled_task_record.dart";
 import "random_hex_id.dart";
@@ -33,15 +31,16 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
     required DateTime now,
   }) async {
     final row = await _dao.insertTask(
-      row: _mapper
-          .definitionColumns(definition: definition)
-          .copyWith(
-            id: Value(generateRandomHexId(secureRandom: _secureRandom, prefix: "stk_", byteLength: 16)),
-            enabled: const Value(true),
-            nextDueAt: Value(nextDueAt?.millisecondsSinceEpoch),
-            createdAt: Value(now.millisecondsSinceEpoch),
-            updatedAt: Value(now.millisecondsSinceEpoch),
-          ),
+      row: _mapper.taskDto(
+        id: generateRandomHexId(secureRandom: _secureRandom, prefix: "stk_", byteLength: 16),
+        definition: definition,
+        enabled: true,
+        nextDueAt: nextDueAt?.millisecondsSinceEpoch,
+        targetSessionId: null,
+        completedAt: null,
+        createdAt: now.millisecondsSinceEpoch,
+        updatedAt: now.millisecondsSinceEpoch,
+      ),
     );
     return _mapper.recordFromDto(row: row);
   }
@@ -55,14 +54,20 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
     required bool clearTarget,
     required DateTime now,
   }) async {
-    final changes = _mapper
-        .definitionColumns(definition: definition)
-        .copyWith(
-          nextDueAt: Value(nextDueAt?.millisecondsSinceEpoch),
-          targetSessionId: clearTarget ? const Value(null) : const Value.absent(),
-          updatedAt: Value(now.millisecondsSinceEpoch),
-        );
-    return await _updateAndRead(taskId: taskId, changes: changes);
+    final existing = await _dao.getTask(taskId: taskId);
+    if (existing == null) return null;
+    final row = _mapper.taskDto(
+      id: taskId,
+      definition: definition,
+      enabled: existing.enabled,
+      nextDueAt: nextDueAt?.millisecondsSinceEpoch,
+      targetSessionId: existing.targetSessionId,
+      completedAt: existing.completedAt,
+      createdAt: existing.createdAt,
+      updatedAt: now.millisecondsSinceEpoch,
+    );
+    if (await _dao.updateTaskDefinition(row: row, clearTarget: clearTarget) == 0) return null;
+    return await get(taskId: taskId);
   }
 
   /// Null when the task is gone.
@@ -71,15 +76,14 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
     required bool enabled,
     required DateTime? nextDueAt,
     required DateTime now,
-  }) {
-    return _updateAndRead(
+  }) async {
+    final changed = await _dao.setTaskEnabled(
       taskId: taskId,
-      changes: ScheduledTasksTableCompanion(
-        enabled: Value(enabled),
-        nextDueAt: Value(nextDueAt?.millisecondsSinceEpoch),
-        updatedAt: Value(now.millisecondsSinceEpoch),
-      ),
+      enabled: enabled,
+      nextDueAt: nextDueAt?.millisecondsSinceEpoch,
+      updatedAt: now.millisecondsSinceEpoch,
     );
+    return changed == 0 ? null : await get(taskId: taskId);
   }
 
   /// Deletes the task and its runs; its sessions become ordinary sessions.
@@ -118,13 +122,5 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
     );
     await _dao.insertRunAndTrim(row: row, keep: runHistoryLimit);
     return _mapper.runFromDto(row: row);
-  }
-
-  Future<ScheduledTaskRecord?> _updateAndRead({
-    required String taskId,
-    required ScheduledTasksTableCompanion changes,
-  }) async {
-    if (await _dao.updateTask(taskId: taskId, changes: changes) == 0) return null;
-    return await get(taskId: taskId);
   }
 }
