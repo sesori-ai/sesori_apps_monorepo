@@ -42,11 +42,19 @@ class PromptPartDeliveryService({
         case PromptPartFileData(:final base64, :final filename):
           final name = filename == null || filename.isEmpty ? _unnamedFileName : filename;
           final path = await _uploads.save(sessionId: sessionId, bytes: base64Decode(base64), filename: name);
-          delivered.add(PromptPart.text(text: savedFileNote(name: name, path: path)));
+          delivered.add(
+            PromptPart.text(
+              text: savedFileNote(name: name, path: path),
+            ),
+          );
           savedAny = true;
         case PromptPartFilePath(:final path, :final filename):
           final name = filename == null || filename.isEmpty ? p.basename(path) : filename;
-          delivered.add(PromptPart.text(text: savedFileNote(name: name, path: path)));
+          delivered.add(
+            PromptPart.text(
+              text: savedFileNote(name: name, path: path),
+            ),
+          );
         case PromptPartText() || PromptPartFileUrl():
           delivered.add(part);
       }

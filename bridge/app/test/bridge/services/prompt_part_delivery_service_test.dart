@@ -108,7 +108,11 @@ void main() {
           path: "/uploads/ses_1/2026-11-01-abc/My Report.pdf",
           filename: "My Report.pdf",
         ),
-        PromptPart.filePath(mime: "application/octet-stream", path: "/uploads/ses_1/2026-11-01-def/a.txt", filename: null),
+        PromptPart.filePath(
+          mime: "application/octet-stream",
+          path: "/uploads/ses_1/2026-11-01-def/a.txt",
+          filename: null,
+        ),
       ],
     );
 

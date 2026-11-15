@@ -41,7 +41,7 @@ SavedFileNoteSplit splitSavedFileNotes({required String text}) {
     final path = match?.group(2);
     if (name != null && path != null) {
       notes.add(SavedFileNote(name: name, path: path));
-      if (kept.isNotEmpty && kept.last.isEmpty) kept.removeLast();
+      if (kept.isNotEmpty && kept.last.trim().isEmpty) kept.removeLast();
       continue;
     }
     kept.add(line);

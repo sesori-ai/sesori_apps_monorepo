@@ -66,6 +66,12 @@ void main() {
       expect(notesOf(result), [("a.txt", "/u/a.txt")]);
     });
 
+    test("drops a whitespace-only separator line with its note", () {
+      final result = split('Before\n  \nAttached file "a.txt": `/u/a.txt`\n\nAfter');
+
+      expect(result.text, "Before\n\nAfter");
+    });
+
     test("leaves no text for a message that held only notes", () {
       final result = split('Attached file "a.txt": `/u/a.txt`\n\nAttached file "b.txt": `/u/b.txt`');
 

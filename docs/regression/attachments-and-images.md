@@ -270,7 +270,7 @@ gives the agent their path.
   reads it back.
 - A sent user message can be brought back into a composer (shared core's
   `MessageComposerRestoreService`; no surface uses it yet). The text comes back
-  without its saved-file notes, each inline or stored image is fetched again as
+  without its saved-file notes, each inline, stored or remote image is fetched again as
   an ordinary staged image, and each noted file comes back as a file the bridge
   already holds. That file shows as an ordinary removable file tile and is sent
   as a `file_path` part naming its path on the bridge's computer, never this
