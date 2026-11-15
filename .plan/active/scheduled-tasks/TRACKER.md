@@ -37,19 +37,20 @@ mirror PR state; live status is on GitHub:
 | 1 | `plan/scheduled-tasks` | 🌱 [scheduled-tasks] Raise the plan [step 1/13] | ≤ 900 | — |
 | 2 | `scheduled-tasks/contract` | ⚙️ [scheduled-tasks] Add the task contract and schedule times [step 2/13] | ≤ 1,500 authored, generated Freezed extra | 1 |
 | 3.a | `scheduled-tasks/storage` | 🚧 [scheduled-tasks] Store tasks on the bridge [step 3.a/14] | ≤ 1,200 authored, generated Drift extra | 2 |
-| 3.b | `scheduled-tasks/routes` | ⚙️ [scheduled-tasks] Serve the task routes [step 3.b/14] | ≤ 500 | 3.a |
-| 4 | `scheduled-tasks/new-session-runs` | 🚧 [scheduled-tasks] Run new-session tasks on the bridge [step 4/14] | ≤ 1,000 | 3.b |
-| 5 | `scheduled-tasks/same-session-runs` | 🚧 [scheduled-tasks] Continue same-session tasks [step 5/14] | ≤ 700 | 4 |
-| 6 | `scheduled-tasks/marks-archive-pushes` | ⚙️ [scheduled-tasks] Mark task runs, archive old runs and limit pushes [step 6/14] | ≤ 900 | 5 |
+| 3.b | `scheduled-tasks/routes` | ⚙️ [scheduled-tasks] Serve the task routes [step 3.b/15] | ≤ 500 | 3.a |
+| 4.a | `scheduled-tasks/session-quietness` | ⚙️ [scheduled-tasks] Read session quietness and start scheduled-run sessions [step 4.a/15] | ≤ 400 | 3.b |
+| 4.b | `scheduled-tasks/new-session-runs` | 🚧 [scheduled-tasks] Run new-session tasks on the bridge [step 4.b/15] | ≤ 1,000 | 4.a |
+| 5 | `scheduled-tasks/same-session-runs` | 🚧 [scheduled-tasks] Continue same-session tasks [step 5/15] | ≤ 700 | 4.b |
+| 6 | `scheduled-tasks/marks-archive-pushes` | ⚙️ [scheduled-tasks] Mark task runs, archive old runs and limit pushes [step 6/15] | ≤ 900 | 5 |
 | 7 | `scheduled-tasks/composer-reuse` | ⚙️ [scheduled-tasks] Let the new-session composer serve a task editor [step 7/14] | ≤ 900 | 1 |
-| 8 | `scheduled-tasks/scheduled-page` | ⚙️ [scheduled-tasks] Add the Scheduled page and task page [step 8/14] | ≤ 1,500 (split 8.a page / 8.b marks if over) | 2, 3.b, 4, 6 |
-| 9 | `scheduled-tasks/new-task-screen` | 🚧 [scheduled-tasks] Add the New task screen [step 9/14] | ≤ 1,500 (split 9.a fields / 9.b screen if over) | 4, 7, 8 |
+| 8 | `scheduled-tasks/scheduled-page` | ⚙️ [scheduled-tasks] Add the Scheduled page and task page [step 8/15] | ≤ 1,500 (split 8.a page / 8.b marks if over) | 2, 3.b, 4.b, 6 |
+| 9 | `scheduled-tasks/new-task-screen` | 🚧 [scheduled-tasks] Add the New task screen [step 9/15] | ≤ 1,500 (split 9.a fields / 9.b screen if over) | 4.b, 7, 8 |
 | 10 | `scheduled-tasks/compact-on-request` | ⚙️ [scheduled-tasks] Compact sessions on request in every harness that can [step 10/14] | ≤ 1,200 | 1 |
-| 11 | `scheduled-tasks/auto-compact` | 🚧 [scheduled-tasks] Auto-compact same-session tasks [step 11/14] | ≤ 800 | 5, 9, 10 |
-| 12 | `scheduled-tasks/regression-docs` | 🌱 [scheduled-tasks] Write the regression docs [step 12/14] | ≤ 500 | 2–11 |
-| 13 | `scheduled-tasks/retire` | 🌱 [scheduled-tasks] Run the L3 regression and retire the plan [step 13/14] | ≤ 250 | 12 |
+| 11 | `scheduled-tasks/auto-compact` | 🚧 [scheduled-tasks] Auto-compact same-session tasks [step 11/15] | ≤ 800 | 5, 9, 10 |
+| 12 | `scheduled-tasks/regression-docs` | 🌱 [scheduled-tasks] Write the regression docs [step 12/15] | ≤ 500 | 2–11 |
+| 13 | `scheduled-tasks/retire` | 🌱 [scheduled-tasks] Run the L3 regression and retire the plan [step 13/15] | ≤ 250 | 12 |
 
 Step 2 and 3.a targets count authored lines; their Freezed and Drift output is
 reported separately in the PR body (AGENTS.md generated-churn rule).
 Steps 1 and 2 merged before step 3 split, so their titles keep the old total
-of 13.
+of 13; 3.a, 7 and 10 merged before step 4 split and keep 14.
