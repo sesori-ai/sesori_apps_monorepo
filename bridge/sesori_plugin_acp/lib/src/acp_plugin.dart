@@ -1246,7 +1246,16 @@ abstract class AcpPlugin({
   /// cancels a running turn.
   @override
   Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
-    await _connectedClient();
+    final client = await _connectedClient();
+    if (!_commandTracker.hasSnapshot && !_isSessionWorking(sessionId: sessionId)) {
+      // A fresh agent process advertises its commands only once a session
+      // loads, so load this one before reading them. Chained like a turn's
+      // own load, so a turn sent meanwhile waits for it.
+      final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
+      final load = state.tail.then((_) => _ensureResident(client: client, sessionId: sessionId));
+      state.tail = load;
+      await load;
+    }
     final commands = await getCommands(projectId: directoryForSession(sessionId: sessionId));
     if (!commands.any((command) => command.name == compactionCommandName)) return PluginCompactionResult.unsupported;
     // Checked after the last await, so the enqueue below sees the same state.
@@ -1264,11 +1273,13 @@ abstract class AcpPlugin({
     return PluginCompactionResult.accepted;
   }
 
-  /// Whether [sessionId] runs a prompt or autonomous turn or holds queued input.
+  /// Whether [sessionId] runs or holds a turn, runs an autonomous turn, or
+  /// waits for an answer.
   bool _isSessionWorking({required String sessionId}) =>
       _inFlightTurnSessions.contains(sessionId) ||
+      hasPendingTurn(sessionId: sessionId) ||
       childSessionTracker.hasRootHold(sessionId: sessionId) ||
-      (_turnStates[sessionId]?.queue.isNotEmpty ?? false);
+      (_approvalRegistry?.hasPendingInput(sessionId: sessionId) ?? false);
 
   void _enqueueCommand({
     required String sessionId,

@@ -859,6 +859,18 @@ class FakeSessionRepository({
   }
 
   @override
+  Future<void> rewindAndSendPrompt({
+    required String sessionId,
+    required String beforeMessageId,
+    required String promptId,
+    required List<DeliverablePromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) => throw UnimplementedError("FakeSessionRepository does not rewind sessions");
+
+  @override
   Future<void> renameSession({required String sessionId, required String title}) async {}
 
   @override

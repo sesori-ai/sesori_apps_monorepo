@@ -99,6 +99,40 @@ void main() {
       expect(frames("session/prompt"), isEmpty);
     });
 
+    test("after a restart it loads the session to learn the commands before deciding", () async {
+      final connecting = plugin.ensureConnected();
+      respondTo(await waitForFrameCount("initialize", 1), {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": true},
+        "authMethods": <Object?>[],
+      });
+      expect(await connecting, isTrue);
+      plugin.primeSessionDirectory(sessionId: "prior", directory: cwd);
+
+      final compacting = compact("prior");
+      final load = await waitForFrameCount("session/load", 1);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "prior",
+          "update": {
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "compact"},
+            ],
+          },
+        },
+      });
+      respondTo(load, <String, dynamic>{});
+
+      expect(await compacting, PluginCompactionResult.accepted);
+      final prompt = await waitForFrameCount("session/prompt", 1);
+      expect(prompt.toString(), contains("/compact"));
+      expect(frames("session/load"), hasLength(1));
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
     test("a running turn is busy: nothing is queued and the turn is not cancelled", () async {
       final sessionId = await connectWithSession(commands: ["compact"]);
       await plugin.sendPrompt(

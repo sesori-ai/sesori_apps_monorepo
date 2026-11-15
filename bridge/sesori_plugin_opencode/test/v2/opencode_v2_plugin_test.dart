@@ -217,19 +217,29 @@ void main() {
   });
 
   test("compactSession compacts a quiet session natively and refuses a running one", () async {
-    server.active = {_sessionId};
     await plugin.initialize();
-    expect(
-      await plugin.compactSession(sessionId: _sessionId, promptId: "compact-busy"),
-      PluginCompactionResult.sessionBusy,
-    );
-    expect(server.compactBody, isNull);
-    server.active = {};
     expect(
       await plugin.compactSession(sessionId: _sessionId, promptId: "compact-1"),
       PluginCompactionResult.accepted,
     );
     expect(server.compactBody, isNotNull);
+    server.compactBody = null;
+    server.active = {_sessionId};
+    expect(
+      await plugin.compactSession(sessionId: _sessionId, promptId: "compact-busy"),
+      PluginCompactionResult.sessionBusy,
+    );
+    expect(server.compactBody, isNull);
+  });
+
+  test("compactSession refuses a session waiting for an answer", () async {
+    server.forms = [_form];
+    await plugin.initialize();
+    expect(
+      await plugin.compactSession(sessionId: _sessionId, promptId: "compact-1"),
+      PluginCompactionResult.sessionBusy,
+    );
+    expect(server.compactBody, isNull);
   });
 
   test("successful input replies update work state; a rejected write retains constraints", () async {

@@ -374,6 +374,13 @@ final class ClaudePlugin({
   /// compaction neither switches the model nor restarts the process.
   @override
   Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    const operation = "compactSession";
+    if (ClaudeSubagentSessionId.agentIdOf(sessionId) != null) return PluginCompactionResult.unsupported;
+    final directory = await _directoryForSession(sessionId);
+    if (directory == null) {
+      throw const PluginOperationException.notFound(operation: operation, message: "session not found");
+    }
+    // The last await before the enqueue, so a turn sent meanwhile is seen.
     switch (await getSessionReadiness(sessionId: sessionId)) {
       case PluginSessionReadiness.busy ||
           PluginSessionReadiness.retrying ||
@@ -382,12 +389,6 @@ final class ClaudePlugin({
         return PluginCompactionResult.sessionBusy;
       case PluginSessionReadiness.idle || PluginSessionReadiness.unavailable || PluginSessionReadiness.unknown:
         break;
-    }
-    const operation = "compactSession";
-    if (ClaudeSubagentSessionId.agentIdOf(sessionId) != null) return PluginCompactionResult.unsupported;
-    final directory = await _directoryForSession(sessionId);
-    if (directory == null) {
-      throw const PluginOperationException.notFound(operation: operation, message: "session not found");
     }
     final applied = _processes.appliedSelection(sessionId: sessionId);
     const command = ClaudeBackendCatalogRepository.compactionCommand;

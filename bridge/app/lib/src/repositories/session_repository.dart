@@ -13,6 +13,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAbortNotPerformed,
         PluginAbortRejectedSubAgentsRunning,
         PluginActiveSession,
+        PluginBranchPointUnavailableException,
         PluginCompactionResult,
         PluginOperationException,
         PluginProjectActivitySummary,
@@ -23,6 +24,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginSessionReadiness,
         PluginSessionVariant,
         PluginSideExchange,
+        SessionRewindPluginApi,
         SideQuestionPluginApi;
 import "package:sesori_shared/sesori_shared.dart"
     show
@@ -586,6 +588,36 @@ class SessionRepository({
       rethrow;
     }
   }
+
+  /// Removes [beforeMessageId] and every later message from [sessionId]'s
+  /// conversation through the plugin's native rewind, then sends [parts] as
+  /// its next prompt, as [sendPrompt] does.
+  ///
+  /// A plugin without native rewind cannot branch at any message, so it is
+  /// refused the way a plugin refuses a message it cannot map.
+  Future<void> rewindAndSendPrompt({
+    required String sessionId,
+    required String beforeMessageId,
+    required String promptId,
+    required List<DeliverablePromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) => _useSessionPlugin(
+    sessionId: sessionId,
+    operation: SessionOperation.rewindSession,
+    body: (plugin, binding) => _requireSessionRewindApi(plugin: plugin).rewindAndSendPrompt(
+      sessionId: binding.backendSessionId,
+      beforeMessageId: beforeMessageId,
+      promptId: promptId,
+      parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+      variant: _toPluginVariant(variant),
+      fastMode: fastMode,
+      agent: agent,
+      model: _toPluginModel(model),
+    ),
+  );
 
   /// Asks [sessionId]'s harness a side question with this side chat's
   /// [history]. A harness that does not declare side questions is refused
@@ -1969,6 +2001,15 @@ class SessionRepository({
 
   Set<String> _tombstonesFor(String pluginId) {
     return _tombstonedBackendSessionIds.putIfAbsent(pluginId, () => <String>{});
+  }
+
+  SessionRewindPluginApi _requireSessionRewindApi({required BridgePluginApi plugin}) {
+    if (plugin case final SessionRewindPluginApi rewindApi) return rewindApi;
+    throw PluginBranchPointUnavailableException(
+      operation: SessionOperation.rewindSession.name,
+      userFacingReason: null,
+      cause: null,
+    );
   }
 
   PersistedSessionCleanupApi _requirePersistedSessionCleanupApi({

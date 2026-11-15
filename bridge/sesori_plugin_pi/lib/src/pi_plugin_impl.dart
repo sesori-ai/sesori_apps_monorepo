@@ -441,6 +441,8 @@ final class PiPlugin._({
   /// keeping the session's current model and thinking level.
   @override
   Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    const operation = "compactSession";
+    final session = await _requiredSession(sessionId: sessionId, operation: operation);
     switch (await getSessionReadiness(sessionId: sessionId)) {
       case PluginSessionReadiness.busy ||
           PluginSessionReadiness.retrying ||
@@ -450,17 +452,29 @@ final class PiPlugin._({
       case PluginSessionReadiness.idle || PluginSessionReadiness.unavailable || PluginSessionReadiness.unknown:
         break;
     }
-    await sendCommand(
-      sessionId: sessionId,
-      promptId: promptId,
-      command: PiCatalogService.compactionCommandName,
-      arguments: "",
-      userVisibleArguments: null,
-      variant: null,
-      fastMode: false,
-      agent: null,
-      model: null,
-    );
+    try {
+      // Native RPC `compact`, even when a Pi command shares the name.
+      await _sessionService.compact(
+        sessionId: sessionId,
+        promptId: promptId,
+        directory: session.directory,
+        command: PiCatalogService.compactionCommandName,
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        model: null,
+      );
+    } on PiSessionBusyException {
+      // A turn was admitted after the readiness read.
+      return PluginCompactionResult.sessionBusy;
+    } on PluginOperationException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        PluginOperationException(operation: operation, message: "Pi did not accept the compaction.", cause: error),
+        stackTrace,
+      );
+    }
     return PluginCompactionResult.accepted;
   }
 

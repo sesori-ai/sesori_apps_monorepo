@@ -1193,7 +1193,12 @@ class CodexPlugin._({
   /// Starts Codex's `thread/compact/start` through the compaction command.
   @override
   Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
-    if (_hasTurnOrAdmissionEvidence(sessionId: sessionId)) return PluginCompactionResult.sessionBusy;
+    // Connect first, so the busy check is the last read before dispatch.
+    await _connectedClient();
+    if (_hasTurnOrAdmissionEvidence(sessionId: sessionId) ||
+        (_approvalRegistry?.pendingSessionIds.contains(sessionId) ?? false)) {
+      return PluginCompactionResult.sessionBusy;
+    }
     await sendCommand(
       sessionId: sessionId,
       promptId: promptId,

@@ -287,28 +287,13 @@ class OpenCodeV2Plugin._({
     variant: variant,
   );
 
-  /// Posts OpenCode's session compaction through the compaction command.
+  /// Posts OpenCode's native session compaction, even when a project command
+  /// shares the compaction name.
   @override
-  Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
-    switch ((await getSessionStatuses())[sessionId]) {
-      case PluginSessionStatusBusy() || PluginSessionStatusRetry():
-        return PluginCompactionResult.sessionBusy;
-      case PluginSessionStatusIdle() || null:
-        break;
-    }
-    await sendCommand(
-      sessionId: sessionId,
-      promptId: promptId,
-      command: OpenCodeV2Service.compactionCommandName,
-      arguments: "",
-      userVisibleArguments: null,
-      variant: null,
-      fastMode: false,
-      agent: null,
-      model: null,
-    );
-    return PluginCompactionResult.accepted;
-  }
+  Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async =>
+      await _service.compactIfQuiet(sessionId: sessionId, promptId: promptId)
+      ? PluginCompactionResult.accepted
+      : PluginCompactionResult.sessionBusy;
 
   @override
   Future<PluginAbortResult> abortSession({
