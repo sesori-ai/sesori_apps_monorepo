@@ -10,7 +10,10 @@ class const ClaudeSideAnswerMapper() {
     // to call a tool instead of answering…)" or "(API error: …)", not an answer.
     final text = response.synthetic ? null : trimmedOrNull(value: response.response);
     if (text == null) return const PluginSideRefused(reason: PluginSideRefusal.noAnswer);
-    return PluginSideAnswered(text: text, notice: trimmedOrNull(value: response.refusalFallback?.content));
+    return PluginSideAnswered(
+      text: text,
+      notice: trimmedOrNull(value: response.refusalFallback?.content),
+    );
   }
 
   /// The CLI predates the `side_question` handler.

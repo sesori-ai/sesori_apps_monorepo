@@ -5,8 +5,7 @@ import "package:test/test.dart";
 void main() {
   const mapper = ClaudeSideAnswerMapper();
 
-  PluginSideAnswer map(Map<String, Object?> json) =>
-      mapper.map(response: ClaudeSideQuestionResponseDto.fromJson(json));
+  PluginSideAnswer map(Map<String, Object?> json) => mapper.map(response: ClaudeSideQuestionResponseDto.fromJson(json));
 
   test("maps a real answer with no notice", () {
     final answer = map({"response": "  Only the parser.\n", "synthetic": false});
