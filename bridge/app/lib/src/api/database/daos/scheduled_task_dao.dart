@@ -24,13 +24,41 @@ class ScheduledTaskDao({required AppDatabase database})
     return (select(scheduledTasksTable)..where((row) => row.id.equals(taskId))).getSingleOrNull();
   }
 
-  Future<ScheduledTaskDto> insertTask({required ScheduledTasksTableCompanion row}) {
+  Future<ScheduledTaskDto> insertTask({required ScheduledTaskDto row}) {
     return into(scheduledTasksTable).insertReturning(row);
   }
 
-  /// Writes only the present fields of [changes]; returns the rows changed.
-  Future<int> updateTask({required String taskId, required ScheduledTasksTableCompanion changes}) {
-    return (update(scheduledTasksTable)..where((row) => row.id.equals(taskId))).write(changes);
+  /// Writes [row]'s definition columns, next due time and update time, and
+  /// clears the target session when [clearTarget] is set. The other bridge
+  /// state is left alone, so a target a run wrote meanwhile survives. Returns
+  /// the rows changed.
+  Future<int> updateTaskDefinition({required ScheduledTaskDto row, required bool clearTarget}) {
+    final changes = row
+        .toCompanion(false)
+        .copyWith(
+          id: const Value.absent(),
+          enabled: const Value.absent(),
+          targetSessionId: clearTarget ? const Value(null) : const Value.absent(),
+          completedAt: const Value.absent(),
+          createdAt: const Value.absent(),
+        );
+    return (update(scheduledTasksTable)..where((task) => task.id.equals(row.id))).write(changes);
+  }
+
+  /// Returns the rows changed.
+  Future<int> setTaskEnabled({
+    required String taskId,
+    required bool enabled,
+    required int? nextDueAt,
+    required int updatedAt,
+  }) {
+    return (update(scheduledTasksTable)..where((task) => task.id.equals(taskId))).write(
+      ScheduledTasksTableCompanion(
+        enabled: Value(enabled),
+        nextDueAt: Value(nextDueAt),
+        updatedAt: Value(updatedAt),
+      ),
+    );
   }
 
   Future<int> deleteTask({required String taskId}) {

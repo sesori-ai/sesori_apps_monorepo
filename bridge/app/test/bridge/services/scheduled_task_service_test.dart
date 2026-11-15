@@ -3,6 +3,7 @@ import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
+import "package:sesori_bridge/src/services/scheduled_task_request_exception.dart";
 import "package:sesori_bridge/src/services/scheduled_task_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
