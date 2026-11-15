@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_composer_presentation.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
+import "package:sesori_dart_core/src/cubits/new_session/new_session_purpose.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/prompt_turn_shape.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
@@ -162,6 +163,7 @@ void main() {
       SessionLaunchRepository? launchRepository,
       DedicatedWorktreePreferenceStore? dedicatedWorktreePreferenceStore,
       PluginManagementService? pluginManagementService,
+      NewSessionPurpose? purpose,
     }) => NewSessionCubit(
       connectionService: mockConnectionService,
       newSessionPluginService: NewSessionPluginService(
@@ -185,7 +187,11 @@ void main() {
       ),
       dedicatedWorktreePreferenceStore: dedicatedWorktreePreferenceStore ?? FakeDedicatedWorktreePreferenceStore(),
       pluginManagementService: pluginManagementService ?? stubbedPluginManagementService(),
-      project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
+      purpose:
+          purpose ??
+          const NewSessionPurpose.startSession(
+            project: NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
+          ),
     );
 
     Future<void> waitForComposer(NewSessionCubit cubit) async {
@@ -193,6 +199,207 @@ void main() {
         await Future<void>.delayed(Duration.zero);
       }
     }
+
+    group("editing a task", () {
+      const project = NewSessionProject(id: "project-1", name: "Project", kind: ProjectKind.folder);
+      final command = testCommandInfo();
+      late ComposerDraftRepository drafts;
+      late FakeDedicatedWorktreePreferenceStore worktreePreference;
+
+      setUp(() {
+        drafts = inMemoryComposerDraftRepository()..saveForNewSession(draft: ComposerDraft.typed(text: "unsent"));
+        worktreePreference = FakeDedicatedWorktreePreferenceStore();
+        when(
+          () => mockSessionApi.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(testProviderListResponse()));
+        when(
+          () => mockSessionApi.listCommands(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(CommandListResponse(items: [command])));
+      });
+
+      NewSessionCubit buildTaskCubit({String pluginId = "plugin-1"}) => buildCubit(
+        composerDraftRepository: drafts,
+        dedicatedWorktreePreferenceStore: worktreePreference,
+        purpose: NewSessionPurpose.editTask(
+          initialSelection: TaskComposerSelection(
+            project: project,
+            harness: TaskComposerHarnessChoice(
+              pluginId: pluginId,
+              picks: const NewSessionSelectionIntent(
+                agentName: null,
+                model: NewSessionModelIntent(providerId: "openai", modelId: "gpt-test"),
+                variant: null,
+                fastMode: null,
+              ),
+            ),
+            dedicatedWorktree: false,
+            prompt: "Triage new issues",
+            commandName: "review",
+          ),
+        ),
+      );
+
+      test("opens on the task's choices, apart from the new-session draft", () async {
+        final cubit = buildTaskCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        expect(cubit.state.agentModelData?.agentModel?.modelID, "gpt-test");
+        expect(cubit.state.stagedCommand?.name, "review");
+        expect(cubit.composerDraft.text, "Triage new issues");
+        expect(await cubit.readDedicatedWorktreePreference(), isFalse);
+        expect(cubit.offersAttachments, isFalse);
+        expect(cubit.composerDraftIdentity, NewSessionCubit.taskDraftIdentity);
+
+        cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "Triage and label"));
+        expect(drafts.readForNewSession().text, "unsent");
+        cubit.clearComposerDraft();
+        expect(drafts.readForNewSession().text, "unsent");
+      });
+
+      test("never writes the new-session screen's remembered picks", () async {
+        final cubit = buildTaskCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        cubit.selectModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: null);
+        cubit.setFastMode(true);
+
+        expect(cubit.state.agentModelData?.agentModel?.modelID, "claude-3-5-sonnet");
+        expect(selectionTracker.read(pluginId: "plugin-1"), isNull);
+        expect(selectionTracker.selectedPluginId, isNull);
+      });
+
+      test("Save hands back the choices instead of starting a session", () async {
+        final cubit = buildTaskCubit();
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        await cubit.submit(
+          draft: ComposerDraft.typed(text: "Triage new issues"),
+          dedicatedWorktree: true,
+          command: command,
+          attachments: const [],
+        );
+
+        TaskComposerSubmission submitted() => switch (cubit.state.phase) {
+          NewSessionPhaseTaskSubmitted(:final submission) => submission,
+          final phase => fail("Expected a submitted task, got $phase"),
+        };
+        final submission = submitted();
+        expect(submission.project, project);
+        expect(submission.pluginId, "plugin-1");
+        expect(submission.model, const PromptModel(providerID: "openai", modelID: "gpt-test"));
+        expect(submission.dedicatedWorktree, isTrue);
+        expect(submission.prompt, "Triage new issues");
+        expect(submission.command, command);
+        expect(cubit.canCreateSession, isTrue);
+
+        await cubit.submit(
+          draft: ComposerDraft.typed(text: "Triage new issues"),
+          dedicatedWorktree: true,
+          command: command,
+          attachments: const [],
+        );
+        expect(submitted(), isNot(same(submission)));
+
+        verifyNever(
+          () => mockLaunchSessionRepository.createSessionWithMessage(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: any(named: "command"),
+            dedicatedWorktree: any(named: "dedicatedWorktree"),
+            commandSource: any(named: "commandSource"),
+          ),
+        );
+        verifyNever(
+          () => mockProductAnalyticsService.logEvent(
+            event: any(named: "event"),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        );
+        verifyNever(
+          () => mockPluginPreferenceRepository.writePluginId(
+            bridgeId: any(named: "bridgeId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        );
+        expect(worktreePreference.writes, isEmpty);
+        expect(drafts.readForNewSession().text, "unsent");
+      });
+
+      test("opens on the task's harness before any composer has met the computer", () async {
+        selectionTracker = NewSessionSelectionTracker();
+        const taskPlugin = PluginMetadata(
+          id: "plugin-2",
+          displayName: "Plugin Two",
+          isDefault: false,
+          state: PluginLifecycleState.ready,
+          actionHint: null,
+          failureBlock: null,
+          mcpScopes: null,
+          failureReason: null,
+        );
+        when(mockPluginRepository.listPlugins).thenAnswer(
+          (_) async => ApiResponse.success(
+            PluginDiscoverySnapshot(
+              bridgeId: "bridge-1",
+              supportsSessionOptions: true,
+              supportsFileUploads: false,
+              supportsSideQuestions: false,
+              plugins: const [defaultPlugin, taskPlugin],
+            ),
+          ),
+        );
+        final cubit = buildTaskCubit(pluginId: "plugin-2");
+        addTearDown(cubit.close);
+        await waitForComposer(cubit);
+
+        expect(cubit.state.agentModelData?.plugin?.id, "plugin-2");
+        expect(cubit.state.agentModelData?.agentModel?.modelID, "gpt-test");
+      });
+
+      test("Save waits for the task's choices to load", () async {
+        final providers = Completer<ApiResponse<ProviderListResponse>>();
+        when(
+          () => mockSessionApi.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) => providers.future);
+        final cubit = buildTaskCubit();
+        addTearDown(cubit.close);
+        for (var turn = 0; turn < 50 && !cubit.canCreateSession; turn++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        expect(cubit.canCreateSession, isTrue);
+        expect(cubit.canSubmit, isFalse);
+
+        await cubit.submit(
+          draft: ComposerDraft.typed(text: "Triage new issues"),
+          dedicatedWorktree: false,
+          command: null,
+          attachments: const [],
+        );
+        expect(cubit.state.phase, isNot(isA<NewSessionPhaseTaskSubmitted>()));
+
+        providers.complete(ApiResponse.success(testProviderListResponse()));
+        await waitForComposer(cubit);
+        expect(cubit.canSubmit, isTrue);
+      });
+    });
 
     test("defaults selectedAgentModel to null", () {
       final cubit = buildCubit();
@@ -723,7 +930,9 @@ void main() {
           ),
           dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
           pluginManagementService: stubbedPluginManagementService(),
-          project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
+          purpose: const NewSessionPurpose.startSession(
+            project: NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
+          ),
         );
       },
       act: (cubit) async {

@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
+import "package:sesori_dart_core/src/cubits/new_session/new_session_purpose.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -87,7 +88,9 @@ void main() {
       ),
       dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
       pluginManagementService: stubbedPluginManagementService(),
-      project: const NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
+      purpose: const NewSessionPurpose.startSession(
+        project: NewSessionProject(id: "project-1", name: null, kind: ProjectKind.folder),
+      ),
     );
     addTearDown(cubit.close);
     final states = <NewSessionState>[];
