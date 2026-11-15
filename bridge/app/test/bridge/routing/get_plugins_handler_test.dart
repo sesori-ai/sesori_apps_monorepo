@@ -7,7 +7,7 @@ import "../../helpers/test_helpers.dart";
 import "routing_test_helpers.dart";
 
 void main() {
-  test("advertises session options and file uploads beside the selectable plugins", () async {
+  test("advertises session options, file uploads and side questions beside the selectable plugins", () async {
     final response = await GetPluginsHandler(
       lifecycleService: _FakePluginLifecycleService(),
       bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
@@ -21,6 +21,7 @@ void main() {
         bridgeId: "br_test1234",
         supportsSessionOptions: true,
         supportsFileUploads: true,
+        supportsSideQuestions: true,
       ),
     );
   });

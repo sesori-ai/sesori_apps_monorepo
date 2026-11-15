@@ -22,6 +22,7 @@ import "tables/projects_table.dart";
 import "tables/session_continuation_table.dart";
 import "tables/session_options_cache_table.dart";
 import "tables/session_table.dart";
+import "tables/side_chat_exchanges_table.dart";
 
 part "database.g.dart";
 
@@ -38,6 +39,7 @@ part "database.g.dart";
     NewSessionDefaultsTable,
     AcceptedPromptsTable,
     SessionContinuationTable,
+    SideChatExchangesTable,
   ],
   daos: [ProjectsDao, SessionDao, CatalogHydrationsDao],
 )
@@ -45,7 +47,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => 25;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -355,6 +357,10 @@ class AppDatabase(super.e) extends _$AppDatabase {
       from23To24: (m, schema) async {
         // No session was pinned before v24, so false is the honest backfill.
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.pinned);
+      },
+      from24To25: (m, schema) async {
+        await m.createTable(schema.sideChatExchanges);
+        await m.createIndex(schema.idxSideChatExchangesSession);
       },
     ),
     beforeOpen: (details) async {

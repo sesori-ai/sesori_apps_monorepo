@@ -270,6 +270,133 @@ void main() {
     });
   });
 
+  group("side questions", () {
+    test("sends the question with its history and parses the answer", () async {
+      final connected = await connectTestClient();
+      addTearDown(connected.client.dispose);
+
+      final pending = connected.client.sendSideQuestion(
+        question: "What changed?",
+        history: const [(question: "Which file?", response: "main.dart")],
+        timeout: const Duration(seconds: 5),
+      );
+      await pump();
+      final frame = connected.fake.written.last;
+      expect(frame["type"], "control_request");
+      expect(frame["request"], {
+        "subtype": "side_question",
+        "question": "What changed?",
+        "history": [
+          {"question": "Which file?", "response": "main.dart"},
+        ],
+      });
+      connected.fake.emitControlResponse(
+        requestId: frame.field<String>("request_id"),
+        payload: {
+          "response": "Only the parser.",
+          "synthetic": false,
+          "refusal_fallback": {"original_model": "a", "fallback_model": "b", "content": "A fallback answered."},
+        },
+      );
+
+      final response = await pending;
+      expect(response.response, "Only the parser.");
+      expect(response.synthetic, isFalse);
+      expect(response.refusalFallback?.content, "A fallback answered.");
+    });
+
+    test("omits empty history", () async {
+      final connected = await connectTestClient();
+      addTearDown(connected.client.dispose);
+
+      connected.client
+          .sendSideQuestion(question: "Why?", history: const [], timeout: const Duration(seconds: 5))
+          .ignore();
+      await pump();
+
+      expect(connected.fake.written.last["request"], {"subtype": "side_question", "question": "Why?"});
+    });
+
+    test("raises the CLI's unknown-subtype error as a typed exception", () async {
+      final connected = await connectTestClient();
+      addTearDown(connected.client.dispose);
+
+      final pending = connected.client.sendSideQuestion(
+        question: "Why?",
+        history: const [],
+        timeout: const Duration(seconds: 5),
+      );
+      final expectation = expectLater(
+        pending,
+        throwsA(isA<ClaudeControlUnsupportedSubtypeException>().having((e) => e.subtype, "subtype", "side_question")),
+      );
+      await pump();
+      connected.fake.emitControlError(
+        requestId: connected.fake.written.last.field<String>("request_id"),
+        error: "Unsupported control request subtype: side_question",
+      );
+
+      await expectation;
+    });
+
+    test("keeps other failures as control exceptions", () async {
+      final connected = await connectTestClient();
+      addTearDown(connected.client.dispose);
+
+      final pending = connected.client.sendSideQuestion(
+        question: "Why?",
+        history: const [],
+        timeout: const Duration(seconds: 5),
+      );
+      final expectation = expectLater(
+        pending,
+        throwsA(
+          isA<ClaudeControlException>().having((e) => e.message, "message", "Session is shutting down"),
+        ),
+      );
+      await pump();
+      connected.fake.emitControlError(
+        requestId: connected.fake.written.last.field<String>("request_id"),
+        error: "Session is shutting down",
+      );
+
+      await expectation;
+    });
+
+    test("cancels the ask when its own timeout passes", () async {
+      // The generic control timeout never fires within the test, so a timeout
+      // proves the ask uses its own.
+      final connected = await connectTestClient(controlTimeout: const Duration(hours: 1));
+      addTearDown(connected.client.dispose);
+
+      final pending = connected.client.sendSideQuestion(
+        question: "Why?",
+        history: const [],
+        timeout: const Duration(milliseconds: 10),
+      );
+      final requestId = connected.fake.written.last.field<String>("request_id");
+      expect(connected.fake.written.where((frame) => frame["type"] == "control_cancel_request"), isEmpty);
+
+      await expectLater(pending, throwsA(isA<TimeoutException>()));
+      expect(connected.fake.written.last, {"type": "control_cancel_request", "request_id": requestId});
+
+      // The CLI's reply to the cancel is for a request nobody waits on.
+      connected.fake.emitControlError(requestId: requestId, error: "Side question cancelled");
+      await pump();
+    });
+
+    test("does not cancel an ordinary control request on timeout", () async {
+      final connected = await connectTestClient(controlTimeout: const Duration(milliseconds: 20));
+      addTearDown(connected.client.dispose);
+
+      await expectLater(
+        connected.client.sendControlRequest(subtype: "list_models"),
+        throwsA(isA<TimeoutException>()),
+      );
+      expect(connected.fake.written.where((frame) => frame["type"] == "control_cancel_request"), isEmpty);
+    });
+  });
+
   group("outbound frames", () {
     test("writes a user turn carrying the session id", () async {
       final connected = await connectTestClient(sessionId: otherTestSessionId);

@@ -1099,7 +1099,7 @@ void main() {
 
     downscale.results[0].complete(const ComposerImageKept());
     await tester.pumpAndSettle();
-    expect([for (final attachment in reportedAttachments.last) attachment.bytes], [first, second]);
+    expect([for (final attachment in reportedAttachments.last) _bytesOf(attachment)], [first, second]);
   });
 
   testWidgets("a text-only paste between two images does not let the later image jump the queue", (tester) async {
@@ -1139,7 +1139,7 @@ void main() {
 
     downscale.results[0].complete(const ComposerImageKept());
     await tester.pumpAndSettle();
-    expect([for (final attachment in reportedAttachments.last) attachment.bytes], [first, third]);
+    expect([for (final attachment in reportedAttachments.last) _bytesOf(attachment)], [first, third]);
   });
 
   group("a paste", () {
@@ -1251,7 +1251,7 @@ void main() {
       );
 
       expect(text, "see attached");
-      expect(reportedAttachments.last.single.bytes, icon);
+      expect(_bytesOf(reportedAttachments.last.single), icon);
       expect(imageClipboard.reads, 1);
     });
 
@@ -1442,7 +1442,7 @@ void main() {
     expect(sentImages, orderedEquals(images.take(7)));
     if (sentImages == null) fail("No images were sent.");
     for (var i = 0; i < sentImages.length; i++) {
-      expect(identical(sentImages[i].bytes, images[i].bytes), isTrue);
+      expect(identical(_bytesOf(sentImages[i]), _bytesOf(images[i])), isTrue);
     }
     expect(strip, findsNothing);
     expect(tester.takeException(), isNull);
@@ -2176,3 +2176,8 @@ Future<void> _settleFileReads(WidgetTester tester) async {
     await tester.pump();
   }
 }
+
+Uint8List? _bytesOf(ComposerAttachment? attachment) => switch (attachment) {
+  ComposerImageAttachment(:final bytes) || ComposerFileAttachment(:final bytes) => bytes,
+  ComposerHostFileAttachment() || null => null,
+};

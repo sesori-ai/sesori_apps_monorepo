@@ -50,9 +50,9 @@ void main() {
       processes = ClaudeSessionProcessRepository(
         supportsMcpAuthentication: true,
         processFactory: (spec) async {
+          specs.add(spec);
           if (failSpawns) throw const ProcessException("claude", [], "fixture spawn failure");
           final process = FakeClaudeProcess();
-          specs.add(spec);
           // A project's probe runs in a mirror holding only copies of its
           // command and skill files. The fake lists what Claude would find.
           String? mirrored;
@@ -135,14 +135,14 @@ void main() {
 
     test("deletes the mirror when the probe fails", () async {
       failSpawns = true;
-      final before = Directory.systemTemp.listSync().map((entry) => entry.path).toSet();
 
       await expectLater(service.getCatalog(directory: projectA, refresh: false), throwsA(anything));
 
-      final leftover = Directory.systemTemp.listSync().where(
-        (entry) => !before.contains(entry.path) && p.basename(entry.path).startsWith("sesori-claude-catalog-"),
-      );
-      expect(leftover, isEmpty);
+      // Check only this probe's mirror: other test files create mirrors in
+      // the shared temp directory at the same time.
+      final mirror = specs.single.workingDirectory;
+      expect(p.basename(mirror), startsWith("sesori-claude-catalog-"));
+      expect(Directory(mirror).existsSync(), isFalse);
     });
 
     test("lists a deleted project's options from the discovery directory", () async {

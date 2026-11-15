@@ -99,10 +99,16 @@ final class const ClaudePluginDescriptor({
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
   @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
+  @override
   bool get supportsPromptAttachments => true;
 
   @override
   bool get namesCommandInvocations => true;
+
+  @override
+  bool get supportsSideQuestions => true;
 
   @override
   Set<PluginMcpCapability> get mcpCapabilities => const {

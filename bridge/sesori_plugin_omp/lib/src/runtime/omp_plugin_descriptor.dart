@@ -98,6 +98,13 @@ final class const OmpPluginDescriptor({
   @override
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
+  /// The bundled runtime advertises `_session/steering`, so ordinary prompts
+  /// steer. An older OMP on PATH that does not advertise it stops the turn
+  /// instead; this declaration is static and cannot tell that apart before
+  /// the process starts.
+  @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
   @override
   bool get supportsPromptAttachments => true;
 

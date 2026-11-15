@@ -20,7 +20,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginSession,
         PluginSessionActivityAvailable,
         PluginSessionActivityUnavailable,
-        PluginSessionVariant;
+        PluginSessionVariant,
+        PluginSideExchange,
+        SideQuestionPluginApi;
 import "package:sesori_shared/sesori_shared.dart"
     show
         ActiveSession,
@@ -53,6 +55,7 @@ import "package:sesori_shared/sesori_shared.dart"
         SessionStatusResponse,
         SessionStatusRetry,
         SessionVariant,
+        SideQuestionRefusal,
         matchTexts,
         projectOwnName,
         searchWords;
@@ -66,6 +69,7 @@ import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_message_mapper.dart";
 import "mappers/plugin_session_status_mapper.dart";
+import "mappers/plugin_side_answer_mapper.dart";
 import "mappers/plugin_to_shared_mapping.dart";
 import "mappers/project_catalog_mapper.dart";
 import "mappers/prompt_part_mapper.dart";
@@ -76,6 +80,7 @@ import "models/session_abort_result.dart";
 import "models/session_continuation_record.dart";
 import "models/session_operation.dart";
 import "models/session_page_cursor.dart";
+import "models/side_question_ask_result.dart";
 import "models/stored_session.dart";
 import "project_catalog_identity_calculator.dart";
 import "random_hex_id.dart";
@@ -518,6 +523,40 @@ class SessionRepository({
       model: _toPluginModel(model),
     ),
   );
+
+  /// Asks [sessionId]'s harness a side question with this side chat's
+  /// [history]. A harness that does not declare side questions is refused
+  /// before its plugin is started.
+  Future<SideQuestionAskResult> askSideQuestion({
+    required String sessionId,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async {
+    const operation = SessionOperation.askSideQuestion;
+    final binding = await _requireBinding(sessionId: sessionId, operation: operation);
+    if (!_runtime.supportsSideQuestions(pluginId: binding.pluginId)) {
+      return const SideQuestionRefused(reason: SideQuestionRefusal.harnessUnsupported);
+    }
+    return await _useBoundSessionPlugin(
+      binding: binding,
+      operation: operation,
+      body: (plugin) async {
+        if (plugin case final SideQuestionPluginApi api) {
+          final answer = await api.askSideQuestion(
+            sessionId: binding.backendSessionId,
+            question: question,
+            history: history,
+          );
+          return answer.toAskResult();
+        }
+        throw PluginOperationException(
+          operation: operation.name,
+          statusCode: 500,
+          message: "plugin ${binding.pluginId} declares side questions but does not implement SideQuestionPluginApi",
+        );
+      },
+    );
+  }
 
   /// The prompts accepted for [sessionId] but not yet dispatched to its
   /// backend, in dispatch order, mapped to the shared wire model.
@@ -1292,6 +1331,10 @@ class SessionRepository({
       };
     },
   );
+
+  /// Whether [pluginId]'s backend is running, so a missing status from it
+  /// means its status read failed rather than that it has no turn.
+  bool isPluginActive({required String pluginId}) => _runtime.activePluginIds.contains(pluginId);
 
   Future<SessionStatusResponse> getSessionStatuses() async {
     final results = await Future.wait(

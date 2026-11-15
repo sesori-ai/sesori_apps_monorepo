@@ -539,8 +539,9 @@ String? _promptTitle(ClaudeTranscriptUserRecord record) {
 /// record names another one. A `last-prompt` naming no record, such as the
 /// all-zero id the CLI writes after a rewind, is ignored.
 ///
-/// Only a branch that a user prompt starts beside the chain is dropped: that
-/// is what a rewind leaves behind. Everything else off the chain stays:
+/// Only a branch that a user prompt or a compaction starts beside the chain is
+/// dropped: that is what a rewind leaves behind. Everything else off the chain
+/// stays:
 /// - parallel tool calls, whose results hang off the separate records of one
 ///   assistant message rather than off the chain;
 /// - records above a link the file no longer resolves, such as a skipped
@@ -582,7 +583,7 @@ List<ClaudeTranscriptRecordDto> _activeBranch({required List<ClaudeTranscriptRec
     if (id != null && !chain.contains(id)) {
       final parent = parents[id];
       final forksFromChain = parent == null ? reachesRoot : chain.contains(parent);
-      if (dropped.contains(parent) || (forksFromChain && _isPrompt(record))) {
+      if (dropped.contains(parent) || (forksFromChain && _startsBranch(record))) {
         dropped.add(id);
         continue;
       }
@@ -597,7 +598,15 @@ List<ClaudeTranscriptRecordDto> _activeBranch({required List<ClaudeTranscriptRec
 String? _chainId(ClaudeTranscriptRecordDto record) =>
     (record.isSidechain ?? false) ? null : trimmedOrNull(value: record.uuid);
 
-/// A user record that is not a tool result: what a rewound branch starts with.
+/// What a rewound branch starts with: a prompt, or a compaction when the
+/// rewind went back to just before it. An active compaction is on the chain,
+/// so a boundary off it was always left behind.
+bool _startsBranch(ClaudeTranscriptRecordDto record) =>
+    _isPrompt(record) ||
+    (record.type == ClaudeTranscriptContextKind.system.wireType &&
+        record.subtype == ClaudeTranscriptCompactBoundaryRecord.subtype);
+
+/// A user record that is not a tool result.
 bool _isPrompt(ClaudeTranscriptRecordDto record) =>
     record.type == ClaudeTranscriptUserRecord.wireType && record.sourceToolAssistantUuid == null;
 

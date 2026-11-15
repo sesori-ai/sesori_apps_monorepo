@@ -115,6 +115,23 @@ void main() {
     expect(messages.sublist(messages.length - 2), ["user: Reply with just the word: blue", "assistant: blue"]);
   });
 
+  test("a rewind to just before a compaction drops the compaction and what followed it", () async {
+    final file = install(fixture: "compacted", sessionId: _compacted);
+    final beforeCompaction = file
+        .readAsLinesSync()
+        .map((line) => jsonDecode(line) as Map<String, Object?>)
+        .firstWhere((record) => record["subtype"] == "compact_boundary")["logicalParentUuid"];
+    file.writeAsStringSync(
+      "${jsonEncode({"type": "last-prompt", "leafUuid": beforeCompaction, "sessionId": _compacted})}\n",
+      mode: FileMode.append,
+    );
+
+    final messages = await transcript(sessionId: _compacted);
+
+    expect(messages.last, "assistant: red");
+    expect(messages, isNot(contains("user: Reply with just the word: blue")));
+  });
+
   group("leaf", () {
     test("is the newest record without a last-prompt record", () async {
       final file = install(fixture: "terminal_rewind", sessionId: _terminalRewind);

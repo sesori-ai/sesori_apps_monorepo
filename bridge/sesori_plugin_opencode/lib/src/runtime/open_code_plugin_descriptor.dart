@@ -335,6 +335,9 @@ class const OpenCodePluginDescriptor({
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
   @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
+  @override
   PluginStateStorage get stateStorage => PluginStateStorage.legacySharedRuntime;
 
   @override

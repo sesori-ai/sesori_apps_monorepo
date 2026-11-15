@@ -34,6 +34,14 @@ _PluginMetadata _$PluginMetadataFromJson(Map json) => _PluginMetadata(
       .toSet(),
   failureReason: json['failureReason'] as String?,
   namesCommandInvocations: json['namesCommandInvocations'] as bool? ?? false,
+  supportsSideQuestions: json['supportsSideQuestions'] as bool? ?? false,
+  busyPromptHandling:
+      $enumDecodeNullable(
+        _$BusyPromptHandlingEnumMap,
+        json['busyPromptHandling'],
+        unknownValue: BusyPromptHandling.unknown,
+      ) ??
+      BusyPromptHandling.unknown,
 );
 
 Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
@@ -50,6 +58,9 @@ Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
           .toList(),
       'failureReason': ?instance.failureReason,
       'namesCommandInvocations': instance.namesCommandInvocations,
+      'supportsSideQuestions': instance.supportsSideQuestions,
+      'busyPromptHandling':
+          _$BusyPromptHandlingEnumMap[instance.busyPromptHandling]!,
     };
 
 const _$PluginLifecycleStateEnumMap = {
@@ -72,6 +83,12 @@ const _$McpScopeKindEnumMap = {
   McpScopeKind.unknown: 'unknown',
 };
 
+const _$BusyPromptHandlingEnumMap = {
+  BusyPromptHandling.steer: 'steer',
+  BusyPromptHandling.stopTurn: 'stopTurn',
+  BusyPromptHandling.unknown: 'unknown',
+};
+
 _PluginListResponse _$PluginListResponseFromJson(Map json) =>
     _PluginListResponse(
       plugins: (json['plugins'] as List<dynamic>)
@@ -82,6 +99,7 @@ _PluginListResponse _$PluginListResponseFromJson(Map json) =>
       bridgeId: json['bridgeId'] as String?,
       supportsSessionOptions: json['supportsSessionOptions'] as bool? ?? false,
       supportsFileUploads: json['supportsFileUploads'] as bool? ?? false,
+      supportsSideQuestions: json['supportsSideQuestions'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$PluginListResponseToJson(_PluginListResponse instance) =>
@@ -90,4 +108,5 @@ Map<String, dynamic> _$PluginListResponseToJson(_PluginListResponse instance) =>
       'bridgeId': ?instance.bridgeId,
       'supportsSessionOptions': instance.supportsSessionOptions,
       'supportsFileUploads': instance.supportsFileUploads,
+      'supportsSideQuestions': instance.supportsSideQuestions,
     };

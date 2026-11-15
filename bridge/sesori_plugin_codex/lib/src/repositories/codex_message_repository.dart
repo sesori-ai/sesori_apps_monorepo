@@ -42,9 +42,13 @@ class CodexMessageRepository({
     required String rolloutPath,
     required String sessionId,
   }) {
-    final List<CodexRolloutLineDto> lines;
+    final List<CodexRolloutLineDto> history;
     try {
-      lines = _rolloutApi.readTranscript(rolloutPath: rolloutPath);
+      final ownHistory = trimForkedParentHistory(lines: _rolloutApi.readTranscript(rolloutPath: rolloutPath));
+      history = [
+        ..._readInheritedHistory(lines: ownHistory, rolloutPath: rolloutPath, sessionId: sessionId),
+        ...ownHistory,
+      ];
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
@@ -55,9 +59,48 @@ class CodexMessageRepository({
         stackTrace,
       );
     }
-    final ownHistory = trimForkedParentHistory(lines: lines);
-    return CodexPreparedMessageRead(lines: _replayThreadRollbacks(lines: ownHistory));
+    return CodexPreparedMessageRead(lines: _replayThreadRollbacks(lines: history));
   }
+
+  /// The kept prefixes a reverted or forked rollout builds on, oldest first.
+  ///
+  /// `thread/revert` and a paginated `thread/fork` write a rollout whose
+  /// leading `session_meta.history_base` names the earlier rollout and the
+  /// byte length of its kept prefix, instead of copying it. That prefix can
+  /// itself start with a base, e.g. a fork of a reverted thread. A base that
+  /// is missing (deleted with its own thread) leaves only the later history.
+  List<CodexRolloutLineDto> _readInheritedHistory({
+    required List<CodexRolloutLineDto> lines,
+    required String rolloutPath,
+    required String sessionId,
+  }) {
+    final prefixes = <List<CodexRolloutLineDto>>[];
+    final visitedPaths = {rolloutPath};
+    var base = _historyBase(lines: lines);
+    while (base != null) {
+      final basePath = _rolloutApi.findRolloutPathByRolloutId(rolloutId: base.rolloutId);
+      if (basePath == null) {
+        Log.w("[codex] history base rollout ${base.rolloutId} for $sessionId not found; ignoring older history");
+        break;
+      }
+      if (!visitedPaths.add(basePath)) {
+        Log.w("[codex] history base cycle at rollout ${base.rolloutId} for $sessionId; ignoring older history");
+        break;
+      }
+      final prefix = _rolloutApi.readTranscriptPrefix(rolloutPath: basePath, endByteOffset: base.endByteOffset);
+      prefixes.add(prefix);
+      base = _historyBase(lines: prefix);
+    }
+    return [for (final prefix in prefixes.reversed) ...prefix];
+  }
+
+  /// Only a rollout's leading `session_meta` describes its own base; any
+  /// later one belongs to inherited history.
+  static CodexRolloutHistoryBaseDto? _historyBase({required List<CodexRolloutLineDto> lines}) =>
+      switch (lines.firstOrNull) {
+        CodexRolloutSessionMetadataLineDto(:final payload) => payload.historyBase,
+        _ => null,
+      };
 
   /// Replays persisted rollback markers over user-turn boundaries.
   ///
