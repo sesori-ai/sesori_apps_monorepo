@@ -93,6 +93,7 @@ class _FakeYoloSettingsService() implements YoloSettingsService {
       lastUserActivityAt: null,
       autoContinuation: null,
       approvalOverride: approvalOverride,
+      scheduledTask: null,
     );
   }
 

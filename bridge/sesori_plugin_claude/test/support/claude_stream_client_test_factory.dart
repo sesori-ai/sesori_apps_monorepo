@@ -45,6 +45,8 @@ const String otherTestSessionId = "99999999-8888-4777-8666-555555555555";
 ClaudeLaunchSpec testLaunchSpec({String sessionId = testSessionId}) {
   return ClaudeLaunchSpec(
     binaryPath: "claude",
+    transcriptsDirectory: "/tmp/sesori/transcripts",
+    uploadsDirectory: "/tmp/sesori/uploads",
     workingDirectory: "/tmp/project",
     launch: ClaudeNewSession(sessionId: sessionId),
     purpose: ClaudeProcessPurpose.session,

@@ -754,6 +754,39 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
+    test("compactSession compacts a quiet thread natively and refuses a running one", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-compact", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(result: {}),
+      ]);
+
+      expect(
+        await plugin.compactSession(sessionId: "t-compact", promptId: "prompt-1"),
+        PluginCompactionResult.accepted,
+      );
+      expect(fake.sentMethods.where((method) => method == "thread/compact/start"), hasLength(1));
+
+      final busy = plugin.events.firstWhere(
+        (event) => event is BridgeSseSessionStatus && event.status is PluginSessionStatusBusy,
+      );
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "t-compact",
+        "status": {"type": "active"},
+      });
+      await busy.timeout(const Duration(seconds: 1));
+
+      expect(
+        await plugin.compactSession(sessionId: "t-compact", promptId: "prompt-2"),
+        PluginCompactionResult.sessionBusy,
+      );
+      expect(fake.sentMethods.where((method) => method == "thread/compact/start"), hasLength(1));
+    });
+
     test("a live event emitted during the first turn is scoped to the new session's directory", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),

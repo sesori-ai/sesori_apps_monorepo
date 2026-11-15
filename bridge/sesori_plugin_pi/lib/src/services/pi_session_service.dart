@@ -253,20 +253,20 @@ final class PiSessionService({
   Map<String, PluginSessionStatus> get sessionStatuses =>
       Map.unmodifiable({for (final entry in _sessions.entries) entry.key: entry.value.status});
 
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async {
-    if (_disposed) return PluginQuotaContinuationReadiness.unavailable;
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async {
+    if (_disposed) return PluginSessionReadiness.unavailable;
     final sessionExists =
         _sessions.containsKey(sessionId) ||
         _pendingNewDirectories.containsKey(sessionId) ||
         await _catalog.hasPersistedSession(sessionId: sessionId);
     if (_extensionUi.getPendingQuestions(sessionId: sessionId).isNotEmpty) {
-      return PluginQuotaContinuationReadiness.awaitingInput;
+      return PluginSessionReadiness.awaitingInput;
     }
     final state = _sessions[sessionId];
-    if (state?.status is PluginSessionStatusRetry) return PluginQuotaContinuationReadiness.retrying;
-    if (state?.queue.isNotEmpty ?? false) return PluginQuotaContinuationReadiness.queued;
-    if ((state?.hasWork ?? false) || state?.idleReap != null) return PluginQuotaContinuationReadiness.busy;
-    return sessionExists ? PluginQuotaContinuationReadiness.idle : PluginQuotaContinuationReadiness.unknown;
+    if (state?.status is PluginSessionStatusRetry) return PluginSessionReadiness.retrying;
+    if (state?.queue.isNotEmpty ?? false) return PluginSessionReadiness.queued;
+    if ((state?.hasWork ?? false) || state?.idleReap != null) return PluginSessionReadiness.busy;
+    return sessionExists ? PluginSessionReadiness.idle : PluginSessionReadiness.unknown;
   }
 
   Future<void> deleteSession({required PluginSession root}) async {

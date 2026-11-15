@@ -104,6 +104,12 @@ sealed class PluginMetadata with _$PluginMetadata {
     // Remove @Default and require the field once all supported production bridges send it.
     @Default(false) bool supportsSideQuestions,
 
+    /// Whether this harness compacts a session's context when the bridge asks,
+    /// which scheduled tasks use before a run resumes a quiet session.
+    // COMPATIBILITY 2026-11-15 (v1.14.0): Older bridges omit this capability because they cannot compact on request
+    // or run scheduled tasks. Remove @Default and require the field once all supported production bridges send it.
+    @Default(false) bool supportsCompactionOnRequest,
+
     /// What this harness does with a prompt sent while a session runs a turn,
     /// so a client can warn before a send stops that turn.
     // COMPATIBILITY 2026-11-15 (v1.14.0): Bridges before session sending omit busyPromptHandling; the picker

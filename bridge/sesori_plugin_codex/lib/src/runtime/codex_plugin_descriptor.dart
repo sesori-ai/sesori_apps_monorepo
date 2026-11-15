@@ -197,6 +197,10 @@ class const CodexPluginDescriptor({
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
 
+  /// Codex compacts a thread through `thread/compact/start`.
+  @override
+  bool get supportsCompactionOnRequest => true;
+
   @override
   PluginStateStorage get stateStorage => PluginStateStorage.legacySharedRuntime;
 

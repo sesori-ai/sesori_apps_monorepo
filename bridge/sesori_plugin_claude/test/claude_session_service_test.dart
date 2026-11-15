@@ -350,8 +350,8 @@ void main() {
       await pump();
       expect(harness.approvals.pendingPermissionsForSession(sessionId: testSessionId), hasLength(1));
       expect(
-        harness.service.getQuotaContinuationReadiness(sessionId: testSessionId, sessionExists: true),
-        PluginQuotaContinuationReadiness.awaitingInput,
+        harness.service.getSessionReadiness(sessionId: testSessionId, sessionExists: true),
+        PluginSessionReadiness.awaitingInput,
       );
 
       process.exit(1);
@@ -484,8 +484,8 @@ void main() {
 
       expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
       expect(
-        harness.service.getQuotaContinuationReadiness(sessionId: testSessionId, sessionExists: true),
-        PluginQuotaContinuationReadiness.queued,
+        harness.service.getSessionReadiness(sessionId: testSessionId, sessionExists: true),
+        PluginSessionReadiness.queued,
       );
     });
 
@@ -1515,6 +1515,8 @@ final class _ServiceHarness({
       supportsMcpAuthentication: true,
       processFactory: _spawn,
       binaryPath: "claude",
+      transcriptsDirectory: "/tmp/sesori/transcripts",
+      uploadsDirectory: "/tmp/sesori/uploads",
       environment: const {},
     );
     approvals = ClaudeApprovalRegistry(

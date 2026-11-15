@@ -13,15 +13,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAbortNotPerformed,
         PluginAbortRejectedSubAgentsRunning,
         PluginActiveSession,
+        PluginBranchPointUnavailableException,
+        PluginCompactionResult,
         PluginOperationException,
         PluginProjectActivitySummary,
-        PluginQuotaContinuationReadiness,
         PluginQuotaReportingSupport,
         PluginSession,
         PluginSessionActivityAvailable,
         PluginSessionActivityUnavailable,
+        PluginSessionReadiness,
         PluginSessionVariant,
         PluginSideExchange,
+        SessionRewindPluginApi,
         SideQuestionPluginApi;
 import "package:sesori_shared/sesori_shared.dart"
     show
@@ -79,9 +82,10 @@ import "mappers/stored_session_mapper.dart";
 import "models/deliverable_prompt_part.dart";
 import "models/project_not_found_exception.dart";
 import "models/session_abort_result.dart";
-import "models/session_continuation_record.dart";
+import "models/session_compaction_result.dart";
 import "models/session_operation.dart";
 import "models/session_page_cursor.dart";
+import "models/session_readiness.dart";
 import "models/side_question_ask_result.dart";
 import "models/stored_session.dart";
 import "project_catalog_identity_calculator.dart";
@@ -585,6 +589,36 @@ class SessionRepository({
     }
   }
 
+  /// Removes [beforeMessageId] and every later message from [sessionId]'s
+  /// conversation through the plugin's native rewind, then sends [parts] as
+  /// its next prompt, as [sendPrompt] does.
+  ///
+  /// A plugin without native rewind cannot branch at any message, so it is
+  /// refused the way a plugin refuses a message it cannot map.
+  Future<void> rewindAndSendPrompt({
+    required String sessionId,
+    required String beforeMessageId,
+    required String promptId,
+    required List<DeliverablePromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) => _useSessionPlugin(
+    sessionId: sessionId,
+    operation: SessionOperation.rewindSession,
+    body: (plugin, binding) => _requireSessionRewindApi(plugin: plugin).rewindAndSendPrompt(
+      sessionId: binding.backendSessionId,
+      beforeMessageId: beforeMessageId,
+      promptId: promptId,
+      parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+      variant: _toPluginVariant(variant),
+      fastMode: fastMode,
+      agent: agent,
+      model: _toPluginModel(model),
+    ),
+  );
+
   /// Asks [sessionId]'s harness a side question with this side chat's
   /// [history]. A harness that does not declare side questions is refused
   /// before its plugin is started.
@@ -718,20 +752,33 @@ class SessionRepository({
     return inlineImagesSupported(pluginId: binding.pluginId);
   }
 
-  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) => _useSessionPlugin(
+  Future<SessionReadiness> getSessionReadiness({required String sessionId}) => _useSessionPlugin(
     sessionId: sessionId,
-    operation: SessionOperation.getQuotaContinuationReadiness,
-    body: (plugin, binding) async =>
-        switch (await plugin.getQuotaContinuationReadiness(sessionId: binding.backendSessionId)) {
-          PluginQuotaContinuationReadiness.idle => SessionContinuationReadiness.idle,
-          PluginQuotaContinuationReadiness.busy => SessionContinuationReadiness.busy,
-          PluginQuotaContinuationReadiness.retrying => SessionContinuationReadiness.retrying,
-          PluginQuotaContinuationReadiness.queued => SessionContinuationReadiness.queued,
-          PluginQuotaContinuationReadiness.awaitingInput => SessionContinuationReadiness.awaitingInput,
-          PluginQuotaContinuationReadiness.unavailable => SessionContinuationReadiness.unavailable,
-          PluginQuotaContinuationReadiness.unknown => SessionContinuationReadiness.unknown,
-        },
+    operation: SessionOperation.getSessionReadiness,
+    body: (plugin, binding) async => switch (await plugin.getSessionReadiness(sessionId: binding.backendSessionId)) {
+      PluginSessionReadiness.idle => SessionReadiness.idle,
+      PluginSessionReadiness.busy => SessionReadiness.busy,
+      PluginSessionReadiness.retrying => SessionReadiness.retrying,
+      PluginSessionReadiness.queued => SessionReadiness.queued,
+      PluginSessionReadiness.awaitingInput => SessionReadiness.awaitingInput,
+      PluginSessionReadiness.unavailable => SessionReadiness.unavailable,
+      PluginSessionReadiness.unknown => SessionReadiness.unknown,
+    },
   );
+
+  /// Asks [sessionId]'s harness to compact its context. The harness sends
+  /// nothing to a session that is working, so this never stops a turn.
+  Future<SessionCompactionResult> compactSession({required String sessionId, required String promptId}) =>
+      _useSessionPlugin(
+        sessionId: sessionId,
+        operation: SessionOperation.compactSession,
+        body: (plugin, binding) async =>
+            switch (await plugin.compactSession(sessionId: binding.backendSessionId, promptId: promptId)) {
+              PluginCompactionResult.accepted => SessionCompactionResult.accepted,
+              PluginCompactionResult.sessionBusy => SessionCompactionResult.sessionBusy,
+              PluginCompactionResult.unsupported => SessionCompactionResult.unsupported,
+            },
+      );
 
   /// Translates the backend child references a plugin puts on subtask parts
   /// into bridge session ids.
@@ -1954,6 +2001,15 @@ class SessionRepository({
 
   Set<String> _tombstonesFor(String pluginId) {
     return _tombstonedBackendSessionIds.putIfAbsent(pluginId, () => <String>{});
+  }
+
+  SessionRewindPluginApi _requireSessionRewindApi({required BridgePluginApi plugin}) {
+    if (plugin case final SessionRewindPluginApi rewindApi) return rewindApi;
+    throw PluginBranchPointUnavailableException(
+      operation: SessionOperation.rewindSession.name,
+      userFacingReason: null,
+      cause: null,
+    );
   }
 
   PersistedSessionCleanupApi _requirePersistedSessionCleanupApi({
