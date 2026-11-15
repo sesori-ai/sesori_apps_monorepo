@@ -867,6 +867,17 @@ class FakeSessionRepository({
   }) => throw UnimplementedError("FakeSessionRepository does not rewind sessions");
 
   @override
+  Future<List<String>> replaceBackendSession({
+    required String sessionId,
+    required List<DeliverablePromptPart> parts,
+    required String? userVisibleText,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) => throw UnimplementedError("FakeSessionRepository does not replace harness sessions");
+
+  @override
   Future<void> renameSession({required String sessionId, required String title}) async {}
 
   @override

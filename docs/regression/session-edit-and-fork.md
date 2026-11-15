@@ -6,8 +6,9 @@ The bridge can edit a prompt that opens a turn: `POST /session/rewind` removes
 that prompt and every later message from the session's conversation and sends
 the edited prompt in its place. Conversation only: files are never restored.
 Each harness declares the branching operations it implements in
-`PluginMetadata.sessionBranching`; today none declares any, so the route
-refuses every edit and clients offer no Edit.
+`PluginMetadata.sessionBranching`; today none declares any, so clients offer
+no Edit. A first-message edit needs no plugin rewind, so the route accepts it
+on every harness.
 
 ## Required Behavior
 
@@ -26,9 +27,19 @@ refuses every edit and clients offer no Edit.
 - The bridge reads the whole stored transcript, backfilling it first when the
   store is behind the backend, and finds the message's turn by the shared
   `splitPromptTurns` rule. A message that does not open a turn (a reply or a
-  follow-up) and the first turn are refused with `branchPointUnavailable`.
-  First-turn edits arrive with a later step that swaps in a fresh harness
-  session.
+  follow-up) is refused with `branchPointUnavailable`.
+- An edit of the first turn never reaches a plugin rewind, so it works on
+  every harness. The bridge creates a new harness session in the session's
+  directory with the edited prompt as its first prompt (with the worktree
+  context, for a dedicated worktree) and moves the same Sesori session onto
+  it in one transaction. The new harness session's events reach clients under
+  the unchanged session id, with no `session.created`.
+- The old harness session is deleted the way a session delete does it: it and
+  its sub-agent sessions are tombstoned in that same transaction, so catalog
+  import and startup cleanup never bring them back, and their sub-agent rows
+  and history are removed. Its late events and `session.deleted` change
+  nothing. A failed backend delete is only logged; the edit still succeeds.
+  A row catalog import already bound to the new harness session is replaced.
 - A harness that cannot rewind, or whose plugin cannot map the message to a
   native boundary, is refused with `branchPointUnavailable`. The plugin's own
   user-facing sentence travels as the message; transcript text never does.
@@ -36,7 +47,7 @@ refuses every edit and clients offer no Edit.
   invalidated; a plugin refusal answers `refused`.
 - Every branch refusal is a 409 `SessionBranchErrorResponse` and leaves the
   transcript untouched; the archived rejection keeps its own shared shape.
-- After the plugin accepts, the bridge removes exactly the messages it read
+- After the plugin accepts (or the new harness session is bound), the bridge removes exactly the messages it read
   before the call, by id, from the store and from clients
   (`message.removed`). The edited prompt's echo, captured during the call, is
   never among them.
@@ -46,7 +57,7 @@ refuses every edit and clients offer no Edit.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, first-turn, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`. |
+| L2 Routine | Automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`. A first-turn edit binds the new harness session (with the worktree context in a dedicated worktree), tombstones and deletes the old one and its sub-agent rows and history, survives a failed old delete, replaces a stray imported row, and leaves everything untouched when the new session cannot be created; the event service releases the new session's held events under the old id and ignores the old session's late events. |
 | L3 Release | Not included until a harness declares rewind. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -57,12 +68,15 @@ refuses every edit and clients offer no Edit.
   screen until reload.
 - A retried edit rewinds twice.
 - A refusal changes the transcript, or its message carries transcript text.
+- After a first-message edit the session shows twice, the old conversation
+  comes back after a catalog refresh or restart, or the new prompt's replies
+  never arrive.
 - An edit reaches the plugin while the session runs or after it was archived.
 
 ## Known Limitations
 
-- No harness implements rewind yet, so every edit is refused.
-- The first turn cannot be edited yet.
+- No harness implements rewind yet, so every edit after the first turn is
+  refused.
 - An edit the plugin refuses keeps the attachment files the bridge saved for
   it, as a refused send does.
 
@@ -71,5 +85,7 @@ refuses every edit and clients offer no Edit.
 - `bridge/sesori_plugin_interface/lib/src/session_rewind_plugin_api.dart`
 - `bridge/app/lib/src/routing/rewind_session_handler.dart`
 - `bridge/app/lib/src/services/session_prompt_service.dart`
+- `bridge/app/lib/src/repositories/session_repository.dart`
+- `bridge/app/lib/src/services/session_event_service.dart`
 - `bridge/app/lib/src/services/chat_history_service.dart`
 - `shared/sesori_shared/lib/src/models/sesori/session_branch_error_response.dart`

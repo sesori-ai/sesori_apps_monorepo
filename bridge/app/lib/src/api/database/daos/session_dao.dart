@@ -782,6 +782,14 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     await (delete(sessionTable)..where((t) => t.sessionId.equals(sessionId))).go();
   }
 
+  /// Binds [sessionId] to the harness session [backendSessionId] in place of
+  /// its current one, changing nothing else.
+  Future<void> rebindBackendSession({required String sessionId, required String backendSessionId}) async {
+    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(backendSessionId: Value(backendSessionId)),
+    );
+  }
+
   Future<List<SessionDto>> getSessionsByParentIds({required List<String> parentSessionIds}) {
     if (parentSessionIds.isEmpty) return Future.value(const []);
     return (select(sessionTable)..where((table) => table.parentSessionId.isIn(parentSessionIds))).get();

@@ -97,6 +97,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   bool throwOnGetSessions = false;
   Object? throwOnGetMessagesError;
   Object? throwOnDeleteSessionError;
+  Object? createSessionError;
   Object? throwOnArchiveSessionError;
   Object? deleteWorkspaceError;
   Completer<void>? archiveSessionCompleter;
@@ -169,6 +170,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     lastCreateSessionFastMode = fastMode;
     lastCreateSessionAgent = agent;
     lastCreateSessionModel = model;
+    if (createSessionError case final error?) throw error;
     return createSessionResult ??
         const PluginSession(
           id: "",

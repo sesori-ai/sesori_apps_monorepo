@@ -197,7 +197,9 @@ defaults and queued client sends coherent.
   invalidation and prompt-defaults update apply. Its branch refusals answer
   `SessionBranchErrorResponse` instead of `SendPromptErrorResponse`; an
   archived session still answers the shared archived rejection
-  ([session edit and fork](session-edit-and-fork.md)).
+  ([session edit and fork](session-edit-and-fork.md)). Editing the first
+  message moves the same session onto a new harness session; clients see one
+  continuous session.
 - A client send that fails on the connection it started on (a non-stale error
   response or a thrown failure) is held under its message with "Couldn’t send",
   Retry and Remove; later local sends wait behind it. When the harness refused
