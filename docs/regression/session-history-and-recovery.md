@@ -507,6 +507,18 @@ reconnect or restart.
   image caption or automation preamble appearing as a user bubble during a live
   turn, a peer message disappearing, or live and replay disagreeing about which
   user turns are visible.
+- Claude history follows the active branch of a rewound transcript. A rewind in
+  the Claude Code terminal (Esc Esc) or a resume with `--resume-session-at`
+  leaves the old turns in the `.jsonl` and parents the next prompt to an earlier
+  record, so history keeps only the chain from the active leaf: a later
+  `last-prompt` record's `leafUuid` when it names a record, otherwise the newest
+  record. A branch dropped this way always starts with a user prompt; parallel
+  tool calls, whose results hang off separate records of one assistant message,
+  sub-agent records and the turns before a compaction (followed through the
+  boundary's `logicalParentUuid`) all stay. A rewind to before the first message
+  also drops the old first prompt from the fallback title. A linear transcript
+  reads exactly as before. A store that imported both branches before this
+  converges on the next re-read of the session.
 - Pi history follows the active `leafId` branch while retaining visible
   pre-compaction messages, applies thinking-level changes to later assistant and
   error messages on that branch, and omits compaction and branch-summary
@@ -663,7 +675,9 @@ rules where supported.
   transcript duplicates its parts after reload. A mid-turn Claude follow-up,
   queued peer message or task outcome disappears, changes identity or moves to
   another turn after reload or re-import, or a finished background task tile
-  shows cancelled after reload.
+  shows cancelled after reload. A Claude session rewound in the terminal shows
+  the abandoned turns beside the new ones, or loses one of two parallel tool
+  calls or the turns before a compaction.
 - A stored compaction stays running after its turn went idle or after an
   ordinary history read of an idle session (a store-only read skips the sweep,
   as it does for tools), or the sweep rewrites a completed or failed
@@ -745,7 +759,10 @@ with `session_repository_test.dart` and `session_detail_paging_test.dart`; clien
 code and focused metadata, blocking, reload-race and event-buffer tests; Pi
 session process repository, storage API, and history mapper; shared ACP event mapper, turn serialization,
 and session loader plus Antigravity, Copilot, Cursor, and Grok plugins and package tests; shared
-pagination cursor; client detail load service and cubit.
+pagination cursor; client detail load service and cubit. Claude's active-branch read in
+`bridge/sesori_plugin_claude/lib/src/repositories/claude_transcript_catalog_repository.dart`, with
+`claude_transcript_active_branch_test.dart` over transcripts recorded live on Claude Code 2.1.322 in
+`bridge/sesori_plugin_claude/test/fixtures/transcripts/`.
 
 OpenCode v2: `bridge/sesori_plugin_opencode/lib/src/v2/repositories/v2_message_mapper.dart`,
 `bridge/sesori_plugin_opencode/lib/src/v2/sse/v2_event_mapper.dart`,

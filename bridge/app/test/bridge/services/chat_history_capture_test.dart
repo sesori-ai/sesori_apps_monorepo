@@ -628,11 +628,22 @@ void main() {
           content: "<local-command-stdout>Compacted.</local-command-stdout>",
         ),
       ];
+      // Each record continues the one before it; a compaction boundary only
+      // logically, as Claude Code writes it.
+      List<Map<String, Object?>> chained(List<Map<String, Object?>> records) => [
+        for (final (index, record) in records.indexed)
+          {
+            ...record,
+            ...(record["subtype"] == "compact_boundary"
+                ? {"parentUuid": null, "logicalParentUuid": records[index - 1]["uuid"]}
+                : {"parentUuid": index == 0 ? null : records[index - 1]["uuid"]}),
+          },
+      ];
       const firstSummaryAt = "2026-10-07T12:24:44.708Z";
       const secondSummaryAt = "2026-10-07T12:26:10.215Z";
       Directory("${temp.path}/projects/-workspace").createSync(recursive: true);
       File("${temp.path}/projects/-workspace/$claudeSessionId.jsonl").writeAsStringSync(
-        [
+        chained([
           record(
             type: "user",
             uuid: "prompt",
@@ -652,7 +663,7 @@ void main() {
           ),
           ...compactRecords(round: 1, summaryAt: firstSummaryAt),
           ...compactRecords(round: 2, summaryAt: secondSummaryAt),
-        ].map(jsonEncode).join("\n"),
+        ]).map(jsonEncode).join("\n"),
       );
       const content = ClaudeContentMapper();
       final transcripts = ClaudeTranscriptCatalogRepository(
