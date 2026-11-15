@@ -46,6 +46,36 @@ void main() {
       expect(page.nextCursor, isNull);
     });
 
+    test("the audit file keeps a handoff stamped live", () async {
+      const handoff = MessageHandoff.sent(targetSessionId: "target", targetTitle: null);
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: const Message.user(
+          id: "m1",
+          sessionID: "ses_a",
+          agent: null,
+          time: MessageTime(created: 1, completed: null),
+          promptId: null,
+          invocation: null,
+          handoff: handoff,
+        ),
+      );
+      await export();
+
+      final page =
+          await history.service.getArchivedSessionMessages(sessionId: "ses_a") ?? fail("missing archived page");
+      expect(
+        [
+          for (final message in page.messages)
+            switch (message.info) {
+              MessageUser(:final handoff) => handoff,
+              _ => null,
+            },
+        ],
+        [handoff, null],
+      );
+    });
+
     test("rehydrates a released flattened part from an audit file", () async {
       await export();
       final raw = jsonDecodeMap(await history.archivedStorage.read(sessionId: "ses_a") ?? fail("missing audit file"));

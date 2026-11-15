@@ -210,12 +210,16 @@ void main() {
 
     const idle = NormalizedStatusEvent(sessionId: _source, status: SessionStatus.idle());
     final afterEcho = <String, (SendToSessionErrorCode, void Function())>{
-      "a stop": (SendToSessionErrorCode.summaryStopped, () {
-        prompts.onSummaryAccepted = (promptId) {
-          events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
-          aborts.add(_source);
-        };
-      }),
+      // The echo reaches the watch asynchronously; the stop comes after it.
+      "a stop": (
+        SendToSessionErrorCode.summaryStopped,
+        () {
+          prompts.onSummaryAccepted = (promptId) {
+            events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
+            Future(() => aborts.add(_source)).ignore();
+          };
+        },
+      ),
       "a session error": (
         SendToSessionErrorCode.summaryFailed,
         () => echoThen([const NormalizedOtherEvent(event: BridgeSseSessionError(sessionID: _source))]),
@@ -242,28 +246,43 @@ void main() {
           idle,
         ]),
       ),
-      "bridge shutdown": (SendToSessionErrorCode.summaryStopped, () {
-        prompts.onSummaryAccepted = (promptId) {
-          events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
-          service.beginShutdown();
-        };
-      }),
-      "a timeout": (SendToSessionErrorCode.summaryTimedOut, () {
-        service = buildService(summaryTimeout: const Duration(milliseconds: 20));
-        echoThen([]);
-      }),
-      "a missing summary": (SendToSessionErrorCode.summaryMissing, () {
-        echoThen([idle]);
-        history.messages = history.messages.take(3).toList();
-      }),
-      "a failed transcript write": (SendToSessionErrorCode.transcriptUnavailable, () {
-        echoThen([idle]);
-        transcripts.failure = const FormatException("disk full");
-      }),
-      "a target refusal": (SendToSessionErrorCode.targetRefused, () {
-        echoThen([idle]);
-        prompts.targetFailure = StateError("target down");
-      }),
+      "bridge shutdown": (
+        SendToSessionErrorCode.summaryStopped,
+        () {
+          prompts.onSummaryAccepted = (promptId) {
+            events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
+            Future(service.beginShutdown).ignore();
+          };
+        },
+      ),
+      "a timeout": (
+        SendToSessionErrorCode.summaryTimedOut,
+        () {
+          service = buildService(summaryTimeout: const Duration(milliseconds: 20));
+          echoThen([]);
+        },
+      ),
+      "a missing summary": (
+        SendToSessionErrorCode.summaryMissing,
+        () {
+          echoThen([idle]);
+          history.messages = history.messages.take(3).toList();
+        },
+      ),
+      "a failed transcript write": (
+        SendToSessionErrorCode.transcriptUnavailable,
+        () {
+          echoThen([idle]);
+          transcripts.failure = const FormatException("disk full");
+        },
+      ),
+      "a target refusal": (
+        SendToSessionErrorCode.targetRefused,
+        () {
+          echoThen([idle]);
+          prompts.targetFailure = StateError("target down");
+        },
+      ),
     };
     for (final MapEntry(key: name, value: (code, arrange)) in afterEcho.entries) {
       test("after the echo: $name", () async {
@@ -285,20 +304,32 @@ void main() {
     });
 
     final beforeEcho = <String, (SendToSessionErrorCode, void Function())>{
-      "a stop": (SendToSessionErrorCode.summaryStopped, () {
-        prompts.onSummaryAccepted = (_) => aborts.add(_source);
-      }),
-      "a session error": (SendToSessionErrorCode.summaryFailed, () {
-        prompts.onSummaryAccepted = (_) => events.add(
-          const NormalizedOtherEvent(event: BridgeSseSessionError(sessionID: _source)),
-        );
-      }),
-      "a timeout": (SendToSessionErrorCode.summaryTimedOut, () {
-        service = buildService(summaryTimeout: const Duration(milliseconds: 20));
-      }),
-      "a request whose outcome is unknown": (SendToSessionErrorCode.sourceUnavailable, () {
-        prompts.summaryFailure = StateError("plugin timed out");
-      }),
+      "a stop": (
+        SendToSessionErrorCode.summaryStopped,
+        () {
+          prompts.onSummaryAccepted = (_) => aborts.add(_source);
+        },
+      ),
+      "a session error": (
+        SendToSessionErrorCode.summaryFailed,
+        () {
+          prompts.onSummaryAccepted = (_) => events.add(
+            const NormalizedOtherEvent(event: BridgeSseSessionError(sessionID: _source)),
+          );
+        },
+      ),
+      "a timeout": (
+        SendToSessionErrorCode.summaryTimedOut,
+        () {
+          service = buildService(summaryTimeout: const Duration(milliseconds: 20));
+        },
+      ),
+      "a request whose outcome is unknown": (
+        SendToSessionErrorCode.sourceUnavailable,
+        () {
+          prompts.summaryFailure = StateError("plugin timed out");
+        },
+      ),
     };
     for (final MapEntry(key: name, value: (code, arrange)) in beforeEcho.entries) {
       test("before the echo: $name", () async {
@@ -640,19 +671,18 @@ Message _echo({required String promptId}) => Message.user(
   handoff: null,
 );
 
-MessageWithParts _userMessage({required String id, required String text, MessageHandoff? handoff}) =>
-    MessageWithParts(
-      info: Message.user(
-        id: id,
-        sessionID: _source,
-        agent: null,
-        time: null,
-        promptId: null,
-        invocation: null,
-        handoff: handoff,
-      ),
-      parts: [MessagePart.text(id: "$id-text", sessionID: _source, messageID: id, text: text)],
-    );
+MessageWithParts _userMessage({required String id, required String text, MessageHandoff? handoff}) => MessageWithParts(
+  info: Message.user(
+    id: id,
+    sessionID: _source,
+    agent: null,
+    time: null,
+    promptId: null,
+    invocation: null,
+    handoff: handoff,
+  ),
+  parts: [MessagePart.text(id: "$id-text", sessionID: _source, messageID: id, text: text)],
+);
 
 MessageWithParts _assistantMessage({required String id, required String text}) => MessageWithParts(
   info: Message.assistant(

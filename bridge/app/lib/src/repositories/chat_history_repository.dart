@@ -1660,8 +1660,8 @@ class ChatHistoryRepository({
         source: message.toJson(),
         fields: {
           "id", "sessionID", "promptId", "time", "agent", "modelID", "providerID",
-          // Only a live turn the bridge sent carries it; its replay doesn't.
-          "invocation",
+          // Only a live turn the bridge sent carries them; its replay doesn't.
+          "invocation", "handoff",
           // An error notice says that a turn failed. Its wording may differ
           // between live and replay: a backend can send the real reason live
           // and save only a fixed closing row (see [_reconciledNotice]).

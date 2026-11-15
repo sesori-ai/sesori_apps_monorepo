@@ -511,8 +511,9 @@ class SessionRepository({
   /// [sessionId] into its not-sent form, so an echo that has yet to arrive,
   /// or a later live update of one that has, is stamped as not sent.
   void markHandoffNotSent({required String sessionId, required String promptId}) {
-    if (_stamps.stampFor(sessionId: sessionId, promptId: promptId)
-        case PromptStampHandoff(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle))) {
+    if (_stamps.stampFor(sessionId: sessionId, promptId: promptId) case PromptStampHandoff(
+      handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle),
+    )) {
       _stamps.record(
         sessionId: sessionId,
         promptId: promptId,
@@ -561,7 +562,11 @@ class SessionRepository({
           // Recorded before the plugin call: its echo can arrive before the
           // call returns. A definitely refused send forgets it again.
           if (handoff != null) {
-            _stamps.record(sessionId: sessionId, promptId: promptId, stamp: PromptStampHandoff(handoff: handoff));
+            _stamps.record(
+              sessionId: sessionId,
+              promptId: promptId,
+              stamp: PromptStampHandoff(handoff: handoff),
+            );
           }
           return plugin.sendPrompt(
             sessionId: binding.backendSessionId,

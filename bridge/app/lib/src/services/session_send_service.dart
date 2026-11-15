@@ -163,36 +163,38 @@ class SessionSendService({
     required Session target,
     required String promptId,
     required String requestText,
-  }) =>
-      _operations.dispatch(
-        sessionId: source.id,
-        operation: SessionOperation.sendToSession,
-        body: () async {
-          if (await _sourceRefusal(sessionId: source.id, pluginId: source.pluginId) case final code?) {
-            throw _rejected(code: code);
-          }
-          final settings = SessionPromptService.settingsFrom(defaults: source.promptDefaults);
-          try {
-            await _prompts.sendPromptAlreadyReserved(
-              sessionId: source.id,
-              promptId: promptId,
-              parts: [PromptPart.text(text: requestText)],
-              variant: settings.variant,
-              fastMode: settings.fastMode,
-              agent: settings.agent,
-              model: settings.model,
-              handoff: MessageHandoff.sent(targetSessionId: target.id, targetTitle: _nonBlank(text: target.title)),
-            );
-          } on Object catch (error, stackTrace) {
-            throw SessionSendRejectedException(
-              code: SendToSessionErrorCode.sourceUnavailable,
-              userFacingReason: null,
-              cause: error,
-              causeStackTrace: stackTrace,
-            );
-          }
-        },
-      );
+  }) => _operations.dispatch(
+    sessionId: source.id,
+    operation: SessionOperation.sendToSession,
+    body: () async {
+      if (await _sourceRefusal(sessionId: source.id, pluginId: source.pluginId) case final code?) {
+        throw _rejected(code: code);
+      }
+      final settings = SessionPromptService.settingsFrom(defaults: source.promptDefaults);
+      try {
+        await _prompts.sendPromptAlreadyReserved(
+          sessionId: source.id,
+          promptId: promptId,
+          parts: [PromptPart.text(text: requestText)],
+          variant: settings.variant,
+          fastMode: settings.fastMode,
+          agent: settings.agent,
+          model: settings.model,
+          handoff: MessageHandoff.sent(
+            targetSessionId: target.id,
+            targetTitle: _nonBlank(text: target.title),
+          ),
+        );
+      } on Object catch (error, stackTrace) {
+        throw SessionSendRejectedException(
+          code: SendToSessionErrorCode.sourceUnavailable,
+          userFacingReason: null,
+          cause: error,
+          causeStackTrace: stackTrace,
+        );
+      }
+    },
+  );
 
   /// Why the source cannot write a summary now, or null when it is ready.
   ///

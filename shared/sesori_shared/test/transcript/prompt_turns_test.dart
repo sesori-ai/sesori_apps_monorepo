@@ -137,7 +137,15 @@ void main() {
         attachment: MessageAttachment.metadata(mime: "image/png", filename: " shot.png "),
       );
       const attachmentOnly = MessageWithParts(
-        info: Message.user(invocation: null, handoff: null, id: "u1", sessionID: "s", agent: null, time: null, promptId: null),
+        info: Message.user(
+          invocation: null,
+          handoff: null,
+          id: "u1",
+          sessionID: "s",
+          agent: null,
+          time: null,
+          promptId: null,
+        ),
         parts: [file],
       );
 

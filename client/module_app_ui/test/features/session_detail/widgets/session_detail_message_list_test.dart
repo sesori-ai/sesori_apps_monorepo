@@ -592,7 +592,15 @@ class _UnpreviewedImageRepository() extends Mock implements MessageImageReposito
 
 /// A prompt of an attached screenshot and a line of [text].
 MessageWithParts _imagePrompt({required String messageId, required String text}) => MessageWithParts(
-  info: Message.user(invocation: null, handoff: null, promptId: null, id: messageId, sessionID: "session-1", agent: null, time: null),
+  info: Message.user(
+    invocation: null,
+    handoff: null,
+    promptId: null,
+    id: messageId,
+    sessionID: "session-1",
+    agent: null,
+    time: null,
+  ),
   parts: [
     MessagePart.file(
       id: "$messageId-image",
