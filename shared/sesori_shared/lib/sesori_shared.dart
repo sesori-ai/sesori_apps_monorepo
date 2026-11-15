@@ -54,6 +54,7 @@ export "src/models/sesori/mcp.dart";
 export "src/models/sesori/mcp_action.dart";
 export "src/models/sesori/mcp_authentication.dart";
 export "src/models/sesori/message.dart";
+export "src/models/sesori/message_handoff.dart";
 export "src/models/sesori/message_part.dart";
 export "src/models/sesori/message_with_parts.dart";
 export "src/models/sesori/notification_data.dart";

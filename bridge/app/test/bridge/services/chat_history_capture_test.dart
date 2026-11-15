@@ -2630,6 +2630,7 @@ Message _message({required String id}) => _messageAt(id: id, createdAt: 1);
 
 Message _messageAt({required String id, required int createdAt}) => Message.user(
   invocation: null,
+  handoff: null,
   promptId: null,
   id: id,
   sessionID: "ses_a",
@@ -2656,6 +2657,7 @@ MessageWithParts _messageWithText({
 }) => MessageWithParts(
   info: Message.user(
     invocation: null,
+    handoff: null,
     promptId: promptId,
     id: id,
     sessionID: "ses_a",

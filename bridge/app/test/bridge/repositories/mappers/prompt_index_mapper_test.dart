@@ -8,7 +8,7 @@ SequencedMessage _user({required int seq, required String text}) =>
 SequencedMessage _invokedUser({required int seq, required String text, required CommandInvocation? invocation}) => (
   seq: seq,
   message: MessageWithParts(
-    info: Message.user(invocation: invocation, id: "u$seq", sessionID: "s", agent: null, time: null, promptId: null),
+    info: Message.user(invocation: invocation, handoff: null, id: "u$seq", sessionID: "s", agent: null, time: null, promptId: null),
     parts: [MessagePart.text(id: "t$seq", sessionID: "s", messageID: "u$seq", text: text)],
   ),
 );

@@ -698,7 +698,10 @@ class FakeSessionRepository({
   void markSessionIdle({required String sessionId}) {}
 
   @override
-  Message stampLiveInvocation({required Message message}) => message;
+  Message stampLiveMessage({required Message message}) => message;
+
+  @override
+  void markHandoffNotSent({required String sessionId, required String promptId}) {}
 
   @override
   List<QueuedSessionPrompt> stampQueuedCommandSources({
@@ -816,6 +819,7 @@ class FakeSessionRepository({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required MessageHandoff? handoff,
   }) async {
     await _plugin.sendPrompt(
       fastMode: fastMode,

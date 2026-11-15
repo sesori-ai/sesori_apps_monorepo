@@ -1097,6 +1097,13 @@ class ChatHistoryService({
     await _backfillSessionForRead(sessionId: sessionId);
   }
 
+  /// Turns the stored `sent` handoff of the user message [messageId] into its
+  /// not-sent form, after the session's pending captures.
+  Future<void> markHandoffNotSent({required String sessionId, required String messageId}) => _enqueue(
+    sessionId: sessionId,
+    write: () => _chatHistoryRepository.markHandoffNotSent(sessionId: sessionId, messageId: messageId),
+  );
+
   Future<SessionPromptDefaults?> _backfillSessionForRead({required String sessionId}) {
     final inFlight = _inFlightBackfills[sessionId];
     if (inFlight != null) return inFlight;

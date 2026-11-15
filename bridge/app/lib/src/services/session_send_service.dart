@@ -66,6 +66,9 @@ class SessionSendService({
     try {
       await _requestSummary(source: source, target: target, promptId: promptId);
       await _finishAfterSummaryRequest(source: source, target: target, turn: turn);
+    } on Object {
+      await _markSummaryNotSent(sessionId: source.id, promptId: promptId, requestMessageId: turn.requestMessageId());
+      rethrow;
     } finally {
       await turn.stop();
     }
@@ -93,6 +96,28 @@ class SessionSendService({
     await _deliverHandoff(source: source, target: target, transcript: transcript, summary: summary);
   }
 
+  /// Keeps the summary exchange of a send that did not complete hidden behind
+  /// its marker: the request's stamp turns to not sent, both for an echo that
+  /// has yet to arrive and in the stored history once it has. Without a stamp
+  /// (a refused request, or a check that failed before it) nothing changes.
+  Future<void> _markSummaryNotSent({
+    required String sessionId,
+    required String promptId,
+    required String? requestMessageId,
+  }) async {
+    _sessions.markHandoffNotSent(sessionId: sessionId, promptId: promptId);
+    if (requestMessageId == null) return;
+    try {
+      await _history.markHandoffNotSent(sessionId: sessionId, messageId: requestMessageId);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "Could not mark summary request $requestMessageId of session $sessionId as not sent",
+        error,
+        stackTrace,
+      );
+    }
+  }
+
   Future<bool> _hasNoMessages({required String sessionId}) async {
     final newest = await _history.getSessionMessages(
       sessionId: sessionId,
@@ -117,16 +142,17 @@ class SessionSendService({
           if (await _sourceRefusal(sessionId: source.id, pluginId: source.pluginId) case final code?) {
             throw _rejected(code: code);
           }
-          final defaults = _promptSettings(defaults: source.promptDefaults);
+          final settings = SessionPromptService.settingsFrom(defaults: source.promptDefaults);
           try {
             await _prompts.sendPromptAlreadyReserved(
               sessionId: source.id,
               promptId: promptId,
               parts: [PromptPart.text(text: _summaryRequestText(targetTitle: target.title))],
-              variant: defaults.variant,
-              fastMode: defaults.fastMode,
-              agent: defaults.agent,
-              model: defaults.model,
+              variant: settings.variant,
+              fastMode: settings.fastMode,
+              agent: settings.agent,
+              model: settings.model,
+              handoff: MessageHandoff.sent(targetSessionId: target.id, targetTitle: _nonBlank(text: target.title)),
             );
           } on Object catch (error, stackTrace) {
             throw SessionSendRejectedException(
@@ -215,6 +241,7 @@ class SessionSendService({
     });
     return (
       ended: ended.future,
+      requestMessageId: () => summaryRequestMessageId,
       stop: () async {
         await eventSubscription.cancel();
         await abortSubscription.cancel();
@@ -277,7 +304,26 @@ class SessionSendService({
     Log.i(
       "Session $sessionId summary has ${summary.length} characters after $requestIndex transcript messages",
     );
-    return (transcript: messages.sublist(0, requestIndex), summary: summary);
+    return (transcript: _withoutSummaryExchanges(messages: messages.sublist(0, requestIndex)), summary: summary);
+  }
+
+  /// [messages] without the summary exchanges of earlier sends: each request
+  /// Sesori wrote to the source, and the replies up to the next user message.
+  /// They stay hidden behind their marker in the source, so the target never
+  /// reads them either.
+  static List<MessageWithParts> _withoutSummaryExchanges({required List<MessageWithParts> messages}) {
+    final kept = <MessageWithParts>[];
+    var inSummaryExchange = false;
+    for (final message in messages) {
+      if (message.info case final MessageUser user) {
+        inSummaryExchange = switch (user.handoff) {
+          MessageHandoffSent() || MessageHandoffNotSent() => true,
+          MessageHandoffReceived() || MessageHandoffUnknown() || null => false,
+        };
+      }
+      if (!inSummaryExchange) kept.add(message);
+    }
+    return kept;
   }
 
   /// Saves [transcript] for [target] and prompts [target] with [summary] and
@@ -309,7 +355,7 @@ class SessionSendService({
     }
     Log.i("Saved the transcript of session ${source.id} for ${target.id} at $transcriptPath (${bytes.length} bytes)");
 
-    final defaults = _promptSettings(defaults: target.promptDefaults);
+    final settings = SessionPromptService.settingsFrom(defaults: target.promptDefaults);
     try {
       await _prompts.sendPrompt(
         sessionId: target.id,
@@ -325,12 +371,18 @@ class SessionSendService({
             ),
           ),
         ],
-        variant: defaults.variant,
-        fastMode: defaults.fastMode,
-        agent: defaults.agent,
-        model: defaults.model,
+        variant: settings.variant,
+        fastMode: settings.fastMode,
+        agent: settings.agent,
+        model: settings.model,
         command: null,
         commandSource: null,
+        handoff: MessageHandoff.received(
+          sourceSessionId: source.id,
+          sourceTitle: _nonBlank(text: source.title),
+          summary: summary,
+          transcriptPath: transcriptPath,
+        ),
       );
     } on Object catch (error, stackTrace) {
       throw SessionSendRejectedException(
@@ -371,20 +423,6 @@ class SessionSendService({
         "The full transcript is at `$transcriptPath`. Read it only if you need details the summary leaves out.";
   }
 
-  /// A session's remembered prompt settings, as a prompt to it takes them.
-  static ({SessionVariant? variant, bool fastMode, String? agent, PromptModel? model}) _promptSettings({
-    required SessionPromptDefaults? defaults,
-  }) {
-    final model = defaults?.model;
-    final variant = model?.variant;
-    return (
-      variant: variant == null ? null : SessionVariant(id: variant),
-      fastMode: defaults?.fastMode ?? false,
-      agent: defaults?.agent,
-      model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
-    );
-  }
-
   static String? _nonBlank({required String? text}) {
     final trimmed = text?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
@@ -396,6 +434,6 @@ class SessionSendService({
 }
 
 /// The summary turn being watched: [ended] completes with the summary
-/// request's user message id, and [stop] ends the watch. Stopping twice is
-/// harmless.
-typedef _SummaryTurn = ({Future<String> ended, Future<void> Function() stop});
+/// request's user message id, [requestMessageId] reads that id once its echo
+/// has arrived, and [stop] ends the watch. Stopping twice is harmless.
+typedef _SummaryTurn = ({Future<String> ended, String? Function() requestMessageId, Future<void> Function() stop});

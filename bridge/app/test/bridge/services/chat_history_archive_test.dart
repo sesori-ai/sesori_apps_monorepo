@@ -547,6 +547,7 @@ Map<String, dynamic> _storedSessionJson() => {
 
 Message _message({required String id}) => Message.user(
   invocation: null,
+  handoff: null,
   promptId: null,
   id: id,
   sessionID: "ses_a",

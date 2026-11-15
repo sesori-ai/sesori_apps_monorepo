@@ -606,6 +606,7 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
 MessageWithParts _message({required String id}) => MessageWithParts(
   info: Message.user(
     invocation: null,
+    handoff: null,
     promptId: null,
     id: id,
     sessionID: _sessionId,

@@ -412,9 +412,9 @@ void main() {
         agent: null,
         model: null,
       );
-      const echo = Message.user(id: "m1", sessionID: "s1", agent: null, time: null, promptId: "sent", invocation: null);
+      const echo = Message.user(id: "m1", sessionID: "s1", agent: null, time: null, promptId: "sent", invocation: null, handoff: null);
 
-      expect(repository.stampLiveInvocation(message: echo), echo);
+      expect(repository.stampLiveMessage(message: echo), echo);
     });
 
     test("getQueuedPrompts names the source of each command this bridge sent, not a definitely refused one", () async {
@@ -996,7 +996,7 @@ void main() {
           parts: const [PromptPart.text(text: "Prompt")],
           variant: variant,
           agent: null,
-          model: null,
+          model: null, handoff: null,
         );
         expect(plugin.lastSendPromptVariant, equals(variant?.id));
         expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
@@ -1036,7 +1036,7 @@ void main() {
           parts: const [],
           variant: null,
           agent: null,
-          model: null,
+          model: null, handoff: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
@@ -1062,7 +1062,7 @@ void main() {
           parts: const [],
           variant: null,
           agent: null,
-          model: null,
+          model: null, handoff: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
       );
@@ -2031,7 +2031,7 @@ void main() {
         parts: const [],
         variant: null,
         agent: null,
-        model: null,
+        model: null, handoff: null,
       );
       expect(plugin.primedDirectories.last, (sessionId: "w1", directory: worktree));
 
@@ -2064,7 +2064,7 @@ void main() {
           parts: const [],
           variant: null,
           agent: null,
-          model: null,
+          model: null, handoff: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
@@ -2369,7 +2369,7 @@ void main() {
           parts: const [],
           variant: null,
           agent: null,
-          model: null,
+          model: null, handoff: null,
         ),
         () async => await repository.getSessionMessages(sessionId: "gone"),
         () => repository.notifySessionArchived(sessionId: "gone"),
