@@ -3,7 +3,7 @@
 | Step | Status | PR |
 | --- | --- | --- |
 | 1 Raise the plan | Done | #2587 |
-| 2 Transcript Markdown and file store | In PR | |
+| 2 Transcript Markdown and file store | In PR | #2588 |
 | 3 Bridge send flow | Not started | |
 | 4 Handoff marker in the bridge | Not started | |
 | 5 Claude read rules (transcripts and uploads) | Not started | |

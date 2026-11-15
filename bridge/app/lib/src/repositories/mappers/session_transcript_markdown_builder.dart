@@ -41,7 +41,7 @@ class const SessionTranscriptMarkdownBuilder() {
       for (final (index, message) in messages.indexed) ...[
         _heading(number: index + 1, message: message.info),
         if (message.info case MessageError(:final errorName, :final errorMessage))
-          "**$errorName:** ${errorMessage.trim()}",
+          "**$errorName**\n\n${_cappedBlock(text: errorMessage)}",
         for (final part in message.parts) ?_part(part: part),
       ],
     ];
@@ -148,12 +148,12 @@ class const SessionTranscriptMarkdownBuilder() {
   /// [text] in a fenced block, cut to [maxToolTextLength] characters with a
   /// note after the block when it is longer.
   static String _cappedBlock({required String text}) {
+    // A string with no more code units than the cap has no more characters.
     if (text.length <= maxToolTextLength) return _fenced(text: text);
-    var end = maxToolTextLength;
-    // Never split a surrogate pair.
-    final lastKept = text.codeUnitAt(end - 1);
-    if (lastKept >= 0xD800 && lastKept <= 0xDBFF) end--;
-    return "${_fenced(text: text.substring(0, end))}\n[truncated: ${text.length - end} characters]";
+    final characters = text.runes.toList(growable: false);
+    if (characters.length <= maxToolTextLength) return _fenced(text: text);
+    final kept = String.fromCharCodes(characters.take(maxToolTextLength));
+    return "${_fenced(text: kept)}\n[truncated: ${characters.length - maxToolTextLength} characters]";
   }
 
   /// A fence longer than any backtick run in [text], so the text cannot close

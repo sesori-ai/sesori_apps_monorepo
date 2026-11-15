@@ -82,7 +82,11 @@ All tests passed!
 
 ## 3. Error (agent: build, model: anthropic/claude-opus) · 2026-11-15 10:02:00 UTC
 
-**APIError:** Rate limited
+**APIError**
+
+```
+Rate limited
+```
 ''');
   });
 
@@ -263,12 +267,9 @@ _No messages._
       );
     });
 
-    test("the cut never splits a surrogate pair", () {
+    test("the cap counts characters, so emoji are kept whole and counted once", () {
       const cap = SessionTranscriptMarkdownBuilder.maxToolTextLength;
-      // The emoji's two code units straddle the cap.
-      final output = "${"a" * (cap - 1)}😀b";
-
-      final rendered = renderParts(
+      String renderOutput({required String output}) => renderParts(
         parts: [
           _tool(
             tool: "bash",
@@ -283,7 +284,15 @@ _No messages._
         ],
       );
 
-      expect(rendered, endsWith("```\n${"a" * (cap - 1)}\n```\n[truncated: 3 characters]"));
+      // Over the cap in code units, but not in characters.
+      final fits = "😀" * cap;
+      expect(renderOutput(output: fits), endsWith("```\n$fits\n```"));
+
+      // The emoji's two code units straddle the cap in code units.
+      expect(
+        renderOutput(output: "${"a" * (cap - 1)}😀😀b"),
+        endsWith("```\n${"a" * (cap - 1)}😀\n```\n[truncated: 2 characters]"),
+      );
     });
   });
 
