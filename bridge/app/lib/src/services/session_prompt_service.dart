@@ -271,7 +271,8 @@ class SessionPromptService({
 
   /// The parts the plugin receives: files it can't take inline are saved and
   /// named by path. Called only once a send is going ahead, after the accepted
-  /// check, so a repeated or refused prompt saves no files.
+  /// check and the session's own checks (archived, busy, turn), so a repeated
+  /// prompt, or one those checks refuse, saves no files.
   Future<List<PromptPart>> _deliverableParts({required String sessionId, required List<PromptPart> parts}) async =>
       await _promptPartDelivery.deliverableParts(
         sessionId: sessionId,
