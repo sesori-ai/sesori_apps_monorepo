@@ -3492,6 +3492,7 @@ Future<_Composer> _pumpComposer({
                     isBusy: busy,
                     hasMessages: true,
                     canSend: canSend,
+                    submitAppearance: null,
                     onSend: ({required draft, required command, required attachments}) {
                       composer.sent.add((text: draft.text, command: command?.name));
                     },

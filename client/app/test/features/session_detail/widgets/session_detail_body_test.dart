@@ -567,6 +567,7 @@ void main() {
                 isBusy: false,
                 hasMessages: false,
                 canSend: true,
+                submitAppearance: null,
                 onSend: ({required draft, required command, required attachments}) {
                   submittedDraft = draft;
                   submitted = attachments;

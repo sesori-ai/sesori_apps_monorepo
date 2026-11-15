@@ -130,6 +130,7 @@ Future<void> _pumpComposer({
             isBusy: false,
             hasMessages: true,
             canSend: true,
+            submitAppearance: null,
             onSend: onSend,
             onVoiceTranscriptionFinished: null,
             onDraftChanged: (_) {},

@@ -115,7 +115,9 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
       key: ValueKey(("home-composer-pane", _launches)),
       create: (_) => createNewSessionCubit(
         locator: getIt,
-        project: _project(projects: projects, projectId: projectId),
+        purpose: NewSessionPurpose.startSession(
+          project: _project(projects: projects, projectId: projectId),
+        ),
       ),
       child: MultiBlocListener(
         listeners: [
@@ -200,6 +202,8 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
             child: MobileComposerPresentationScope(child: child),
           ),
           banner: ConnectionBanner.maybeFor(context),
+          aboveComposer: null,
+          submitAppearance: null,
           pageChrome: null,
         ),
         // A list still loading may yet name it.

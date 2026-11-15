@@ -16,6 +16,7 @@ import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../l10n/app_localizations.dart";
 import "../../../widgets/composer_or_notice.dart";
 import "../composer_presentation_scope.dart";
 import "command_picker.dart";
@@ -151,6 +152,10 @@ typedef VoiceTranscriptionFinishedCallback = void Function({
   required AnalyticsVoiceMode mode,
 });
 
+/// What the composer's send button says and shows, for a composer whose
+/// submit is not a send.
+class const PromptSubmitAppearance({required final String label, required final IconData icon});
+
 class const PromptInput({
   super.key,
   required final bool isBusy,
@@ -164,6 +169,9 @@ class const PromptInput({
   /// is false the draft simply waits in the field.
   required final bool canSend,
   required final PromptSubmitCallback onSend,
+
+  /// Null for Send with its arrow.
+  required final PromptSubmitAppearance? submitAppearance,
 
   /// Told what became of a dictation's words, once that is decided.
   required final VoiceTranscriptionFinishedCallback? onVoiceTranscriptionFinished,
@@ -2684,7 +2692,7 @@ class _PromptInputState() extends State<PromptInput> {
     // its label, translated or at a larger text size, would not fit over them.
     final sendWidth = max(
       _pointerVoiceGroupWidth,
-      PregoVoiceSendButton.widthFor(context: context, label: loc.sessionDetailSend),
+      PregoVoiceSendButton.widthFor(context: context, label: _submitLabel(loc)),
     );
     final groupWidth = merged ? sendWidth + sendEnd : _pointerVoiceGroupWidth;
     final motion = prefersReducedMotion(context) ? Duration.zero : _morphDuration;
@@ -2728,10 +2736,10 @@ class _PromptInputState() extends State<PromptInput> {
                 duration: _morphDuration,
                 curve: merged ? _intoClearRowCurve : Curves.linear,
                 child: Tooltip(
-                  message: loc.sessionDetailSend,
+                  message: _submitLabel(loc),
                   excludeFromSemantics: true,
                   child: PregoVoiceSendButton(
-                    label: loc.sessionDetailSend,
+                    label: _submitLabel(loc),
                     enabled: _voicePresentation == _VoicePresentation.recording,
                     onPressed: () => unawaited(_handleRecordEnd()),
                   ),
@@ -3544,7 +3552,7 @@ class _PromptInputState() extends State<PromptInput> {
                 // Only the fade out: a disabled send at rest still shows its tooltip.
                 ignoring: !enabled && !settled,
                 child: PregoButtonSemantics(
-                  label: context.loc.sessionDetailSend,
+                  label: _submitLabel(context.loc),
                   enabled: enabled,
                   showsTooltip: true,
                   child: _buildSendLook(
@@ -3563,10 +3571,12 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
+  String _submitLabel(AppLocalizations loc) => widget.submitAppearance?.label ?? loc.sessionDetailSend;
+
   /// Send's look for [onPressed], with no screen reader node of its own.
   Widget _buildSendLook({required VoidCallback? onPressed}) {
     return PregoButtonsSolid.iconOnly(
-      leadingIcon: TablerRegular.arrow_up,
+      leadingIcon: widget.submitAppearance?.icon ?? TablerRegular.arrow_up,
       semanticLabel: null,
       hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
       size: _actionSize,

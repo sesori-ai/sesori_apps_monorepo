@@ -37,10 +37,12 @@ class const NewSessionScreen({
     return BlocProvider(
       create: (context) => createNewSessionCubit(
         locator: getIt,
-        project: NewSessionProject(
-          id: projectId,
-          name: projectName,
-          kind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+        purpose: NewSessionPurpose.startSession(
+          project: NewSessionProject(
+            id: projectId,
+            name: projectName,
+            kind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+          ),
         ),
       ),
       child: Builder(builder: (context) => _build(context: context)),
@@ -84,6 +86,8 @@ class const NewSessionScreen({
         );
       },
       banner: ConnectionBanner.maybeFor(context),
+      aboveComposer: null,
+      submitAppearance: null,
       pageChrome: null,
     );
   }

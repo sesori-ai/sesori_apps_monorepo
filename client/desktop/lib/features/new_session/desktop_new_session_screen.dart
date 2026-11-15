@@ -26,10 +26,12 @@ class const DesktopNewSessionScreen({
     return BlocProvider(
       create: (context) => createNewSessionCubit(
         locator: getIt,
-        project: NewSessionProject(
-          id: projectId,
-          name: projectName,
-          kind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+        purpose: NewSessionPurpose.startSession(
+          project: NewSessionProject(
+            id: projectId,
+            name: projectName,
+            kind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+          ),
         ),
       ),
       child: DesktopNewSessionView(
@@ -68,6 +70,8 @@ class const DesktopNewSessionView({
         ),
         // The desktop root owns its single connection banner.
         banner: null,
+        aboveComposer: null,
+        submitAppearance: null,
         pageChrome: NewSessionPageChrome(
           maxContentWidth: desktopComposerWidth,
           transcriptWidth: desktopTranscriptWidth,

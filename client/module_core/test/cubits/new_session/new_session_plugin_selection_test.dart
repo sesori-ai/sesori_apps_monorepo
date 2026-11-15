@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_composer_presentation.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
+import "package:sesori_dart_core/src/cubits/new_session/new_session_purpose.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/errors/remote_failure_reason.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
@@ -179,7 +180,9 @@ void main() {
       ),
       dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
       pluginManagementService: pluginManagementService ?? stubbedPluginManagementService(),
-      project: NewSessionProject(id: projectId ?? "project-1", name: null, kind: ProjectKind.folder),
+      purpose: NewSessionPurpose.startSession(
+        project: NewSessionProject(id: projectId ?? "project-1", name: null, kind: ProjectKind.folder),
+      ),
     );
 
     void establishSelectionScope({required String bridgeId}) {

@@ -68,6 +68,13 @@ class const NewSessionView({
 
   /// Null keeps the glass bar over options with a bottom-anchored composer.
   required final NewSessionPageChrome? pageChrome,
+
+  /// Shown right above the composer, such as a task's schedule; null for
+  /// nothing.
+  required final Widget? aboveComposer,
+
+  /// Null for Send.
+  required final PromptSubmitAppearance? submitAppearance,
 }) extends StatefulWidget {
   @override
   State<NewSessionView> createState() => _NewSessionViewState();
@@ -225,7 +232,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
           style: TextStyle(color: prego.colors.fgErrorPrimary),
         ),
       ),
-      NewSessionPhaseIdle() || NewSessionPhaseSending() || null => null,
+      NewSessionPhaseIdle() || NewSessionPhaseSending() || NewSessionPhaseTaskSubmitted() || null => null,
     };
   }
 
@@ -459,6 +466,11 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                             ],
                           ),
                         ),
+                        if (widget.aboveComposer case final aboveComposer?)
+                          Padding(
+                            padding: const EdgeInsets.only(top: PregoSpacing.lg),
+                            child: aboveComposer,
+                          ),
                         // The gap above the composer folds with it, so the
                         // centred column never snaps by the gap.
                         _AnimatedFold(
@@ -570,7 +582,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
           onFocusChange: (focused) => context.read<NewSessionCubit>().reportComposerFocus(focused: focused),
           child: PromptInput(
             // One draft whatever the project, so a project change keeps it.
-            draftIdentity: ComposerDraftRepository.newSessionIdentity,
+            draftIdentity: cubit.composerDraftIdentity,
             restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
             initialDraft: context.read<NewSessionCubit>().composerDraft,
             initialSelection: null,
@@ -592,10 +604,15 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             // The first message is in the transcript once it is sending.
             hasMessages: isSending,
             canSend: cubit.canSubmit,
-            attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
+            attachmentsSupported: cubit.offersAttachments ? composerData?.plugin?.supportsPromptAttachments : false,
             // Unresolved until a bridge has answered discovery.
-            fileUploadsSupported: composerData?.plugins == null ? null : composerData?.supportsFileUploads,
+            fileUploadsSupported: !cubit.offersAttachments
+                ? false
+                : composerData?.plugins == null
+                ? null
+                : composerData?.supportsFileUploads,
             isBusy: false,
+            submitAppearance: widget.submitAppearance,
             onSend: ({required draft, required command, required attachments}) =>
                 context.read<NewSessionCubit>().submit(
                   draft: draft,
@@ -642,6 +659,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       NewSessionPhaseRestoringSubmission() ||
       NewSessionPhaseCreationError() ||
       NewSessionPhaseDiscoveryError() ||
+      NewSessionPhaseTaskSubmitted() ||
       null => null,
     };
     final isSending = sendingPhase != null;
@@ -652,6 +670,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       NewSessionPhaseSending() ||
       NewSessionPhaseCreationError() ||
       NewSessionPhaseDiscoveryError() ||
+      NewSessionPhaseTaskSubmitted() ||
       null => null,
     };
     final restoredAttachments = switch (restoringSubmission) {
@@ -856,6 +875,8 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                     ),
                   ),
                 ),
+                if (widget.aboveComposer case final aboveComposer?)
+                  Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: aboveComposer),
                 _AnimatedFold(
                   shown: composerShown,
                   gap: 0,
