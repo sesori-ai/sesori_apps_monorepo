@@ -19,6 +19,8 @@ import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
 import "tables/new_session_defaults_table.dart";
 import "tables/projects_table.dart";
+import "tables/scheduled_task_runs_table.dart";
+import "tables/scheduled_tasks_table.dart";
 import "tables/session_continuation_table.dart";
 import "tables/session_options_cache_table.dart";
 import "tables/session_table.dart";
@@ -40,6 +42,8 @@ part "database.g.dart";
     AcceptedPromptsTable,
     SessionContinuationTable,
     SideChatExchangesTable,
+    ScheduledTasksTable,
+    ScheduledTaskRunsTable,
   ],
   daos: [ProjectsDao, SessionDao, CatalogHydrationsDao],
 )
@@ -47,7 +51,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 26;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -361,6 +365,15 @@ class AppDatabase(super.e) extends _$AppDatabase {
       from24To25: (m, schema) async {
         await m.createTable(schema.sideChatExchanges);
         await m.createIndex(schema.idxSideChatExchangesSession);
+      },
+      from25To26: (m, schema) async {
+        // No task existed before v26, so every session starts without one.
+        await m.createTable(schema.scheduledTasks);
+        await m.createIndex(schema.idxScheduledTasksNextDue);
+        await m.createTable(schema.scheduledTaskRuns);
+        await m.createIndex(schema.idxScheduledTaskRunsTask);
+        await m.createIndex(schema.idxScheduledTaskRunsSession);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.scheduledTaskId);
       },
     ),
     beforeOpen: (details) async {

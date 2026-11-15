@@ -311,15 +311,33 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
 
 Editing rewinds the conversation in place: the edited message and everything
 after it leave the session, then the edited message is sent. Files are never
-touched. The bridge refuses an edit of a session's first message for now,
-because no native point precedes it. Edits run only
+touched. An edit of a session's first message has no native point before it,
+so the bridge swaps in a new harness session instead, on every harness. Edits run only
 on a message that opens a turn; a follow-up sent while the agent was working is
 refused with a reason.
 
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
+| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ⬜ Not implemented yet |
 | Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ⬜ `thread/fork {lastTurnId}` |
 | Every other harness | ⬜ Not implemented yet; the bridge refuses the edit | ⬜ Not implemented yet |
+
+Claude Code (live probes against 2.1.221 and 2.1.322 in a scratch config
+directory, 2026-11-15):
+
+- The new prompt's `parentUuid` is the entry Sesori resumes at, and a later
+  plain `--resume` continues from the edited branch. A respawn at the cut
+  without a prompt appends only a `cost-state` record, so the transcript is not
+  changed until the edited prompt is sent.
+- The first message has no entry before it. The bridge edits it by swapping in
+  a new session, and the plugin refuses it if asked to rewind there.
+- 2.1.322 resumes only from the latest compaction on: an entry before it fails
+  with `No message found with message.uuid of: …`. Sesori refuses such a prompt
+  before stopping the session.
+- An unknown entry fails the same way on both versions, and the CLI exits
+  before answering `initialize`. A CLI that does not know the flag exits with
+  `error: unknown option`, which Sesori reports as "This Claude Code version
+  can't edit messages from Sesori."
 
 ## Explicit shell-command presentation
 
@@ -1131,6 +1149,7 @@ live one.
 | Harness | Sesori availability |
 |---|---|
 | Cursor | ✅ The account/plan gate ("Check your settings to continue"), live and after history load. |
+| Oh My Pi | ✅ An aborted reply that produced nothing, which OMP sends as its bare abort reason ("Interrupted by user" after a stop, "Request was aborted" otherwise): after history load, and live when a failed request never streamed. ⚠️ A live stop shows no notice, since OMP sends none then, so a reload can add one. Wording read in the OMP 18.20.2 source on 2026-11-15. |
 | Hermes | ✅ The English failure copy Hermes sends as its final response, live and after history load: retries exhausted (including the stream-lifetime cap), first-attempt rate limits, usage limits, rejected credentials, unknown models, content policy, data-policy refusals, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions, shutdown, the "No reply:" explanations for exits that fail the turn (a stop on a pending tool result, no answer after all retries, a local context window too small, an error near the iteration limit, repeated errors, and every session-storage failure), a scheduled-job chat, a missing working folder and a chat whose launch API key is gone (in other languages by its untranslated `Details: launch_credentials_unavailable (<field>: <detail>)` line after a one-line notice naming the same key; Hermes's other translated copy stays a plain reply). Hermes saves a different row for a failed turn ("Your request was not processed…", "This turn did not complete. Some actions may already have run…" after a tool ran, or "An automated delivery was interrupted…" for a lost cron or webhook turn, and "This message was refused by the model's safety filter…" for a refused turn); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows only Hermes's live reason, followed by the row's warning when actions may already have run. Wording read in the Hermes 0.21.5 source on 2026-11-09 and the 0.23.1 source on 2026-11-12. Hermes appends its generic "Your request was not processed…" row to a live reason; Sesori drops it so the notice reads the same live and after a reload. Hermes then fails the prompt with `admitted_turn_failed`, which adds no second notice; when the model streamed part of a reply first, Hermes sends no failure text, so that failed prompt shows as Hermes's own "Your request was not processed…" notice. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts, and so do the "No reply:" explanations for exits that do not fail the turn (no reply after retries, a partial stream recovered, prior context shown, restart limits, budget or iteration limit reached, an interrupted call). 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
 
 Claude Code does not need text matching: it tags a failed turn's assistant

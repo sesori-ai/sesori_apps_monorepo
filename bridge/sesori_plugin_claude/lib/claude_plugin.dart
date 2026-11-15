@@ -51,6 +51,7 @@ export "src/repositories/mappers/claude_side_answer_mapper.dart";
 export "src/repositories/mappers/claude_task_status_mapping.dart";
 export "src/repositories/models/claude_mcp_authentication_context.dart";
 export "src/repositories/models/claude_mcp_command_exception.dart";
+export "src/repositories/models/claude_rewind_point.dart";
 export "src/repositories/models/claude_session_record.dart";
 export "src/repositories/models/claude_transcript_record.dart";
 export "src/repositories/parsers/claude_login_output_parser.dart";

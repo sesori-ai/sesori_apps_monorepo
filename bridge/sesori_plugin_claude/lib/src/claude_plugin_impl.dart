@@ -43,6 +43,7 @@ final class ClaudePlugin({
         McpAuthenticationPluginApi,
         FormInteractionPluginApi,
         SessionExternalActionsPluginApi,
+        SessionRewindPluginApi,
         SideQuestionPluginApi {
   this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
@@ -295,12 +296,6 @@ final class ClaudePlugin({
     if (directory == null) {
       throw const PluginOperationException.notFound(operation: "sendPrompt", message: "session not found");
     }
-    final text = parts
-        .whereType<PluginPromptPartText>()
-        .map((part) => part.text)
-        .where((text) => text.trim().isNotEmpty)
-        .join("\n\n")
-        .trim();
     await _enqueueQueued(
       sessionId: sessionId,
       directory: directory,
@@ -311,10 +306,55 @@ final class ClaudePlugin({
       model: model,
       operation: "sendPrompt",
       promptId: promptId,
-      displayText: text.isEmpty ? null : text,
+      displayText: _displayText(parts),
       command: null,
-      attachmentCount: parts.length - parts.whereType<PluginPromptPartText>().length,
+      attachmentCount: _attachmentCount(parts),
     );
+  }
+
+  @override
+  Future<void> rewindAndSendPrompt({
+    required String sessionId,
+    required String beforeMessageId,
+    required String promptId,
+    required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    const operation = "rewindAndSendPrompt";
+    _requireTurn(parts: parts, operation: operation);
+    final directory = await _directoryForSession(sessionId);
+    if (directory == null) {
+      throw const PluginOperationException.notFound(operation: operation, message: "session not found");
+    }
+    final (:effort, :permissionMode) = _queuedSelections(
+      sessionId: sessionId,
+      variant: variant,
+      agent: agent,
+      model: model,
+      operation: operation,
+    );
+    try {
+      await _sessions.rewindAndEnqueueTurn(
+        sessionId: sessionId,
+        directory: directory,
+        beforeMessageId: beforeMessageId,
+        parts: parts,
+        model: model?.modelID,
+        effort: effort,
+        permissionMode: permissionMode,
+        fastMode: fastMode,
+        promptId: promptId,
+        displayText: _displayText(parts),
+        attachmentCount: _attachmentCount(parts),
+      );
+    } on PluginOperationException {
+      rethrow;
+    } on Object catch (error) {
+      throw PluginOperationException(operation: operation, message: "Claude did not accept the rewind", cause: error);
+    }
   }
 
   @override
@@ -707,24 +747,20 @@ final class ClaudePlugin({
     required String? command,
     required int attachmentCount,
   }) async {
-    // A sub-agent transcript is not a Claude process session: nothing can be
-    // resumed under its id, so a write to it is refused rather than spawning a
-    // CLI that fails.
-    if (ClaudeSubagentSessionId.agentIdOf(sessionId) != null) {
-      throw PluginOperationException(
-        operation: operation,
-        statusCode: 400,
-        message: "sub-agent sessions are read-only",
-      );
-    }
-    _validateModel(model, operation: operation, staleOptions: true);
+    final (:effort, :permissionMode) = _queuedSelections(
+      sessionId: sessionId,
+      variant: variant,
+      agent: agent,
+      model: model,
+      operation: operation,
+    );
     await _enqueueResolved(
       sessionId: sessionId,
       directory: directory,
       parts: parts,
       model: model?.modelID,
-      effort: _effort(variant, operation: operation, staleOptions: true),
-      permissionMode: _permissionMode(agent, operation: operation, staleOptions: true),
+      effort: effort,
+      permissionMode: permissionMode,
       fastMode: fastMode,
       operation: operation,
       promptId: promptId,
@@ -768,6 +804,31 @@ final class ClaudePlugin({
     } on Object catch (error) {
       throw PluginOperationException(operation: operation, message: "Claude did not accept the turn", cause: error);
     }
+  }
+
+  /// Validates a send to an existing session, before anything is queued.
+  ({ClaudeEffortLevel? effort, ClaudePermissionMode? permissionMode}) _queuedSelections({
+    required String sessionId,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+    required String operation,
+  }) {
+    // A sub-agent transcript is not a Claude process session: nothing can be
+    // resumed under its id, so a write to it is refused rather than spawning a
+    // CLI that fails.
+    if (ClaudeSubagentSessionId.agentIdOf(sessionId) != null) {
+      throw PluginOperationException(
+        operation: operation,
+        statusCode: 400,
+        message: "sub-agent sessions are read-only",
+      );
+    }
+    _validateModel(model, operation: operation, staleOptions: true);
+    return (
+      effort: _effort(variant, operation: operation, staleOptions: true),
+      permissionMode: _permissionMode(agent, operation: operation, staleOptions: true),
+    );
   }
 
   /// Runs a new session's first turn with acceptance at dispatch, so session
@@ -1041,6 +1102,19 @@ void _requireTurn({required List<PluginPromptPart> parts, required String operat
     throw PluginOperationException(operation: operation, statusCode: 400, message: "prompt must not be empty");
   }
 }
+
+/// A prompt's text parts as its queued bubble shows them, or null for none.
+String? _displayText(List<PluginPromptPart> parts) {
+  final text = parts
+      .whereType<PluginPromptPartText>()
+      .map((part) => part.text)
+      .where((text) => text.trim().isNotEmpty)
+      .join("\n\n")
+      .trim();
+  return text.isEmpty ? null : text;
+}
+
+int _attachmentCount(List<PluginPromptPart> parts) => parts.length - parts.whereType<PluginPromptPartText>().length;
 
 List<PluginSession> _mergeSessions({
   required Iterable<PluginSession> persisted,
