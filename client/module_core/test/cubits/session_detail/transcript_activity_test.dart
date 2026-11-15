@@ -47,6 +47,7 @@ Session _child({required String id, required int? createdAt}) => Session(
   branchName: null,
   lastUserActivityAt: null,
   autoContinuation: null,
+  scheduledTask: null,
 );
 
 MessagePart _tool({required ToolStatus status}) => MessagePart.tool(

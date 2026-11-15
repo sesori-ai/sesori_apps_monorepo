@@ -401,6 +401,7 @@ Session _session({required String? title}) => Session(
   lastUserActivityAt: null,
   autoContinuation: null,
   approvalOverride: null,
+  scheduledTask: null,
 );
 
 MessageWithParts _user({required String text}) => MessageWithParts(

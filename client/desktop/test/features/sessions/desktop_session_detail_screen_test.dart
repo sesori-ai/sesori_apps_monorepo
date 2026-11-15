@@ -67,6 +67,7 @@ const _child = Session(
   time: SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
   promptDefaults: null,
   lastUserActivityAt: null,
+  scheduledTask: null,
 );
 
 /// A child session: the sidebar inventory never holds one, the page does.
@@ -85,6 +86,7 @@ const _session = Session(
   lastUserActivityAt: null,
   // Local state can still say unseen just after opening.
   unseen: true,
+  scheduledTask: null,
 );
 
 const _message = MessageWithParts(

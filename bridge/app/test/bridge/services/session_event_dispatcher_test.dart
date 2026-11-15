@@ -51,6 +51,7 @@ void main() {
       promptDefaults: null,
       lastUserActivityAt: null,
       branchName: null,
+      scheduledTask: null,
     );
     final deletedDispatch = dispatcher.dispatchLocalEvent(
       source: (
@@ -84,6 +85,7 @@ void main() {
       promptDefaults: null,
       lastUserActivityAt: null,
       branchName: null,
+      scheduledTask: null,
     );
 
     await dispatcher.dispatchLocalEvent(

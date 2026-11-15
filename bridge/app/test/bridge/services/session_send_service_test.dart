@@ -516,6 +516,7 @@ Session _session({
   lastUserActivityAt: null,
   autoContinuation: null,
   approvalOverride: null,
+  scheduledTask: null,
 );
 
 final class _Sessions() implements SessionRepository {

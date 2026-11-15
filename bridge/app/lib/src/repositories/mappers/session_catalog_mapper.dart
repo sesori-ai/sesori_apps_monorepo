@@ -25,6 +25,7 @@ class const SessionCatalogMapper() {
       autoContinuation: null,
       approvalOverride: row.approvalOverride,
       pinned: row.pinned,
+      scheduledTask: null,
     );
   }
 

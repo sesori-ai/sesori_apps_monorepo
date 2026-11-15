@@ -295,6 +295,7 @@ void main() {
         time: SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
         promptDefaults: null,
         lastUserActivityAt: null,
+        scheduledTask: null,
       );
       globalEvents.add(
         SseEvent(data: const SesoriSessionCreated(info: childSession)),

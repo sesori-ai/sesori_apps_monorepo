@@ -315,6 +315,7 @@ void main() {
           time: SessionTime(created: 600, updated: 600, archived: null),
           promptDefaults: null,
           lastUserActivityAt: null,
+          scheduledTask: null,
         ),
       ),
     );

@@ -1343,6 +1343,7 @@ Session _session({required String id, required String projectId, required int up
   promptDefaults: null,
   lastUserActivityAt: null,
   unseen: false,
+  scheduledTask: null,
 );
 
 class _Locality({required final BehaviorSubject<String?> _localIds}) implements ActiveBridgeLocality {
