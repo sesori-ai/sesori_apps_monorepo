@@ -239,7 +239,7 @@ class SessionEventService({
         _sessionRepository.markSessionIdle(sessionId: sessionID);
         return payload;
       case NormalizedMessageEvent(:final message):
-        return NormalizedMessageEvent(message: _sessionRepository.stampLiveInvocation(message: message));
+        return NormalizedMessageEvent(message: _sessionRepository.stampLiveMessage(message: message));
       case NormalizedQueuedPromptsEvent(:final sessionId, :final prompts):
         return NormalizedQueuedPromptsEvent(
           sessionId: sessionId,

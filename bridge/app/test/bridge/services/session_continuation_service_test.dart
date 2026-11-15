@@ -444,7 +444,9 @@ class _Prompts({required final SessionContinuationRepository records}) implement
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required MessageHandoff? handoff,
   }) async {
+    expect(handoff, isNull);
     expect(
       (await records.read(sessionId: sessionId)).outcome,
       isA<SessionContinuationConsumed>().having((value) => value.promptId, "promptId", promptId),

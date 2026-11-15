@@ -970,6 +970,7 @@ SessionDetailLoaded _delivered(SessionDetailLoaded sent) {
       MessageWithParts(
         info: Message.user(
           invocation: null,
+          handoff: null,
           promptId: localSend.submission.promptId,
           id: "user-sent",
           sessionID: "session-1",
@@ -1014,6 +1015,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "user-$index",
             sessionID: "session-1",

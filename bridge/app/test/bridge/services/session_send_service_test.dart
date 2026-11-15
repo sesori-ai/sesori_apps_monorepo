@@ -135,6 +135,223 @@ void main() {
     expect(handoff.text, contains('"Source title" (Claude Code, in `/fixture/source`)'));
     expect(handoff.text, contains(_summary));
     expect(handoff.text, contains("`${transcripts.pathFor(saved)}`"));
+
+    expect(request.handoff, const MessageHandoff.sent(targetSessionId: _target, targetTitle: "Target title"));
+    expect(
+      handoff.handoff,
+      MessageHandoff.received(
+        sourceSessionId: _source,
+        sourceTitle: "Source title",
+        summary: _summary,
+        transcriptPath: transcripts.pathFor(saved),
+      ),
+    );
+    expect(sessions.notSentPrompts, isEmpty);
+    expect(history.notSentMessages, isEmpty);
+  });
+
+  test("the transcript leaves out the summary exchanges of earlier sends", () async {
+    finishSummaryTurn();
+    const earlierTarget = MessageHandoff.sent(targetSessionId: "earlier", targetTitle: null);
+    const failedTarget = MessageHandoff.notSent(targetSessionId: "failed", targetTitle: null);
+    history.messages = [
+      _userMessage(id: "msg-1", text: _transcriptLine),
+      _userMessage(id: "sent-request", text: "Earlier sent request", handoff: earlierTarget),
+      _assistantMessage(id: "sent-reply", text: "Earlier sent summary"),
+      _userMessage(id: "after-sent", text: "Typed after the sent summary"),
+      _assistantMessage(id: "after-sent-reply", text: "Reply after the sent summary"),
+      _userMessage(id: "failed-request", text: "Earlier failed request", handoff: failedTarget),
+      _assistantMessage(id: "failed-reply", text: "Earlier failed summary"),
+      _userMessage(
+        id: "received",
+        text: "Received handoff prompt",
+        handoff: const MessageHandoff.received(
+          sourceSessionId: "elsewhere",
+          sourceTitle: null,
+          summary: "Received summary",
+          transcriptPath: "/fixture/received.md",
+        ),
+      ),
+      _assistantMessage(id: "received-reply", text: "Reply to the received handoff"),
+      _userMessage(id: _requestMessageId, text: "summary request"),
+      _assistantMessage(id: "msg-4", text: _summary),
+    ];
+
+    await send();
+
+    final markdown = utf8.decode(transcripts.saved.single.bytes);
+    for (final kept in [
+      _transcriptLine,
+      "Typed after the sent summary",
+      "Reply after the sent summary",
+      "Received handoff prompt",
+      "Reply to the received handoff",
+    ]) {
+      expect(markdown, contains(kept));
+    }
+    for (final dropped in [
+      "Earlier sent request",
+      "Earlier sent summary",
+      "Earlier failed request",
+      "Earlier failed summary",
+      "summary request",
+    ]) {
+      expect(markdown, isNot(contains(dropped)));
+    }
+  });
+
+  group("a send that does not complete marks its summary request as not sent", () {
+    void echoThen(List<NormalizedBridgeEvent> followUps) {
+      prompts.onSummaryAccepted = (promptId) {
+        events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
+        followUps.forEach(events.add);
+      };
+    }
+
+    const idle = NormalizedStatusEvent(sessionId: _source, status: SessionStatus.idle());
+    final afterEcho = <String, (SendToSessionErrorCode, void Function())>{
+      // The echo reaches the watch asynchronously; the stop comes after it.
+      "a stop": (
+        SendToSessionErrorCode.summaryStopped,
+        () {
+          prompts.onSummaryAccepted = (promptId) {
+            events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
+            Future(() => aborts.add(_source)).ignore();
+          };
+        },
+      ),
+      "a session error": (
+        SendToSessionErrorCode.summaryFailed,
+        () => echoThen([const NormalizedOtherEvent(event: BridgeSseSessionError(sessionID: _source))]),
+      ),
+      "a plugin stop": (
+        SendToSessionErrorCode.summaryFailed,
+        () => echoThen([const NormalizedTerminalHandoff(payload: idle)]),
+      ),
+      "an error message": (
+        SendToSessionErrorCode.summaryFailed,
+        () => echoThen([
+          const NormalizedMessageEvent(
+            message: Message.error(
+              id: "turn-1",
+              sessionID: _source,
+              agent: null,
+              modelID: null,
+              providerID: null,
+              errorName: "FixtureError",
+              errorMessage: "fixture failure",
+              time: null,
+            ),
+          ),
+          idle,
+        ]),
+      ),
+      "bridge shutdown": (
+        SendToSessionErrorCode.summaryStopped,
+        () {
+          prompts.onSummaryAccepted = (promptId) {
+            events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
+            Future(service.beginShutdown).ignore();
+          };
+        },
+      ),
+      "a timeout": (
+        SendToSessionErrorCode.summaryTimedOut,
+        () {
+          service = buildService(summaryTimeout: const Duration(milliseconds: 20));
+          echoThen([]);
+        },
+      ),
+      "a missing summary": (
+        SendToSessionErrorCode.summaryMissing,
+        () {
+          echoThen([idle]);
+          history.messages = history.messages.take(3).toList();
+        },
+      ),
+      "a failed transcript write": (
+        SendToSessionErrorCode.transcriptUnavailable,
+        () {
+          echoThen([idle]);
+          transcripts.failure = const FormatException("disk full");
+        },
+      ),
+      "a target refusal": (
+        SendToSessionErrorCode.targetRefused,
+        () {
+          echoThen([idle]);
+          prompts.targetFailure = StateError("target down");
+        },
+      ),
+    };
+    for (final MapEntry(key: name, value: (code, arrange)) in afterEcho.entries) {
+      test("after the echo: $name", () async {
+        arrange();
+
+        expect(await refusalOf(send()), code);
+        expect(sessions.notSentPrompts, [prompts.sends.first.promptId]);
+        expect(history.notSentMessages, [_requestMessageId]);
+      });
+    }
+
+    final afterReplay = <String, (SendToSessionErrorCode, void Function())>{
+      "a target refusal": (
+        SendToSessionErrorCode.targetRefused,
+        () => prompts.targetFailure = StateError("target down"),
+      ),
+      "a missing summary": (
+        SendToSessionErrorCode.summaryMissing,
+        () => history.messages = history.messages.take(3).toList(),
+      ),
+    };
+    for (final MapEntry(key: name, value: (code, arrange)) in afterReplay.entries) {
+      test("after a refresh replays the request under another id, $name marks both ids", () async {
+        finishSummaryTurn();
+        history.replayRequestText = () => prompts.sends.first.text;
+        arrange();
+
+        expect(await refusalOf(send()), code);
+        expect(history.notSentMessages, unorderedEquals(["replayed-user", _requestMessageId]));
+      });
+    }
+
+    final beforeEcho = <String, (SendToSessionErrorCode, void Function())>{
+      "a stop": (
+        SendToSessionErrorCode.summaryStopped,
+        () {
+          prompts.onSummaryAccepted = (_) => aborts.add(_source);
+        },
+      ),
+      "a session error": (
+        SendToSessionErrorCode.summaryFailed,
+        () {
+          prompts.onSummaryAccepted = (_) => events.add(
+            const NormalizedOtherEvent(event: BridgeSseSessionError(sessionID: _source)),
+          );
+        },
+      ),
+      "a timeout": (
+        SendToSessionErrorCode.summaryTimedOut,
+        () {
+          service = buildService(summaryTimeout: const Duration(milliseconds: 20));
+        },
+      ),
+      "a request whose outcome is unknown": (
+        SendToSessionErrorCode.sourceUnavailable,
+        () {
+          prompts.summaryFailure = StateError("plugin timed out");
+        },
+      ),
+    };
+    for (final MapEntry(key: name, value: (code, arrange)) in beforeEcho.entries) {
+      test("before the echo: $name", () async {
+        arrange();
+
+        expect(await refusalOf(send()), code);
+        expect(sessions.notSentPrompts, hasLength(1));
+        expect(history.notSentMessages, isEmpty);
+      });
+    }
   });
 
   group("refuses before sending anything", () {
@@ -479,10 +696,19 @@ Message _echo({required String promptId}) => Message.user(
   time: null,
   promptId: promptId,
   invocation: null,
+  handoff: null,
 );
 
-MessageWithParts _userMessage({required String id, required String text}) => MessageWithParts(
-  info: Message.user(id: id, sessionID: _source, agent: null, time: null, promptId: null, invocation: null),
+MessageWithParts _userMessage({required String id, required String text, MessageHandoff? handoff}) => MessageWithParts(
+  info: Message.user(
+    id: id,
+    sessionID: _source,
+    agent: null,
+    time: null,
+    promptId: null,
+    invocation: null,
+    handoff: handoff,
+  ),
   parts: [MessagePart.text(id: "$id-text", sessionID: _source, messageID: id, text: text)],
 );
 
@@ -536,6 +762,15 @@ final class _Sessions() implements SessionRepository {
   final Map<String, SessionStatus> statuses = {};
   final List<String> unavailablePluginIds = [];
   bool pluginsActive = true;
+
+  /// Prompt ids whose handoff stamp was marked as not sent.
+  final List<String> notSentPrompts = [];
+
+  @override
+  void markHandoffNotSent({required String sessionId, required String promptId}) {
+    expect(sessionId, _source);
+    notSentPrompts.add(promptId);
+  }
 
   void reparent({required String sessionId}) {
     final session = byId[sessionId];
@@ -598,12 +833,14 @@ final class _Questions() implements QuestionRepository {
 
 typedef _Send = ({
   String sessionId,
+  String? promptId,
   bool reserved,
   String text,
   String? agent,
   PromptModel? model,
   SessionVariant? variant,
   bool fastMode,
+  MessageHandoff? handoff,
 });
 
 final class _Prompts() implements SessionPromptService {
@@ -623,17 +860,20 @@ final class _Prompts() implements SessionPromptService {
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required MessageHandoff? handoff,
   }) async {
     if (summaryFailure case final failure?) throw failure;
     sends.add(
       _record(
         sessionId: sessionId,
+        promptId: promptId,
         reserved: true,
         parts: parts,
         variant: variant,
         fastMode: fastMode,
         agent: agent,
         model: model,
+        handoff: handoff,
       ),
     );
     onSummaryAccepted?.call(promptId);
@@ -650,31 +890,37 @@ final class _Prompts() implements SessionPromptService {
     required PromptModel? model,
     required String? command,
     required CommandSource? commandSource,
+    required MessageHandoff? handoff,
   }) async {
     if (targetFailure case final failure?) throw failure;
     sends.add(
       _record(
         sessionId: sessionId,
+        promptId: promptId,
         reserved: false,
         parts: parts,
         variant: variant,
         fastMode: fastMode,
         agent: agent,
         model: model,
+        handoff: handoff,
       ),
     );
   }
 
   static _Send _record({
     required String sessionId,
+    required String? promptId,
     required bool reserved,
     required List<PromptPart> parts,
     required SessionVariant? variant,
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required MessageHandoff? handoff,
   }) => (
     sessionId: sessionId,
+    promptId: promptId,
     reserved: reserved,
     text: [
       for (final part in parts)
@@ -684,6 +930,7 @@ final class _Prompts() implements SessionPromptService {
     model: model,
     variant: variant,
     fastMode: fastMode,
+    handoff: handoff,
   );
 
   @override
@@ -736,6 +983,15 @@ final class _History() implements ChatHistoryService {
   /// When set, a backfill appends a later user message carrying this text and
   /// an unrelated reply.
   String Function()? repeatRequestTextLater;
+
+  /// Message ids whose stored handoff was marked as not sent.
+  final List<String> notSentMessages = [];
+
+  @override
+  Future<void> markHandoffNotSent({required String sessionId, required String messageId}) async {
+    expect(sessionId, _source);
+    notSentMessages.add(messageId);
+  }
 
   @override
   Future<void> backfillSession({required String sessionId}) async {

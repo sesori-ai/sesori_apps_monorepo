@@ -10,6 +10,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "package:sesori_shared/sesori_shared.dart" show wrapDictatedText;
 import "package:test/test.dart";
 
+import "support/claude_transcript_chain.dart";
+
 void main() {
   group("ClaudeTranscriptCatalogRepository", () {
     late Directory claudeHome;
@@ -579,7 +581,7 @@ String _writeTranscript(
 }) {
   final path = p.join(claudeHome.path, "projects", project, name);
   Directory(p.dirname(path)).createSync(recursive: true);
-  File(path).writeAsStringSync("${records.map(jsonEncode).join("\n")}\n");
+  File(path).writeAsStringSync("${chainTranscriptRecords(records).map(jsonEncode).join("\n")}\n");
   return path;
 }
 

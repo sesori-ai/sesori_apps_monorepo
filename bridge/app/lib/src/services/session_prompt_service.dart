@@ -24,6 +24,9 @@ class const SessionPromptDefaultsChange({
   required final SessionPromptDefaults promptDefaults,
 });
 
+/// The settings a prompt takes from a session's remembered prompt defaults.
+typedef PromptSettings = ({SessionVariant? variant, bool fastMode, String? agent, PromptModel? model});
+
 class SessionPromptService({
   required final SessionRepository _sessionRepository,
   required final AcceptedPromptsRepository _acceptedPromptsRepository,
@@ -50,6 +53,7 @@ class SessionPromptService({
     required PromptModel? model,
     required String? command,
     required CommandSource? commandSource,
+    required MessageHandoff? handoff,
   }) {
     final normalizedCommand = command?.trim();
     return _dispatcher.dispatch(
@@ -69,6 +73,7 @@ class SessionPromptService({
         model: model,
         normalizedCommand: normalizedCommand,
         commandSource: commandSource,
+        handoff: handoff,
       ),
     );
   }
@@ -81,6 +86,7 @@ class SessionPromptService({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required MessageHandoff? handoff,
   }) => _sendPrompt(
     sessionId: sessionId,
     promptId: promptId,
@@ -91,6 +97,7 @@ class SessionPromptService({
     model: model,
     normalizedCommand: null,
     commandSource: null,
+    handoff: handoff,
   );
 
   Future<void> _sendPrompt({
@@ -103,6 +110,7 @@ class SessionPromptService({
     required PromptModel? model,
     required String? normalizedCommand,
     required CommandSource? commandSource,
+    required MessageHandoff? handoff,
   }) async {
     // Inside the dispatched body, so this cannot race a concurrent archive on
     // the same family lane.
@@ -140,6 +148,7 @@ class SessionPromptService({
           fastMode: fastMode,
           agent: agent,
           model: model,
+          handoff: handoff,
         ),
       );
     } else {
@@ -306,4 +315,17 @@ class SessionPromptService({
     prefix: "prm_",
     byteLength: 16,
   );
+
+  /// The settings a bridge-originated prompt to a session takes from its
+  /// remembered [defaults].
+  static PromptSettings settingsFrom({required SessionPromptDefaults? defaults}) {
+    final model = defaults?.model;
+    final variant = model?.variant;
+    return (
+      variant: variant == null ? null : SessionVariant(id: variant),
+      fastMode: defaults?.fastMode ?? false,
+      agent: defaults?.agent,
+      model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
+    );
+  }
 }

@@ -649,6 +649,7 @@ class const BridgeRuntimeRunner._() {
             supportsSideQuestions: descriptor.supportsSideQuestions,
             busyPromptHandling: descriptor.busyPromptHandling,
             mcpScopes: descriptor.mcpScopes,
+            sessionBranching: descriptor.sessionBranching,
           ),
       ];
       final uncontrollableDisabledPluginIds = PluginLifecycleService.uncontrollableDisabledPluginIds(
