@@ -57,6 +57,7 @@ dependencies:
   ffi: ^2.2.0
   code_assets: ^2.2.0
   hooks: ^2.2.0
+  timezone: ^0.11.2
 
 dev_dependencies:
   acp_plugin:

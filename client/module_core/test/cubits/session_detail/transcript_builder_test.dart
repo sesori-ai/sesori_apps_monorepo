@@ -86,6 +86,7 @@ Session _child(String id, {String? title}) => Session(
   branchName: null,
   lastUserActivityAt: null,
   autoContinuation: null,
+  scheduledTask: null,
 );
 
 ToolState _taskState(ToolStatus status) =>

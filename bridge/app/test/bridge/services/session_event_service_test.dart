@@ -699,6 +699,7 @@ void main() {
               promptDefaults: null,
               lastUserActivityAt: null,
               branchName: null,
+              scheduledTask: null,
             ).toJson(),
           ),
         ),
@@ -1402,6 +1403,7 @@ void main() {
               promptDefaults: null,
               lastUserActivityAt: null,
               branchName: null,
+              scheduledTask: null,
             ).toJson(),
             titleChanged: false,
           ),
@@ -1589,6 +1591,7 @@ void main() {
               promptDefaults: null,
               lastUserActivityAt: null,
               branchName: null,
+              scheduledTask: null,
             ).toJson(),
           ),
         ),
@@ -1617,6 +1620,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           branchName: null,
+          scheduledTask: null,
         ).toJson(),
         titleChanged: false,
       );
@@ -1739,6 +1743,7 @@ Map<String, dynamic> _sessionInfo({
     promptDefaults: null,
     lastUserActivityAt: null,
     branchName: null,
+    scheduledTask: null,
   ).toJson();
 }
 

@@ -9,8 +9,9 @@ mirror PR state; live status is on GitHub:
 
 - D1–D15 are the user's final decisions. P1–P13 are planning decisions from
   code evidence. See [PLAN](PLAN.md#user-decisions-final).
-- Q1 (auto-compact quiet window) is open; step 11 uses the provisional
-  25-minute default unless the answer changes it.
+- Q1 is resolved as B (2026-11-15): the auto-compact quiet window is
+  `min(cacheLife − 2 minutes, 25 minutes)`, 25 minutes when the plugin reports
+  no cache life (P10).
 
 ## Guardrails
 

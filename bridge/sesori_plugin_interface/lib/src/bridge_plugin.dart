@@ -3,6 +3,7 @@ import "models/plugin_abort.dart";
 import "models/plugin_agent.dart";
 import "models/plugin_catalog_snapshot.dart";
 import "models/plugin_command.dart";
+import "models/plugin_compaction_result.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_permission.dart";
 import "models/plugin_pending_question.dart";
@@ -11,9 +12,9 @@ import "models/plugin_project_activity_summary.dart";
 import "models/plugin_prompt_part.dart";
 import "models/plugin_provider.dart";
 import "models/plugin_queued_prompt.dart";
-import "models/plugin_quota_interruption.dart";
 import "models/plugin_session.dart";
 import "models/plugin_session_options.dart";
+import "models/plugin_session_readiness.dart";
 import "models/plugin_session_status.dart";
 import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
@@ -108,9 +109,26 @@ sealed class BridgePluginApi() {
 
   Future<Map<String, PluginSessionStatus>> getSessionStatuses();
 
-  /// Evidence from the named session's native owner for a continuation attempt.
-  /// Unsupported harnesses explicitly return [PluginQuotaContinuationReadiness.unavailable].
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId});
+  /// Evidence from the named session's native owner about whether it can take
+  /// new work now. Unsupported harnesses explicitly return
+  /// [PluginSessionReadiness.unavailable].
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId});
+
+  /// Asks the harness to compact [sessionId]'s context, the way its own
+  /// compaction command does.
+  ///
+  /// Completes on acceptance, as [sendCommand] does, never when the
+  /// compaction finishes; the compaction then shows in the session like a
+  /// compaction the user started. [promptId] carries [sendCommand]'s identity
+  /// contract.
+  ///
+  /// It never stops work: when the plugin can tell that the session is
+  /// running a turn, retrying, holding queued input or waiting for an answer,
+  /// it sends nothing and returns [PluginCompactionResult.sessionBusy]. A
+  /// harness that cannot compact on request returns
+  /// [PluginCompactionResult.unsupported]. Dispatch failures throw, as they do
+  /// for [sendCommand].
+  Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId});
 
   /// Get all messages for a session.
   ///

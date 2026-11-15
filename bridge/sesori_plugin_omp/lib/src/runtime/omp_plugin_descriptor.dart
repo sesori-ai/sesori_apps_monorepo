@@ -105,6 +105,10 @@ final class const OmpPluginDescriptor({
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
 
+  /// Oh My Pi advertises a native `/compact` over ACP (verified 18.20.2).
+  @override
+  bool get supportsCompactionOnRequest => true;
+
   @override
   bool get supportsPromptAttachments => true;
 

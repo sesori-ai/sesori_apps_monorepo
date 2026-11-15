@@ -3,6 +3,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "agent_info.dart";
 import "message_part.dart";
 import "plugin_identity.dart";
+import "scheduled_task.dart";
 import "session_approval_override.dart";
 import "session_auto_continuation.dart";
 
@@ -71,6 +72,9 @@ sealed class Session with _$Session {
     // The bridge stores it; archiving a session drops its pin.
     // COMPATIBILITY 2026-11-14 (v1.14.0): Bridges before pinning omit pinned; they cannot pin, so false is honest. Remove the default once the minimum supported bridge always sends it.
     @Default(false) bool pinned,
+    // The task whose run started this session. Null means it is not a task
+    // run, which is also what bridges before scheduled tasks mean.
+    required SessionScheduledTaskMark? scheduledTask,
   }) = _Session;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

@@ -12,8 +12,8 @@ The bridge can edit a prompt that opens a turn: `POST /session/rewind` removes
 that prompt and every later message from the session's conversation and sends
 the edited prompt in its place. Conversation only: files are never restored.
 Each harness declares the branching operations it implements in
-`PluginMetadata.sessionBranching`; today none declares any, so the route
-refuses every edit and clients offer no Edit.
+`PluginMetadata.sessionBranching`; today only Codex declares `rewind`.
+Clients offer no Edit yet.
 
 ## Required Behavior
 
@@ -91,14 +91,35 @@ refuses every edit and clients offer no Edit.
   before the call, by id, from the store and from clients
   (`message.removed`). The edited prompt's echo, captured during the call, is
   never among them.
+- When the plugin fails after it may have rewound (anything other than a
+  branch-point, stale-options or refusal rejection), the bridge reads the
+  harness transcript once and removes, by exact id, the messages it read
+  before the call that the harness no longer has, then returns the failure.
+  A failure that changed nothing, or a harness read that comes back empty,
+  removes nothing.
+- An edit with no parts is rejected with 400 before anything changes.
+
+### Codex edit
+
+- The edit maps the message to its native turn from the rollout's
+  `UserMessage` items, resumes the thread if needed, calls
+  `thread/revert {beforeTurnId}`, then starts the edited turn with the same
+  prompt id. History follows the reverted rollout as soon as the edit is
+  accepted.
+- Refused with a plain reason without changing the conversation: a runtime without
+  `thread/revert` (for example 0.139.0), a legacy non-paginated thread, an
+  ephemeral thread, an id the rollout does not have, a follow-up steered into
+  a running turn, and an attachment or option the turn cannot take.
+- If `turn/start` fails after the revert, the bridge reconcile above removes
+  the reverted messages; the edit still fails and the client keeps its text.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Message menu, automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, a shift-click afterwards extends it, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. Bridge edit route, automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, first-turn, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`. |
-| L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. The bridge edit route is not included until a harness declares rewind. |
+| L2 Routine | Message menu, automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, a shift-click afterwards extends it, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. Bridge edit route, automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, first-turn, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`; a failed resend after the harness rewound removes exactly the dropped messages, and a failure that changed nothing removes none. Codex plugin tests against a fake app-server: resume, revert and `turn/start` order with the prompt id; history follows the reverted rollout; steered, unknown-id, attachment and revert-error refusals happen before any revert. |
+| L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. The edit route is not included until clients offer Edit. |
 | L4 Extended | Long-press a message near the screen's edges and at the largest text size; open the menu during a pinch, a peek and a code-block scroll. |
 | L5 Full | No additional coverage. |
 
@@ -125,6 +146,7 @@ not loaded yet.
   screen until reload.
 - A retried edit rewinds twice.
 - A refusal changes the transcript, or its message carries transcript text.
+- A Codex edit whose resend failed leaves the reverted messages on screen.
 - An edit reaches the plugin while the session runs or after it was archived.
 
 ## Known Limitations
@@ -135,7 +157,7 @@ not loaded yet.
   known; a long-press on it reaches the message under the pin.
 - A long-press tooltip inside a message no longer shows, because the menu
   takes the long-press first.
-- No harness implements rewind yet, so every edit is refused.
+- Only Codex implements rewind; every other harness refuses the edit.
 - The first turn cannot be edited yet.
 - An edit the plugin refuses keeps the attachment files the bridge saved for
   it, as a refused send does.
@@ -154,4 +176,6 @@ not loaded yet.
 - `bridge/app/lib/src/routing/rewind_session_handler.dart`
 - `bridge/app/lib/src/services/session_prompt_service.dart`
 - `bridge/app/lib/src/services/chat_history_service.dart`
+- `bridge/sesori_plugin_codex/lib/src/services/codex_session_service.dart`
+- `bridge/sesori_plugin_codex/lib/src/repositories/codex_message_repository.dart`
 - `shared/sesori_shared/lib/src/models/sesori/session_branch_error_response.dart`

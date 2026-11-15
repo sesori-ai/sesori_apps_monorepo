@@ -46,6 +46,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         hasWorktree: true,
+        scheduledTask: null,
       );
 
       final json = session.toJson();

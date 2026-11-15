@@ -57,6 +57,12 @@ abstract class const BridgePluginDescriptor() {
   /// the plugin starts.
   bool get supportsSideQuestions => false;
 
+  /// Whether the started plugin's `compactSession` can compact a session, as
+  /// verified for this harness. Declared here so the bridge can say so before
+  /// the plugin starts; `compactSession` stays authoritative for the running
+  /// version and may still return `PluginCompactionResult.unsupported`.
+  bool get supportsCompactionOnRequest => false;
+
   /// What this backend does with a prompt sent while a session runs a turn,
   /// so a client can warn before a send stops that turn.
   PluginBusyPromptHandling get busyPromptHandling;

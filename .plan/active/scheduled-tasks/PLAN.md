@@ -8,9 +8,8 @@
   The decisions below are final; do not reopen them.
 - **Phase 1:** steps 2–11. Steps 12 and 13 are the regression-doc and
   retirement steps. The later phase (agent MCP tool) has rough intent only.
-- **Open product question:** Q1, the auto-compact quiet window (cost against
-  reliability). Step 11 carries a provisional default and waits for the answer
-  only if it would change the default. Nothing before step 11 depends on it.
+- **Q1 resolved (2026-11-15): option B.** The auto-compact quiet window
+  follows each session's prompt-cache life (P10). No product question is open.
 
 ## Goal
 
@@ -208,12 +207,15 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
 
 ### P2. Wire contract (sesori_shared)
 
-- `ScheduledTask`: `id`, `name`, `prompt` (text parts and optional staged
-  command with its `CommandSource`), `projectId`, `pluginId`, `agent`, `model`,
-  `variant`, `fastMode`, `dedicatedWorktree`, `schedule`, `timeZone` (IANA
-  name), `missedRunPolicy` (`runWhenBack`, `waitForNext`), `runMode`,
-  `approvalMode` (`ask`, `approveAll`), `enabled`, `nextRunAt` (UTC, null when
-  paused or done), `lastRun` (summary, nullable).
+- `ScheduledTask`: `id`, `definition`, `enabled`, `nextRunAt` (null when
+  paused or done), `lastRun` (the newest run row, nullable). The user-editable
+  part is one `ScheduledTaskDefinition` (`name`, `prompt`, `projectId`,
+  `pluginId`, `agent`, `model`, `variant`, `fastMode`, `dedicatedWorktree`,
+  `schedule`, `timeZone` (IANA name), `missedRunPolicy` (`runWhenBack`,
+  `waitForNext`), `runMode`, `approvalMode` (`ask`, `approveAll`)), which the
+  create and update requests carry whole (step 2).
+- `ScheduledTaskPrompt` sealed: `text(text)` | `command(name, source,
+  arguments?)` | `unknown` fallback. No attachments in v1, so no part list.
 - `TaskSchedule` sealed: `once(localDateTime)`, `daily(time)`,
   `weekdays(time)`, `weekly(days, time)`, `everyHours(hours 1–12,
   startLocalDateTime)`, plus an `unknown` fallback union so an app older than a
@@ -224,15 +226,18 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   target session id is bridge state, not editable wire input.
 - `ScheduledTaskRun`: `id`, `scheduledFor`, `outcome` sealed:
   `started(sessionId: String?, late)` (null honestly means the session was
-  deleted since) | `skipped(previousRunActive)` | `missed` | `failed(reason)` |
+  deleted since) | `skipped` (the previous run was still going; it is the only
+  skip reason, so it carries no field) | `missed` | `failed(reason)` |
   `unknown` fallback; `reason` is a closed enum (`projectMissing`,
   `harnessUnavailable`, `modelUnavailable`, `startFailed`).
 - Every wire enum (`missedRunPolicy`, `approvalMode`, failure `reason`, mark
-  `kind`) has an `unknownEnumValue` fallback, so a newer bridge never breaks an
-  older app's list or history.
+  `kind`, `ScheduledTaskErrorCode`) has an `unknownEnumValue` fallback, so a
+  newer bridge never breaks an older app's list, history or error handling.
 - Every instant the app shows (`nextRunAt`, run `scheduledFor`) travels as UTC
-  plus the task zone's UTC offset at that instant (`…OffsetMinutes`). The app
-  renders wall-clock time from the pair and needs no time-zone database.
+  plus the task zone's UTC offset at that instant, as one
+  `ScheduledTaskInstant(at, offsetMinutes)` value so neither half can be
+  missing alone. The app renders wall-clock time from the pair and needs no
+  time-zone database.
 - `Session.scheduledTask`: nullable `SessionScheduledTaskMark(taskId, name,
   kind: recurring|once)`. Null honestly means "not a task run", including from
   bridges before this feature, so no compatibility default is needed.
@@ -246,11 +251,21 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   to `unknown`) and a new nullable `NotificationData.taskId`. Step 6 confirms
   the auth server's `/notifications/send` passes an unknown event type and
   extra `data` fields through unchanged; if it does not, that becomes an
-  explicit cross-repo dependency before step 6 merges.
+  explicit cross-repo dependency before step 6 merges. Both wire additions
+  land in step 6 with that check, not in step 2: the new required
+  `NotificationData.taskId` touches every push call site that step 6 changes
+  anyway.
 - Routes, all new (exact paths follow `request_router.dart` conventions):
   list tasks, create, update, delete, set enabled, run now, list a task's runs.
   Validation errors are typed responses (unknown zone, unknown project/harness,
-  hours out of range, empty prompt).
+  hours out of range, empty prompt). Step 2 ships every body: the list, task,
+  run and run-list responses, `CreateScheduledTaskRequest`,
+  `UpdateScheduledTaskRequest`, `SetScheduledTaskEnabledRequest`, one
+  `ScheduledTaskIdRequest` (delete, run now, list runs) and
+  `ScheduledTaskErrorResponse` whose `ScheduledTaskErrorCode` also covers
+  empty name, invalid schedule fields, a past one-off time, values the bridge
+  does not know (`unsupportedByBridge`), a missing task and the Run now
+  refusal (`previousRunActive`).
 - One new SSE event, `scheduledTasks.changed` (no payload beyond the bridge's
   usual envelope). The Orchestrator emits it from `ScheduledTaskService`'s and
   `ScheduledTaskRunService`'s change streams on create, update, delete,
@@ -295,7 +310,10 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
     outcome, reason, late, `userPromptedAt` (nullable), `compactRequestedAt`
     (nullable); index on (taskId, firedAt) and on sessionId.
 - Run rows are trimmed to the newest 20 per task when a new one is written.
-  They are the outcome history (ran, ran late, skipped, missed, couldn't
+  The trim never deletes the task's latest `started` row (one exclusion in the
+  trim query, step 3): twenty skipped rows in a row must not erase the only
+  row that points at a still-running session, or the overlap check (P6) would
+  miss it and start a second run, breaking D8. They are the outcome history (ran, ran late, skipped, missed, couldn't
   start), not the "last 5 finished runs" of D10, which counts run *sessions*
   left unarchived. A `started` row whose session was archived links to it in
   Archived. Marks and archiving read `sessions.scheduledTaskId`.
@@ -320,7 +338,10 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   DST and the bridge host's own zone is irrelevant. An unknown zone is rejected
   at save.
 - The bridge app adds the `timezone` package and initializes its database once
-  in bridge startup, before the scheduler starts.
+  in bridge startup, before the scheduler starts. It loads `latest_all`, since
+  devices can report link names such as `UTC` or `Asia/Calcutta` that the
+  smaller `latest` set lacks; the database is process-wide, so the Claude
+  plugin's quota mapper loads the same set instead of replacing it (step 2).
 - Wall-clock presets (once, daily, weekdays, weekly): a local time that does
   not exist (spring-forward gap) runs at the same offset into the gap after the
   jump (02:30 → 03:30); a repeated local time (fall-back) runs once, at the
@@ -364,13 +385,15 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   first occurrence after now, so a week away yields one run or one missed
   row, never a pile-up. One-off tasks always run when back: the missed-run line
   is hidden for Once, because "wait for the next time" has no next time.
-- Overlap (D8): a run is skipped with `previousRunActive` when the session of
+- Overlap (D8): a run is recorded as `skipped` when the session of
   the latest **started** run (not the latest history row: `skipped`, `missed`
   and `failed` rows have no session and must not hide an earlier active one)
   is not `quiet` (busy or retry, a pending question, permission or
   form, or non-idle readiness on Claude and Pi, where `queued` covers a pending
   `ScheduleWakeup` and user-queued prompts). Exception: busy because of this
-  task's own pending compaction (P10).
+  task's own pending compaction (P10). Step 4 tests that many skipped
+  occurrences in a row (more than the 20-row trim) still leave the earlier
+  started run counted as active, so the next run is skipped too.
 - At most once: the run row and the advanced `nextDueAt` are written in one
   transaction before the create or send is attempted, like the quota
   `consumed` marker. A crash between write and send loses that run; it never
@@ -497,9 +520,25 @@ be its latest started run and S its session (not archived).
      permission or form; readiness idle where reported; on Claude, background
      tasks read busy and a pending wake-up reads `queued`);
    - `now − max(tracker.lastActivity(S), R.firedAt) ≥ W`, where W is the quiet
-     window (provisional 25 minutes, Q1). Any plugin event, including every
-     PR-monitor or background wake, moves the tracker's instant and so pushes
-     the compaction back.
+     window (Q1 = B): `W = min(cacheLife − 2 minutes, 25 minutes)`, and an
+     unknown cache life means 25 minutes. A 5-minute cache gives about 3 quiet
+     minutes; Codex (30 minutes) and Claude on a subscription (1 hour) give 25.
+     Any plugin event, including every PR-monitor or background wake, moves the
+     tracker's instant and so pushes the compaction back; harness signals
+     (pending wake, background task, readiness not idle) only ever extend the
+     wait.
+   - **Cache-life source.** The plugin answers it: step 11 adds a
+     plugin-interface query for a session's prompt-cache life (nullable =
+     unknown). Each plugin derives it from what it already knows (evidence in
+     P11): Claude reads the `promptCacheTtlSeconds` it already sets from the
+     init handshake's account since #2612 (a subscription wins over an API
+     provider and gives 1 hour; an API provider without a subscription gives 5
+     minutes; neither gives 1 hour) and does not recompute it, so that
+     precedence has one owner, Codex 30 minutes, OpenCode by provider (Anthropic 5
+     minutes), Pi 5 minutes, Hermes 5 minutes, Cursor by model (Anthropic 5
+     minutes), Oh My Pi per seat. Copilot, Antigravity (Gemini) and Grok report
+     unknown. The margin and cap live only in `ScheduledTaskCompactionService`
+     in bridge core, and no harness names appear in core.
    The compaction runs on S's lane, re-checks quietness and
    `R.compactRequestedAt` inside the lane, calls
    `SessionRepository.compactSession`, and sets `R.compactRequestedAt` on
@@ -514,7 +553,7 @@ be its latest started run and S its session (not archived).
 3. **Compaction still running when a run is due.** S busy with
    `R.compactRequestedAt` set: the run waits (stays due) up to 10 minutes
    after `compactRequestedAt`, then fires when idle, or records
-   `skipped(previousRunActive)` and advances if still busy. A run delayed past
+   `skipped` and advances if still busy. A run delayed past
    the grace by compaction is marked late; accepted.
 4. **Edits mid-window.** Auto-compact turned off, switched to new session,
    project/harness changed (target cleared), task paused or deleted: the next
@@ -522,9 +561,11 @@ be its latest started run and S its session (not archived).
    that session entirely.
 5. **Accepted limits.** A harness's own automatic compaction is not detected,
    so the bridge may compact once more (a summary of a summary; cheap). An
-   external wake slower than W (for example a monitor that reports less often
-   than every 25 minutes) can land in a compacted session; the agent continues
-   from the summary. No harness exposes a signal for future external wakes.
+   external wake slower than W can land in a compacted session; the agent
+   continues from the summary. On a 5-minute cache route W is about 3 minutes,
+   so a PR-monitor wake after that lands in an already-compacted session; the
+   user accepted this with Q1 = B. No harness exposes a signal for future
+   external wakes.
 6. **Client.** The Each run sheet shows the switch only for Continue in the
    same session. When the chosen harness lacks
    `supportsCompactionOnRequest`, the switch is shown off and inert, and a tap
@@ -565,10 +606,10 @@ What it means:
 - No harness can tell whether an external sender (an MCP monitor, a peer
   message) will wake the session later, so harness signals can only *extend*
   the window, never prove "done".
-- Extending cache life at launch for task sessions (Claude Code, Pi, Hermes,
-  OpenCode settings) would keep 25 minutes warm, but raises every cache write
-  in those sessions to 2× base input instead of 1.25× and needs per-session
-  launch plumbing; not in this plan unless Q1 picks it.
+- Q1 = B outcome: the window follows each session's cache life, so post-run
+  compaction reads warm wherever the cache life is known (about 3 minutes on
+  5-minute routes, 25 minutes on Codex and Claude subscriptions). Cache life is
+  not extended at launch, so cache writes keep their 1.25× price.
 
 ### P12. Analytics
 
@@ -624,7 +665,7 @@ What it means:
 - Waking a sleeping machine for a run (`pmset` schedules).
 - Run-outcome analytics (P12).
 - A separate push category or preference toggle for task pushes (P2).
-- Harness-launch cache-TTL changes (P11), unless Q1 picks them.
+- Harness-launch cache-TTL changes (P11); Q1 = B does not need them.
 
 ## Security And Privacy
 
@@ -783,8 +824,8 @@ parallel with the bridge chain.
     a "Compaction on request" table in `docs/HARNESS_CAPABILITIES.md`. [1]
 11. 🚧 **Auto-compact same-session tasks.** `ScheduledTaskCompactionService`
     and `ScheduledTaskActivityTracker` in the tick (P10 cases 1–4), the auto-compact switch and its
-    unsupported-harness tap on the Each run sheet. Uses Q1's answer, else the
-    provisional 25 minutes. [5, 9, 10]
+    unsupported-harness tap on the Each run sheet, and the plugin-interface
+    prompt-cache-life query. Uses Q1 = B. [5, 9, 10]
 12. 🌱 **Regression docs.** Write `scheduled-tasks.md`, update the documents
     listed under Regression Coverage and the README index. [2–11]
 13. 🌱 **Run the L3 regression and retire the plan.** Run the matrix above,
@@ -803,19 +844,11 @@ parallel with the bridge chain.
 
 ## Open Questions
 
-- **Q1. Auto-compact quiet window (cost against reliability).** Provisional
-  default: option A below.
-  - A. One 25-minute quiet window everywhere, extended (never shortened) by
-    harness signals. Matches the user's note; warm on Claude subscription,
-    Codex, OMP subscription and DeepSeek; cold (about 0.9× of one context read
-    extra per run) on 5-minute Anthropic routes.
-  - B. Per-harness window: about 3 minutes where the cache lives 5 minutes,
-    25 minutes where it lives 30 minutes or more. Cheapest, but a monitor
-    wake after 3 minutes lands in a compacted session on those routes.
-  - C. A, plus a 1-hour cache for task-run sessions where the harness allows
-    it (Claude Code, Pi, Hermes, OpenCode). Warm at 25 minutes there, but every
-    cache write in those sessions costs 2× instead of 1.25×, plus per-session
-    launch plumbing; not possible for Cursor, Copilot, Gemini or Grok.
+None open.
+
+- **Q1. Auto-compact quiet window: resolved 2026-11-15 as B**, a window that
+  follows each session's prompt-cache life (P10). Not chosen: A, one 25-minute
+  window everywhere; C, A plus a 1-hour cache for task-run sessions.
 
 ## Plan Review Record
 
