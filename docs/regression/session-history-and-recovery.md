@@ -449,7 +449,7 @@ reconnect or restart.
   the Codex config resumes on its own provider from codex-cli 0.168.0. It is
   refused on `thread/resume` with structured `error.data` when that provider is
   no longer defined (`modelProviderNotConfigured`), a policy requires another
-  (`modelProviderPolicyConflict`), or, on a PATH install older than 0.168.0,
+  (`modelProviderPolicyConflict`), or, on a 0.166.0 to 0.167.x PATH install,
   it merely differs from the default (`modelProviderMismatch`). The send fails
   as a 409, never as a generic 500, and no `turn/start` is sent. A mismatch
   names both providers and says to switch back; a provider no longer configured

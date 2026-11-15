@@ -28,7 +28,9 @@ are recommendation metadata, not forced upgrades. Compatible PATH binaries remai
 Independent minimums are unchanged; Antigravity retains its exact-pair policy rather than an
 independent floor. On 2026-11-12 the production managed install (digest sentinel) passed on macOS
 arm64 for all eight managed harnesses; it had network and normal file reads. The native probes
-below ran with network denied, home reads denied and no credentials.
+below ran with network denied, home reads denied and no credentials. Codex was raised again on
+2026-11-15 in a single-harness follow-up; its row records that run's own evidence and probe
+conditions.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
