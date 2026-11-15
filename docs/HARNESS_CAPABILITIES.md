@@ -1388,7 +1388,8 @@ edited text in its place.
 
 | Harness | Native seam | Edit and resend |
 |---|---|---|
-| Claude Code | Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>` (verified 2.1.221 and 2.1.322) | ✅ Native, from any prompt on the active branch after the latest compaction |
+| Claude Code | Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>` (verified 2.1.221 and 2.1.322) | ✅ Native for idle sessions, from any prompt but the first on the active branch after the latest compaction |
+| Other harnesses | Per-harness steps of the session edit and fork plan | ⬜ Not implemented yet |
 
 Claude Code (live probes against 2.1.221 and 2.1.322 in a scratch config
 directory, 2026-11-15):

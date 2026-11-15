@@ -1398,6 +1398,30 @@ void main() {
         expect(harness.processes, hasLength(2));
       });
 
+      test("holds the session busy while it respawns, so a second edit is refused", () async {
+        unawaited(harness.enqueue("first"));
+        final first = await harness.firstProcess;
+        await waitForFrame(first, "user");
+        first.emit(_result());
+        await harness.waitForIdle();
+
+        final hold = harness.holdRewind = Completer<void>();
+        final rewind = harness.rewind("edited");
+        while (harness.processes.length < 2) {
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+
+        await expectLater(
+          harness.rewind("again"),
+          throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 409)),
+        );
+        hold.complete();
+        await rewind;
+        await waitForFrame(harness.processes[1], "user");
+        expect(harness.processes, hasLength(2));
+        expect(harness.service.queuedPrompts(sessionId: testSessionId).single.id, "prompt-edited");
+      });
+
       test("refuses a prompt with no resumable entry before touching the process", () async {
         unawaited(harness.enqueue("first"));
         final first = await harness.firstProcess;
@@ -1498,6 +1522,9 @@ final class _ServiceHarness({
 
   Future<FakeClaudeProcess> get firstProcess => processAt(0);
 
+  /// When set, a rewound process answers `initialize` only once it completes.
+  Completer<void>? holdRewind;
+
   Future<ClaudeProcessHandle> _spawn(ClaudeLaunchSpec spec) async {
     final process = FakeClaudeProcess(stdinCloseCompletes: stdinCloseCompletes);
     specs.add(spec);
@@ -1511,6 +1538,7 @@ final class _ServiceHarness({
         await process.close();
         return;
       }
+      if (spec.arguments.any((argument) => argument.startsWith("--resume-session-at"))) await holdRewind?.future;
       process.emitControlResponse(requestId: request.field<String>("request_id"), payload: sampleHandshake);
       if (failInterrupt) {
         final interrupt = await _waitForControlSubtype(process, "interrupt");

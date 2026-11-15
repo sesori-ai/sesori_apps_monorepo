@@ -157,10 +157,9 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
 
   /// Where a rewind that removes the user prompt [messageId] and everything
   /// after it resumes [sessionId]: the prompt's parent on the active branch.
-  /// Throws [StateError] when the session has no transcript.
   Future<ClaudeRewindPoint> rewindPointBefore({required String sessionId, required String messageId}) async {
     final path = await findTranscriptPath(sessionId: sessionId);
-    if (path == null) throw StateError("Claude transcript not found for session $sessionId");
+    if (path == null) return const ClaudeRewindUnavailable(reason: ClaudeRewindRefusal.notOnActiveBranch);
     final transcriptApi = _transcriptApi;
     return await Isolate.run(
       () => _rewindPointBefore(
@@ -632,6 +631,10 @@ ClaudeRewindPoint _rewindPointBefore({required List<ClaudeTranscriptRecordDto> r
   }
   final entryUuid = trimmedOrNull(value: prompt.parentUuid);
   if (entryUuid == null) return const ClaudeRewindUnavailable(reason: ClaudeRewindRefusal.firstMessage);
+  // A parent missing from the file (a truncated transcript) cannot be resumed at.
+  if (!active.chain.contains(entryUuid)) {
+    return const ClaudeRewindUnavailable(reason: ClaudeRewindRefusal.notOnActiveBranch);
+  }
   // The chain from the leaf reaches the prompt, which it holds.
   String? cursor = active.leaf;
   while (cursor != null && cursor != messageId) {

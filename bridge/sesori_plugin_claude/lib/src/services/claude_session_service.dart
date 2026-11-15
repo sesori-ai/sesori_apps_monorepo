@@ -350,6 +350,8 @@ final class ClaudeSessionService({
   }) async {
     const operation = "rewindAndSendPrompt";
     if (_disposed) throw StateError("Claude session service is disposed");
+    // Taken before the transcript read, so a deletion meanwhile is noticed.
+    final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
     final entryUuid = switch (await _transcripts.rewindPointBefore(sessionId: sessionId, messageId: beforeMessageId)) {
       ClaudeRewindEntry(:final entryUuid) => entryUuid,
       ClaudeRewindUnavailable(:final reason) => throw PluginBranchPointUnavailableException(
@@ -363,15 +365,17 @@ final class ClaudeSessionService({
         cause: null,
       ),
     };
-    final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
+    if (_disposed || !identical(_turns[sessionId], state)) {
+      throw StateError("Claude session $sessionId closed before it could be rewound");
+    }
     // The bridge rewinds only idle sessions; a wakeup or task that started
     // since must not be torn down under the user.
     if (state.hasWork || state.aborting != null) {
       throw const PluginOperationException(operation: operation, statusCode: 409, message: "session is busy");
     }
-    // Supersedes an armed idle reap, so it cannot end the respawned process
-    // before the prompt reaches it.
-    state.idleGeneration++;
+    // Holds the session busy until the prompt is queued: a second rewind is
+    // refused, and an armed idle reap cannot end the respawned process.
+    _beginTurnAccounting(sessionId: sessionId, state: state);
     final respawn = state.dispatchTail.then((_) async {
       final reaping = _teardownsBySession[sessionId];
       if (reaping != null) await reaping;
@@ -394,12 +398,16 @@ final class ClaudeSessionService({
     state.dispatchTail = respawn.catchError((Object _) {});
     try {
       await respawn;
-    } on ClaudeRewindUnsupportedException catch (error) {
-      throw PluginBranchPointUnavailableException(
-        operation: operation,
-        userFacingReason: "This Claude Code version can't edit messages from Sesori.",
-        cause: error,
-      );
+    } on Object catch (error) {
+      _finish(sessionId: sessionId, state: state, outcome: null);
+      if (error is ClaudeRewindUnsupportedException) {
+        throw PluginBranchPointUnavailableException(
+          operation: operation,
+          userFacingReason: "This Claude Code version can't edit messages from Sesori.",
+          cause: error,
+        );
+      }
+      rethrow;
     }
     await enqueueTurn(
       sessionId: sessionId,
@@ -415,6 +423,8 @@ final class ClaudeSessionService({
       command: null,
       attachmentCount: attachmentCount,
     );
+    // The queued turn now holds the session.
+    state.pending--;
   }
 
   void _beginTurnAccounting({required String sessionId, required _SessionTurnState state}) {

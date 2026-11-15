@@ -307,8 +307,10 @@ final class ClaudeSessionProcessRepository({
   /// [entryUuid], so the next prompt continues from there.
   ///
   /// Nothing is written to the transcript until that prompt is sent, so a
-  /// failure here leaves the conversation as it was. A CLI that does not know
-  /// the option fails with [ClaudeRewindUnsupportedException].
+  /// failure here leaves the conversation as it was: a process that failed
+  /// after it started is torn down, so the next prompt does not land on the
+  /// rewound branch. A CLI that does not know the option fails with
+  /// [ClaudeRewindUnsupportedException].
   Future<void> resumeAt({
     required String sessionId,
     required String directory,
@@ -333,8 +335,12 @@ final class ClaudeSessionProcessRepository({
         fastMode: fastMode,
         allowedTools: allowedTools,
       );
-    } on ClaudeUnknownOptionException catch (error) {
-      throw ClaudeRewindUnsupportedException(innerError: error);
+    } on Object catch (error) {
+      await teardown(sessionId: sessionId);
+      if (error case ClaudeUnknownOptionException(option: "--resume-session-at")) {
+        throw ClaudeRewindUnsupportedException(innerError: error);
+      }
+      rethrow;
     }
   }
 

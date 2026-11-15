@@ -13,6 +13,7 @@ const _terminalRewind = "33333333-3333-4333-8333-333333333333";
 const _parallelTools = "55555555-5555-4555-8555-555555555555";
 const _rewindToStart = "66666666-6666-4666-8666-666666666666";
 const _compacted = "77777777-7777-4777-8777-777777777777";
+const _truncated = "99999999-9999-4999-8999-999999999999";
 
 const _alpha = "user: Reply with just the word: alpha";
 const _beta = "user: Reply with just the word: beta";
@@ -169,7 +170,7 @@ void main() {
       );
     });
 
-    test("is found after a compaction and refused before it", () async {
+    test("is found after a compaction, and refused before it or without a transcript or parent", () async {
       final project = Directory(p.join(temp.path, "projects", "-work-fixture-project"))..createSync(recursive: true);
       Map<String, Object?> record(String uuid, String? parent, String type, {Map<String, Object?> extra = const {}}) =>
           {
@@ -205,9 +206,18 @@ void main() {
         record(ids[5], ids[4], "user", extra: {"isCompactSummary": true}),
         record(ids[6], ids[5], "user"),
       ];
+      // A prompt whose parent the file does not hold.
+      File(p.join(project.path, "$_truncated.jsonl")).writeAsStringSync(
+        "${jsonEncode(record(ids[2], ids[1], "user"))}\n",
+      );
       File(p.join(project.path, "$_compacted.jsonl")).writeAsStringSync("${records.map(jsonEncode).join("\n")}\n");
 
       expect(await before(ids[2], sessionId: _compacted), _refused(ClaudeRewindRefusal.beforeCompaction));
+      expect(
+        await before(ids[0], sessionId: "88888888-8888-4888-8888-888888888888"),
+        _refused(ClaudeRewindRefusal.notOnActiveBranch),
+      );
+      expect(await before(ids[2], sessionId: _truncated), _refused(ClaudeRewindRefusal.notOnActiveBranch));
       expect(
         await before(ids[6], sessionId: _compacted),
         isA<ClaudeRewindEntry>().having((point) => point.entryUuid, "entry", ids[5]),
