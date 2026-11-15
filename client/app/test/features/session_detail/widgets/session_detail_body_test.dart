@@ -5822,7 +5822,7 @@ void main() {
     ).captured.single;
     expect(
       sentAttachments,
-      isA<List<ComposerAttachment>>().having((it) => [for (final a in it) a.bytes], "bytes", [_tinyPng]),
+      isA<List<ComposerAttachment>>().having((it) => [for (final a in it) _bytesOf(a)], "bytes", [_tinyPng]),
     );
   });
 
@@ -7139,3 +7139,8 @@ void main() {
     });
   });
 }
+
+Uint8List? _bytesOf(ComposerAttachment? attachment) => switch (attachment) {
+  ComposerImageAttachment(:final bytes) || ComposerFileAttachment(:final bytes) => bytes,
+  ComposerHostFileAttachment() || null => null,
+};

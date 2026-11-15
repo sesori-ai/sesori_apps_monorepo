@@ -225,8 +225,10 @@ import 'package:sesori_dart_core/src/services/installation_analytics_service.dar
 import 'package:sesori_dart_core/src/services/mcp_authentication_service.dart'
     as _i585;
 import 'package:sesori_dart_core/src/services/mcp_service.dart' as _i948;
-import 'package:sesori_dart_core/src/services/message_thumbnail_cache_service.dart'
+import 'package:sesori_dart_core/src/services/message_composer_restore_service.dart'
     as _i72;
+import 'package:sesori_dart_core/src/services/message_thumbnail_cache_service.dart'
+    as _i73;
 import 'package:sesori_dart_core/src/services/models/all_sessions_mode.dart'
     as _i208;
 import 'package:sesori_dart_core/src/services/new_session_options_service.dart'
@@ -965,6 +967,12 @@ extension GetItInjectableX on _i174.GetIt {
         connectionService: gh<_i369.ConnectionService>(),
       ),
     );
+    gh.lazySingleton<_i72.MessageComposerRestoreService>(
+      () => _i72.MessageComposerRestoreService(
+        images: gh<_i531.MessageImageRepository>(),
+        filePreviews: gh<_i704.FilePreviewRepository>(),
+      ),
+    );
     gh.lazySingleton<_i516.NotificationOpenDispatcher>(
       () => _i516.NotificationOpenDispatcher(
         authSession: gh<_i442.AuthSession>(),
@@ -976,8 +984,8 @@ extension GetItInjectableX on _i174.GetIt {
         computerSwitchDispatcher: gh<_i433.ComputerSwitchDispatcher>(),
       ),
     );
-    gh.lazySingleton<_i72.MessageThumbnailCacheService>(
-      () => _i72.MessageThumbnailCacheService(
+    gh.lazySingleton<_i73.MessageThumbnailCacheService>(
+      () => _i73.MessageThumbnailCacheService(
         repository: gh<_i531.MessageImageRepository>(),
         authSession: gh<_i442.AuthSession>(),
       ),

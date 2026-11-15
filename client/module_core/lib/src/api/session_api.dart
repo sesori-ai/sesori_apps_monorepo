@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:typed_data";
 
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -228,13 +229,29 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     return [
       if (text.isNotEmpty || attachments.isEmpty) PromptPart.text(text: text),
       for (final attachment in attachments)
-        PromptPart.fileData(
-          mime: attachment.mime,
-          base64: base64Encode(attachment.bytes),
-          filename: attachment.filename,
-        ),
+        switch (attachment) {
+          ComposerImageAttachment(:final mime, :final bytes, :final filename) => PromptPart.fileData(
+            mime: mime,
+            base64: base64Encode(bytes),
+            filename: filename,
+          ),
+          ComposerFileAttachment(:final mime, :final bytes, :final filename) => PromptPart.fileData(
+            mime: mime,
+            base64: base64Encode(bytes),
+            filename: filename,
+          ),
+          ComposerHostFileAttachment() => _hostFilePart(attachment: attachment),
+        },
     ];
   }
+
+  /// The bridge already holds the file, so it goes by its path on the
+  /// bridge's computer and nothing is uploaded again.
+  static PromptPart _hostFilePart({required ComposerHostFileAttachment attachment}) => PromptPart.filePath(
+    mime: composerFileAttachmentMime,
+    path: attachment.path,
+    filename: attachment.filename,
+  );
 
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,
@@ -631,12 +648,30 @@ final class _BoundedCreateSessionBody({
       ..["parts"] = [
         for (final part in request.parts) part.toJson(),
         for (final attachment in attachments)
-          {
-            "mime": attachment.mime,
-            "base64": BoundedBase64Value(bytes: attachment.bytes),
-            "filename": ?attachment.filename,
-            "type": "file_data",
+          switch (attachment) {
+            ComposerImageAttachment(:final mime, :final bytes, :final filename) => _fileDataJson(
+              mime: mime,
+              bytes: bytes,
+              filename: filename,
+            ),
+            ComposerFileAttachment(:final mime, :final bytes, :final filename) => _fileDataJson(
+              mime: mime,
+              bytes: bytes,
+              filename: filename,
+            ),
+            ComposerHostFileAttachment() => SessionApi._hostFilePart(attachment: attachment).toJson(),
           },
       ];
   }
+
+  static Map<String, dynamic> _fileDataJson({
+    required String mime,
+    required Uint8List bytes,
+    required String? filename,
+  }) => {
+    "mime": mime,
+    "base64": BoundedBase64Value(bytes: bytes),
+    "filename": ?filename,
+    "type": "file_data",
+  };
 }

@@ -240,9 +240,28 @@ sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMet
     required CodexRolloutThreadSource? threadSource,
     @JsonKey(name: "agent_nickname") required String? agentNickname,
     @JsonKey(name: "agent_path") required String? agentPath,
+
+    /// Set on a rollout written by `thread/revert` or a paginated
+    /// `thread/fork`: its history starts with another rollout's prefix.
+    @JsonKey(name: "history_base") required CodexRolloutHistoryBaseDto? historyBase,
   }) = _CodexRolloutSessionMetadataPayloadDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutSessionMetadataPayloadDtoFromJson(json);
+}
+
+/// The kept prefix of another rollout that a paginated rollout builds on.
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexRolloutHistoryBaseDto with _$CodexRolloutHistoryBaseDto {
+  const factory({
+    /// Codex names this field `thread_id`, but it holds a rollout id: a
+    /// reverted thread's base can be its own earlier rollout.
+    @JsonKey(name: "thread_id") required String rolloutId,
+
+    /// The byte offset just past the prefix's last JSONL record.
+    @JsonKey(name: "end_byte_offset") required int endByteOffset,
+  }) = _CodexRolloutHistoryBaseDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CodexRolloutHistoryBaseDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
