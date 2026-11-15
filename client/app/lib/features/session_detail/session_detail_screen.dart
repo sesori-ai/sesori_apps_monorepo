@@ -128,23 +128,28 @@ class const _MobileSessionDetailBody({
             required sessionId,
             required sessionTitle,
             required readOnly,
-          }) => context.pushRoute(
-            auditView
-                ? AppRoute.archivedSessionDetail(
-                    projectId: projectId,
-                    projectName: projectName,
-                    sessionId: sessionId,
-                    sessionTitle: sessionTitle,
-                  )
-                : AppRoute.sessionDetail(
-                    projectId: projectId,
-                    projectName: projectName,
-                    sessionId: sessionId,
-                    readOnly: readOnly,
-                    sessionTitle: sessionTitle,
-                    fromLaunch: false,
-                  ),
-          ),
+          }) {
+            // A handoff can name a session in another project, whose name this screen doesn't know.
+            final linkedProjectName = projectId == this.projectId ? projectName : null;
+            // A live session a handoff names opens live, even from the archive.
+            context.pushRoute(
+              auditView && readOnly
+                  ? AppRoute.archivedSessionDetail(
+                      projectId: projectId,
+                      projectName: linkedProjectName,
+                      sessionId: sessionId,
+                      sessionTitle: sessionTitle,
+                    )
+                  : AppRoute.sessionDetail(
+                      projectId: projectId,
+                      projectName: linkedProjectName,
+                      sessionId: sessionId,
+                      readOnly: readOnly,
+                      sessionTitle: sessionTitle,
+                      fromLaunch: false,
+                    ),
+            );
+          },
       child: SessionDetailBody(
         projectId: projectId,
         sessionId: sessionId,

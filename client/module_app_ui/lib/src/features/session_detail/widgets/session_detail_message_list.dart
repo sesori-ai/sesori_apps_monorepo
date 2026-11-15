@@ -14,6 +14,8 @@ import "../../../extensions/build_context_x.dart";
 import "assistant_message_card.dart";
 import "error_message_card.dart";
 import "follow_detach_scrollable.dart";
+import "handoff_card.dart";
+import "handoff_marker_row.dart";
 import "jump_to_edge_pill.dart";
 import "message_timestamp_reveal.dart";
 import "queued_message_bubble.dart";
@@ -307,6 +309,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The last build's rendered user messages, prompts and steers alike, in
   /// order: the messages that can pin.
   Map<String, MessageWithParts> _userMessagesById = const {};
+
+  /// The handoffs among the rows, from the last build.
+  TranscriptHandoffs _handoffs = const TranscriptHandoffs(markers: {}, foldedMessageIds: {}, cards: {}, writing: false);
 
   /// The attached user message bubbles, by message id.
   final _promptSlots = TranscriptPromptSlots();
@@ -1037,28 +1042,36 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (widget.bridgeQueuedPrompts.lastOrNull case final held?) {
       _lastHeldPrompt = (promptId: held.id, acceptedAt: held.createdAt);
     }
-    final activity = const TranscriptActivityBuilder().build(
-      transcript: transcript,
+    final handoffs = _handoffs = const TranscriptHandoffBuilder().build(
       messages: messages,
+      turns: turns,
       isBusy: isBusy,
-      mainAgentRunning: mainAgentRunning,
-      retryErrorMessage: retryErrorMessage,
-      streamingText: streamingText,
-      children: children,
-      childStatuses: childStatuses,
-      // In the order their rows show.
-      pendingPrompts: [
-        for (final prompt in widget.bridgeQueuedPrompts) (promptId: prompt.id, acceptedAt: prompt.createdAt),
-        for (final (:submission, since: _) in widget.awaitingBridgeSubmissions)
-          (promptId: submission.promptId, acceptedAt: null),
-        for (final followUp in widget.launchFollowUps)
-          if (followUp case SendingLaunchFollowUp(:final submission) || AcceptedLaunchFollowUp(:final submission))
-            (promptId: submission.promptId, acceptedAt: null),
-        if (localSendRow case (:final submission, stage: _TransientStage.sending))
-          (promptId: submission.promptId, acceptedAt: null),
-      ],
-      lastHeldPrompt: _lastHeldPrompt,
     );
+    // A summary being written shows its own live line in place of the working row.
+    final activity = handoffs.writing
+        ? const TranscriptActivityIdle()
+        : const TranscriptActivityBuilder().build(
+            transcript: transcript,
+            messages: messages,
+            isBusy: isBusy,
+            mainAgentRunning: mainAgentRunning,
+            retryErrorMessage: retryErrorMessage,
+            streamingText: streamingText,
+            children: children,
+            childStatuses: childStatuses,
+            // In the order their rows show.
+            pendingPrompts: [
+              for (final prompt in widget.bridgeQueuedPrompts) (promptId: prompt.id, acceptedAt: prompt.createdAt),
+              for (final (:submission, since: _) in widget.awaitingBridgeSubmissions)
+                (promptId: submission.promptId, acceptedAt: null),
+              for (final followUp in widget.launchFollowUps)
+                if (followUp case SendingLaunchFollowUp(:final submission) || AcceptedLaunchFollowUp(:final submission))
+                  (promptId: submission.promptId, acceptedAt: null),
+              if (localSendRow case (:final submission, stage: _TransientStage.sending))
+                (promptId: submission.promptId, acceptedAt: null),
+            ],
+            lastHeldPrompt: _lastHeldPrompt,
+          );
     final transientSubmissions = <String, _TransientSubmission>{
       for (final (:submission, since: _) in widget.awaitingBridgeSubmissions)
         "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.awaitingBridge),
@@ -1090,7 +1103,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final rowIds = _rowIdsFor(
       messageRows: [
         for (final message in messages)
-          if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
+          if (message.hasRenderableUserContent && !handoffs.foldedMessageIds.contains(message.info.id))
+            _entryIdForMessage(info: message.info),
       ],
       pendingPromptRowIds: pendingPromptRowIds,
       wakingPromptRowId: wakingPromptRowId,
@@ -1118,7 +1132,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
     _userMessagesById = {
       for (final message in messages)
-        if (message.info is MessageUser && message.hasRenderableUserContent) message.info.id: message,
+        if (message.info is MessageUser &&
+            message.hasRenderableUserContent &&
+            !handoffs.markers.containsKey(message.info.id) &&
+            !handoffs.cards.containsKey(message.info.id))
+          message.info.id: message,
     };
     // Rows ease in, prompts as much as replies, so that the list rises for a
     // send instead of jumping. Not rows held still while scrolled away, nor those
@@ -1368,7 +1386,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         final message = messages[index];
         return _revealable(
           createdAtMs: message.info.time?.created,
-          child: _deliveredPromptRow(message: message),
+          child: _handoffRow(message: message) ?? _deliveredPromptRow(message: message),
         );
       }
       final promptId = entryId.substring(_kPromptRowPrefix.length);
@@ -1489,6 +1507,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return const SizedBox.shrink();
     }
     final createdAtMs = message.info.time?.created;
+    if (_handoffRow(message: message) case final handoff?) return _revealable(createdAtMs: createdAtMs, child: handoff);
     final card = switch (message.info) {
       // The launch bubble's echo keeps easing like the bubble it replaced.
       MessageUser() when entryId == _launchSlotRowId => _deliveredPromptRow(message: message),
@@ -1522,6 +1541,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       outlineFade: outlineFade,
     ),
   );
+
+  /// A handoff's marker or card in place of its prompt's bubble, or null for
+  /// any other prompt.
+  Widget? _handoffRow({required MessageWithParts message}) {
+    final id = message.info.id;
+    if (_handoffs.markers[id] case final marker?) return HandoffMarkerRow(marker: marker);
+    if (_handoffs.cards[id] case final card?) return HandoffCard(messageId: id, card: card);
+    return null;
+  }
 
   /// A delivered prompt's row. It carries on from the bubble that waited, the row's
   /// key keeping them one, so a line that showed sees out its fade, and a row built
