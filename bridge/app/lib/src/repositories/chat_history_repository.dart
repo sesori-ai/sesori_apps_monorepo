@@ -395,6 +395,44 @@ class ChatHistoryRepository({
     return leftovers;
   }
 
+  /// [unreplayedInvocationIndexes] plus the rows of each run's reply that the
+  /// replay doesn't hold either: the rows after the invocation turn, up to the
+  /// next user turn or the first reply row the replay holds.
+  ///
+  /// A harness that runs a command itself, such as Hermes `/compress` or
+  /// `/help`, records neither the turn nor its reply. That reply would sit
+  /// between the turns around the run and keep them from matching their
+  /// replayed rows, so the prompt after the run and the answer before it
+  /// would each show twice.
+  Set<int> _unreplayedRunIndexes({
+    required Set<int> unreplayedInvocationIndexes,
+    required List<_SemanticMessageFingerprints?> importedFingerprints,
+    required List<HistoryMessagesTableData> storedRows,
+    required List<_SemanticMessageFingerprints?> storedFingerprints,
+    required Set<String> importedIds,
+  }) {
+    if (unreplayedInvocationIndexes.isEmpty) return const {};
+    final importedContents = {for (final fingerprint in importedFingerprints) ?fingerprint?.content};
+    final runIndexes = {...unreplayedInvocationIndexes};
+    for (final invocationIndex in unreplayedInvocationIndexes) {
+      for (var index = invocationIndex + 1; index < storedRows.length; index++) {
+        final row = storedRows[index];
+        final content = storedFingerprints[index]?.content;
+        if (content == null ||
+            importedContents.contains(content) ||
+            importedIds.contains(row.messageId) ||
+            _isUserRow(row: row)) {
+          break;
+        }
+        runIndexes.add(index);
+      }
+    }
+    return runIndexes;
+  }
+
+  bool _isUserRow({required HistoryMessagesTableData row}) =>
+      Message.fromJson(jsonDecodeMap(row.infoJson)) is MessageUser;
+
   bool _isInvocationRow({required HistoryMessagesTableData row}) => switch (Message.fromJson(
     jsonDecodeMap(row.infoJson),
   )) {
@@ -881,7 +919,13 @@ class ChatHistoryRepository({
     };
     // An invocation turn the replay doesn't hold sits between its neighbors
     // without separating them, so they still match their replayed rows.
-    final unreplayedInvocationIndexes = leftoverInvocationIndexes.difference(invocationTurnPairs.values.toSet());
+    final unreplayedRunIndexes = _unreplayedRunIndexes(
+      unreplayedInvocationIndexes: leftoverInvocationIndexes.difference(invocationTurnPairs.values.toSet()),
+      importedFingerprints: importedSemanticFingerprints,
+      storedRows: storedContextRows,
+      storedFingerprints: storedSemanticFingerprints,
+      importedIds: importedIds,
+    );
 
     final importedSemanticContexts = _semanticContextFingerprints(
       fingerprints: importedSemanticFingerprints,
@@ -895,7 +939,7 @@ class ChatHistoryRepository({
     final storedSemanticContexts = _semanticContextFingerprints(
       fingerprints: [
         for (var index = 0; index < storedSemanticFingerprints.length; index++)
-          unreplayedInvocationIndexes.contains(index) ? null : storedSemanticFingerprints[index],
+          unreplayedRunIndexes.contains(index) ? null : storedSemanticFingerprints[index],
       ],
       anchorOverrides: [
         for (var index = 0; index < storedContextRows.length; index++)
@@ -1000,8 +1044,8 @@ class ChatHistoryRepository({
     // Rows an earlier import wrote are replaced by this one, but an invocation
     // turn among them keeps its name: the replayed turn of the same content
     // takes it, and one the replay doesn't hold (Oh My Pi drops its own skill
-    // runs) stays in its place. Its place comes from the stale rows the replay
-    // holds once by content.
+    // runs) stays in its place with the reply rows the replay doesn't hold.
+    // Its place comes from the stale rows the replay holds once by content.
     final keptStaleIds = <String>{};
     final staleRows = [
       for (final row in storedRows)
@@ -1025,9 +1069,11 @@ class ChatHistoryRepository({
         );
         if (fingerprint != null) staleRowsByContent.putIfAbsent(fingerprint.content, () => []).add(row);
       }
+      final unreplayedStaleIds = <String>{};
       for (final MapEntry(key: content, value: rows) in staleRowsByContent.entries) {
         final importedIndexes = importedIndexesByContent[content];
         if (importedIndexes == null) {
+          unreplayedStaleIds.addAll([for (final row in rows) row.messageId]);
           keptStaleIds.addAll([
             for (final row in rows)
               if (_isInvocationRow(row: row)) row.messageId,
@@ -1049,6 +1095,18 @@ class ChatHistoryRepository({
               );
             }
           }
+        }
+      }
+      // A run the replay doesn't hold keeps the reply rows it doesn't hold
+      // either (Hermes records neither for `/compress`).
+      var inUnreplayedRun = false;
+      for (final row in staleRows) {
+        if (keptStaleIds.contains(row.messageId)) {
+          inUnreplayedRun = true;
+        } else if (inUnreplayedRun && unreplayedStaleIds.contains(row.messageId) && !_isUserRow(row: row)) {
+          keptStaleIds.add(row.messageId);
+        } else {
+          inUnreplayedRun = false;
         }
       }
     }
