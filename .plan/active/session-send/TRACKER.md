@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | 1 Raise the plan | Done | #2587 |
 | 2 Transcript Markdown and file store | In PR | |
-| 3 Bridge send flow | Not started | |
+| 3 Bridge send flow | In PR | |
 | 4 Handoff marker in the bridge | Not started | |
 | 5 Claude read rules (transcripts and uploads) | Not started | |
 | 6 Busy-prompt declaration | Not started | |

@@ -150,8 +150,11 @@ The bridge sends the source session a summarise prompt through the existing prom
 - The bridge sends the summarise prompt only when the source is idle.
 - A busy source would mix the request into the running turn, and on ACP harnesses it would stop that turn.
 - The bridge checks readiness right before sending and refuses with a typed code:
-  - `sourceBusy` covers busy, retrying and queued;
+  - `sourceBusy` covers busy and retrying. Step 3 reads no queue: a prompt queues only behind a running turn, so a
+    queue implies busy;
   - `sourceAwaitingInput` covers a pending question or permission.
+  - A plugin listed in `unavailablePluginIds` (not running) has no turn, so it counts as idle. Any failure of the
+    summarise send itself, including a refusal, is `sourceUnavailable`.
 - Readiness comes from sources that every plugin supplies:
   - `SessionRepository.getSessionStatuses()` decides idle, busy or retrying;
   - `PermissionRepository.getPendingPermissions` and `QuestionRepository.getPendingQuestions` decide awaiting input.
@@ -195,6 +198,10 @@ The bridge sends the source session a summarise prompt through the existing prom
   request open that long. If it can't, step 3 switches to "accept, then report through an SSE event" and records that
   change here. That fallback adds an orchestrator-emitted event and a new wire model. It is a
   considerable change, so it gets another architecture plan review before it is built.
+- Step 3 result: no fallback is needed. The relay server (`sesori_relay_server`) forwards opaque E2E frames between
+  the phone and bridge sockets and has no per-request state or timeout; the sockets stay up with 30-second pings. The
+  bridge sets no route timeout either. The only limit is the client's per-call timeout, which step 4 sets to 16
+  minutes. The live run went through the bridge's debug server, since no client calls the route yet.
 
 ### D5. Flow inside the bridge
 
@@ -211,13 +218,18 @@ The bridge sends the source session a summarise prompt through the existing prom
    and the send. The reservation is released before the wait, so the user can still stop the turn or answer its
    questions.
 4. **Wait for the turn to end.** It records the user message whose live echo carries the prompt id. It then waits for
-   an idle `NormalizedStatusEvent` for the source after that echo.
+   an idle for the source after that echo. Step 3 found that harnesses report idle either as an idle
+   `NormalizedStatusEvent` or as `BridgeSseSessionIdle` (Claude uses the latter), so both count. A terminal handoff
+   (the plugin stopping mid-turn) fails with `summaryFailed`.
    - A session error event for the source fails with `summaryFailed`.
    - A user stop of the source fails with `summaryStopped`. Stopping is the natural way to cancel a send, and a half
      summary must never reach the target.
    - Fifteen minutes without an end fails with `summaryTimedOut`.
    - A pending question or permission doesn't stop the wait: the user answers it in the source.
 5. **Read and split.** It reads the whole history once through `ChatHistoryService`.
+   - Step 3 divergence: it first calls `ChatHistoryService.backfillSession` for the source, as archive export does,
+     because the live capture of the reply's parts can trail the idle event. A failed refresh is logged and the read
+     uses the stored history.
    - The transcript is every message before the summarise user message.
    - The summary is the text parts of the assistant messages after it.
    - No text fails with `summaryMissing`.
@@ -252,7 +264,7 @@ returns 404. The exception lives in `bridge/app/lib/src/services/`, next to `ses
 | The transcripts `PromptUploadRepository` instance | Saving the file |
 | `SessionTranscriptMarkdownBuilder` | Rendering |
 | `PluginLifecycleService` | The harness display name, from the same metadata `GetPluginsHandler` returns |
-| `Clock` | The 15-minute wait |
+| `Clock` | The export time in the Markdown header. The 15-minute wait is a constructor `Duration`, so tests can shorten it |
 
 **Logs** carry session ids, prompt ids, message counts, byte sizes, the file path and the failure code. They never carry
 the summary, the transcript or prompt text.

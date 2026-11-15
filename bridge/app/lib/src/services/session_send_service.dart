@@ -1,0 +1,390 @@
+import "dart:async";
+import "dart:convert" show utf8;
+
+import "package:clock/clock.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgeSseSessionError, BridgeSseSessionIdle, Log;
+import "package:sesori_shared/sesori_shared.dart";
+
+import "../repositories/mappers/session_transcript_markdown_builder.dart";
+import "../repositories/models/history_window.dart";
+import "../repositories/models/normalized_bridge_event.dart";
+import "../repositories/models/session_operation.dart";
+import "../repositories/permission_repository.dart";
+import "../repositories/prompt_upload_repository.dart";
+import "../repositories/question_repository.dart";
+import "../repositories/session_repository.dart";
+import "chat_history_service.dart";
+import "plugin_lifecycle_service.dart";
+import "session_abort_service.dart";
+import "session_event_dispatcher.dart";
+import "session_operation_dispatcher.dart";
+import "session_prompt_refused_exception.dart";
+import "session_prompt_service.dart";
+import "session_send_rejected_exception.dart";
+import "session_view_service.dart";
+
+/// Sends one session into another: the source's agent writes a handoff
+/// summary in a normal turn, the source's transcript is saved for the target,
+/// and the target receives both as a normal prompt.
+///
+/// Every failure is a [SessionSendRejectedException] with its reason. Logs
+/// carry ids, counts, sizes and the transcript path, never prompt, summary or
+/// transcript text.
+class SessionSendService({
+  required final SessionRepository _sessions,
+  required final SessionViewService _views,
+  required final PermissionRepository _permissions,
+  required final QuestionRepository _questions,
+  required final SessionOperationDispatcher _operations,
+  required final SessionPromptService _prompts,
+  required final SessionEventDispatcher _events,
+  required final SessionAbortService _aborts,
+  required final ChatHistoryService _history,
+  required final PromptUploadRepository _transcripts,
+  required final SessionTranscriptMarkdownBuilder _markdown,
+  required final PluginLifecycleService _plugins,
+  required final Clock _clock,
+
+  /// How long the source may take to write the summary.
+  required final Duration _summaryTimeout,
+}) {
+  /// Completes once the target has accepted the handoff prompt.
+  Future<void> send({required String sourceSessionId, required String targetSessionId}) async {
+    if (sourceSessionId == targetSessionId) throw _rejected(code: SendToSessionErrorCode.sameSession);
+    final source = await _views.get(sessionId: sourceSessionId);
+    final target = await _views.get(sessionId: targetSessionId);
+    if (source.time?.archived != null) throw _rejected(code: SendToSessionErrorCode.sourceArchived);
+    if (target.time?.archived != null) throw _rejected(code: SendToSessionErrorCode.targetArchived);
+    if (source.parentID != null) throw _rejected(code: SendToSessionErrorCode.sourceNotRoot);
+    if (await _hasNoMessages(sessionId: source.id)) throw _rejected(code: SendToSessionErrorCode.sourceEmpty);
+
+    final promptId = SessionPromptService.generatePromptId();
+    Log.i("Sending session ${source.id} to ${target.id}; requesting the summary as prompt $promptId");
+    // Watching starts before the send, so the echo cannot be missed.
+    final turn = _watchSummaryTurn(sessionId: source.id, promptId: promptId);
+    try {
+      await _requestSummary(source: source, target: target, promptId: promptId);
+      await _finishAfterSummaryRequest(source: source, target: target, turn: turn);
+    } finally {
+      await turn.stop();
+    }
+    Log.i("Sent session ${source.id} to ${target.id}");
+  }
+
+  /// Runs once the source has accepted the summary request: waits for the
+  /// summary, then hands it off with the transcript.
+  Future<void> _finishAfterSummaryRequest({
+    required Session source,
+    required Session target,
+    required _SummaryTurn turn,
+  }) async {
+    final String summaryRequestMessageId;
+    try {
+      summaryRequestMessageId = await turn.ended.timeout(_summaryTimeout);
+    } on TimeoutException {
+      throw _rejected(code: SendToSessionErrorCode.summaryTimedOut);
+    }
+    await turn.stop();
+    final (:transcript, :summary) = await _readSummary(
+      sessionId: source.id,
+      summaryRequestMessageId: summaryRequestMessageId,
+    );
+    await _deliverHandoff(source: source, target: target, transcript: transcript, summary: summary);
+  }
+
+  Future<bool> _hasNoMessages({required String sessionId}) async {
+    final newest = await _history.getSessionMessages(
+      sessionId: sessionId,
+      window: const HistoryWindowNewest(limit: 1, before: null),
+      attachmentDelivery: MessageAttachmentDelivery.storedReference,
+      toolOutputDelivery: ToolOutputDelivery.onExpand,
+      storedOnly: false,
+      backgroundRefresh: false,
+    );
+    return newest.messages.isEmpty;
+  }
+
+  /// Checks that the source is ready and sends the summary request inside one
+  /// reservation of the source, so no other prompt can start in between. The
+  /// reservation ends with the send, so the user can still stop the turn or
+  /// answer its questions while the summary is written.
+  Future<void> _requestSummary({required Session source, required Session target, required String promptId}) =>
+      _operations.dispatch(
+        sessionId: source.id,
+        operation: SessionOperation.sendToSession,
+        body: () async {
+          if (await _sourceRefusal(sessionId: source.id, pluginId: source.pluginId) case final code?) {
+            throw _rejected(code: code);
+          }
+          final defaults = source.promptDefaults;
+          final model = defaults?.model;
+          final variant = model?.variant;
+          try {
+            await _prompts.sendPromptAlreadyReserved(
+              sessionId: source.id,
+              promptId: promptId,
+              parts: [PromptPart.text(text: _summaryRequestText(targetTitle: target.title))],
+              variant: variant == null ? null : SessionVariant(id: variant),
+              fastMode: defaults?.fastMode ?? false,
+              agent: defaults?.agent,
+              model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
+            );
+          } on Object catch (error, stackTrace) {
+            throw SessionSendRejectedException(
+              code: SendToSessionErrorCode.sourceUnavailable,
+              userFacingReason: null,
+              cause: error,
+              causeStackTrace: stackTrace,
+            );
+          }
+        },
+      );
+
+  /// Why the source cannot write a summary now, or null when it is ready.
+  ///
+  /// A plugin whose backend is not running reports no statuses, and a stopped
+  /// backend runs no turn, so its sessions count as idle.
+  Future<SendToSessionErrorCode?> _sourceRefusal({required String sessionId, required String pluginId}) async {
+    final statuses = await _sessions.getSessionStatuses();
+    switch (statuses.statuses[sessionId]) {
+      case SessionStatusBusy() || SessionStatusRetry():
+        return SendToSessionErrorCode.sourceBusy;
+      case SessionStatusIdle() || null:
+        break;
+    }
+    final permissions = await _permissions.getPendingPermissions(sessionId: sessionId);
+    if (permissions.isNotEmpty) return SendToSessionErrorCode.sourceAwaitingInput;
+    final questions = await _questions.getPendingQuestions(sessionId: sessionId);
+    if (questions.isNotEmpty) return SendToSessionErrorCode.sourceAwaitingInput;
+    return null;
+  }
+
+  /// Watches [sessionId] for the end of the turn that prompt [promptId]
+  /// starts. [_SummaryTurn.ended] completes with the id of the user message
+  /// that carried the prompt, once the source goes idle after it, and fails
+  /// when the source is stopped or reports a session error.
+  _SummaryTurn _watchSummaryTurn({required String sessionId, required String promptId}) {
+    final ended = Completer<String>();
+    // Stop or an error can arrive before anyone awaits the outcome.
+    ended.future.ignore();
+    String? summaryRequestMessageId;
+    void fail({required SendToSessionErrorCode code}) {
+      if (!ended.isCompleted) ended.completeError(_rejected(code: code));
+    }
+
+    void observe({required NormalizedBridgeEvent event}) {
+      if (ended.isCompleted) return;
+      final (payload, forcedStop) = switch (event) {
+        NormalizedTerminalHandoff(:final payload) => (payload, true),
+        final NormalizedBridgePayload payload => (payload, false),
+      };
+      switch (payload) {
+        case NormalizedMessageEvent(message: MessageUser(:final id, :final sessionID, promptId: final echoed))
+            when sessionID == sessionId && echoed == promptId:
+          summaryRequestMessageId = id;
+        // Harnesses report the end of a turn as either event.
+        case NormalizedStatusEvent(sessionId: final idleSessionId, status: SessionStatusIdle()) ||
+                NormalizedOtherEvent(event: BridgeSseSessionIdle(sessionID: final idleSessionId))
+            when idleSessionId == sessionId:
+          // A plugin stopping mid-turn ends it without a finished summary.
+          if (forcedStop) {
+            fail(code: SendToSessionErrorCode.summaryFailed);
+          } else if (summaryRequestMessageId case final messageId?) {
+            ended.complete(messageId);
+          }
+        case NormalizedOtherEvent(event: BridgeSseSessionError(:final sessionID)) when sessionID == sessionId:
+          fail(code: SendToSessionErrorCode.summaryFailed);
+        case NormalizedMessageEvent() ||
+            NormalizedStatusEvent() ||
+            NormalizedQueuedPromptsEvent() ||
+            NormalizedQuotaInterruptionEvent() ||
+            NormalizedOtherEvent():
+          break;
+      }
+    }
+
+    final eventSubscription = _events.events.listen(
+      (sourced) => observe(event: sourced.event),
+      // The dispatcher's own consumers report source errors; the wait simply
+      // has nothing to observe for a failed event.
+      onError: (Object _) {},
+    );
+    // Fires on every user stop and on archive's stop, before the plugin
+    // confirms. A half-written summary must never reach the target.
+    final abortSubscription = _aborts.abortStartedSessions.listen((stopped) {
+      if (stopped == sessionId) fail(code: SendToSessionErrorCode.summaryStopped);
+    });
+    return (
+      ended: ended.future,
+      stop: () async {
+        await eventSubscription.cancel();
+        await abortSubscription.cancel();
+      },
+    );
+  }
+
+  /// Reads the source's whole history and splits it at the summary request:
+  /// the transcript is every message before it, and the summary is the text
+  /// of the agent's replies after it.
+  Future<({List<MessageWithParts> transcript, String summary})> _readSummary({
+    required String sessionId,
+    required String summaryRequestMessageId,
+  }) async {
+    // The live capture of the reply's parts can trail the idle event, so the
+    // store is brought current first, as archive export does. A backend that
+    // cannot replay leaves the store as the live stream filled it.
+    try {
+      await _history.backfillSession(sessionId: sessionId);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "Could not refresh the history of session $sessionId before sending it; using stored history",
+        error,
+        stackTrace,
+      );
+    }
+    final List<MessageWithParts> messages;
+    try {
+      messages = (await _history.getSessionMessages(
+        sessionId: sessionId,
+        window: const HistoryWindowAll(),
+        attachmentDelivery: MessageAttachmentDelivery.storedReference,
+        toolOutputDelivery: ToolOutputDelivery.inline,
+        storedOnly: false,
+        backgroundRefresh: false,
+      )).messages;
+    } on Object catch (error, stackTrace) {
+      throw SessionSendRejectedException(
+        code: SendToSessionErrorCode.transcriptUnavailable,
+        userFacingReason: null,
+        cause: error,
+        causeStackTrace: stackTrace,
+      );
+    }
+    final requestIndex = messages.indexWhere((message) => message.info.id == summaryRequestMessageId);
+    if (requestIndex < 0) {
+      Log.w(
+        "Session $sessionId history (${messages.length} messages) lacks summary request message "
+        "$summaryRequestMessageId",
+      );
+      throw _rejected(code: SendToSessionErrorCode.summaryMissing);
+    }
+    final summary = [
+      for (final message in messages.skip(requestIndex + 1))
+        if (message.info case MessageAssistant(sender: MessageSender.agent))
+          for (final part in message.parts)
+            if (part case MessagePartText(:final text) when text.trim().isNotEmpty) text.trim(),
+    ].join("\n\n");
+    if (summary.isEmpty) throw _rejected(code: SendToSessionErrorCode.summaryMissing);
+    Log.i(
+      "Session $sessionId summary has ${summary.length} characters after $requestIndex transcript messages",
+    );
+    return (transcript: messages.sublist(0, requestIndex), summary: summary);
+  }
+
+  /// Saves [transcript] for [target] and prompts [target] with [summary] and
+  /// the transcript's path.
+  Future<void> _deliverHandoff({
+    required Session source,
+    required Session target,
+    required List<MessageWithParts> transcript,
+    required String summary,
+  }) async {
+    final harnessName = _harnessName(pluginId: source.pluginId);
+    final bytes = utf8.encode(
+      _markdown.build(session: source, harnessName: harnessName, exportedAt: _clock.now(), messages: transcript),
+    );
+    final String transcriptPath;
+    try {
+      transcriptPath = await _transcripts.save(
+        sessionId: target.id,
+        bytes: bytes,
+        filename: "${_nonBlank(text: source.title) ?? "transcript"}.md",
+      );
+    } on Object catch (error, stackTrace) {
+      throw SessionSendRejectedException(
+        code: SendToSessionErrorCode.transcriptUnavailable,
+        userFacingReason: null,
+        cause: error,
+        causeStackTrace: stackTrace,
+      );
+    }
+    Log.i("Saved the transcript of session ${source.id} for ${target.id} at $transcriptPath (${bytes.length} bytes)");
+
+    final defaults = target.promptDefaults;
+    final model = defaults?.model;
+    final variant = model?.variant;
+    try {
+      await _prompts.sendPrompt(
+        sessionId: target.id,
+        promptId: null,
+        parts: [
+          PromptPart.text(
+            text: _handoffText(
+              sourceTitle: source.title,
+              harnessName: harnessName,
+              sourceDirectory: source.directory,
+              summary: summary,
+              transcriptPath: transcriptPath,
+            ),
+          ),
+        ],
+        variant: variant == null ? null : SessionVariant(id: variant),
+        fastMode: defaults?.fastMode ?? false,
+        agent: defaults?.agent,
+        model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
+        command: null,
+        commandSource: null,
+      );
+    } on Object catch (error, stackTrace) {
+      throw SessionSendRejectedException(
+        code: SendToSessionErrorCode.targetRefused,
+        userFacingReason: error is SessionPromptRefusedException ? error.userFacingReason : null,
+        cause: error,
+        causeStackTrace: stackTrace,
+      );
+    }
+  }
+
+  String _harnessName({required String pluginId}) =>
+      _plugins.selectableMetadataSnapshot.where((plugin) => plugin.id == pluginId).firstOrNull?.displayName ?? pluginId;
+
+  static String _summaryRequestText({required String? targetTitle}) {
+    final target = switch (_nonBlank(text: targetTitle)) {
+      null => "another session",
+      final title => 'another session, "$title"',
+    };
+    return "Sesori is sending this conversation to $target. Write a handoff summary for the agent there: the goal, "
+        "what was done and decided, the current state, open questions and next steps, and the files that matter. "
+        "Reply with the summary only, and don't use tools.";
+  }
+
+  static String _handoffText({
+    required String? sourceTitle,
+    required String harnessName,
+    required String sourceDirectory,
+    required String summary,
+    required String transcriptPath,
+  }) {
+    final source = switch (_nonBlank(text: sourceTitle)) {
+      null => "another Sesori session",
+      final title => 'another Sesori session, "$title"',
+    };
+    return "This is a handoff from $source ($harnessName, in `$sourceDirectory`). Its agent wrote this summary:\n\n"
+        "$summary\n\n"
+        "The full transcript is at `$transcriptPath`. Read it only if you need details the summary leaves out.";
+  }
+
+  static String? _nonBlank({required String? text}) {
+    final trimmed = text?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  /// A rejection that no other failure caused.
+  static SessionSendRejectedException _rejected({required SendToSessionErrorCode code}) =>
+      SessionSendRejectedException(code: code, userFacingReason: null, cause: null, causeStackTrace: null);
+}
+
+/// The summary turn being watched: [ended] completes with the summary
+/// request's user message id, and [stop] ends the watch. Stopping twice is
+/// harmless.
+typedef _SummaryTurn = ({Future<String> ended, Future<void> Function() stop});

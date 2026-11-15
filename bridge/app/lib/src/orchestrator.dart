@@ -68,6 +68,7 @@ import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/plugin_message_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
+import "repositories/mappers/session_transcript_markdown_builder.dart";
 import "repositories/mcp_repository.dart";
 import "repositories/models/normalized_bridge_event.dart";
 import "repositories/new_session_defaults_repository.dart";
@@ -158,6 +159,7 @@ import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
 import "routing/search_session_prompts_handler.dart";
 import "routing/send_prompt_handler.dart";
+import "routing/send_to_session_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
 import "routing/set_session_auto_continuation_handler.dart";
@@ -199,6 +201,7 @@ import "services/session_mutation_dispatcher.dart";
 import "services/session_operation_dispatcher.dart";
 import "services/session_options_service.dart";
 import "services/session_prompt_service.dart";
+import "services/session_send_service.dart";
 import "services/session_unseen_service.dart";
 import "services/session_view_service.dart";
 import "services/session_view_tracker.dart";
@@ -637,6 +640,22 @@ class Orchestrator({
     final sessionEventDispatcher = SessionEventDispatcher(
       sessionEventService: sessionEventService,
     );
+    final sessionSendService = SessionSendService(
+      sessions: sessionRepository,
+      views: sessionViews,
+      permissions: permissionRepository,
+      questions: questionRepository,
+      operations: sessionOperationDispatcher,
+      prompts: sessionPromptService,
+      events: sessionEventDispatcher,
+      aborts: sessionAbortService,
+      history: chatHistoryService,
+      transcripts: transcriptRepository,
+      markdown: const SessionTranscriptMarkdownBuilder(),
+      plugins: _pluginLifecycleService,
+      clock: clock,
+      summaryTimeout: const Duration(minutes: 15),
+    );
     final sessionMutationListener = SessionMutationListener(
       source: sessionMutationDispatcher.mutations.asyncMap(
         (mutation) => _mapLocalMutation(mutation: mutation, sessionViews: sessionViews),
@@ -734,6 +753,7 @@ class Orchestrator({
         ),
         DeleteSessionHandler(sessionDeletionService: sessionDeletionService),
         SendPromptHandler(sessionPromptService: sessionPromptService),
+        SendToSessionHandler(sessionSendService: sessionSendService),
         GetQueuedPromptsHandler(sessionRepository: sessionRepository),
         CancelQueuedPromptHandler(sessionPromptService: sessionPromptService),
         AbortSessionHandler(sessionAbortService: sessionAbortService),
