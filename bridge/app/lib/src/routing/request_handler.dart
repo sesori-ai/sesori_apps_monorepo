@@ -5,7 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/session_archived_read_only_exception.dart";
 import "../repositories/models/project_not_found_exception.dart";
-import "../services/scheduled_task_service.dart";
+import "../services/scheduled_task_request_exception.dart";
 import "../services/session_branch_refused_exception.dart";
 import "../services/session_prompt_refused_exception.dart";
 import "../services/stale_session_prompt_options_exception.dart";
