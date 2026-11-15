@@ -540,7 +540,7 @@ void main() {
       Future<void> sendPrompt({required String promptId}) => repository.sendPrompt(
         sessionId: "s1",
         promptId: promptId,
-        parts: const [PromptPart.text(text: "Fixture request")],
+        parts: const [DeliverablePromptPart.text(text: "Fixture request")],
         variant: null,
         fastMode: false,
         agent: null,
