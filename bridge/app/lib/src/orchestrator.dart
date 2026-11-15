@@ -356,6 +356,12 @@ class Orchestrator({
       uploadsRoot: sesoriUploadsDirectory(),
     );
     final promptPartDeliveryService = PromptPartDeliveryService(uploads: promptUploadRepository, clock: clock);
+    // Same layout as the uploads, but not swept by age: a transcript lives as
+    // long as the session it was sent into.
+    final transcriptRepository = PromptUploadRepository(
+      filesystemApi: const FilesystemApi(),
+      uploadsRoot: sesoriTranscriptsDirectory(),
+    );
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
     );
@@ -607,6 +613,7 @@ class Orchestrator({
       chatHistoryService: chatHistoryService,
       scratchRepository: scratchRepository,
       promptUploadRepository: promptUploadRepository,
+      transcriptRepository: transcriptRepository,
     );
     final sessionDiffService = SessionDiffService(
       sessionRepository: sessionRepository,
