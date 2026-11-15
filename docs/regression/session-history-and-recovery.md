@@ -445,9 +445,12 @@ reconnect or restart.
   `turn_context`: a root takes them from `thread/start`/`thread/resume` and the
   effort each turn selects; a sub-agent takes the model and effort its started
   `subAgentActivity` resolved (codex-cli 0.167+), else its `thread/read`.
-- A Codex thread started on another model provider is refused on
-  `thread/resume` with structured `error.data` (`modelProviderMismatch`,
-  `modelProviderNotConfigured`, `modelProviderPolicyConflict`). The send fails
+- A Codex thread started on another model provider that is still defined in
+  the Codex config resumes on its own provider from codex-cli 0.168.0. It is
+  refused on `thread/resume` with structured `error.data` when that provider is
+  no longer defined (`modelProviderNotConfigured`), a policy requires another
+  (`modelProviderPolicyConflict`), or, on a PATH install older than 0.168.0,
+  it merely differs from the default (`modelProviderMismatch`). The send fails
   as a 409, never as a generic 500, and no `turn/start` is sent. A mismatch
   names both providers and says to switch back; a provider no longer configured
   is named with a hint to add it back to the Codex config; a policy conflict

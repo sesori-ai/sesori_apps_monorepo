@@ -146,9 +146,12 @@ concrete problem can justify a documented temporary hold with a resolution path.
   discovery and experimental gates. Core/TUI/`exec --json` events are not
   automatically app-server notifications; `turn/completed` is not Pi's settled
   event. Prove ownership before replacing queue, retry, interrupt or history code.
-  Check provider admission (`ModelProviderError`): since 0.166.0 a turn on a
-  thread whose `modelProvider` differs from the configured one fails with
-  `modelProviderMismatch`, so Sesori sends only `model` on `thread/start`.
+  Check provider admission (`ModelProviderError`): on 0.166.0 to 0.167.x a turn
+  on a thread whose `modelProvider` differs from the configured one fails with
+  `modelProviderMismatch`, so Sesori sends only `model` on `thread/start`. From
+  0.168.0 a thread keeps its saved provider while that provider is still
+  defined; only `modelProviderNotConfigured` and `modelProviderPolicyConflict`
+  remain on resume.
 - **Install:** use `ManagedRuntimeComposition.createInstaller()` with candidate
   manifest and asset resolver, then the production install/extract chain. The
   descriptor's installer hard-codes the current pin. Confirm the final
