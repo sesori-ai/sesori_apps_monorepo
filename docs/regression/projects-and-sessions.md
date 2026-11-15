@@ -731,7 +731,9 @@ state.
   Catalog reads expose `thread_source == subagent` rollouts as children,
   keep project session lists root-only, preserve children in full
   enumeration, and retain the metadata nickname when the session index has no
-  usable title.
+  usable title. Rollouts whose leading metadata has `attached_thread: true`
+  (forks Codex keeps attached to their source, such as side chats from its
+  terminal workspace) appear in no listing, as in Codex's own `thread/list`.
   Deleting a Codex session removes its persisted and live descendant subtree
   before the bridge deletes the matching database family. A child deleted
   before `turn/started` is interrupted when its turn id arrives, while in-flight
@@ -982,6 +984,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
 - A session prompted minutes ago reports a days-old updated time, sorts to the
   top of its list while still displaying that stale time, or an older row uses
   generic US month/day order despite a different device locale.
+- A Codex terminal side chat, or another attached thread, appears as its own
+  session in a project list or in full enumeration.
 - A Codex catalog rescan leaves externally resumed work at its old index or
   creation time, reads an entire transcript solely to establish activity, or
   lets a cached header hide newer rollout modification time.

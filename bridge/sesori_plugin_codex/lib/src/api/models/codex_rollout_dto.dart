@@ -244,6 +244,10 @@ sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMet
     /// Set on a rollout written by `thread/revert` or a paginated
     /// `thread/fork`: its history starts with another rollout's prefix.
     @JsonKey(name: "history_base") required CodexRolloutHistoryBaseDto? historyBase,
+
+    /// A fork Codex keeps attached to `forked_from_id`, such as a side chat
+    /// from its terminal workspace. Codex writes the key only when true.
+    @JsonKey(name: "attached_thread") @Default(false) bool attachedThread,
   }) = _CodexRolloutSessionMetadataPayloadDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutSessionMetadataPayloadDtoFromJson(json);
