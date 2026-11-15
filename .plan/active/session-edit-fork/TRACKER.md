@@ -2,15 +2,15 @@
 
 | Step | Status | PR |
 | --- | --- | --- |
-| 1 Raise the plan | In this PR | |
-| 2 Message menu with Copy and Select text | Not started | |
+| 1 Raise the plan | Merged | #2585 |
+| 2 Message menu with Copy and Select text | In review | #2595 |
 | 3 Edit contract and bridge route | Not started | |
 | 4 First-message edits replace the harness session | Not started | |
-| 5 Codex reads reverted and forked rollouts | Not started | |
+| 5 Codex reads reverted and forked rollouts | In review | #2592 |
 | 6 Codex native edit | Not started | |
-| 7 Claude reads the active branch of a transcript | Not started | |
+| 7 Claude reads the active branch of a transcript | In review | #2596 |
 | 8 Claude native edit | Not started | |
-| 9 Restore a message's text and attachments into a composer | Not started | |
+| 9 Restore a message's text and attachments into a composer | In review | #2594 |
 | 10 Client edit flow | Not started | |
 | 11 Fork contract, origin link and bridge route | Not started | |
 | 12 Codex native fork | Not started | |
@@ -31,6 +31,7 @@ defaults apply until they are answered.
 
 | Cell | Result | Date (UTC) |
 | --- | --- | --- |
+| Automated (bridge, plugin and client suites in CI) | | |
 | Live plugin, Claude Code 2.1.322 and 2.1.221 | | |
 | Live plugin, Codex 0.167.2 (and refusal on 0.139.0) | | |
 | Headless iOS simulator, Claude Code and Codex | | |

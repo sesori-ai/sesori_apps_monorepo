@@ -506,7 +506,10 @@ differences go through `module_prego` interaction wrappers, never inline mode re
   - each inline image part, fetched through the existing `POST /session/attachment` route into an ordinary
     `ComposerImageAttachment`;
   - each saved file named by a note, as a new `ComposerHostFileAttachment({path, filename})` that sends as the existing
-    `PromptPart.filePath`, so the bridge reuses the file it already holds instead of a re-upload. It has no bytes, so
+    `PromptPart.filePath`, so the bridge reuses the file it already holds instead of a re-upload. The bridge's
+    `PromptPartDeliveryService` turns a `filePath` part back into the shared saved-file note, so every harness gets the
+    same delivery as the original send (plugins map raw paths differently; Codex would send any path as an image). An
+    older bridge passes `filePath` through, so restore is offered only where the bridge declares edit or fork. It has no bytes, so
     `bytes` (and `mime`) move off the sealed `ComposerAttachment` base onto the variants that carry them
     (`ComposerImageAttachment`, `ComposerFileAttachment`), and the dozen or so consumers that read them switch on
     the variant; an empty-bytes sentinel is not used;
@@ -683,9 +686,16 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
   make sure the thread is loaded (`thread/resume` when needed), `thread/revert {beforeTurnId}`, then the ordinary
   `turn/start` path with the same `promptId`. Declares `rewind`. A runtime without `thread/revert` (JSON-RPC
   method-not-found, e.g. the 0.139 PATH minimum) or an unmappable id throws `PluginBranchPointUnavailableException`
-  with a reason such as "Update Codex to edit messages". `docs/HARNESS_CAPABILITIES.md` gets the edit row.
-- **Risk and test focus:** paginated versus legacy threads; ephemeral threads refused; revert's reload not dropping
-  subscriptions; history after revert agrees with the store. Live plugin check at the pinned version.
+  with a reason such as "Update Codex to edit messages". A legacy (non-paginated) thread answers `thread/revert` with
+  -32600 ("only supports paginated threads", step 5 spike), which also becomes the refusal. The plugin also confirms
+  that `beforeMessageId` is the first user item of its native turn: `splitPromptTurns` can open a presentation turn at
+  a follow-up steered in after commentary or reasoning, and reverting that native turn would remove more than the store
+  does. A target that is not its native turn's first user item is refused with the mid-turn reason. After its own
+  revert the plugin refreshes the catalog's current rollout at once (the step 5 reader otherwise keeps the old file
+  until the next scan). `docs/HARNESS_CAPABILITIES.md` gets the edit row.
+- **Risk and test focus:** paginated versus legacy threads; ephemeral threads refused; a follow-up steered after
+  commentary refused; revert's reload not dropping subscriptions; history after revert agrees with the store. Live
+  plugin check at the pinned version.
 - **Expected result:** Codex sessions report `rewind`.
 - **Estimate:** ~600 lines.
 
@@ -782,9 +792,15 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
   new `CodexThreadRepository.forkThread` over a `CodexAppServerApi` `thread/fork {lastTurnId}` wrapper (not
   ephemeral) with the turn id from `CodexMessageRepository`, maps the new thread to a `PluginSession` in the same cwd, and emits `session.created`
   unless the spike shows `thread/started` already produces it. Declares `fork`; method-not-found on old runtimes →
-  `PluginBranchPointUnavailableException`. Harness matrix row.
+  `PluginBranchPointUnavailableException`. Harness matrix row. A paginated fork's kept prefix is a reference to the
+  source rollout (`history_base`), and today `CodexCatalogRepository.deleteSession` deletes the source's rollout files,
+  so deleting an origin (or the step 4 swap deleting the old harness session) would empty the fork's kept history.
+  Decision 4 keeps both sessions alive, so a delete keeps every rollout file another thread's `history_base` still
+  references and removes only the rest (Codex's own delete refuses in this case). Forks made in the Codex TUI benefit
+  the same way.
 - **Risk and test focus:** the fork's history reads through step 5; the fork does not appear twice after catalog import;
-  forking while a later turn runs; forking an archived thread.
+  forking while a later turn runs; forking an archived thread; the fork's kept history still reads after deleting the
+  origin, after a first-message swap on the origin, and after a bridge restart.
 - **Estimate:** ~500 lines.
 
 ### Step 13: Claude native fork
