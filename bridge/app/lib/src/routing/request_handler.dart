@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/session_archived_read_only_exception.dart";
 import "../repositories/models/project_not_found_exception.dart";
+import "../services/scheduled_task_service.dart";
 import "../services/session_branch_refused_exception.dart";
 import "../services/session_prompt_refused_exception.dart";
 import "../services/stale_session_prompt_options_exception.dart";
@@ -199,6 +200,16 @@ abstract class const RequestHandlerBase({
         request: request,
         status: 409,
         body: SessionBranchErrorResponse(code: error.code, message: error.message).toJson(),
+      );
+    } on ScheduledTaskRequestException catch (error) {
+      return buildJsonErrorResponse(
+        request: request,
+        status: switch (error.code) {
+          ScheduledTaskErrorCode.taskNotFound => 404,
+          ScheduledTaskErrorCode.previousRunActive => 409,
+          _ => 400,
+        },
+        body: ScheduledTaskErrorResponse(code: error.code).toJson(),
       );
     } on PluginOperationException catch (error, stackTrace) {
       Log.w("${request.method} ${request.path}: upstream failure", error, stackTrace);
