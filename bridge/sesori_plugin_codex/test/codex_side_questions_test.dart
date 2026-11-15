@@ -30,7 +30,10 @@ void main() {
         "Invalid request: unknown variant `thread/sample`, expected one of `initialize`, `thread/start`",
         "sample source must be idle",
       ]) {
-        expect(mapper.mapUnsupported(error: _rpcError(message: message)), _refused(reason: PluginSideRefusal.harnessUpdateRequired));
+        expect(
+          mapper.mapUnsupported(error: _rpcError(message: message)),
+          _refused(reason: PluginSideRefusal.harnessUpdateRequired),
+        );
       }
     });
 

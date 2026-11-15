@@ -26,7 +26,10 @@ class const CodexSideQuestionPromptBuilder() {
       if (shortened != null) {
         return _render(
           question: question,
-          history: [PluginSideExchange(question: kept.first.question, answer: shortened), ...kept.skip(1)],
+          history: [
+            PluginSideExchange(question: kept.first.question, answer: shortened),
+            ...kept.skip(1),
+          ],
         );
       }
     }
