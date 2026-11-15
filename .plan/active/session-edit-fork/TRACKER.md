@@ -28,7 +28,7 @@ harness to offer it). Step 11 needs 3; step 11.b needs 11; step 12 needs 11, 11.
 ## Open questions
 
 Round 2 (2026-11-15) answered the first seven. Round 4 answered the archived-worktree question (recreate it, step
-11.b). Question 1 in `PLAN.md` "Open questions" keeps its provisional default until answered.
+11.b) and settled the mid-turn follow-up fork (decision 15). None are open.
 
 ## Verification results
 

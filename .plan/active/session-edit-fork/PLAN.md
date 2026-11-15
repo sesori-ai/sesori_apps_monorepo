@@ -54,6 +54,8 @@ From the user, round 4 (final):
 14. **Forking an archived session whose worktree was removed recreates it.** The fork gets a fresh worktree on the kept
     branch, with its files as last committed. If the branch is gone too, the fork asks for a new worktree from the base
     branch. Its own PR (step 11.b), about 300 to 400 lines.
+15. **"Fork from here" on a follow-up sent mid-turn keeps that whole turn** and puts the follow-up's text and
+    attachments in the fork's composer (round 4's decided list; not vetoed).
 
 Decided without asking (not vetoed):
 
@@ -76,7 +78,7 @@ Decided in this plan (implementation choices that follow from the decisions; ope
 - **Fork points are turn boundaries.** On an agent reply of a finished turn, the fork keeps the conversation through
   the end of that turn. On a user message that opens a turn, the fork keeps everything before that turn (decision 7);
   on the session's first message that is nothing, so the fork is an empty session in the same directory. On a
-  follow-up sent mid-turn see open question 1. Codex forks at turn granularity (`lastTurnId`); Claude can cut at any
+  follow-up sent mid-turn see decision 15. Codex forks at turn granularity (`lastTurnId`); Claude can cut at any
   record but follows the same rule. The ⋯ menu forks after the latest finished turn.
 - **Edit mechanism: native rewind, plus a harness-session swap only where there is nothing to rewind to or no rewind.**
   The user asked whether fork-and-replace should be the single edit mechanism on every harness that can fork at a
@@ -409,7 +411,7 @@ The research brief quoted older pins (Claude 2.1.310, Pi 1.4.0).
      finished turn holding the message; `beforeMessage(id)` keeps everything before the turn that the message opens;
      `latest()` keeps through the latest finished turn, and a session with no finished turn answers `nothingToFork`
      (`empty` comes only from `beforeMessage` on the first turn). `afterMessage` on a follow-up sent mid-turn keeps
-     through the end of the finished turn holding it (open question 1's provisional default). A turn that is still
+     through the end of the finished turn holding it (decision 15). A turn that is still
      running is refused;
   3. `SessionRepository.forkSession` creates the backend session through `useAndCommit`: for `throughMessage` it calls
      `SessionForkPluginApi.forkSession`; for `empty` it calls the existing `plugin.createSession(directory, parts: [])`,
@@ -485,7 +487,7 @@ differences go through `module_prego` interaction wrappers, never inline mode re
   - own message that opens a finished turn: "Edit and resend", "Fork from here";
   - own message inside a finished turn but not opening it (a follow-up sent mid-turn): "Edit and resend", which answers
     with a popup, "Sent while the agent was working, so it can't be edited. Fork instead?", with Fork and Cancel
-    (decision 12), and "Fork from here" (open question 1 says where that fork starts);
+    (decision 12), and "Fork from here" (decision 15 says where that fork starts);
   - the last agent reply of a finished turn: "Fork from here";
   - any other agent message, and everything in the running turn: nothing before Copy.
   - Edit appears only when the session's harness declares `rewind` and the session is not archived. Fork appears when
@@ -556,7 +558,7 @@ differences go through `module_prego` interaction wrappers, never inline mode re
   a rewind made on another device.
 - **Fork.** "Fork from here" closes the menu with the ordinary exit motion and calls the fork route with
   `afterMessage` on an agent reply, `beforeMessage` on your own message that opens a turn, and `afterMessage` on a
-  follow-up sent mid-turn (open question 1's provisional default; its text and attachments still go to the fork's
+  follow-up sent mid-turn (decision 15; its text and attachments still go to the fork's
   composer). When it answers, the fork opens with the
   platform's normal navigation transition: phone pushes the session-detail route; desktop selects it in the cockpit.
   On your own message, the restored text and attachments are handed to the fork before navigating, so the fork opens
@@ -995,15 +997,11 @@ saved-file note builder moves from `PromptPartDeliveryService` to `sesori_shared
 - **A forked session's attachments live in its origin's upload folder.** Deleting the origin deletes them; the fork's
   agent already read them, and restoring them later just leaves them out (accepted, low damage).
 
-## Open questions (for the user; provisional defaults are used until answered)
+## Open questions (for the user)
 
 Round 2 answered the earlier seven (decisions 7 to 13). These are new:
 
-1. **"Fork from here" on a follow-up sent mid-turn.** Codex can't cut inside a turn, and phase 1 cuts at turns
-   everywhere. Provisional: the fork keeps the whole turn that holds the follow-up and puts the follow-up's text and
-   attachments in the fork's composer, so you can send a corrected instruction there. Alternative: cut before the turn
-   (dropping its opening prompt and the agent's work in it). The later phase that edits mid-turn follow-ups on Claude
-   Code, OpenCode and Pi would cut right before the follow-up there.
+1. ~~"Fork from here" on a follow-up sent mid-turn.~~ Settled in round 4 (decision 15).
 2. ~~Forking an archived session whose worktree was removed at archive.~~ Answered in round 4: recreate it
    (decision 14, step 11.b).
 
