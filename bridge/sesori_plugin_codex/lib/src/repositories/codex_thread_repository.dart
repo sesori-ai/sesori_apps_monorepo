@@ -12,6 +12,7 @@ import "../api/models/codex_turn_dto.dart";
 import "../api/models/codex_turn_input_dto.dart";
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
+import "mappers/codex_side_answer_mapper.dart";
 import "models/codex_model_provider_exception.dart";
 import "models/codex_resumed_thread.dart";
 import "models/codex_thread_record.dart";
@@ -45,6 +46,8 @@ final class const _CodexPromptAttachmentException({required final String message
 
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
 class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
+  static const _sideAnswerMapper = CodexSideAnswerMapper();
+
   static const _supportedImageMimes = {
     "image/bmp",
     "image/gif",
@@ -153,6 +156,43 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       throw StateError("turn/start response missing turn.id");
     }
     return turnId;
+  }
+
+  /// The id of the thread's newest turn, running or finished, or null when
+  /// the thread has no turn yet.
+  Future<String?> latestTurnId({required String threadId}) async {
+    const operation = "thread/turns/list";
+    try {
+      final page = await _appServerApi.listLatestTurn(threadId: threadId);
+      return _usefulText(value: page.data?.firstOrNull?.id);
+    } on CodexRpcException catch (error, stackTrace) {
+      // A thread started without a prompt has no rollout yet, which Codex
+      // reports as "thread <id> is not materialized yet".
+      if (error.message.contains("is not materialized yet")) return null;
+      Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
+    }
+  }
+
+  /// Asks [prompt] on a throwaway copy of the loaded thread whose latest turn
+  /// is [expectedTurnId], without tools and without writing to the thread.
+  Future<PluginSideAnswer> sampleThread({
+    required String threadId,
+    required String expectedTurnId,
+    required String prompt,
+  }) async {
+    const operation = "thread/sample";
+    try {
+      final sample = await _appServerApi.sampleThread(
+        threadId: threadId,
+        expectedTurnId: expectedTurnId,
+        prompt: prompt,
+      );
+      return _sideAnswerMapper.map(sample: sample);
+    } on CodexRpcException catch (error, stackTrace) {
+      final unsupported = _sideAnswerMapper.mapUnsupported(error: error);
+      if (unsupported != null) return unsupported;
+      Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
+    }
   }
 
   Future<void> compactThread({required String threadId}) => _request(
@@ -284,22 +324,23 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     try {
       return await request();
     } on CodexRpcException catch (error, stackTrace) {
-      final Exception exception =
-          _modelProviderException(operation: operation, error: error) ??
-          (_isThreadNotFound(error: error)
-              ? CodexThreadNotFoundException(
-                  operation: operation,
-                  message: error.message,
-                  innerError: error,
-                )
-              : CodexThreadRequestException(
-                  operation: operation,
-                  message: error.message,
-                  innerError: error,
-                ));
-      Error.throwWithStackTrace(exception, stackTrace);
+      Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
     }
   }
+
+  Exception _operationException({required String operation, required CodexRpcException error}) =>
+      _modelProviderException(operation: operation, error: error) ??
+      (_isThreadNotFound(error: error)
+          ? CodexThreadNotFoundException(
+              operation: operation,
+              message: error.message,
+              innerError: error,
+            )
+          : CodexThreadRequestException(
+              operation: operation,
+              message: error.message,
+              innerError: error,
+            ));
 
   /// Codex rejects a thread whose stored model provider the current config
   /// cannot serve (seen on `thread/resume`) with structured `error.data`.

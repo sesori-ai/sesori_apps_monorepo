@@ -152,6 +152,12 @@ concrete problem can justify a documented temporary hold with a resolution path.
   0.168.0 a thread keeps its saved provider while that provider is still
   defined; only `modelProviderNotConfigured` and `modelProviderPolicyConflict`
   remain on resume.
+  Side questions use the experimental `thread/sample` with `allowInProgressTurn`,
+  so every refresh runs a live side-question probe over WebSocket with a local
+  test provider (mid-turn, idle, a follow-up with history in the prompt, and the
+  rollout byte-identical afterwards). Recheck the error texts the plugin maps:
+  ``unknown variant `thread/sample` ``, `sample source must be idle`, and
+  `is not materialized yet` from `thread/turns/list`.
 - **Install:** use `ManagedRuntimeComposition.createInstaller()` with candidate
   manifest and asset resolver, then the production install/extract chain. The
   descriptor's installer hard-codes the current pin. Confirm the final
