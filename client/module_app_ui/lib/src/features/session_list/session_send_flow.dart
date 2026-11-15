@@ -2,12 +2,11 @@ part of "session_list_action_dispatcher.dart";
 
 /// Opens a session from an alert, without a context: the alert can outlive
 /// the page that raised it.
-typedef SentSessionOpener =
-    void Function({
-      required String projectId,
-      required String projectName,
-      required Session session,
-    });
+typedef SentSessionOpener = void Function({
+  required String projectId,
+  required String projectName,
+  required Session session,
+});
 
 /// Long enough to reach an alert's Open action.
 const Duration _sendOutcomeAlertDuration = Duration(seconds: 8);

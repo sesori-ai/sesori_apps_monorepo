@@ -813,12 +813,19 @@ void main() {
 
     test("a 409 carries the bridge's code and the harness's message", () async {
       final stopped = await sendFor(
-        response: refusal(body: jsonEncode(const SendToSessionErrorResponse(code: SendToSessionErrorCode.summaryStopped, message: null).toJson())),
+        response: refusal(
+          body: jsonEncode(
+            const SendToSessionErrorResponse(code: SendToSessionErrorCode.summaryStopped, message: null).toJson(),
+          ),
+        ),
       );
       final refused = await sendFor(
         response: refusal(
           body: jsonEncode(
-            const SendToSessionErrorResponse(code: SendToSessionErrorCode.targetRefused, message: "Out of credits").toJson(),
+            const SendToSessionErrorResponse(
+              code: SendToSessionErrorCode.targetRefused,
+              message: "Out of credits",
+            ).toJson(),
           ),
         ),
       );
@@ -854,7 +861,11 @@ void main() {
 
     test("a timeout or a lost answer is unconfirmed; a request that never went out failed", () async {
       final timedOut = await sendFor(response: ApiResponse.error(ApiError.dartHttpClient(TimeoutException("late"))));
-      final lost = await sendFor(response: ApiResponse.error(ApiError.dartHttpClient(const RelayResponseLostException(message: "Relay disconnected"))));
+      final lost = await sendFor(
+        response: ApiResponse.error(
+          ApiError.dartHttpClient(const RelayResponseLostException(message: "Relay disconnected")),
+        ),
+      );
       final disconnected = await sendFor(
         response: ApiResponse.error(ApiError.dartHttpClient(Exception("Relay is not connected"))),
       );

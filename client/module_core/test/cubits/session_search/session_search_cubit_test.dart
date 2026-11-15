@@ -438,7 +438,8 @@ void main() {
       busyPromptHandling: busyPromptHandling,
     );
 
-    SessionActivityInfo running() => const SessionActivityInfo(isRunning: true, lastUserActivityAt: null, updatedAt: null);
+    SessionActivityInfo running() =>
+        const SessionActivityInfo(isRunning: true, lastUserActivityAt: null, updatedAt: null);
 
     setUp(() {
       final sessions = [

@@ -55,7 +55,8 @@ void main() {
       stubStop(() async {});
 
       expect(await cubit.stopSession(sessionId: "source"), isTrue);
-      verify(() => abortService.abortSession(sessionId: "source", subAgents: SessionAbortSubAgentPolicy.stop)).called(1);
+      verify(() => abortService.abortSession(sessionId: "source", subAgents: SessionAbortSubAgentPolicy.stop))
+          .called(1);
     });
 
     test("is false when the bridge did not stop it", () async {

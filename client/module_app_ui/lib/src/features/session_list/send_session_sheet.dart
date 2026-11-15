@@ -11,12 +11,11 @@ import "../session_picker/session_picker.dart";
 
 /// Builds the session search behind the send sheet's picker, which never
 /// lists [excludedSessionId].
-typedef SessionSearchCubitFactory =
-    SessionSearchCubit Function({
-      required SessionWindowService window,
-      required ProjectInventoryService projectInventory,
-      required String? excludedSessionId,
-    });
+typedef SessionSearchCubitFactory = SessionSearchCubit Function({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+});
 
 /// What the user chose to send [source] into.
 typedef SendSessionChoice = ({SessionSearchMatch target, bool archiveAfterSending});
