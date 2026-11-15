@@ -352,6 +352,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
           message(outlineFade: wasOutlined ? _statusFade : null)
         else if (card != null)
           InvocationCard(
+            selectionArea: null,
             name: card.name,
             source: card.source,
             arguments: card.arguments,
@@ -361,6 +362,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
           )
         else
           UserMessageBubble(
+            selectionArea: null,
             markdown: displayText,
             attachments: attachments,
             outlined: outlined,

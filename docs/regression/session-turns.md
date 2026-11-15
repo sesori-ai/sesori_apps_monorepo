@@ -151,8 +151,9 @@ defaults and queued client sends coherent.
   then the arguments as Markdown and any attachments. It is a label, not a
   button: no ink or press state, no disclosure, no button role for screen
   readers, which hear "You ran skill {name}" (command, MCP prompt, or just
-  "You ran {name}" for Custom) and the arguments; long-press
-  selection of the arguments works as on other turns. The card keeps one shape
+  "You ran {name}" for Custom) and the arguments; its message menu
+  copies or selects the arguments as on other turns
+  ([session edit and fork](session-edit-and-fork.md)). The card keeps one shape
   from "Sending…" through queued (with Cancel), failed (with Retry and Remove)
   and confirmed: only the status rail under its leading edge changes, fading
   over 240 ms (at once under reduced motion). The app decides card or bubble

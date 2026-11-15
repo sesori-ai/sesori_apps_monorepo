@@ -11,8 +11,11 @@ import "../session_detail_markdown_link_handler.dart";
 import "attachment_collection_widget.dart";
 import "invocation_card.dart";
 import "sent_bubble_landing.dart";
+import "transcript_message_menu.dart";
 import "user_prompt_markdown_image.dart";
 
+/// A user message in the transcript, as a bubble or an invocation card, with
+/// its [TranscriptMessageMenu] when it has text.
 class const UserMessageCard({
   super.key,
   required final MessageWithParts message,
@@ -70,21 +73,40 @@ class _UserMessageCardState() extends State<UserMessageCard> {
   Widget build(BuildContext context) {
     final message = widget.message;
     if (widget.shape case InvocationPromptTurnShape(:final name, :final source, :final arguments)) {
-      return InvocationCard(
-        name: name,
-        source: source,
-        arguments: arguments,
-        attachments: UserMessageCard.cardAttachmentsOf(message: message),
-        outlined: _outlined,
-        transitionDuration: _transitionDuration,
+      return _withMenu(
+        text: arguments,
+        builder: (selectionArea) => InvocationCard(
+          name: name,
+          source: source,
+          arguments: arguments,
+          attachments: UserMessageCard.cardAttachmentsOf(message: message),
+          outlined: _outlined,
+          transitionDuration: _transitionDuration,
+          selectionArea: selectionArea,
+        ),
       );
     }
-    return UserMessageBubble(
-      markdown: UserMessageCard.markdownOf(message: message),
-      attachments: [UserMessageCard.attachmentsOf(message: message)],
-      outlined: _outlined,
-      transitionDuration: _transitionDuration,
+    final markdown = UserMessageCard.markdownOf(message: message);
+    return _withMenu(
+      text: markdown,
+      builder: (selectionArea) => UserMessageBubble(
+        markdown: markdown,
+        attachments: [UserMessageCard.attachmentsOf(message: message)],
+        outlined: _outlined,
+        transitionDuration: _transitionDuration,
+        selectionArea: selectionArea,
+      ),
     );
+  }
+
+  /// The message's menu, which it has only with [text]: the text is what Copy
+  /// copies and what Select text selects.
+  Widget _withMenu({
+    required String? text,
+    required Widget Function(GlobalKey<PregoReadableSelectionAreaState>? selectionArea) builder,
+  }) {
+    if (text == null) return builder(null);
+    return TranscriptMessageMenu(copyText: text, builder: (context, selectionArea) => builder(selectionArea));
   }
 }
 
@@ -95,6 +117,10 @@ class const UserMessageBubble({
   required final List<Widget> attachments,
   required final bool outlined,
   required final Duration transitionDuration,
+
+  /// The key of the text's selection area, through which a message menu
+  /// selects it; null where no menu does.
+  required final GlobalKey<PregoReadableSelectionAreaState>? selectionArea,
 }) extends StatelessWidget {
   /// Space around the surface, inside the row.
   static const margin = EdgeInsets.symmetric(horizontal: PregoSpacing.xl, vertical: PregoSpacing.xs);
@@ -138,7 +164,12 @@ class const UserMessageBubble({
                 color: prego.colors.borderBrand.withValues(alpha: outlined ? 0.55 : 0),
               ),
             ),
-            child: UserMessageBubbleContent(markdown: markdown, attachments: attachments, alignment: .end),
+            child: UserMessageBubbleContent(
+              markdown: markdown,
+              attachments: attachments,
+              alignment: .end,
+              selectionArea: selectionArea,
+            ),
           ),
         ),
       ),
@@ -156,6 +187,10 @@ class const UserMessageBubbleContent({
 
   /// Where the content sits: a bubble's at its end, a card's at its start.
   required final CrossAxisAlignment alignment,
+
+  /// The key of the text's selection area, through which a message menu
+  /// selects it; null where no menu does.
+  required final GlobalKey<PregoReadableSelectionAreaState>? selectionArea,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -168,6 +203,7 @@ class const UserMessageBubbleContent({
         ...attachments,
         if (markdown != null)
           PregoReadableSelectionArea(
+            key: selectionArea,
             child: MarkdownBody(
               data: markdown,
               selectable: false,

@@ -26,6 +26,7 @@ import "transcript_glide_activity.dart";
 import "transcript_jump_notifier.dart";
 import "transcript_laid_out_list_view.dart";
 import "transcript_live_row.dart";
+import "transcript_message_menu.dart";
 import "transcript_motion.dart";
 import "transcript_pinch_detector.dart";
 import "transcript_prompt_slot.dart";
@@ -1493,12 +1494,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // The launch bubble's echo keeps easing like the bubble it replaced.
       MessageUser() when entryId == _launchSlotRowId => _deliveredPromptRow(message: message),
       MessageUser() => _userMessage(message: message, outlineFade: null),
-      MessageAssistant(sender: MessageSender.agent, :final id) => AssistantMessageCard(
-        projectId: widget.projectId,
+      MessageAssistant(sender: MessageSender.agent, :final id) => _agentReply(
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
         createdAtMs: createdAtMs,
-        contentPadding: _kReplyPadding,
       ),
       MessageAssistant(:final id) => SystemMessageCard(
         projectId: widget.projectId,
@@ -1510,6 +1509,23 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     };
     return _revealable(createdAtMs: createdAtMs, child: card);
   }
+
+  /// An agent reply's card, with its message menu.
+  Widget _agentReply({
+    required List<TranscriptBlock> blocks,
+    required Map<String, String> streamingText,
+    required int? createdAtMs,
+  }) => TranscriptMessageMenu(
+    copyText: AssistantMessageCard.markdownOf(blocks: blocks, streamingText: streamingText),
+    builder: (context, selectionArea) => AssistantMessageCard(
+      projectId: widget.projectId,
+      blocks: blocks,
+      streamingText: streamingText,
+      createdAtMs: createdAtMs,
+      contentPadding: _kReplyPadding,
+      selectionArea: selectionArea,
+    ),
+  );
 
   /// A user message's bubble, registered where it is so its pin can stand in
   /// for it.

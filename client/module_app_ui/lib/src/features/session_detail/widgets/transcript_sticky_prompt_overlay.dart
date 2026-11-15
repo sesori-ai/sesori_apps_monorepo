@@ -297,6 +297,7 @@ class _TranscriptStickyPromptOverlayState()
             ? opener.promptText ?? loc.transcriptStickyPromptAttachment
             : TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: text.head),
         content: UserMessageBubbleContent(
+          selectionArea: null,
           markdown: text?.end,
           attachments: [UserMessageCard.attachmentsOf(message: opener)],
           alignment: .end,
@@ -335,6 +336,7 @@ class _TranscriptStickyPromptOverlayState()
           ? loc.transcriptStickyPromptAttachment
           : TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: preview),
       content: UserMessageBubbleContent(
+        selectionArea: null,
         markdown: preview ?? loc.transcriptStickyPromptAttachment,
         attachments: const [],
         alignment: .end,
@@ -363,6 +365,7 @@ class _TranscriptStickyPromptOverlayState()
       if (spoken != null) TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: spoken),
     ].join("\n"),
     content: InvocationCardContent(
+      selectionArea: null,
       name: name,
       source: source,
       arguments: arguments,
