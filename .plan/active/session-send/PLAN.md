@@ -838,6 +838,8 @@ transcript file | Asks first | Running target`.
 
 - **Running target:** steered in (Claude, Codex, Pi, OpenCode, OMP), or stops the running turn (the ACP
   family), from each plugin's `busyPromptHandling`.
+  OMP's value is static: an older OMP on PATH that does not advertise `_session/steering` stops the turn without
+  the picker's warning. Record that limitation in the OMP row.
 - **Notes:**
   - A busy source is refused in the bridge core for every harness. Readiness comes from session statuses and pending
     permissions and questions, which every plugin supplies.
