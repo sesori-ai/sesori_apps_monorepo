@@ -271,6 +271,7 @@ export "src/repositories/models/session_cleanup_rejection.dart";
 export "src/repositories/models/session_diff_summary_result.dart";
 export "src/repositories/models/session_messages_through_result.dart";
 export "src/repositories/models/session_page_result.dart";
+export "src/repositories/models/session_pin_result.dart";
 export "src/repositories/models/session_prompt_index_result.dart";
 export "src/repositories/models/session_prompt_search_result.dart";
 export "src/repositories/models/tool_output_result.dart";

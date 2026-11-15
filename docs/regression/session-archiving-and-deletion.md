@@ -46,8 +46,12 @@ entirely along with its transcript and its dedicated worktree.
   the bridge until that window closes, so Undo simply brings the session back. Archiving another session, or
   the window ending, sends the archive; quitting inside the window sends nothing. The window belongs to the
   app shell, not to a page, so leaving the page it started on neither cancels nor loses the
-  archive. Only a running session is confirmed first, and that confirmation says archiving stops it. The
-  phone's swipe pill, full swipe and row menu, both detail menus and the desktop list all archive this way.
+  archive. Only a running or pinned session is confirmed first, and confirming starts the same archive with
+  its Undo. A running session's question says archiving stops it. A pinned session's question, "Archive a
+  pinned session?", says the session is pinned and that archiving drops the pin, and offers a destructive
+  Archive and Cancel; a running pinned session gets that one question, which also says archiving stops it.
+  The phone's swipe pill, full swipe and row menu, both detail menus and the desktop list all archive this
+  way; a full swipe that asks springs its row back while the question is open, so Cancel leaves it in place.
 - Neither shell ever asks whether the worktree survives, and no menu, checkbox or button offers to keep it.
   Archive and Delete both request removal of a dedicated worktree, and send no worktree request for a session
   that has none. The bridge's cleanup refusal is the only thing that protects unfinished work.
@@ -65,7 +69,7 @@ entirely along with its transcript and its dedicated worktree.
   would remove a worktree another session is still using.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
-  that a dedicated worktree will be deleted and its branch kept.
+  that a dedicated worktree will be deleted and its branch kept, and, for a pinned session, that it is pinned.
 - Deleting a "No project" session, from any entry point, adds to that confirmation that its folder and every file
   in it are deleted too, and only then sends `deleteSessionFolder: true` (also on a forced retry). Deleting any
   other session sends `false` and adds no such sentence.

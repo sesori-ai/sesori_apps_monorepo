@@ -2106,6 +2106,38 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get sessionListArchivePinnedTitle => 'Archive a pinned session?';
+
+  @override
+  String sessionListArchivePinnedMessage(String title) {
+    return '“$title” is pinned. Archiving removes it from your lists for good and drops the pin.';
+  }
+
+  @override
+  String get sessionListArchivePinnedRunningNotice => 'It is still running, and archiving stops it.';
+
+  @override
+  String get sessionListPinned => 'Pinned';
+
+  @override
+  String get sessionListPin => 'Pin';
+
+  @override
+  String get sessionListUnpin => 'Unpin';
+
+  @override
+  String get sessionListPinUnsupported => 'Update this computer to pin sessions';
+
+  @override
+  String get sessionListPinFailed => 'Failed to pin session';
+
+  @override
+  String get sessionListUnpinFailed => 'Failed to unpin session';
+
+  @override
+  String get sessionListDeletePinnedNotice => 'It is pinned.';
+
+  @override
   String get sessionListArchiveRefusedTitle => 'The worktree can’t be deleted safely';
 
   @override

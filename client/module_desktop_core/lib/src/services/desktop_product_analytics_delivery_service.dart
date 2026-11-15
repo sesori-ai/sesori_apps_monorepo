@@ -122,6 +122,7 @@ class DesktopProductAnalyticsDeliveryService({
     DesktopLinkSharedEvent() ||
     ComputerSwitchedEvent() ||
     ComputerManagedEvent() ||
+    SessionPinChangedEvent() ||
     FounderCallShownEvent() ||
     FounderCallLinkOpenedEvent() ||
     FounderCallDeclinedEvent() => null,

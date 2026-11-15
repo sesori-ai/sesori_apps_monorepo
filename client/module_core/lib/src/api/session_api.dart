@@ -286,6 +286,14 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<Session>> setPinned({required String sessionId, required bool pinned}) {
+    return _client.patch(
+      "/session/pinned",
+      fromJson: Session.fromJson,
+      body: SetSessionPinnedRequest(sessionId: sessionId, pinned: pinned),
+    );
+  }
+
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,

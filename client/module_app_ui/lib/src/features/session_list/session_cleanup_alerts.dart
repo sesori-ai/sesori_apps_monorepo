@@ -42,6 +42,59 @@ Future<bool> _confirmArchiveRunning({required BuildContext context, required Ses
   return confirmed ?? false;
 }
 
+/// Whether the user confirmed archiving pinned [session]. One question covers
+/// a session that is also running.
+Future<bool> _confirmArchivePinned({
+  required BuildContext context,
+  required Session session,
+  required bool isRunning,
+}) async {
+  final loc = context.loc;
+  final confirmed = await showPregoModal<bool>(
+    context: context,
+    title: loc.sessionListArchivePinnedTitle,
+    builder: (sheetContext) {
+      final bodyStyle = context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary);
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              loc.sessionListArchivePinnedMessage(_sessionName(loc: loc, session: session)),
+              style: bodyStyle,
+            ),
+            if (isRunning) ...[
+              const SizedBox(height: PregoSpacing.md),
+              Text(loc.sessionListArchivePinnedRunningNotice, style: bodyStyle),
+            ],
+            const SizedBox(height: PregoSpacing.x2l),
+            PregoSheetActions(
+              secondary: PregoButtonsSolid(
+                label: loc.sessionListDeleteConfirmCancel,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => sheetContext.pop(false),
+              ),
+              primary: PregoButtonsSolid(
+                label: loc.sessionListArchiveConfirmAction,
+                hierarchy: PregoButtonsSolidHierarchy.primary,
+                type: PregoButtonsSolidType.destructive,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => sheetContext.pop(true),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+  return confirmed ?? false;
+}
+
 /// Whether the user confirmed deleting [session]. Deleting always removes a
 /// dedicated worktree and a "No project" session's folder, so the dialog says
 /// so rather than asking.
@@ -59,8 +112,9 @@ Future<bool> _confirmDelete({
   return confirmed ?? false;
 }
 
-/// The delete question's body: what deleting means, the worktree or folder
-/// notice when the session has one, then Cancel and a destructive Delete.
+/// The delete question's body: what deleting means, that the session is
+/// pinned when it is, the worktree or folder notice when the session has one,
+/// then Cancel and a destructive Delete.
 class const _DeleteConfirmation({
   required final Session session,
   required final bool deletesFolder,
@@ -76,6 +130,10 @@ class const _DeleteConfirmation({
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(loc.sessionListDeleteConfirmMessage, style: bodyStyle),
+          if (session.pinned) ...[
+            const SizedBox(height: PregoSpacing.md),
+            Text(loc.sessionListDeletePinnedNotice, style: bodyStyle),
+          ],
           if (session.hasWorktree) ...[
             const SizedBox(height: PregoSpacing.md),
             Text(loc.sessionListDeleteWorktreeNotice, style: bodyStyle),

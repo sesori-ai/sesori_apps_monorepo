@@ -289,6 +289,8 @@ void main() {
           "computer_managed",
           {"action": wireValue},
         ),
+      for (final pinned in [true, false])
+        (ProductAnalyticsEvent.sessionPinChanged(pinned: pinned), "session_pin_changed", {"pinned": "$pinned"}),
       for (final (surface, wireValue) in [
         (FounderCallSurface.computerConnectedSheet, "computer_connected_sheet"),
         (FounderCallSurface.settings, "settings"),

@@ -942,6 +942,23 @@ extension GetItInjectableX on _i174.GetIt {
         catalogRescanService: gh<_i572.CatalogRescanService>(),
       ),
     );
+    gh.factoryParam<
+      _i206.SessionWindowService,
+      _i208.AllSessionsMode,
+      _i870.ProjectInventoryService
+    >(
+      (mode, projectInventory) => _i206.SessionWindowService(
+        mode: mode,
+        projectInventory: projectInventory,
+        sessionRepository: gh<_i7.SessionRepository>(),
+        projectRepository: gh<_i80.ProjectRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        sseEventTracker: gh<_i508.SseEventTracker>(),
+        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+        catalogRescanService: gh<_i572.CatalogRescanService>(),
+      ),
+    );
     gh.lazySingleton<_i1033.BridgeSettingsService>(
       () => _i1033.BridgeSettingsService(
         repository: gh<_i102.BridgeSettingsRepository>(),
@@ -965,22 +982,6 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
-    );
-    gh.factoryParam<
-      _i206.SessionWindowService,
-      _i208.AllSessionsMode,
-      _i870.ProjectInventoryService
-    >(
-      (mode, projectInventory) => _i206.SessionWindowService(
-        mode: mode,
-        projectInventory: projectInventory,
-        sessionRepository: gh<_i7.SessionRepository>(),
-        projectRepository: gh<_i80.ProjectRepository>(),
-        connectionService: gh<_i369.ConnectionService>(),
-        sseEventTracker: gh<_i508.SseEventTracker>(),
-        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
-        catalogRescanService: gh<_i572.CatalogRescanService>(),
-      ),
     );
     return this;
   }

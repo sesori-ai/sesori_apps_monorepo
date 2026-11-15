@@ -129,6 +129,7 @@ void main() {
     connectionService: connection,
     sseEventTracker: activity,
     sessionUnseenTracker: unseen,
+    productAnalyticsService: stubbedProductAnalyticsService(),
     catalogRescanService: catalog,
   );
 

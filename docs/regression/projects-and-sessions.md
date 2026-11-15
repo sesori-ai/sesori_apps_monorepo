@@ -590,8 +590,8 @@ state.
   skeleton follow.
   Rows grow with
   accessibility text rather than clipping or overflowing. Regular rows form
-  one timeline with no Running section, in updated-time date buckets, and a
-  status change alone never moves a row. A running row sits under Today
+  one timeline with no Running section, in updated-time date buckets; running,
+  retrying, awaiting input or unread never move a row. A running row sits under Today
   whatever its stored time but keeps its place, so a heading can repeat
   around a running row left out of date order. The shared
   Archived list instead groups every row, running or not, under its archive
@@ -608,6 +608,21 @@ state.
   rows below it close up, and it reappears at the top, under a new Today
   heading when needed, without moving any row above it on screen. At the
   list's top, a row arriving first opens in view instead.
+- The active list, on the phone home and in the desktop sidebar, leads with a
+  Pinned heading holding the pinned top-level sessions by latest activity,
+  above Today; with nothing pinned the heading is absent. A running pinned row
+  stays in Pinned, and a launching row leads Today below it. A pinned row shows
+  a small grey pin after its title, in the status mark's slot style, so the
+  title never shifts as the pin comes or goes. Pin, or Unpin when pinned, is
+  the first entry of the row menu and of both session-page menus, for an
+  unarchived top-level session only; swipes and hover actions offer neither,
+  and there is no limit. Pinning animates the row out where it stood and into
+  Pinned, the heading entering and leaving with its first and last row, and a
+  far-down row pinned while scrolled moves no row on screen. The project
+  filter and the All, Running and Unread chips narrow pinned rows like any
+  other; search and the Archived list ignore the pin and list by time. A
+  bridge without the route keeps Pin offered and answers a tap with "Update
+  this computer to pin sessions"; a failed pin or unpin says so.
 - Above the active session list, on the phone and the sidebar alike, chips
   read All, Running and Unread with the bridge's counts under the project
   filter and the search, whatever chip is chosen. A chip narrows the loaded
@@ -789,7 +804,8 @@ state.
   on two cold opens, so the bounded child-history presentation gate passes.
 - Session lists order roots by updated time, descending, then session ID; a
   newer durable user-side activity marker counts as the updated time, and
-  running never promotes a root. In the project picker and Settings › Projects,
+  status never moves a root: running or awaiting input never promotes one, and
+  only the active list's Pinned group precedes it. In the project picker and Settings › Projects,
   projects with running roots remain ahead of inactive projects and order by
   the latest effective activity among their running roots, then project ID.
   Running means main-agent work, retry, or a background task; awaiting-input

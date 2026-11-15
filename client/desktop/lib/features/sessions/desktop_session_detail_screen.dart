@@ -293,49 +293,49 @@ class const DesktopSessionDetailView({
               menuWidth: 220,
               entriesBuilder: () => session == null
                   ? const []
-                  : [
-                      if (state.offersMcp)
+                  : sessionActions.sessionMenuEntries(
+                      context: context,
+                      actions: context.read<SessionActionsCubit>(),
+                      session: session,
+                      isRunning: isBusy,
+                      readEntry: const SessionReadMenuNone(),
+                      surfaceEntries: [
+                        if (state.offersMcp)
+                          PregoMenuItem(
+                            leadingIcon: TablerRegular.plug,
+                            title: loc.mcpMenuLabel,
+                            subtitle: null,
+                            isSelected: false,
+                            shortcutLabel: null,
+                            onTap: () => showMcpInventory(
+                              context: context,
+                              request: McpInventoryRequest(
+                                pluginId: session.pluginId,
+                                scope: McpSessionScope(sessionId: session.id),
+                              ),
+                              createService: getIt.call<McpService>,
+                              authenticationService: getIt.call<McpAuthenticationService>,
+                              mutationsAllowed:
+                                  !readOnly &&
+                                  session.parentID == null &&
+                                  session.time?.archived == null &&
+                                  !(state is SessionDetailLoaded && state.isArchived),
+                            ),
+                          ),
+                        if (!readOnly &&
+                            session.time?.archived == null &&
+                            !(state is SessionDetailLoaded && state.isArchived))
+                          sessionAutoContinuationMenuEntry(context: context, session: session),
                         PregoMenuItem(
-                          leadingIcon: TablerRegular.plug,
-                          title: loc.mcpMenuLabel,
+                          leadingIcon: TablerRegular.mail,
+                          title: loc.sessionListMarkUnread,
                           subtitle: null,
                           isSelected: false,
-                          shortcutLabel: null,
-                          onTap: () => showMcpInventory(
-                            context: context,
-                            request: McpInventoryRequest(
-                              pluginId: session.pluginId,
-                              scope: McpSessionScope(sessionId: session.id),
-                            ),
-                            createService: getIt.call<McpService>,
-                            authenticationService: getIt.call<McpAuthenticationService>,
-                            mutationsAllowed:
-                                !readOnly &&
-                                session.parentID == null &&
-                                session.time?.archived == null &&
-                                !(state is SessionDetailLoaded && state.isArchived),
-                          ),
+                          shortcutLabel: defaultTargetPlatform == TargetPlatform.macOS ? "⇧⌘U" : "Ctrl+Shift+U",
+                          onTap: () => _markUnread(context: context, session: session),
                         ),
-                      if (!readOnly &&
-                          session.time?.archived == null &&
-                          !(state is SessionDetailLoaded && state.isArchived))
-                        sessionAutoContinuationMenuEntry(context: context, session: session),
-                      PregoMenuItem(
-                        leadingIcon: TablerRegular.mail,
-                        title: loc.sessionListMarkUnread,
-                        subtitle: null,
-                        isSelected: false,
-                        shortcutLabel: defaultTargetPlatform == TargetPlatform.macOS ? "⇧⌘U" : "Ctrl+Shift+U",
-                        onTap: () => _markUnread(context: context, session: session),
-                      ),
-                      ...sessionActions.sessionMenuEntries(
-                        context: context,
-                        actions: context.read<SessionActionsCubit>(),
-                        session: session,
-                        isRunning: isBusy,
-                        readEntry: const SessionReadMenuNone(),
-                      ),
-                    ],
+                      ],
+                    ),
               triggerBuilder: (context, openMenu) => IconButton(
                 key: const Key("desktop-session-page-more"),
                 style: _headerIconStyle,

@@ -27,8 +27,9 @@ typedef SessionMarkedUnreadHandler = void Function({
   required Session session,
 });
 
-/// How a surface asks before deleting. Archive never asks first, except for a
-/// running session: it happens at once behind the shell's Undo window.
+/// How a surface asks before deleting. Archive asks first only for a running
+/// or pinned session; otherwise it happens at once behind the shell's Undo
+/// window.
 enum SessionDeleteConfirmation() {
   /// The phone: a bottom sheet.
   sheet,
@@ -62,23 +63,37 @@ class const SessionListActionDispatcher({
   required final SessionMarkedUnreadHandler? onSessionMarkedUnread,
 }) {
   /// The long-press actions for [session], rendered by [SessionTile] in a
-  /// [PregoAnchorMenu] anchored to the row.
+  /// [PregoAnchorMenu] anchored to the row, and a session page's menu.
   ///
   /// [context] must belong to the stable list/sidebar owner rather than the
   /// row: archive/delete can remove that row before their follow-up UI runs.
   /// [isRunning] is whether the session works right now, so archive asks first.
+  /// [surfaceEntries] are a page's own actions, listed right after Pin.
   List<PregoMenuEntry> sessionMenuEntries({
     required BuildContext context,
     required SessionActionsCubit actions,
     required Session session,
     required bool isRunning,
     required SessionReadMenuEntry readEntry,
+    required List<PregoMenuEntry> surfaceEntries,
   }) {
     final loc = context.loc;
     final isArchived = session.time?.archived != null;
     final markRead = readEntry is SessionReadMenuToggle && readEntry.unseen;
 
     return [
+      // Only an unarchived top-level session can be pinned; archiving drops
+      // the pin.
+      if (!isArchived && session.parentID == null)
+        PregoMenuItem(
+          leadingIcon: session.pinned ? TablerRegular.pinned_off : TablerRegular.pin,
+          title: session.pinned ? loc.sessionListUnpin : loc.sessionListPin,
+          subtitle: null,
+          isSelected: false,
+          shortcutLabel: null,
+          onTap: () => _setPinned(context: context, actions: actions, session: session, pinned: !session.pinned),
+        ),
+      ...surfaceEntries,
       if (!isArchived)
         PregoMenuItem(
           leadingIcon: TablerRegular.pencil,
@@ -140,12 +155,46 @@ class const SessionListActionDispatcher({
     required Session session,
   }) => _delete(context: context, actions: actions, session: session);
 
+  /// Pins or unpins [session]. The row moves once the bridge answers; a tap
+  /// the bridge cannot honour is answered with why.
+  void _setPinned({
+    required BuildContext context,
+    required SessionActionsCubit actions,
+    required Session session,
+    required bool pinned,
+  }) {
+    unawaited(() async {
+      final result = await actions.setPinned(sessionId: session.id, pinned: pinned);
+      if (!context.mounted) return;
+      final loc = context.loc;
+      switch (result) {
+        case SessionPinUpdated():
+          break;
+        case SessionPinUnsupported():
+          PregoPopupAlertPresenter.of(context).show(
+            title: loc.sessionListPinUnsupported,
+            variant: PregoPopupAlertsNotificationsVariant.warning,
+          );
+        case SessionPinFailure():
+          PregoPopupAlertPresenter.of(context).show(
+            title: pinned ? loc.sessionListPinFailed : loc.sessionListUnpinFailed,
+            variant: PregoPopupAlertsNotificationsVariant.error,
+          );
+      }
+    }());
+  }
+
   /// Archiving always asks the bridge to remove a dedicated worktree. The user
   /// never chooses otherwise: the bridge's cleanup refusal is what protects
-  /// unfinished work.
+  /// unfinished work. A running or pinned session asks first, in one
+  /// question; a full swipe's row springs back while it is open.
   void _archive({required BuildContext context, required Session session, required bool isRunning}) {
     unawaited(() async {
-      if (isRunning && !await _confirmArchiveRunning(context: context, session: session)) return;
+      if (session.pinned) {
+        if (!await _confirmArchivePinned(context: context, session: session, isRunning: isRunning)) return;
+      } else if (isRunning) {
+        if (!await _confirmArchiveRunning(context: context, session: session)) return;
+      }
       if (!context.mounted) return;
       context.read<PendingSessionArchiveCubit>().archive(session: session, deleteWorktree: session.hasWorktree);
       onSessionArchived?.call(context: context, sessionId: session.id);

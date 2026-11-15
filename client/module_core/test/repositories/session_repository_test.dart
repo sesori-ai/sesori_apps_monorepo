@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/repositories/models/session_diff_summary_re
 import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_page_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_pin_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_search_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -757,6 +758,37 @@ void main() {
 
       expect(unsupported, isA<SessionPageUnsupported>());
       expect(failed, isA<SessionPageFailure>());
+    });
+  });
+
+  group("setPinned", () {
+    Future<SessionPinResult> pinFor({required ApiResponse<Session> response}) {
+      final api = MockSessionApi();
+      when(() => api.setPinned(sessionId: "s1", pinned: true)).thenAnswer((_) async => response);
+      return SessionRepository(api: api).setPinned(sessionId: "s1", pinned: true);
+    }
+
+    test("passes the pinned session through", () async {
+      final session = testSession(id: "s1").copyWith(pinned: true);
+
+      final result = await pinFor(response: ApiResponse.success(session));
+
+      expect(result, isA<SessionPinUpdated>().having((value) => value.session, "session", session));
+    });
+
+    test("only the router's missing-route 404 reads as unsupported", () async {
+      final unsupported = await pinFor(
+        response: ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found for PATCH /session/pinned"),
+        ),
+      );
+      // The route's own not-found, for a session it cannot pin.
+      final failed = await pinFor(
+        response: ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session not found")),
+      );
+
+      expect(unsupported, isA<SessionPinUnsupported>());
+      expect(failed, isA<SessionPinFailure>());
     });
   });
 

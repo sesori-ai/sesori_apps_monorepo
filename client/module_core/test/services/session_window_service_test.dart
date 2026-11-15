@@ -46,8 +46,9 @@ List<Session> _sessions({required int count}) => [
     _session(id: "s${index.toString().padLeft(4, "0")}", updatedAt: 1000000 - index),
 ];
 
-/// A bridge serving `/sessions/page` over [sessions]: newest first, the
-/// cursor being the next row's index.
+/// A bridge serving `/sessions/page` over [sessions]: newest first, pinned
+/// sessions before the others when asked, the cursor being the next row's
+/// index.
 class _FakeBridge() {
   List<Session> sessions = const [];
   Set<String> runningIds = const {};
@@ -60,17 +61,21 @@ class _FakeBridge() {
     requests.add(request);
     if (answer case final answer?) return await answer(request);
     final query = request.query;
-    final counted = [
-      for (final session in sessions)
-        if ((request.projectId == null || session.projectID == request.projectId) &&
-            (query == null ||
-                searchWords(query: query).every(
-                  (word) =>
-                      (session.title ?? "").toLowerCase().contains(word) ||
-                      session.projectID.toLowerCase().contains(word),
-                )))
-          session,
-    ]..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
+    final counted =
+        [
+          for (final session in sessions)
+            if ((request.projectId == null || session.projectID == request.projectId) &&
+                (query == null ||
+                    searchWords(query: query).every(
+                      (word) =>
+                          (session.title ?? "").toLowerCase().contains(word) ||
+                          session.projectID.toLowerCase().contains(word),
+                    )))
+              session,
+        ]..sort((a, b) {
+          if (request.pinnedFirst && a.pinned != b.pinned) return a.pinned ? -1 : 1;
+          return (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0);
+        });
     final listed = counted
         .where(
           (session) => switch (request.filter) {
@@ -108,6 +113,7 @@ void main() {
   late StreamController<SseEvent> events;
   late BehaviorSubject<ConnectionStatus> status;
   late _FakeBridge bridge;
+  late MockProductAnalyticsService analytics;
 
   setUpAll(() {
     registerAllFallbackValues();
@@ -134,6 +140,7 @@ void main() {
     events = StreamController.broadcast(sync: true);
     status = BehaviorSubject.seeded(_connected(bridgeId: "a"));
     bridge = _FakeBridge();
+    analytics = stubbedProductAnalyticsService();
     when(() => connection.events).thenAnswer((_) => events.stream);
     when(() => connection.status).thenAnswer((_) => status.stream);
     when(() => connection.currentStatus).thenAnswer((_) => status.value);
@@ -162,6 +169,7 @@ void main() {
     connectionService: connection,
     sseEventTracker: activity,
     sessionUnseenTracker: unseen,
+    productAnalyticsService: analytics,
     catalogRescanService: catalog,
   );
 
@@ -200,6 +208,7 @@ void main() {
             filter: SessionPageFilter.all,
             cursor: null,
             limit: SessionWindowService.pageSize,
+            pinnedFirst: true,
           ),
         );
         expect(ids(window), hasLength(200));
@@ -1018,6 +1027,133 @@ void main() {
         async.flushMicrotasks();
         expect(renamed, isTrue);
         expect(ids(window), ["s0000"]);
+        unawaited(window.dispose());
+      });
+    });
+  });
+
+  group("pin", () {
+    /// Answers pinning [id] with the bridge's copy of it, pinned as asked.
+    void stubPin({required String id}) =>
+        when(
+          () => sessionRepository.setPinned(
+            sessionId: id,
+            pinned: any(named: "pinned"),
+          ),
+        ).thenAnswer((invocation) async {
+          final pinned = invocation.namedArguments[#pinned] as bool;
+          final session = bridge.sessions.firstWhere((session) => session.id == id).copyWith(pinned: pinned);
+          bridge.sessions = [
+            for (final listed in bridge.sessions) listed.id == id ? session : listed,
+          ];
+          return SessionPinUpdated(session: session);
+        });
+
+    test("a pinned session leads the rows once the bridge answers, and leaves them when unpinned", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 250);
+        final window = create();
+        async.flushMicrotasks();
+        stubPin(id: "s0240");
+        stubPin(id: "s0005");
+
+        // Far below the loaded rows: pinned, it is in range at the top.
+        SessionPinResult? result;
+        unawaited(window.setPinned(sessionId: "s0240", pinned: true).then((value) => result = value));
+        async.flushMicrotasks();
+        expect(result, isA<SessionPinUpdated>());
+        expect(ids(window).take(2), ["s0240", "s0000"]);
+        unawaited(window.setPinned(sessionId: "s0005", pinned: true));
+        async.flushMicrotasks();
+        // Pinned rows keep time order among themselves.
+        expect(ids(window).take(3), ["s0005", "s0240", "s0000"]);
+        // A pinned session's update keeps it in Pinned, whatever its time.
+        emit(SesoriSseEvent.sessionUpdated(info: bridge.sessions[240].copyWith(title: "Renamed")));
+        expect(ids(window).take(3), ["s0005", "s0240", "s0000"]);
+
+        unawaited(window.setPinned(sessionId: "s0005", pinned: false));
+        unawaited(window.setPinned(sessionId: "s0240", pinned: false));
+        async.flushMicrotasks();
+        // Back at its time; older than every loaded row, a later page brings it.
+        expect(ids(window).take(7), ["s0000", "s0001", "s0002", "s0003", "s0004", "s0005", "s0006"]);
+        expect(ids(window), isNot(contains("s0240")));
+        verifyInOrder([
+          () => analytics.logEvent(
+            event: const ProductAnalyticsEvent.sessionPinChanged(pinned: true),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+          () => analytics.logEvent(
+            event: const ProductAnalyticsEvent.sessionPinChanged(pinned: true),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+          () => analytics.logEvent(
+            event: const ProductAnalyticsEvent.sessionPinChanged(pinned: false),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+          () => analytics.logEvent(
+            event: const ProductAnalyticsEvent.sessionPinChanged(pinned: false),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        ]);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("a refused or unsupported pin moves nothing and reports nothing", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 3);
+        final window = create();
+        async.flushMicrotasks();
+        when(
+          () => sessionRepository.setPinned(sessionId: "s0002", pinned: true),
+        ).thenAnswer((_) async => SessionPinFailure(error: ApiError.generic()));
+        when(
+          () => sessionRepository.setPinned(sessionId: "s0001", pinned: true),
+        ).thenAnswer((_) async => const SessionPinUnsupported());
+        final results = <SessionPinResult>[];
+
+        unawaited(window.setPinned(sessionId: "s0002", pinned: true).then(results.add));
+        unawaited(window.setPinned(sessionId: "s0001", pinned: true).then(results.add));
+        async.flushMicrotasks();
+        expect(results, [isA<SessionPinFailure>(), isA<SessionPinUnsupported>()]);
+        expect(ids(window), ["s0000", "s0001", "s0002"]);
+        verifyNever(
+          () => analytics.logEvent(
+            event: any(named: "event"),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        );
+        unawaited(window.dispose());
+      });
+    });
+
+    test("a search lists pinned sessions by time, and asks the bridge to", () {
+      inFakeTime((async) {
+        bridge.sessions = [
+          _session(id: "new", updatedAt: 3),
+          _session(id: "mid", updatedAt: 2),
+          _session(id: "old", updatedAt: 1).copyWith(pinned: true),
+        ];
+        final window = create();
+        async.flushMicrotasks();
+        expect(ids(window), ["old", "new", "mid"]);
+
+        expect(
+          [for (final session in window.searchLoaded(query: "", earlier: const [], limit: 20)) session.id],
+          ["new", "mid", "old"],
+        );
+        SessionWindowSearchResult? result;
+        unawaited(window.search(query: "session", limit: 20).then((value) => result = value));
+        async.flushMicrotasks();
+        expect(bridge.requests.last.pinnedFirst, isFalse);
+        expect(
+          result,
+          isA<SessionWindowSearchMatches>().having(
+            (matches) => [for (final session in matches.sessions) session.id],
+            "ids",
+            ["new", "mid", "old"],
+          ),
+        );
         unawaited(window.dispose());
       });
     });

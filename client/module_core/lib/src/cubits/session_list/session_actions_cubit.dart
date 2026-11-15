@@ -1,11 +1,12 @@
 import "package:bloc/bloc.dart";
 
+import "../../repositories/models/session_pin_result.dart";
 import "../../services/models/session_delete_result.dart";
 import "../../services/session_action_service.dart";
 import "../../services/session_window_service.dart";
 
-/// The actions a session row or page offers: rename, delete, and mark read
-/// or unread. The rows they change live in [SessionWindowService] and the
+/// The actions a session row or page offers: pin, rename, delete, and mark
+/// read or unread. The rows they change live in [SessionWindowService] and the
 /// trackers.
 ///
 /// It holds no state. Each action returns its own outcome, so actions on
@@ -20,6 +21,10 @@ class SessionActionsCubit({
   /// the row got its previous title back.
   Future<bool> renameSession({required String sessionId, required String title}) =>
       _window.renameSession(sessionId: sessionId, title: title);
+
+  /// The row moves into or out of Pinned once the bridge answers.
+  Future<SessionPinResult> setPinned({required String sessionId, required bool pinned}) =>
+      _window.setPinned(sessionId: sessionId, pinned: pinned);
 
   /// [deleteSessionFolder] also removes a "No project" session's own folder.
   Future<SessionDeleteResult> deleteSession({
