@@ -5,12 +5,15 @@ import "package:sesori_dart_core/src/repositories/models/send_to_session_result.
 import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
 import "package:sesori_dart_core/src/services/models/session_cleanup_outcome.dart";
 import "package:sesori_dart_core/src/services/models/session_delete_result.dart";
+import "package:sesori_dart_core/src/services/selected_computer_service.dart";
 import "package:sesori_dart_core/src/services/session_action_service.dart";
 import "package:sesori_dart_core/src/services/session_cleanup_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_helpers.dart";
+
+class _MockSelectedComputerService() extends Mock implements SelectedComputerService;
 
 void main() {
   setUpAll(registerAllFallbackValues);
@@ -20,8 +23,11 @@ void main() {
   late FakeSessionUnseenTracker unseen;
   late MockFailureReporter failureReporter;
   late SessionActionService actions;
+  late _MockSelectedComputerService selectedComputer;
 
   setUp(() {
+    selectedComputer = _MockSelectedComputerService();
+    when(() => selectedComputer.targetBridgeId()).thenAnswer((_) async => "computer-a");
     sessionRepository = MockSessionRepository();
     unseen = FakeSessionUnseenTracker();
     failureReporter = MockFailureReporter();
@@ -40,6 +46,7 @@ void main() {
       sessionCleanupService: SessionCleanupService(repository: sessionRepository),
       sessionUnseenTracker: unseen,
       failureReporter: failureReporter,
+      selectedComputerService: selectedComputer,
     );
   });
 
@@ -145,5 +152,18 @@ void main() {
         expect(result, same(outcome));
       });
     }
+
+    test("hides the outcome when the app moved to another computer meanwhile", () async {
+      when(
+        () => sessionRepository.sendToSession(sourceSessionId: "source", targetSessionId: "target"),
+      ).thenAnswer((_) async {
+        when(() => selectedComputer.targetBridgeId()).thenAnswer((_) async => "computer-b");
+        return SendToSessionUnconfirmed(error: ApiError.generic());
+      });
+
+      final result = await actions.sendToSession(sourceSessionId: "source", targetSessionId: "target");
+
+      expect(result, isA<SendToSessionComputerSwitched>());
+    });
   });
 }

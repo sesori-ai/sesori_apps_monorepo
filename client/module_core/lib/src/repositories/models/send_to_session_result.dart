@@ -21,6 +21,10 @@ final class const SendToSessionFailed({required final ApiError error}) extends S
 /// The bridge predates sending sessions.
 final class const SendToSessionUnsupported() extends SendToSessionResult;
 
+/// The app moved to another computer before the answer came. The outcome and
+/// the target's ids belong to the computer it left, so nothing shows.
+final class const SendToSessionComputerSwitched() extends SendToSessionResult;
+
 /// The answer never arrived: the request timed out or the connection dropped
 /// after it went out. The bridge finishes the send regardless.
 final class const SendToSessionUnconfirmed({required final ApiError error}) extends SendToSessionResult;

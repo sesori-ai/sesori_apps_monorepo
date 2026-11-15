@@ -101,7 +101,8 @@ class SessionRepository({
       final refusal = SendToSessionErrorResponse.fromJson(jsonDecodeMap(body));
       return SendToSessionRefused(code: refusal.code, message: refusal.message);
     } on Object catch (parseError, stackTrace) {
-      logw("Failed to parse the send-to-session refusal", parseError, stackTrace);
+      // The type only: a parse error quotes the body, which can hold the harness's message.
+      logw("Failed to parse the send-to-session refusal: ${parseError.runtimeType}", null, stackTrace);
       return SendToSessionFailed(error: error);
     }
   }

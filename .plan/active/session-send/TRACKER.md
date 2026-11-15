@@ -8,8 +8,8 @@
 | 4 Handoff marker in the bridge | Done | #2608 |
 | 5 Claude read rules (transcripts and uploads) | Done | #2613 |
 | 6 Busy-prompt declaration | Done | #2589 |
-| 7 Client send and stop pipeline | In PR | |
-| 7.a Send from the session menu | In PR | |
+| 7 Client send and stop pipeline | In PR | #2622 |
+| 7.a Send from the session menu | In PR | #2623 |
 | 8 Handoff marker and card in the chats | Not started | |
 | 9 Archive the source after sending | Not started | |
 | 10 Analytics | Not started | |
@@ -34,6 +34,8 @@ All answered (rounds 1–3, 2026-11-14 and 2026-11-15).
   uploads (S4), archive switch on by default and remembered (Q3). Series grows from 8 to 12 PRs.
 - 2026-11-15: step 7 measured about 1,680 lines, so it split into step 7 (the `module_core` pipeline) and step 7.a (the
   sheet, picker, menu entry and alerts), as the plan allows. Series total 13.
+- 2026-11-15: 7.a ships the archive switch inert, on by default. Step 9 makes it act; if step 9 misses the release that
+  carries 7.a, hide the switch in that release.
 
 ## Review record
 
