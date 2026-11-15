@@ -266,6 +266,19 @@ gives the agent their path.
   Sesori removes its uploads folder, and bridge startup and each save start a
   best-effort sweep of file folders dated more than 30 days back. An accepted prompt with
   staged files is reported as `prompt_files_sent` ([analytics](analytics.md)).
+  One shared builder in `sesori_shared` writes the note, and a parser beside it
+  reads it back.
+- A sent user message can be brought back into a composer (shared core's
+  `MessageComposerRestoreService`; no surface uses it yet). The text comes back
+  without its saved-file notes, each inline or stored image is fetched again as
+  an ordinary staged image, and each noted file comes back as a file the bridge
+  already holds. That file shows as an ordinary removable file tile and is sent
+  as a `file_path` part naming its path on the bridge's computer, never this
+  device's, so nothing is uploaded again; the bridge gives the agent the same
+  note it wrote the first time, whatever the harness, without a save or a
+  sweep. An attachment the bridge can no longer serve, such as a noted file the
+  preview route reports missing (swept or deleted) or an image a harness
+  pruned, is left out and counted. A noted file whose check fails stays.
 
 ## Regression Levels
 
@@ -312,6 +325,10 @@ older than file uploads).
   reload; a
   new session's files land under an id other than its own; a deleted
   session's uploads folder stays.
+- A restored message keeps a saved-file note in its text, loses its typed
+  text around a note, uploads a noted file again, or sends a `file_path` part
+  that reaches a plugin instead of the note; a swept file comes back as an
+  attachment, or a left-out attachment goes uncounted.
 - A host path, unsafe or unnormalized source URI, or raw attachment payload
   crosses the plugin/client boundary; a raw parser error reaches a client payload
   or user-facing error, or local diagnostics discard useful parser error and

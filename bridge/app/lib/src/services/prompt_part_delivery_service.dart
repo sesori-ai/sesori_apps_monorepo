@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert" show base64Decode;
 
 import "package:clock/clock.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -17,16 +18,16 @@ class PromptPartDeliveryService({
   static const uploadLifetime = Duration(days: 30);
 
   static const _unnamedFileName = "attachment";
-  static final _noteQuoteBreakers = RegExp('[`"]');
-  static final _controlCharacters = RegExp(r"[\x00-\x1F\x7F]");
 
   /// Returns [parts] as the plugin should receive them.
   ///
   /// A file part stays as it is only when [inlineImages] is set and its mime
   /// starts with `image/`. Every other file part is saved under [sessionId]
   /// and replaced, in the same position, by a text part naming the saved
-  /// path. Other parts pass through. Call it only with parts that will reach
-  /// the plugin. A failed save propagates, so the prompt fails visibly.
+  /// path. A file path part, a file this computer already holds such as one
+  /// saved for an earlier prompt, gets the same note without a save. Other
+  /// parts pass through. Call it only with parts that will reach the plugin. A
+  /// failed save propagates, so the prompt fails visibly.
   Future<List<PromptPart>> deliverableParts({
     required String sessionId,
     required bool inlineImages,
@@ -41,27 +42,17 @@ class PromptPartDeliveryService({
         case PromptPartFileData(:final base64, :final filename):
           final name = filename == null || filename.isEmpty ? _unnamedFileName : filename;
           final path = await _uploads.save(sessionId: sessionId, bytes: base64Decode(base64), filename: name);
-          delivered.add(
-            PromptPart.text(
-              text: _note(name: name, path: path),
-            ),
-          );
+          delivered.add(PromptPart.text(text: savedFileNote(name: name, path: path)));
           savedAny = true;
-        case PromptPartText() || PromptPartFilePath() || PromptPartFileUrl():
+        case PromptPartFilePath(:final path, :final filename):
+          final name = filename == null || filename.isEmpty ? p.basename(path) : filename;
+          delivered.add(PromptPart.text(text: savedFileNote(name: name, path: path)));
+        case PromptPartText() || PromptPartFileUrl():
           delivered.add(part);
       }
     }
     if (savedAny) unawaited(sweepExpiredUploads());
     return delivered;
-  }
-
-  /// Visible in the user's message. The path is inline code, so it opens the
-  /// file preview. In the original name, a backtick would end that code early
-  /// and a double quote would end the quoted name, so both become `'`; a line
-  /// break or other control character becomes a space.
-  static String _note({required String name, required String path}) {
-    final shownName = name.replaceAll(_noteQuoteBreakers, "'").replaceAll(_controlCharacters, " ");
-    return 'Attached file "$shownName": `$path`';
   }
 
   /// Best-effort: deletes every saved file older than [uploadLifetime], in

@@ -142,7 +142,7 @@ class ComposerAttachmentDispatcher({
       switch (route) {
         case _HostPathStaged(:final attachment):
           attachments.add(attachment);
-          remainingBytes -= attachment.bytes.length;
+          remainingBytes -= attachment.inlineByteCount;
         case _HostPathNotStaged() when bridgeIsLocal:
           insertedPaths.add(_needsQuotes.hasMatch(hostPath) ? '"${hostPath.replaceAll('"', r'\"')}"' : hostPath);
         case _HostPathNotStaged(:final reason):
@@ -262,7 +262,7 @@ class ComposerAttachmentDispatcher({
     } else {
       return _rejected(reason: ComposerAttachRejectionReason.attachmentsUnsupported);
     }
-    if (attachment.bytes.length > maxComposerPromptAttachmentBytes - stagedAttachmentBytes) {
+    if (attachment.inlineByteCount > maxComposerPromptAttachmentBytes - stagedAttachmentBytes) {
       return _rejected(reason: ComposerAttachRejectionReason.overBudget);
     }
     return ComposerAttachOutcome(attachments: [attachment], insertedText: null, rejections: const {});

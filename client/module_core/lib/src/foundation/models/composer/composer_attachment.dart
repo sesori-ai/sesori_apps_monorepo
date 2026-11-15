@@ -13,37 +13,39 @@ const maxComposerPromptAttachmentBytes = 50 * 1000 * 1000;
 /// and name its path to the agent, rather than pass it on inline.
 const composerFileAttachmentMime = "application/octet-stream";
 
-/// An image or file staged in the composer, transmitted inline (base64
-/// `file_data` prompt part) with the submission it accompanies. How it
-/// reaches the agent depends on its variant.
+/// An image or file staged in the composer. How it reaches the agent depends
+/// on its variant: an image or file goes inline (base64 `file_data` prompt
+/// part) with the submission it accompanies, and a file the bridge already
+/// holds goes by its path.
 ///
 /// Held in memory only: staged attachments are not part of the persisted
 /// composer draft, so they live exactly as long as the composer that staged
 /// them.
 ///
-/// [bytes] is owned by this attachment. It is not defensively copied — the
-/// buffers are megabytes and come straight from the picker — so callers must
-/// treat it as read-only.
+/// The bytes a variant carries are owned by that attachment. They are not
+/// defensively copied — the buffers are megabytes and come straight from the
+/// picker — so callers must treat them as read-only.
 @immutable
 sealed class const ComposerAttachment() {
-  /// The type the attachment goes out with.
-  String get mime;
-
-  Uint8List get bytes;
-
   /// The original name, when it has one.
   String? get filename;
+
+  /// How many bytes the attachment adds to the request it goes out with.
+  int get inlineByteCount;
 }
 
 /// A supported image, sent inline to a harness that takes images.
 final class const ComposerImageAttachment({
   /// The sniffed image type.
-  @override required final String mime,
-  @override required final Uint8List bytes,
+  required final String mime,
+  required final Uint8List bytes,
 
   /// The original name; an image picked or pasted without one has none.
   @override required final String? filename,
-}) extends ComposerAttachment;
+}) extends ComposerAttachment {
+  @override
+  int get inlineByteCount => bytes.length;
+}
 
 /// How the user added a staged file to the composer.
 enum ComposerAttachmentSource() {
@@ -61,12 +63,29 @@ enum ComposerAttachmentSource() {
 /// gives the agent its path, so it always goes out as
 /// [composerFileAttachmentMime] under its original name.
 final class const ComposerFileAttachment({
-  @override required final Uint8List bytes,
+  required final Uint8List bytes,
   @override required final String filename,
 
   /// How it was added, for analytics only; it never reaches the bridge.
   required final ComposerAttachmentSource source,
 }) extends ComposerAttachment {
-  @override
   String get mime => composerFileAttachmentMime;
+
+  @override
+  int get inlineByteCount => bytes.length;
+}
+
+/// A file the bridge already holds, such as one it saved for an earlier
+/// prompt, brought back into the composer. It goes out by [path] rather than
+/// its bytes, so nothing is uploaded again, and the agent gets the same note
+/// naming the path as when the file was first sent.
+///
+/// [path] is on the bridge's computer, not this device's, so it is never
+/// opened here.
+final class const ComposerHostFileAttachment({
+  required final String path,
+  @override required final String filename,
+}) extends ComposerAttachment {
+  @override
+  int get inlineByteCount => 0;
 }

@@ -155,7 +155,7 @@ void main() {
 
     expect(sent, hasLength(1));
     expect(sent.single.text, "see attached");
-    expect([for (final attachment in sent.single.attachments) attachment.bytes], [_png]);
+    expect([for (final attachment in sent.single.attachments) _bytesOf(attachment)], [_png]);
     expect(sendSpins(tester), isFalse);
   });
 
@@ -263,3 +263,8 @@ void main() {
     expect(sent.single.text, "hello from a test");
   });
 }
+
+Uint8List? _bytesOf(ComposerAttachment? attachment) => switch (attachment) {
+  ComposerImageAttachment(:final bytes) || ComposerFileAttachment(:final bytes) => bytes,
+  ComposerHostFileAttachment() || null => null,
+};

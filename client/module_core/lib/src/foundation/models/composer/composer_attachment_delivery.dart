@@ -2,7 +2,8 @@ import "composer_attachment.dart";
 
 /// Whether every staged attachment can reach the agent: an image needs a
 /// harness that takes inline images, and a file a bridge that saves uploads.
-/// An unresolved (null) capability can't deliver either.
+/// An unresolved (null) capability can't deliver either. A file the bridge
+/// already holds needs neither.
 bool canDeliverComposerAttachments({
   required List<ComposerAttachment> attachments,
   required bool? inlineImages,
@@ -11,6 +12,7 @@ bool canDeliverComposerAttachments({
   (attachment) => switch (attachment) {
     ComposerImageAttachment() => inlineImages ?? false,
     ComposerFileAttachment() => fileUploads ?? false,
+    ComposerHostFileAttachment() => true,
   },
 );
 
@@ -24,4 +26,5 @@ bool isComposerAttachmentStranded({
 }) => switch (attachment) {
   ComposerImageAttachment() => inlineImages == false,
   ComposerFileAttachment() => fileUploads == false,
+  ComposerHostFileAttachment() => false,
 };
