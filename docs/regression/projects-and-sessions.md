@@ -516,7 +516,16 @@ state.
   a 404 always means a bridge without the route. Every word of the query must
   occur in the title or in the project's own name; "No project" matches on its
   title only. Running is main-agent work, a retry or a child task, by the same
-  shared rule the app uses.
+  shared rule the app uses. With `pinnedFirst`, an active page lists pinned
+  sessions first, each group in that order, and the cursor carries the group, so
+  pages continue across it; archived pages ignore the flag. An app that omits it
+  gets the time order unchanged, and a cursor written before pinning is a 400.
+- `PATCH /session/pinned` pins an unarchived root session or unpins any session.
+  The bridge alone stores the pin, so every harness supports it. It answers the
+  updated session and announces it through `session.updated` without moving its
+  updated time; catalog imports and backend session updates keep the pin, except
+  an import that stores the session under a parent, which drops it. Pinning
+  a missing, child or archived session is the route's own 404, never the router's.
 - The phone's project picker and Settings › Projects show a project's path cut
   to the last two folders, growing one folder at a time while a same-named
   project still ends the same way; a path shown whole keeps its root. Adding a
@@ -1126,6 +1135,7 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   `client/module_prego/lib/components/lists/prego_animated_sliver_list.dart`, and
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
 - Session pages and shared rules: `bridge/app/lib/src/routing/get_session_page_handler.dart`,
+  `bridge/app/lib/src/routing/set_session_pinned_handler.dart`,
   `bridge/app/lib/src/api/database/daos/session_dao.dart`,
   `shared/sesori_shared/lib/src/models/sesori/session_page.dart`,
   `shared/sesori_shared/lib/src/search/title_matcher.dart`, and
@@ -1157,6 +1167,7 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   `shared/sesori_shared/test/search/title_matcher_test.dart`,
   `bridge/app/test/bridge/routing/get_session_page_handler_test.dart`,
   `bridge/app/test/bridge/persistence/session_page_query_test.dart`,
+  `bridge/app/test/bridge/routing/set_session_pinned_handler_test.dart`,
   `client/module_core/test/services/session_window_service_test.dart`,
   `client/module_core/test/cubits/all_sessions/all_sessions_cubit_test.dart`,
   `client/module_prego/test/components/prego_animated_sliver_list_test.dart`,

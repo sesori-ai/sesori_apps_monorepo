@@ -50,7 +50,13 @@ void main() {
     await db.close();
   });
 
-  Future<void> insert({required String id, required String projectId, required int updatedAt, String? title}) {
+  Future<void> insert({
+    required String id,
+    required String projectId,
+    required int updatedAt,
+    String? title,
+    bool pinned = false,
+  }) {
     return db
         .into(db.sessionTable)
         .insert(
@@ -65,6 +71,7 @@ void main() {
             projectionUpdatedAt: 1,
             pluginId: plugin.id,
             title: Value(title),
+            pinned: Value(pinned),
           ),
         );
   }
@@ -75,8 +82,10 @@ void main() {
     SessionPageFilter filter = SessionPageFilter.all,
     SessionPageCursor? cursor,
     int limit = 100,
+    bool pinnedFirst = false,
   }) => repository.getSessionPage(
     mode: SessionPageMode.active,
+    pinnedFirst: pinnedFirst,
     projectId: projectId,
     query: query,
     filter: filter,
@@ -110,6 +119,20 @@ void main() {
     final second = await page(limit: 2, cursor: first.nextCursor);
     expect(ids(page: second), ["c"]);
     expect(second.nextCursor, isNull);
+  });
+
+  test("pinned-first pages list pinned sessions first and continue through the cursor", () async {
+    await insert(id: "a", projectId: "/work/app", updatedAt: 3);
+    await insert(id: "b", projectId: "/work/app", updatedAt: 2);
+    await insert(id: "pin", projectId: "/work/app", updatedAt: 1, pinned: true);
+
+    final first = await page(limit: 1, pinnedFirst: true);
+    expect(ids(page: first), ["pin"]);
+    expect(first.items.single.pinned, isTrue);
+    expect(first.nextCursor?.pinned, isTrue);
+    final rest = await page(limit: 2, pinnedFirst: true, cursor: first.nextCursor);
+    expect(ids(page: rest), ["a", "b"]);
+    expect(ids(page: await page()), ["a", "b", "pin"]);
   });
 
   test("search words match titles or the project's own name", () async {

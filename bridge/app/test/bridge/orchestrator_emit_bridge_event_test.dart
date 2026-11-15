@@ -801,6 +801,46 @@ void main() {
     }
   });
 
+  test("a pin is announced as session.updated and survives a later backend update", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    final updates = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriSessionUpdated)
+        .cast<SesoriSessionUpdated>();
+    final pinnedUpdate = updates.first;
+
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "PATCH",
+        "/session/pinned",
+        body: jsonEncode(const SetSessionPinnedRequest(sessionId: "stable-session", pinned: true).toJson()),
+      ),
+    );
+    expect(response.status, 200);
+    final pinned = await pinnedUpdate.timeout(const Duration(seconds: 2));
+    expect((pinned.info.id, pinned.info.pinned), ("stable-session", true));
+
+    final backendUpdate = updates.firstWhere((event) => event.info.title == "Late title");
+    harness.plugins.single.emitEvent(_lateSessionUpdate(pluginId: "one"));
+    expect((await backendUpdate.timeout(const Duration(seconds: 2))).info.pinned, isTrue);
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+  });
+
   test("archiving a session publishes a fresh projects summary without it", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(

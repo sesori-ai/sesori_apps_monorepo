@@ -305,6 +305,38 @@ void main() {
       );
     });
 
+    test("pins a root session and announces it without moving its time", () async {
+      await insertSession();
+      final before = await db.sessionDao.getSession(sessionId: "s1") ?? fail("session s1 is not stored");
+      final mutations = <LocalSessionMutation>[];
+      final subscription = dispatcher.mutations.listen(mutations.add);
+
+      final pinned = await dispatcher.setPinned(sessionId: "s1", pinned: true);
+
+      expect(pinned.pinned, isTrue);
+      expect(
+        mutations.single,
+        isA<SessionPinnedUpdated>().having((mutation) => mutation.session.pinned, "pinned", isTrue),
+      );
+      final after = await db.sessionDao.getSession(sessionId: "s1") ?? fail("session s1 is not stored");
+      expect((after.pinned, after.updatedAt), (true, before.updatedAt));
+
+      expect((await dispatcher.setPinned(sessionId: "s1", pinned: false)).pinned, isFalse);
+      await subscription.cancel();
+    });
+
+    test("pinning a child or a missing session is not found", () async {
+      await insertSession();
+      await insertChild();
+
+      for (final sessionId in ["child", "missing"]) {
+        await expectLater(
+          dispatcher.setPinned(sessionId: sessionId, pinned: true),
+          throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+        );
+      }
+    });
+
     test("a child session follows its nearest ancestor's approval override", () async {
       await insertSession();
       await insertChild();

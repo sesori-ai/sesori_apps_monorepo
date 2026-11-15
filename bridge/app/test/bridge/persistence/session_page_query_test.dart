@@ -33,6 +33,7 @@ void main() {
     int? archivedAt,
     String? title,
     String? catalogTitle,
+    bool pinned = false,
   }) {
     return db
         .into(db.sessionTable)
@@ -54,12 +55,14 @@ void main() {
             pluginId: "claude",
             title: Value(title),
             catalogTitle: Value(catalogTitle),
+            pinned: Value(pinned),
           ),
         );
   }
 
   Future<SessionPageRows> page({
     SessionPageMode mode = SessionPageMode.active,
+    bool pinnedFirst = false,
     List<String> projectIds = const ["p1", "p2"],
     List<SessionPageWord> words = const [],
     SessionPageFilter filter = SessionPageFilter.all,
@@ -68,6 +71,7 @@ void main() {
     int limit = 100,
   }) => db.sessionDao.getSessionPage(
     mode: mode,
+    pinnedFirst: pinnedFirst,
     projectIds: projectIds,
     words: words,
     filter: filter,
@@ -106,7 +110,49 @@ void main() {
     // Equal times fall back to the id, newest first.
     expect([for (final row in rows) row.sessionId], ["s3", "s2", "s1", "s0", "s4"]);
     final cursorAfterFirst = await page(limit: 1);
-    expect(cursorAfterFirst.nextKey, (sortAt: 15, sessionId: "s3"));
+    expect(cursorAfterFirst.nextKey, (pinned: false, sortAt: 15, sessionId: "s3"));
+  });
+
+  test("pinnedFirst lists pinned roots first; without it the order is time only", () async {
+    await insert(id: "old-pin", updatedAt: 1, pinned: true);
+    await insert(id: "new", updatedAt: 30);
+    await insert(id: "pin", updatedAt: 10, pinned: true);
+    await insert(id: "mid", updatedAt: 20);
+
+    expect(ids(rows: await page(pinnedFirst: true)), ["pin", "old-pin", "new", "mid"]);
+    expect(ids(rows: await page()), ["new", "mid", "pin", "old-pin"]);
+  });
+
+  test("pinned-first pages continue across the pinned boundary", () async {
+    await insert(id: "pin-a", updatedAt: 10, pinned: true);
+    await insert(id: "pin-b", updatedAt: 5, pinned: true);
+    await insert(id: "rest-a", updatedAt: 30);
+    await insert(id: "rest-b", updatedAt: 20);
+    await insert(id: "rest-c", updatedAt: 1);
+
+    final seen = <String>[];
+    final keys = <SessionPageKey?>[];
+    SessionPageKey? after;
+    do {
+      final next = await page(pinnedFirst: true, limit: 2, after: after);
+      seen.addAll(ids(rows: next));
+      keys.add(next.nextKey);
+      after = next.nextKey;
+    } while (after != null);
+
+    expect(seen, ["pin-a", "pin-b", "rest-a", "rest-b", "rest-c"]);
+    expect(keys, [
+      (pinned: true, sortAt: 5, sessionId: "pin-b"),
+      (pinned: false, sortAt: 20, sessionId: "rest-b"),
+      null,
+    ]);
+    // A page that ends inside the pinned group continues with its rest.
+    final afterFirstPin = await page(
+      pinnedFirst: true,
+      limit: 2,
+      after: (pinned: true, sortAt: 10, sessionId: "pin-a"),
+    );
+    expect(ids(rows: afterFirstPin), ["pin-b", "rest-a"]);
   });
 
   test("the SQL unseen rule matches SessionUnseenCalculator", () async {
@@ -136,7 +182,7 @@ void main() {
     }
     final first = await page(limit: 2);
     expect(ids(rows: first), ["s4", "s3"]);
-    expect(first.nextKey, (sortAt: 30, sessionId: "s3"));
+    expect(first.nextKey, (pinned: false, sortAt: 30, sessionId: "s3"));
 
     // A newer row and a row that sorts inside the already-sent range do not
     // shift the next page.
@@ -156,7 +202,7 @@ void main() {
 
     final archived = await page(mode: SessionPageMode.archived, limit: 1);
     expect(ids(rows: archived), ["recent"]);
-    expect(archived.nextKey, (sortAt: 20, sessionId: "recent"));
+    expect(archived.nextKey, (pinned: false, sortAt: 20, sessionId: "recent"));
     expect(
       ids(
         rows: await page(mode: SessionPageMode.archived, after: archived.nextKey),

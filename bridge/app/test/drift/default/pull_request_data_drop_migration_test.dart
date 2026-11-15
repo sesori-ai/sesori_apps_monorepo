@@ -147,12 +147,15 @@ void main() {
       );
     }
 
-    final root = await database.sessionDao.getSession(sessionId: "ses_root");
-    expect(root?.worktreePath, "/work/app/.worktrees/ses_root");
-    expect(root?.branchName, "feature/stored");
-    expect(root?.isDedicated, isTrue);
-    expect((await database.sessionDao.getSession(sessionId: "ses_child"))?.parentSessionId, "ses_root");
-    expect((await database.sessionDao.getSession(sessionId: "ses_archived"))?.branchName, "feature/old");
+    // Raw reads: the current table class carries columns this version lacks.
+    Future<Map<String, Object?>> session(String sessionId) async =>
+        (await database.customSelect("SELECT * FROM sessions_table WHERE session_id = '$sessionId'").getSingle()).data;
+    final root = await session("ses_root");
+    expect(root["worktree_path"], "/work/app/.worktrees/ses_root");
+    expect(root["branch_name"], "feature/stored");
+    expect(root["is_dedicated"], 1);
+    expect((await session("ses_child"))["parent_session_id"], "ses_root");
+    expect((await session("ses_archived"))["branch_name"], "feature/old");
     expect(
       await database
           .customSelect(

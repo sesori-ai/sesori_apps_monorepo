@@ -532,6 +532,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           title: null,
           catalogTitle: "last-committed-sentinel",
           approvalOverride: null,
+          pinned: false,
         ),
       ],
     );

@@ -22,6 +22,8 @@ final class const SessionContinuationUpdated({required super.session}) extends L
 
 final class const SessionApprovalOverrideUpdated({required super.session}) extends LocalSessionMutation;
 
+final class const SessionPinnedUpdated({required super.session}) extends LocalSessionMutation;
+
 final class const SessionArchived({required super.session}) extends LocalSessionMutation;
 
 /// Owns bridge-persisted session mutations and their backend propagation.
@@ -78,6 +80,28 @@ class SessionMutationDispatcher({
           );
         }
         _mutationsController.add(SessionApprovalOverrideUpdated(session: updated));
+        return updated;
+      },
+    );
+  }
+
+  /// Pins or unpins the session and announces the updated session to every
+  /// client. Only an unarchived root session can be pinned; anything else,
+  /// like a missing session, is not found.
+  Future<Session> setPinned({required String sessionId, required bool pinned}) {
+    if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
+    return _sessionOperationDispatcher.dispatch(
+      sessionId: sessionId,
+      operation: SessionOperation.setPinned,
+      body: () async {
+        final updated = await _sessionRepository.setPinned(sessionId: sessionId, pinned: pinned);
+        if (updated == null) {
+          throw PluginOperationException.notFound(
+            operation: SessionOperation.setPinned.name,
+            message: "session $sessionId was not found or cannot be pinned",
+          );
+        }
+        _mutationsController.add(SessionPinnedUpdated(session: updated));
         return updated;
       },
     );

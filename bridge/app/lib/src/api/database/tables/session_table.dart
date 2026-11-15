@@ -77,6 +77,10 @@ class SessionTable() extends Table {
   /// bridge-wide YOLO setting. Null follows that setting.
   TextColumn get approvalOverride => textEnum<SessionApprovalMode>().nullable()();
 
+  /// Whether the user pinned this root session above the time-ordered list.
+  /// Only an unarchived root is pinned; archiving drops the pin.
+  BoolColumn get pinned => boolean().withDefault(const Constant(false))();
+
   @override
   bool get withoutRowId => true;
 
@@ -111,5 +115,6 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required String? title,
     required String? catalogTitle,
     required SessionApprovalMode? approvalOverride,
+    required bool pinned,
   }) = _SessionDto;
 }

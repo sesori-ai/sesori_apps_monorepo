@@ -27,6 +27,10 @@ void main() {
         .customSelect("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_sessions_archive'")
         .get();
     expect(archiveIndexes, isEmpty);
-    expect((await database.sessionDao.getSession(sessionId: "s1"))?.archivedAt, 300);
+    // A raw read: the current table class carries columns this version lacks.
+    final row = await database
+        .customSelect("SELECT archived_at FROM sessions_table WHERE session_id = 's1'")
+        .getSingle();
+    expect(row.read<int?>("archived_at"), 300);
   });
 }

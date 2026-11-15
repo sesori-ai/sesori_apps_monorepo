@@ -1685,9 +1685,14 @@ void main() {
         options: const ValidationOptions(validateDropped: true),
       );
 
-      final session = await db.sessionDao.getSession(sessionId: 's1');
-      expect(session?.lastAgent, 'build');
-      expect(session?.fastMode, isFalse);
+      // A raw read: the current table class carries columns this version lacks.
+      final session = await db
+          .customSelect(
+            "SELECT last_agent, fast_mode FROM sessions_table WHERE session_id = 's1'",
+          )
+          .getSingle();
+      expect(session.read<String?>('last_agent'), 'build');
+      expect(session.read<bool>('fast_mode'), isFalse);
       final defaults = await db.select(db.newSessionDefaultsTable).getSingle();
       expect(defaults.agent, 'build');
       expect(defaults.fastMode, isFalse);

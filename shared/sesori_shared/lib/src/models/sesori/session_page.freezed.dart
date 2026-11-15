@@ -21,7 +21,10 @@ mixin _$SessionPageRequest {
  String? get query; SessionPageFilter get filter;/// The previous page's [SessionPageResponse.nextCursor]; null for the
 /// first page.
  String? get cursor;/// From 0 to 1000. Zero asks for the counts only.
-@strictIntJsonConverter int get limit;
+@strictIntJsonConverter int get limit;/// Whether an active page lists pinned sessions before the rest, each
+/// group newest first. Archived pages ignore it: no archived session is
+/// pinned.
+ bool get pinnedFirst;
 
   /// Serializes this SessionPageRequest to a JSON map.
   Map<String, dynamic> toJson();
@@ -30,20 +33,20 @@ mixin _$SessionPageRequest {
 @override
 bool operator ==(Object other) {
   final _this = this as SessionPageRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPageRequest&&(identical(other.mode, _this.mode) || other.mode == _this.mode)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.query, _this.query) || other.query == _this.query)&&(identical(other.filter, _this.filter) || other.filter == _this.filter)&&(identical(other.cursor, _this.cursor) || other.cursor == _this.cursor)&&(identical(other.limit, _this.limit) || other.limit == _this.limit));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPageRequest&&(identical(other.mode, _this.mode) || other.mode == _this.mode)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.query, _this.query) || other.query == _this.query)&&(identical(other.filter, _this.filter) || other.filter == _this.filter)&&(identical(other.cursor, _this.cursor) || other.cursor == _this.cursor)&&(identical(other.limit, _this.limit) || other.limit == _this.limit)&&(identical(other.pinnedFirst, _this.pinnedFirst) || other.pinnedFirst == _this.pinnedFirst));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as SessionPageRequest;
-  return Object.hash(runtimeType,_this.mode,_this.projectId,_this.query,_this.filter,_this.cursor,_this.limit);
+  return Object.hash(runtimeType,_this.mode,_this.projectId,_this.query,_this.filter,_this.cursor,_this.limit,_this.pinnedFirst);
 }
 
 @override
 String toString() {
   final _this = this as SessionPageRequest;
-  return 'SessionPageRequest(mode: ${_this.mode}, projectId: ${_this.projectId}, query: ${_this.query}, filter: ${_this.filter}, cursor: ${_this.cursor}, limit: ${_this.limit})';
+  return 'SessionPageRequest(mode: ${_this.mode}, projectId: ${_this.projectId}, query: ${_this.query}, filter: ${_this.filter}, cursor: ${_this.cursor}, limit: ${_this.limit}, pinnedFirst: ${_this.pinnedFirst})';
 }
 
 
@@ -57,7 +60,7 @@ String toString() {
 @JsonSerializable()
 
 class _SessionPageRequest implements SessionPageRequest {
-  const _SessionPageRequest({required this.mode, required this.projectId, required this.query, required this.filter, required this.cursor, @strictIntJsonConverter required this.limit});
+  const _SessionPageRequest({required this.mode, required this.projectId, required this.query, required this.filter, required this.cursor, @strictIntJsonConverter required this.limit, this.pinnedFirst = false});
   factory _SessionPageRequest.fromJson(Map<String, dynamic> json) => _$SessionPageRequestFromJson(json);
 
 @override final  SessionPageMode mode;
@@ -71,6 +74,10 @@ class _SessionPageRequest implements SessionPageRequest {
 @override final  String? cursor;
 /// From 0 to 1000. Zero asks for the counts only.
 @override@strictIntJsonConverter final  int limit;
+/// Whether an active page lists pinned sessions before the rest, each
+/// group newest first. Archived pages ignore it: no archived session is
+/// pinned.
+@override@JsonKey() final  bool pinnedFirst;
 
 
 @override
@@ -80,18 +87,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionPageRequest&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.query, query) || other.query == query)&&(identical(other.filter, filter) || other.filter == filter)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.limit, limit) || other.limit == limit));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionPageRequest&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.query, query) || other.query == query)&&(identical(other.filter, filter) || other.filter == filter)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.pinnedFirst, pinnedFirst) || other.pinnedFirst == pinnedFirst));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,mode,projectId,query,filter,cursor,limit);
+    return Object.hash(runtimeType,mode,projectId,query,filter,cursor,limit,pinnedFirst);
 }
 
 @override
 String toString() {
-    return 'SessionPageRequest(mode: $mode, projectId: $projectId, query: $query, filter: $filter, cursor: $cursor, limit: $limit)';
+    return 'SessionPageRequest(mode: $mode, projectId: $projectId, query: $query, filter: $filter, cursor: $cursor, limit: $limit, pinnedFirst: $pinnedFirst)';
 }
 
 

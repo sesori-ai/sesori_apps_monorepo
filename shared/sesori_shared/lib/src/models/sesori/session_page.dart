@@ -41,6 +41,12 @@ sealed class SessionPageRequest with _$SessionPageRequest {
 
     /// From 0 to 1000. Zero asks for the counts only.
     @strictIntJsonConverter required int limit,
+
+    /// Whether an active page lists pinned sessions before the rest, each
+    /// group newest first. Archived pages ignore it: no archived session is
+    /// pinned.
+    // COMPATIBILITY 2026-11-14 (v1.14.0): Apps before pinning omit pinnedFirst and expect pure time order. Remove the field and always order pinned first once no supported app predates pinning.
+    @Default(false) bool pinnedFirst,
   }) = _SessionPageRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionPageRequestFromJson(json);

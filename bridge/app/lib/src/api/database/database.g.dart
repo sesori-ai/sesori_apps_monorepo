@@ -440,6 +440,10 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   /// How this session answers permission requests when it differs from the
   /// bridge-wide YOLO setting. Null follows that setting.
   SessionApprovalMode? get approvalOverride;
+
+  /// Whether the user pinned this root session above the time-ordered list.
+  /// Only an unarchived root is pinned; archiving drops the pin.
+  bool get pinned;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -499,6 +503,7 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
         $SessionTableTable.$converterapprovalOverriden.toSql(approvalOverride),
       );
     }
+    map['pinned'] = Variable<bool>(pinned);
     return map;
   }
 }
@@ -782,6 +787,19 @@ class $SessionTableTable extends SessionTable
       ).withConverter<SessionApprovalMode?>(
         $SessionTableTable.$converterapprovalOverriden,
       );
+  static const VerificationMeta _pinnedMeta = const VerificationMeta('pinned');
+  @override
+  late final GeneratedColumn<bool> pinned = GeneratedColumn<bool>(
+    'pinned',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("pinned" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     sessionId,
@@ -808,6 +826,7 @@ class $SessionTableTable extends SessionTable
     title,
     catalogTitle,
     approvalOverride,
+    pinned,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -998,6 +1017,12 @@ class $SessionTableTable extends SessionTable
         ),
       );
     }
+    if (data.containsKey('pinned')) {
+      context.handle(
+        _pinnedMeta,
+        pinned.isAcceptableOrUnknown(data['pinned']!, _pinnedMeta),
+      );
+    }
     return context;
   }
 
@@ -1107,6 +1132,10 @@ class $SessionTableTable extends SessionTable
           data['${effectivePrefix}approval_override'],
         ),
       ),
+      pinned: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}pinned'],
+      )!,
     );
   }
 
@@ -1156,6 +1185,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String?> title;
   final Value<String?> catalogTitle;
   final Value<SessionApprovalMode?> approvalOverride;
+  final Value<bool> pinned;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.backendSessionId = const Value.absent(),
@@ -1181,6 +1211,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
     this.approvalOverride = const Value.absent(),
+    this.pinned = const Value.absent(),
   });
   SessionTableCompanion.insert({
     required String sessionId,
@@ -1207,6 +1238,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
     this.approvalOverride = const Value.absent(),
+    this.pinned = const Value.absent(),
   }) : sessionId = Value(sessionId),
        backendSessionId = Value(backendSessionId),
        projectId = Value(projectId),
@@ -1241,6 +1273,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? title,
     Expression<String>? catalogTitle,
     Expression<String>? approvalOverride,
+    Expression<bool>? pinned,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -1268,6 +1301,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (title != null) 'title': title,
       if (catalogTitle != null) 'catalog_title': catalogTitle,
       if (approvalOverride != null) 'approval_override': approvalOverride,
+      if (pinned != null) 'pinned': pinned,
     });
   }
 
@@ -1296,6 +1330,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String?>? title,
     Value<String?>? catalogTitle,
     Value<SessionApprovalMode?>? approvalOverride,
+    Value<bool>? pinned,
   }) {
     return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -1322,6 +1357,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       title: title ?? this.title,
       catalogTitle: catalogTitle ?? this.catalogTitle,
       approvalOverride: approvalOverride ?? this.approvalOverride,
+      pinned: pinned ?? this.pinned,
     );
   }
 
@@ -1408,6 +1444,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
         ),
       );
     }
+    if (pinned.present) {
+      map['pinned'] = Variable<bool>(pinned.value);
+    }
     return map;
   }
 
@@ -1437,7 +1476,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('pluginId: $pluginId, ')
           ..write('title: $title, ')
           ..write('catalogTitle: $catalogTitle, ')
-          ..write('approvalOverride: $approvalOverride')
+          ..write('approvalOverride: $approvalOverride, ')
+          ..write('pinned: $pinned')
           ..write(')'))
         .toString();
   }
@@ -3940,6 +3980,7 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<String?> title,
       Value<String?> catalogTitle,
       Value<SessionApprovalMode?> approvalOverride,
+      Value<bool> pinned,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
@@ -3967,6 +4008,7 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String?> title,
       Value<String?> catalogTitle,
       Value<SessionApprovalMode?> approvalOverride,
+      Value<bool> pinned,
     });
 
 final class $$SessionTableTableReferences
@@ -4167,6 +4209,11 @@ class $$SessionTableTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
+  ColumnFilters<bool> get pinned => $composableBuilder(
+    column: $table.pinned,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$ProjectsTableTableFilterComposer get projectId {
     final $$ProjectsTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -4360,6 +4407,11 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get pinned => $composableBuilder(
+    column: $table.pinned,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ProjectsTableTableOrderingComposer get projectId {
     final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4512,6 +4564,9 @@ class $$SessionTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get pinned =>
+      $composableBuilder(column: $table.pinned, builder: (column) => column);
+
   $$ProjectsTableTableAnnotationComposer get projectId {
     final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -4643,6 +4698,7 @@ class $$SessionTableTableTableManager
                 Value<String?> catalogTitle = const Value.absent(),
                 Value<SessionApprovalMode?> approvalOverride =
                     const Value.absent(),
+                Value<bool> pinned = const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
                 backendSessionId: backendSessionId,
@@ -4668,6 +4724,7 @@ class $$SessionTableTableTableManager
                 title: title,
                 catalogTitle: catalogTitle,
                 approvalOverride: approvalOverride,
+                pinned: pinned,
               ),
           createCompanionCallback:
               ({
@@ -4696,6 +4753,7 @@ class $$SessionTableTableTableManager
                 Value<String?> catalogTitle = const Value.absent(),
                 Value<SessionApprovalMode?> approvalOverride =
                     const Value.absent(),
+                Value<bool> pinned = const Value.absent(),
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 backendSessionId: backendSessionId,
@@ -4721,6 +4779,7 @@ class $$SessionTableTableTableManager
                 title: title,
                 catalogTitle: catalogTitle,
                 approvalOverride: approvalOverride,
+                pinned: pinned,
               ),
           withReferenceMapper: (p0) => p0
               .map(

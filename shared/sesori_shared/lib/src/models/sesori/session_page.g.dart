@@ -14,6 +14,7 @@ _SessionPageRequest _$SessionPageRequestFromJson(Map json) =>
       filter: $enumDecode(_$SessionPageFilterEnumMap, json['filter']),
       cursor: json['cursor'] as String?,
       limit: strictIntJsonConverter.fromJson(json['limit']),
+      pinnedFirst: json['pinnedFirst'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$SessionPageRequestToJson(_SessionPageRequest instance) =>
@@ -24,6 +25,7 @@ Map<String, dynamic> _$SessionPageRequestToJson(_SessionPageRequest instance) =>
       'filter': _$SessionPageFilterEnumMap[instance.filter]!,
       'cursor': ?instance.cursor,
       'limit': ?strictIntJsonConverter.toJson(instance.limit),
+      'pinnedFirst': instance.pinnedFirst,
     };
 
 const _$SessionPageModeEnumMap = {
