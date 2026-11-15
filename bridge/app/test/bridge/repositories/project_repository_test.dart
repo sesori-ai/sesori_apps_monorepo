@@ -1090,6 +1090,7 @@ void main() {
         catalogTitle: null,
         approvalOverride: null,
         pinned: false,
+        scheduledTaskId: null,
       );
       await db.sessionDao.upsertSessionRows(
         rows: [

@@ -13,9 +13,10 @@ import "package:sesori_bridge/src/repositories/mappers/plugin_to_shared_mapping.
 import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/deliverable_prompt_part.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
-import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
+import "package:sesori_bridge/src/repositories/models/session_compaction_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_page_cursor.dart";
+import "package:sesori_bridge/src/repositories/models/session_readiness.dart";
 import "package:sesori_bridge/src/repositories/models/side_question_ask_result.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
@@ -183,6 +184,7 @@ class FakeSessionDao() {
       catalogTitle: null,
       approvalOverride: null,
       pinned: false,
+      scheduledTaskId: null,
     );
   }
 
@@ -305,14 +307,20 @@ class FakeSessionRepository({
   bool inlineImagesSupported({required String pluginId}) => true;
 
   @override
+  bool isPluginEligible({required String pluginId}) => eligiblePluginIds.contains(pluginId);
+
+  @override
   Future<bool> inlineImagesSupportedForSession({required String sessionId}) async => true;
 
   @override
   Future<String> reserveSessionId() async => "ses_reserved";
 
   @override
-  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      SessionContinuationReadiness.unavailable;
+  Future<SessionReadiness> getSessionReadiness({required String sessionId}) async => SessionReadiness.unavailable;
+
+  @override
+  Future<SessionCompactionResult> compactSession({required String sessionId, required String promptId}) async =>
+      SessionCompactionResult.unsupported;
 
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
@@ -345,6 +353,7 @@ class FakeSessionRepository({
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
   String? projectPathResult;
+  Set<String> eligiblePluginIds = {"fake"};
   Object? publicationError;
 
   @override
@@ -869,6 +878,17 @@ class FakeSessionRepository({
     required String? agent,
     required PromptModel? model,
   }) => throw UnimplementedError("FakeSessionRepository does not rewind sessions");
+
+  @override
+  Future<List<String>> replaceBackendSession({
+    required String sessionId,
+    required List<DeliverablePromptPart> parts,
+    required String? userVisibleText,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) => throw UnimplementedError("FakeSessionRepository does not replace harness sessions");
 
   @override
   Future<void> renameSession({required String sessionId, required String title}) async {}

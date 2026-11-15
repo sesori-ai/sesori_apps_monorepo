@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/services/session_branch_refused_exception.dart
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show buildWorktreeSystemContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -207,9 +208,192 @@ void main() {
     expect(continuations.cancellations, isEmpty);
   });
 
-  test("refuses the first turn until a fresh harness session can replace it", () async {
-    await expectLater(rewind(messageId: "u1"), refusedWith(SessionBranchErrorCode.branchPointUnavailable));
-    expect(plugin.rewinds, isEmpty);
+  group("a first-turn edit", () {
+    setUp(() {
+      plugin.createSessionResult = const PluginSession(
+        id: "backend-s1-new",
+        projectID: "/repo",
+        directory: "/repo",
+        parentID: null,
+        title: null,
+        time: null,
+      );
+    });
+
+    List<String> createdTexts() => [
+      for (final part in plugin.lastCreateSessionParts ?? fail("no harness session was created"))
+        if (part case PluginPromptPartText(:final text)) text,
+    ];
+
+    Future<void> insertChild() async {
+      await insertTestSession(
+        db: db,
+        sessionId: "s1-child",
+        backendSessionId: "backend-child",
+        pluginId: "fake",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 2,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      await db.sessionDao.setParentSessionId(sessionId: "s1-child", parentSessionId: "s1");
+    }
+
+    test("moves the session onto a new harness session and deletes the old one", () async {
+      await rewind(messageId: "u1");
+
+      expect(plugin.rewinds, isEmpty);
+      expect(continuations.cancellations, ["s1"]);
+      expect(plugin.lastCreateSessionDirectory, "/repo");
+      expect(plugin.lastCreateSessionParentId, isNull);
+      expect(createdTexts(), ["second, edited"]);
+      expect(plugin.lastCreateSessionUserVisibleText, "second, edited");
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.backendSessionId, "backend-s1-new");
+      expect(plugin.lastDeleteSessionId, "backend-s1");
+      // Catalog import and startup cleanup both skip the tombstoned old one.
+      expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "backend-s1", pluginId: "fake"), isTrue);
+      expect(await sessionRepository.isSessionTombstoned(sessionId: "s1"), isFalse);
+      expect(mutations.rewound.single.removedMessageIds, ["u1", "a1", "u2", "a2"]);
+    });
+
+    test("removes the old sub-agent rows and their history", () async {
+      await insertChild();
+      await history.service.captureMessage(
+        sessionId: "s1-child",
+        message: const Message.user(
+          invocation: null,
+          id: "child-u1",
+          sessionID: "s1-child",
+          agent: null,
+          time: null,
+          promptId: null,
+          handoff: null,
+        ),
+      );
+
+      await rewind(messageId: "u1");
+
+      expect(await db.sessionDao.getSession(sessionId: "s1-child"), isNull);
+      expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "backend-child", pluginId: "fake"), isTrue);
+      expect(await sessionRepository.isSessionTombstoned(sessionId: "s1-child"), isTrue);
+      final childHistory = await history.repository.getSessionMessages(
+        sessionId: "s1-child",
+        storageScope: testAttachmentStorageScope(sessionId: "backend-child"),
+      );
+      expect(childHistory.messages, isEmpty);
+    });
+
+    test("still succeeds when the old harness session cannot be deleted", () async {
+      plugin.throwOnDeleteSessionError = const PluginOperationException(
+        operation: "deleteSession",
+        statusCode: 500,
+        message: "backend down",
+      );
+
+      await rewind(messageId: "u1");
+
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.backendSessionId, "backend-s1-new");
+      expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "backend-s1", pluginId: "fake"), isTrue);
+      expect(mutations.rewound.single.removedMessageIds, ["u1", "a1", "u2", "a2"]);
+    });
+
+    test("replaces a row catalog import bound to the new harness session first", () async {
+      await insertTestSession(
+        db: db,
+        sessionId: "imported",
+        backendSessionId: "backend-s1-new",
+        pluginId: "fake",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 3,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+
+      await rewind(messageId: "u1");
+
+      expect(await db.sessionDao.getSession(sessionId: "imported"), isNull);
+      expect(
+        (await db.sessionDao.getSessionByBinding(pluginId: "fake", backendSessionId: "backend-s1-new"))?.sessionId,
+        "s1",
+      );
+      expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "backend-s1-new", pluginId: "fake"), isFalse);
+    });
+
+    test("does not delete the old harness session when the new one cannot be created", () async {
+      await insertChild();
+      plugin.createSessionError = const PluginOperationException(
+        operation: "createSession",
+        statusCode: 500,
+        message: "backend down",
+      );
+
+      await expectLater(rewind(messageId: "u1"), throwsA(isA<PluginOperationException>()));
+
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.backendSessionId, "backend-s1");
+      expect(await db.sessionDao.getSession(sessionId: "s1-child"), isNotNull);
+      expect(plugin.lastDeleteSessionId, isNull);
+      expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "backend-s1", pluginId: "fake"), isFalse);
+      expect(mutations.rewound, isEmpty);
+    });
+  });
+
+  group("a first-turn edit in a dedicated worktree", () {
+    setUp(() async {
+      plugin.createSessionResult = const PluginSession(
+        id: "backend-s2-new",
+        projectID: "/repo",
+        directory: "/repo/.worktrees/s2",
+        parentID: null,
+        title: null,
+        time: null,
+      );
+      await insertTestSession(
+        db: db,
+        sessionId: "s2",
+        backendSessionId: "backend-s2",
+        pluginId: "fake",
+        projectId: "/repo",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: "/repo/.worktrees/s2",
+        baseBranch: "main",
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+    });
+
+    test("starts the new harness session with the worktree context", () async {
+      await service.rewindAndSendPrompt(
+        sessionId: "s2",
+        messageId: "u1",
+        promptId: "edit-1",
+        parts: const [PromptPart.text(text: "first, edited")],
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+      );
+
+      expect(plugin.lastCreateSessionDirectory, "/repo/.worktrees/s2");
+      final texts = [
+        for (final part in plugin.lastCreateSessionParts ?? fail("no harness session was created"))
+          if (part case PluginPromptPartText(:final text)) text,
+      ];
+      expect(texts, [
+        buildWorktreeSystemContext(worktreePath: "/repo/.worktrees/s2", baseBranch: "main"),
+        "first, edited",
+      ]);
+      expect(plugin.lastCreateSessionUserVisibleText, "first, edited");
+    });
   });
 
   group("on a harness without native rewind", () {
@@ -250,6 +434,57 @@ void main() {
     expect(mutations.rewound, isEmpty);
   });
 
+  test("a resend that fails after the harness rewound removes what the harness dropped", () async {
+    plugin.onRewind = () async {
+      plugin.messagesResult = _transcript.take(2).toList();
+      throw StateError("turn/start failed");
+    };
+
+    await expectLater(rewind(messageId: "u2"), throwsA(isA<StateError>()));
+    expect(mutations.rewound.single.removedMessageIds, ["u2", "a2"]);
+  });
+
+  test("a failure that changed nothing removes nothing", () async {
+    plugin.onRewind = () async => throw StateError("connection lost");
+
+    await expectLater(rewind(messageId: "u2"), throwsA(isA<StateError>()));
+    expect(mutations.rewound, isEmpty);
+  });
+
+  test("an empty harness read after a failure removes nothing", () async {
+    plugin.onRewind = () async {
+      plugin.messagesResult = [];
+      throw StateError("turn/start failed");
+    };
+
+    await expectLater(rewind(messageId: "u2"), throwsA(isA<StateError>()));
+    expect(mutations.rewound, isEmpty);
+  });
+
+  test("the route rejects an edit with no parts before reaching the plugin", () async {
+    final response = await RewindSessionHandler(sessionPromptService: service).routeForTest(
+      makeRequest(
+        "POST",
+        "/session/rewind",
+        body: jsonEncode(
+          const RewindSessionRequest(
+            sessionId: "s1",
+            messageId: "u2",
+            promptId: "edit-1",
+            parts: [],
+            agent: null,
+            model: null,
+            variant: null,
+            fastMode: false,
+          ).toJson(),
+        ),
+      ),
+    );
+
+    expect(response.status, 400);
+    expect(plugin.rewinds, isEmpty);
+  });
+
   test("the route answers a refusal with 409 and the branch error code", () async {
     final response = await RewindSessionHandler(sessionPromptService: service).routeForTest(
       makeRequest(
@@ -258,7 +493,7 @@ void main() {
         body: jsonEncode(
           const RewindSessionRequest(
             sessionId: "s1",
-            messageId: "u1",
+            messageId: "a1",
             promptId: "edit-1",
             parts: [PromptPart.text(text: "first, edited")],
             agent: null,

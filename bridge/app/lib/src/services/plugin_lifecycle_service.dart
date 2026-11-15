@@ -36,6 +36,7 @@ typedef RegisteredPluginMetadata = ({
   bool supportsPromptAttachments,
   bool namesCommandInvocations,
   bool supportsSideQuestions,
+  bool supportsCompactionOnRequest,
   PluginBusyPromptHandling busyPromptHandling,
   Set<PluginMcpScopeKind> mcpScopes,
   Set<PluginSessionBranching> sessionBranching,
@@ -1167,6 +1168,7 @@ class PluginLifecycleService({
               failureReason: _failureReason(snapshot: snapshot),
               namesCommandInvocations: plugin.namesCommandInvocations,
               supportsSideQuestions: plugin.supportsSideQuestions,
+              supportsCompactionOnRequest: plugin.supportsCompactionOnRequest,
               busyPromptHandling: plugin.busyPromptHandling.toShared(),
               sessionBranching: {for (final operation in plugin.sessionBranching) operation.toShared()},
             );

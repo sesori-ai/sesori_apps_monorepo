@@ -337,6 +337,12 @@ class const OpenCodePluginDescriptor({
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
 
+  /// OpenCode v2 compacts on request. A v1 server on PATH does not, and its
+  /// plugin answers `unsupported`; this static declaration cannot tell them
+  /// apart before the process starts.
+  @override
+  bool get supportsCompactionOnRequest => true;
+
   @override
   PluginStateStorage get stateStorage => PluginStateStorage.legacySharedRuntime;
 

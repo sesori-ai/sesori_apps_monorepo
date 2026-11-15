@@ -85,12 +85,8 @@ class SessionCreationService({
             parts: request.parts,
           )
         : const <DeliverablePromptPart>[];
-    // From the delivered parts, so each saved file's note shows in place and
-    // the live user message matches the reloaded one.
-    final userTexts = _nonBlankTexts(
-      texts: userParts.whereType<DeliverablePromptPartText>().map((part) => part.text),
-    );
-    final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
+    // From the delivered parts, so each saved file's note shows in place.
+    final userVisibleText = DeliverablePromptPart.userVisibleText(parts: userParts);
     final WorktreeResult? worktreeResult;
     final _SessionCreationWorktreeState worktreeState;
     if (_projectCatalogIdentityCalculator.isScratchRoot(path: request.projectId)) {

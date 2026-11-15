@@ -6,6 +6,7 @@ import "dart:io";
 import "package:args/args.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
@@ -106,6 +107,7 @@ class const _ImportConcurrencyBenchmark({required final _BenchmarkConfiguration 
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,

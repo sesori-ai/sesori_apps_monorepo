@@ -1,6 +1,5 @@
 import "package:material_ui/material_ui.dart";
 
-import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
 import "../../utils/prego_text_spacing_overrides.dart";
@@ -16,10 +15,12 @@ const double composerActionRadius = PregoRadius.x2l - PregoSpacing.sm;
 /// it: the label keeps its size and stays centred instead of reflowing, and the
 /// fill clips it on the way. Going [enabled]
 /// false only dims it and stops it responding, so it can hold its place under
-/// the cursor while the words arrive.
+/// the cursor while the words arrive. [icon] follows [label], matching the
+/// Send button's own icon.
 class const PregoVoiceSendButton({
   super.key,
   required final String label,
+  required final IconData icon,
   required final bool enabled,
   required final VoidCallback onPressed,
 }) extends StatelessWidget {
@@ -94,7 +95,7 @@ class const PregoVoiceSendButton({
                     maxLines: 1,
                     style: _labelStyleOf(context),
                   ),
-                  Icon(TablerRegular.arrow_up, size: PregoIconSize.sm, color: foreground),
+                  Icon(icon, size: PregoIconSize.sm, color: foreground),
                 ],
               ),
             ),

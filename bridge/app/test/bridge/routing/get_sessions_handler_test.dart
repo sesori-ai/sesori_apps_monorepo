@@ -318,6 +318,7 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          scheduledTaskId: null,
         ),
       );
 
@@ -394,6 +395,7 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          scheduledTaskId: null,
         ),
       );
 
@@ -463,6 +465,7 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          scheduledTaskId: null,
         ),
       );
       sessionDao.setSession(
@@ -492,6 +495,7 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          scheduledTaskId: null,
         ),
       );
 
@@ -545,6 +549,7 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          scheduledTaskId: null,
         ),
       );
 
@@ -595,6 +600,7 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          scheduledTaskId: null,
         ),
       );
 

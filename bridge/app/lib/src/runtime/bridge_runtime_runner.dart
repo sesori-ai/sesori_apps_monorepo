@@ -647,6 +647,7 @@ class const BridgeRuntimeRunner._() {
             supportsPromptAttachments: descriptor.supportsPromptAttachments,
             namesCommandInvocations: descriptor.namesCommandInvocations,
             supportsSideQuestions: descriptor.supportsSideQuestions,
+            supportsCompactionOnRequest: descriptor.supportsCompactionOnRequest,
             busyPromptHandling: descriptor.busyPromptHandling,
             mcpScopes: descriptor.mcpScopes,
             sessionBranching: descriptor.sessionBranching,

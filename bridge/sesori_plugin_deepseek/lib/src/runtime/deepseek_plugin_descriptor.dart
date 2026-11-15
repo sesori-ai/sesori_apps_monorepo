@@ -57,6 +57,10 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
 
+  /// DeepSeek lists a native `/compact` in its catalog (verified 0.2.2).
+  @override
+  bool get supportsCompactionOnRequest => true;
+
   @override
   bool get supportsPromptAttachments => true;
 

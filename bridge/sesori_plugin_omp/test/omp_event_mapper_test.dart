@@ -180,6 +180,84 @@ void main() {
     expect(end({"aborted": true}), isEmpty);
   });
 
+  group("an aborted reply OMP sends as its abort reason", () {
+    for (final reason in ["Request was aborted", "Interrupted by user"]) {
+      test("'$reason' becomes an error row, not a reply bubble", () {
+        mapper.beginTurn(sessionId: "session-1", messageId: null);
+        final events = mapper.map(
+          AcpNotification(
+            method: "session/update",
+            params: {
+              "sessionId": "session-1",
+              "update": {
+                "sessionUpdate": "agent_message_chunk",
+                // As `acp-agent.ts` `#replayAssistantMessage` sends it.
+                "content": {"type": "text", "text": reason},
+                "messageId": "assistant-1",
+              },
+            },
+          ),
+        );
+
+        final message = events.whereType<BridgeSseMessageUpdated>().single.info;
+        expect(
+          message,
+          isA<PluginMessageError>()
+              .having((error) => error.errorName, "errorName", "omp_aborted")
+              .having((error) => error.errorMessage, "errorMessage", reason),
+        );
+        expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
+      });
+    }
+
+    test("replays as the user's prompt and one error row", () {
+      final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
+        shellCommandResolver: null,
+        toolNameResolver: null,
+        sessionId: "session-1",
+        agentId: OmpPluginIdentity.id,
+        initialUserMessage: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: mapper.classifyHaltNotice,
+        toolPartReplacement: null,
+        toolPartSuppression: null,
+      );
+      for (final update in [
+        {
+          "sessionUpdate": "user_message_chunk",
+          "content": {"type": "text", "text": "Hello"},
+          "messageId": "user-1",
+        },
+        {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Request was aborted"},
+          "messageId": "assistant-1",
+        },
+      ]) {
+        collector.consumeNotification(
+          notification: AcpNotification(
+            method: "session/update",
+            params: {"sessionId": "session-1", "update": update},
+          ),
+        );
+      }
+
+      final messages = collector.buildWithAssistantSelection(modelId: null, providerId: null, variant: null);
+      expect(messages.map((message) => message.info), [
+        isA<PluginMessageUser>(),
+        isA<PluginMessageError>()
+            .having((error) => error.errorName, "errorName", "omp_aborted")
+            .having((error) => error.errorMessage, "errorMessage", "Request was aborted"),
+      ]);
+    });
+
+    test("a reply that only mentions the reason stays prose", () {
+      expect(mapper.classifyHaltNotice(text: "The request was aborted because the build failed."), isNull);
+    });
+  });
+
   test("compaction notifications wait behind an accepted prompt write", () {
     for (final method in [OmpEventMapper.compactionStartMethod, OmpEventMapper.compactionEndMethod]) {
       expect(

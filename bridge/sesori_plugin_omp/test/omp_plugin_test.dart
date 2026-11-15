@@ -1308,6 +1308,73 @@ void main() {
       expect(toast.message, isNot(contains("private prompt")));
     });
 
+    group("a prompt OMP rejects as busy with a turn of its own", () {
+      void rejectAsBusy(Map<String, dynamic> prompt) => fake.emit({
+        "jsonrpc": "2.0",
+        "id": prompt["id"],
+        "error": {
+          "code": -32003,
+          "message":
+              "Agent is already processing. Use steer() or followUp() to queue messages, or wait for completion.",
+          "data": {"reason": "session_busy", "hint": "steer|followUp|wait"},
+        },
+      });
+
+      // The resend waits out the plugin's one-second retry interval.
+      Future<Map<String, dynamic>> waitForResend() async {
+        for (var i = 0; i < 100; i++) {
+          if (frames(AcpMethods.sessionPrompt).length >= 2) return frames(AcpMethods.sessionPrompt)[1];
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
+        throw StateError("OMP never received the prompt again");
+      }
+
+      test("is sent again until OMP takes it", () async {
+        await connect();
+        final session = await create("session");
+        await send(session.id, "check the build");
+        final first = await waitForFrame(AcpMethods.sessionPrompt);
+        rejectAsBusy(first);
+
+        final resend = await waitForResend();
+        expect(resend["params"], first["params"]);
+        respond(resend, {"stopReason": "end_turn"});
+        await settle();
+
+        expect(
+          events.whereType<BridgeSseMessageUpdated>().map((event) => event.info),
+          isNot(contains(isA<PluginMessageError>())),
+        );
+        expect(events.whereType<BridgeSseSessionError>(), isEmpty);
+        expect(
+          events.whereType<BridgeSseMessageUpdated>().where((event) => event.info is PluginMessageUser),
+          hasLength(1),
+        );
+        expect(events.whereType<BridgeSseSessionIdle>().single.sessionID, session.id);
+      });
+
+      test("stops waiting without an error when the session is stopped", () async {
+        await connect();
+        final session = await create("session");
+        await send(session.id, "check the build");
+        rejectAsBusy(await waitForFrame(AcpMethods.sessionPrompt));
+        await settle();
+        await plugin.abortSession(
+          sessionId: session.id,
+          subAgents: PluginAbortSubAgentPolicy.stop,
+          useAtomicStop: false,
+          knownSubAgentSessionIds: const {},
+        );
+
+        for (var i = 0; i < 100 && events.whereType<BridgeSseSessionIdle>().isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        }
+        expect(events.whereType<BridgeSseSessionIdle>().single.sessionID, session.id);
+        expect(frames(AcpMethods.sessionPrompt), hasLength(1));
+        expect(events.whereType<BridgeSseSessionError>(), isEmpty);
+      });
+    });
+
     for (final (method, capabilities) in [
       (AcpMethods.sessionLoad, const <String, dynamic>{"loadSession": true}),
       (
