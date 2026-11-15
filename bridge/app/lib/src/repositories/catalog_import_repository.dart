@@ -973,7 +973,8 @@ class CatalogImportRepository({
       title: existing?.title,
       catalogTitle: _usefulText(session.title) ?? existing?.catalogTitle,
       approvalOverride: existing?.approvalOverride,
-      pinned: existing?.pinned ?? false,
+      // Only a root can be pinned, so a session imported under a parent loses its pin.
+      pinned: parentSessionId == null && (existing?.pinned ?? false),
     );
   }
 
