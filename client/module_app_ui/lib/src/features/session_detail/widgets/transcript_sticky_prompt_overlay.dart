@@ -397,22 +397,24 @@ class _TranscriptStickyPromptOverlayState()
     key: key,
     surface: surface,
     child: RepaintBoundary(
-      child: Semantics(
-        container: true,
-        button: true,
-        label: label,
-        hint: loc.transcriptStickyPromptJumpHint,
-        onTap: () => widget.onTap(openerMessageId: id),
-        excludeSemantics: true,
-        // Focus never enters the copy and presses reach only its prompt's
-        // menu, so nothing in it can be pressed, selected or scrolled.
-        child: ExcludeFocus(
-          child: TranscriptMessageMenu.wrap(
-            // The copy stands inside its surface, which the overlay draws, so
-            // the cut-out reaches out to the surface's edges.
-            spotlight: PregoMenuSpotlight(borderRadius: surface.radius, inset: EdgeInsets.all(-surface.inset)),
-            text: copyText,
-            builder: (_) => AbsorbPointer(child: content),
+      // Focus never enters the copy and presses reach only its prompt's menu,
+      // so nothing in it can be pressed, selected or scrolled.
+      child: ExcludeFocus(
+        child: TranscriptMessageMenu.wrap(
+          // The copy stands inside its surface, which the overlay draws, so
+          // the cut-out reaches out to the surface's edges.
+          spotlight: PregoMenuSpotlight(borderRadius: surface.radius, inset: EdgeInsets.all(-surface.inset)),
+          text: copyText,
+          // Inside the menu, which offers its long-press to a screen reader
+          // around this node, as it does around every message.
+          builder: (_) => Semantics(
+            container: true,
+            button: true,
+            label: label,
+            hint: loc.transcriptStickyPromptJumpHint,
+            onTap: () => widget.onTap(openerMessageId: id),
+            excludeSemantics: true,
+            child: AbsorbPointer(child: content),
           ),
         ),
       ),

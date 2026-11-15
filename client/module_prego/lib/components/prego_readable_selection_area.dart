@@ -42,6 +42,14 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
   /// The selected text, as copying it gives it, or null when none is selected.
   String? get selectedText => _selectionDelegate.getSelectedContent()?.plainText;
 
+  /// Keeps the selection while [keep] is on, though the area loses the focus,
+  /// as it does to a menu opened on its text. Losing the focus otherwise
+  /// clears it.
+  // ponytail: the region still thinks it has no selection while one is kept,
+  // so a shift-click right after the menu starts a new one instead of
+  // extending it.
+  void keepSelection({required bool keep}) => _selectionDelegate.keepsSelection = keep;
+
   /// Selects all of the area's text and shows the selection's handles and
   /// toolbar, taking the focus as a long-press selection does, so tapping
   /// elsewhere clears it.
@@ -81,6 +89,13 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
 class _ReadableSelectionContainerDelegate({required bool preserveEmptyLines}) extends StaticSelectionContainerDelegate {
   static const _sameLineTolerance = 3.0;
   bool _preserveEmptyLines = preserveEmptyLines;
+
+  /// Ignores clears while on; see [PregoReadableSelectionAreaState.keepSelection].
+  bool keepsSelection = false;
+
+  @override
+  SelectionResult handleClearSelection(ClearSelectionEvent event) =>
+      keepsSelection ? SelectionResult.none : super.handleClearSelection(event);
 
   void update({required bool preserveEmptyLines}) {
     if (_preserveEmptyLines == preserveEmptyLines) return;

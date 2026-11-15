@@ -189,4 +189,40 @@ void main() {
       expect(panel, findsNothing);
     });
   });
+
+  testWidgets("reports the close even when the item went while its menu was open", (tester) async {
+    final changes = <bool>[];
+    final shown = ValueNotifier(true);
+    addTearDown(shown.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: Scaffold(
+          body: ValueListenableBuilder(
+            valueListenable: shown,
+            builder: (context, show, _) => show
+                ? PregoContextMenu(
+                    menuWidth: 200,
+                    spotlight: PregoMenuSpotlight.listRow,
+                    onOpenChanged: changes.add,
+                    entriesBuilder: () => [
+                      PregoMenuItem(title: "Act", subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
+                    ],
+                    builder: (context, menuOpen) => const Text(_text),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.text(_text));
+    await tester.pumpAndSettle();
+    shown.value = false;
+    await tester.pump();
+    await tester.tap(find.text("Act"));
+    await tester.pumpAndSettle();
+
+    expect(changes, [true, false]);
+  });
 }

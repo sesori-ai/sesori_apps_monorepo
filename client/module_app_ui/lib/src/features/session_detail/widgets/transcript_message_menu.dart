@@ -6,15 +6,17 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../../../utils/copy_text_to_clipboard.dart";
 
-/// Tells the transcript that a message's menu opened, or has closed, so it can
-/// hold the message still under the menu meanwhile.
-class const TranscriptMessageMenuOpenChanged({required final bool open}) extends Notification;
+/// Tells the transcript that a message's menu opened, so it can hold the
+/// message still under the menu until [closed] completes, which it does even
+/// when the message goes first.
+class const TranscriptMessageMenuOpened({required final Future<void> closed}) extends Notification;
 
 /// A transcript message's menu, opened by long-pressing the message under a
 /// finger or right-clicking it with a mouse ([PregoContextMenu]).
 ///
-/// It ends with Copy and Select text. Copy copies the text selected inside the
-/// message when there is some, and otherwise [copyText]. Select text selects
+/// It ends with Copy and Select text. Copy copies [copyText], or reads "Copy
+/// selected text" and copies only the selection while some of the message's
+/// text is selected; the selection stays, menu open or closed. Select text selects
 /// all of the message's text, with the handles and toolbar a long-press
 /// selection had, when the message hands its selection area the key. The
 /// message's own actions go before them.
@@ -34,9 +36,9 @@ class const TranscriptMessageMenu({
   required final Widget Function(BuildContext context, GlobalKey<PregoReadableSelectionAreaState> selectionArea)
   builder,
 }) extends StatefulWidget {
-  /// Wide enough for the longest item ("Select text") at the larger text
-  /// sizes, without spanning the message it is anchored to.
-  static const double _menuWidth = 220;
+  /// Wide enough for the longest item ("Copy selected text") at the larger
+  /// text sizes, without spanning the message it is anchored to.
+  static const double _menuWidth = 240;
 
   /// The message [builder] builds, with its menu when it has [text] to copy,
   /// and without one when it has none: nothing in it could be copied.
@@ -60,12 +62,26 @@ class const TranscriptMessageMenu({
 class _TranscriptMessageMenuState() extends State<TranscriptMessageMenu> {
   final _selectionArea = GlobalKey<PregoReadableSelectionAreaState>();
 
+  /// Completes as the open menu closes.
+  Completer<void>? _closed;
+
   @override
   Widget build(BuildContext context) => PregoContextMenu(
     menuWidth: TranscriptMessageMenu._menuWidth,
     // Holds the message sharp while the rest of the transcript blurs back.
     spotlight: widget.spotlight,
-    onOpenChanged: (open) => TranscriptMessageMenuOpenChanged(open: open).dispatch(context),
+    onOpenChanged: (open) {
+      // The open menu takes the focus, which would otherwise clear the selection.
+      _selectionArea.currentState?.keepSelection(keep: open);
+      if (open) {
+        final closed = Completer<void>();
+        _closed = closed;
+        TranscriptMessageMenuOpened(closed: closed.future).dispatch(context);
+      } else {
+        _closed?.complete();
+        _closed = null;
+      }
+    },
     entriesBuilder: _entries,
     builder: (context, _) => widget.builder(context, _selectionArea),
   );
@@ -73,12 +89,13 @@ class _TranscriptMessageMenuState() extends State<TranscriptMessageMenu> {
   List<PregoMenuEntry> _entries() {
     final loc = context.loc;
     final area = _selectionArea.currentState;
-    final copyText = area?.selectedText ?? widget.copyText;
+    final selected = area?.selectedText;
+    final copyText = selected ?? widget.copyText;
     return [
       if (copyText != null && copyText.isNotEmpty)
         PregoMenuItem(
           leadingIcon: TablerRegular.copy,
-          title: loc.sessionDetailCopy,
+          title: selected == null ? loc.sessionDetailCopy : loc.sessionDetailCopySelectedText,
           subtitle: null,
           isSelected: false,
           shortcutLabel: null,

@@ -18,12 +18,17 @@ bridge.
   compact menu at the pointer, with no blur and no haptic.
 - The menu never moves the transcript. While it is open the transcript holds
   still, as when reading history, so a reply streaming in neither grows past
-  its cut-out nor carries the message out from under the menu, and no Jump to
-  latest pill appears. Once it closes, a transcript that was following the
-  latest edge follows it again and shows what streamed meanwhile.
+  its cut-out nor carries the message out from under the menu. Opening the
+  menu does not bring up the Jump to latest pill; a reader already in history
+  keeps theirs. Once it closes, a transcript that was following the latest
+  edge follows it again and shows what streamed meanwhile, even when the
+  message itself went while the menu was open (a queued prompt delivered).
 - The pinned prompt's cut-out matches its bubble or card.
-- Copy copies the text selected inside the message when there is some.
-  Otherwise it copies the message's Markdown: a user prompt's text or a
+- While some of the message's text is selected, the copy item reads "Copy
+  selected text" and copies only the selection. Opening the menu, closing it
+  and copying all leave that selection highlighted exactly as it was; a click
+  elsewhere still clears it. With nothing selected the item reads "Copy" and
+  copies the message's Markdown: a user prompt's text or a
   command's arguments, or the reply's text parts joined by blank lines, with
   streamed text as shown. A "Copied to clipboard" alert confirms it. A reply
   with no text has no Copy.
@@ -43,14 +48,18 @@ bridge.
   finger before the long-press fires.
 - A session row's long-press and right-click menu uses the same trigger, and a
   screen reader still offers the row's long-press as an action on the row.
+  A click opens the session; holding the mouse button down on a row does
+  nothing, with no menu and no highlight, since rows are not selectable text.
+- A screen reader offers the pinned prompt's menu as a long-press around the
+  pin, which it can still activate to jump.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it; an open menu holds a streaming reply still and the list follows again once it closes. |
-| L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. |
+| L2 Routine | Automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. |
+| L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. |
 | L4 Extended | Long-press a message near the screen's edges and at the largest text size; open the menu during a pinch, a peek and a code-block scroll. |
 | L5 Full | No additional coverage. |
 

@@ -4921,6 +4921,25 @@ void main() {
       await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
     });
 
+    testWidgets("a screen reader can long-press the pin for its menu, and still tap it to jump", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(tester, messages: mixedTurns);
+      await _scrollRowTo(tester, rowId: "u5", top: pinTop - 200);
+      expect(pinOf(tester, "u5"), isNotNull);
+
+      final pin = find.semantics.byLabel(RegExp("Prompt 5 line 0"));
+      expect(pin, findsOne);
+      final node = pin.evaluate().single;
+      expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+      final menu = find.semantics.byPredicate((candidate) => identical(candidate, node.parent));
+      expect(node.parent?.getSemanticsData().hasAction(SemanticsAction.longPress), isTrue);
+
+      tester.semantics.longPress(menu);
+      await tester.pumpAndSettle();
+      expect(find.text("Copy"), findsOne);
+      semantics.dispose();
+    });
+
     testWidgets("takes over from its bubble exactly where the two coincide", (tester) async {
       final semantics = tester.ensureSemantics();
       // The live tree: a hidden bubble's nodes keep their last labels.

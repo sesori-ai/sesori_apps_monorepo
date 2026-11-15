@@ -1182,7 +1182,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         ),
         child: NotificationListener<Notification>(
           onNotification: (notification) => switch (notification) {
-            final TranscriptMessageMenuOpenChanged menu => _onMessageMenuOpenChanged(menu),
+            final TranscriptMessageMenuOpened menu => _onMessageMenuOpened(menu),
             _ => _onScrollNotification(notification),
           },
           child: PregoHorizontalDragGestureDetector(
@@ -1665,14 +1665,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// Holds the transcript while a message's menu is open, as a detached list
   /// holds it: a reply streaming in at the newest edge would otherwise grow the
   /// spotlit message past its cut-out and carry it out from under the menu.
-  bool _onMessageMenuOpenChanged(TranscriptMessageMenuOpenChanged notification) {
-    if (notification.open) {
-      _heldByMenu = _follow.following;
-      _follow.detach();
-    } else if (_heldByMenu) {
-      _heldByMenu = false;
-      _follow.reattach();
-    }
+  bool _onMessageMenuOpened(TranscriptMessageMenuOpened notification) {
+    if (!_follow.following) return true;
+    _heldByMenu = true;
+    _follow.detach();
+    unawaited(
+      notification.closed.then((_) {
+        if (!mounted || !_heldByMenu) return;
+        _heldByMenu = false;
+        _follow.reattach();
+      }),
+    );
     return true;
   }
 

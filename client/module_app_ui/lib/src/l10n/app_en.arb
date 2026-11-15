@@ -2158,6 +2158,8 @@
   "sessionDetailCompactionAuto": "auto",
   "@sessionDetailCompactionAuto": {"description": "Detail after 'Context compacted' when the coding agent compacted on its own rather than on the user's request, e.g. 'Context compacted · auto'. Lowercase because it follows a separator."},
   "sessionDetailCopy": "Copy",
+  "sessionDetailCopySelectedText": "Copy selected text",
+  "@sessionDetailCopySelectedText": {"description": "Item of a transcript message's long-press or right-click menu, in place of Copy, while some of the message's text is selected: it copies only that selection."},
   "sessionDetailSelectText": "Select text",
   "@sessionDetailSelectText": {"description": "Item of a transcript message's long-press or right-click menu that closes the menu and selects the message's text, with handles to narrow the selection."},
   "sessionDetailMessageCopied": "Copied to clipboard",

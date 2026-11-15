@@ -22,6 +22,8 @@ void main() {
       return null;
     });
     addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    // A selection area clears on losing the focus only in a running app.
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
 
     await tester.pumpWidget(
       PregoInteractionScope(
@@ -83,28 +85,70 @@ void main() {
     expect(find.byType(AdaptiveTextSelectionToolbar), findsOneWidget);
   });
 
+  Future<String> selectPart(WidgetTester tester) async {
+    final start = tester.getTopLeft(find.text(_text)) + const Offset(1, 5);
+    final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+    await tester.pump();
+    await drag.moveTo(start + const Offset(60, 0));
+    await drag.up();
+    await tester.pumpAndSettle();
+    final selected = area(tester).selectedText;
+    expect(selected, isNotNull);
+    expect(selected, isNot(_text));
+    return selected ?? "";
+  }
+
+  Future<void> rightClick(WidgetTester tester) async {
+    await tester.tapAt(tester.getCenter(find.text(_text)), buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
+    await tester.pumpAndSettle();
+  }
+
   testWidgets(
-    "a right-click on a selection copies just the selection",
+    "a right-click on a selection keeps it, and Copy selected text copies just the selection",
     (tester) async {
       await pumpMessage(tester, mode: PregoInteractionMode.pointer);
-      final start = tester.getTopLeft(find.text(_text)) + const Offset(1, 5);
-      final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
-      await tester.pump();
-      await drag.moveTo(start + const Offset(60, 0));
-      await drag.up();
-      await tester.pumpAndSettle();
-      final selected = area(tester).selectedText;
-      expect(selected, isNotNull);
-      expect(selected, isNot(_text));
+      final selected = await selectPart(tester);
 
-      await tester.tapAt(tester.getCenter(find.text(_text)), buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text("Copy"));
+      await rightClick(tester);
+      expect(find.text("Copy"), findsNothing);
+      expect(area(tester).selectedText, selected, reason: "the open menu takes the focus without clearing it");
+      await tester.tap(find.text("Copy selected text"));
       await tester.pumpAndSettle();
 
       expect(copied, [selected]);
+      expect(area(tester).selectedText, selected);
       await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
     },
     variant: const TargetPlatformVariant({TargetPlatform.macOS}),
   );
+
+  testWidgets(
+    "closing the menu leaves the selection as it was, and a click elsewhere still clears it",
+    (tester) async {
+      await pumpMessage(tester, mode: PregoInteractionMode.pointer);
+      final selected = await selectPart(tester);
+
+      await rightClick(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text("Copy selected text"), findsNothing);
+      expect(area(tester).selectedText, selected);
+
+      await tester.tapAt(tester.getCenter(find.text(_text)), kind: PointerDeviceKind.mouse);
+      await tester.pumpAndSettle();
+      expect(area(tester).selectedText, isNull);
+    },
+    variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+  );
+
+  testWidgets("a right-click with nothing selected offers Copy, which copies the whole message", (tester) async {
+    await pumpMessage(tester, mode: PregoInteractionMode.pointer);
+
+    await rightClick(tester);
+    await tester.tap(find.text("Copy"));
+    await tester.pumpAndSettle();
+
+    expect(copied, [_markdown]);
+    await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
+  });
 }

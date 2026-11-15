@@ -32,7 +32,8 @@ class const PregoContextMenu({
   /// menu has none.
   required final PregoMenuSpotlight spotlight,
 
-  /// Told when the menu opens, and when it has closed.
+  /// Told when the menu opens, and when it has closed, even once the item is
+  /// gone.
   required final ValueChanged<bool>? onOpenChanged,
 
   /// Builds the item, told whether its menu is open so it can mark what the
@@ -75,8 +76,7 @@ class _PregoContextMenuState() extends State<PregoContextMenu> {
     spotlight: widget.spotlight,
     entriesBuilder: () => _entries,
     onOpenChanged: (open) {
-      if (!mounted) return;
-      setState(() => _menuOpen = open);
+      if (mounted) setState(() => _menuOpen = open);
       widget.onOpenChanged?.call(open);
     },
     triggerBuilder: (context, openMenu) => RawGestureDetector(
