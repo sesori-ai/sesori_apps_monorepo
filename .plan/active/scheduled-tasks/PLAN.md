@@ -311,7 +311,7 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
     (nullable); index on (taskId, firedAt) and on sessionId.
 - Run rows are trimmed to the newest 20 per task when a new one is written.
   The trim never deletes the task's latest `started` row (one exclusion in the
-  trim query, step 3): twenty skipped rows in a row must not erase the only
+  trim query, step 3.a): twenty skipped rows in a row must not erase the only
   row that points at a still-running session, or the overlap check (P6) would
   miss it and start a second run, breaking D8. They are the outcome history (ran, ran late, skipped, missed, couldn't
   start), not the "last 5 finished runs" of D10, which counts run *sessions*
@@ -469,14 +469,21 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
 
 ### P9. Compaction on request (all harnesses)
 
-- Add `BridgePluginApi.compactSession({sessionId})` returning a sealed
-  `PluginCompactionResult` (`accepted` | `sessionBusy` | `unsupported`), and a
+- Add `BridgePluginApi.compactSession({sessionId, promptId})` returning a
+  `PluginCompactionResult` enum (`accepted` | `sessionBusy` | `unsupported`; an
+  enum because no variant carries data), and a
   static descriptor getter `supportsCompactionOnRequest` set from the recorded
   probes, surfaced as `PluginMetadata.supportsCompactionOnRequest`. Every
   plugin implements the method (full-surface rule); non-supporting ones return
   `unsupported`. The user-facing `compact` catalog command stays as it is.
+- The flag is only a hint; the runtime `compactSession` answer is
+  authoritative. An ACP harness whose live command list lacks the command, or
+  OpenCode v1, answers `unsupported` even when the flag says otherwise, and
+  step 11 treats `unsupported` from the call as final for that run (P10.1 sets
+  `compactRequestedAt` on it).
 - Implementations reuse each plugin's existing path: Claude `/compact`, Codex
-  `thread/compact/start`, OpenCode v1/v2, Pi RPC `compact`, Cursor
+  `thread/compact/start`, OpenCode v2 (v1 answers `unsupported`: its compact
+  path needs a client model, and v1 is being retired), Pi RPC `compact`, Cursor
   `/summarize`. Shared ACP implements it for a harness whose native command
   list advertises compaction and returns `unsupported` when the live list
   lacks it (probe Copilot, Hermes, OMP, Grok, DeepSeek, Antigravity live and
@@ -539,6 +546,9 @@ be its latest started run and S its session (not archived).
      minutes), Oh My Pi per seat. Copilot, Antigravity (Gemini) and Grok report
      unknown. The margin and cap live only in `ScheduledTaskCompactionService`
      in bridge core, and no harness names appear in core.
+   - **Hermes pending.** Hermes compaction (`/compress`) waits on a live check
+     of whether it switches the Hermes session id; that check runs before
+     step 11.
    The compaction runs on S's lane, re-checks quietness and
    `R.compactRequestedAt` inside the lane, calls
    `SessionRepository.compactSession`, and sets `R.compactRequestedAt` on
@@ -755,7 +765,7 @@ consecutive-failure auto-pause, a new push category.
 ## Delivery Rules
 
 - PR titles are fixed in [TRACKER.md](TRACKER.md). Use
-  `<emoji> [scheduled-tasks] <description> [step x/13]`.
+  `<emoji> [scheduled-tasks] <description> [step x/14]`.
 - Soft cap ~1,500 changed lines; lower for lifecycle steps (4, 5, 11). Drift
   and Freezed output can push steps 2 and 3 over; report generated versus
   authored lines. Clean splits (for example 8.a/8.b, 9.a/9.b) need no
@@ -779,12 +789,13 @@ parallel with the bridge chain.
    bridge `ScheduledTaskOccurrenceCalculator` with the `timezone` package and
    its tests (P5), the pure missed-run/grace decision (P6). No routes or
    storage. [1]
-3. 🚧 **Store tasks on the bridge and serve the task routes.** Migration,
-   tables and the `sessions.scheduledTaskId` column (P4), DAO, repository,
-   `ScheduledTaskService` (validation, `nextDueAt`, change stream), handlers
-   for list, create, update, delete, enabled and runs, and the
-   `scheduledTasks.changed` SSE event from the Orchestrator. Nothing fires
-   yet. [2]
+3. Split in two because the authored diff ran over its target.
+   - 3.a 🚧 **Store tasks on the bridge.** Migration, tables and the
+     `sessions.scheduledTaskId` column (P4), DAO, repository and
+     `ScheduledTaskService` (validation, `nextDueAt`, change stream). [2]
+   - 3.b ⚙️ **Serve the task routes.** Handlers for list, create, update,
+     delete, enabled and runs, and the `scheduledTasks.changed` SSE event from
+     the Orchestrator. Nothing fires yet. [3.a]
 4. 🚧 **Fire new-session runs.** Timer listener, `ScheduledTaskRunService`
    (due selection, grace, missed policies, overlap skip, at-most-once,
    failure reasons and failure stream, one-off completion),
