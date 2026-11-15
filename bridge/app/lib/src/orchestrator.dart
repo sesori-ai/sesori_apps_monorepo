@@ -17,6 +17,7 @@ import "api/archived_session_storage.dart";
 import "api/attachment_spill_storage.dart";
 import "api/database/daos/accepted_prompts_dao.dart";
 import "api/database/daos/new_session_defaults_dao.dart";
+import "api/database/daos/scheduled_task_dao.dart";
 import "api/database/daos/session_continuation_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
 import "api/database/daos/side_chat_dao.dart";
@@ -549,6 +550,7 @@ class Orchestrator({
       sessionDao: _database.sessionDao,
       catalogHydrationsDao: _database.catalogHydrationsDao,
       sessionOptionsCacheDao: SessionOptionsCacheDao(database: _database),
+      scheduledTaskDao: ScheduledTaskDao(database: _database),
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       filesystemApi: const FilesystemApi(),
     );

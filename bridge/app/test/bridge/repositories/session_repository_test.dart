@@ -2853,6 +2853,7 @@ class _CountingSessionDao({required final Set<String> tombstones, required final
       pinned: false,
       forkedFromSessionId: null,
       forkedFromTitle: null,
+      scheduledTaskId: null,
     );
   }
 

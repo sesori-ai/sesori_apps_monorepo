@@ -400,6 +400,1331 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   }
 }
 
+mixin $ScheduledTasksTableTableToColumns
+    implements Insertable<ScheduledTaskDto> {
+  String get id;
+  String get name;
+  String get promptJson;
+  String get projectId;
+  String get pluginId;
+  String? get agent;
+  String? get modelJson;
+  String? get variant;
+  bool get fastMode;
+  bool get dedicatedWorktree;
+  String get scheduleJson;
+  String get timeZone;
+  TaskMissedRunPolicy get missedRunPolicy;
+  ScheduledTaskRunModeKind get runMode;
+  bool get autoCompact;
+  TaskApprovalMode get approvalMode;
+  bool get enabled;
+
+  /// UTC milliseconds of the next run. Null while paused or done.
+  int? get nextDueAt;
+
+  /// The session a same-session task continues. Null until its first run, and
+  /// again once that session is deleted or an edit moves the task elsewhere.
+  String? get targetSessionId;
+
+  /// When a one-off task ran. A done task leaves the list but keeps its row,
+  /// so its session keeps the task's mark.
+  int? get completedAt;
+  int get createdAt;
+  int get updatedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['prompt_json'] = Variable<String>(promptJson);
+    map['project_id'] = Variable<String>(projectId);
+    map['plugin_id'] = Variable<String>(pluginId);
+    if (!nullToAbsent || agent != null) {
+      map['agent'] = Variable<String>(agent);
+    }
+    if (!nullToAbsent || modelJson != null) {
+      map['model_json'] = Variable<String>(modelJson);
+    }
+    if (!nullToAbsent || variant != null) {
+      map['variant'] = Variable<String>(variant);
+    }
+    map['fast_mode'] = Variable<bool>(fastMode);
+    map['dedicated_worktree'] = Variable<bool>(dedicatedWorktree);
+    map['schedule_json'] = Variable<String>(scheduleJson);
+    map['time_zone'] = Variable<String>(timeZone);
+    {
+      map['missed_run_policy'] = Variable<String>(
+        $ScheduledTasksTableTable.$convertermissedRunPolicy.toSql(
+          missedRunPolicy,
+        ),
+      );
+    }
+    {
+      map['run_mode'] = Variable<String>(
+        $ScheduledTasksTableTable.$converterrunMode.toSql(runMode),
+      );
+    }
+    map['auto_compact'] = Variable<bool>(autoCompact);
+    {
+      map['approval_mode'] = Variable<String>(
+        $ScheduledTasksTableTable.$converterapprovalMode.toSql(approvalMode),
+      );
+    }
+    map['enabled'] = Variable<bool>(enabled);
+    if (!nullToAbsent || nextDueAt != null) {
+      map['next_due_at'] = Variable<int>(nextDueAt);
+    }
+    if (!nullToAbsent || targetSessionId != null) {
+      map['target_session_id'] = Variable<String>(targetSessionId);
+    }
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<int>(completedAt);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+}
+
+class $ScheduledTasksTableTable extends ScheduledTasksTable
+    with TableInfo<$ScheduledTasksTableTable, ScheduledTaskDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ScheduledTasksTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _promptJsonMeta = const VerificationMeta(
+    'promptJson',
+  );
+  @override
+  late final GeneratedColumn<String> promptJson = GeneratedColumn<String>(
+    'prompt_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _projectIdMeta = const VerificationMeta(
+    'projectId',
+  );
+  @override
+  late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
+    'project_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pluginIdMeta = const VerificationMeta(
+    'pluginId',
+  );
+  @override
+  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
+    'plugin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _agentMeta = const VerificationMeta('agent');
+  @override
+  late final GeneratedColumn<String> agent = GeneratedColumn<String>(
+    'agent',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _modelJsonMeta = const VerificationMeta(
+    'modelJson',
+  );
+  @override
+  late final GeneratedColumn<String> modelJson = GeneratedColumn<String>(
+    'model_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _variantMeta = const VerificationMeta(
+    'variant',
+  );
+  @override
+  late final GeneratedColumn<String> variant = GeneratedColumn<String>(
+    'variant',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fastModeMeta = const VerificationMeta(
+    'fastMode',
+  );
+  @override
+  late final GeneratedColumn<bool> fastMode = GeneratedColumn<bool>(
+    'fast_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("fast_mode" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _dedicatedWorktreeMeta = const VerificationMeta(
+    'dedicatedWorktree',
+  );
+  @override
+  late final GeneratedColumn<bool> dedicatedWorktree = GeneratedColumn<bool>(
+    'dedicated_worktree',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("dedicated_worktree" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _scheduleJsonMeta = const VerificationMeta(
+    'scheduleJson',
+  );
+  @override
+  late final GeneratedColumn<String> scheduleJson = GeneratedColumn<String>(
+    'schedule_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timeZoneMeta = const VerificationMeta(
+    'timeZone',
+  );
+  @override
+  late final GeneratedColumn<String> timeZone = GeneratedColumn<String>(
+    'time_zone',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<TaskMissedRunPolicy, String>
+  missedRunPolicy =
+      GeneratedColumn<String>(
+        'missed_run_policy',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<TaskMissedRunPolicy>(
+        $ScheduledTasksTableTable.$convertermissedRunPolicy,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<ScheduledTaskRunModeKind, String>
+  runMode =
+      GeneratedColumn<String>(
+        'run_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<ScheduledTaskRunModeKind>(
+        $ScheduledTasksTableTable.$converterrunMode,
+      );
+  static const VerificationMeta _autoCompactMeta = const VerificationMeta(
+    'autoCompact',
+  );
+  @override
+  late final GeneratedColumn<bool> autoCompact = GeneratedColumn<bool>(
+    'auto_compact',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auto_compact" IN (0, 1))',
+    ),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<TaskApprovalMode, String>
+  approvalMode =
+      GeneratedColumn<String>(
+        'approval_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<TaskApprovalMode>(
+        $ScheduledTasksTableTable.$converterapprovalMode,
+      );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _nextDueAtMeta = const VerificationMeta(
+    'nextDueAt',
+  );
+  @override
+  late final GeneratedColumn<int> nextDueAt = GeneratedColumn<int>(
+    'next_due_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _targetSessionIdMeta = const VerificationMeta(
+    'targetSessionId',
+  );
+  @override
+  late final GeneratedColumn<String> targetSessionId = GeneratedColumn<String>(
+    'target_session_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE SET NULL',
+    ),
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<int> completedAt = GeneratedColumn<int>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    promptJson,
+    projectId,
+    pluginId,
+    agent,
+    modelJson,
+    variant,
+    fastMode,
+    dedicatedWorktree,
+    scheduleJson,
+    timeZone,
+    missedRunPolicy,
+    runMode,
+    autoCompact,
+    approvalMode,
+    enabled,
+    nextDueAt,
+    targetSessionId,
+    completedAt,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'scheduled_tasks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ScheduledTaskDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('prompt_json')) {
+      context.handle(
+        _promptJsonMeta,
+        promptJson.isAcceptableOrUnknown(data['prompt_json']!, _promptJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_promptJsonMeta);
+    }
+    if (data.containsKey('project_id')) {
+      context.handle(
+        _projectIdMeta,
+        projectId.isAcceptableOrUnknown(data['project_id']!, _projectIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_projectIdMeta);
+    }
+    if (data.containsKey('plugin_id')) {
+      context.handle(
+        _pluginIdMeta,
+        pluginId.isAcceptableOrUnknown(data['plugin_id']!, _pluginIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pluginIdMeta);
+    }
+    if (data.containsKey('agent')) {
+      context.handle(
+        _agentMeta,
+        agent.isAcceptableOrUnknown(data['agent']!, _agentMeta),
+      );
+    }
+    if (data.containsKey('model_json')) {
+      context.handle(
+        _modelJsonMeta,
+        modelJson.isAcceptableOrUnknown(data['model_json']!, _modelJsonMeta),
+      );
+    }
+    if (data.containsKey('variant')) {
+      context.handle(
+        _variantMeta,
+        variant.isAcceptableOrUnknown(data['variant']!, _variantMeta),
+      );
+    }
+    if (data.containsKey('fast_mode')) {
+      context.handle(
+        _fastModeMeta,
+        fastMode.isAcceptableOrUnknown(data['fast_mode']!, _fastModeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fastModeMeta);
+    }
+    if (data.containsKey('dedicated_worktree')) {
+      context.handle(
+        _dedicatedWorktreeMeta,
+        dedicatedWorktree.isAcceptableOrUnknown(
+          data['dedicated_worktree']!,
+          _dedicatedWorktreeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_dedicatedWorktreeMeta);
+    }
+    if (data.containsKey('schedule_json')) {
+      context.handle(
+        _scheduleJsonMeta,
+        scheduleJson.isAcceptableOrUnknown(
+          data['schedule_json']!,
+          _scheduleJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_scheduleJsonMeta);
+    }
+    if (data.containsKey('time_zone')) {
+      context.handle(
+        _timeZoneMeta,
+        timeZone.isAcceptableOrUnknown(data['time_zone']!, _timeZoneMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timeZoneMeta);
+    }
+    if (data.containsKey('auto_compact')) {
+      context.handle(
+        _autoCompactMeta,
+        autoCompact.isAcceptableOrUnknown(
+          data['auto_compact']!,
+          _autoCompactMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_autoCompactMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_enabledMeta);
+    }
+    if (data.containsKey('next_due_at')) {
+      context.handle(
+        _nextDueAtMeta,
+        nextDueAt.isAcceptableOrUnknown(data['next_due_at']!, _nextDueAtMeta),
+      );
+    }
+    if (data.containsKey('target_session_id')) {
+      context.handle(
+        _targetSessionIdMeta,
+        targetSessionId.isAcceptableOrUnknown(
+          data['target_session_id']!,
+          _targetSessionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ScheduledTaskDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ScheduledTaskDto(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      promptJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt_json'],
+      )!,
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}project_id'],
+      )!,
+      pluginId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plugin_id'],
+      )!,
+      agent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agent'],
+      ),
+      modelJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model_json'],
+      ),
+      variant: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variant'],
+      ),
+      fastMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}fast_mode'],
+      )!,
+      dedicatedWorktree: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}dedicated_worktree'],
+      )!,
+      scheduleJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}schedule_json'],
+      )!,
+      timeZone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}time_zone'],
+      )!,
+      missedRunPolicy: $ScheduledTasksTableTable.$convertermissedRunPolicy
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}missed_run_policy'],
+            )!,
+          ),
+      runMode: $ScheduledTasksTableTable.$converterrunMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}run_mode'],
+        )!,
+      ),
+      autoCompact: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_compact'],
+      )!,
+      approvalMode: $ScheduledTasksTableTable.$converterapprovalMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}approval_mode'],
+        )!,
+      ),
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+      nextDueAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}next_due_at'],
+      ),
+      targetSessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_session_id'],
+      ),
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}completed_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ScheduledTasksTableTable createAlias(String alias) {
+    return $ScheduledTasksTableTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<TaskMissedRunPolicy, String, String>
+  $convertermissedRunPolicy = const EnumNameConverter<TaskMissedRunPolicy>(
+    TaskMissedRunPolicy.values,
+  );
+  static JsonTypeConverter2<ScheduledTaskRunModeKind, String, String>
+  $converterrunMode = const EnumNameConverter<ScheduledTaskRunModeKind>(
+    ScheduledTaskRunModeKind.values,
+  );
+  static JsonTypeConverter2<TaskApprovalMode, String, String>
+  $converterapprovalMode = const EnumNameConverter<TaskApprovalMode>(
+    TaskApprovalMode.values,
+  );
+  @override
+  bool get withoutRowId => true;
+}
+
+class ScheduledTaskDto extends DataClass
+    with $ScheduledTasksTableTableToColumns {
+  @override
+  final String id;
+  @override
+  final String name;
+  @override
+  final String promptJson;
+  @override
+  final String projectId;
+  @override
+  final String pluginId;
+  @override
+  final String? agent;
+  @override
+  final String? modelJson;
+  @override
+  final String? variant;
+  @override
+  final bool fastMode;
+  @override
+  final bool dedicatedWorktree;
+  @override
+  final String scheduleJson;
+  @override
+  final String timeZone;
+  @override
+  final TaskMissedRunPolicy missedRunPolicy;
+  @override
+  final ScheduledTaskRunModeKind runMode;
+  @override
+  final bool autoCompact;
+  @override
+  final TaskApprovalMode approvalMode;
+  @override
+  final bool enabled;
+
+  /// UTC milliseconds of the next run. Null while paused or done.
+  @override
+  final int? nextDueAt;
+
+  /// The session a same-session task continues. Null until its first run, and
+  /// again once that session is deleted or an edit moves the task elsewhere.
+  @override
+  final String? targetSessionId;
+
+  /// When a one-off task ran. A done task leaves the list but keeps its row,
+  /// so its session keeps the task's mark.
+  @override
+  final int? completedAt;
+  @override
+  final int createdAt;
+  @override
+  final int updatedAt;
+  const ScheduledTaskDto({
+    required this.id,
+    required this.name,
+    required this.promptJson,
+    required this.projectId,
+    required this.pluginId,
+    this.agent,
+    this.modelJson,
+    this.variant,
+    required this.fastMode,
+    required this.dedicatedWorktree,
+    required this.scheduleJson,
+    required this.timeZone,
+    required this.missedRunPolicy,
+    required this.runMode,
+    required this.autoCompact,
+    required this.approvalMode,
+    required this.enabled,
+    this.nextDueAt,
+    this.targetSessionId,
+    this.completedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  ScheduledTasksTableCompanion toCompanion(bool nullToAbsent) {
+    return ScheduledTasksTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      promptJson: Value(promptJson),
+      projectId: Value(projectId),
+      pluginId: Value(pluginId),
+      agent: agent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agent),
+      modelJson: modelJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modelJson),
+      variant: variant == null && nullToAbsent
+          ? const Value.absent()
+          : Value(variant),
+      fastMode: Value(fastMode),
+      dedicatedWorktree: Value(dedicatedWorktree),
+      scheduleJson: Value(scheduleJson),
+      timeZone: Value(timeZone),
+      missedRunPolicy: Value(missedRunPolicy),
+      runMode: Value(runMode),
+      autoCompact: Value(autoCompact),
+      approvalMode: Value(approvalMode),
+      enabled: Value(enabled),
+      nextDueAt: nextDueAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextDueAt),
+      targetSessionId: targetSessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetSessionId),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ScheduledTaskDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ScheduledTaskDto(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      promptJson: serializer.fromJson<String>(json['promptJson']),
+      projectId: serializer.fromJson<String>(json['projectId']),
+      pluginId: serializer.fromJson<String>(json['pluginId']),
+      agent: serializer.fromJson<String?>(json['agent']),
+      modelJson: serializer.fromJson<String?>(json['modelJson']),
+      variant: serializer.fromJson<String?>(json['variant']),
+      fastMode: serializer.fromJson<bool>(json['fastMode']),
+      dedicatedWorktree: serializer.fromJson<bool>(json['dedicatedWorktree']),
+      scheduleJson: serializer.fromJson<String>(json['scheduleJson']),
+      timeZone: serializer.fromJson<String>(json['timeZone']),
+      missedRunPolicy: $ScheduledTasksTableTable.$convertermissedRunPolicy
+          .fromJson(serializer.fromJson<String>(json['missedRunPolicy'])),
+      runMode: $ScheduledTasksTableTable.$converterrunMode.fromJson(
+        serializer.fromJson<String>(json['runMode']),
+      ),
+      autoCompact: serializer.fromJson<bool>(json['autoCompact']),
+      approvalMode: $ScheduledTasksTableTable.$converterapprovalMode.fromJson(
+        serializer.fromJson<String>(json['approvalMode']),
+      ),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      nextDueAt: serializer.fromJson<int?>(json['nextDueAt']),
+      targetSessionId: serializer.fromJson<String?>(json['targetSessionId']),
+      completedAt: serializer.fromJson<int?>(json['completedAt']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'promptJson': serializer.toJson<String>(promptJson),
+      'projectId': serializer.toJson<String>(projectId),
+      'pluginId': serializer.toJson<String>(pluginId),
+      'agent': serializer.toJson<String?>(agent),
+      'modelJson': serializer.toJson<String?>(modelJson),
+      'variant': serializer.toJson<String?>(variant),
+      'fastMode': serializer.toJson<bool>(fastMode),
+      'dedicatedWorktree': serializer.toJson<bool>(dedicatedWorktree),
+      'scheduleJson': serializer.toJson<String>(scheduleJson),
+      'timeZone': serializer.toJson<String>(timeZone),
+      'missedRunPolicy': serializer.toJson<String>(
+        $ScheduledTasksTableTable.$convertermissedRunPolicy.toJson(
+          missedRunPolicy,
+        ),
+      ),
+      'runMode': serializer.toJson<String>(
+        $ScheduledTasksTableTable.$converterrunMode.toJson(runMode),
+      ),
+      'autoCompact': serializer.toJson<bool>(autoCompact),
+      'approvalMode': serializer.toJson<String>(
+        $ScheduledTasksTableTable.$converterapprovalMode.toJson(approvalMode),
+      ),
+      'enabled': serializer.toJson<bool>(enabled),
+      'nextDueAt': serializer.toJson<int?>(nextDueAt),
+      'targetSessionId': serializer.toJson<String?>(targetSessionId),
+      'completedAt': serializer.toJson<int?>(completedAt),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  ScheduledTaskDto copyWith({
+    String? id,
+    String? name,
+    String? promptJson,
+    String? projectId,
+    String? pluginId,
+    Value<String?> agent = const Value.absent(),
+    Value<String?> modelJson = const Value.absent(),
+    Value<String?> variant = const Value.absent(),
+    bool? fastMode,
+    bool? dedicatedWorktree,
+    String? scheduleJson,
+    String? timeZone,
+    TaskMissedRunPolicy? missedRunPolicy,
+    ScheduledTaskRunModeKind? runMode,
+    bool? autoCompact,
+    TaskApprovalMode? approvalMode,
+    bool? enabled,
+    Value<int?> nextDueAt = const Value.absent(),
+    Value<String?> targetSessionId = const Value.absent(),
+    Value<int?> completedAt = const Value.absent(),
+    int? createdAt,
+    int? updatedAt,
+  }) => ScheduledTaskDto(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    promptJson: promptJson ?? this.promptJson,
+    projectId: projectId ?? this.projectId,
+    pluginId: pluginId ?? this.pluginId,
+    agent: agent.present ? agent.value : this.agent,
+    modelJson: modelJson.present ? modelJson.value : this.modelJson,
+    variant: variant.present ? variant.value : this.variant,
+    fastMode: fastMode ?? this.fastMode,
+    dedicatedWorktree: dedicatedWorktree ?? this.dedicatedWorktree,
+    scheduleJson: scheduleJson ?? this.scheduleJson,
+    timeZone: timeZone ?? this.timeZone,
+    missedRunPolicy: missedRunPolicy ?? this.missedRunPolicy,
+    runMode: runMode ?? this.runMode,
+    autoCompact: autoCompact ?? this.autoCompact,
+    approvalMode: approvalMode ?? this.approvalMode,
+    enabled: enabled ?? this.enabled,
+    nextDueAt: nextDueAt.present ? nextDueAt.value : this.nextDueAt,
+    targetSessionId: targetSessionId.present
+        ? targetSessionId.value
+        : this.targetSessionId,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ScheduledTaskDto copyWithCompanion(ScheduledTasksTableCompanion data) {
+    return ScheduledTaskDto(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      promptJson: data.promptJson.present
+          ? data.promptJson.value
+          : this.promptJson,
+      projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
+      agent: data.agent.present ? data.agent.value : this.agent,
+      modelJson: data.modelJson.present ? data.modelJson.value : this.modelJson,
+      variant: data.variant.present ? data.variant.value : this.variant,
+      fastMode: data.fastMode.present ? data.fastMode.value : this.fastMode,
+      dedicatedWorktree: data.dedicatedWorktree.present
+          ? data.dedicatedWorktree.value
+          : this.dedicatedWorktree,
+      scheduleJson: data.scheduleJson.present
+          ? data.scheduleJson.value
+          : this.scheduleJson,
+      timeZone: data.timeZone.present ? data.timeZone.value : this.timeZone,
+      missedRunPolicy: data.missedRunPolicy.present
+          ? data.missedRunPolicy.value
+          : this.missedRunPolicy,
+      runMode: data.runMode.present ? data.runMode.value : this.runMode,
+      autoCompact: data.autoCompact.present
+          ? data.autoCompact.value
+          : this.autoCompact,
+      approvalMode: data.approvalMode.present
+          ? data.approvalMode.value
+          : this.approvalMode,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      nextDueAt: data.nextDueAt.present ? data.nextDueAt.value : this.nextDueAt,
+      targetSessionId: data.targetSessionId.present
+          ? data.targetSessionId.value
+          : this.targetSessionId,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledTaskDto(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('promptJson: $promptJson, ')
+          ..write('projectId: $projectId, ')
+          ..write('pluginId: $pluginId, ')
+          ..write('agent: $agent, ')
+          ..write('modelJson: $modelJson, ')
+          ..write('variant: $variant, ')
+          ..write('fastMode: $fastMode, ')
+          ..write('dedicatedWorktree: $dedicatedWorktree, ')
+          ..write('scheduleJson: $scheduleJson, ')
+          ..write('timeZone: $timeZone, ')
+          ..write('missedRunPolicy: $missedRunPolicy, ')
+          ..write('runMode: $runMode, ')
+          ..write('autoCompact: $autoCompact, ')
+          ..write('approvalMode: $approvalMode, ')
+          ..write('enabled: $enabled, ')
+          ..write('nextDueAt: $nextDueAt, ')
+          ..write('targetSessionId: $targetSessionId, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    name,
+    promptJson,
+    projectId,
+    pluginId,
+    agent,
+    modelJson,
+    variant,
+    fastMode,
+    dedicatedWorktree,
+    scheduleJson,
+    timeZone,
+    missedRunPolicy,
+    runMode,
+    autoCompact,
+    approvalMode,
+    enabled,
+    nextDueAt,
+    targetSessionId,
+    completedAt,
+    createdAt,
+    updatedAt,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScheduledTaskDto &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.promptJson == this.promptJson &&
+          other.projectId == this.projectId &&
+          other.pluginId == this.pluginId &&
+          other.agent == this.agent &&
+          other.modelJson == this.modelJson &&
+          other.variant == this.variant &&
+          other.fastMode == this.fastMode &&
+          other.dedicatedWorktree == this.dedicatedWorktree &&
+          other.scheduleJson == this.scheduleJson &&
+          other.timeZone == this.timeZone &&
+          other.missedRunPolicy == this.missedRunPolicy &&
+          other.runMode == this.runMode &&
+          other.autoCompact == this.autoCompact &&
+          other.approvalMode == this.approvalMode &&
+          other.enabled == this.enabled &&
+          other.nextDueAt == this.nextDueAt &&
+          other.targetSessionId == this.targetSessionId &&
+          other.completedAt == this.completedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ScheduledTasksTableCompanion extends UpdateCompanion<ScheduledTaskDto> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> promptJson;
+  final Value<String> projectId;
+  final Value<String> pluginId;
+  final Value<String?> agent;
+  final Value<String?> modelJson;
+  final Value<String?> variant;
+  final Value<bool> fastMode;
+  final Value<bool> dedicatedWorktree;
+  final Value<String> scheduleJson;
+  final Value<String> timeZone;
+  final Value<TaskMissedRunPolicy> missedRunPolicy;
+  final Value<ScheduledTaskRunModeKind> runMode;
+  final Value<bool> autoCompact;
+  final Value<TaskApprovalMode> approvalMode;
+  final Value<bool> enabled;
+  final Value<int?> nextDueAt;
+  final Value<String?> targetSessionId;
+  final Value<int?> completedAt;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  const ScheduledTasksTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.promptJson = const Value.absent(),
+    this.projectId = const Value.absent(),
+    this.pluginId = const Value.absent(),
+    this.agent = const Value.absent(),
+    this.modelJson = const Value.absent(),
+    this.variant = const Value.absent(),
+    this.fastMode = const Value.absent(),
+    this.dedicatedWorktree = const Value.absent(),
+    this.scheduleJson = const Value.absent(),
+    this.timeZone = const Value.absent(),
+    this.missedRunPolicy = const Value.absent(),
+    this.runMode = const Value.absent(),
+    this.autoCompact = const Value.absent(),
+    this.approvalMode = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.nextDueAt = const Value.absent(),
+    this.targetSessionId = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ScheduledTasksTableCompanion.insert({
+    required String id,
+    required String name,
+    required String promptJson,
+    required String projectId,
+    required String pluginId,
+    this.agent = const Value.absent(),
+    this.modelJson = const Value.absent(),
+    this.variant = const Value.absent(),
+    required bool fastMode,
+    required bool dedicatedWorktree,
+    required String scheduleJson,
+    required String timeZone,
+    required TaskMissedRunPolicy missedRunPolicy,
+    required ScheduledTaskRunModeKind runMode,
+    required bool autoCompact,
+    required TaskApprovalMode approvalMode,
+    required bool enabled,
+    this.nextDueAt = const Value.absent(),
+    this.targetSessionId = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+  }) : id = Value(id),
+       name = Value(name),
+       promptJson = Value(promptJson),
+       projectId = Value(projectId),
+       pluginId = Value(pluginId),
+       fastMode = Value(fastMode),
+       dedicatedWorktree = Value(dedicatedWorktree),
+       scheduleJson = Value(scheduleJson),
+       timeZone = Value(timeZone),
+       missedRunPolicy = Value(missedRunPolicy),
+       runMode = Value(runMode),
+       autoCompact = Value(autoCompact),
+       approvalMode = Value(approvalMode),
+       enabled = Value(enabled),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<ScheduledTaskDto> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? promptJson,
+    Expression<String>? projectId,
+    Expression<String>? pluginId,
+    Expression<String>? agent,
+    Expression<String>? modelJson,
+    Expression<String>? variant,
+    Expression<bool>? fastMode,
+    Expression<bool>? dedicatedWorktree,
+    Expression<String>? scheduleJson,
+    Expression<String>? timeZone,
+    Expression<String>? missedRunPolicy,
+    Expression<String>? runMode,
+    Expression<bool>? autoCompact,
+    Expression<String>? approvalMode,
+    Expression<bool>? enabled,
+    Expression<int>? nextDueAt,
+    Expression<String>? targetSessionId,
+    Expression<int>? completedAt,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (promptJson != null) 'prompt_json': promptJson,
+      if (projectId != null) 'project_id': projectId,
+      if (pluginId != null) 'plugin_id': pluginId,
+      if (agent != null) 'agent': agent,
+      if (modelJson != null) 'model_json': modelJson,
+      if (variant != null) 'variant': variant,
+      if (fastMode != null) 'fast_mode': fastMode,
+      if (dedicatedWorktree != null) 'dedicated_worktree': dedicatedWorktree,
+      if (scheduleJson != null) 'schedule_json': scheduleJson,
+      if (timeZone != null) 'time_zone': timeZone,
+      if (missedRunPolicy != null) 'missed_run_policy': missedRunPolicy,
+      if (runMode != null) 'run_mode': runMode,
+      if (autoCompact != null) 'auto_compact': autoCompact,
+      if (approvalMode != null) 'approval_mode': approvalMode,
+      if (enabled != null) 'enabled': enabled,
+      if (nextDueAt != null) 'next_due_at': nextDueAt,
+      if (targetSessionId != null) 'target_session_id': targetSessionId,
+      if (completedAt != null) 'completed_at': completedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ScheduledTasksTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? promptJson,
+    Value<String>? projectId,
+    Value<String>? pluginId,
+    Value<String?>? agent,
+    Value<String?>? modelJson,
+    Value<String?>? variant,
+    Value<bool>? fastMode,
+    Value<bool>? dedicatedWorktree,
+    Value<String>? scheduleJson,
+    Value<String>? timeZone,
+    Value<TaskMissedRunPolicy>? missedRunPolicy,
+    Value<ScheduledTaskRunModeKind>? runMode,
+    Value<bool>? autoCompact,
+    Value<TaskApprovalMode>? approvalMode,
+    Value<bool>? enabled,
+    Value<int?>? nextDueAt,
+    Value<String?>? targetSessionId,
+    Value<int?>? completedAt,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+  }) {
+    return ScheduledTasksTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      promptJson: promptJson ?? this.promptJson,
+      projectId: projectId ?? this.projectId,
+      pluginId: pluginId ?? this.pluginId,
+      agent: agent ?? this.agent,
+      modelJson: modelJson ?? this.modelJson,
+      variant: variant ?? this.variant,
+      fastMode: fastMode ?? this.fastMode,
+      dedicatedWorktree: dedicatedWorktree ?? this.dedicatedWorktree,
+      scheduleJson: scheduleJson ?? this.scheduleJson,
+      timeZone: timeZone ?? this.timeZone,
+      missedRunPolicy: missedRunPolicy ?? this.missedRunPolicy,
+      runMode: runMode ?? this.runMode,
+      autoCompact: autoCompact ?? this.autoCompact,
+      approvalMode: approvalMode ?? this.approvalMode,
+      enabled: enabled ?? this.enabled,
+      nextDueAt: nextDueAt ?? this.nextDueAt,
+      targetSessionId: targetSessionId ?? this.targetSessionId,
+      completedAt: completedAt ?? this.completedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (promptJson.present) {
+      map['prompt_json'] = Variable<String>(promptJson.value);
+    }
+    if (projectId.present) {
+      map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (pluginId.present) {
+      map['plugin_id'] = Variable<String>(pluginId.value);
+    }
+    if (agent.present) {
+      map['agent'] = Variable<String>(agent.value);
+    }
+    if (modelJson.present) {
+      map['model_json'] = Variable<String>(modelJson.value);
+    }
+    if (variant.present) {
+      map['variant'] = Variable<String>(variant.value);
+    }
+    if (fastMode.present) {
+      map['fast_mode'] = Variable<bool>(fastMode.value);
+    }
+    if (dedicatedWorktree.present) {
+      map['dedicated_worktree'] = Variable<bool>(dedicatedWorktree.value);
+    }
+    if (scheduleJson.present) {
+      map['schedule_json'] = Variable<String>(scheduleJson.value);
+    }
+    if (timeZone.present) {
+      map['time_zone'] = Variable<String>(timeZone.value);
+    }
+    if (missedRunPolicy.present) {
+      map['missed_run_policy'] = Variable<String>(
+        $ScheduledTasksTableTable.$convertermissedRunPolicy.toSql(
+          missedRunPolicy.value,
+        ),
+      );
+    }
+    if (runMode.present) {
+      map['run_mode'] = Variable<String>(
+        $ScheduledTasksTableTable.$converterrunMode.toSql(runMode.value),
+      );
+    }
+    if (autoCompact.present) {
+      map['auto_compact'] = Variable<bool>(autoCompact.value);
+    }
+    if (approvalMode.present) {
+      map['approval_mode'] = Variable<String>(
+        $ScheduledTasksTableTable.$converterapprovalMode.toSql(
+          approvalMode.value,
+        ),
+      );
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (nextDueAt.present) {
+      map['next_due_at'] = Variable<int>(nextDueAt.value);
+    }
+    if (targetSessionId.present) {
+      map['target_session_id'] = Variable<String>(targetSessionId.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<int>(completedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledTasksTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('promptJson: $promptJson, ')
+          ..write('projectId: $projectId, ')
+          ..write('pluginId: $pluginId, ')
+          ..write('agent: $agent, ')
+          ..write('modelJson: $modelJson, ')
+          ..write('variant: $variant, ')
+          ..write('fastMode: $fastMode, ')
+          ..write('dedicatedWorktree: $dedicatedWorktree, ')
+          ..write('scheduleJson: $scheduleJson, ')
+          ..write('timeZone: $timeZone, ')
+          ..write('missedRunPolicy: $missedRunPolicy, ')
+          ..write('runMode: $runMode, ')
+          ..write('autoCompact: $autoCompact, ')
+          ..write('approvalMode: $approvalMode, ')
+          ..write('enabled: $enabled, ')
+          ..write('nextDueAt: $nextDueAt, ')
+          ..write('targetSessionId: $targetSessionId, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   String get sessionId;
   String get backendSessionId;
@@ -452,6 +1777,10 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   /// The origin's displayed title when the fork was made, or null for a
   /// session that is not a fork or whose origin was untitled.
   String? get forkedFromTitle;
+
+  /// The task whose run started this session. Null for every other session,
+  /// and once that task is deleted, leaving an ordinary session.
+  String? get scheduledTaskId;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -517,6 +1846,9 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
     }
     if (!nullToAbsent || forkedFromTitle != null) {
       map['forked_from_title'] = Variable<String>(forkedFromTitle);
+    }
+    if (!nullToAbsent || scheduledTaskId != null) {
+      map['scheduled_task_id'] = Variable<String>(scheduledTaskId);
     }
     return map;
   }
@@ -839,6 +2171,20 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _scheduledTaskIdMeta = const VerificationMeta(
+    'scheduledTaskId',
+  );
+  @override
+  late final GeneratedColumn<String> scheduledTaskId = GeneratedColumn<String>(
+    'scheduled_task_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES scheduled_tasks (id) ON DELETE SET NULL',
+    ),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     sessionId,
@@ -868,6 +2214,7 @@ class $SessionTableTable extends SessionTable
     pinned,
     forkedFromSessionId,
     forkedFromTitle,
+    scheduledTaskId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1082,6 +2429,15 @@ class $SessionTableTable extends SessionTable
         ),
       );
     }
+    if (data.containsKey('scheduled_task_id')) {
+      context.handle(
+        _scheduledTaskIdMeta,
+        scheduledTaskId.isAcceptableOrUnknown(
+          data['scheduled_task_id']!,
+          _scheduledTaskIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1203,6 +2559,10 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.string,
         data['${effectivePrefix}forked_from_title'],
       ),
+      scheduledTaskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scheduled_task_id'],
+      ),
     );
   }
 
@@ -1255,6 +2615,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<bool> pinned;
   final Value<String?> forkedFromSessionId;
   final Value<String?> forkedFromTitle;
+  final Value<String?> scheduledTaskId;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.backendSessionId = const Value.absent(),
@@ -1283,6 +2644,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.pinned = const Value.absent(),
     this.forkedFromSessionId = const Value.absent(),
     this.forkedFromTitle = const Value.absent(),
+    this.scheduledTaskId = const Value.absent(),
   });
   SessionTableCompanion.insert({
     required String sessionId,
@@ -1312,6 +2674,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.pinned = const Value.absent(),
     this.forkedFromSessionId = const Value.absent(),
     this.forkedFromTitle = const Value.absent(),
+    this.scheduledTaskId = const Value.absent(),
   }) : sessionId = Value(sessionId),
        backendSessionId = Value(backendSessionId),
        projectId = Value(projectId),
@@ -1349,6 +2712,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<bool>? pinned,
     Expression<String>? forkedFromSessionId,
     Expression<String>? forkedFromTitle,
+    Expression<String>? scheduledTaskId,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -1380,6 +2744,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (forkedFromSessionId != null)
         'forked_from_session_id': forkedFromSessionId,
       if (forkedFromTitle != null) 'forked_from_title': forkedFromTitle,
+      if (scheduledTaskId != null) 'scheduled_task_id': scheduledTaskId,
     });
   }
 
@@ -1411,6 +2776,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<bool>? pinned,
     Value<String?>? forkedFromSessionId,
     Value<String?>? forkedFromTitle,
+    Value<String?>? scheduledTaskId,
   }) {
     return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -1440,6 +2806,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       pinned: pinned ?? this.pinned,
       forkedFromSessionId: forkedFromSessionId ?? this.forkedFromSessionId,
       forkedFromTitle: forkedFromTitle ?? this.forkedFromTitle,
+      scheduledTaskId: scheduledTaskId ?? this.scheduledTaskId,
     );
   }
 
@@ -1537,6 +2904,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (forkedFromTitle.present) {
       map['forked_from_title'] = Variable<String>(forkedFromTitle.value);
     }
+    if (scheduledTaskId.present) {
+      map['scheduled_task_id'] = Variable<String>(scheduledTaskId.value);
+    }
     return map;
   }
 
@@ -1569,7 +2939,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('approvalOverride: $approvalOverride, ')
           ..write('pinned: $pinned, ')
           ..write('forkedFromSessionId: $forkedFromSessionId, ')
-          ..write('forkedFromTitle: $forkedFromTitle')
+          ..write('forkedFromTitle: $forkedFromTitle, ')
+          ..write('scheduledTaskId: $scheduledTaskId')
           ..write(')'))
         .toString();
   }
@@ -4138,10 +5509,786 @@ class SideChatExchangesTableCompanion
   }
 }
 
+mixin $ScheduledTaskRunsTableTableToColumns
+    implements Insertable<ScheduledTaskRunDto> {
+  String get id;
+  String get taskId;
+
+  /// The session a started run sent its prompt to. Null for other outcomes,
+  /// and once that session is deleted.
+  String? get sessionId;
+
+  /// UTC milliseconds of the occurrence, or of the Run now tap.
+  int get scheduledFor;
+
+  /// The task zone's offset at [scheduledFor], frozen when written so a later
+  /// zone edit keeps past rows.
+  int get scheduledForOffsetMinutes;
+  int get firedAt;
+  ScheduledTaskRunOutcomeKind get outcome;
+
+  /// Set only for a failed run.
+  TaskRunFailureReason? get reason;
+
+  /// Set only for a started run.
+  bool get late;
+
+  /// When the user first sent their own prompt into the run's session.
+  int? get userPromptedAt;
+
+  /// When the bridge asked the run's session to compact.
+  int? get compactRequestedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['task_id'] = Variable<String>(taskId);
+    if (!nullToAbsent || sessionId != null) {
+      map['session_id'] = Variable<String>(sessionId);
+    }
+    map['scheduled_for'] = Variable<int>(scheduledFor);
+    map['scheduled_for_offset_minutes'] = Variable<int>(
+      scheduledForOffsetMinutes,
+    );
+    map['fired_at'] = Variable<int>(firedAt);
+    {
+      map['outcome'] = Variable<String>(
+        $ScheduledTaskRunsTableTable.$converteroutcome.toSql(outcome),
+      );
+    }
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(
+        $ScheduledTaskRunsTableTable.$converterreasonn.toSql(reason),
+      );
+    }
+    map['late'] = Variable<bool>(late);
+    if (!nullToAbsent || userPromptedAt != null) {
+      map['user_prompted_at'] = Variable<int>(userPromptedAt);
+    }
+    if (!nullToAbsent || compactRequestedAt != null) {
+      map['compact_requested_at'] = Variable<int>(compactRequestedAt);
+    }
+    return map;
+  }
+}
+
+class $ScheduledTaskRunsTableTable extends ScheduledTaskRunsTable
+    with TableInfo<$ScheduledTaskRunsTableTable, ScheduledTaskRunDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ScheduledTaskRunsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES scheduled_tasks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE SET NULL',
+    ),
+  );
+  static const VerificationMeta _scheduledForMeta = const VerificationMeta(
+    'scheduledFor',
+  );
+  @override
+  late final GeneratedColumn<int> scheduledFor = GeneratedColumn<int>(
+    'scheduled_for',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _scheduledForOffsetMinutesMeta =
+      const VerificationMeta('scheduledForOffsetMinutes');
+  @override
+  late final GeneratedColumn<int> scheduledForOffsetMinutes =
+      GeneratedColumn<int>(
+        'scheduled_for_offset_minutes',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _firedAtMeta = const VerificationMeta(
+    'firedAt',
+  );
+  @override
+  late final GeneratedColumn<int> firedAt = GeneratedColumn<int>(
+    'fired_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<
+    ScheduledTaskRunOutcomeKind,
+    String
+  >
+  outcome =
+      GeneratedColumn<String>(
+        'outcome',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<ScheduledTaskRunOutcomeKind>(
+        $ScheduledTaskRunsTableTable.$converteroutcome,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<TaskRunFailureReason?, String>
+  reason =
+      GeneratedColumn<String>(
+        'reason',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<TaskRunFailureReason?>(
+        $ScheduledTaskRunsTableTable.$converterreasonn,
+      );
+  static const VerificationMeta _lateMeta = const VerificationMeta('late');
+  @override
+  late final GeneratedColumn<bool> late = GeneratedColumn<bool>(
+    'late',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("late" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _userPromptedAtMeta = const VerificationMeta(
+    'userPromptedAt',
+  );
+  @override
+  late final GeneratedColumn<int> userPromptedAt = GeneratedColumn<int>(
+    'user_prompted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _compactRequestedAtMeta =
+      const VerificationMeta('compactRequestedAt');
+  @override
+  late final GeneratedColumn<int> compactRequestedAt = GeneratedColumn<int>(
+    'compact_requested_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    taskId,
+    sessionId,
+    scheduledFor,
+    scheduledForOffsetMinutes,
+    firedAt,
+    outcome,
+    reason,
+    late,
+    userPromptedAt,
+    compactRequestedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'scheduled_task_runs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ScheduledTaskRunDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    }
+    if (data.containsKey('scheduled_for')) {
+      context.handle(
+        _scheduledForMeta,
+        scheduledFor.isAcceptableOrUnknown(
+          data['scheduled_for']!,
+          _scheduledForMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_scheduledForMeta);
+    }
+    if (data.containsKey('scheduled_for_offset_minutes')) {
+      context.handle(
+        _scheduledForOffsetMinutesMeta,
+        scheduledForOffsetMinutes.isAcceptableOrUnknown(
+          data['scheduled_for_offset_minutes']!,
+          _scheduledForOffsetMinutesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_scheduledForOffsetMinutesMeta);
+    }
+    if (data.containsKey('fired_at')) {
+      context.handle(
+        _firedAtMeta,
+        firedAt.isAcceptableOrUnknown(data['fired_at']!, _firedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_firedAtMeta);
+    }
+    if (data.containsKey('late')) {
+      context.handle(
+        _lateMeta,
+        late.isAcceptableOrUnknown(data['late']!, _lateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lateMeta);
+    }
+    if (data.containsKey('user_prompted_at')) {
+      context.handle(
+        _userPromptedAtMeta,
+        userPromptedAt.isAcceptableOrUnknown(
+          data['user_prompted_at']!,
+          _userPromptedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('compact_requested_at')) {
+      context.handle(
+        _compactRequestedAtMeta,
+        compactRequestedAt.isAcceptableOrUnknown(
+          data['compact_requested_at']!,
+          _compactRequestedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ScheduledTaskRunDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ScheduledTaskRunDto(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      ),
+      scheduledFor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}scheduled_for'],
+      )!,
+      scheduledForOffsetMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}scheduled_for_offset_minutes'],
+      )!,
+      firedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fired_at'],
+      )!,
+      outcome: $ScheduledTaskRunsTableTable.$converteroutcome.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}outcome'],
+        )!,
+      ),
+      reason: $ScheduledTaskRunsTableTable.$converterreasonn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}reason'],
+        ),
+      ),
+      late: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}late'],
+      )!,
+      userPromptedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}user_prompted_at'],
+      ),
+      compactRequestedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}compact_requested_at'],
+      ),
+    );
+  }
+
+  @override
+  $ScheduledTaskRunsTableTable createAlias(String alias) {
+    return $ScheduledTaskRunsTableTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<ScheduledTaskRunOutcomeKind, String, String>
+  $converteroutcome = const EnumNameConverter<ScheduledTaskRunOutcomeKind>(
+    ScheduledTaskRunOutcomeKind.values,
+  );
+  static JsonTypeConverter2<TaskRunFailureReason, String, String>
+  $converterreason = const EnumNameConverter<TaskRunFailureReason>(
+    TaskRunFailureReason.values,
+  );
+  static JsonTypeConverter2<TaskRunFailureReason?, String?, String?>
+  $converterreasonn = JsonTypeConverter2.asNullable($converterreason);
+  @override
+  bool get withoutRowId => true;
+}
+
+class ScheduledTaskRunDto extends DataClass
+    with $ScheduledTaskRunsTableTableToColumns {
+  @override
+  final String id;
+  @override
+  final String taskId;
+
+  /// The session a started run sent its prompt to. Null for other outcomes,
+  /// and once that session is deleted.
+  @override
+  final String? sessionId;
+
+  /// UTC milliseconds of the occurrence, or of the Run now tap.
+  @override
+  final int scheduledFor;
+
+  /// The task zone's offset at [scheduledFor], frozen when written so a later
+  /// zone edit keeps past rows.
+  @override
+  final int scheduledForOffsetMinutes;
+  @override
+  final int firedAt;
+  @override
+  final ScheduledTaskRunOutcomeKind outcome;
+
+  /// Set only for a failed run.
+  @override
+  final TaskRunFailureReason? reason;
+
+  /// Set only for a started run.
+  @override
+  final bool late;
+
+  /// When the user first sent their own prompt into the run's session.
+  @override
+  final int? userPromptedAt;
+
+  /// When the bridge asked the run's session to compact.
+  @override
+  final int? compactRequestedAt;
+  const ScheduledTaskRunDto({
+    required this.id,
+    required this.taskId,
+    this.sessionId,
+    required this.scheduledFor,
+    required this.scheduledForOffsetMinutes,
+    required this.firedAt,
+    required this.outcome,
+    this.reason,
+    required this.late,
+    this.userPromptedAt,
+    this.compactRequestedAt,
+  });
+  ScheduledTaskRunsTableCompanion toCompanion(bool nullToAbsent) {
+    return ScheduledTaskRunsTableCompanion(
+      id: Value(id),
+      taskId: Value(taskId),
+      sessionId: sessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sessionId),
+      scheduledFor: Value(scheduledFor),
+      scheduledForOffsetMinutes: Value(scheduledForOffsetMinutes),
+      firedAt: Value(firedAt),
+      outcome: Value(outcome),
+      reason: reason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reason),
+      late: Value(late),
+      userPromptedAt: userPromptedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userPromptedAt),
+      compactRequestedAt: compactRequestedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(compactRequestedAt),
+    );
+  }
+
+  factory ScheduledTaskRunDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ScheduledTaskRunDto(
+      id: serializer.fromJson<String>(json['id']),
+      taskId: serializer.fromJson<String>(json['taskId']),
+      sessionId: serializer.fromJson<String?>(json['sessionId']),
+      scheduledFor: serializer.fromJson<int>(json['scheduledFor']),
+      scheduledForOffsetMinutes: serializer.fromJson<int>(
+        json['scheduledForOffsetMinutes'],
+      ),
+      firedAt: serializer.fromJson<int>(json['firedAt']),
+      outcome: $ScheduledTaskRunsTableTable.$converteroutcome.fromJson(
+        serializer.fromJson<String>(json['outcome']),
+      ),
+      reason: $ScheduledTaskRunsTableTable.$converterreasonn.fromJson(
+        serializer.fromJson<String?>(json['reason']),
+      ),
+      late: serializer.fromJson<bool>(json['late']),
+      userPromptedAt: serializer.fromJson<int?>(json['userPromptedAt']),
+      compactRequestedAt: serializer.fromJson<int?>(json['compactRequestedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'taskId': serializer.toJson<String>(taskId),
+      'sessionId': serializer.toJson<String?>(sessionId),
+      'scheduledFor': serializer.toJson<int>(scheduledFor),
+      'scheduledForOffsetMinutes': serializer.toJson<int>(
+        scheduledForOffsetMinutes,
+      ),
+      'firedAt': serializer.toJson<int>(firedAt),
+      'outcome': serializer.toJson<String>(
+        $ScheduledTaskRunsTableTable.$converteroutcome.toJson(outcome),
+      ),
+      'reason': serializer.toJson<String?>(
+        $ScheduledTaskRunsTableTable.$converterreasonn.toJson(reason),
+      ),
+      'late': serializer.toJson<bool>(late),
+      'userPromptedAt': serializer.toJson<int?>(userPromptedAt),
+      'compactRequestedAt': serializer.toJson<int?>(compactRequestedAt),
+    };
+  }
+
+  ScheduledTaskRunDto copyWith({
+    String? id,
+    String? taskId,
+    Value<String?> sessionId = const Value.absent(),
+    int? scheduledFor,
+    int? scheduledForOffsetMinutes,
+    int? firedAt,
+    ScheduledTaskRunOutcomeKind? outcome,
+    Value<TaskRunFailureReason?> reason = const Value.absent(),
+    bool? late,
+    Value<int?> userPromptedAt = const Value.absent(),
+    Value<int?> compactRequestedAt = const Value.absent(),
+  }) => ScheduledTaskRunDto(
+    id: id ?? this.id,
+    taskId: taskId ?? this.taskId,
+    sessionId: sessionId.present ? sessionId.value : this.sessionId,
+    scheduledFor: scheduledFor ?? this.scheduledFor,
+    scheduledForOffsetMinutes:
+        scheduledForOffsetMinutes ?? this.scheduledForOffsetMinutes,
+    firedAt: firedAt ?? this.firedAt,
+    outcome: outcome ?? this.outcome,
+    reason: reason.present ? reason.value : this.reason,
+    late: late ?? this.late,
+    userPromptedAt: userPromptedAt.present
+        ? userPromptedAt.value
+        : this.userPromptedAt,
+    compactRequestedAt: compactRequestedAt.present
+        ? compactRequestedAt.value
+        : this.compactRequestedAt,
+  );
+  ScheduledTaskRunDto copyWithCompanion(ScheduledTaskRunsTableCompanion data) {
+    return ScheduledTaskRunDto(
+      id: data.id.present ? data.id.value : this.id,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      scheduledFor: data.scheduledFor.present
+          ? data.scheduledFor.value
+          : this.scheduledFor,
+      scheduledForOffsetMinutes: data.scheduledForOffsetMinutes.present
+          ? data.scheduledForOffsetMinutes.value
+          : this.scheduledForOffsetMinutes,
+      firedAt: data.firedAt.present ? data.firedAt.value : this.firedAt,
+      outcome: data.outcome.present ? data.outcome.value : this.outcome,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      late: data.late.present ? data.late.value : this.late,
+      userPromptedAt: data.userPromptedAt.present
+          ? data.userPromptedAt.value
+          : this.userPromptedAt,
+      compactRequestedAt: data.compactRequestedAt.present
+          ? data.compactRequestedAt.value
+          : this.compactRequestedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledTaskRunDto(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('scheduledFor: $scheduledFor, ')
+          ..write('scheduledForOffsetMinutes: $scheduledForOffsetMinutes, ')
+          ..write('firedAt: $firedAt, ')
+          ..write('outcome: $outcome, ')
+          ..write('reason: $reason, ')
+          ..write('late: $late, ')
+          ..write('userPromptedAt: $userPromptedAt, ')
+          ..write('compactRequestedAt: $compactRequestedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    taskId,
+    sessionId,
+    scheduledFor,
+    scheduledForOffsetMinutes,
+    firedAt,
+    outcome,
+    reason,
+    late,
+    userPromptedAt,
+    compactRequestedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScheduledTaskRunDto &&
+          other.id == this.id &&
+          other.taskId == this.taskId &&
+          other.sessionId == this.sessionId &&
+          other.scheduledFor == this.scheduledFor &&
+          other.scheduledForOffsetMinutes == this.scheduledForOffsetMinutes &&
+          other.firedAt == this.firedAt &&
+          other.outcome == this.outcome &&
+          other.reason == this.reason &&
+          other.late == this.late &&
+          other.userPromptedAt == this.userPromptedAt &&
+          other.compactRequestedAt == this.compactRequestedAt);
+}
+
+class ScheduledTaskRunsTableCompanion
+    extends UpdateCompanion<ScheduledTaskRunDto> {
+  final Value<String> id;
+  final Value<String> taskId;
+  final Value<String?> sessionId;
+  final Value<int> scheduledFor;
+  final Value<int> scheduledForOffsetMinutes;
+  final Value<int> firedAt;
+  final Value<ScheduledTaskRunOutcomeKind> outcome;
+  final Value<TaskRunFailureReason?> reason;
+  final Value<bool> late;
+  final Value<int?> userPromptedAt;
+  final Value<int?> compactRequestedAt;
+  const ScheduledTaskRunsTableCompanion({
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.scheduledFor = const Value.absent(),
+    this.scheduledForOffsetMinutes = const Value.absent(),
+    this.firedAt = const Value.absent(),
+    this.outcome = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.late = const Value.absent(),
+    this.userPromptedAt = const Value.absent(),
+    this.compactRequestedAt = const Value.absent(),
+  });
+  ScheduledTaskRunsTableCompanion.insert({
+    required String id,
+    required String taskId,
+    this.sessionId = const Value.absent(),
+    required int scheduledFor,
+    required int scheduledForOffsetMinutes,
+    required int firedAt,
+    required ScheduledTaskRunOutcomeKind outcome,
+    this.reason = const Value.absent(),
+    required bool late,
+    this.userPromptedAt = const Value.absent(),
+    this.compactRequestedAt = const Value.absent(),
+  }) : id = Value(id),
+       taskId = Value(taskId),
+       scheduledFor = Value(scheduledFor),
+       scheduledForOffsetMinutes = Value(scheduledForOffsetMinutes),
+       firedAt = Value(firedAt),
+       outcome = Value(outcome),
+       late = Value(late);
+  static Insertable<ScheduledTaskRunDto> custom({
+    Expression<String>? id,
+    Expression<String>? taskId,
+    Expression<String>? sessionId,
+    Expression<int>? scheduledFor,
+    Expression<int>? scheduledForOffsetMinutes,
+    Expression<int>? firedAt,
+    Expression<String>? outcome,
+    Expression<String>? reason,
+    Expression<bool>? late,
+    Expression<int>? userPromptedAt,
+    Expression<int>? compactRequestedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (taskId != null) 'task_id': taskId,
+      if (sessionId != null) 'session_id': sessionId,
+      if (scheduledFor != null) 'scheduled_for': scheduledFor,
+      if (scheduledForOffsetMinutes != null)
+        'scheduled_for_offset_minutes': scheduledForOffsetMinutes,
+      if (firedAt != null) 'fired_at': firedAt,
+      if (outcome != null) 'outcome': outcome,
+      if (reason != null) 'reason': reason,
+      if (late != null) 'late': late,
+      if (userPromptedAt != null) 'user_prompted_at': userPromptedAt,
+      if (compactRequestedAt != null)
+        'compact_requested_at': compactRequestedAt,
+    });
+  }
+
+  ScheduledTaskRunsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? taskId,
+    Value<String?>? sessionId,
+    Value<int>? scheduledFor,
+    Value<int>? scheduledForOffsetMinutes,
+    Value<int>? firedAt,
+    Value<ScheduledTaskRunOutcomeKind>? outcome,
+    Value<TaskRunFailureReason?>? reason,
+    Value<bool>? late,
+    Value<int?>? userPromptedAt,
+    Value<int?>? compactRequestedAt,
+  }) {
+    return ScheduledTaskRunsTableCompanion(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      sessionId: sessionId ?? this.sessionId,
+      scheduledFor: scheduledFor ?? this.scheduledFor,
+      scheduledForOffsetMinutes:
+          scheduledForOffsetMinutes ?? this.scheduledForOffsetMinutes,
+      firedAt: firedAt ?? this.firedAt,
+      outcome: outcome ?? this.outcome,
+      reason: reason ?? this.reason,
+      late: late ?? this.late,
+      userPromptedAt: userPromptedAt ?? this.userPromptedAt,
+      compactRequestedAt: compactRequestedAt ?? this.compactRequestedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (scheduledFor.present) {
+      map['scheduled_for'] = Variable<int>(scheduledFor.value);
+    }
+    if (scheduledForOffsetMinutes.present) {
+      map['scheduled_for_offset_minutes'] = Variable<int>(
+        scheduledForOffsetMinutes.value,
+      );
+    }
+    if (firedAt.present) {
+      map['fired_at'] = Variable<int>(firedAt.value);
+    }
+    if (outcome.present) {
+      map['outcome'] = Variable<String>(
+        $ScheduledTaskRunsTableTable.$converteroutcome.toSql(outcome.value),
+      );
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(
+        $ScheduledTaskRunsTableTable.$converterreasonn.toSql(reason.value),
+      );
+    }
+    if (late.present) {
+      map['late'] = Variable<bool>(late.value);
+    }
+    if (userPromptedAt.present) {
+      map['user_prompted_at'] = Variable<int>(userPromptedAt.value);
+    }
+    if (compactRequestedAt.present) {
+      map['compact_requested_at'] = Variable<int>(compactRequestedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledTaskRunsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('scheduledFor: $scheduledFor, ')
+          ..write('scheduledForOffsetMinutes: $scheduledForOffsetMinutes, ')
+          ..write('firedAt: $firedAt, ')
+          ..write('outcome: $outcome, ')
+          ..write('reason: $reason, ')
+          ..write('late: $late, ')
+          ..write('userPromptedAt: $userPromptedAt, ')
+          ..write('compactRequestedAt: $compactRequestedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ProjectsTableTable projectsTable = $ProjectsTableTable(this);
+  late final $ScheduledTasksTableTable scheduledTasksTable =
+      $ScheduledTasksTableTable(this);
   late final $SessionTableTable sessionTable = $SessionTableTable(this);
   late final $DeletedSessionsTableTable deletedSessionsTable =
       $DeletedSessionsTableTable(this);
@@ -4157,6 +6304,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $SessionContinuationTableTable(this);
   late final $SideChatExchangesTableTable sideChatExchangesTable =
       $SideChatExchangesTableTable(this);
+  late final $ScheduledTaskRunsTableTable scheduledTaskRunsTable =
+      $ScheduledTaskRunsTableTable(this);
   late final Index idxProjectsUpdated = Index(
     'idx_projects_updated',
     'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
@@ -4177,6 +6326,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_side_chat_exchanges_session',
     'CREATE INDEX idx_side_chat_exchanges_session ON side_chat_exchanges (session_id, side_chat_id, answered_at)',
   );
+  late final Index idxScheduledTasksNextDue = Index(
+    'idx_scheduled_tasks_next_due',
+    'CREATE INDEX idx_scheduled_tasks_next_due ON scheduled_tasks (next_due_at)',
+  );
+  late final Index idxScheduledTaskRunsTask = Index(
+    'idx_scheduled_task_runs_task',
+    'CREATE INDEX idx_scheduled_task_runs_task ON scheduled_task_runs (task_id, fired_at)',
+  );
+  late final Index idxScheduledTaskRunsSession = Index(
+    'idx_scheduled_task_runs_session',
+    'CREATE INDEX idx_scheduled_task_runs_session ON scheduled_task_runs (session_id)',
+  );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
   late final CatalogHydrationsDao catalogHydrationsDao = CatalogHydrationsDao(
@@ -4188,6 +6349,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     projectsTable,
+    scheduledTasksTable,
     sessionTable,
     deletedSessionsTable,
     catalogHydrationsTable,
@@ -4196,14 +6358,25 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     acceptedPromptsTable,
     sessionContinuationTable,
     sideChatExchangesTable,
+    scheduledTaskRunsTable,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
     idxSideChatExchangesSession,
+    idxScheduledTasksNextDue,
+    idxScheduledTaskRunsTask,
+    idxScheduledTaskRunsSession,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('scheduled_tasks', kind: UpdateKind.update)],
+    ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'projects_table',
@@ -4227,6 +6400,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
+        'scheduled_tasks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sessions_table', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
         'sessions_table',
         limitUpdateKind: UpdateKind.delete,
       ),
@@ -4238,6 +6418,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('side_chat_exchanges', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'scheduled_tasks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('scheduled_task_runs', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('scheduled_task_runs', kind: UpdateKind.update)],
     ),
   ]);
 }
@@ -4607,6 +6801,892 @@ typedef $$ProjectsTableTableProcessedTableManager =
       ProjectDto,
       PrefetchHooks Function({bool sessionTableRefs})
     >;
+typedef $$ScheduledTasksTableTableCreateCompanionBuilder =
+    ScheduledTasksTableCompanion Function({
+      required String id,
+      required String name,
+      required String promptJson,
+      required String projectId,
+      required String pluginId,
+      Value<String?> agent,
+      Value<String?> modelJson,
+      Value<String?> variant,
+      required bool fastMode,
+      required bool dedicatedWorktree,
+      required String scheduleJson,
+      required String timeZone,
+      required TaskMissedRunPolicy missedRunPolicy,
+      required ScheduledTaskRunModeKind runMode,
+      required bool autoCompact,
+      required TaskApprovalMode approvalMode,
+      required bool enabled,
+      Value<int?> nextDueAt,
+      Value<String?> targetSessionId,
+      Value<int?> completedAt,
+      required int createdAt,
+      required int updatedAt,
+    });
+typedef $$ScheduledTasksTableTableUpdateCompanionBuilder =
+    ScheduledTasksTableCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> promptJson,
+      Value<String> projectId,
+      Value<String> pluginId,
+      Value<String?> agent,
+      Value<String?> modelJson,
+      Value<String?> variant,
+      Value<bool> fastMode,
+      Value<bool> dedicatedWorktree,
+      Value<String> scheduleJson,
+      Value<String> timeZone,
+      Value<TaskMissedRunPolicy> missedRunPolicy,
+      Value<ScheduledTaskRunModeKind> runMode,
+      Value<bool> autoCompact,
+      Value<TaskApprovalMode> approvalMode,
+      Value<bool> enabled,
+      Value<int?> nextDueAt,
+      Value<String?> targetSessionId,
+      Value<int?> completedAt,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+    });
+
+final class $$ScheduledTasksTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $ScheduledTasksTableTable,
+          ScheduledTaskDto
+        > {
+  $$ScheduledTasksTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _targetSessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'scheduled_tasks__target_session_id__sessions_table__session_id',
+      );
+
+  $$SessionTableTableProcessedTableManager? get targetSessionId {
+    final $_column = $_itemColumn<String>('target_session_id');
+    if ($_column == null) return null;
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_targetSessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$SessionTableTable, List<SessionDto>>
+  _sessionTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.sessionTable,
+    aliasName: 'scheduled_tasks__id__sessions_table__scheduled_task_id',
+  );
+
+  $$SessionTableTableProcessedTableManager get sessionTableRefs {
+    final manager = $$SessionTableTableTableManager($_db, $_db.sessionTable)
+        .filter(
+          (f) => f.scheduledTaskId.id.sqlEquals($_itemColumn<String>('id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(_sessionTableRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $ScheduledTaskRunsTableTable,
+    List<ScheduledTaskRunDto>
+  >
+  _scheduledTaskRunsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.scheduledTaskRunsTable,
+        aliasName: 'scheduled_tasks__id__scheduled_task_runs__task_id',
+      );
+
+  $$ScheduledTaskRunsTableTableProcessedTableManager
+  get scheduledTaskRunsTableRefs {
+    final manager = $$ScheduledTaskRunsTableTableTableManager(
+      $_db,
+      $_db.scheduledTaskRunsTable,
+    ).filter((f) => f.taskId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _scheduledTaskRunsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$ScheduledTasksTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ScheduledTasksTableTable> {
+  $$ScheduledTasksTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get promptJson => $composableBuilder(
+    column: $table.promptJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get projectId => $composableBuilder(
+    column: $table.projectId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get agent => $composableBuilder(
+    column: $table.agent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get modelJson => $composableBuilder(
+    column: $table.modelJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get variant => $composableBuilder(
+    column: $table.variant,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get fastMode => $composableBuilder(
+    column: $table.fastMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get dedicatedWorktree => $composableBuilder(
+    column: $table.dedicatedWorktree,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scheduleJson => $composableBuilder(
+    column: $table.scheduleJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get timeZone => $composableBuilder(
+    column: $table.timeZone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    TaskMissedRunPolicy,
+    TaskMissedRunPolicy,
+    String
+  >
+  get missedRunPolicy => $composableBuilder(
+    column: $table.missedRunPolicy,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    ScheduledTaskRunModeKind,
+    ScheduledTaskRunModeKind,
+    String
+  >
+  get runMode => $composableBuilder(
+    column: $table.runMode,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get autoCompact => $composableBuilder(
+    column: $table.autoCompact,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<TaskApprovalMode, TaskApprovalMode, String>
+  get approvalMode => $composableBuilder(
+    column: $table.approvalMode,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get nextDueAt => $composableBuilder(
+    column: $table.nextDueAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get targetSessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.targetSessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> sessionTableRefs(
+    Expression<bool> Function($$SessionTableTableFilterComposer f) f,
+  ) {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.scheduledTaskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> scheduledTaskRunsTableRefs(
+    Expression<bool> Function($$ScheduledTaskRunsTableTableFilterComposer f) f,
+  ) {
+    final $$ScheduledTaskRunsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.scheduledTaskRunsTable,
+          getReferencedColumn: (t) => t.taskId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTaskRunsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.scheduledTaskRunsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$ScheduledTasksTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ScheduledTasksTableTable> {
+  $$ScheduledTasksTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get promptJson => $composableBuilder(
+    column: $table.promptJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get projectId => $composableBuilder(
+    column: $table.projectId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get agent => $composableBuilder(
+    column: $table.agent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get modelJson => $composableBuilder(
+    column: $table.modelJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get variant => $composableBuilder(
+    column: $table.variant,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get fastMode => $composableBuilder(
+    column: $table.fastMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get dedicatedWorktree => $composableBuilder(
+    column: $table.dedicatedWorktree,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scheduleJson => $composableBuilder(
+    column: $table.scheduleJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get timeZone => $composableBuilder(
+    column: $table.timeZone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get missedRunPolicy => $composableBuilder(
+    column: $table.missedRunPolicy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get runMode => $composableBuilder(
+    column: $table.runMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get autoCompact => $composableBuilder(
+    column: $table.autoCompact,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get approvalMode => $composableBuilder(
+    column: $table.approvalMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get nextDueAt => $composableBuilder(
+    column: $table.nextDueAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get targetSessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.targetSessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ScheduledTasksTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ScheduledTasksTableTable> {
+  $$ScheduledTasksTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get promptJson => $composableBuilder(
+    column: $table.promptJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get projectId =>
+      $composableBuilder(column: $table.projectId, builder: (column) => column);
+
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
+
+  GeneratedColumn<String> get agent =>
+      $composableBuilder(column: $table.agent, builder: (column) => column);
+
+  GeneratedColumn<String> get modelJson =>
+      $composableBuilder(column: $table.modelJson, builder: (column) => column);
+
+  GeneratedColumn<String> get variant =>
+      $composableBuilder(column: $table.variant, builder: (column) => column);
+
+  GeneratedColumn<bool> get fastMode =>
+      $composableBuilder(column: $table.fastMode, builder: (column) => column);
+
+  GeneratedColumn<bool> get dedicatedWorktree => $composableBuilder(
+    column: $table.dedicatedWorktree,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get scheduleJson => $composableBuilder(
+    column: $table.scheduleJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get timeZone =>
+      $composableBuilder(column: $table.timeZone, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<TaskMissedRunPolicy, String>
+  get missedRunPolicy => $composableBuilder(
+    column: $table.missedRunPolicy,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<ScheduledTaskRunModeKind, String>
+  get runMode =>
+      $composableBuilder(column: $table.runMode, builder: (column) => column);
+
+  GeneratedColumn<bool> get autoCompact => $composableBuilder(
+    column: $table.autoCompact,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<TaskApprovalMode, String> get approvalMode =>
+      $composableBuilder(
+        column: $table.approvalMode,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<int> get nextDueAt =>
+      $composableBuilder(column: $table.nextDueAt, builder: (column) => column);
+
+  GeneratedColumn<int> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$SessionTableTableAnnotationComposer get targetSessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.targetSessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> sessionTableRefs<T extends Object>(
+    Expression<T> Function($$SessionTableTableAnnotationComposer a) f,
+  ) {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.scheduledTaskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> scheduledTaskRunsTableRefs<T extends Object>(
+    Expression<T> Function($$ScheduledTaskRunsTableTableAnnotationComposer a) f,
+  ) {
+    final $$ScheduledTaskRunsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.scheduledTaskRunsTable,
+          getReferencedColumn: (t) => t.taskId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTaskRunsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.scheduledTaskRunsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$ScheduledTasksTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ScheduledTasksTableTable,
+          ScheduledTaskDto,
+          $$ScheduledTasksTableTableFilterComposer,
+          $$ScheduledTasksTableTableOrderingComposer,
+          $$ScheduledTasksTableTableAnnotationComposer,
+          $$ScheduledTasksTableTableCreateCompanionBuilder,
+          $$ScheduledTasksTableTableUpdateCompanionBuilder,
+          (ScheduledTaskDto, $$ScheduledTasksTableTableReferences),
+          ScheduledTaskDto,
+          PrefetchHooks Function({
+            bool targetSessionId,
+            bool sessionTableRefs,
+            bool scheduledTaskRunsTableRefs,
+          })
+        > {
+  $$ScheduledTasksTableTableTableManager(
+    _$AppDatabase db,
+    $ScheduledTasksTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ScheduledTasksTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ScheduledTasksTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ScheduledTasksTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> promptJson = const Value.absent(),
+                Value<String> projectId = const Value.absent(),
+                Value<String> pluginId = const Value.absent(),
+                Value<String?> agent = const Value.absent(),
+                Value<String?> modelJson = const Value.absent(),
+                Value<String?> variant = const Value.absent(),
+                Value<bool> fastMode = const Value.absent(),
+                Value<bool> dedicatedWorktree = const Value.absent(),
+                Value<String> scheduleJson = const Value.absent(),
+                Value<String> timeZone = const Value.absent(),
+                Value<TaskMissedRunPolicy> missedRunPolicy =
+                    const Value.absent(),
+                Value<ScheduledTaskRunModeKind> runMode = const Value.absent(),
+                Value<bool> autoCompact = const Value.absent(),
+                Value<TaskApprovalMode> approvalMode = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int?> nextDueAt = const Value.absent(),
+                Value<String?> targetSessionId = const Value.absent(),
+                Value<int?> completedAt = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+              }) => ScheduledTasksTableCompanion(
+                id: id,
+                name: name,
+                promptJson: promptJson,
+                projectId: projectId,
+                pluginId: pluginId,
+                agent: agent,
+                modelJson: modelJson,
+                variant: variant,
+                fastMode: fastMode,
+                dedicatedWorktree: dedicatedWorktree,
+                scheduleJson: scheduleJson,
+                timeZone: timeZone,
+                missedRunPolicy: missedRunPolicy,
+                runMode: runMode,
+                autoCompact: autoCompact,
+                approvalMode: approvalMode,
+                enabled: enabled,
+                nextDueAt: nextDueAt,
+                targetSessionId: targetSessionId,
+                completedAt: completedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String promptJson,
+                required String projectId,
+                required String pluginId,
+                Value<String?> agent = const Value.absent(),
+                Value<String?> modelJson = const Value.absent(),
+                Value<String?> variant = const Value.absent(),
+                required bool fastMode,
+                required bool dedicatedWorktree,
+                required String scheduleJson,
+                required String timeZone,
+                required TaskMissedRunPolicy missedRunPolicy,
+                required ScheduledTaskRunModeKind runMode,
+                required bool autoCompact,
+                required TaskApprovalMode approvalMode,
+                required bool enabled,
+                Value<int?> nextDueAt = const Value.absent(),
+                Value<String?> targetSessionId = const Value.absent(),
+                Value<int?> completedAt = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+              }) => ScheduledTasksTableCompanion.insert(
+                id: id,
+                name: name,
+                promptJson: promptJson,
+                projectId: projectId,
+                pluginId: pluginId,
+                agent: agent,
+                modelJson: modelJson,
+                variant: variant,
+                fastMode: fastMode,
+                dedicatedWorktree: dedicatedWorktree,
+                scheduleJson: scheduleJson,
+                timeZone: timeZone,
+                missedRunPolicy: missedRunPolicy,
+                runMode: runMode,
+                autoCompact: autoCompact,
+                approvalMode: approvalMode,
+                enabled: enabled,
+                nextDueAt: nextDueAt,
+                targetSessionId: targetSessionId,
+                completedAt: completedAt,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ScheduledTasksTableTable, ScheduledTaskDto>(
+                    table,
+                  ),
+                  $$ScheduledTasksTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                targetSessionId = false,
+                sessionTableRefs = false,
+                scheduledTaskRunsTableRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (sessionTableRefs) db.sessionTable,
+                    if (scheduledTaskRunsTableRefs) db.scheduledTaskRunsTable,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (targetSessionId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.targetSessionId,
+                            referencedTable:
+                                $$ScheduledTasksTableTableReferences
+                                    ._targetSessionIdTable(db),
+                            referencedColumn:
+                                $$ScheduledTasksTableTableReferences
+                                    ._targetSessionIdTable(db)
+                                    .sessionId,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (sessionTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          ScheduledTaskDto,
+                          $ScheduledTasksTableTable,
+                          SessionDto,
+                          $SessionTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ScheduledTasksTableTableReferences
+                              ._sessionTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ScheduledTasksTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionTableRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'scheduled_task_id',
+                          typedResults: items,
+                        ),
+                      if (scheduledTaskRunsTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          ScheduledTaskDto,
+                          $ScheduledTasksTableTable,
+                          ScheduledTaskRunDto,
+                          $ScheduledTaskRunsTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ScheduledTasksTableTableReferences
+                              ._scheduledTaskRunsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ScheduledTasksTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).scheduledTaskRunsTableRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'task_id',
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$ScheduledTasksTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ScheduledTasksTableTable,
+      ScheduledTaskDto,
+      $$ScheduledTasksTableTableFilterComposer,
+      $$ScheduledTasksTableTableOrderingComposer,
+      $$ScheduledTasksTableTableAnnotationComposer,
+      $$ScheduledTasksTableTableCreateCompanionBuilder,
+      $$ScheduledTasksTableTableUpdateCompanionBuilder,
+      (ScheduledTaskDto, $$ScheduledTasksTableTableReferences),
+      ScheduledTaskDto,
+      PrefetchHooks Function({
+        bool targetSessionId,
+        bool sessionTableRefs,
+        bool scheduledTaskRunsTableRefs,
+      })
+    >;
 typedef $$SessionTableTableCreateCompanionBuilder =
     SessionTableCompanion Function({
       required String sessionId,
@@ -4636,6 +7716,7 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<bool> pinned,
       Value<String?> forkedFromSessionId,
       Value<String?> forkedFromTitle,
+      Value<String?> scheduledTaskId,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
@@ -4666,6 +7747,7 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<bool> pinned,
       Value<String?> forkedFromSessionId,
       Value<String?> forkedFromTitle,
+      Value<String?> scheduledTaskId,
     });
 
 final class $$SessionTableTableReferences
@@ -4728,6 +7810,51 @@ final class $$SessionTableTableReferences
     );
   }
 
+  static $ScheduledTasksTableTable _scheduledTaskIdTable(_$AppDatabase db) => db
+      .scheduledTasksTable
+      .createAlias('sessions_table__scheduled_task_id__scheduled_tasks__id');
+
+  $$ScheduledTasksTableTableProcessedTableManager? get scheduledTaskId {
+    final $_column = $_itemColumn<String>('scheduled_task_id');
+    if ($_column == null) return null;
+    final manager = $$ScheduledTasksTableTableTableManager(
+      $_db,
+      $_db.scheduledTasksTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_scheduledTaskIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$ScheduledTasksTableTable, List<ScheduledTaskDto>>
+  _scheduledTasksTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.scheduledTasksTable,
+        aliasName:
+            'sessions_table__session_id__scheduled_tasks__target_session_id',
+      );
+
+  $$ScheduledTasksTableTableProcessedTableManager get scheduledTasksTableRefs {
+    final manager =
+        $$ScheduledTasksTableTableTableManager(
+          $_db,
+          $_db.scheduledTasksTable,
+        ).filter(
+          (f) => f.targetSessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _scheduledTasksTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<
     $SessionContinuationTableTable,
     List<SessionContinuationDto>
@@ -4784,6 +7911,37 @@ final class $$SessionTableTableReferences
 
     final cache = $_typedResult.readTableOrNull(
       _sideChatExchangesTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $ScheduledTaskRunsTableTable,
+    List<ScheduledTaskRunDto>
+  >
+  _scheduledTaskRunsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.scheduledTaskRunsTable,
+        aliasName:
+            'sessions_table__session_id__scheduled_task_runs__session_id',
+      );
+
+  $$ScheduledTaskRunsTableTableProcessedTableManager
+  get scheduledTaskRunsTableRefs {
+    final manager =
+        $$ScheduledTaskRunsTableTableTableManager(
+          $_db,
+          $_db.scheduledTaskRunsTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _scheduledTaskRunsTableRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -4995,6 +8153,54 @@ class $$SessionTableTableFilterComposer
     return composer;
   }
 
+  $$ScheduledTasksTableTableFilterComposer get scheduledTaskId {
+    final $$ScheduledTasksTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.scheduledTaskId,
+      referencedTable: $db.scheduledTasksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScheduledTasksTableTableFilterComposer(
+            $db: $db,
+            $table: $db.scheduledTasksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> scheduledTasksTableRefs(
+    Expression<bool> Function($$ScheduledTasksTableTableFilterComposer f) f,
+  ) {
+    final $$ScheduledTasksTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.scheduledTasksTable,
+      getReferencedColumn: (t) => t.targetSessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScheduledTasksTableTableFilterComposer(
+            $db: $db,
+            $table: $db.scheduledTasksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<bool> sessionContinuationTableRefs(
     Expression<bool> Function($$SessionContinuationTableTableFilterComposer f)
     f,
@@ -5039,6 +8245,32 @@ class $$SessionTableTableFilterComposer
               }) => $$SideChatExchangesTableTableFilterComposer(
                 $db: $db,
                 $table: $db.sideChatExchangesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> scheduledTaskRunsTableRefs(
+    Expression<bool> Function($$ScheduledTaskRunsTableTableFilterComposer f) f,
+  ) {
+    final $$ScheduledTaskRunsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.scheduledTaskRunsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTaskRunsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.scheduledTaskRunsTable,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -5246,6 +8478,30 @@ class $$SessionTableTableOrderingComposer
     );
     return composer;
   }
+
+  $$ScheduledTasksTableTableOrderingComposer get scheduledTaskId {
+    final $$ScheduledTasksTableTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.scheduledTaskId,
+          referencedTable: $db.scheduledTasksTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTasksTableTableOrderingComposer(
+                $db: $db,
+                $table: $db.scheduledTasksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
 }
 
 class $$SessionTableTableAnnotationComposer
@@ -5430,6 +8686,56 @@ class $$SessionTableTableAnnotationComposer
     return composer;
   }
 
+  $$ScheduledTasksTableTableAnnotationComposer get scheduledTaskId {
+    final $$ScheduledTasksTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.scheduledTaskId,
+          referencedTable: $db.scheduledTasksTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTasksTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.scheduledTasksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  Expression<T> scheduledTasksTableRefs<T extends Object>(
+    Expression<T> Function($$ScheduledTasksTableTableAnnotationComposer a) f,
+  ) {
+    final $$ScheduledTasksTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.scheduledTasksTable,
+          getReferencedColumn: (t) => t.targetSessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTasksTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.scheduledTasksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
   Expression<T> sessionContinuationTableRefs<T extends Object>(
     Expression<T> Function($$SessionContinuationTableTableAnnotationComposer a)
     f,
@@ -5482,6 +8788,32 @@ class $$SessionTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> scheduledTaskRunsTableRefs<T extends Object>(
+    Expression<T> Function($$ScheduledTaskRunsTableTableAnnotationComposer a) f,
+  ) {
+    final $$ScheduledTaskRunsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.scheduledTaskRunsTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTaskRunsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.scheduledTaskRunsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -5501,8 +8833,11 @@ class $$SessionTableTableTableManager
             bool projectId,
             bool parentSessionId,
             bool forkedFromSessionId,
+            bool scheduledTaskId,
+            bool scheduledTasksTableRefs,
             bool sessionContinuationTableRefs,
             bool sideChatExchangesTableRefs,
+            bool scheduledTaskRunsTableRefs,
           })
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
@@ -5546,6 +8881,7 @@ class $$SessionTableTableTableManager
                 Value<bool> pinned = const Value.absent(),
                 Value<String?> forkedFromSessionId = const Value.absent(),
                 Value<String?> forkedFromTitle = const Value.absent(),
+                Value<String?> scheduledTaskId = const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
                 backendSessionId: backendSessionId,
@@ -5574,6 +8910,7 @@ class $$SessionTableTableTableManager
                 pinned: pinned,
                 forkedFromSessionId: forkedFromSessionId,
                 forkedFromTitle: forkedFromTitle,
+                scheduledTaskId: scheduledTaskId,
               ),
           createCompanionCallback:
               ({
@@ -5605,6 +8942,7 @@ class $$SessionTableTableTableManager
                 Value<bool> pinned = const Value.absent(),
                 Value<String?> forkedFromSessionId = const Value.absent(),
                 Value<String?> forkedFromTitle = const Value.absent(),
+                Value<String?> scheduledTaskId = const Value.absent(),
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 backendSessionId: backendSessionId,
@@ -5633,6 +8971,7 @@ class $$SessionTableTableTableManager
                 pinned: pinned,
                 forkedFromSessionId: forkedFromSessionId,
                 forkedFromTitle: forkedFromTitle,
+                scheduledTaskId: scheduledTaskId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -5647,15 +8986,20 @@ class $$SessionTableTableTableManager
                 projectId = false,
                 parentSessionId = false,
                 forkedFromSessionId = false,
+                scheduledTaskId = false,
+                scheduledTasksTableRefs = false,
                 sessionContinuationTableRefs = false,
                 sideChatExchangesTableRefs = false,
+                scheduledTaskRunsTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
+                    if (scheduledTasksTableRefs) db.scheduledTasksTable,
                     if (sessionContinuationTableRefs)
                       db.sessionContinuationTable,
                     if (sideChatExchangesTableRefs) db.sideChatExchangesTable,
+                    if (scheduledTaskRunsTableRefs) db.scheduledTaskRunsTable,
                   ],
                   addJoins:
                       <
@@ -5706,11 +9050,42 @@ class $$SessionTableTableTableManager
                                 .sessionId,
                           ) as T;
                         }
+                        if (scheduledTaskId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.scheduledTaskId,
+                            referencedTable: $$SessionTableTableReferences
+                                ._scheduledTaskIdTable(db),
+                            referencedColumn: $$SessionTableTableReferences
+                                ._scheduledTaskIdTable(db)
+                                .id,
+                          ) as T;
+                        }
 
                         return state;
                       },
                   getPrefetchedDataCallback: (items) async {
                     return [
+                      if (scheduledTasksTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          SessionDto,
+                          $SessionTableTable,
+                          ScheduledTaskDto,
+                          $ScheduledTasksTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._scheduledTasksTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).scheduledTasksTableRefs,
+                          currentColumn: 'session_id',
+                          referencedColumn: 'target_session_id',
+                          typedResults: items,
+                        ),
                       if (sessionContinuationTableRefs)
                         await $_getPrefetchedDataByColumns<
                           SessionDto,
@@ -5751,6 +9126,26 @@ class $$SessionTableTableTableManager
                           referencedColumn: 'session_id',
                           typedResults: items,
                         ),
+                      if (scheduledTaskRunsTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          SessionDto,
+                          $SessionTableTable,
+                          ScheduledTaskRunDto,
+                          $ScheduledTaskRunsTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._scheduledTaskRunsTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).scheduledTaskRunsTableRefs,
+                          currentColumn: 'session_id',
+                          referencedColumn: 'session_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -5775,8 +9170,11 @@ typedef $$SessionTableTableProcessedTableManager =
         bool projectId,
         bool parentSessionId,
         bool forkedFromSessionId,
+        bool scheduledTaskId,
+        bool scheduledTasksTableRefs,
         bool sessionContinuationTableRefs,
         bool sideChatExchangesTableRefs,
+        bool scheduledTaskRunsTableRefs,
       })
     >;
 typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
@@ -7606,12 +11004,571 @@ typedef $$SideChatExchangesTableTableProcessedTableManager =
       SideChatExchangeDto,
       PrefetchHooks Function({bool sessionId})
     >;
+typedef $$ScheduledTaskRunsTableTableCreateCompanionBuilder =
+    ScheduledTaskRunsTableCompanion Function({
+      required String id,
+      required String taskId,
+      Value<String?> sessionId,
+      required int scheduledFor,
+      required int scheduledForOffsetMinutes,
+      required int firedAt,
+      required ScheduledTaskRunOutcomeKind outcome,
+      Value<TaskRunFailureReason?> reason,
+      required bool late,
+      Value<int?> userPromptedAt,
+      Value<int?> compactRequestedAt,
+    });
+typedef $$ScheduledTaskRunsTableTableUpdateCompanionBuilder =
+    ScheduledTaskRunsTableCompanion Function({
+      Value<String> id,
+      Value<String> taskId,
+      Value<String?> sessionId,
+      Value<int> scheduledFor,
+      Value<int> scheduledForOffsetMinutes,
+      Value<int> firedAt,
+      Value<ScheduledTaskRunOutcomeKind> outcome,
+      Value<TaskRunFailureReason?> reason,
+      Value<bool> late,
+      Value<int?> userPromptedAt,
+      Value<int?> compactRequestedAt,
+    });
+
+final class $$ScheduledTaskRunsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $ScheduledTaskRunsTableTable,
+          ScheduledTaskRunDto
+        > {
+  $$ScheduledTaskRunsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ScheduledTasksTableTable _taskIdTable(_$AppDatabase db) => db
+      .scheduledTasksTable
+      .createAlias('scheduled_task_runs__task_id__scheduled_tasks__id');
+
+  $$ScheduledTasksTableTableProcessedTableManager get taskId {
+    final $_column = $_itemColumn<String>('task_id')!;
+
+    final manager = $$ScheduledTasksTableTableTableManager(
+      $_db,
+      $_db.scheduledTasksTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_taskIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'scheduled_task_runs__session_id__sessions_table__session_id',
+      );
+
+  $$SessionTableTableProcessedTableManager? get sessionId {
+    final $_column = $_itemColumn<String>('session_id');
+    if ($_column == null) return null;
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ScheduledTaskRunsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $ScheduledTaskRunsTableTable> {
+  $$ScheduledTaskRunsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get scheduledFor => $composableBuilder(
+    column: $table.scheduledFor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get scheduledForOffsetMinutes => $composableBuilder(
+    column: $table.scheduledForOffsetMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get firedAt => $composableBuilder(
+    column: $table.firedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    ScheduledTaskRunOutcomeKind,
+    ScheduledTaskRunOutcomeKind,
+    String
+  >
+  get outcome => $composableBuilder(
+    column: $table.outcome,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    TaskRunFailureReason?,
+    TaskRunFailureReason,
+    String
+  >
+  get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get late => $composableBuilder(
+    column: $table.late,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get userPromptedAt => $composableBuilder(
+    column: $table.userPromptedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get compactRequestedAt => $composableBuilder(
+    column: $table.compactRequestedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ScheduledTasksTableTableFilterComposer get taskId {
+    final $$ScheduledTasksTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.scheduledTasksTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ScheduledTasksTableTableFilterComposer(
+            $db: $db,
+            $table: $db.scheduledTasksTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ScheduledTaskRunsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $ScheduledTaskRunsTableTable> {
+  $$ScheduledTaskRunsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get scheduledFor => $composableBuilder(
+    column: $table.scheduledFor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get scheduledForOffsetMinutes => $composableBuilder(
+    column: $table.scheduledForOffsetMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get firedAt => $composableBuilder(
+    column: $table.firedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get outcome => $composableBuilder(
+    column: $table.outcome,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get late => $composableBuilder(
+    column: $table.late,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get userPromptedAt => $composableBuilder(
+    column: $table.userPromptedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get compactRequestedAt => $composableBuilder(
+    column: $table.compactRequestedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ScheduledTasksTableTableOrderingComposer get taskId {
+    final $$ScheduledTasksTableTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taskId,
+          referencedTable: $db.scheduledTasksTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTasksTableTableOrderingComposer(
+                $db: $db,
+                $table: $db.scheduledTasksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ScheduledTaskRunsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ScheduledTaskRunsTableTable> {
+  $$ScheduledTaskRunsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get scheduledFor => $composableBuilder(
+    column: $table.scheduledFor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get scheduledForOffsetMinutes => $composableBuilder(
+    column: $table.scheduledForOffsetMinutes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get firedAt =>
+      $composableBuilder(column: $table.firedAt, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ScheduledTaskRunOutcomeKind, String>
+  get outcome =>
+      $composableBuilder(column: $table.outcome, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<TaskRunFailureReason?, String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<bool> get late =>
+      $composableBuilder(column: $table.late, builder: (column) => column);
+
+  GeneratedColumn<int> get userPromptedAt => $composableBuilder(
+    column: $table.userPromptedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get compactRequestedAt => $composableBuilder(
+    column: $table.compactRequestedAt,
+    builder: (column) => column,
+  );
+
+  $$ScheduledTasksTableTableAnnotationComposer get taskId {
+    final $$ScheduledTasksTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taskId,
+          referencedTable: $db.scheduledTasksTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ScheduledTasksTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.scheduledTasksTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ScheduledTaskRunsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ScheduledTaskRunsTableTable,
+          ScheduledTaskRunDto,
+          $$ScheduledTaskRunsTableTableFilterComposer,
+          $$ScheduledTaskRunsTableTableOrderingComposer,
+          $$ScheduledTaskRunsTableTableAnnotationComposer,
+          $$ScheduledTaskRunsTableTableCreateCompanionBuilder,
+          $$ScheduledTaskRunsTableTableUpdateCompanionBuilder,
+          (ScheduledTaskRunDto, $$ScheduledTaskRunsTableTableReferences),
+          ScheduledTaskRunDto,
+          PrefetchHooks Function({bool taskId, bool sessionId})
+        > {
+  $$ScheduledTaskRunsTableTableTableManager(
+    _$AppDatabase db,
+    $ScheduledTaskRunsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ScheduledTaskRunsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ScheduledTaskRunsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ScheduledTaskRunsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> taskId = const Value.absent(),
+                Value<String?> sessionId = const Value.absent(),
+                Value<int> scheduledFor = const Value.absent(),
+                Value<int> scheduledForOffsetMinutes = const Value.absent(),
+                Value<int> firedAt = const Value.absent(),
+                Value<ScheduledTaskRunOutcomeKind> outcome =
+                    const Value.absent(),
+                Value<TaskRunFailureReason?> reason = const Value.absent(),
+                Value<bool> late = const Value.absent(),
+                Value<int?> userPromptedAt = const Value.absent(),
+                Value<int?> compactRequestedAt = const Value.absent(),
+              }) => ScheduledTaskRunsTableCompanion(
+                id: id,
+                taskId: taskId,
+                sessionId: sessionId,
+                scheduledFor: scheduledFor,
+                scheduledForOffsetMinutes: scheduledForOffsetMinutes,
+                firedAt: firedAt,
+                outcome: outcome,
+                reason: reason,
+                late: late,
+                userPromptedAt: userPromptedAt,
+                compactRequestedAt: compactRequestedAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String taskId,
+                Value<String?> sessionId = const Value.absent(),
+                required int scheduledFor,
+                required int scheduledForOffsetMinutes,
+                required int firedAt,
+                required ScheduledTaskRunOutcomeKind outcome,
+                Value<TaskRunFailureReason?> reason = const Value.absent(),
+                required bool late,
+                Value<int?> userPromptedAt = const Value.absent(),
+                Value<int?> compactRequestedAt = const Value.absent(),
+              }) => ScheduledTaskRunsTableCompanion.insert(
+                id: id,
+                taskId: taskId,
+                sessionId: sessionId,
+                scheduledFor: scheduledFor,
+                scheduledForOffsetMinutes: scheduledForOffsetMinutes,
+                firedAt: firedAt,
+                outcome: outcome,
+                reason: reason,
+                late: late,
+                userPromptedAt: userPromptedAt,
+                compactRequestedAt: compactRequestedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $ScheduledTaskRunsTableTable,
+                    ScheduledTaskRunDto
+                  >(table),
+                  $$ScheduledTaskRunsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({taskId = false, sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (taskId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.taskId,
+                        referencedTable: $$ScheduledTaskRunsTableTableReferences
+                            ._taskIdTable(db),
+                        referencedColumn:
+                            $$ScheduledTaskRunsTableTableReferences
+                                ._taskIdTable(db)
+                                .id,
+                      ) as T;
+                    }
+                    if (sessionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.sessionId,
+                        referencedTable: $$ScheduledTaskRunsTableTableReferences
+                            ._sessionIdTable(db),
+                        referencedColumn:
+                            $$ScheduledTaskRunsTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ScheduledTaskRunsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ScheduledTaskRunsTableTable,
+      ScheduledTaskRunDto,
+      $$ScheduledTaskRunsTableTableFilterComposer,
+      $$ScheduledTaskRunsTableTableOrderingComposer,
+      $$ScheduledTaskRunsTableTableAnnotationComposer,
+      $$ScheduledTaskRunsTableTableCreateCompanionBuilder,
+      $$ScheduledTaskRunsTableTableUpdateCompanionBuilder,
+      (ScheduledTaskRunDto, $$ScheduledTaskRunsTableTableReferences),
+      ScheduledTaskRunDto,
+      PrefetchHooks Function({bool taskId, bool sessionId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
   $$ProjectsTableTableTableManager get projectsTable =>
       $$ProjectsTableTableTableManager(_db, _db.projectsTable);
+  $$ScheduledTasksTableTableTableManager get scheduledTasksTable =>
+      $$ScheduledTasksTableTableTableManager(_db, _db.scheduledTasksTable);
   $$SessionTableTableTableManager get sessionTable =>
       $$SessionTableTableTableManager(_db, _db.sessionTable);
   $$DeletedSessionsTableTableTableManager get deletedSessionsTable =>
@@ -7642,5 +11599,10 @@ class $AppDatabaseManager {
       $$SideChatExchangesTableTableTableManager(
         _db,
         _db.sideChatExchangesTable,
+      );
+  $$ScheduledTaskRunsTableTableTableManager get scheduledTaskRunsTable =>
+      $$ScheduledTaskRunsTableTableTableManager(
+        _db,
+        _db.scheduledTaskRunsTable,
       );
 }

@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../converters/agent_model_converter.dart";
 import "../database.dart";
 import "projects_table.dart";
+import "scheduled_tasks_table.dart";
 
 part "session_table.freezed.dart";
 
@@ -90,6 +91,11 @@ class SessionTable() extends Table {
   /// session that is not a fork or whose origin was untitled.
   TextColumn get forkedFromTitle => text().nullable()();
 
+  /// The task whose run started this session. Null for every other session,
+  /// and once that task is deleted, leaving an ordinary session.
+  TextColumn get scheduledTaskId =>
+      text().nullable().references(ScheduledTasksTable, #id, onDelete: KeyAction.setNull)();
+
   @override
   bool get withoutRowId => true;
 
@@ -127,5 +133,6 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required bool pinned,
     required String? forkedFromSessionId,
     required String? forkedFromTitle,
+    required String? scheduledTaskId,
   }) = _SessionDto;
 }

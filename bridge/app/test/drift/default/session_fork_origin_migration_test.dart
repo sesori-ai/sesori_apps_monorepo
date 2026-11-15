@@ -5,9 +5,9 @@ import "package:test/test.dart";
 import "generated/schema.dart";
 
 void main() {
-  test("v25 to v26 leaves every session unforked, and deleting an origin nulls its forks' link", () async {
+  test("v26 to v27 leaves every session unforked, and deleting an origin nulls its forks' link", () async {
     final verifier = SchemaVerifier(GeneratedHelper());
-    final schema = await verifier.schemaAt(25);
+    final schema = await verifier.schemaAt(26);
     schema.rawDatabase.execute(
       "INSERT INTO projects_table (project_id, path, hidden, created_at, updated_at, projection_updated_at) "
       "VALUES (?, ?, ?, ?, ?, ?)",
@@ -23,7 +23,7 @@ void main() {
 
     final database = AppDatabase(schema.newConnection());
     addTearDown(database.close);
-    await verifier.migrateAndValidate(database, 26, options: const ValidationOptions(validateDropped: true));
+    await verifier.migrateAndValidate(database, 27, options: const ValidationOptions(validateDropped: true));
 
     // Raw reads and writes, so later versions adding columns do not break this test.
     final migrated = await database

@@ -11,6 +11,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/database/daos/catalog_hydrations_dao.dart";
 import "../api/database/daos/projects_dao.dart";
+import "../api/database/daos/scheduled_task_dao.dart";
 import "../api/database/daos/session_dao.dart";
 import "../api/database/daos/session_options_cache_dao.dart";
 import "../api/database/database.dart";
@@ -36,6 +37,7 @@ class CatalogImportRepository({
   required final SessionDao _sessionDao,
   required final CatalogHydrationsDao _catalogHydrationsDao,
   required final SessionOptionsCacheDao _sessionOptionsCacheDao,
+  required final ScheduledTaskDao _scheduledTaskDao,
   required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
   required final FilesystemApi _filesystemApi,
 }) {
@@ -861,6 +863,7 @@ class CatalogImportRepository({
       requireCurrentGeneration();
       await _projectsDao.upsertProjectRows(rows: [kept]);
       final moved = await _sessionDao.moveSessionsToProject(fromProjectIds: mergedIds, toProjectId: survivor.projectId);
+      await _scheduledTaskDao.moveTasksToProject(fromProjectIds: mergedIds, toProjectId: survivor.projectId);
       if (!survivorResolved) {
         // Options captured under the old spelling stay valid under the new one.
         await _sessionOptionsCacheDao.updateCapturedProjectPath(
@@ -977,6 +980,7 @@ class CatalogImportRepository({
       pinned: parentSessionId == null && (existing?.pinned ?? false),
       forkedFromSessionId: existing?.forkedFromSessionId,
       forkedFromTitle: existing?.forkedFromTitle,
+      scheduledTaskId: existing?.scheduledTaskId,
     );
   }
 

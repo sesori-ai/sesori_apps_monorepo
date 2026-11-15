@@ -320,6 +320,7 @@ void main() {
           pinned: false,
           forkedFromSessionId: null,
           forkedFromTitle: null,
+          scheduledTaskId: null,
         ),
       );
 
@@ -398,6 +399,7 @@ void main() {
           pinned: false,
           forkedFromSessionId: null,
           forkedFromTitle: null,
+          scheduledTaskId: null,
         ),
       );
 
@@ -469,6 +471,7 @@ void main() {
           pinned: false,
           forkedFromSessionId: null,
           forkedFromTitle: null,
+          scheduledTaskId: null,
         ),
       );
       sessionDao.setSession(
@@ -500,6 +503,7 @@ void main() {
           pinned: false,
           forkedFromSessionId: null,
           forkedFromTitle: null,
+          scheduledTaskId: null,
         ),
       );
 
@@ -555,6 +559,7 @@ void main() {
           pinned: false,
           forkedFromSessionId: null,
           forkedFromTitle: null,
+          scheduledTaskId: null,
         ),
       );
 
@@ -607,6 +612,7 @@ void main() {
           pinned: false,
           forkedFromSessionId: null,
           forkedFromTitle: null,
+          scheduledTaskId: null,
         ),
       );
 

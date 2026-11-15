@@ -420,6 +420,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           pinned: false,
           forkedFromSessionId: null,
           forkedFromTitle: null,
+          scheduledTaskId: null,
         ),
       ],
     );
@@ -582,6 +583,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
         pinned: false,
         forkedFromSessionId: null,
         forkedFromTitle: null,
+        scheduledTaskId: null,
       ),
       growable: false,
     );

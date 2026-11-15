@@ -107,6 +107,7 @@ void main() {
       pinned: false,
       forkedFromSessionId: null,
       forkedFromTitle: null,
+      scheduledTaskId: null,
     );
 
     final session = mapper.map(row: row, unseen: true);
@@ -157,6 +158,7 @@ void main() {
       pinned: false,
       forkedFromSessionId: null,
       forkedFromTitle: null,
+      scheduledTaskId: null,
     );
 
     Session mapped(SessionDto row) => mapper.map(row: row, unseen: false);
@@ -204,6 +206,7 @@ void main() {
       pinned: false,
       forkedFromSessionId: null,
       forkedFromTitle: null,
+      scheduledTaskId: null,
     );
 
     final stored = row.toStoredSession();

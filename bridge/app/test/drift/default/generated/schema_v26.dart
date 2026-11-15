@@ -452,6 +452,1022 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   }
 }
 
+mixin ScheduledTasksToColumns implements Insertable<ScheduledTasksData> {
+  String get id;
+  String get name;
+  String get promptJson;
+  String get projectId;
+  String get pluginId;
+  String? get agent;
+  String? get modelJson;
+  String? get variant;
+  int get fastMode;
+  int get dedicatedWorktree;
+  String get scheduleJson;
+  String get timeZone;
+  String get missedRunPolicy;
+  String get runMode;
+  int get autoCompact;
+  String get approvalMode;
+  int get enabled;
+  int? get nextDueAt;
+  String? get targetSessionId;
+  int? get completedAt;
+  int get createdAt;
+  int get updatedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['prompt_json'] = Variable<String>(promptJson);
+    map['project_id'] = Variable<String>(projectId);
+    map['plugin_id'] = Variable<String>(pluginId);
+    if (!nullToAbsent || agent != null) {
+      map['agent'] = Variable<String>(agent);
+    }
+    if (!nullToAbsent || modelJson != null) {
+      map['model_json'] = Variable<String>(modelJson);
+    }
+    if (!nullToAbsent || variant != null) {
+      map['variant'] = Variable<String>(variant);
+    }
+    map['fast_mode'] = Variable<int>(fastMode);
+    map['dedicated_worktree'] = Variable<int>(dedicatedWorktree);
+    map['schedule_json'] = Variable<String>(scheduleJson);
+    map['time_zone'] = Variable<String>(timeZone);
+    map['missed_run_policy'] = Variable<String>(missedRunPolicy);
+    map['run_mode'] = Variable<String>(runMode);
+    map['auto_compact'] = Variable<int>(autoCompact);
+    map['approval_mode'] = Variable<String>(approvalMode);
+    map['enabled'] = Variable<int>(enabled);
+    if (!nullToAbsent || nextDueAt != null) {
+      map['next_due_at'] = Variable<int>(nextDueAt);
+    }
+    if (!nullToAbsent || targetSessionId != null) {
+      map['target_session_id'] = Variable<String>(targetSessionId);
+    }
+    if (!nullToAbsent || completedAt != null) {
+      map['completed_at'] = Variable<int>(completedAt);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+}
+
+class ScheduledTasks extends Table
+    with TableInfo<ScheduledTasks, ScheduledTasksData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  ScheduledTasks(this.attachedDatabase, [this._alias]);
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> promptJson = GeneratedColumn<String>(
+    'prompt_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
+    'project_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
+    'plugin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> agent = GeneratedColumn<String>(
+    'agent',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  late final GeneratedColumn<String> modelJson = GeneratedColumn<String>(
+    'model_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  late final GeneratedColumn<String> variant = GeneratedColumn<String>(
+    'variant',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  late final GeneratedColumn<int> fastMode = GeneratedColumn<int>(
+    'fast_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (fast_mode IN (0, 1))',
+  );
+  late final GeneratedColumn<int> dedicatedWorktree = GeneratedColumn<int>(
+    'dedicated_worktree',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (dedicated_worktree IN (0, 1))',
+  );
+  late final GeneratedColumn<String> scheduleJson = GeneratedColumn<String>(
+    'schedule_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> timeZone = GeneratedColumn<String>(
+    'time_zone',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> missedRunPolicy = GeneratedColumn<String>(
+    'missed_run_policy',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> runMode = GeneratedColumn<String>(
+    'run_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<int> autoCompact = GeneratedColumn<int>(
+    'auto_compact',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (auto_compact IN (0, 1))',
+  );
+  late final GeneratedColumn<String> approvalMode = GeneratedColumn<String>(
+    'approval_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<int> enabled = GeneratedColumn<int>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (enabled IN (0, 1))',
+  );
+  late final GeneratedColumn<int> nextDueAt = GeneratedColumn<int>(
+    'next_due_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  late final GeneratedColumn<String> targetSessionId = GeneratedColumn<String>(
+    'target_session_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints:
+        'NULL REFERENCES sessions_table(session_id)ON DELETE SET NULL',
+  );
+  late final GeneratedColumn<int> completedAt = GeneratedColumn<int>(
+    'completed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    promptJson,
+    projectId,
+    pluginId,
+    agent,
+    modelJson,
+    variant,
+    fastMode,
+    dedicatedWorktree,
+    scheduleJson,
+    timeZone,
+    missedRunPolicy,
+    runMode,
+    autoCompact,
+    approvalMode,
+    enabled,
+    nextDueAt,
+    targetSessionId,
+    completedAt,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'scheduled_tasks';
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ScheduledTasksData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ScheduledTasksData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      promptJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt_json'],
+      )!,
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}project_id'],
+      )!,
+      pluginId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plugin_id'],
+      )!,
+      agent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agent'],
+      ),
+      modelJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model_json'],
+      ),
+      variant: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}variant'],
+      ),
+      fastMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fast_mode'],
+      )!,
+      dedicatedWorktree: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}dedicated_worktree'],
+      )!,
+      scheduleJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}schedule_json'],
+      )!,
+      timeZone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}time_zone'],
+      )!,
+      missedRunPolicy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}missed_run_policy'],
+      )!,
+      runMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}run_mode'],
+      )!,
+      autoCompact: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}auto_compact'],
+      )!,
+      approvalMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}approval_mode'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}enabled'],
+      )!,
+      nextDueAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}next_due_at'],
+      ),
+      targetSessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_session_id'],
+      ),
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}completed_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  ScheduledTasks createAlias(String alias) {
+    return ScheduledTasks(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const ['PRIMARY KEY(id)'];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class ScheduledTasksData extends DataClass with ScheduledTasksToColumns {
+  @override
+  final String id;
+  @override
+  final String name;
+  @override
+  final String promptJson;
+  @override
+  final String projectId;
+  @override
+  final String pluginId;
+  @override
+  final String? agent;
+  @override
+  final String? modelJson;
+  @override
+  final String? variant;
+  @override
+  final int fastMode;
+  @override
+  final int dedicatedWorktree;
+  @override
+  final String scheduleJson;
+  @override
+  final String timeZone;
+  @override
+  final String missedRunPolicy;
+  @override
+  final String runMode;
+  @override
+  final int autoCompact;
+  @override
+  final String approvalMode;
+  @override
+  final int enabled;
+  @override
+  final int? nextDueAt;
+  @override
+  final String? targetSessionId;
+  @override
+  final int? completedAt;
+  @override
+  final int createdAt;
+  @override
+  final int updatedAt;
+  const ScheduledTasksData({
+    required this.id,
+    required this.name,
+    required this.promptJson,
+    required this.projectId,
+    required this.pluginId,
+    this.agent,
+    this.modelJson,
+    this.variant,
+    required this.fastMode,
+    required this.dedicatedWorktree,
+    required this.scheduleJson,
+    required this.timeZone,
+    required this.missedRunPolicy,
+    required this.runMode,
+    required this.autoCompact,
+    required this.approvalMode,
+    required this.enabled,
+    this.nextDueAt,
+    this.targetSessionId,
+    this.completedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  ScheduledTasksCompanion toCompanion(bool nullToAbsent) {
+    return ScheduledTasksCompanion(
+      id: Value(id),
+      name: Value(name),
+      promptJson: Value(promptJson),
+      projectId: Value(projectId),
+      pluginId: Value(pluginId),
+      agent: agent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agent),
+      modelJson: modelJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(modelJson),
+      variant: variant == null && nullToAbsent
+          ? const Value.absent()
+          : Value(variant),
+      fastMode: Value(fastMode),
+      dedicatedWorktree: Value(dedicatedWorktree),
+      scheduleJson: Value(scheduleJson),
+      timeZone: Value(timeZone),
+      missedRunPolicy: Value(missedRunPolicy),
+      runMode: Value(runMode),
+      autoCompact: Value(autoCompact),
+      approvalMode: Value(approvalMode),
+      enabled: Value(enabled),
+      nextDueAt: nextDueAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextDueAt),
+      targetSessionId: targetSessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetSessionId),
+      completedAt: completedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(completedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ScheduledTasksData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ScheduledTasksData(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      promptJson: serializer.fromJson<String>(json['promptJson']),
+      projectId: serializer.fromJson<String>(json['projectId']),
+      pluginId: serializer.fromJson<String>(json['pluginId']),
+      agent: serializer.fromJson<String?>(json['agent']),
+      modelJson: serializer.fromJson<String?>(json['modelJson']),
+      variant: serializer.fromJson<String?>(json['variant']),
+      fastMode: serializer.fromJson<int>(json['fastMode']),
+      dedicatedWorktree: serializer.fromJson<int>(json['dedicatedWorktree']),
+      scheduleJson: serializer.fromJson<String>(json['scheduleJson']),
+      timeZone: serializer.fromJson<String>(json['timeZone']),
+      missedRunPolicy: serializer.fromJson<String>(json['missedRunPolicy']),
+      runMode: serializer.fromJson<String>(json['runMode']),
+      autoCompact: serializer.fromJson<int>(json['autoCompact']),
+      approvalMode: serializer.fromJson<String>(json['approvalMode']),
+      enabled: serializer.fromJson<int>(json['enabled']),
+      nextDueAt: serializer.fromJson<int?>(json['nextDueAt']),
+      targetSessionId: serializer.fromJson<String?>(json['targetSessionId']),
+      completedAt: serializer.fromJson<int?>(json['completedAt']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'promptJson': serializer.toJson<String>(promptJson),
+      'projectId': serializer.toJson<String>(projectId),
+      'pluginId': serializer.toJson<String>(pluginId),
+      'agent': serializer.toJson<String?>(agent),
+      'modelJson': serializer.toJson<String?>(modelJson),
+      'variant': serializer.toJson<String?>(variant),
+      'fastMode': serializer.toJson<int>(fastMode),
+      'dedicatedWorktree': serializer.toJson<int>(dedicatedWorktree),
+      'scheduleJson': serializer.toJson<String>(scheduleJson),
+      'timeZone': serializer.toJson<String>(timeZone),
+      'missedRunPolicy': serializer.toJson<String>(missedRunPolicy),
+      'runMode': serializer.toJson<String>(runMode),
+      'autoCompact': serializer.toJson<int>(autoCompact),
+      'approvalMode': serializer.toJson<String>(approvalMode),
+      'enabled': serializer.toJson<int>(enabled),
+      'nextDueAt': serializer.toJson<int?>(nextDueAt),
+      'targetSessionId': serializer.toJson<String?>(targetSessionId),
+      'completedAt': serializer.toJson<int?>(completedAt),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  ScheduledTasksData copyWith({
+    String? id,
+    String? name,
+    String? promptJson,
+    String? projectId,
+    String? pluginId,
+    Value<String?> agent = const Value.absent(),
+    Value<String?> modelJson = const Value.absent(),
+    Value<String?> variant = const Value.absent(),
+    int? fastMode,
+    int? dedicatedWorktree,
+    String? scheduleJson,
+    String? timeZone,
+    String? missedRunPolicy,
+    String? runMode,
+    int? autoCompact,
+    String? approvalMode,
+    int? enabled,
+    Value<int?> nextDueAt = const Value.absent(),
+    Value<String?> targetSessionId = const Value.absent(),
+    Value<int?> completedAt = const Value.absent(),
+    int? createdAt,
+    int? updatedAt,
+  }) => ScheduledTasksData(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    promptJson: promptJson ?? this.promptJson,
+    projectId: projectId ?? this.projectId,
+    pluginId: pluginId ?? this.pluginId,
+    agent: agent.present ? agent.value : this.agent,
+    modelJson: modelJson.present ? modelJson.value : this.modelJson,
+    variant: variant.present ? variant.value : this.variant,
+    fastMode: fastMode ?? this.fastMode,
+    dedicatedWorktree: dedicatedWorktree ?? this.dedicatedWorktree,
+    scheduleJson: scheduleJson ?? this.scheduleJson,
+    timeZone: timeZone ?? this.timeZone,
+    missedRunPolicy: missedRunPolicy ?? this.missedRunPolicy,
+    runMode: runMode ?? this.runMode,
+    autoCompact: autoCompact ?? this.autoCompact,
+    approvalMode: approvalMode ?? this.approvalMode,
+    enabled: enabled ?? this.enabled,
+    nextDueAt: nextDueAt.present ? nextDueAt.value : this.nextDueAt,
+    targetSessionId: targetSessionId.present
+        ? targetSessionId.value
+        : this.targetSessionId,
+    completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ScheduledTasksData copyWithCompanion(ScheduledTasksCompanion data) {
+    return ScheduledTasksData(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      promptJson: data.promptJson.present
+          ? data.promptJson.value
+          : this.promptJson,
+      projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
+      agent: data.agent.present ? data.agent.value : this.agent,
+      modelJson: data.modelJson.present ? data.modelJson.value : this.modelJson,
+      variant: data.variant.present ? data.variant.value : this.variant,
+      fastMode: data.fastMode.present ? data.fastMode.value : this.fastMode,
+      dedicatedWorktree: data.dedicatedWorktree.present
+          ? data.dedicatedWorktree.value
+          : this.dedicatedWorktree,
+      scheduleJson: data.scheduleJson.present
+          ? data.scheduleJson.value
+          : this.scheduleJson,
+      timeZone: data.timeZone.present ? data.timeZone.value : this.timeZone,
+      missedRunPolicy: data.missedRunPolicy.present
+          ? data.missedRunPolicy.value
+          : this.missedRunPolicy,
+      runMode: data.runMode.present ? data.runMode.value : this.runMode,
+      autoCompact: data.autoCompact.present
+          ? data.autoCompact.value
+          : this.autoCompact,
+      approvalMode: data.approvalMode.present
+          ? data.approvalMode.value
+          : this.approvalMode,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      nextDueAt: data.nextDueAt.present ? data.nextDueAt.value : this.nextDueAt,
+      targetSessionId: data.targetSessionId.present
+          ? data.targetSessionId.value
+          : this.targetSessionId,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledTasksData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('promptJson: $promptJson, ')
+          ..write('projectId: $projectId, ')
+          ..write('pluginId: $pluginId, ')
+          ..write('agent: $agent, ')
+          ..write('modelJson: $modelJson, ')
+          ..write('variant: $variant, ')
+          ..write('fastMode: $fastMode, ')
+          ..write('dedicatedWorktree: $dedicatedWorktree, ')
+          ..write('scheduleJson: $scheduleJson, ')
+          ..write('timeZone: $timeZone, ')
+          ..write('missedRunPolicy: $missedRunPolicy, ')
+          ..write('runMode: $runMode, ')
+          ..write('autoCompact: $autoCompact, ')
+          ..write('approvalMode: $approvalMode, ')
+          ..write('enabled: $enabled, ')
+          ..write('nextDueAt: $nextDueAt, ')
+          ..write('targetSessionId: $targetSessionId, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    name,
+    promptJson,
+    projectId,
+    pluginId,
+    agent,
+    modelJson,
+    variant,
+    fastMode,
+    dedicatedWorktree,
+    scheduleJson,
+    timeZone,
+    missedRunPolicy,
+    runMode,
+    autoCompact,
+    approvalMode,
+    enabled,
+    nextDueAt,
+    targetSessionId,
+    completedAt,
+    createdAt,
+    updatedAt,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScheduledTasksData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.promptJson == this.promptJson &&
+          other.projectId == this.projectId &&
+          other.pluginId == this.pluginId &&
+          other.agent == this.agent &&
+          other.modelJson == this.modelJson &&
+          other.variant == this.variant &&
+          other.fastMode == this.fastMode &&
+          other.dedicatedWorktree == this.dedicatedWorktree &&
+          other.scheduleJson == this.scheduleJson &&
+          other.timeZone == this.timeZone &&
+          other.missedRunPolicy == this.missedRunPolicy &&
+          other.runMode == this.runMode &&
+          other.autoCompact == this.autoCompact &&
+          other.approvalMode == this.approvalMode &&
+          other.enabled == this.enabled &&
+          other.nextDueAt == this.nextDueAt &&
+          other.targetSessionId == this.targetSessionId &&
+          other.completedAt == this.completedAt &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ScheduledTasksCompanion extends UpdateCompanion<ScheduledTasksData> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> promptJson;
+  final Value<String> projectId;
+  final Value<String> pluginId;
+  final Value<String?> agent;
+  final Value<String?> modelJson;
+  final Value<String?> variant;
+  final Value<int> fastMode;
+  final Value<int> dedicatedWorktree;
+  final Value<String> scheduleJson;
+  final Value<String> timeZone;
+  final Value<String> missedRunPolicy;
+  final Value<String> runMode;
+  final Value<int> autoCompact;
+  final Value<String> approvalMode;
+  final Value<int> enabled;
+  final Value<int?> nextDueAt;
+  final Value<String?> targetSessionId;
+  final Value<int?> completedAt;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  const ScheduledTasksCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.promptJson = const Value.absent(),
+    this.projectId = const Value.absent(),
+    this.pluginId = const Value.absent(),
+    this.agent = const Value.absent(),
+    this.modelJson = const Value.absent(),
+    this.variant = const Value.absent(),
+    this.fastMode = const Value.absent(),
+    this.dedicatedWorktree = const Value.absent(),
+    this.scheduleJson = const Value.absent(),
+    this.timeZone = const Value.absent(),
+    this.missedRunPolicy = const Value.absent(),
+    this.runMode = const Value.absent(),
+    this.autoCompact = const Value.absent(),
+    this.approvalMode = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.nextDueAt = const Value.absent(),
+    this.targetSessionId = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ScheduledTasksCompanion.insert({
+    required String id,
+    required String name,
+    required String promptJson,
+    required String projectId,
+    required String pluginId,
+    this.agent = const Value.absent(),
+    this.modelJson = const Value.absent(),
+    this.variant = const Value.absent(),
+    required int fastMode,
+    required int dedicatedWorktree,
+    required String scheduleJson,
+    required String timeZone,
+    required String missedRunPolicy,
+    required String runMode,
+    required int autoCompact,
+    required String approvalMode,
+    required int enabled,
+    this.nextDueAt = const Value.absent(),
+    this.targetSessionId = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+  }) : id = Value(id),
+       name = Value(name),
+       promptJson = Value(promptJson),
+       projectId = Value(projectId),
+       pluginId = Value(pluginId),
+       fastMode = Value(fastMode),
+       dedicatedWorktree = Value(dedicatedWorktree),
+       scheduleJson = Value(scheduleJson),
+       timeZone = Value(timeZone),
+       missedRunPolicy = Value(missedRunPolicy),
+       runMode = Value(runMode),
+       autoCompact = Value(autoCompact),
+       approvalMode = Value(approvalMode),
+       enabled = Value(enabled),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<ScheduledTasksData> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? promptJson,
+    Expression<String>? projectId,
+    Expression<String>? pluginId,
+    Expression<String>? agent,
+    Expression<String>? modelJson,
+    Expression<String>? variant,
+    Expression<int>? fastMode,
+    Expression<int>? dedicatedWorktree,
+    Expression<String>? scheduleJson,
+    Expression<String>? timeZone,
+    Expression<String>? missedRunPolicy,
+    Expression<String>? runMode,
+    Expression<int>? autoCompact,
+    Expression<String>? approvalMode,
+    Expression<int>? enabled,
+    Expression<int>? nextDueAt,
+    Expression<String>? targetSessionId,
+    Expression<int>? completedAt,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (promptJson != null) 'prompt_json': promptJson,
+      if (projectId != null) 'project_id': projectId,
+      if (pluginId != null) 'plugin_id': pluginId,
+      if (agent != null) 'agent': agent,
+      if (modelJson != null) 'model_json': modelJson,
+      if (variant != null) 'variant': variant,
+      if (fastMode != null) 'fast_mode': fastMode,
+      if (dedicatedWorktree != null) 'dedicated_worktree': dedicatedWorktree,
+      if (scheduleJson != null) 'schedule_json': scheduleJson,
+      if (timeZone != null) 'time_zone': timeZone,
+      if (missedRunPolicy != null) 'missed_run_policy': missedRunPolicy,
+      if (runMode != null) 'run_mode': runMode,
+      if (autoCompact != null) 'auto_compact': autoCompact,
+      if (approvalMode != null) 'approval_mode': approvalMode,
+      if (enabled != null) 'enabled': enabled,
+      if (nextDueAt != null) 'next_due_at': nextDueAt,
+      if (targetSessionId != null) 'target_session_id': targetSessionId,
+      if (completedAt != null) 'completed_at': completedAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ScheduledTasksCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? promptJson,
+    Value<String>? projectId,
+    Value<String>? pluginId,
+    Value<String?>? agent,
+    Value<String?>? modelJson,
+    Value<String?>? variant,
+    Value<int>? fastMode,
+    Value<int>? dedicatedWorktree,
+    Value<String>? scheduleJson,
+    Value<String>? timeZone,
+    Value<String>? missedRunPolicy,
+    Value<String>? runMode,
+    Value<int>? autoCompact,
+    Value<String>? approvalMode,
+    Value<int>? enabled,
+    Value<int?>? nextDueAt,
+    Value<String?>? targetSessionId,
+    Value<int?>? completedAt,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+  }) {
+    return ScheduledTasksCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      promptJson: promptJson ?? this.promptJson,
+      projectId: projectId ?? this.projectId,
+      pluginId: pluginId ?? this.pluginId,
+      agent: agent ?? this.agent,
+      modelJson: modelJson ?? this.modelJson,
+      variant: variant ?? this.variant,
+      fastMode: fastMode ?? this.fastMode,
+      dedicatedWorktree: dedicatedWorktree ?? this.dedicatedWorktree,
+      scheduleJson: scheduleJson ?? this.scheduleJson,
+      timeZone: timeZone ?? this.timeZone,
+      missedRunPolicy: missedRunPolicy ?? this.missedRunPolicy,
+      runMode: runMode ?? this.runMode,
+      autoCompact: autoCompact ?? this.autoCompact,
+      approvalMode: approvalMode ?? this.approvalMode,
+      enabled: enabled ?? this.enabled,
+      nextDueAt: nextDueAt ?? this.nextDueAt,
+      targetSessionId: targetSessionId ?? this.targetSessionId,
+      completedAt: completedAt ?? this.completedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (promptJson.present) {
+      map['prompt_json'] = Variable<String>(promptJson.value);
+    }
+    if (projectId.present) {
+      map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (pluginId.present) {
+      map['plugin_id'] = Variable<String>(pluginId.value);
+    }
+    if (agent.present) {
+      map['agent'] = Variable<String>(agent.value);
+    }
+    if (modelJson.present) {
+      map['model_json'] = Variable<String>(modelJson.value);
+    }
+    if (variant.present) {
+      map['variant'] = Variable<String>(variant.value);
+    }
+    if (fastMode.present) {
+      map['fast_mode'] = Variable<int>(fastMode.value);
+    }
+    if (dedicatedWorktree.present) {
+      map['dedicated_worktree'] = Variable<int>(dedicatedWorktree.value);
+    }
+    if (scheduleJson.present) {
+      map['schedule_json'] = Variable<String>(scheduleJson.value);
+    }
+    if (timeZone.present) {
+      map['time_zone'] = Variable<String>(timeZone.value);
+    }
+    if (missedRunPolicy.present) {
+      map['missed_run_policy'] = Variable<String>(missedRunPolicy.value);
+    }
+    if (runMode.present) {
+      map['run_mode'] = Variable<String>(runMode.value);
+    }
+    if (autoCompact.present) {
+      map['auto_compact'] = Variable<int>(autoCompact.value);
+    }
+    if (approvalMode.present) {
+      map['approval_mode'] = Variable<String>(approvalMode.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<int>(enabled.value);
+    }
+    if (nextDueAt.present) {
+      map['next_due_at'] = Variable<int>(nextDueAt.value);
+    }
+    if (targetSessionId.present) {
+      map['target_session_id'] = Variable<String>(targetSessionId.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<int>(completedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledTasksCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('promptJson: $promptJson, ')
+          ..write('projectId: $projectId, ')
+          ..write('pluginId: $pluginId, ')
+          ..write('agent: $agent, ')
+          ..write('modelJson: $modelJson, ')
+          ..write('variant: $variant, ')
+          ..write('fastMode: $fastMode, ')
+          ..write('dedicatedWorktree: $dedicatedWorktree, ')
+          ..write('scheduleJson: $scheduleJson, ')
+          ..write('timeZone: $timeZone, ')
+          ..write('missedRunPolicy: $missedRunPolicy, ')
+          ..write('runMode: $runMode, ')
+          ..write('autoCompact: $autoCompact, ')
+          ..write('approvalMode: $approvalMode, ')
+          ..write('enabled: $enabled, ')
+          ..write('nextDueAt: $nextDueAt, ')
+          ..write('targetSessionId: $targetSessionId, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
   String get sessionId;
   String get backendSessionId;
@@ -478,8 +1494,7 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
   String? get catalogTitle;
   String? get approvalOverride;
   int get pinned;
-  String? get forkedFromSessionId;
-  String? get forkedFromTitle;
+  String? get scheduledTaskId;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -536,11 +1551,8 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
       map['approval_override'] = Variable<String>(approvalOverride);
     }
     map['pinned'] = Variable<int>(pinned);
-    if (!nullToAbsent || forkedFromSessionId != null) {
-      map['forked_from_session_id'] = Variable<String>(forkedFromSessionId);
-    }
-    if (!nullToAbsent || forkedFromTitle != null) {
-      map['forked_from_title'] = Variable<String>(forkedFromTitle);
+    if (!nullToAbsent || scheduledTaskId != null) {
+      map['scheduled_task_id'] = Variable<String>(scheduledTaskId);
     }
     return map;
   }
@@ -756,23 +1768,13 @@ class SessionsTable extends Table
     $customConstraints: 'NOT NULL DEFAULT 0 CHECK (pinned IN (0, 1))',
     defaultValue: const CustomExpression('0'),
   );
-  late final GeneratedColumn<String> forkedFromSessionId =
-      GeneratedColumn<String>(
-        'forked_from_session_id',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-        $customConstraints:
-            'NULL REFERENCES sessions_table(session_id)ON DELETE SET NULL',
-      );
-  late final GeneratedColumn<String> forkedFromTitle = GeneratedColumn<String>(
-    'forked_from_title',
+  late final GeneratedColumn<String> scheduledTaskId = GeneratedColumn<String>(
+    'scheduled_task_id',
     aliasedName,
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    $customConstraints: 'NULL',
+    $customConstraints: 'NULL REFERENCES scheduled_tasks(id)ON DELETE SET NULL',
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -801,8 +1803,7 @@ class SessionsTable extends Table
     catalogTitle,
     approvalOverride,
     pinned,
-    forkedFromSessionId,
-    forkedFromTitle,
+    scheduledTaskId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -915,13 +1916,9 @@ class SessionsTable extends Table
         DriftSqlType.int,
         data['${effectivePrefix}pinned'],
       )!,
-      forkedFromSessionId: attachedDatabase.typeMapping.read(
+      scheduledTaskId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}forked_from_session_id'],
-      ),
-      forkedFromTitle: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}forked_from_title'],
+        data['${effectivePrefix}scheduled_task_id'],
       ),
     );
   }
@@ -991,9 +1988,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   @override
   final int pinned;
   @override
-  final String? forkedFromSessionId;
-  @override
-  final String? forkedFromTitle;
+  final String? scheduledTaskId;
   const SessionsTableData({
     required this.sessionId,
     required this.backendSessionId,
@@ -1020,8 +2015,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     this.catalogTitle,
     this.approvalOverride,
     required this.pinned,
-    this.forkedFromSessionId,
-    this.forkedFromTitle,
+    this.scheduledTaskId,
   });
   SessionsTableCompanion toCompanion(bool nullToAbsent) {
     return SessionsTableCompanion(
@@ -1078,12 +2072,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ? const Value.absent()
           : Value(approvalOverride),
       pinned: Value(pinned),
-      forkedFromSessionId: forkedFromSessionId == null && nullToAbsent
+      scheduledTaskId: scheduledTaskId == null && nullToAbsent
           ? const Value.absent()
-          : Value(forkedFromSessionId),
-      forkedFromTitle: forkedFromTitle == null && nullToAbsent
-          ? const Value.absent()
-          : Value(forkedFromTitle),
+          : Value(scheduledTaskId),
     );
   }
 
@@ -1120,10 +2111,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       catalogTitle: serializer.fromJson<String?>(json['catalogTitle']),
       approvalOverride: serializer.fromJson<String?>(json['approvalOverride']),
       pinned: serializer.fromJson<int>(json['pinned']),
-      forkedFromSessionId: serializer.fromJson<String?>(
-        json['forkedFromSessionId'],
-      ),
-      forkedFromTitle: serializer.fromJson<String?>(json['forkedFromTitle']),
+      scheduledTaskId: serializer.fromJson<String?>(json['scheduledTaskId']),
     );
   }
   @override
@@ -1155,8 +2143,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       'catalogTitle': serializer.toJson<String?>(catalogTitle),
       'approvalOverride': serializer.toJson<String?>(approvalOverride),
       'pinned': serializer.toJson<int>(pinned),
-      'forkedFromSessionId': serializer.toJson<String?>(forkedFromSessionId),
-      'forkedFromTitle': serializer.toJson<String?>(forkedFromTitle),
+      'scheduledTaskId': serializer.toJson<String?>(scheduledTaskId),
     };
   }
 
@@ -1186,8 +2173,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     Value<String?> catalogTitle = const Value.absent(),
     Value<String?> approvalOverride = const Value.absent(),
     int? pinned,
-    Value<String?> forkedFromSessionId = const Value.absent(),
-    Value<String?> forkedFromTitle = const Value.absent(),
+    Value<String?> scheduledTaskId = const Value.absent(),
   }) => SessionsTableData(
     sessionId: sessionId ?? this.sessionId,
     backendSessionId: backendSessionId ?? this.backendSessionId,
@@ -1224,12 +2210,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
         ? approvalOverride.value
         : this.approvalOverride,
     pinned: pinned ?? this.pinned,
-    forkedFromSessionId: forkedFromSessionId.present
-        ? forkedFromSessionId.value
-        : this.forkedFromSessionId,
-    forkedFromTitle: forkedFromTitle.present
-        ? forkedFromTitle.value
-        : this.forkedFromTitle,
+    scheduledTaskId: scheduledTaskId.present
+        ? scheduledTaskId.value
+        : this.scheduledTaskId,
   );
   SessionsTableData copyWithCompanion(SessionsTableCompanion data) {
     return SessionsTableData(
@@ -1288,12 +2271,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ? data.approvalOverride.value
           : this.approvalOverride,
       pinned: data.pinned.present ? data.pinned.value : this.pinned,
-      forkedFromSessionId: data.forkedFromSessionId.present
-          ? data.forkedFromSessionId.value
-          : this.forkedFromSessionId,
-      forkedFromTitle: data.forkedFromTitle.present
-          ? data.forkedFromTitle.value
-          : this.forkedFromTitle,
+      scheduledTaskId: data.scheduledTaskId.present
+          ? data.scheduledTaskId.value
+          : this.scheduledTaskId,
     );
   }
 
@@ -1325,8 +2305,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ..write('catalogTitle: $catalogTitle, ')
           ..write('approvalOverride: $approvalOverride, ')
           ..write('pinned: $pinned, ')
-          ..write('forkedFromSessionId: $forkedFromSessionId, ')
-          ..write('forkedFromTitle: $forkedFromTitle')
+          ..write('scheduledTaskId: $scheduledTaskId')
           ..write(')'))
         .toString();
   }
@@ -1358,8 +2337,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     catalogTitle,
     approvalOverride,
     pinned,
-    forkedFromSessionId,
-    forkedFromTitle,
+    scheduledTaskId,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -1390,8 +2368,7 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           other.catalogTitle == this.catalogTitle &&
           other.approvalOverride == this.approvalOverride &&
           other.pinned == this.pinned &&
-          other.forkedFromSessionId == this.forkedFromSessionId &&
-          other.forkedFromTitle == this.forkedFromTitle);
+          other.scheduledTaskId == this.scheduledTaskId);
 }
 
 class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
@@ -1420,8 +2397,7 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   final Value<String?> catalogTitle;
   final Value<String?> approvalOverride;
   final Value<int> pinned;
-  final Value<String?> forkedFromSessionId;
-  final Value<String?> forkedFromTitle;
+  final Value<String?> scheduledTaskId;
   const SessionsTableCompanion({
     this.sessionId = const Value.absent(),
     this.backendSessionId = const Value.absent(),
@@ -1448,8 +2424,7 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.catalogTitle = const Value.absent(),
     this.approvalOverride = const Value.absent(),
     this.pinned = const Value.absent(),
-    this.forkedFromSessionId = const Value.absent(),
-    this.forkedFromTitle = const Value.absent(),
+    this.scheduledTaskId = const Value.absent(),
   });
   SessionsTableCompanion.insert({
     required String sessionId,
@@ -1477,8 +2452,7 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.catalogTitle = const Value.absent(),
     this.approvalOverride = const Value.absent(),
     this.pinned = const Value.absent(),
-    this.forkedFromSessionId = const Value.absent(),
-    this.forkedFromTitle = const Value.absent(),
+    this.scheduledTaskId = const Value.absent(),
   }) : sessionId = Value(sessionId),
        backendSessionId = Value(backendSessionId),
        projectId = Value(projectId),
@@ -1514,8 +2488,7 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Expression<String>? catalogTitle,
     Expression<String>? approvalOverride,
     Expression<int>? pinned,
-    Expression<String>? forkedFromSessionId,
-    Expression<String>? forkedFromTitle,
+    Expression<String>? scheduledTaskId,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -1544,9 +2517,7 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       if (catalogTitle != null) 'catalog_title': catalogTitle,
       if (approvalOverride != null) 'approval_override': approvalOverride,
       if (pinned != null) 'pinned': pinned,
-      if (forkedFromSessionId != null)
-        'forked_from_session_id': forkedFromSessionId,
-      if (forkedFromTitle != null) 'forked_from_title': forkedFromTitle,
+      if (scheduledTaskId != null) 'scheduled_task_id': scheduledTaskId,
     });
   }
 
@@ -1576,8 +2547,7 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Value<String?>? catalogTitle,
     Value<String?>? approvalOverride,
     Value<int>? pinned,
-    Value<String?>? forkedFromSessionId,
-    Value<String?>? forkedFromTitle,
+    Value<String?>? scheduledTaskId,
   }) {
     return SessionsTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -1605,8 +2575,7 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       catalogTitle: catalogTitle ?? this.catalogTitle,
       approvalOverride: approvalOverride ?? this.approvalOverride,
       pinned: pinned ?? this.pinned,
-      forkedFromSessionId: forkedFromSessionId ?? this.forkedFromSessionId,
-      forkedFromTitle: forkedFromTitle ?? this.forkedFromTitle,
+      scheduledTaskId: scheduledTaskId ?? this.scheduledTaskId,
     );
   }
 
@@ -1688,13 +2657,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     if (pinned.present) {
       map['pinned'] = Variable<int>(pinned.value);
     }
-    if (forkedFromSessionId.present) {
-      map['forked_from_session_id'] = Variable<String>(
-        forkedFromSessionId.value,
-      );
-    }
-    if (forkedFromTitle.present) {
-      map['forked_from_title'] = Variable<String>(forkedFromTitle.value);
+    if (scheduledTaskId.present) {
+      map['scheduled_task_id'] = Variable<String>(scheduledTaskId.value);
     }
     return map;
   }
@@ -1727,8 +2691,7 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
           ..write('catalogTitle: $catalogTitle, ')
           ..write('approvalOverride: $approvalOverride, ')
           ..write('pinned: $pinned, ')
-          ..write('forkedFromSessionId: $forkedFromSessionId, ')
-          ..write('forkedFromTitle: $forkedFromTitle')
+          ..write('scheduledTaskId: $scheduledTaskId')
           ..write(')'))
         .toString();
   }
@@ -4035,9 +4998,600 @@ class SideChatExchangesCompanion
   }
 }
 
+mixin ScheduledTaskRunsToColumns implements Insertable<ScheduledTaskRunsData> {
+  String get id;
+  String get taskId;
+  String? get sessionId;
+  int get scheduledFor;
+  int get scheduledForOffsetMinutes;
+  int get firedAt;
+  String get outcome;
+  String? get reason;
+  int get late;
+  int? get userPromptedAt;
+  int? get compactRequestedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['task_id'] = Variable<String>(taskId);
+    if (!nullToAbsent || sessionId != null) {
+      map['session_id'] = Variable<String>(sessionId);
+    }
+    map['scheduled_for'] = Variable<int>(scheduledFor);
+    map['scheduled_for_offset_minutes'] = Variable<int>(
+      scheduledForOffsetMinutes,
+    );
+    map['fired_at'] = Variable<int>(firedAt);
+    map['outcome'] = Variable<String>(outcome);
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(reason);
+    }
+    map['late'] = Variable<int>(late);
+    if (!nullToAbsent || userPromptedAt != null) {
+      map['user_prompted_at'] = Variable<int>(userPromptedAt);
+    }
+    if (!nullToAbsent || compactRequestedAt != null) {
+      map['compact_requested_at'] = Variable<int>(compactRequestedAt);
+    }
+    return map;
+  }
+}
+
+class ScheduledTaskRuns extends Table
+    with TableInfo<ScheduledTaskRuns, ScheduledTaskRunsData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  ScheduledTaskRuns(this.attachedDatabase, [this._alias]);
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL REFERENCES scheduled_tasks(id)ON DELETE CASCADE',
+  );
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints:
+        'NULL REFERENCES sessions_table(session_id)ON DELETE SET NULL',
+  );
+  late final GeneratedColumn<int> scheduledFor = GeneratedColumn<int>(
+    'scheduled_for',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<int> scheduledForOffsetMinutes =
+      GeneratedColumn<int>(
+        'scheduled_for_offset_minutes',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+        $customConstraints: 'NOT NULL',
+      );
+  late final GeneratedColumn<int> firedAt = GeneratedColumn<int>(
+    'fired_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> outcome = GeneratedColumn<String>(
+    'outcome',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  late final GeneratedColumn<int> late = GeneratedColumn<int>(
+    'late',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (late IN (0, 1))',
+  );
+  late final GeneratedColumn<int> userPromptedAt = GeneratedColumn<int>(
+    'user_prompted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  late final GeneratedColumn<int> compactRequestedAt = GeneratedColumn<int>(
+    'compact_requested_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    taskId,
+    sessionId,
+    scheduledFor,
+    scheduledForOffsetMinutes,
+    firedAt,
+    outcome,
+    reason,
+    late,
+    userPromptedAt,
+    compactRequestedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'scheduled_task_runs';
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ScheduledTaskRunsData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ScheduledTaskRunsData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      ),
+      scheduledFor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}scheduled_for'],
+      )!,
+      scheduledForOffsetMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}scheduled_for_offset_minutes'],
+      )!,
+      firedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fired_at'],
+      )!,
+      outcome: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}outcome'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      ),
+      late: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}late'],
+      )!,
+      userPromptedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}user_prompted_at'],
+      ),
+      compactRequestedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}compact_requested_at'],
+      ),
+    );
+  }
+
+  @override
+  ScheduledTaskRuns createAlias(String alias) {
+    return ScheduledTaskRuns(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const ['PRIMARY KEY(id)'];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class ScheduledTaskRunsData extends DataClass with ScheduledTaskRunsToColumns {
+  @override
+  final String id;
+  @override
+  final String taskId;
+  @override
+  final String? sessionId;
+  @override
+  final int scheduledFor;
+  @override
+  final int scheduledForOffsetMinutes;
+  @override
+  final int firedAt;
+  @override
+  final String outcome;
+  @override
+  final String? reason;
+  @override
+  final int late;
+  @override
+  final int? userPromptedAt;
+  @override
+  final int? compactRequestedAt;
+  const ScheduledTaskRunsData({
+    required this.id,
+    required this.taskId,
+    this.sessionId,
+    required this.scheduledFor,
+    required this.scheduledForOffsetMinutes,
+    required this.firedAt,
+    required this.outcome,
+    this.reason,
+    required this.late,
+    this.userPromptedAt,
+    this.compactRequestedAt,
+  });
+  ScheduledTaskRunsCompanion toCompanion(bool nullToAbsent) {
+    return ScheduledTaskRunsCompanion(
+      id: Value(id),
+      taskId: Value(taskId),
+      sessionId: sessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sessionId),
+      scheduledFor: Value(scheduledFor),
+      scheduledForOffsetMinutes: Value(scheduledForOffsetMinutes),
+      firedAt: Value(firedAt),
+      outcome: Value(outcome),
+      reason: reason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reason),
+      late: Value(late),
+      userPromptedAt: userPromptedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userPromptedAt),
+      compactRequestedAt: compactRequestedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(compactRequestedAt),
+    );
+  }
+
+  factory ScheduledTaskRunsData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ScheduledTaskRunsData(
+      id: serializer.fromJson<String>(json['id']),
+      taskId: serializer.fromJson<String>(json['taskId']),
+      sessionId: serializer.fromJson<String?>(json['sessionId']),
+      scheduledFor: serializer.fromJson<int>(json['scheduledFor']),
+      scheduledForOffsetMinutes: serializer.fromJson<int>(
+        json['scheduledForOffsetMinutes'],
+      ),
+      firedAt: serializer.fromJson<int>(json['firedAt']),
+      outcome: serializer.fromJson<String>(json['outcome']),
+      reason: serializer.fromJson<String?>(json['reason']),
+      late: serializer.fromJson<int>(json['late']),
+      userPromptedAt: serializer.fromJson<int?>(json['userPromptedAt']),
+      compactRequestedAt: serializer.fromJson<int?>(json['compactRequestedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'taskId': serializer.toJson<String>(taskId),
+      'sessionId': serializer.toJson<String?>(sessionId),
+      'scheduledFor': serializer.toJson<int>(scheduledFor),
+      'scheduledForOffsetMinutes': serializer.toJson<int>(
+        scheduledForOffsetMinutes,
+      ),
+      'firedAt': serializer.toJson<int>(firedAt),
+      'outcome': serializer.toJson<String>(outcome),
+      'reason': serializer.toJson<String?>(reason),
+      'late': serializer.toJson<int>(late),
+      'userPromptedAt': serializer.toJson<int?>(userPromptedAt),
+      'compactRequestedAt': serializer.toJson<int?>(compactRequestedAt),
+    };
+  }
+
+  ScheduledTaskRunsData copyWith({
+    String? id,
+    String? taskId,
+    Value<String?> sessionId = const Value.absent(),
+    int? scheduledFor,
+    int? scheduledForOffsetMinutes,
+    int? firedAt,
+    String? outcome,
+    Value<String?> reason = const Value.absent(),
+    int? late,
+    Value<int?> userPromptedAt = const Value.absent(),
+    Value<int?> compactRequestedAt = const Value.absent(),
+  }) => ScheduledTaskRunsData(
+    id: id ?? this.id,
+    taskId: taskId ?? this.taskId,
+    sessionId: sessionId.present ? sessionId.value : this.sessionId,
+    scheduledFor: scheduledFor ?? this.scheduledFor,
+    scheduledForOffsetMinutes:
+        scheduledForOffsetMinutes ?? this.scheduledForOffsetMinutes,
+    firedAt: firedAt ?? this.firedAt,
+    outcome: outcome ?? this.outcome,
+    reason: reason.present ? reason.value : this.reason,
+    late: late ?? this.late,
+    userPromptedAt: userPromptedAt.present
+        ? userPromptedAt.value
+        : this.userPromptedAt,
+    compactRequestedAt: compactRequestedAt.present
+        ? compactRequestedAt.value
+        : this.compactRequestedAt,
+  );
+  ScheduledTaskRunsData copyWithCompanion(ScheduledTaskRunsCompanion data) {
+    return ScheduledTaskRunsData(
+      id: data.id.present ? data.id.value : this.id,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      scheduledFor: data.scheduledFor.present
+          ? data.scheduledFor.value
+          : this.scheduledFor,
+      scheduledForOffsetMinutes: data.scheduledForOffsetMinutes.present
+          ? data.scheduledForOffsetMinutes.value
+          : this.scheduledForOffsetMinutes,
+      firedAt: data.firedAt.present ? data.firedAt.value : this.firedAt,
+      outcome: data.outcome.present ? data.outcome.value : this.outcome,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      late: data.late.present ? data.late.value : this.late,
+      userPromptedAt: data.userPromptedAt.present
+          ? data.userPromptedAt.value
+          : this.userPromptedAt,
+      compactRequestedAt: data.compactRequestedAt.present
+          ? data.compactRequestedAt.value
+          : this.compactRequestedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledTaskRunsData(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('scheduledFor: $scheduledFor, ')
+          ..write('scheduledForOffsetMinutes: $scheduledForOffsetMinutes, ')
+          ..write('firedAt: $firedAt, ')
+          ..write('outcome: $outcome, ')
+          ..write('reason: $reason, ')
+          ..write('late: $late, ')
+          ..write('userPromptedAt: $userPromptedAt, ')
+          ..write('compactRequestedAt: $compactRequestedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    taskId,
+    sessionId,
+    scheduledFor,
+    scheduledForOffsetMinutes,
+    firedAt,
+    outcome,
+    reason,
+    late,
+    userPromptedAt,
+    compactRequestedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScheduledTaskRunsData &&
+          other.id == this.id &&
+          other.taskId == this.taskId &&
+          other.sessionId == this.sessionId &&
+          other.scheduledFor == this.scheduledFor &&
+          other.scheduledForOffsetMinutes == this.scheduledForOffsetMinutes &&
+          other.firedAt == this.firedAt &&
+          other.outcome == this.outcome &&
+          other.reason == this.reason &&
+          other.late == this.late &&
+          other.userPromptedAt == this.userPromptedAt &&
+          other.compactRequestedAt == this.compactRequestedAt);
+}
+
+class ScheduledTaskRunsCompanion
+    extends UpdateCompanion<ScheduledTaskRunsData> {
+  final Value<String> id;
+  final Value<String> taskId;
+  final Value<String?> sessionId;
+  final Value<int> scheduledFor;
+  final Value<int> scheduledForOffsetMinutes;
+  final Value<int> firedAt;
+  final Value<String> outcome;
+  final Value<String?> reason;
+  final Value<int> late;
+  final Value<int?> userPromptedAt;
+  final Value<int?> compactRequestedAt;
+  const ScheduledTaskRunsCompanion({
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.scheduledFor = const Value.absent(),
+    this.scheduledForOffsetMinutes = const Value.absent(),
+    this.firedAt = const Value.absent(),
+    this.outcome = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.late = const Value.absent(),
+    this.userPromptedAt = const Value.absent(),
+    this.compactRequestedAt = const Value.absent(),
+  });
+  ScheduledTaskRunsCompanion.insert({
+    required String id,
+    required String taskId,
+    this.sessionId = const Value.absent(),
+    required int scheduledFor,
+    required int scheduledForOffsetMinutes,
+    required int firedAt,
+    required String outcome,
+    this.reason = const Value.absent(),
+    required int late,
+    this.userPromptedAt = const Value.absent(),
+    this.compactRequestedAt = const Value.absent(),
+  }) : id = Value(id),
+       taskId = Value(taskId),
+       scheduledFor = Value(scheduledFor),
+       scheduledForOffsetMinutes = Value(scheduledForOffsetMinutes),
+       firedAt = Value(firedAt),
+       outcome = Value(outcome),
+       late = Value(late);
+  static Insertable<ScheduledTaskRunsData> custom({
+    Expression<String>? id,
+    Expression<String>? taskId,
+    Expression<String>? sessionId,
+    Expression<int>? scheduledFor,
+    Expression<int>? scheduledForOffsetMinutes,
+    Expression<int>? firedAt,
+    Expression<String>? outcome,
+    Expression<String>? reason,
+    Expression<int>? late,
+    Expression<int>? userPromptedAt,
+    Expression<int>? compactRequestedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (taskId != null) 'task_id': taskId,
+      if (sessionId != null) 'session_id': sessionId,
+      if (scheduledFor != null) 'scheduled_for': scheduledFor,
+      if (scheduledForOffsetMinutes != null)
+        'scheduled_for_offset_minutes': scheduledForOffsetMinutes,
+      if (firedAt != null) 'fired_at': firedAt,
+      if (outcome != null) 'outcome': outcome,
+      if (reason != null) 'reason': reason,
+      if (late != null) 'late': late,
+      if (userPromptedAt != null) 'user_prompted_at': userPromptedAt,
+      if (compactRequestedAt != null)
+        'compact_requested_at': compactRequestedAt,
+    });
+  }
+
+  ScheduledTaskRunsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? taskId,
+    Value<String?>? sessionId,
+    Value<int>? scheduledFor,
+    Value<int>? scheduledForOffsetMinutes,
+    Value<int>? firedAt,
+    Value<String>? outcome,
+    Value<String?>? reason,
+    Value<int>? late,
+    Value<int?>? userPromptedAt,
+    Value<int?>? compactRequestedAt,
+  }) {
+    return ScheduledTaskRunsCompanion(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      sessionId: sessionId ?? this.sessionId,
+      scheduledFor: scheduledFor ?? this.scheduledFor,
+      scheduledForOffsetMinutes:
+          scheduledForOffsetMinutes ?? this.scheduledForOffsetMinutes,
+      firedAt: firedAt ?? this.firedAt,
+      outcome: outcome ?? this.outcome,
+      reason: reason ?? this.reason,
+      late: late ?? this.late,
+      userPromptedAt: userPromptedAt ?? this.userPromptedAt,
+      compactRequestedAt: compactRequestedAt ?? this.compactRequestedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (scheduledFor.present) {
+      map['scheduled_for'] = Variable<int>(scheduledFor.value);
+    }
+    if (scheduledForOffsetMinutes.present) {
+      map['scheduled_for_offset_minutes'] = Variable<int>(
+        scheduledForOffsetMinutes.value,
+      );
+    }
+    if (firedAt.present) {
+      map['fired_at'] = Variable<int>(firedAt.value);
+    }
+    if (outcome.present) {
+      map['outcome'] = Variable<String>(outcome.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (late.present) {
+      map['late'] = Variable<int>(late.value);
+    }
+    if (userPromptedAt.present) {
+      map['user_prompted_at'] = Variable<int>(userPromptedAt.value);
+    }
+    if (compactRequestedAt.present) {
+      map['compact_requested_at'] = Variable<int>(compactRequestedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduledTaskRunsCompanion(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('scheduledFor: $scheduledFor, ')
+          ..write('scheduledForOffsetMinutes: $scheduledForOffsetMinutes, ')
+          ..write('firedAt: $firedAt, ')
+          ..write('outcome: $outcome, ')
+          ..write('reason: $reason, ')
+          ..write('late: $late, ')
+          ..write('userPromptedAt: $userPromptedAt, ')
+          ..write('compactRequestedAt: $compactRequestedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class DatabaseAtV26 extends GeneratedDatabase {
   DatabaseAtV26(QueryExecutor e) : super(e);
   late final ProjectsTable projectsTable = ProjectsTable(this);
+  late final ScheduledTasks scheduledTasks = ScheduledTasks(this);
   late final SessionsTable sessionsTable = SessionsTable(this);
   late final DeletedSessionsTable deletedSessionsTable = DeletedSessionsTable(
     this,
@@ -4055,6 +5609,7 @@ class DatabaseAtV26 extends GeneratedDatabase {
     this,
   );
   late final SideChatExchanges sideChatExchanges = SideChatExchanges(this);
+  late final ScheduledTaskRuns scheduledTaskRuns = ScheduledTaskRuns(this);
   late final Index idxProjectsUpdated = Index(
     'idx_projects_updated',
     'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
@@ -4075,12 +5630,25 @@ class DatabaseAtV26 extends GeneratedDatabase {
     'idx_side_chat_exchanges_session',
     'CREATE INDEX idx_side_chat_exchanges_session ON side_chat_exchanges (session_id, side_chat_id, answered_at)',
   );
+  late final Index idxScheduledTasksNextDue = Index(
+    'idx_scheduled_tasks_next_due',
+    'CREATE INDEX idx_scheduled_tasks_next_due ON scheduled_tasks (next_due_at)',
+  );
+  late final Index idxScheduledTaskRunsTask = Index(
+    'idx_scheduled_task_runs_task',
+    'CREATE INDEX idx_scheduled_task_runs_task ON scheduled_task_runs (task_id, fired_at)',
+  );
+  late final Index idxScheduledTaskRunsSession = Index(
+    'idx_scheduled_task_runs_session',
+    'CREATE INDEX idx_scheduled_task_runs_session ON scheduled_task_runs (session_id)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     projectsTable,
+    scheduledTasks,
     sessionsTable,
     deletedSessionsTable,
     catalogHydrationsTable,
@@ -4089,14 +5657,25 @@ class DatabaseAtV26 extends GeneratedDatabase {
     acceptedPromptsTable,
     sessionContinuations,
     sideChatExchanges,
+    scheduledTaskRuns,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
     idxSideChatExchangesSession,
+    idxScheduledTasksNextDue,
+    idxScheduledTaskRunsTask,
+    idxScheduledTaskRunsSession,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('scheduled_tasks', kind: UpdateKind.update)],
+    ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'projects_table',
@@ -4113,7 +5692,7 @@ class DatabaseAtV26 extends GeneratedDatabase {
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
-        'sessions_table',
+        'scheduled_tasks',
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('sessions_table', kind: UpdateKind.update)],
@@ -4140,6 +5719,20 @@ class DatabaseAtV26 extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('side_chat_exchanges', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'scheduled_tasks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('scheduled_task_runs', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('scheduled_task_runs', kind: UpdateKind.update)],
     ),
   ]);
   @override

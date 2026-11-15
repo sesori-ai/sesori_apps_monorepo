@@ -4,6 +4,7 @@ import "dart:io";
 import "package:drift/drift.dart" show Value;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -196,6 +197,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -706,6 +708,7 @@ void main() {
           sessionDao: database.sessionDao,
           catalogHydrationsDao: database.catalogHydrationsDao,
           sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+          scheduledTaskDao: ScheduledTaskDao(database: database),
           projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
             scratchRoot: "/scratch",
             pathContext: p.context,
@@ -761,6 +764,7 @@ void main() {
           sessionDao: database.sessionDao,
           catalogHydrationsDao: database.catalogHydrationsDao,
           sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+          scheduledTaskDao: ScheduledTaskDao(database: database),
           projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
             scratchRoot: "/scratch",
             pathContext: p.context,
@@ -802,6 +806,7 @@ void main() {
           sessionDao: database.sessionDao,
           catalogHydrationsDao: database.catalogHydrationsDao,
           sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+          scheduledTaskDao: ScheduledTaskDao(database: database),
           projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: link, pathContext: p.context),
           filesystemApi: const FilesystemApi(),
         );
@@ -1214,6 +1219,7 @@ void main() {
             sessionDao: _RecordingSessionDao(database: database, failOnWriteCall: 1),
             catalogHydrationsDao: database.catalogHydrationsDao,
             sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+            scheduledTaskDao: ScheduledTaskDao(database: database),
             projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
               scratchRoot: "/scratch",
               pathContext: p.context,
@@ -1560,6 +1566,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: calculator,
         filesystemApi: const FilesystemApi(),
       );
@@ -1597,6 +1604,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -1664,6 +1672,7 @@ void main() {
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -1914,6 +1923,7 @@ void main() {
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2306,6 +2316,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2348,6 +2359,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2415,6 +2427,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2468,6 +2481,7 @@ void main() {
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2520,6 +2534,7 @@ void main() {
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
         sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+        scheduledTaskDao: ScheduledTaskDao(database: database),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -2860,6 +2875,7 @@ SessionDto _sessionRow({
     pinned: pinned,
     forkedFromSessionId: null,
     forkedFromTitle: null,
+    scheduledTaskId: null,
   );
 }
 
