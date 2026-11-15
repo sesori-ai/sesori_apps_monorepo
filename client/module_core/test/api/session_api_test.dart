@@ -145,6 +145,7 @@ void main() {
         time: SessionTime(created: 1, updated: 1, archived: null),
         promptDefaults: null,
         lastUserActivityAt: null,
+        scheduledTask: null,
       );
 
       when(
@@ -199,6 +200,7 @@ void main() {
         time: SessionTime(created: 1, updated: 1, archived: null),
         promptDefaults: null,
         lastUserActivityAt: null,
+        scheduledTask: null,
       );
       var priorEventLoopTurnRan = false;
       unawaited(
@@ -281,6 +283,7 @@ void main() {
         time: SessionTime(created: 1, updated: 1, archived: null),
         promptDefaults: null,
         lastUserActivityAt: null,
+        scheduledTask: null,
       );
       when(
         () => client.post<Session>(
@@ -572,6 +575,7 @@ void main() {
             time: SessionTime(created: 1, updated: 1, archived: null),
             promptDefaults: null,
             lastUserActivityAt: null,
+            scheduledTask: null,
           ),
         ),
       );

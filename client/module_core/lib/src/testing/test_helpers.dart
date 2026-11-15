@@ -670,6 +670,7 @@ const Session testConstSession = Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   unseen: false,
+  scheduledTask: null,
 );
 
 Session testSession({
@@ -703,6 +704,7 @@ Session testSession({
     promptDefaults: promptDefaults,
     unseen: unseen,
     lastUserActivityAt: lastUserActivityAt,
+    scheduledTask: null,
   );
 }
 

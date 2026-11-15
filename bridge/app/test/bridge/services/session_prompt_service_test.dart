@@ -22,6 +22,7 @@ import "package:test/test.dart";
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_continuation_test_support.dart";
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
 
@@ -62,6 +63,7 @@ void main() {
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         sessionOptionsService: optionsService,
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        chatHistory: createTestChatHistory().service,
       );
       await insertTestSession(
         db: db,
@@ -97,6 +99,7 @@ void main() {
         agent: null,
         model: null,
         command: command,
+        handoff: null,
       );
     }
 
@@ -120,6 +123,7 @@ void main() {
         agent: null,
         model: null,
         command: null,
+        handoff: null,
       );
       continuations.cancellationError = StateError("fixture persistence failure");
       await expectLater(send(), throwsStateError);
@@ -146,6 +150,7 @@ void main() {
           agent: null,
           model: null,
           command: null,
+          handoff: null,
         ),
         throwsA(
           isA<SessionArchivedReadOnlyException>().having(
@@ -207,6 +212,7 @@ void main() {
         agent: "planner",
         model: const PromptModel(providerID: "openai", modelID: "gpt-4o"),
         command: "review",
+        handoff: null,
       );
 
       final dbSession =
@@ -244,6 +250,7 @@ void main() {
         agent: "planner",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
         command: null,
+        handoff: null,
       );
 
       final change = await changeFuture;
@@ -267,6 +274,7 @@ void main() {
         agent: "planner",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
         command: null,
+        handoff: null,
       );
       await service.sendPrompt(
         commandSource: null,
@@ -278,6 +286,7 @@ void main() {
         agent: "planner",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
         command: "review",
+        handoff: null,
       );
 
       expect(plugin.lastSendPromptFastMode, isTrue);
@@ -297,6 +306,7 @@ void main() {
         agent: "planner",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
         command: null,
+        handoff: null,
       );
 
       // Backend prompt-default events and history replay persist through this path.
@@ -343,6 +353,7 @@ void main() {
         agent: "first",
         model: null,
         command: "review",
+        handoff: null,
       );
       while (plugin.lastSendCommandSessionId == null) {
         await Future<void>.delayed(Duration.zero);
@@ -362,6 +373,7 @@ void main() {
         agent: "second",
         model: null,
         command: null,
+        handoff: null,
       );
       await Future<void>.delayed(Duration.zero);
       expect(events, ["abort"]);
@@ -385,6 +397,7 @@ void main() {
         agent: null,
         model: null,
         command: null,
+        handoff: null,
       );
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
@@ -402,6 +415,7 @@ void main() {
         agent: null,
         model: null,
         command: null,
+        handoff: null,
       );
       await sendCommand();
       await sendHello();
@@ -425,6 +439,7 @@ void main() {
         agent: null,
         model: null,
         command: null,
+        handoff: null,
       );
       plugin.sendPromptError = StateError("backend unavailable");
       await expectLater(sendHello(), throwsA(isA<StateError>()));
@@ -468,6 +483,7 @@ void main() {
           agent: "removed-agent",
           model: null,
           command: null,
+          handoff: null,
         ),
         throwsA(
           isA<StaleSessionPromptOptionsException>().having(
@@ -517,6 +533,7 @@ void main() {
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         sessionOptionsService: FakeSessionOptionsService(),
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: uploadsRoot),
+        chatHistory: createTestChatHistory().service,
       );
       await insertTestSession(
         db: db,
@@ -557,6 +574,7 @@ void main() {
         agent: null,
         model: null,
         command: command,
+        handoff: null,
       );
     }
 

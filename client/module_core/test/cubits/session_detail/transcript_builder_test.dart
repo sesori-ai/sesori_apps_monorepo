@@ -22,7 +22,7 @@ MessageWithParts _assistant(
 );
 
 MessageWithParts _user(String id) => MessageWithParts(
-  info: Message.user(invocation: null, id: id, sessionID: "s", agent: null, time: null, promptId: null),
+  info: Message.user(invocation: null, handoff: null, id: id, sessionID: "s", agent: null, time: null, promptId: null),
   parts: [MessagePart.text(id: "$id-text", sessionID: "s", messageID: id, text: "hi")],
 );
 
@@ -86,6 +86,7 @@ Session _child(String id, {String? title}) => Session(
   branchName: null,
   lastUserActivityAt: null,
   autoContinuation: null,
+  scheduledTask: null,
 );
 
 ToolState _taskState(ToolStatus status) =>

@@ -1718,6 +1718,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2067,6 +2068,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2119,6 +2121,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2165,6 +2168,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2210,6 +2214,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "other-1",
             sessionID: _sessionId,
             agent: null,
@@ -2257,6 +2262,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2412,6 +2418,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2635,6 +2642,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2664,6 +2672,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2908,6 +2917,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-first",
             sessionID: _sessionId,
             agent: null,
@@ -3042,6 +3052,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -3574,6 +3585,7 @@ void main() {
             SesoriMessageUpdated(
               info: Message.user(
                 invocation: null,
+                handoff: null,
                 id: "echo-1",
                 sessionID: _sessionId,
                 agent: null,
@@ -3715,6 +3727,7 @@ void main() {
             const MessageWithParts(
               info: Message.user(
                 invocation: null,
+                handoff: null,
                 id: "msg-1",
                 sessionID: _sessionId,
                 agent: null,
@@ -3741,6 +3754,7 @@ void main() {
           const SesoriMessageUpdated(
             info: Message.user(
               invocation: null,
+              handoff: null,
               id: "msg-1",
               sessionID: _sessionId,
               agent: null,
@@ -4563,6 +4577,7 @@ void main() {
             const SesoriMessageUpdated(
               info: Message.user(
                 invocation: null,
+                handoff: null,
                 id: "msg-a",
                 sessionID: _sessionId,
                 agent: null,

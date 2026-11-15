@@ -58,8 +58,8 @@ void main() {
       process.emit(frame: {"type": "auto_retry_start", "attempt": 1, "delayMs": 10});
       await pump();
       expect(
-        await service.getQuotaContinuationReadiness(sessionId: "session"),
-        PluginQuotaContinuationReadiness.retrying,
+        await service.getSessionReadiness(sessionId: "session"),
+        PluginSessionReadiness.retrying,
       );
       expect(events.whereType<BridgeSseSessionQuotaBlocked>(), isEmpty);
       if (outcome != "cancelled") {
@@ -88,7 +88,7 @@ void main() {
       process.emit(frame: {"type": "agent_settled"});
       await _waitForIdle(service: service, sessionId: "session");
       await pump();
-      expect(await service.getQuotaContinuationReadiness(sessionId: "session"), PluginQuotaContinuationReadiness.idle);
+      expect(await service.getSessionReadiness(sessionId: "session"), PluginSessionReadiness.idle);
       final reports = events.whereType<BridgeSseSessionQuotaBlocked>().toList();
       if (outcome == "exhausted") {
         final visibleError = events
@@ -247,8 +247,8 @@ void main() {
     final fixture = _Fixture(processes: []);
     addTearDown(fixture.dispose);
     final service = fixture.service();
-    expect(await service.getQuotaContinuationReadiness(sessionId: "session"), PluginQuotaContinuationReadiness.idle);
-    expect(await service.getQuotaContinuationReadiness(sessionId: "missing"), PluginQuotaContinuationReadiness.unknown);
+    expect(await service.getSessionReadiness(sessionId: "session"), PluginSessionReadiness.idle);
+    expect(await service.getSessionReadiness(sessionId: "missing"), PluginSessionReadiness.unknown);
     expect(fixture.spawned, isEmpty);
   });
 
@@ -259,9 +259,9 @@ void main() {
     fixture.catalogRepository.primeSessionDirectory(sessionId: "session", directory: "/project");
     final service = fixture.service();
 
-    expect(await service.getQuotaContinuationReadiness(sessionId: "session"), PluginQuotaContinuationReadiness.unknown);
+    expect(await service.getSessionReadiness(sessionId: "session"), PluginSessionReadiness.unknown);
     storage.resolved = _resolved();
-    expect(await service.getQuotaContinuationReadiness(sessionId: "session"), PluginQuotaContinuationReadiness.idle);
+    expect(await service.getSessionReadiness(sessionId: "session"), PluginSessionReadiness.idle);
     expect(fixture.spawned, isEmpty);
   });
 
@@ -3460,7 +3460,6 @@ void main() {
     );
     expect(imageOnly.message, isEmpty);
     for (final attachment in <PluginPromptPart>[
-      const PluginPromptPart.filePath(mime: "image/png", path: "/private/a.png", filename: null),
       const PluginPromptPart.fileUrl(mime: "image/png", url: "https://private.invalid/a.png", filename: null),
       const PluginPromptPart.fileData(mime: "text/plain", base64: "YQ==", filename: null),
       const PluginPromptPart.fileData(mime: "image/png", base64: "not-base64", filename: null),

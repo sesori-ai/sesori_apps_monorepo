@@ -153,26 +153,26 @@ final class ClaudeSessionService({
 
   /// Named-session readiness, including retries, queued work and pending input.
   /// [sessionExists] establishes idle for a known nonresident transcript.
-  PluginQuotaContinuationReadiness getQuotaContinuationReadiness({
+  PluginSessionReadiness getSessionReadiness({
     required String sessionId,
     required bool sessionExists,
   }) {
-    if (_disposed) return PluginQuotaContinuationReadiness.unavailable;
+    if (_disposed) return PluginSessionReadiness.unavailable;
     if (_approvals.pendingQuestionsForSession(sessionId: sessionId).isNotEmpty ||
         _approvals.pendingPermissionsForSession(sessionId: sessionId).isNotEmpty) {
-      return PluginQuotaContinuationReadiness.awaitingInput;
+      return PluginSessionReadiness.awaitingInput;
     }
-    if (_retryStatuses.containsKey(sessionId)) return PluginQuotaContinuationReadiness.retrying;
+    if (_retryStatuses.containsKey(sessionId)) return PluginSessionReadiness.retrying;
     final state = _turns[sessionId];
     if (state?.aborting != null || _teardownsBySession.containsKey(sessionId)) {
-      return PluginQuotaContinuationReadiness.busy;
+      return PluginSessionReadiness.busy;
     }
-    if ((state?.queue.isNotEmpty ?? false) || state?.wakeupAt != null) return PluginQuotaContinuationReadiness.queued;
-    if (state?.hasWork ?? false) return PluginQuotaContinuationReadiness.busy;
+    if ((state?.queue.isNotEmpty ?? false) || state?.wakeupAt != null) return PluginSessionReadiness.queued;
+    if (state?.hasWork ?? false) return PluginSessionReadiness.busy;
     if (state != null || (!_processes.isResident(sessionId: sessionId) && sessionExists)) {
-      return PluginQuotaContinuationReadiness.idle;
+      return PluginSessionReadiness.idle;
     }
-    return PluginQuotaContinuationReadiness.unknown;
+    return PluginSessionReadiness.unknown;
   }
 
   /// The session's accepted-but-not-yet-visible prompts, in dispatch order.
@@ -516,6 +516,70 @@ final class ClaudeSessionService({
     if (!state.queue.contains(mode.entry)) return;
     state.queue.remove(mode.entry);
     _emitQueueUpdate(sessionId: sessionId, state: state);
+  }
+
+  /// Answers [question] beside whatever the session is doing.
+  ///
+  /// A resident process is asked as is. Making it resident again would
+  /// reapply the turn selection, and an effort change tears the process down,
+  /// killing a running main turn. A session with no process is resumed with no
+  /// selection, which answers from the resumed conversation (verified on CLI
+  /// 2.1.322). That resume runs in the dispatch chain, so a prompt sent
+  /// meanwhile still applies its own selection afterwards; if that restarts
+  /// the process, this ask fails and the user can retry. A pending idle reap
+  /// waits until the ask ends and is then rearmed, so it neither ends the
+  /// process under the ask nor leaves a process resumed for it running.
+  Future<PluginSideAnswer> askSideQuestion({
+    required String sessionId,
+    required String directory,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async {
+    if (_disposed) throw StateError("Claude session service is disposed");
+    final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
+    state.idleGeneration++;
+    try {
+      if (!_processes.isResident(sessionId: sessionId)) {
+        await _resumeForSideQuestion(sessionId: sessionId, directory: directory, state: state);
+      }
+      return await _processes.sendSideQuestion(sessionId: sessionId, question: question, history: history);
+    } finally {
+      if (identical(_turns[sessionId], state) && !state.hasWork && _processes.isResident(sessionId: sessionId)) {
+        _scheduleIdleReap(sessionId: sessionId, state: state);
+      }
+    }
+  }
+
+  Future<void> _resumeForSideQuestion({
+    required String sessionId,
+    required String directory,
+    required _SessionTurnState state,
+  }) async {
+    final residency = state.dispatchTail.then((_) async {
+      // Like a turn, the resume waits out an abort's teardown, and a session
+      // deleted or disposed meanwhile is not brought back.
+      final aborting = state.aborting?.future;
+      if (aborting != null) await aborting;
+      if (_disposed || !identical(_turns[sessionId], state)) {
+        throw StateError("Claude session $sessionId closed before the side question could resume it");
+      }
+      if (_processes.isResident(sessionId: sessionId)) return;
+      await _processes.ensureResident(
+        sessionId: sessionId,
+        directory: directory,
+        createNew: false,
+        purpose: ClaudeProcessPurpose.session,
+        model: null,
+        effort: null,
+        permissionMode: null,
+        fastMode: false,
+        allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
+      );
+    });
+    // The asker awaits [residency] and receives its failure; the chain only
+    // needs to continue past it.
+    state.dispatchTail = residency.catchError((Object _) {});
+    await residency;
   }
 
   /// Stops the session's work with the given sub-agent scope.

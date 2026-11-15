@@ -6,6 +6,7 @@ const _sessionId = "session-1";
 
 Message _user({required String id, required int? created}) => Message.user(
   invocation: null,
+  handoff: null,
   id: id,
   sessionID: _sessionId,
   agent: "build",

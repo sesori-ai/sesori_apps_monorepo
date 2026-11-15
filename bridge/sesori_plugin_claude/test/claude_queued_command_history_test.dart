@@ -7,6 +7,8 @@ import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/claude_transcript_chain.dart";
+
 const _sessionId = "11111111-2222-4333-8444-555555555555";
 const _timestamp = "2026-09-25T10:00:00Z";
 
@@ -54,7 +56,8 @@ void main() {
 
   Future<List<PluginMessageWithParts>> replay({required List<Map<String, Object?>> records}) async {
     final project = Directory(p.join(temp.path, "projects", "fixture"))..createSync(recursive: true);
-    File(p.join(project.path, "$_sessionId.jsonl")).writeAsStringSync(records.map(jsonEncode).join("\n"));
+    File(p.join(project.path, "$_sessionId.jsonl"))
+        .writeAsStringSync(chainTranscriptRecords(records).map(jsonEncode).join("\n"));
     return history.map(
       sessionId: _sessionId,
       agentId: null,

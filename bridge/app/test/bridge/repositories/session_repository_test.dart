@@ -7,8 +7,10 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/repositories/models/deliverable_prompt_part.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
+import "package:sesori_bridge/src/repositories/models/session_compaction_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -374,6 +376,47 @@ void main() {
       expect(plugin.lastRenameSessionTitle, equals("Renamed"));
     });
 
+    test("compactSession sends the backend id and maps the plugin result", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        fastMode: false,
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "p1",
+        isDedicated: false,
+        createdAt: 10,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      for (final (pluginResult, expected) in [
+        (PluginCompactionResult.accepted, SessionCompactionResult.accepted),
+        (PluginCompactionResult.sessionBusy, SessionCompactionResult.sessionBusy),
+        (PluginCompactionResult.unsupported, SessionCompactionResult.unsupported),
+      ]) {
+        plugin.compactionResult = pluginResult;
+        expect(await repository.compactSession(sessionId: "s1", promptId: "compact-1"), expected);
+      }
+      expect(plugin.compactSessionCalls.last, (sessionId: "backend-s1", promptId: "compact-1"));
+      await expectLater(
+        repository.compactSession(sessionId: "missing", promptId: "compact-2"),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
+      );
+      expect(plugin.compactSessionCalls, hasLength(3));
+    });
+
     test("sendCommand names nothing for a plugin that does not name its runs", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -412,9 +455,17 @@ void main() {
         agent: null,
         model: null,
       );
-      const echo = Message.user(id: "m1", sessionID: "s1", agent: null, time: null, promptId: "sent", invocation: null);
+      const echo = Message.user(
+        id: "m1",
+        sessionID: "s1",
+        agent: null,
+        time: null,
+        promptId: "sent",
+        invocation: null,
+        handoff: null,
+      );
 
-      expect(repository.stampLiveInvocation(message: echo), echo);
+      expect(repository.stampLiveMessage(message: echo), echo);
     });
 
     test("getQueuedPrompts names the source of each command this bridge sent, not a definitely refused one", () async {
@@ -501,6 +552,82 @@ void main() {
           CommandSource.skill,
         ],
       );
+    });
+
+    test("sendPrompt stamps its handoff on the live echo unless the send was definitely refused", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        fastMode: false,
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "p1",
+        isDedicated: true,
+        createdAt: 10,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      const sent = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Target");
+      Future<void> sendPrompt({required String promptId}) => repository.sendPrompt(
+        sessionId: "s1",
+        promptId: promptId,
+        parts: const [DeliverablePromptPart.text(text: "Fixture request")],
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+        handoff: sent,
+      );
+      MessageHandoff? stampedHandoff({required String promptId}) => switch (repository.stampLiveMessage(
+        message: Message.user(
+          id: "m-$promptId",
+          sessionID: "s1",
+          agent: null,
+          time: null,
+          promptId: promptId,
+          invocation: null,
+          handoff: null,
+        ),
+      )) {
+        MessageUser(:final handoff) => handoff,
+        _ => fail("expected a user message"),
+      };
+
+      await sendPrompt(promptId: "accepted");
+      final failures = <String, Object>{
+        "refused": PluginApiException(endpoint: "prompt", statusCode: 409),
+        "timed-out": PluginApiException(endpoint: "prompt", statusCode: 504),
+      };
+      for (final MapEntry(key: promptId, value: error) in failures.entries) {
+        plugin.sendPromptError = error;
+        await expectLater(sendPrompt(promptId: promptId), throwsA(same(error)));
+      }
+
+      expect(stampedHandoff(promptId: "accepted"), sent);
+      expect(stampedHandoff(promptId: "refused"), isNull);
+      expect(stampedHandoff(promptId: "timed-out"), sent);
+      expect(stampedHandoff(promptId: "unrelated"), isNull);
+
+      repository
+        ..markHandoffNotSent(sessionId: "s1", promptId: "timed-out")
+        ..markHandoffNotSent(sessionId: "s1", promptId: "refused");
+      expect(
+        stampedHandoff(promptId: "timed-out"),
+        const MessageHandoff.notSent(targetSessionId: "target", targetTitle: "Target"),
+      );
+      expect(stampedHandoff(promptId: "refused"), isNull);
+      expect(stampedHandoff(promptId: "accepted"), sent);
     });
 
     test("getCatalogSession returns the stored project without scanning the plugin", () async {
@@ -591,7 +718,7 @@ void main() {
         projectId: "stable-project",
         directory: "/repo/.worktrees/blue-otter",
         parentSessionId: null,
-        parts: const [PromptPart.text(text: "Ship it")],
+        parts: const [DeliverablePromptPart.text(text: "Ship it")],
         userVisibleText: "Ship it",
         variant: null,
         agent: "agent",
@@ -775,7 +902,7 @@ void main() {
           projectId: "/repo",
           directory: "/repo",
           parentSessionId: null,
-          parts: const [PromptPart.text(text: "Ship it")],
+          parts: const [DeliverablePromptPart.text(text: "Ship it")],
           userVisibleText: "Ship it",
           variant: variant,
           agent: null,
@@ -993,10 +1120,11 @@ void main() {
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "stable-s1",
-          parts: const [PromptPart.text(text: "Prompt")],
+          parts: const [DeliverablePromptPart.text(text: "Prompt")],
           variant: variant,
           agent: null,
           model: null,
+          handoff: null,
         );
         expect(plugin.lastSendPromptVariant, equals(variant?.id));
         expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
@@ -1037,6 +1165,7 @@ void main() {
           variant: null,
           agent: null,
           model: null,
+          handoff: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
@@ -1063,6 +1192,7 @@ void main() {
           variant: null,
           agent: null,
           model: null,
+          handoff: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
       );
@@ -2032,6 +2162,7 @@ void main() {
         variant: null,
         agent: null,
         model: null,
+        handoff: null,
       );
       expect(plugin.primedDirectories.last, (sessionId: "w1", directory: worktree));
 
@@ -2065,6 +2196,7 @@ void main() {
           variant: null,
           agent: null,
           model: null,
+          handoff: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
@@ -2370,6 +2502,7 @@ void main() {
           variant: null,
           agent: null,
           model: null,
+          handoff: null,
         ),
         () async => await repository.getSessionMessages(sessionId: "gone"),
         () => repository.notifySessionArchived(sessionId: "gone"),

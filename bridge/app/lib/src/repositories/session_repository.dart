@@ -13,15 +13,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAbortNotPerformed,
         PluginAbortRejectedSubAgentsRunning,
         PluginActiveSession,
+        PluginBranchPointUnavailableException,
+        PluginCompactionResult,
         PluginOperationException,
         PluginProjectActivitySummary,
-        PluginQuotaContinuationReadiness,
         PluginQuotaReportingSupport,
         PluginSession,
         PluginSessionActivityAvailable,
         PluginSessionActivityUnavailable,
+        PluginSessionReadiness,
         PluginSessionVariant,
         PluginSideExchange,
+        SessionRewindPluginApi,
         SideQuestionPluginApi;
 import "package:sesori_shared/sesori_shared.dart"
     show
@@ -33,13 +36,14 @@ import "package:sesori_shared/sesori_shared.dart"
         CommandListResponse,
         CommandSource,
         Message,
+        MessageHandoff,
+        MessageHandoffSent,
         MessagePartSubtask,
         MessageUser,
         MessageWithParts,
         ProjectActivitySummary,
         ProjectKind,
         PromptModel,
-        PromptPart,
         QueuedSessionPrompt,
         Session,
         SessionAbortNotPerformedRefusal,
@@ -65,6 +69,7 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/projects_table.dart" show ProjectDto;
 import "../api/database/tables/session_table.dart" show SessionDto;
 import "../runtime/plugin_runtime.dart";
+import "mappers/deliverable_prompt_part_mapper.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_message_mapper.dart";
@@ -72,24 +77,30 @@ import "mappers/plugin_session_status_mapper.dart";
 import "mappers/plugin_side_answer_mapper.dart";
 import "mappers/plugin_to_shared_mapping.dart";
 import "mappers/project_catalog_mapper.dart";
-import "mappers/prompt_part_mapper.dart";
 import "mappers/session_catalog_mapper.dart";
 import "mappers/stored_session_mapper.dart";
+import "models/deliverable_prompt_part.dart";
 import "models/project_not_found_exception.dart";
 import "models/session_abort_result.dart";
-import "models/session_continuation_record.dart";
+import "models/session_compaction_result.dart";
 import "models/session_operation.dart";
 import "models/session_page_cursor.dart";
+import "models/session_readiness.dart";
 import "models/side_question_ask_result.dart";
 import "models/stored_session.dart";
 import "project_catalog_identity_calculator.dart";
 import "random_hex_id.dart";
 import "session_unseen_calculator.dart";
-import "trackers/command_invocation_tracker.dart";
+import "trackers/prompt_stamp.dart";
+import "trackers/prompt_stamp_tracker.dart";
 
 enum SessionBindingCommitKind() {
   sessionCreation,
   catalogSync,
+
+  /// An existing session now runs on a new harness session; its id is
+  /// unchanged.
+  sessionReplacement,
 }
 
 typedef SessionBindingsCommitted = ({
@@ -131,7 +142,7 @@ class SessionRepository({
   final Map<String, Future<void>> _tombstoneLoads = <String, Future<void>>{};
   final Set<String> _tombstonesLoaded = <String>{};
   final Map<String, _BusyObservation> _busyObservations = <String, _BusyObservation>{};
-  final CommandInvocationTracker _invocations = CommandInvocationTracker();
+  final PromptStampTracker _stamps = PromptStampTracker();
   int _lastProjectionTimestamp = 0;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
@@ -279,7 +290,7 @@ class SessionRepository({
     required String projectId,
     required String directory,
     required String? parentSessionId,
-    required List<PromptPart> parts,
+    required List<DeliverablePromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
     required String? agent,
@@ -417,7 +428,7 @@ class SessionRepository({
   }
 
   /// Sends [command] and remembers it under [promptId], so the user message
-  /// that fulfils it is named by [stampLiveInvocation].
+  /// that fulfils it is named by [stampLiveMessage].
   ///
   /// [commandSource] is the command's source as the client's picker listed
   /// it; null from clients that predate it.
@@ -443,13 +454,15 @@ class SessionRepository({
           // Recorded before the plugin call: its echo can arrive before the
           // call returns. A definitely refused send forgets it again.
           if (_runtime.namesCommandInvocations(pluginId: plugin.id)) {
-            _invocations.record(
+            _stamps.record(
               sessionId: sessionId,
               promptId: promptId,
-              invocation: CommandInvocation(
-                name: command,
-                source: commandSource ?? CommandSource.unknown,
-                arguments: userVisibleArguments,
+              stamp: PromptStampCommand(
+                invocation: CommandInvocation(
+                  name: command,
+                  source: commandSource ?? CommandSource.unknown,
+                  arguments: userVisibleArguments,
+                ),
               ),
             );
           }
@@ -470,22 +483,53 @@ class SessionRepository({
       // Only a definite refusal forgets the entry. A send whose outcome is
       // unknown (timeout, 5xx, no status) may still have run, and its late
       // echo must come back named, or its card would turn into a bubble.
-      if (error.statusCode case final status? when status >= 400 && status < 500) {
-        _invocations.remove(sessionId: sessionId, promptId: promptId);
-      }
+      _forgetStampOnRefusal(sessionId: sessionId, promptId: promptId, error: error);
       rethrow;
     }
   }
 
-  /// [message] with the invocation this bridge sent under its prompt id.
+  void _forgetStampOnRefusal({
+    required String sessionId,
+    required String promptId,
+    required PluginOperationException error,
+  }) {
+    if (error.statusCode case final status? when status >= 400 && status < 500) {
+      _stamps.remove(sessionId: sessionId, promptId: promptId);
+    }
+  }
+
+  /// [message] with the stamp this bridge recorded under its prompt id.
   ///
   /// A plugin that named the invocation itself keeps its own value.
-  Message stampLiveInvocation({required Message message}) {
-    if (message case MessageUser(:final sessionID, promptId: final promptId?, invocation: null)) {
-      final invocation = _invocations.invocationFor(sessionId: sessionID, promptId: promptId);
-      if (invocation != null) return message.copyWith(invocation: invocation);
+  Message stampLiveMessage({required Message message}) {
+    if (message case MessageUser(:final sessionID, promptId: final promptId?)) {
+      switch (_stamps.stampFor(sessionId: sessionID, promptId: promptId)) {
+        case PromptStampCommand(:final invocation) when message.invocation == null:
+          return message.copyWith(invocation: invocation);
+        case PromptStampHandoff(:final handoff):
+          return message.copyWith(handoff: handoff);
+        case PromptStampCommand() || null:
+          break;
+      }
     }
     return message;
+  }
+
+  /// Turns the `sent` handoff recorded for the prompt [promptId] to
+  /// [sessionId] into its not-sent form, so an echo that has yet to arrive,
+  /// or a later live update of one that has, is stamped as not sent.
+  void markHandoffNotSent({required String sessionId, required String promptId}) {
+    if (_stamps.stampFor(sessionId: sessionId, promptId: promptId) case PromptStampHandoff(
+      handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle),
+    )) {
+      _stamps.record(
+        sessionId: sessionId,
+        promptId: promptId,
+        stamp: PromptStampHandoff(
+          handoff: MessageHandoff.notSent(targetSessionId: targetSessionId, targetTitle: targetTitle),
+        ),
+      );
+    }
   }
 
   /// [prompts] with the source of each command this bridge sent to [sessionId].
@@ -496,25 +540,80 @@ class SessionRepository({
     for (final prompt in prompts)
       if (prompt.command != null && prompt.commandSource == null)
         prompt.copyWith(
-          commandSource: _invocations.invocationFor(sessionId: sessionId, promptId: prompt.id)?.source,
+          commandSource: switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
+            PromptStampCommand(:final invocation) => invocation.source,
+            PromptStampHandoff() || null => null,
+          },
         )
       else
         prompt,
   ];
 
+  /// Sends [parts] as the prompt [promptId]. A [handoff] is remembered under
+  /// [promptId], so the user message that fulfils it is stamped by
+  /// [stampLiveMessage].
   Future<void> sendPrompt({
     required String sessionId,
     required String promptId,
-    required List<PromptPart> parts,
+    required List<DeliverablePromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+    required MessageHandoff? handoff,
+  }) async {
+    try {
+      await _useSessionPlugin(
+        sessionId: sessionId,
+        operation: SessionOperation.sendPrompt,
+        body: (plugin, binding) {
+          // Recorded before the plugin call: its echo can arrive before the
+          // call returns. A definitely refused send forgets it again.
+          if (handoff != null) {
+            _stamps.record(
+              sessionId: sessionId,
+              promptId: promptId,
+              stamp: PromptStampHandoff(handoff: handoff),
+            );
+          }
+          return plugin.sendPrompt(
+            sessionId: binding.backendSessionId,
+            promptId: promptId,
+            parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+            variant: _toPluginVariant(variant),
+            fastMode: fastMode,
+            agent: agent,
+            model: _toPluginModel(model),
+          );
+        },
+      );
+    } on PluginOperationException catch (error) {
+      _forgetStampOnRefusal(sessionId: sessionId, promptId: promptId, error: error);
+      rethrow;
+    }
+  }
+
+  /// Removes [beforeMessageId] and every later message from [sessionId]'s
+  /// conversation through the plugin's native rewind, then sends [parts] as
+  /// its next prompt, as [sendPrompt] does.
+  ///
+  /// A plugin without native rewind cannot branch at any message, so it is
+  /// refused the way a plugin refuses a message it cannot map.
+  Future<void> rewindAndSendPrompt({
+    required String sessionId,
+    required String beforeMessageId,
+    required String promptId,
+    required List<DeliverablePromptPart> parts,
     required SessionVariant? variant,
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) => _useSessionPlugin(
     sessionId: sessionId,
-    operation: SessionOperation.sendPrompt,
-    body: (plugin, binding) => plugin.sendPrompt(
+    operation: SessionOperation.rewindSession,
+    body: (plugin, binding) => _requireSessionRewindApi(plugin: plugin).rewindAndSendPrompt(
       sessionId: binding.backendSessionId,
+      beforeMessageId: beforeMessageId,
       promptId: promptId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
       variant: _toPluginVariant(variant),
@@ -523,6 +622,87 @@ class SessionRepository({
       model: _toPluginModel(model),
     ),
   );
+
+  /// Moves root session [sessionId] onto a new harness session, created in
+  /// its directory with [parts] as its first prompt, keeping the session id.
+  ///
+  /// The old harness session is deleted the way [deleteSession] deletes one:
+  /// its subtree is tombstoned and its sub-agent rows removed, in the
+  /// transaction that rebinds the row. Returns the ids of the removed rows,
+  /// whose history the caller purges. A failed backend delete is only logged:
+  /// startup reconciliation retries it through the tombstone.
+  Future<List<String>> replaceBackendSession({
+    required String sessionId,
+    required List<DeliverablePromptPart> parts,
+    required String? userVisibleText,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    const operation = SessionOperation.rewindSession;
+    final binding = await _requireBinding(sessionId: sessionId, operation: operation);
+    final result = await _runtime.useAndCommit(
+      pluginId: binding.pluginId,
+      operation: operation,
+      prepare: (plugin) => plugin.createSession(
+        directory: binding.directory,
+        parentSessionId: null,
+        parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+        userVisibleText: userVisibleText,
+        variant: _toPluginVariant(variant),
+        fastMode: fastMode,
+        agent: agent,
+        model: _toPluginModel(model),
+      ),
+      commit: (created, generation) async {
+        final removedSessionIds = await _tombstoneSubtree(
+          root: binding,
+          removeRows: (subtree) async {
+            // Catalog import may have bound the new harness session to a row
+            // of its own before this commit; that row is this replacement.
+            final stray = await _sessionDao.getSessionByBinding(
+              pluginId: binding.pluginId,
+              backendSessionId: created.id,
+            );
+            final straySubtree = stray == null ? const <SessionDto>[] : await _getSessionSubtree(root: stray);
+            if (stray != null) await _sessionDao.deleteSession(sessionId: stray.sessionId);
+            await _sessionDao.rebindBackendSession(sessionId: sessionId, backendSessionId: created.id);
+            final children = subtree.skip(1).toList(growable: false);
+            for (final child in children) {
+              if (child.parentSessionId == sessionId) await _sessionDao.deleteSession(sessionId: child.sessionId);
+            }
+            return [
+              for (final row in [...straySubtree, ...children]) row.sessionId,
+            ];
+          },
+        );
+        return (backendSessionId: created.id, generation: generation, removedSessionIds: removedSessionIds);
+      },
+    );
+    _publishBindingsCommitted(
+      pluginId: binding.pluginId,
+      projectId: binding.projectId,
+      generation: result.generation,
+      kind: SessionBindingCommitKind.sessionReplacement,
+      backendSessionIds: [result.backendSessionId],
+    );
+    try {
+      await _useBoundSessionPlugin(
+        binding: binding,
+        operation: SessionOperation.deleteSession,
+        body: (plugin) => plugin.deleteSession(binding.backendSessionId),
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "Failed to delete harness session ${binding.backendSessionId} replaced in session $sessionId; "
+        "its tombstone keeps it out of the catalog",
+        error,
+        stackTrace,
+      );
+    }
+    return result.removedSessionIds;
+  }
 
   /// Asks [sessionId]'s harness a side question with this side chat's
   /// [history]. A harness that does not declare side questions is refused
@@ -657,20 +837,33 @@ class SessionRepository({
     return inlineImagesSupported(pluginId: binding.pluginId);
   }
 
-  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) => _useSessionPlugin(
+  Future<SessionReadiness> getSessionReadiness({required String sessionId}) => _useSessionPlugin(
     sessionId: sessionId,
-    operation: SessionOperation.getQuotaContinuationReadiness,
-    body: (plugin, binding) async =>
-        switch (await plugin.getQuotaContinuationReadiness(sessionId: binding.backendSessionId)) {
-          PluginQuotaContinuationReadiness.idle => SessionContinuationReadiness.idle,
-          PluginQuotaContinuationReadiness.busy => SessionContinuationReadiness.busy,
-          PluginQuotaContinuationReadiness.retrying => SessionContinuationReadiness.retrying,
-          PluginQuotaContinuationReadiness.queued => SessionContinuationReadiness.queued,
-          PluginQuotaContinuationReadiness.awaitingInput => SessionContinuationReadiness.awaitingInput,
-          PluginQuotaContinuationReadiness.unavailable => SessionContinuationReadiness.unavailable,
-          PluginQuotaContinuationReadiness.unknown => SessionContinuationReadiness.unknown,
-        },
+    operation: SessionOperation.getSessionReadiness,
+    body: (plugin, binding) async => switch (await plugin.getSessionReadiness(sessionId: binding.backendSessionId)) {
+      PluginSessionReadiness.idle => SessionReadiness.idle,
+      PluginSessionReadiness.busy => SessionReadiness.busy,
+      PluginSessionReadiness.retrying => SessionReadiness.retrying,
+      PluginSessionReadiness.queued => SessionReadiness.queued,
+      PluginSessionReadiness.awaitingInput => SessionReadiness.awaitingInput,
+      PluginSessionReadiness.unavailable => SessionReadiness.unavailable,
+      PluginSessionReadiness.unknown => SessionReadiness.unknown,
+    },
   );
+
+  /// Asks [sessionId]'s harness to compact its context. The harness sends
+  /// nothing to a session that is working, so this never stops a turn.
+  Future<SessionCompactionResult> compactSession({required String sessionId, required String promptId}) =>
+      _useSessionPlugin(
+        sessionId: sessionId,
+        operation: SessionOperation.compactSession,
+        body: (plugin, binding) async =>
+            switch (await plugin.compactSession(sessionId: binding.backendSessionId, promptId: promptId)) {
+              PluginCompactionResult.accepted => SessionCompactionResult.accepted,
+              PluginCompactionResult.sessionBusy => SessionCompactionResult.sessionBusy,
+              PluginCompactionResult.unsupported => SessionCompactionResult.unsupported,
+            },
+      );
 
   /// Translates the backend child references a plugin puts on subtask parts
   /// into bridge session ids.
@@ -863,7 +1056,6 @@ class SessionRepository({
       sessionId: sessionId,
       operation: SessionOperation.deleteSession,
     );
-    final subtree = await _getSessionSubtree(root: binding);
     final deletionSnapshot = _mapCatalogSessions(rows: [binding]).single;
     // An unreachable backend must not strand the session in the catalog: an
     // uninstalled or unstartable plugin would otherwise leave the user with a
@@ -894,7 +1086,26 @@ class SessionRepository({
         stackTrace,
       );
     }
-    await _sessionDao.transaction(() async {
+    final sessionIds = await _tombstoneSubtree(
+      root: binding,
+      removeRows: (subtree) async {
+        await _sessionDao.deleteSession(sessionId: binding.sessionId);
+        return [for (final binding in subtree) binding.sessionId];
+      },
+    );
+    return (session: deletionSnapshot, sessionIds: sessionIds);
+  }
+
+  /// Tombstones the harness session of every row in [root]'s subtree, so
+  /// catalog import and startup reconciliation never bring one back, and
+  /// runs [removeRows] over that subtree in the same transaction. Returns the
+  /// session ids [removeRows] removed.
+  Future<List<String>> _tombstoneSubtree({
+    required SessionDto root,
+    required Future<List<String>> Function(List<SessionDto> subtree) removeRows,
+  }) async {
+    final (:subtree, :removedSessionIds) = await _sessionDao.transaction(() async {
+      final subtree = await _getSessionSubtree(root: root);
       final deletedAt = DateTime.now().millisecondsSinceEpoch;
       for (final binding in subtree) {
         await _sessionDao.insertSessionTombstone(
@@ -903,17 +1114,14 @@ class SessionRepository({
           deletedAt: deletedAt,
         );
       }
-      await _sessionDao.deleteSession(sessionId: binding.sessionId);
+      return (subtree: subtree, removedSessionIds: await removeRows(subtree));
     });
-    _deletedSessionIds.addAll(subtree.map((binding) => binding.sessionId));
+    _deletedSessionIds.addAll(removedSessionIds);
     for (final binding in subtree) {
       _tombstonesFor(binding.pluginId).add(binding.backendSessionId);
-      _busyObservations.remove(binding.sessionId);
     }
-    return (
-      session: deletionSnapshot,
-      sessionIds: [for (final binding in subtree) binding.sessionId],
-    );
+    removedSessionIds.forEach(_busyObservations.remove);
+    return removedSessionIds;
   }
 
   Future<List<SessionDto>> _getSessionSubtree({required SessionDto root}) async {
@@ -1331,6 +1539,10 @@ class SessionRepository({
       };
     },
   );
+
+  /// Whether [pluginId]'s backend is running, so a missing status from it
+  /// means its status read failed rather than that it has no turn.
+  bool isPluginActive({required String pluginId}) => _runtime.activePluginIds.contains(pluginId);
 
   Future<SessionStatusResponse> getSessionStatuses() async {
     final results = await Future.wait(
@@ -1889,6 +2101,15 @@ class SessionRepository({
 
   Set<String> _tombstonesFor(String pluginId) {
     return _tombstonedBackendSessionIds.putIfAbsent(pluginId, () => <String>{});
+  }
+
+  SessionRewindPluginApi _requireSessionRewindApi({required BridgePluginApi plugin}) {
+    if (plugin case final SessionRewindPluginApi rewindApi) return rewindApi;
+    throw PluginBranchPointUnavailableException(
+      operation: SessionOperation.rewindSession.name,
+      userFacingReason: null,
+      cause: null,
+    );
   }
 
   PersistedSessionCleanupApi _requirePersistedSessionCleanupApi({

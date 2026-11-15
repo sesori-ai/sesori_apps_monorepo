@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -95,8 +94,8 @@ abstract class AcpPlugin({
   required final AcpProcessFactory _processFactory,
 }) extends BridgeDerivedProjectsPluginApi {
   @override
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      PluginQuotaContinuationReadiness.unavailable;
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
+      PluginSessionReadiness.unavailable;
 
   this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
     _childSessionChanges = childSessionTracker.changes.listen(_onChildSessionsChanged);
@@ -295,6 +294,13 @@ abstract class AcpPlugin({
     required String sessionId,
     required List<Map<String, dynamic>> prompt,
   }) => throw UnsupportedError("$id does not support active-turn steering");
+
+  /// Whether [error] rejected a `session/prompt` only because the agent is
+  /// running a turn no Sesori prompt started, such as one it began itself for
+  /// a background result. The agent took nothing from the prompt, so it is
+  /// sent again every second until the agent takes it. ACP defines no such
+  /// rejection, so the base classifies none.
+  bool isBusyPromptRejection({required AcpRpcException error}) => false;
 
   /// Optional top-level metadata for an outbound `session/prompt` request.
   Map<String, dynamic>? outboundPromptMeta({
@@ -1225,6 +1231,73 @@ abstract class AcpPlugin({
   }) async {
     await _connectedClient();
     await validateTurnSelection(operation: "sendCommand", model: model, variant: variant, agent: agent);
+    _enqueueCommand(
+      sessionId: sessionId,
+      promptId: promptId,
+      command: command,
+      arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
+      variant: variant,
+      agent: agent,
+      model: model,
+    );
+    _cancelActiveTurnForQueuedInput(sessionId: sessionId);
+  }
+
+  /// The native command this harness compacts a session with. [compactSession]
+  /// sends it only while the live command list advertises it.
+  String get compactionCommandName => "compact";
+
+  /// Sends [compactionCommandName] as a command turn with the session's current
+  /// selection, but only to a quiet session: unlike [sendCommand], it never
+  /// cancels a running turn.
+  @override
+  Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    final client = await _connectedClient();
+    if (!_commandTracker.hasSnapshot && !_isSessionWorking(sessionId: sessionId)) {
+      // A fresh agent process advertises its commands only once a session
+      // loads, so load this one before reading them. Chained like a turn's
+      // own load, so a turn sent meanwhile waits for it.
+      final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
+      final load = state.tail.then((_) => _ensureResident(client: client, sessionId: sessionId));
+      state.tail = load;
+      await load;
+    }
+    final commands = await getCommands(projectId: directoryForSession(sessionId: sessionId));
+    if (!commands.any((command) => command.name == compactionCommandName)) return PluginCompactionResult.unsupported;
+    // Checked after the last await, so the enqueue below sees the same state.
+    if (_isSessionWorking(sessionId: sessionId)) return PluginCompactionResult.sessionBusy;
+    _enqueueCommand(
+      sessionId: sessionId,
+      promptId: promptId,
+      command: compactionCommandName,
+      arguments: "",
+      userVisibleArguments: null,
+      variant: null,
+      agent: null,
+      model: null,
+    );
+    return PluginCompactionResult.accepted;
+  }
+
+  /// Whether [sessionId] runs or holds a turn, runs an autonomous turn, or
+  /// waits for an answer.
+  bool _isSessionWorking({required String sessionId}) =>
+      _inFlightTurnSessions.contains(sessionId) ||
+      hasPendingTurn(sessionId: sessionId) ||
+      childSessionTracker.hasRootHold(sessionId: sessionId) ||
+      (_approvalRegistry?.hasPendingInput(sessionId: sessionId) ?? false);
+
+  void _enqueueCommand({
+    required String sessionId,
+    required String promptId,
+    required String command,
+    required String arguments,
+    required String? userVisibleArguments,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) {
     final backendCommand = commandForDispatch(command: command);
     final body = arguments.isEmpty ? "/$backendCommand" : "/$backendCommand $arguments";
     final visibleArguments = userVisibleArguments?.trim();
@@ -1255,7 +1328,6 @@ abstract class AcpPlugin({
         ),
       ),
     );
-    _cancelActiveTurnForQueuedInput(sessionId: sessionId);
   }
 
   @override
@@ -1705,23 +1777,37 @@ abstract class AcpPlugin({
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
       final meta = outboundPromptMeta(sessionId: sessionId, messageId: turn.messageId);
+      final params = {
+        "sessionId": sessionId,
+        "prompt": turn.blocks,
+        "_meta": ?meta,
+      };
       final dispatched = await client.dispatchSessionRequest(
         method: AcpMethods.sessionPrompt,
-        params: {
-          "sessionId": sessionId,
-          "prompt": turn.blocks,
-          "_meta": ?meta,
-        },
+        params: params,
         sessionId: sessionId,
-        inactivityTimeout: const Duration(minutes: 30),
+        inactivityTimeout: _promptInactivityTimeout,
       );
       _markTurnDispatched(sessionId: sessionId, state: state, turn: turn);
-      final raw = await dispatched.response;
+      final response = await _awaitPromptResponse(
+        client: client,
+        sessionId: sessionId,
+        params: params,
+        firstResponse: dispatched.response,
+        state: state,
+        expectedGeneration: expectedGeneration,
+        turn: turn,
+      );
+      if (response == null) {
+        // Stopped while the busy agent still had not taken the prompt.
+        _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
+        return;
+      }
       _retireInputOfEndedTurn(sessionId: sessionId);
-      final result = AcpPromptResult.fromJson(switch (raw) {
+      final result = AcpPromptResult.fromJson(switch (response.raw) {
         null => const <String, dynamic>{},
         final Map<dynamic, dynamic> map => map.cast<String, dynamic>(),
-        _ => throw FormatException("session/prompt result is not an object: ${raw.runtimeType}"),
+        final raw => throw FormatException("session/prompt result is not an object: ${raw.runtimeType}"),
       });
       _finishTurn(
         sessionId: sessionId,
@@ -1751,6 +1837,52 @@ abstract class AcpPlugin({
       }
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
+    }
+  }
+
+  static const Duration _promptInactivityTimeout = Duration(minutes: 30);
+  static const Duration _busyPromptRetryInterval = Duration(seconds: 1);
+
+  /// Awaits a dispatched `session/prompt` response. A prompt the agent rejects
+  /// as busy (see [isBusyPromptRejection]) is sent again every
+  /// [_busyPromptRetryInterval]; its user message is already shown, and the
+  /// session stays busy meanwhile. Returns null when a stop or delete ends the
+  /// wait. Once [_promptInactivityTimeout] has passed, the last rejection is
+  /// rethrown instead of resending, and fails the turn like any other.
+  Future<({Object? raw})?> _awaitPromptResponse({
+    required AcpStdioClient client,
+    required String sessionId,
+    required Map<String, Object?> params,
+    required Future<dynamic> firstResponse,
+    required _SessionTurnState state,
+    required int expectedGeneration,
+    required _AcpTurn turn,
+  }) async {
+    final waited = Stopwatch()..start();
+    var response = firstResponse;
+    while (true) {
+      final AcpRpcException busyRejection;
+      final StackTrace busyStack;
+      try {
+        return (raw: await response);
+      } on AcpRpcException catch (error, stack) {
+        if (!isBusyPromptRejection(error: error)) rethrow;
+        busyRejection = error;
+        busyStack = stack;
+      }
+      if (identical(response, firstResponse)) {
+        Log.i("[$id] agent is busy with its own turn on $sessionId; resending the prompt until it takes it");
+      }
+      await Future<void>.delayed(_busyPromptRetryInterval);
+      if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) return null;
+      if (waited.elapsed >= _promptInactivityTimeout) Error.throwWithStackTrace(busyRejection, busyStack);
+      final dispatched = await client.dispatchSessionRequest(
+        method: AcpMethods.sessionPrompt,
+        params: params,
+        sessionId: sessionId,
+        inactivityTimeout: _promptInactivityTimeout,
+      );
+      response = dispatched.response;
     }
   }
 
@@ -1899,14 +2031,6 @@ abstract class AcpPlugin({
   Map<String, dynamic>? _promptPartToContentBlock(PluginPromptPart part) {
     return switch (part) {
       PluginPromptPartText(:final text) => textContentBlock(text),
-      PluginPromptPartFilePath(:final path, :final filename) => {
-        "type": "resource_link",
-        // Uri.file encodes spaces and Windows drive/backslash paths; plain
-        // "file://$path" interpolation emits an invalid uri (e.g.
-        // `file://C:\a b.png`) that the agent rejects or ignores.
-        "uri": Uri.file(path).toString(),
-        "name": filename ?? p.basename(path),
-      },
       PluginPromptPartFileUrl(:final url, :final filename) => {
         "type": "resource_link",
         "uri": url,

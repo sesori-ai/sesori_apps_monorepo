@@ -118,6 +118,7 @@ _No messages._
             time: null,
             promptId: null,
             invocation: null,
+            handoff: null,
           ),
           parts: [],
         ),
@@ -401,6 +402,7 @@ Session _session({required String? title}) => Session(
   lastUserActivityAt: null,
   autoContinuation: null,
   approvalOverride: null,
+  scheduledTask: null,
 );
 
 MessageWithParts _user({required String text}) => MessageWithParts(
@@ -411,6 +413,7 @@ MessageWithParts _user({required String text}) => MessageWithParts(
     time: MessageTime(created: 1794736800000, completed: null),
     promptId: null,
     invocation: null,
+    handoff: null,
   ),
   parts: [_text(text: text)],
 );

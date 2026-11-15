@@ -158,7 +158,8 @@ class CodexAppServerClient({
             "version": bridgeVersion,
           },
           "capabilities": {
-            // Codex gates turn/start.collaborationMode behind this capability.
+            // Codex gates turn/start.collaborationMode and thread/sample (side
+            // questions) behind this capability.
             "experimentalApi": true,
             // codex 0.139.0 added this capability: opting in makes codex send
             // `attestation/generate` server-requests (for upstream

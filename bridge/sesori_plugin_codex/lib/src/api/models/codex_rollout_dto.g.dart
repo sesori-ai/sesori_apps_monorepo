@@ -252,6 +252,7 @@ _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
           : CodexRolloutHistoryBaseDto.fromJson(
               Map<String, dynamic>.from(json['history_base'] as Map),
             ),
+      attachedThread: json['attached_thread'] as bool? ?? false,
     );
 
 const _$CodexRolloutThreadSourceEnumMap = {

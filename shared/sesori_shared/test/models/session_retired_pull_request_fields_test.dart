@@ -49,6 +49,7 @@ void main() {
         time: null,
         promptDefaults: null,
         lastUserActivityAt: null,
+        scheduledTask: null,
       );
 
       final json = session.toJson();

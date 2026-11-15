@@ -470,6 +470,7 @@ const _session = Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   time: SessionTime(created: 1, updated: 2, archived: 3),
+  scheduledTask: null,
 );
 
 Widget _app({required GoRouter router}) => MaterialApp.router(

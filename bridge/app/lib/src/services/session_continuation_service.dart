@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_continuation_record.dart";
 import "../repositories/models/session_operation.dart";
+import "../repositories/models/session_readiness.dart";
 import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
@@ -132,7 +133,7 @@ class const SessionContinuationService({
       reason: reason,
     );
     final readiness = await _readiness(sessionId: sessionId);
-    if (readiness != SessionContinuationReadiness.idle) {
+    if (readiness != SessionReadiness.idle) {
       await pause(reason: _pauseReason(readiness: readiness));
       return;
     }
@@ -151,7 +152,7 @@ class const SessionContinuationService({
       return;
     }
     final finalReadiness = await _readiness(sessionId: sessionId);
-    if (finalReadiness != SessionContinuationReadiness.idle) {
+    if (finalReadiness != SessionReadiness.idle) {
       await pause(reason: _pauseReason(readiness: finalReadiness));
       return;
     }
@@ -164,18 +165,17 @@ class const SessionContinuationService({
         attemptedAt: _clock.now(),
       ),
     );
-    final defaults = snapshot.promptDefaults;
-    final model = defaults?.model;
-    final variant = model?.variant;
+    final settings = SessionPromptService.settingsFrom(defaults: snapshot.promptDefaults);
     try {
       await _prompts.sendPromptAlreadyReserved(
         sessionId: sessionId,
         promptId: promptId,
         parts: const [PromptPart.text(text: "Continue.")],
-        agent: defaults?.agent,
-        model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
-        variant: variant == null ? null : SessionVariant(id: variant),
-        fastMode: defaults?.fastMode ?? false,
+        agent: settings.agent,
+        model: settings.model,
+        variant: settings.variant,
+        fastMode: settings.fastMode,
+        handoff: null,
       );
     } on Object catch (error, stackTrace) {
       Log.w("Quota continuation submission failed for session $sessionId, prompt $promptId", error, stackTrace);
@@ -206,12 +206,12 @@ class const SessionContinuationService({
     await _publish(sessionId: sessionId);
   }
 
-  Future<SessionContinuationReadiness> _readiness({required String sessionId}) async {
+  Future<SessionReadiness> _readiness({required String sessionId}) async {
     try {
-      return await _sessions.getQuotaContinuationReadiness(sessionId: sessionId);
+      return await _sessions.getSessionReadiness(sessionId: sessionId);
     } on Object catch (error, stackTrace) {
       Log.w("Quota continuation readiness unavailable for session $sessionId", error, stackTrace);
-      return SessionContinuationReadiness.unavailable;
+      return SessionReadiness.unavailable;
     }
   }
 
@@ -253,14 +253,12 @@ class const SessionContinuationService({
     }
   }
 
-  static AutoContinuationPauseReason _pauseReason({required SessionContinuationReadiness readiness}) =>
-      switch (readiness) {
-        SessionContinuationReadiness.busy => AutoContinuationPauseReason.busy,
-        SessionContinuationReadiness.retrying => AutoContinuationPauseReason.retrying,
-        SessionContinuationReadiness.queued => AutoContinuationPauseReason.queued,
-        SessionContinuationReadiness.awaitingInput => AutoContinuationPauseReason.awaitingInput,
-        SessionContinuationReadiness.unavailable => AutoContinuationPauseReason.unavailable,
-        SessionContinuationReadiness.idle ||
-        SessionContinuationReadiness.unknown => AutoContinuationPauseReason.unknown,
-      };
+  static AutoContinuationPauseReason _pauseReason({required SessionReadiness readiness}) => switch (readiness) {
+    SessionReadiness.busy => AutoContinuationPauseReason.busy,
+    SessionReadiness.retrying => AutoContinuationPauseReason.retrying,
+    SessionReadiness.queued => AutoContinuationPauseReason.queued,
+    SessionReadiness.awaitingInput => AutoContinuationPauseReason.awaitingInput,
+    SessionReadiness.unavailable => AutoContinuationPauseReason.unavailable,
+    SessionReadiness.idle || SessionReadiness.unknown => AutoContinuationPauseReason.unknown,
+  };
 }

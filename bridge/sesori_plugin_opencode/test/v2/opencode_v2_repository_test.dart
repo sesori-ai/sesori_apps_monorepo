@@ -249,8 +249,7 @@ void main() {
       parts: const [
         PluginPromptPart.text(text: "First"),
         PluginPromptPart.text(text: "Second"),
-        PluginPromptPart.filePath(mime: "text/plain", path: "/fixture/file name.txt", filename: "file name.txt"),
-        PluginPromptPart.fileUrl(mime: "image/png", url: "https://fixture.invalid/image.png", filename: null),
+        PluginPromptPart.fileUrl(mime: "image/png", url: "https://fixture.invalid/image.png", filename: "image.png"),
         PluginPromptPart.fileData(mime: "image/png", base64: "AQID", filename: "fixture.png"),
       ],
     );
@@ -258,11 +257,10 @@ void main() {
     expect(body.text, "First\n\nSecond");
     final files = body.files ?? fail("expected prompt files");
     expect(files.map((file) => file.uri), [
-      Uri.file("/fixture/file name.txt").toString(),
       "https://fixture.invalid/image.png",
       "data:image/png;base64,AQID",
     ]);
-    expect(files.first.name, "file name.txt");
+    expect(files.first.name, "image.png");
     expect(body.id, isNull);
     expect(body.delivery, isNull);
     await repository.sendCommand(sessionId: "session-fixture", command: "review", arguments: "fixture args");

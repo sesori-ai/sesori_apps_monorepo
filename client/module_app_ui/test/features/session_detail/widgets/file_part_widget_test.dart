@@ -1582,6 +1582,7 @@ void main() {
     const message = MessageWithParts(
       info: Message.user(
         invocation: null,
+        handoff: null,
         promptId: null,
         id: "message-1",
         sessionID: "session-1",

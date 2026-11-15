@@ -469,7 +469,7 @@ class AcpEventMapper({
             "mimeType": mime,
             "data": base64,
           },
-          PluginPromptPartFilePath() || PluginPromptPartFileUrl() => const {},
+          PluginPromptPartFileUrl() => const {},
         },
     ];
     final tracker = AcpContentTracker();
@@ -536,6 +536,7 @@ class AcpEventMapper({
               ),
         promptDefaults: null,
         lastUserActivityAt: null,
+        scheduledTask: null,
       ).toJson(),
     );
   }
@@ -1434,6 +1435,7 @@ class AcpEventMapper({
             ),
       promptDefaults: null,
       lastUserActivityAt: null,
+      scheduledTask: null,
     );
   }
 

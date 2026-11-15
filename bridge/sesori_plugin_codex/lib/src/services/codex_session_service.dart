@@ -7,6 +7,7 @@ import "../codex_config_reader.dart";
 import "../codex_metadata_repository.dart";
 import "../models/codex_collaboration_mode.dart";
 import "../models/codex_replay_tool_disposition.dart";
+import "../models/codex_rewind_refusal.dart";
 import "../repositories/codex_catalog_repository.dart";
 import "../repositories/codex_message_repository.dart";
 import "../repositories/codex_model_repository.dart";
@@ -19,6 +20,7 @@ import "../repositories/models/codex_resumed_thread.dart";
 import "../repositories/models/codex_session_record.dart";
 import "../repositories/models/codex_sub_agent_rollout_fact.dart";
 import "../repositories/models/codex_thread_record.dart";
+import "codex_side_question_prompt_builder.dart";
 
 final class const CodexSessionMessageRead._({
   required final CodexPreparedMessageRead _messages,
@@ -47,6 +49,8 @@ class CodexSessionService({
   static const String compactionCommandName = "compact";
 
   static final PluginCommand _compactionCommand = PluginCommand.compaction(name: compactionCommandName);
+
+  static const _sideQuestionPromptBuilder = CodexSideQuestionPromptBuilder();
 
   CodexThreadRepository? _threadRepository;
   CodexModelRepository? _modelRepository;
@@ -588,6 +592,66 @@ class CodexSessionService({
     _loadedThreads.add(threadId);
     _rememberThreadModel(threadId: threadId, model: resumed.thread.model);
     return resumed;
+  }
+
+  /// The native turn [beforeMessageId] opens in [threadId], for
+  /// [revertThread]. Checks what the edited turn would refuse ([parts]'
+  /// attachments) too, so every refusal comes before the revert, which can't
+  /// be undone. Changes nothing.
+  Future<String> rewindTurnId({
+    required String threadId,
+    required String beforeMessageId,
+    required List<PluginPromptPart> parts,
+  }) async {
+    _connectedThreadRepository.validateTurnInput(parts: parts);
+    final rolloutPath = await _catalogRepository.findRolloutPath(sessionId: threadId);
+    if (rolloutPath == null) throw CodexRewindRefusal.unknownMessage.toException(cause: null);
+    return _messageRepository.rewindTurnId(
+      read: _messageRepository.prepareMessageRead(rolloutPath: rolloutPath, sessionId: threadId),
+      messageId: beforeMessageId,
+    );
+  }
+
+  /// Removes [beforeTurnId] and every later turn from the loaded [threadId],
+  /// so the caller's next `turn/start` sends the edited prompt. Returns the
+  /// forced resume an app-server restart needed, for the caller to apply.
+  Future<CodexResumedThread?> revertThread({required String threadId, required String beforeTurnId}) async {
+    final threadRepository = _connectedThreadRepository;
+    CodexResumedThread? resumed;
+    try {
+      await threadRepository.revertThread(threadId: threadId, beforeTurnId: beforeTurnId);
+    } on CodexThreadNotFoundException {
+      // The app-server restarted since the thread was loaded: one forced
+      // resume, as for `turn/start`.
+      resumed = await resumeThreadIfNeeded(threadId: threadId, force: true);
+      await threadRepository.revertThread(threadId: threadId, beforeTurnId: beforeTurnId);
+    }
+    // The revert wrote a new current rollout; the next turn's tail and every
+    // history read must follow it at once, not after the next scan.
+    try {
+      await _catalogRepository.refresh();
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] rollout catalog refresh after reverting $threadId failed", error, stackTrace);
+    }
+    return resumed;
+  }
+
+  /// Answers [question] on the loaded [threadId] from a throwaway copy of the
+  /// thread, so a running turn continues and nothing is written to it.
+  /// [activeTurnId] is the turn running now, if any; otherwise the copy is
+  /// taken after the thread's latest turn.
+  Future<PluginSideAnswer> askSideQuestion({
+    required String threadId,
+    required String? activeTurnId,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async {
+    final threadRepository = _connectedThreadRepository;
+    final expectedTurnId = activeTurnId ?? await threadRepository.latestTurnId(threadId: threadId);
+    if (expectedTurnId == null) return const PluginSideRefused(reason: PluginSideRefusal.noTurnYet);
+    final prompt = _sideQuestionPromptBuilder.build(question: question, history: history);
+    if (prompt == null) return const PluginSideRefused(reason: PluginSideRefusal.tooLong);
+    return await threadRepository.sampleThread(threadId: threadId, expectedTurnId: expectedTurnId, prompt: prompt);
   }
 
   /// The user's own developer instructions followed by the Sesori note, the

@@ -21,6 +21,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         StartAbortController;
 import "package:sesori_shared/sesori_shared.dart"
     show AuthClientType, AuthDeviceInfoBuilder, BridgeKind, BridgeSupervisedExitCode, DeviceInfo;
+import "package:timezone/data/latest_all.dart" as tz_data;
 
 import "../api/app_onboarding_state_storage.dart";
 import "../api/archived_session_storage.dart";
@@ -122,6 +123,10 @@ class const BridgeRuntimeRunner._() {
     required BridgeCliOptions options,
     required Map<BridgePluginDescriptor, PluginConfig> pluginConfigs,
   }) async {
+    // Scheduled-task times are wall-clock times in the zone a device reported,
+    // which can be a legacy link name such as `Asia/Calcutta` or `UTC`, so load
+    // every zone once before anything schedules.
+    tz_data.initializeTimeZones();
     final startAbortController = StartAbortController();
     PluginRuntime? pluginRuntime;
     PluginLifecycleService? pluginLifecycleService;
@@ -642,8 +647,10 @@ class const BridgeRuntimeRunner._() {
             supportsPromptAttachments: descriptor.supportsPromptAttachments,
             namesCommandInvocations: descriptor.namesCommandInvocations,
             supportsSideQuestions: descriptor.supportsSideQuestions,
+            supportsCompactionOnRequest: descriptor.supportsCompactionOnRequest,
             busyPromptHandling: descriptor.busyPromptHandling,
             mcpScopes: descriptor.mcpScopes,
+            sessionBranching: descriptor.sessionBranching,
           ),
       ];
       final uncontrollableDisabledPluginIds = PluginLifecycleService.uncontrollableDisabledPluginIds(

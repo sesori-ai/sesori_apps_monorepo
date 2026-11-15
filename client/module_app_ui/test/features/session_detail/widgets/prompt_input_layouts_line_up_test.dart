@@ -298,6 +298,7 @@ Future<void> _pumpComposer({
                 isBusy: isBusy,
                 hasMessages: true,
                 canSend: true,
+                submitAction: null,
                 onSend: ({required draft, required command, required attachments}) {},
                 onVoiceTranscriptionFinished: ({required finish, required mode}) {},
                 onDraftChanged: (_) {},

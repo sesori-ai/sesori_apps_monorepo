@@ -10,15 +10,6 @@ Map<String, dynamic> _$PluginPromptPartTextToJson(
   PluginPromptPartText instance,
 ) => <String, dynamic>{'text': instance.text, 'runtimeType': instance.$type};
 
-Map<String, dynamic> _$PluginPromptPartFilePathToJson(
-  PluginPromptPartFilePath instance,
-) => <String, dynamic>{
-  'mime': instance.mime,
-  'path': instance.path,
-  'filename': ?instance.filename,
-  'runtimeType': instance.$type,
-};
-
 Map<String, dynamic> _$PluginPromptPartFileUrlToJson(
   PluginPromptPartFileUrl instance,
 ) => <String, dynamic>{

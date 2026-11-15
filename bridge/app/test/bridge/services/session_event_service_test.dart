@@ -25,6 +25,7 @@ import "package:test/test.dart";
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_continuation_test_support.dart";
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
 
@@ -70,6 +71,7 @@ void main() {
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
         sessionOptionsService: FakeSessionOptionsService(),
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        chatHistory: createTestChatHistory().service,
       );
       service = SessionEventService(
         sessionViews: const PassThroughSessionViews(),
@@ -697,6 +699,7 @@ void main() {
               promptDefaults: null,
               lastUserActivityAt: null,
               branchName: null,
+              scheduledTask: null,
             ).toJson(),
           ),
         ),
@@ -1067,6 +1070,81 @@ void main() {
       expect(eventTracker.length, 0);
     });
 
+    test("releases a replacement harness session's events onto the existing session id", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-old",
+      );
+      Future<List<BridgeSseEvent>> observe(BridgeSseEvent event) => service.normalize(
+        allowDuringStop: false,
+        source: (pluginId: plugin.id, generation: 1, projectionUpdatedAt: 20, event: event),
+      );
+      const newMessage = BridgeSseMessageUpdated(
+        info: PluginMessage.user(
+          promptId: null,
+          invocation: null,
+          id: "new-message",
+          sessionID: "backend-new",
+          agent: null,
+          time: null,
+        ),
+      );
+      const newStatus = BridgeSseSessionStatus(sessionID: "backend-new", status: PluginSessionStatus.busy());
+      for (final event in [
+        BridgeSseSessionCreated(
+          info: _sessionInfo(
+            sessionId: "backend-new",
+            parentId: null,
+            projectId: "backend-project",
+            directory: "/repo",
+          ),
+        ),
+        newMessage,
+        newStatus,
+      ]) {
+        expect(await observe(event), isEmpty);
+      }
+
+      // What `SessionRepository.replaceBackendSession` commits.
+      await database.sessionDao.rebindBackendSession(sessionId: "stable-root", backendSessionId: "backend-new");
+      final output = await service.handleBindingsCommitted(
+        commit: (
+          pluginId: plugin.id,
+          projectId: "project-stable-root",
+          generation: 1,
+          kind: SessionBindingCommitKind.sessionReplacement,
+          backendSessionIds: const ["backend-new"],
+        ),
+      );
+
+      // The session already exists for clients: no `session.created`, no
+      // project refresh.
+      expect(output, hasLength(2));
+      expect((output[0].event as BridgeSseMessageUpdated).info.sessionID, "stable-root");
+      expect((output[1].event as BridgeSseSessionStatus).sessionID, "stable-root");
+      expect(eventTracker.length, 0);
+
+      // The old harness session's late events name a backend id no row binds.
+      final oldInfo = _sessionInfo(
+        sessionId: "backend-old",
+        parentId: null,
+        projectId: "backend-project",
+        directory: "/repo",
+      );
+      expect(await observe(BridgeSseSessionUpdated(info: oldInfo, titleChanged: true)), isEmpty);
+      expect(await observe(BridgeSseSessionDeleted(info: oldInfo)), isEmpty);
+      expect(
+        await observe(const BridgeSseSessionStatus(sessionID: "backend-old", status: PluginSessionStatus.idle())),
+        isEmpty,
+      );
+      expect(
+        (await database.sessionDao.getSession(sessionId: "stable-root"))?.backendSessionId,
+        "backend-new",
+      );
+    });
+
     test("does not refresh project activity for a stale creation commit", () async {
       pluginRuntime.currentGeneration = 2;
 
@@ -1400,6 +1478,7 @@ void main() {
               promptDefaults: null,
               lastUserActivityAt: null,
               branchName: null,
+              scheduledTask: null,
             ).toJson(),
             titleChanged: false,
           ),
@@ -1587,6 +1666,7 @@ void main() {
               promptDefaults: null,
               lastUserActivityAt: null,
               branchName: null,
+              scheduledTask: null,
             ).toJson(),
           ),
         ),
@@ -1615,6 +1695,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           branchName: null,
+          scheduledTask: null,
         ).toJson(),
         titleChanged: false,
       );
@@ -1737,6 +1818,7 @@ Map<String, dynamic> _sessionInfo({
     promptDefaults: null,
     lastUserActivityAt: null,
     branchName: null,
+    scheduledTask: null,
   ).toJson();
 }
 

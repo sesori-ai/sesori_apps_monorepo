@@ -39,15 +39,21 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
 
   /// Every rollout-backed session, newest first. Listing, stats and header
   /// parses run in an isolate: a cold catalog decodes tens of megabytes.
+  /// Attached threads are left out, as Codex's own thread list leaves them out.
   Future<List<CodexSessionRecord>> listSessionRecords() async {
     await _rescan();
     final records = <CodexSessionRecord>[];
     var unreadableOrMissingMetadata = 0;
     var mismatchedMetadata = 0;
+    var attachedThreads = 0;
     for (final MapEntry(key: id, value: rolloutPath) in _pathsById.entries) {
       final metadata = _rollouts[rolloutPath]?.parsed?.metadata;
       if (metadata == null) unreadableOrMissingMetadata++;
       if (metadata != null && metadata.id != id) mismatchedMetadata++;
+      if (metadata != null && metadata.attachedThread) {
+        attachedThreads++;
+        continue;
+      }
       if (_cachedRecord(id: id, rolloutPath: rolloutPath) case final record?) records.add(record);
     }
     records.sort((a, b) {
@@ -61,7 +67,8 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     Log.d(
       "[codex] rollout catalog records: "
       "unreadableOrMissingMetadata=$unreadableOrMissingMetadata, "
-      "mismatchedMetadata=$mismatchedMetadata, records=${records.length}",
+      "mismatchedMetadata=$mismatchedMetadata, attachedThreads=$attachedThreads, "
+      "records=${records.length}",
     );
     return records;
   }
@@ -199,6 +206,13 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
   Future<String?> findRolloutPath({required String sessionId}) async {
     if (!_pathsById.containsKey(sessionId)) await _rescan();
     return _pathsById[sessionId];
+  }
+
+  /// Rescans now, for a caller that just made Codex write a newer rollout of
+  /// a known session (a revert), which a lookup would otherwise miss until the
+  /// next scan.
+  Future<void> refresh() async {
+    await _rescan();
   }
 
   /// A session from the last scan, or from one rescan on a miss.
@@ -519,6 +533,7 @@ class const _CodexSessionMetadata({
   required final String? agentNickname,
   required final String? agentPath,
   required final String? parentId,
+  required final bool attachedThread,
 });
 
 /// A parsed rollout header. Rollouts are append-only, so a header that filled
@@ -551,6 +566,7 @@ _ParsedRollout? _parseRollout({
   String? agentNickname;
   String? agentPath;
   String? parentId;
+  var attachedThread = false;
   for (final line in header.lines) {
     switch (line) {
       case CodexRolloutSessionMetadataLineDto(:final payload):
@@ -564,6 +580,7 @@ _ParsedRollout? _parseRollout({
         cwd = payload.cwd;
         timestamp = _tryParseDate(raw: payload.timestamp);
         modelProvider = payload.modelProvider;
+        attachedThread = payload.attachedThread;
         if (payload.threadSource == CodexRolloutThreadSource.subagent) {
           parentId = payload.parentThreadId;
           agentNickname = payload.agentNickname;
@@ -592,6 +609,7 @@ _ParsedRollout? _parseRollout({
             agentNickname: agentNickname,
             agentPath: agentPath,
             parentId: parentId,
+            attachedThread: attachedThread,
           ),
     shortFileLength: header.reachedLineLimit ? null : header.fileLength,
   );

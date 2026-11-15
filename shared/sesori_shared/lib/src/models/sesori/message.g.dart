@@ -19,6 +19,11 @@ MessageUser _$MessageUserFromJson(Map json) => MessageUser(
       : CommandInvocation.fromJson(
           Map<String, dynamic>.from(json['invocation'] as Map),
         ),
+  handoff: json['handoff'] == null
+      ? null
+      : MessageHandoff.fromJson(
+          Map<String, dynamic>.from(json['handoff'] as Map),
+        ),
   $type: json['role'] as String?,
 );
 
@@ -30,6 +35,7 @@ Map<String, dynamic> _$MessageUserToJson(MessageUser instance) =>
       'time': ?instance.time?.toJson(),
       'promptId': ?instance.promptId,
       'invocation': ?instance.invocation?.toJson(),
+      'handoff': ?instance.handoff?.toJson(),
       'role': instance.$type,
     };
 

@@ -69,6 +69,7 @@ import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/plugin_message_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
+import "repositories/mappers/session_transcript_markdown_builder.dart";
 import "repositories/mcp_repository.dart";
 import "repositories/models/normalized_bridge_event.dart";
 import "repositories/new_session_defaults_repository.dart";
@@ -158,10 +159,12 @@ import "routing/reply_to_form_handler.dart";
 import "routing/reply_to_permission_handler.dart";
 import "routing/reply_to_question_handler.dart";
 import "routing/request_router.dart";
+import "routing/rewind_session_handler.dart";
 import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
 import "routing/search_session_prompts_handler.dart";
 import "routing/send_prompt_handler.dart";
+import "routing/send_to_session_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
 import "routing/set_session_auto_continuation_handler.dart";
@@ -203,6 +206,7 @@ import "services/session_mutation_dispatcher.dart";
 import "services/session_operation_dispatcher.dart";
 import "services/session_options_service.dart";
 import "services/session_prompt_service.dart";
+import "services/session_send_service.dart";
 import "services/session_unseen_service.dart";
 import "services/session_view_service.dart";
 import "services/session_view_tracker.dart";
@@ -561,6 +565,16 @@ class Orchestrator({
       readyPluginIds: _pluginLifecycleService.readyPluginIds,
       catalogImportService: catalogImportService,
     );
+    final chatHistoryService = ChatHistoryService(
+      chatHistoryRepository: ChatHistoryRepository(
+        chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
+        attachmentSpillStorage: _attachmentSpillStorage,
+        archivedSessionStorage: _archivedSessionStorage,
+      ),
+      sessionRepository: sessionRepository,
+      attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
+      bridgeIdProvider: _bridgeRegistrationService,
+    );
     final sessionPromptService = SessionPromptService(
       continuations: sessionContinuations,
       views: sessionViews,
@@ -573,6 +587,7 @@ class Orchestrator({
       archivedSessionValidator: archivedSessionValidator,
       sessionOptionsService: sessionOptionsService,
       promptPartDelivery: promptPartDeliveryService,
+      chatHistory: chatHistoryService,
     );
     final sessionContinuationService = SessionContinuationService(
       continuations: sessionContinuations,
@@ -586,16 +601,6 @@ class Orchestrator({
       clock: clock,
     );
     final sessionContinuationTimer = SessionContinuationTimerListener(service: sessionContinuationService);
-    final chatHistoryService = ChatHistoryService(
-      chatHistoryRepository: ChatHistoryRepository(
-        chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
-        attachmentSpillStorage: _attachmentSpillStorage,
-        archivedSessionStorage: _archivedSessionStorage,
-      ),
-      sessionRepository: sessionRepository,
-      attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
-      bridgeIdProvider: _bridgeRegistrationService,
-    );
     final sessionAbortService = SessionAbortService(
       continuations: sessionContinuations,
       views: sessionViews,
@@ -647,6 +652,22 @@ class Orchestrator({
     );
     final sessionEventDispatcher = SessionEventDispatcher(
       sessionEventService: sessionEventService,
+    );
+    final sessionSendService = SessionSendService(
+      sessions: sessionRepository,
+      views: sessionViews,
+      permissions: permissionRepository,
+      questions: questionRepository,
+      operations: sessionOperationDispatcher,
+      prompts: sessionPromptService,
+      events: sessionEventDispatcher,
+      aborts: sessionAbortService,
+      history: chatHistoryService,
+      transcripts: transcriptRepository,
+      markdown: const SessionTranscriptMarkdownBuilder(),
+      plugins: _pluginLifecycleService,
+      clock: clock,
+      summaryTimeout: const Duration(minutes: 15),
     );
     final sessionMutationListener = SessionMutationListener(
       source: sessionMutationDispatcher.mutations.asyncMap(
@@ -745,6 +766,8 @@ class Orchestrator({
         ),
         DeleteSessionHandler(sessionDeletionService: sessionDeletionService),
         SendPromptHandler(sessionPromptService: sessionPromptService),
+        RewindSessionHandler(sessionPromptService: sessionPromptService),
+        SendToSessionHandler(sessionSendService: sessionSendService),
         GetQueuedPromptsHandler(sessionRepository: sessionRepository),
         CancelQueuedPromptHandler(sessionPromptService: sessionPromptService),
         AbortSessionHandler(sessionAbortService: sessionAbortService),
@@ -837,6 +860,7 @@ class Orchestrator({
       sessionOperationDispatcher: sessionOperationDispatcher,
       sessionMutationDispatcher: sessionMutationDispatcher,
       sessionCreationService: sessionCreationService,
+      sessionSendService: sessionSendService,
       statusNotifier: _statusNotifier,
       reconnectBackoff: _reconnectBackoff,
       startupRetryService: _startupRetryService,
@@ -871,20 +895,31 @@ class Orchestrator({
     required LocalSessionMutation mutation,
     required SessionViewService sessionViews,
   }) async {
-    final session = mutation is SessionDeleted || mutation is SessionContinuationUpdated || mutation is SessionArchived
-        ? mutation.session
-        : await sessionViews.enrich(session: mutation.session);
+    final session = switch (mutation) {
+      SessionDeleted() ||
+      SessionContinuationUpdated() ||
+      SessionArchived() ||
+      SessionMessagesRewound() => mutation.session,
+      SessionTitleUpdated() || SessionApprovalOverrideUpdated() || SessionPinnedUpdated() => await sessionViews.enrich(
+        session: mutation.session,
+      ),
+    };
     return (
       pluginId: session.pluginId,
-      event: switch (mutation) {
-        SessionTitleUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
-        SessionContinuationUpdated() ||
-        SessionApprovalOverrideUpdated() ||
-        SessionPinnedUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
-        SessionDeleted() => BridgeSseSessionDeleted(info: session.toJson()),
+      events: switch (mutation) {
+        SessionTitleUpdated() => [BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true)],
+        SessionContinuationUpdated() || SessionApprovalOverrideUpdated() || SessionPinnedUpdated() => [
+          BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
+        ],
+        SessionDeleted() => [BridgeSseSessionDeleted(info: session.toJson())],
         // A backend may keep reporting an archived session running or waiting,
         // so rebuild the summary, which drops archived sessions, at once.
-        SessionArchived() => const BridgeSseProjectUpdated(),
+        SessionArchived() => const [BridgeSseProjectUpdated()],
+        // Each removal is stored and fanned out like a backend's own.
+        SessionMessagesRewound(:final removedMessageIds) => [
+          for (final messageId in removedMessageIds)
+            BridgeSseMessageRemoved(sessionID: session.id, messageID: messageId),
+        ],
       },
     );
   }
@@ -955,6 +990,7 @@ class OrchestratorSession._({
   required final SessionOperationDispatcher _sessionOperationDispatcher,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
   required final SessionCreationService _sessionCreationService,
+  required final SessionSendService _sessionSendService,
   required final ControlStatusNotifier? _statusNotifier,
   required final ReconnectBackoffPolicy _reconnectBackoff,
   required final BridgeStartupRetryService _startupRetryService,
@@ -1264,6 +1300,7 @@ class OrchestratorSession._({
   Future<void> _teardown() async {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _sessionSendService.beginShutdown();
     _projectGlossaryPopulationService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     (Object, StackTrace)? firstTeardownFailure;
@@ -1486,6 +1523,7 @@ class OrchestratorSession._({
     _startupRetryService.cancel();
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _sessionSendService.beginShutdown();
     _projectGlossaryPopulationService.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = clock.now();

@@ -35,6 +35,8 @@ _PluginMetadata _$PluginMetadataFromJson(Map json) => _PluginMetadata(
   failureReason: json['failureReason'] as String?,
   namesCommandInvocations: json['namesCommandInvocations'] as bool? ?? false,
   supportsSideQuestions: json['supportsSideQuestions'] as bool? ?? false,
+  supportsCompactionOnRequest:
+      json['supportsCompactionOnRequest'] as bool? ?? false,
   busyPromptHandling:
       $enumDecodeNullable(
         _$BusyPromptHandlingEnumMap,
@@ -42,6 +44,17 @@ _PluginMetadata _$PluginMetadataFromJson(Map json) => _PluginMetadata(
         unknownValue: BusyPromptHandling.unknown,
       ) ??
       BusyPromptHandling.unknown,
+  sessionBranching:
+      (json['sessionBranching'] as List<dynamic>?)
+          ?.map(
+            (e) => $enumDecode(
+              _$SessionBranchingOperationEnumMap,
+              e,
+              unknownValue: SessionBranchingOperation.unknown,
+            ),
+          )
+          .toSet() ??
+      const <SessionBranchingOperation>{},
 );
 
 Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
@@ -59,8 +72,12 @@ Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
       'failureReason': ?instance.failureReason,
       'namesCommandInvocations': instance.namesCommandInvocations,
       'supportsSideQuestions': instance.supportsSideQuestions,
+      'supportsCompactionOnRequest': instance.supportsCompactionOnRequest,
       'busyPromptHandling':
           _$BusyPromptHandlingEnumMap[instance.busyPromptHandling]!,
+      'sessionBranching': instance.sessionBranching
+          .map((e) => _$SessionBranchingOperationEnumMap[e]!)
+          .toList(),
     };
 
 const _$PluginLifecycleStateEnumMap = {
@@ -87,6 +104,12 @@ const _$BusyPromptHandlingEnumMap = {
   BusyPromptHandling.steer: 'steer',
   BusyPromptHandling.stopTurn: 'stopTurn',
   BusyPromptHandling.unknown: 'unknown',
+};
+
+const _$SessionBranchingOperationEnumMap = {
+  SessionBranchingOperation.rewind: 'rewind',
+  SessionBranchingOperation.fork: 'fork',
+  SessionBranchingOperation.unknown: 'unknown',
 };
 
 _PluginListResponse _$PluginListResponseFromJson(Map json) =>

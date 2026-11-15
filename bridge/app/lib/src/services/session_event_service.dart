@@ -179,7 +179,10 @@ class SessionEventService({
         pluginId: commit.pluginId,
         backendSessionId: backendSessionId,
       );
+      // A replacement's session already exists for clients, so its new
+      // harness session's `session.created` announces nothing.
       if (pendingRoot != null &&
+          commit.kind != SessionBindingCommitKind.sessionReplacement &&
           isCurrentGeneration(
             pluginId: pendingRoot.pluginId,
             generation: pendingRoot.generation,
@@ -239,7 +242,7 @@ class SessionEventService({
         _sessionRepository.markSessionIdle(sessionId: sessionID);
         return payload;
       case NormalizedMessageEvent(:final message):
-        return NormalizedMessageEvent(message: _sessionRepository.stampLiveInvocation(message: message));
+        return NormalizedMessageEvent(message: _sessionRepository.stampLiveMessage(message: message));
       case NormalizedQueuedPromptsEvent(:final sessionId, :final prompts):
         return NormalizedQueuedPromptsEvent(
           sessionId: sessionId,

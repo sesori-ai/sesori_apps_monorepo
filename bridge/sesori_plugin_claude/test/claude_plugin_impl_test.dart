@@ -326,6 +326,80 @@ void main() {
       await subscription.cancel();
     });
 
+    test("compactSession runs /compact with the applied selection and refuses a working session", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+      await harness.plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "plan it")],
+        variant: null,
+        agent: "Plan",
+        model: (providerID: "anthropic", modelID: "small"),
+      );
+      await _waitForUserText(first, "plan it");
+      first.emit(_result());
+      await pump();
+      int selectionChanges() => first.written
+          .where(
+            (frame) =>
+                frame["type"] == "control_request" &&
+                {"set_model", "set_permission_mode"}.contains(_request(frame)["subtype"]),
+          )
+          .length;
+      final changesBefore = selectionChanges();
+
+      expect(
+        await harness.plugin.compactSession(sessionId: testSessionId, promptId: "prompt-compact"),
+        PluginCompactionResult.accepted,
+      );
+      await _waitForUserText(first, "/compact");
+      expect(selectionChanges(), changesBefore, reason: "compaction keeps the session's model and mode");
+      expect(harness.processes, hasLength(1));
+
+      expect(
+        await harness.plugin.compactSession(sessionId: testSessionId, promptId: "prompt-again"),
+        PluginCompactionResult.sessionBusy,
+      );
+      first.emit(_result());
+      await pump();
+    });
+
+    test("declares side questions and implements them", () {
+      expect(const ClaudePluginDescriptor().supportsSideQuestions, isTrue);
+      expect(harness.plugin, isA<SideQuestionPluginApi>());
+    });
+
+    test("a side question on a session with no turn yet refuses without a process", () async {
+      final session = await harness.plugin.createSession(
+        fastMode: false,
+        directory: "/tmp/project",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+
+      final answer = await harness.plugin.askSideQuestion(sessionId: session.id, question: "Why?", history: const []);
+
+      expect(answer, isA<PluginSideRefused>().having((r) => r.reason, "reason", PluginSideRefusal.noTurnYet));
+      expect(harness.processes, isEmpty);
+    });
+
+    test("a side question on an unknown session is not found and starts nothing", () async {
+      await expectLater(
+        harness.plugin.askSideQuestion(sessionId: otherTestSessionId, question: "Why?", history: const []),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "not found", isTrue)),
+      );
+      expect(harness.processes, isEmpty);
+    });
+
     test("creates an empty session and surfaces command initialization failure as a session error", () async {
       await harness.close();
       harness = _PluginHarness(failInitialize: true);
@@ -838,12 +912,12 @@ void main() {
       transcript.parent.createSync(recursive: true);
       transcript.writeAsStringSync("{}\n");
       expect(
-        await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
-        PluginQuotaContinuationReadiness.idle,
+        await harness.plugin.getSessionReadiness(sessionId: testSessionId),
+        PluginSessionReadiness.idle,
       );
       expect(
-        await harness.plugin.getQuotaContinuationReadiness(sessionId: "missing"),
-        PluginQuotaContinuationReadiness.unknown,
+        await harness.plugin.getSessionReadiness(sessionId: "missing"),
+        PluginSessionReadiness.unknown,
       );
       expect(harness.processes, isEmpty);
     });
@@ -954,8 +1028,8 @@ void main() {
         isNotEmpty,
       );
       expect(
-        await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
-        PluginQuotaContinuationReadiness.retrying,
+        await harness.plugin.getSessionReadiness(sessionId: testSessionId),
+        PluginSessionReadiness.retrying,
       );
 
       // The retried request streaming again is the recovery signal; the turn
@@ -981,8 +1055,8 @@ void main() {
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
       expect(events.whereType<BridgeSseProjectUpdated>(), isNotEmpty);
       expect(
-        await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
-        PluginQuotaContinuationReadiness.busy,
+        await harness.plugin.getSessionReadiness(sessionId: testSessionId),
+        PluginSessionReadiness.busy,
       );
       await subscription.cancel();
     });
@@ -1709,6 +1783,8 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
         return process;
       },
       binaryPath: "claude",
+      transcriptsDirectory: "/tmp/sesori/transcripts",
+      uploadsDirectory: "/tmp/sesori/uploads",
       environment: const {},
     );
     approvals = ClaudeApprovalRegistry(

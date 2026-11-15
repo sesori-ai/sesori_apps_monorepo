@@ -52,6 +52,7 @@ void main() {
       event: const SesoriSseEvent.messageUpdated(
         info: Message.user(
           invocation: null,
+          handoff: null,
           promptId: null,
           id: "user",
           sessionID: "root",
@@ -93,6 +94,7 @@ void main() {
       event: const SesoriSseEvent.messageUpdated(
         info: Message.user(
           invocation: null,
+          handoff: null,
           promptId: null,
           id: "missing-time",
           sessionID: "root",
@@ -292,6 +294,7 @@ void main() {
       event: const SesoriSseEvent.messageUpdated(
         info: Message.user(
           invocation: null,
+          handoff: null,
           promptId: null,
           id: "child-message",
           sessionID: "child",
@@ -315,6 +318,7 @@ void main() {
           time: SessionTime(created: 600, updated: 600, archived: null),
           promptDefaults: null,
           lastUserActivityAt: null,
+          scheduledTask: null,
         ),
       ),
     );
@@ -335,6 +339,7 @@ void main() {
         event: const SesoriSseEvent.messageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "newer",
             sessionID: "root",

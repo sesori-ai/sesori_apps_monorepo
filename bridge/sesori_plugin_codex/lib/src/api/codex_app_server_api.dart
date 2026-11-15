@@ -12,6 +12,7 @@ import "models/codex_mcp_status_dto.dart";
 import "models/codex_model_dto.dart";
 import "models/codex_skill_dto.dart";
 import "models/codex_thread_dto.dart";
+import "models/codex_thread_sample_dto.dart";
 import "models/codex_turn_dto.dart";
 import "models/codex_turn_input_dto.dart";
 
@@ -22,6 +23,10 @@ final class const CodexMcpThreadNotLoadedException({required final CodexRpcExcep
 
 /// Layer-1 typed boundary for migrated Codex app-server operations.
 class CodexAppServerApi({required final CodexAppServerTransport _client}) {
+  /// Codex stops a sample after 30 s with its own "sample timed out" error;
+  /// waiting longer lets that error arrive instead of a local timeout.
+  static const _sampleTimeout = Duration(seconds: 40);
+
   Stream<CodexMcpOAuthCompletionDto> get mcpOAuthCompletions => _client.notifications
       .where((notification) => notification.method == "mcpServer/oauthLogin/completed")
       .map((notification) => CodexMcpOAuthCompletionDto.fromJson(notification.params));
@@ -273,6 +278,56 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
       );
     }
     return CodexTurnStartResponseDto.fromJson(result.cast<String, dynamic>());
+  }
+
+  /// Removes [beforeTurnId] and every later turn from the loaded thread's
+  /// persisted history. Codex writes the kept history to a new rollout and
+  /// leaves local files alone.
+  Future<void> revertThread({required String threadId, required String beforeTurnId}) async {
+    await _client.request(
+      method: "thread/revert",
+      params: {"threadId": threadId, "beforeTurnId": beforeTurnId},
+      timeout: codexRequestTimeout,
+    );
+  }
+
+  /// The thread's newest turn, without its items, as a one-turn page.
+  Future<CodexThreadTurnsPageDto> listLatestTurn({required String threadId}) async {
+    final result = await _client.request(
+      method: "thread/turns/list",
+      params: {"threadId": threadId, "limit": 1, "sortDirection": "desc", "itemsView": "notLoaded"},
+      timeout: codexRequestTimeout,
+    );
+    if (result is! Map) {
+      throw StateError("expected a Codex turns page from thread/turns/list, got ${result.runtimeType}");
+    }
+    return CodexThreadTurnsPageDto.fromJson(result.cast<String, dynamic>());
+  }
+
+  /// Asks the model [prompt] on a throwaway copy of the loaded thread, whose
+  /// latest turn is [expectedTurnId]. Codex runs no tools, writes nothing to
+  /// the thread, and leaves a running turn alone.
+  Future<CodexThreadSampleDto> sampleThread({
+    required String threadId,
+    required String expectedTurnId,
+    required String prompt,
+  }) async {
+    final result = await _client.request(
+      method: "thread/sample",
+      params: {
+        "threadId": threadId,
+        "expectedTurnId": expectedTurnId,
+        // Codex 0.169.0 and newer may copy a turn that is still running.
+        // Earlier releases ignore the field and refuse a running source.
+        "allowInProgressTurn": true,
+        "prompt": prompt,
+      },
+      timeout: _sampleTimeout,
+    );
+    if (result is! Map) {
+      throw StateError("expected a Codex sample from thread/sample, got ${result.runtimeType}");
+    }
+    return CodexThreadSampleDto.fromJson(result.cast<String, dynamic>());
   }
 
   Future<void> compactThread({required String threadId}) async {

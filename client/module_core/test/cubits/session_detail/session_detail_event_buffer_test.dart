@@ -295,6 +295,7 @@ void main() {
         time: SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
         promptDefaults: null,
         lastUserActivityAt: null,
+        scheduledTask: null,
       );
       globalEvents.add(
         SseEvent(data: const SesoriSessionCreated(info: childSession)),
@@ -1538,6 +1539,7 @@ void main() {
               MessageWithParts(
                 info: const Message.user(
                   invocation: null,
+                  handoff: null,
                   promptId: null,
                   id: "message-1",
                   sessionID: _sessionId,
@@ -1987,6 +1989,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "message-1",
             sessionID: _sessionId,
@@ -2070,6 +2073,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "message-1",
             sessionID: _sessionId,
@@ -2140,6 +2144,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "message-1",
             sessionID: _sessionId,
@@ -2223,6 +2228,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "z-user",
             sessionID: _sessionId,
@@ -2245,6 +2251,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "user-1",
             sessionID: _sessionId,
@@ -2307,6 +2314,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "user-2",
             sessionID: _sessionId,

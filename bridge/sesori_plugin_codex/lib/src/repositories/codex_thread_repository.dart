@@ -12,6 +12,8 @@ import "../api/models/codex_turn_dto.dart";
 import "../api/models/codex_turn_input_dto.dart";
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
+import "../models/codex_rewind_refusal.dart";
+import "mappers/codex_side_answer_mapper.dart";
 import "models/codex_model_provider_exception.dart";
 import "models/codex_resumed_thread.dart";
 import "models/codex_thread_record.dart";
@@ -45,6 +47,8 @@ final class const _CodexPromptAttachmentException({required final String message
 
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
 class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
+  static const _sideAnswerMapper = CodexSideAnswerMapper();
+
   static const _supportedImageMimes = {
     "image/bmp",
     "image/gif",
@@ -127,13 +131,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     required CodexCollaborationMode? collaborationMode,
     required bool? fastMode,
   }) async {
-    final input = <CodexTurnInputDto>[];
-    var remainingInlineBytes = maxInlineMessageAttachmentBytes;
-    for (final part in joinAdjacentPromptTextParts(parts: parts)) {
-      final mapped = _mapTurnInput(part: part, remainingInlineBytes: remainingInlineBytes);
-      input.add(mapped.input);
-      remainingInlineBytes -= mapped.inlineBytes;
-    }
+    final input = _turnInput(parts: parts);
     if (input.isEmpty) return null;
     if (skill != null) input.add(CodexTurnInputDto.skill(name: skill.name, path: skill.path));
     final response = await _request(
@@ -153,6 +151,86 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       throw StateError("turn/start response missing turn.id");
     }
     return turnId;
+  }
+
+  /// Throws what [startTurn] would throw for [parts]' attachments, without
+  /// sending anything.
+  void validateTurnInput({required List<PluginPromptPart> parts}) => _turnInput(parts: parts);
+
+  List<CodexTurnInputDto> _turnInput({required List<PluginPromptPart> parts}) {
+    final input = <CodexTurnInputDto>[];
+    var remainingInlineBytes = maxInlineMessageAttachmentBytes;
+    for (final part in joinAdjacentPromptTextParts(parts: parts)) {
+      final mapped = _mapTurnInput(part: part, remainingInlineBytes: remainingInlineBytes);
+      input.add(mapped.input);
+      remainingInlineBytes -= mapped.inlineBytes;
+    }
+    return input;
+  }
+
+  /// Removes [beforeTurnId] and every later turn from the loaded [threadId].
+  /// The refusals Codex answers before changing anything become
+  /// [PluginBranchPointUnavailableException]; a thread this app-server has
+  /// not loaded is [CodexThreadNotFoundException], as for `turn/start`.
+  Future<void> revertThread({required String threadId, required String beforeTurnId}) async {
+    const operation = "thread/revert";
+    try {
+      await _appServerApi.revertThread(threadId: threadId, beforeTurnId: beforeTurnId);
+    } on CodexRpcException catch (error, stackTrace) {
+      final refusal = _revertRefusal(error: error);
+      if (refusal != null) Error.throwWithStackTrace(refusal.toException(cause: error), stackTrace);
+      Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
+    }
+  }
+
+  /// The answers live-checked on the 0.139.0 and 0.167.2 app-servers.
+  CodexRewindRefusal? _revertRefusal({required CodexRpcException error}) {
+    final message = error.message;
+    // 0.139.0 answers -32600 "unknown variant `thread/revert`" rather than
+    // JSON-RPC's method-not-found.
+    if (error.code == -32601 || message.contains("unknown variant")) return CodexRewindRefusal.runtimeTooOld;
+    if (error.code != -32600) return null;
+    if (message.contains("only supports paginated threads")) return CodexRewindRefusal.legacySession;
+    if (message.contains("ephemeral threads")) return CodexRewindRefusal.temporarySession;
+    if (message.startsWith("turn not found")) return CodexRewindRefusal.unknownMessage;
+    return null;
+  }
+
+  /// The id of the thread's newest turn, running or finished, or null when
+  /// the thread has no turn yet.
+  Future<String?> latestTurnId({required String threadId}) async {
+    const operation = "thread/turns/list";
+    try {
+      final page = await _appServerApi.listLatestTurn(threadId: threadId);
+      return _usefulText(value: page.data?.firstOrNull?.id);
+    } on CodexRpcException catch (error, stackTrace) {
+      // A thread started without a prompt has no rollout yet, which Codex
+      // reports as "thread <id> is not materialized yet".
+      if (error.message.contains("is not materialized yet")) return null;
+      Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
+    }
+  }
+
+  /// Asks [prompt] on a throwaway copy of the loaded thread whose latest turn
+  /// is [expectedTurnId], without tools and without writing to the thread.
+  Future<PluginSideAnswer> sampleThread({
+    required String threadId,
+    required String expectedTurnId,
+    required String prompt,
+  }) async {
+    const operation = "thread/sample";
+    try {
+      final sample = await _appServerApi.sampleThread(
+        threadId: threadId,
+        expectedTurnId: expectedTurnId,
+        prompt: prompt,
+      );
+      return _sideAnswerMapper.map(sample: sample);
+    } on CodexRpcException catch (error, stackTrace) {
+      final unsupported = _sideAnswerMapper.mapUnsupported(error: error);
+      if (unsupported != null) return unsupported;
+      Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
+    }
   }
 
   Future<void> compactThread({required String threadId}) => _request(
@@ -217,7 +295,6 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
   }) {
     return switch (part) {
       PluginPromptPartText(:final text) => (input: CodexTurnInputDto.text(text: text), inlineBytes: 0),
-      PluginPromptPartFilePath(:final path) => (input: CodexTurnInputDto.localImage(path: path), inlineBytes: 0),
       PluginPromptPartFileUrl(:final url) => (input: CodexTurnInputDto.image(url: url), inlineBytes: 0),
       PluginPromptPartFileData(:final mime, :final base64) => _mapInlineImage(
         mime: mime,
@@ -284,22 +361,23 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     try {
       return await request();
     } on CodexRpcException catch (error, stackTrace) {
-      final Exception exception =
-          _modelProviderException(operation: operation, error: error) ??
-          (_isThreadNotFound(error: error)
-              ? CodexThreadNotFoundException(
-                  operation: operation,
-                  message: error.message,
-                  innerError: error,
-                )
-              : CodexThreadRequestException(
-                  operation: operation,
-                  message: error.message,
-                  innerError: error,
-                ));
-      Error.throwWithStackTrace(exception, stackTrace);
+      Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
     }
   }
+
+  Exception _operationException({required String operation, required CodexRpcException error}) =>
+      _modelProviderException(operation: operation, error: error) ??
+      (_isThreadNotFound(error: error)
+          ? CodexThreadNotFoundException(
+              operation: operation,
+              message: error.message,
+              innerError: error,
+            )
+          : CodexThreadRequestException(
+              operation: operation,
+              message: error.message,
+              innerError: error,
+            ));
 
   /// Codex rejects a thread whose stored model provider the current config
   /// cannot serve (seen on `thread/resume`) with structured `error.data`.

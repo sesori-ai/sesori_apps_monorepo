@@ -5,6 +5,7 @@ import "package:test/test.dart";
 MessageWithParts _prompt({required String id, required int? at, String? promptId}) => MessageWithParts(
   info: Message.user(
     invocation: null,
+    handoff: null,
     id: id,
     sessionID: "s",
     agent: null,
@@ -47,6 +48,7 @@ Session _child({required String id, required int? createdAt}) => Session(
   branchName: null,
   lastUserActivityAt: null,
   autoContinuation: null,
+  scheduledTask: null,
 );
 
 MessagePart _tool({required ToolStatus status}) => MessagePart.tool(
@@ -247,6 +249,7 @@ void main() {
           const MessageWithParts(
             info: Message.user(
               invocation: null,
+              handoff: null,
               id: "hidden",
               sessionID: "s",
               agent: null,

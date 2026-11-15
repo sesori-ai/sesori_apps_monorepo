@@ -18,6 +18,8 @@ void main() {
         supportsMcpAuthentication: true,
         processFactory: harness.spawn,
         binaryPath: "claude",
+        transcriptsDirectory: "/tmp/sesori/transcripts",
+        uploadsDirectory: "/tmp/sesori/uploads",
         environment: const {},
       );
     });
@@ -273,6 +275,56 @@ void main() {
       );
       expect((await result as PluginMcpInventorySnapshot).entries, hasLength(1));
       expect(harness.specs, hasLength(1));
+    });
+
+    test("side questions need a resident process and never start one", () async {
+      await expectLater(
+        repository.sendSideQuestion(sessionId: testSessionId, question: "Why?", history: const []),
+        throwsStateError,
+      );
+      expect(harness.specs, isEmpty);
+    });
+
+    test("side questions send the history and map the answer", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final answer = repository.sendSideQuestion(
+        sessionId: testSessionId,
+        question: "And now?",
+        history: const [PluginSideExchange(question: "Why?", answer: "Because.")],
+      );
+      await pump();
+      final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
+      expect(request["request"], {
+        "subtype": "side_question",
+        "question": "And now?",
+        "history": [
+          {"question": "Why?", "response": "Because."},
+        ],
+      });
+      process.emitControlResponse(
+        requestId: request.field<String>("request_id"),
+        payload: {"response": "Still because.", "synthetic": false},
+      );
+
+      expect(await answer, isA<PluginSideAnswered>().having((a) => a.text, "text", "Still because."));
+      expect(harness.specs, hasLength(1));
+    });
+
+    test("a CLI without the side-question handler asks for an update", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final answer = repository.sendSideQuestion(sessionId: testSessionId, question: "Why?", history: const []);
+      await pump();
+      process.emitControlError(
+        requestId: process.written.last.field<String>("request_id"),
+        error: "Unsupported control request subtype: side_question",
+      );
+
+      expect(
+        await answer,
+        isA<PluginSideRefused>().having((r) => r.reason, "reason", PluginSideRefusal.harnessUpdateRequired),
+      );
     });
 
     test("inventory control rejection retains the original diagnostic cause", () async {

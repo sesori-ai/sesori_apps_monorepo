@@ -42,7 +42,8 @@ final class ClaudePlugin({
         McpManagementPluginApi,
         McpAuthenticationPluginApi,
         FormInteractionPluginApi,
-        SessionExternalActionsPluginApi {
+        SessionExternalActionsPluginApi,
+        SideQuestionPluginApi {
   this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
     _sessions.dispatches.listen(_handleTurnDispatched).addTo(_subscriptions);
@@ -361,17 +362,79 @@ final class ClaudePlugin({
       _sessions.queuedPrompts(sessionId: sessionId);
 
   @override
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      _sessions.getQuotaContinuationReadiness(
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
+      _sessions.getSessionReadiness(
         sessionId: sessionId,
         sessionExists:
             _createdSessions.containsKey(sessionId) ||
             await _transcripts.findTranscriptPath(sessionId: sessionId) != null,
       );
 
+  /// Runs Claude's `/compact` with the session's applied selection, so the
+  /// compaction neither switches the model nor restarts the process.
+  @override
+  Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    const operation = "compactSession";
+    if (ClaudeSubagentSessionId.agentIdOf(sessionId) != null) return PluginCompactionResult.unsupported;
+    final directory = await _directoryForSession(sessionId);
+    if (directory == null) {
+      throw const PluginOperationException.notFound(operation: operation, message: "session not found");
+    }
+    // The last await before the enqueue, so a turn sent meanwhile is seen.
+    switch (await getSessionReadiness(sessionId: sessionId)) {
+      case PluginSessionReadiness.busy ||
+          PluginSessionReadiness.retrying ||
+          PluginSessionReadiness.queued ||
+          PluginSessionReadiness.awaitingInput:
+        return PluginCompactionResult.sessionBusy;
+      case PluginSessionReadiness.idle || PluginSessionReadiness.unavailable || PluginSessionReadiness.unknown:
+        break;
+    }
+    final applied = _processes.appliedSelection(sessionId: sessionId);
+    const command = ClaudeBackendCatalogRepository.compactionCommand;
+    await _enqueueResolved(
+      sessionId: sessionId,
+      directory: directory,
+      parts: [const PluginPromptPart.text(text: "/$command")],
+      model: applied?.model,
+      effort: applied?.effort,
+      permissionMode: applied?.permissionMode,
+      fastMode: applied?.fastMode ?? false,
+      operation: operation,
+      promptId: promptId,
+      displayText: null,
+      command: command,
+      attachmentCount: 0,
+    );
+    return PluginCompactionResult.accepted;
+  }
+
   @override
   Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async =>
       _sessions.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
+
+  @override
+  Future<PluginSideAnswer> askSideQuestion({
+    required String sessionId,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async {
+    // A session created here has no transcript until its first turn starts,
+    // so there is nothing to resume or answer from.
+    if (_unstartedSessions.contains(sessionId)) {
+      return const PluginSideRefused(reason: PluginSideRefusal.noTurnYet);
+    }
+    final directory = await _directoryForSession(sessionId);
+    if (directory == null) {
+      throw const PluginOperationException.notFound(operation: "askSideQuestion", message: "session not found");
+    }
+    return await _sessions.askSideQuestion(
+      sessionId: sessionId,
+      directory: directory,
+      question: question,
+      history: history,
+    );
+  }
 
   @override
   Future<PluginAbortResult> abortSession({
@@ -655,16 +718,43 @@ final class ClaudePlugin({
       );
     }
     _validateModel(model, operation: operation, staleOptions: true);
-    final effort = _effort(variant, operation: operation, staleOptions: true);
-    final permissionMode = _permissionMode(agent, operation: operation, staleOptions: true);
-    final createNew = _unstartedSessions.contains(sessionId);
+    await _enqueueResolved(
+      sessionId: sessionId,
+      directory: directory,
+      parts: parts,
+      model: model?.modelID,
+      effort: _effort(variant, operation: operation, staleOptions: true),
+      permissionMode: _permissionMode(agent, operation: operation, staleOptions: true),
+      fastMode: fastMode,
+      operation: operation,
+      promptId: promptId,
+      displayText: displayText,
+      command: command,
+      attachmentCount: attachmentCount,
+    );
+  }
+
+  Future<void> _enqueueResolved({
+    required String sessionId,
+    required String directory,
+    required List<PluginPromptPart> parts,
+    required String? model,
+    required ClaudeEffortLevel? effort,
+    required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
+    required String operation,
+    required String promptId,
+    required String? displayText,
+    required String? command,
+    required int attachmentCount,
+  }) async {
     try {
       await _sessions.enqueueTurn(
         sessionId: sessionId,
         directory: directory,
-        createNew: createNew,
+        createNew: _unstartedSessions.contains(sessionId),
         parts: parts,
-        model: model?.modelID,
+        model: model,
         effort: effort,
         permissionMode: permissionMode,
         fastMode: fastMode,
