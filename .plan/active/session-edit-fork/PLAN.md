@@ -6,9 +6,9 @@
 - **Date:** 2026-11-14
 - **Status:** Planned. Phase 1 is planned in detail; later phases are rough bullets only.
 - **Issues:** #2497 (edit and resend an earlier user message), #2495 (message-level fork for Codex and Claude Code).
-- **Product decisions:** final, from the user's session-branching review page (round 1, 2026-11-14), summarised under
-  "Decisions" below. Side questions and merging are separate plans owned elsewhere; this plan only names the seams it
-  shares with them.
+- **Product decisions:** final, from the user's session-branching review pages (round 1, 2026-11-14; round 2,
+  2026-11-15), summarised under "Decisions" below. Side questions and merging are separate plans owned elsewhere; this
+  plan only names the seams it shares with them.
 - **Architecture review:** see "Review record" at the end.
 
 Let a user edit one of their earlier messages and resend it, which removes every later message from the session
@@ -25,11 +25,29 @@ From the user (final):
 2. **Conversation only, on every harness.** Files are never touched. The edit banner says files stay as they are.
 3. **Message menu.** Edit and fork live in the long-press (touch) or right-click (pointer) menu of messages, with no
    extra buttons in the chat. Own messages: "Edit and resend", "Fork from here", "Copy". Agent replies: "Fork from
-   here", "Copy".
+   here", "Copy". Long-press opens the menu, and "Select text" is one of its items (round 2, E3).
 4. **The fork opens at once**, with a "Forked from <title>" line at the top that links back. Both sessions stay alive.
 5. **Same worktree or directory.** Nothing is copied.
 6. **Fallback for harnesses without native support:** a new session that starts with the earlier chat as text context
    (no tool memory) and says so. Where native rewind is missing, Edit becomes "a copy with your edit".
+
+From the user, round 2 (final):
+
+7. **"Fork from here" on your own message is "edit as fork" (E1).** The fork starts just before that message, and the
+   message's text and attachments wait in the fork's composer. On an agent reply the fork starts after that reply.
+8. **Fork is also in the session's ⋯ menu (E1 note).** It forks after the latest finished reply, and it is there on
+   archived sessions too.
+9. **The fork's title is the original title plus " (fork)" (E2).**
+10. **Archived sessions can be forked (E4).**
+11. **Editing brings the message's attachments back into the composer (E5)**, where each can be removed before sending.
+12. **Follow-ups sent mid-turn show Edit (E6).** A tap explains that a message sent while the agent was working can't be
+    edited, and offers Fork. Editing them in place on Claude Code, OpenCode and Pi, which can cut at a single message,
+    is a later phase; Codex can't, because it cuts only between whole turns.
+13. **Fork and replace (E7, the user's idea).** The bridge keeps its own `sessionId` apart from the harness's
+    `backendSessionId`, so an edit can swap the harness session under the same Sesori session: create a new or forked
+    harness session, point the row at it, then stop and delete the old harness session. It serves an edit of a
+    session's first message and Pi's edit in place, instead of the copy fallback. Which harnesses use it is decided in
+    "Edit mechanism" below.
 
 Decided without asking (not vetoed):
 
@@ -46,11 +64,33 @@ Decided in this plan (implementation choices that follow from the decisions; ope
 
 - **Edit points are turn-opening prompts.** A turn is what the shared `splitPromptTurns` rule
   (`shared/sesori_shared/lib/src/transcript/prompt_turns.dart`) says it is. Codex can only cut at turn boundaries, and
-  the user prefers uniform behaviour, so "Edit and resend" is offered on the user message that opens a turn on every
-  harness, never on a follow-up steered into a running turn. Claude could cut finer; it doesn't.
-- **Fork points are finished turns.** "Fork from here" on any message of a finished turn keeps the conversation through
-  the end of that turn (see open question 1 for the user-message case). Codex forks at turn granularity
-  (`lastTurnId`); Claude can cut at any record but follows the same rule.
+  the user prefers uniform behaviour, so an edit runs only on the user message that opens a turn, on every harness.
+  On a follow-up steered into a running turn, "Edit and resend" answers with the decision-12 explanation and its Fork
+  action. Claude could cut finer; in phase 1 it doesn't.
+- **Fork points are turn boundaries.** On an agent reply of a finished turn, the fork keeps the conversation through
+  the end of that turn. On a user message that opens a turn, the fork keeps everything before that turn (decision 7);
+  on the session's first message that is nothing, so the fork is an empty session in the same directory. On a
+  follow-up sent mid-turn see open question 1. Codex forks at turn granularity (`lastTurnId`); Claude can cut at any
+  record but follows the same rule. The ⋯ menu forks after the latest finished turn.
+- **Edit mechanism: native rewind, plus a harness-session swap only where there is nothing to rewind to or no rewind.**
+  The user asked whether fork-and-replace should be the single edit mechanism on every harness that can fork at a
+  point. It should not, for reasons in the code:
+  - **Codex:** a paginated `thread/fork` stores its kept prefix as a reference to the source rollout
+    (`session_meta.history_base`), not a copy. The swap's "delete the old harness session" would delete the rollout the
+    new thread reads from (`CodexPluginImpl.deleteSession` deletes the rollout file and its `session_index.jsonl`
+    entry), so the old thread would have to stay on disk anyway. `thread/revert` keeps one thread id and needs no swap.
+  - **OpenCode:** a fork gives every kept message a new id, so the client would see the whole kept conversation removed
+    and re-added. `revert/stage {files: false}` keeps the ids.
+  - **Claude Code:** `--resume-session-at` keeps one `.jsonl` with its sub-agent sidechains. A fork-and-replace at a
+    later message would have to carry the sidechains the kept turns link to into the new session, or lose them when
+    the old session is deleted; that is unverified extra work. The active-branch reader (step 7) is needed anyway for
+    the live terminal-rewind bug.
+  - **The swap is still the one path for an edit of a session's first message, on every harness.** There is nothing
+    to keep, so the bridge creates a fresh harness session with the edited prompt through the existing
+    `createSession`, which every plugin has. This replaces the Claude "first message" spike and the copy fallback the
+    round-2 question offered, and it means `rewindAndSendPrompt` is never called for a first turn.
+  - **Pi (phase 2) uses the swap for every edit**: it can fork but not rewind, and its RPC `fork {entryId}` already
+    switches the running process to the new session file, which is exactly a swap.
 - **Phase 1 ships native edit and fork for Claude Code and Codex only.** Every other harness shows only "Copy" until
   phase 2 adds OpenCode, Pi and the text fallback.
 - **The bridge owns the cut.** The client names a message id; the bridge validates it against its stored history with
@@ -90,7 +130,7 @@ The research brief quoted older pins (Claude 2.1.310, Pi 1.4.0).
   only the kept chain with the new `sessionId`, keeps record uuids and assistant `message.id`s, and leaves the origin
   untouched. `--session-id` is accepted with `--resume` only together with `--fork-session`, so Sesori chooses the
   fork's id up front as it does for new sessions. Not yet checked: whether the fork file is written before the first
-  prompt (step 11 spike).
+  prompt (step 13 spike).
 - **If the flag is removed,** the CLI fails at spawn with `unknown option`; the plugin turns that into
   `PluginBranchPointUnavailableException` ("This Claude Code version can't edit or fork from Sesori"). Replacements, in
   order: write the kept chain into a new file the way the SDK's documented `forkSession(sessionId, {upToMessageId})`
@@ -267,12 +307,14 @@ The research brief quoted older pins (Claude 2.1.310, Pi 1.4.0).
   - `POST /session/rewind`, a flat `RewindSessionRequest({sessionId, messageId, promptId, parts, agent, model, variant,
     fastMode})` (no command fields: an edit resends text, not a command), answers `SuccessEmptyResponse`.
     `RewindSessionHandler` → `SessionPromptService.rewindAndSendPrompt`.
-  - `POST /session/fork`, `ForkSessionRequest({required String sessionId, required String messageId})`, answers the
-    new `Session`. `ForkSessionHandler` → `SessionForkService.forkSession`.
+  - `POST /session/fork`, `ForkSessionRequest({required String sessionId, required ForkPoint point})`, answers the
+    new `Session`. `ForkPoint` is a sealed union: `afterMessage(messageId)` (an agent reply), `beforeMessage(messageId)`
+    (your own message, decision 7) and `latest()` (the ⋯ menu, decision 8). `ForkSessionHandler` →
+    `SessionForkService.forkSession`.
   - Refusals of both routes use one new `SessionBranchErrorResponse({code: SessionBranchErrorCode, message})` with
     `{sessionBusy, branchPointUnavailable, staleSessionOptions, refused, unknown}` (`unknownEnumValue: unknown`);
     `branchPointUnavailable` carries the plugin's `userFacingReason` in `message`. `SendPromptErrorCode` is untouched.
-    Archived sessions keep the shared archived rejection.
+    An edit of an archived session keeps the shared archived rejection; a fork of one is allowed (decision 10).
 - **Edit flow** — `SessionPromptService.rewindAndSendPrompt` (same class as `sendPrompt`, because the edit is a send
   with a different plugin call; it reuses the accepted-prompt dedupe, attachment delivery, stale-options mapping and
   prompt-defaults update in `_sendPrompt`, whose `send` closure becomes the only difference). On the session lane
@@ -282,8 +324,9 @@ The research brief quoted older pins (Claude 2.1.310, Pi 1.4.0).
   3. `ChatHistoryService.removalForRewind({sessionId, messageId})` reads the stored history (backfilling first when the
      store is behind), checks with `splitPromptTurns` that `messageId` opens a prompt turn, and returns the ids of that
      message and every later stored message; otherwise `branchPointUnavailable`;
-  4. `SessionRepository.rewindAndSendPrompt` calls the plugin through the `SessionRewindPluginApi` interface
-     (`PluginBranchPointUnavailableException` → `branchPointUnavailable`);
+  4. when the message opens the session's first turn, the edit becomes a harness-session swap (see "Harness-session
+     swap" below). Otherwise `SessionRepository.rewindAndSendPrompt` calls the plugin through the
+     `SessionRewindPluginApi` interface (`PluginBranchPointUnavailableException` → `branchPointUnavailable`);
   5. after acceptance, `SessionMutationDispatcher` publishes `SessionMessagesRewound({session, removedMessageIds})`.
      The orchestrator's `_mapLocalMutation` (widened to return a list of events) maps it to one
      `BridgeSseMessageRemoved` per id through the existing local-event pipeline, whose handler already calls
@@ -292,21 +335,67 @@ The research brief quoted older pins (Claude 2.1.310, Pi 1.4.0).
      have landed.
   A later backfill must agree with the store, so each plugin's `getSessionMessages` must stop returning the removed
   messages; that is part of each plugin step.
+  An edited message's attachments arrive as ordinary prompt parts (see "Edit mode"), so the edit route needs no
+  attachment field of its own.
+- **Harness-session swap** — `SessionRepository.replaceBackendSession`, used in phase 1 only for an edit of the first
+  turn, on the session lane inside the same `rewindSession` operation. What keys on `backendSessionId` today, and how
+  the swap treats it:
+  - **`sessions_table` and the unique index `idx_sessions_plugin_backend (pluginId, backendSessionId)`.** The swap runs
+    `_runtime.useAndCommit` like `createSession`: `prepare` calls `plugin.createSession(directory, parts: <edited
+    prompt>)` on the row's directory, and `commit` updates the existing row's `backendSessionId` in one transaction
+    instead of inserting a row. If catalog import already bound the new backend id to a row of its own (the
+    `existingBinding` case `createSession` handles), that row is an import of this very replacement: the transaction
+    deletes it before rebinding, so the unique index holds.
+  - **The event tracker (`SessionEventTracker`, keyed `(pluginId, backendSessionId)`).** The new session's
+    `session.created` and its first-prompt events are held as pending events for the binding generation, exactly as
+    for a created session, and are released onto the existing Sesori id when the commit publishes the binding
+    (`_publishBindingsCommitted` with a new `SessionBindingCommitKind.sessionReplacement`). So status, message and
+    permission events of the new harness session reach clients under the same session id.
+  - **The old harness session.** After the commit, the bridge deletes it the way session deletion does: tombstone
+    every old backend id of the root and its sub-agent subtree in `deleted_sessions_table` and the in-memory tombstone
+    set (so catalog import and startup reconciliation never bring the old session back), delete the old sub-agent
+    child rows, then call `plugin.deleteSession(<old backend id>)`, which clears the plugin's own per-session caches
+    (Claude's process and `_createdSessions`, Codex's turn and approval maps). Its `session.deleted` event names a
+    backend id that no row binds any more, so it removes nothing. A failed backend delete is logged and left to
+    startup reconciliation through the tombstone; the edit still succeeds.
+  - **History, uploads and every other session-owned table** (`history_messages`, continuations, side chats, handoff
+    markers, `~/.sesori/uploads/<sessionId>/`) are keyed by the Sesori `sessionId`, which does not change. The old
+    messages are removed by exact id through the same `SessionMessagesRewound` path as a rewind.
+  - **Clients** never see a backend id (no shared or client model carries one). They see the same session, its messages
+    folding away, and the new prompt arriving: one continuous session.
+  - **Worktree context.** A new session's first prompt carries the bridge's worktree context part
+    (`buildWorktreeSystemContext`, which the message mapper strips before clients see it). The swap's first prompt is a
+    new first prompt, so it carries the same part, built the same way `SessionCreationService` builds it.
 - **Fork flow** — new `SessionForkService` (Layer 3, beside `SessionCreationService`, which it mirrors but which it
   doesn't belong in: it creates no worktree, sends no prompt and generates no title). Constructor:
   `SessionRepository`, `ChatHistoryService`, `ArchivedSessionValidator`, `SessionViewService`,
   `SessionOperationDispatcher`. It runs on the origin's lane as `SessionOperation.forkSession`:
-  1. requires the origin routable and not archived (open question 4);
-  2. `ChatHistoryService.forkBoundary({sessionId, messageId})` finds the prompt turn holding `messageId`, refuses a turn
-     that is still running, and returns that turn's last stored message id;
-  3. `SessionRepository.forkSession` calls `SessionForkPluginApi.forkSession` through `useAndCommit` and commits a new
-     row copying the origin's `projectId`, `directory`, `worktreePath`, `branchName`, `isDedicated`, `baseBranch`,
-     `baseCommit`, `lastAgent`, `lastAgentModel` and `fastMode`; `approvalOverride` stays null; `parentSessionId` stays
-     null so it is a root row. A backend session that catalog import already bound keeps its row and gains the fork
-     columns (same rule as `createSession`'s existing-binding branch);
+  1. requires the origin routable and a root session. An archived origin is allowed (decision 10): the fork reads the
+     origin and never mutates it, so the archived read-only rule is not broken. Archive keeps the harness session (Claude
+     and Codex archive only cancel pending approvals; `CodexPluginImpl.archiveSession` leaves the rollout in place), so
+     a native fork works. Two archived cases are refused with `branchPointUnavailable` and a plain reason until the
+     phase-2 text copy: the harness no longer has the session (Claude Code prunes transcripts after its
+     `cleanupPeriodDays`, 30 days by default), and the origin's dedicated worktree was removed at archive (open
+     question 2);
+  2. `ChatHistoryService.forkBoundary({sessionId, point})` reads the stored history (the archive audit record for an
+     archived origin) and returns either `throughMessage(id)`, the last stored message of the kept turn, or `empty`
+     when nothing is kept. `point` is the request's `ForkPoint`: `afterMessage(id)` keeps through the end of the
+     finished turn holding the message; `beforeMessage(id)` keeps everything before the turn that the message opens;
+     `latest()` keeps through the latest finished turn. A turn that is still running is refused;
+  3. `SessionRepository.forkSession` creates the backend session through `useAndCommit`: for `throughMessage` it calls
+     `SessionForkPluginApi.forkSession`; for `empty` it calls the existing `plugin.createSession(directory, parts: [])`,
+     which every plugin supports as an unstarted session. It commits a new row copying the origin's `projectId`,
+     `directory`, `worktreePath`, `branchName`, `isDedicated`, `baseBranch`, `baseCommit`, `lastAgent`,
+     `lastAgentModel` and `fastMode`; `approvalOverride` stays null; `parentSessionId` stays null so it is a root row;
+     `title` is the origin's displayed title plus " (fork)" (decision 9), or null for an untitled origin, which then
+     gets a generated title after its first message like any new session. A backend session that catalog import
+     already bound keeps its row and gains the fork columns (same rule as `createSession`'s existing-binding branch);
   4. backfills the fork's history from the harness, so it opens with the kept turns;
   5. returns the `Session` enriched by `SessionViewService`; other clients learn of it from the `session.created` event
      the plugin contract requires.
+  An empty fork of a session with a worktree has had no first prompt yet, so its first send carries the worktree
+  context part, as a new session's does: `SessionPromptService` adds it when the session has a worktree and no stored
+  messages. That is the only new rule on the ordinary send path.
 - **Database (schema 24):** `sessions_table` gains `forkedFromSessionId TEXT NULL REFERENCES sessions_table(sessionId)
   ON DELETE SET NULL` and `forkedFromTitle TEXT NULL`, a snapshot of the origin's displayed title when the fork was
   made. The snapshot avoids a join on every session page; a later rename of the origin is not reflected (accepted: the
@@ -316,8 +405,10 @@ The research brief quoted older pins (Claude 2.1.310, Pi 1.4.0).
   `SessionForkOrigin({required String? sessionId, required String? title})`. Null on non-forks. `sessionId` null means
   the origin was deleted; `title` null means the origin was untitled. Old apps ignore the field and see an ordinary
   session.
-- **Title of the fork:** provisional default "the origin's title" in the `title` column, pending open question 2. No
-  generated title (the fork has no first message of its own).
+- **Title of the fork:** the origin's title plus " (fork)" in the `title` column (decision 9). The suffix is written by
+  the bridge, like any stored title, so it is not localised.
+- **Schema version.** This plan, the side-question plan and the session-send plan each add a migration. Each takes the
+  next free version when it is implemented; the "24" here is only the version at planning time.
 
 ### Client↔bridge compatibility
 
@@ -341,7 +432,9 @@ The client and bridge only pass the Sesori message id the plugin produced. Each 
 | Claude Code | record `uuid` → respawn with `--resume=<id> --resume-session-at=<its parentUuid>`, then the prompt | `message.id` → the last chain record of that turn (the next user record's `parentUuid`, or the leaf) → `--resume --fork-session --session-id NEW --resume-session-at=<uuid>` |
 | Codex | item id → its turn id (from live `turnId`, the replayed `task_started.turn_id`, or `thread/turns/list`); `thread/revert {beforeTurnId}` then `turn/start` | item id → its turn id; `thread/fork {lastTurnId}` |
 | OpenCode (phase 2) | native `messageID`; v2 `revert/stage {messageID, files: false}` then the prompt | v2 `fork {before: <next message after the turn>}`, or no `before` when the turn is the last |
-| Pi (phase 2) | synthetic id → entry id (plugin lookup); extension `navigateTree(entryId)`, then the prompt in the same process | the next turn's user entry; spawn `--fork <parent> --session-id NEW`, then move the leaf there with the extension (no move when the turn is the last) |
+| Pi (phase 2) | swap: synthetic id → entry id (plugin lookup); RPC `fork {entryId}` writes the root-to-parent path as a new session file and switches the process to it; the plugin reads the new id from `get_state`, the bridge rebinds, then the prompt | the next turn's user entry; the same fork, but in a new process for the new Sesori session |
+
+The first-turn edit is not in the table: on every harness it is the bridge's swap with a fresh `createSession`.
 
 ### Client UX
 
@@ -354,30 +447,50 @@ differences go through `module_prego` interaction wrappers, never inline mode re
   the inline `PregoInteractionScope` reads `session_tile.dart` uses; moving the session row onto it is optional and
   removes that row's `pending` marker. Touch: long-press opens a flat menu with the pressed message
   spotlit (`PregoMenuSpotlight.listRow`) and a light haptic, the rest of the transcript blurred behind it. Pointer:
-  right-click opens it at the pointer. Items:
-  - own message that opens a finished turn: "Edit and resend", "Fork from here", "Copy";
-  - own message inside a finished turn but not opening it (a steered follow-up): "Fork from here", "Copy";
-  - the last agent reply of a finished turn: "Fork from here", "Copy";
-  - any other agent message, and everything in the running turn: "Copy" only.
-  - Edit and Fork appear only when the session's harness declares them and the session is not archived. Copy copies
-    the message's markdown; on pointer with a text selection inside the message, it copies the selection.
+  right-click opens it at the pointer. Every menu ends with "Copy" and "Select text" (decision 3); "Select text" closes
+  the menu and enters the existing `PregoReadableSelectionArea` selection on that message. Items before them:
+  - own message that opens a finished turn: "Edit and resend", "Fork from here";
+  - own message inside a finished turn but not opening it (a follow-up sent mid-turn): "Edit and resend", which answers
+    with a popup, "Sent while the agent was working, so it can't be edited. Fork instead?", with Fork and Cancel
+    (decision 12), and "Fork from here" (open question 1 says where that fork starts);
+  - the last agent reply of a finished turn: "Fork from here";
+  - any other agent message, and everything in the running turn: nothing before Copy.
+  - Edit appears only when the session's harness declares `rewind` and the session is not archived. Fork appears when
+    the harness declares `fork`, archived sessions included (decision 10). Copy copies the message's markdown; on
+    pointer with a text selection inside the message, it copies the selection.
   - Which actions a message gets is worked out in `module_core`, not in the widget: `cubits/session_detail/
     transcript_turns.dart` (which already applies `splitPromptTurns`) gives each message its branch actions in the
     loaded state, from the turn shape, the archived flag and `sessionBranching`, which
     `SessionDetailLoadService._loadPluginCapabilities` carries. The menu only renders the actions it is given.
-  Whether long-press keeps selecting text is open question 3; provisional default: long-press opens the menu, and the
-  menu adds "Select text", which enters the existing selection.
+- **Session ⋯ menu.** "Fork" joins `SessionListActionDispatcher.sessionMenuEntries` (decision 8), so it shows on the
+  four surfaces that list feeds (list-row long-press or right-click, the phone session "More" menu, the desktop session
+  "…" menu, the desktop sidebar), on archived sessions too, for root sessions whose harness declares `fork`. It sends
+  `ForkPoint.latest()`, so the bridge picks the latest finished turn and no transcript has to be loaded. A session with
+  no finished turn yet answers the tap with "Nothing to fork yet" rather than hiding the item.
+- **Restoring a message into a composer** (used by edit mode and by "Fork from here" on your own message). A
+  `module_core` service turns a user message into a composer draft:
+  - the text, without the bridge's saved-file notes (`Attached file "<name>": \`<path>\``, written by
+    `PromptPartDeliveryService`). The note's builder moves to `sesori_shared` with a parser beside it, so the bridge
+    writes and the client recognises one format;
+  - each inline image part, fetched through the existing `POST /session/attachment` route into an ordinary
+    `ComposerImageAttachment`;
+  - each saved file named by a note, as a new `ComposerHostFileAttachment({path, filename})` that sends as the existing
+    `PromptPart.filePath`, so the bridge reuses the file it already holds instead of a re-upload;
+  - an attachment the bridge can no longer serve (the 30-day upload sweep, a pruned harness transcript) is left out,
+    and the composer says how many were left out.
+  The composer shows them as ordinary removable attachment chips (decision 11).
 - **Edit mode.** "Edit and resend" puts the composer into edit mode:
-  - the current draft is saved aside, and the message's text fills the composer through the restoration mechanism,
-    with the caret at the end;
+  - the current draft is saved aside, and the message's text and attachments fill the composer (see above) through
+    the restoration mechanism, with the caret at the end;
   - the composer's `header` slot shows an edit banner that grows in (size + fade, the `_AnimatedBanner` motion, reduced
     motion honoured): "Editing your message · Files stay as they are" and a Cancel button. Cancel, or Escape on pointer,
     shrinks the banner away and restores the saved draft;
   - the transcript does not move when edit mode starts. The edited bubble gets a subtle highlight so the reader sees
     which message the banner refers to;
   - Send runs the edit. On success the banner shrinks away and the saved draft comes back.
-  - Attachments of the original message are open question 5; provisional default: text only, with a one-line note in
-    the banner when the original had attachments.
+  - Seam with the side-question plan: its "/btw" side-question mode also takes over the composer header. Whichever
+    plan lands first introduces one sealed composer mode in `SessionDetailCubit` (normal, editing, side question) so
+    the two modes can't overlap; entering one leaves the other.
 - **Busy session.** If a turn is running when Send is pressed in edit mode, a popup offers "Stop and resend" and
   "Cancel". "Stop and resend" runs the ordinary Stop, waits for the idle status, then sends the edit; Cancel keeps edit
   mode and the text. The menu's "Edit and resend" itself is offered whenever the message opens a finished turn, also
@@ -390,10 +503,17 @@ differences go through `module_prego` interaction wrappers, never inline mode re
   move: the edited message stays where it is while everything after it folds away beneath it, and only then does the
   new bubble arrive under it with the ordinary sent-bubble arrival; following resumes from there. The same path serves
   a rewind made on another device.
-- **Fork.** "Fork from here" closes the menu with the ordinary exit motion and calls the fork route. When it answers,
-  the fork opens with the platform's normal navigation transition: phone pushes the session-detail route; desktop
-  selects it in the cockpit. If the answer takes longer than about 300 ms, the pressed message shows a small inline
-  progress indicator so the tap is visibly answered; a failure shows the ordinary alert with the bridge's reason.
+- **Fork.** "Fork from here" closes the menu with the ordinary exit motion and calls the fork route with
+  `afterMessage` on an agent reply and `beforeMessage` on your own message. When it answers, the fork opens with the
+  platform's normal navigation transition: phone pushes the session-detail route; desktop selects it in the cockpit.
+  On your own message, the restored text and attachments are saved as the fork's composer draft before navigating, so
+  the fork opens with them in its composer and the caret at the end (decision 7); there is no edit banner, because
+  nothing is being replaced. If the answer takes longer than about 300 ms, the pressed message (or the ⋯ menu's
+  anchor) shows a small inline progress indicator so the tap is visibly answered; a failure shows the ordinary alert
+  with the bridge's reason.
+- **"No project" delete warning.** Deleting a "No project" session warns that its folder is deleted too, but the bridge
+  keeps the folder while a fork still uses it (`ScratchRepository.deleteSessionDirectoryIfUnused`). The warning names
+  that exception in its sentence ("…unless a fork of it still uses the folder"), so the client needs no fork lookup.
 - **"Forked from" line.** A new synthetic row at the oldest edge of a forked session's transcript, shown once the oldest
   page is loaded: "Forked from <title>" (or "Forked from an untitled session"), styled as quiet metadata, tappable when
   `forkedFrom.sessionId` is not null. Tapping returns to the origin through a new shell-composed callback on
@@ -429,34 +549,43 @@ fallback lands.
 
 ## Steps
 
-Phase 1 is thirteen PRs. Titles use `<emoji> [session-edit-fork] <description> [step <x>/13]`.
+Phase 1 is fifteen PRs. Titles use `<emoji> [session-edit-fork] <description> [step <x>/15]`.
+
+Merge gate and testing rule for every implementer brief: right before `gh pr merge`, re-fetch the inline comments and
+confirm each one on the head commit has a reply or a fix, confirm Codex's completion comment names that head, and wait
+at least 3 minutes after Codex's last comment. On-screen and device checks run only on a headless iOS simulator
+(`xcrun simctl boot`, Simulator.app never opened) on the device the local testing setup assigns; desktop macOS is used
+only for the desktop-specific right-click menu. Worktrees go under `~/.claude-worktrees/sesori_apps_monorepo/<name>`.
 
 ### Step 1: raise the plan
 
-`🌱 [session-edit-fork] Raise the session edit and fork plan [step 1/13]`. This file and `TRACKER.md`. Docs only.
+`🌱 [session-edit-fork] Raise the session edit and fork plan [step 1/15]`. This file and `TRACKER.md`. Docs only.
 
-### Step 2: message menu with Copy
+### Step 2: message menu with Copy and Select text
 
-`⚙️ [session-edit-fork] Add a long-press and right-click menu to transcript messages [step 2/13]`
+`⚙️ [session-edit-fork] Add a long-press and right-click menu to transcript messages [step 2/15]`
 
 - **What:** the `module_prego` context-menu interaction wrapper, and `TranscriptMessageMenu` on user bubbles and agent
-  reply cards, phone and desktop, with only "Copy" (and "Select text" if open question 3 confirms it). Client only.
+  reply cards, phone and desktop, with "Copy" and "Select text". Long-press no longer starts a selection directly;
+  "Select text" does. Client only.
 - **Why:** it is the surface both features need, it is useful alone, and it settles the long-press/selection feel before
   edit and fork depend on it.
 - **Risk and test focus:** gesture conflicts with selection, the timestamp-peek drag, pinch-to-Prompts and code-block
-  scrolling; the menu must not move the transcript. Widget tests for both interaction modes; a headless iOS simulator
-  recording of long-press, menu, copy.
-- **Expected result:** long-press or right-click on a message opens a menu that copies it. No database or wire change.
-- **Estimate:** ~600 lines.
+  scrolling; the menu must not move the transcript; "Select text" lands in the same selection a long-press gave before.
+  Widget tests for both interaction modes; a headless iOS simulator recording of long-press, menu, copy, select.
+- **Expected result:** long-press or right-click on a message opens a menu that copies it or starts a selection. No
+  database or wire change.
+- **Estimate:** ~650 lines.
 
 ### Step 3: edit contract and bridge route
 
-`🚧 [session-edit-fork] Add the bridge route that rewinds a session and resends an edited message [step 3/13]`
+`🚧 [session-edit-fork] Add the bridge route that rewinds a session and resends an edited message [step 3/15]`
 
 - **What:** `PluginSessionBranching`, `SessionRewindPluginApi`, `PluginBranchPointUnavailableException`; descriptor
-  getter and its flow into `PluginMetadata.sessionBranching`; `RewindSessionRequest`; `RewindSessionHandler`; `SessionPromptService.rewindAndSendPrompt`;
-  `ChatHistoryService.removalForRewind`; `SessionMessagesRewound` mutation and the list-returning
-  `_mapLocalMutation`; `SessionBranchErrorResponse`; the `toShared()` capability mapping. No plugin declares `rewind` yet.
+  getter and its flow into `PluginMetadata.sessionBranching`; `RewindSessionRequest`; `RewindSessionHandler`;
+  `SessionPromptService.rewindAndSendPrompt`; `ChatHistoryService.removalForRewind`; `SessionMessagesRewound` mutation
+  and the list-returning `_mapLocalMutation`; `SessionBranchErrorResponse`; the `toShared()` capability mapping. A
+  first-turn edit is refused with `branchPointUnavailable` until step 4. No plugin declares `rewind` yet.
 - **Why:** one backend-neutral path that both native plugins plug into.
 - **Risk and test focus:** ordering between store removal and the new prompt's capture; idempotent retry by `promptId`;
   busy refusal; turn validation on partial stores; archived rejection. Bridge tests with a fake plugin implementing the
@@ -464,9 +593,27 @@ Phase 1 is thirteen PRs. Titles use `<emoji> [session-edit-fork] <description> [
 - **Expected result:** no user-visible change; `PluginMetadata` gains an empty `sessionBranching` for every harness.
 - **Estimate:** ~900 authored + ~300 generated.
 
-### Step 4: Codex reads reverted and forked rollouts
+### Step 4: first-message edits replace the harness session
 
-`🚧 [session-edit-fork] Read Codex history across revert and fork rollouts [step 4/13]`
+`🚧 [session-edit-fork] Edit a session's first message by swapping in a new harness session [step 4/15]`
+
+- **What:** `SessionRepository.replaceBackendSession` and its use from `rewindAndSendPrompt` for a first-turn edit, as
+  in "Harness-session swap": `useAndCommit` with `createSession` and a rebinding commit, removal of a stray imported
+  row for the new backend id, `SessionBindingCommitKind.sessionReplacement`, tombstones and child-row removal for the
+  old subtree, the old backend delete, and the worktree context part on the new first prompt.
+- **Why:** decision 13. It makes the first message editable on every harness that offers Edit, with no plugin-specific
+  code, and is the base Pi's phase-2 edit builds on.
+- **Risk and test focus:** events of the new harness session reaching clients under the old Sesori id; the old
+  session's late events and `session.deleted` changing nothing; catalog import and startup reconciliation never
+  re-importing the old session; a failed old delete leaving only a tombstone; the unique index under an import race.
+  Bridge tests with a fake plugin; one live run on Claude Code and Codex through the debug server.
+- **Expected result:** no user-visible change until a client offers Edit (step 10). No schema change (the tombstone
+  table already exists).
+- **Estimate:** ~700 lines.
+
+### Step 5: Codex reads reverted and forked rollouts
+
+`🚧 [session-edit-fork] Read Codex history across revert and fork rollouts [step 5/15]`
 
 - **What:** teach the Codex plugin the `<threadId>_<rolloutId>` rollout names and `session_meta.history_base`, so
   history follows the kept prefix of a reverted or forked thread (resolving the base rollout in the sessions and
@@ -475,138 +622,168 @@ Phase 1 is thirteen PRs. Titles use `<emoji> [session-edit-fork] <description> [
   this step fixes it for every user). If base rollouts can't be located reliably, read affected threads through
   `thread/turns/list` + `thread/items/list` instead. Owners: rollout-name parsing and reading a base prefix in
   `CodexRolloutApi` (Layer 1, no decisions); resolving which base to follow in `CodexCatalogRepository` and
-  `CodexMessageRepository`; any `thread/*/list` wrappers in `CodexAppServerApi`.
+  `CodexMessageRepository`; any `thread/*/list` wrappers in `CodexAppServerApi`. The spike also records whether a
+  forked thread keeps the source's item ids, which the fork step relies on.
 - **Why:** without it, a Codex revert leaves Sesori showing the old history and a fork shows only its new turns.
 - **Risk and test focus:** catalog import and history replay for ordinary, reverted, forked and sub-agent threads;
   fixtures recorded from the live spike.
 - **Expected result:** no visible change for ordinary threads; reverted and forked threads read correctly.
 - **Estimate:** ~800 lines.
 
-### Step 5: Codex native edit
+### Step 6: Codex native edit
 
-`⚙️ [session-edit-fork] Rewind and resend Codex sessions natively [step 5/13]`
+`⚙️ [session-edit-fork] Rewind and resend Codex sessions natively [step 6/15]`
 
 - **What:** `CodexPluginImpl` implements `SessionRewindPluginApi` and only delegates. `thread/revert` gets a wrapper in
   `CodexAppServerApi`; item-to-turn mapping lives in `CodexMessageRepository`; `CodexSessionService` runs the sequence:
   make sure the thread is loaded (`thread/resume` when needed), `thread/revert {beforeTurnId}`, then the ordinary
-  `turn/start` path with the same `promptId`. Declares `rewind`. A runtime without `thread/revert` (JSON-RPC method-not-found, e.g. the 0.139 PATH
-  minimum) or an unmappable id throws `PluginBranchPointUnavailableException` with a reason such as "Update Codex to
-  edit messages". `docs/HARNESS_CAPABILITIES.md` gets the edit row.
+  `turn/start` path with the same `promptId`. Declares `rewind`. A runtime without `thread/revert` (JSON-RPC
+  method-not-found, e.g. the 0.139 PATH minimum) or an unmappable id throws `PluginBranchPointUnavailableException`
+  with a reason such as "Update Codex to edit messages". `docs/HARNESS_CAPABILITIES.md` gets the edit row.
 - **Risk and test focus:** paginated versus legacy threads; ephemeral threads refused; revert's reload not dropping
   subscriptions; history after revert agrees with the store. Live plugin check at the pinned version.
-- **Expected result:** Codex sessions report `rewind`; a phone on step 3's bridge and a later client can use it.
+- **Expected result:** Codex sessions report `rewind`.
 - **Estimate:** ~600 lines.
 
-### Step 6: Claude reads the active branch of a transcript
+### Step 7: Claude reads the active branch of a transcript
 
-`🚧 [session-edit-fork] Read the active branch of Claude Code transcripts [step 6/13]`
+`🚧 [session-edit-fork] Read the active branch of Claude Code transcripts [step 7/15]`
 
 - **What:** parse `parentUuid` (and `last-prompt.leafUuid`) in the Claude transcript record DTO;
   `ClaudeTranscriptApi.readTranscript` stays a raw record reader, and `ClaudeTranscriptCatalogRepository` builds history
   and catalog previews from the chain ending at the active leaf instead of every record in file order. Keep today's
   compaction and sidechain (sub-agent) behaviour.
 - **Why:** an in-place rewind leaves the old branch in the file. A rewind in the Claude Code terminal already does, so
-  this also fixes a live bug.
+  this also fixes a live bug, and it can ship on its own.
 - **Risk and test focus:** leaf choice when no `last-prompt` record exists (newest record); compaction boundaries whose
   parent is null; sidechains; one pass over large files. Fixtures recorded live at 2.1.322.
 - **Expected result:** no change for linear transcripts; branched ones show only the active branch.
 - **Estimate:** ~600 lines.
 
-### Step 7: Claude native edit
+### Step 8: Claude native edit
 
-`🚧 [session-edit-fork] Rewind and resend Claude Code sessions natively [step 7/13]`
+`🚧 [session-edit-fork] Rewind and resend Claude Code sessions natively [step 8/15]`
 
 - **What:** `ClaudePluginImpl` implements `SessionRewindPluginApi` and only delegates: `ClaudeSessionService` runs the
   sequence and `ClaudeSessionProcessRepository` launches a new `ClaudeSessionLaunch` variant that resumes at a chain
-  entry; the uuid → `parentUuid` lookup lives in `ClaudeTranscriptCatalogRepository`. Stop the session's idle process, respawn with `--resume=<id> --resume-session-at=<parentUuid of the
-  edited user record>`, and send the prompt through the ordinary path with the same `promptId`. Later respawns use plain
-  `--resume`, which follows the new leaf. Declares `rewind`. An unknown uuid, a first message with no earlier chain
-  entry (open question 7) or an `unknown option` spawn failure → `PluginBranchPointUnavailableException`. Harness matrix
-  row. Starts with a short live spike on the first-message case.
+  entry; the uuid → `parentUuid` lookup lives in `ClaudeTranscriptCatalogRepository`. Stop the session's idle process,
+  respawn with `--resume=<id> --resume-session-at=<parentUuid of the edited user record>`, and send the prompt through
+  the ordinary path with the same `promptId`. Later respawns use plain `--resume`, which follows the new leaf. Declares
+  `rewind`. An unknown uuid or an `unknown option` spawn failure → `PluginBranchPointUnavailableException`. The first
+  message never reaches the plugin (step 4 swaps it), so no first-message spike is needed. Harness matrix row.
 - **Risk and test focus:** the respawn racing the idle reaper or a pending permission; the respawn keeping model, agent
-  and permission mode; history after the rewind agreeing with the store (step 6). Live plugin check at 2.1.322 and at
+  and permission mode; history after the rewind agreeing with the store (step 7). Live plugin check at 2.1.322 and at
   the 2.1.221 minimum.
 - **Expected result:** Claude Code sessions report `rewind`.
+- **Estimate:** ~550 lines.
+
+### Step 9: restore a message's text and attachments into a composer
+
+`⚙️ [session-edit-fork] Bring a sent message's text and attachments back into the composer [step 9/15]`
+
+- **What:** the saved-file note builder and parser in `sesori_shared` (the bridge's `PromptPartDeliveryService` uses
+  the moved builder); `ComposerHostFileAttachment` and its `PromptPart.filePath` send path; the `module_core` service
+  that turns a user message into a composer draft (text without notes, images through `getAttachment`, saved files by
+  path, a count of attachments left out); attachment chips for the new kind. No feature uses it yet.
+- **Why:** edit mode (step 10) and "Fork from here" on your own message (step 14) both need it (decisions 7 and 11), and
+  together they would exceed the PR cap.
+- **Risk and test focus:** the note format staying byte-identical for the bridge; a message with only attachments; a
+  swept upload or a missing image; a host-file attachment sent to a bridge on another computer still resolving there
+  (the path is on the bridge's computer). Unit tests for the parser and the service.
+- **Expected result:** no user-visible change. No database change; no wire change (existing part kinds only).
 - **Estimate:** ~600 lines.
 
-### Step 8: client edit flow
+### Step 10: client edit flow
 
-`🚧 [session-edit-fork] Edit and resend earlier messages from the transcript [step 8/13]`
+`🚧 [session-edit-fork] Edit and resend earlier messages from the transcript [step 10/15]`
 
 - **What:** "Edit and resend" in the message menu; edit mode in `SessionDetailCubit` (it owns the composer draft and
-  restorations, and a sibling cubit couldn't depend on it) with saved draft, banner, Cancel, and send through a new
-  client `SessionRepository.rewindSession` → `SessionApi.rewindSession`; the busy popup, where "Stop and resend" is run
-  by the cubit: `SessionAbortService` stop, wait for idle on its own status stream, then the rewind; removal exit motion for
-  `message.removed` rows, including while detached; `session_message_edited` analytics.
+  restorations, and a sibling cubit couldn't depend on it) with saved draft, restored attachments, banner, Cancel, and
+  send through a new client `SessionRepository.rewindSession` → `SessionApi.rewindSession`; the sealed composer mode
+  (if the side-question plan has not added it yet); the mid-turn follow-up explanation popup with its Fork action
+  (calls step 14's fork when it exists, until then the popup offers only OK); the busy popup, where "Stop and resend" is
+  run by the cubit: `SessionAbortService` stop, wait for idle on its own status stream, then the rewind; removal exit
+  motion for `message.removed` rows, including while detached; `session_message_edited` analytics.
 - **Risk and test focus:** feel. No jump when entering edit mode, when rows fold away, or when the new bubble arrives;
-  reduced motion; draft restoration; another device's rewind arriving mid-read. Cubit tests with fakes; widget tests;
-  a headless iOS simulator recording of the whole edit, which goes in the PR body.
-- **Expected result:** users of Claude and Codex sessions can edit an earlier message; later messages fold away and the
-  new answer streams in. No database change.
+  reduced motion; draft restoration; another device's rewind arriving mid-read; a first-message edit looking the same
+  as any other edit. Cubit tests with fakes; widget tests; a headless iOS simulator recording of the whole edit, which
+  goes in the PR body.
+- **Expected result:** users of Claude and Codex sessions can edit an earlier message, attachments included; later
+  messages fold away and the new answer streams in. No database change.
 - **Estimate:** ~1,300 lines.
 
-### Step 9: fork contract, origin link and bridge route
+### Step 11: fork contract, origin link and bridge route
 
-`🚧 [session-edit-fork] Fork a session from a message on the bridge [step 9/13]`
+`🚧 [session-edit-fork] Fork a session from a message on the bridge [step 11/15]`
 
-- **What:** `SessionForkPluginApi`; `ForkSessionRequest`; `ForkSessionHandler`; `SessionForkService`;
-  `ChatHistoryService.forkBoundary`; `SessionRepository.forkSession`; schema 24 with `forkedFromSessionId` and
-  `forkedFromTitle`; `Session.forkedFrom` in `SessionCatalogMapper`. No plugin declares `fork` yet.
+- **What:** `SessionForkPluginApi`; `ForkSessionRequest` with `ForkPoint`; `ForkSessionHandler`; `SessionForkService`;
+  `ChatHistoryService.forkBoundary` (including the archive audit record); `SessionRepository.forkSession`, with the
+  empty-prefix `createSession` path, the " (fork)" title and the archived-origin refusals; the worktree context on an
+  empty fork's first send; the next schema version with `forkedFromSessionId` and `forkedFromTitle`;
+  `Session.forkedFrom` in `SessionCatalogMapper`. No plugin declares `fork` yet (the empty-prefix path still needs the
+  declaration before a client offers it).
 - **Risk and test focus:** the copied worktree fields (archive or delete of either session keeps the worktree while the
   other is live, then the last one removes it); origin deletion nulls the link; an already-imported backend binding;
-  running-turn refusal. Drift migration test.
+  running-turn refusal; archived origins with and without their worktree. Drift migration test.
 - **Expected result:** no user-visible change; sessions gain an always-null `forkedFrom`.
-- **Estimate:** ~800 authored + Drift schema snapshot and steps (likely ~800 generated; report the split).
+- **Estimate:** ~900 authored + Drift schema snapshot and steps (likely ~800 generated; report the split).
 
-### Step 10: Codex native fork
+### Step 12: Codex native fork
 
-`⚙️ [session-edit-fork] Fork Codex sessions from a turn [step 10/13]`
+`⚙️ [session-edit-fork] Fork Codex sessions from a turn [step 12/15]`
 
 - **What:** `CodexPluginImpl` implements `SessionForkPluginApi` and delegates to `CodexSessionService`, which calls a
   new `CodexAppServerApi` `thread/fork {lastTurnId}` wrapper (not ephemeral) with the turn id from
   `CodexMessageRepository`, maps the new thread to a `PluginSession` in the same cwd, and emits `session.created`
   unless the spike shows `thread/started` already produces it. Declares `fork`; method-not-found on old runtimes →
   `PluginBranchPointUnavailableException`. Harness matrix row.
-- **Risk and test focus:** the fork's history reads through step 4; the fork does not appear twice after catalog import;
-  forking while a later turn runs.
+- **Risk and test focus:** the fork's history reads through step 5; the fork does not appear twice after catalog import;
+  forking while a later turn runs; forking an archived thread.
 - **Estimate:** ~500 lines.
 
-### Step 11: Claude native fork
+### Step 13: Claude native fork
 
-`🚧 [session-edit-fork] Fork Claude Code sessions from a message [step 11/13]`
+`🚧 [session-edit-fork] Fork Claude Code sessions from a message [step 13/15]`
 
 - **What:** `ClaudePluginImpl` implements `SessionForkPluginApi` and delegates to `ClaudeSessionService` (the turn's
-  last chain record comes from `ClaudeTranscriptCatalogRepository`): choose the new session id, launch `--resume=<origin> --fork-session --session-id=<new>
-  --resume-session-at=<uuid>`, and return the `PluginSession` in the origin's directory. Declares `fork`. Starts with a
-  spike: is `<new>.jsonl` written before the fork's first prompt? If not, the plugin writes the kept chain into the new
-  file itself, the way the SDK's documented `forkSession` does, so the fork exists on disk at once and survives a bridge
-  restart. Emits `BridgeSseSessionCreated` as `createSession` does. Harness matrix row.
+  last chain record comes from `ClaudeTranscriptCatalogRepository`): choose the new session id, launch
+  `--resume=<origin> --fork-session --session-id=<new> --resume-session-at=<uuid>`, and return the `PluginSession` in
+  the origin's directory. Declares `fork`. Starts with a spike: is `<new>.jsonl` written before the fork's first
+  prompt? If not, the plugin writes the kept chain into the new file itself, the way the SDK's documented
+  `forkSession` does, so the fork exists on disk at once and survives a bridge restart. The same spike checks that an
+  empty fork (an unstarted session from step 11) still takes its first prompt after a bridge restart. Emits
+  `BridgeSseSessionCreated` as `createSession` does. A missing origin transcript (pruned) → branch-point refusal with a
+  plain reason. Harness matrix row.
 - **Risk and test focus:** forking while a later origin turn runs; catalog import not listing the fork twice; deleting
   the fork removes only its own `.jsonl` (`PersistedSessionCleanupApi`); history of the fork shows only the kept chain.
 - **Expected result:** Claude Code sessions report `fork`.
 - **Estimate:** ~600 lines.
 
-### Step 12: client fork flow
+### Step 14: client fork flow
 
-`⚙️ [session-edit-fork] Fork from a message and show where a fork came from [step 12/13]`
+`⚙️ [session-edit-fork] Fork from a message or the session menu and show where a fork came from [step 14/15]`
 
-- **What:** "Fork from here" in the menu; `SessionDetailCubit` calls client `SessionRepository.forkSession` →
-  `SessionApi.forkSession`, with inline progress after ~300 ms; the view navigates through
-  `SessionDetailPresentationScope.openSession` and the new `returnToSession` callback each shell implements; the
-  "Forked from" row at the oldest edge with its back-or-open behaviour; `session_forked` analytics.
+- **What:** "Fork from here" in the message menu and "Fork" in `sessionMenuEntries`; `SessionDetailCubit` and
+  `SessionActionsCubit` call client `SessionRepository.forkSession` → `SessionApi.forkSession` with the right
+  `ForkPoint`, with inline progress after ~300 ms; own-message forks save the restored draft (step 9) for the fork
+  before navigating; the view navigates through `SessionDetailPresentationScope.openSession` and the new
+  `returnToSession` callback each shell implements; the "Forked from" row at the oldest edge with its back-or-open
+  behaviour; the mid-turn follow-up popup's Fork action; the "No project" delete warning wording; `session_forked`
+  analytics.
 - **Risk and test focus:** navigation stack on phone (origin → fork → origin must not pile up); desktop selection; the
-  row only once the oldest page is loaded; feel of the transition. Headless iOS simulator recording in the PR body.
-- **Expected result:** forking a Claude or Codex session opens the fork with the kept conversation and a working
-  "Forked from" link.
-- **Estimate:** ~900 lines.
+  row only once the oldest page is loaded; the composer draft present on the fork's first frame (no text popping in);
+  forking an archived session from its ⋯ menu; feel of the transition. Headless iOS simulator recording in the PR body.
+- **Expected result:** forking a Claude or Codex session opens the fork with the kept conversation, your message in
+  its composer when you forked from your own message, and a working "Forked from" link.
+- **Estimate:** ~1,200 lines. If it passes the cap, split the ⋯ menu entry into 14.b.
 
-### Step 13: reconcile docs, verify and retire
+### Step 15: reconcile docs, verify and retire
 
-`🌱 [session-edit-fork] Reconcile edit and fork docs and retire the plan [step 13/13]`
+`🌱 [session-edit-fork] Reconcile edit and fork docs and retire the plan [step 15/15]`
 
 The plan-maker lifecycle asks for the regression reconciliation and the verified retirement as the last two steps. They
 are folded into one here because each feature step already updates its regression and harness rows; if reconciliation
-finds more than small fixes, split this into 13.a (docs) and 13.b (run and retire).
+finds more than small fixes, split this into 15.a (docs) and 15.b (run and retire).
 
 - Reconcile the regression documents listed below, run the verification matrix, record the result in `TRACKER.md`, and
   move the plan to `.plan/completed/session-edit-fork/` only when the matrix passes.
@@ -614,31 +791,37 @@ finds more than small fixes, split this into 13.a (docs) and 13.b (run and retir
 ## Regression documents
 
 - **New:** `docs/regression/session-edit-and-fork.md` (capability, required behaviour, levels), added in step 3 and
-  completed in steps 8 and 12.
+  completed in steps 4, 10 and 14.
 - **Update:** `docs/regression/session-archiving-and-deletion.md` (a fork shares its origin's worktree: archive or
-  delete of either keeps it for the other), `docs/regression/transcript-turn-navigation.md` (edit points are
-  turn-opening prompts; removed rows fold away without moving the rows being read), `docs/regression/session-turns.md`
-  (an edit sends through the same prompt identity and refusals), `docs/regression/projects-and-sessions.md` (a fork is
-  an ordinary root row), `docs/regression/analytics.md` (two new events, widened harness exception),
+  delete of either keeps it for the other; archived sessions can be forked; the "No project" warning names the fork
+  exception), `docs/regression/transcript-turn-navigation.md` (edit points are turn-opening prompts; removed rows fold
+  away without moving the rows being read), `docs/regression/session-turns.md` (an edit sends through the same prompt
+  identity and refusals; a first-message edit swaps the harness session under the same session),
+  `docs/regression/projects-and-sessions.md` (a fork is an ordinary root row titled "<origin> (fork)"; Fork in the
+  session menu), `docs/regression/attachments-and-images.md` (an edited or forked message brings its attachments back;
+  saved files are resent by path), `docs/regression/analytics.md` (two new events, widened harness exception),
   `docs/regression/session-history-and-recovery.md` (Codex history across revert and fork rollouts; Claude history
-  follows the active branch of a rewound transcript).
+  follows the active branch of a rewound transcript; a swapped session's old harness session is never re-imported).
 
 ## `docs/HARNESS_CAPABILITIES.md` rows
 
 A new "Edit and fork" section with one row per registered harness and two capability columns, "Edit and resend
-(rewind in place)" and "Fork from a message":
+(rewind in place)" and "Fork from a message", plus a note that editing the first message swaps in a new harness
+session on every harness that offers Edit:
 
 | Harness | Edit and resend | Fork from a message |
 |---|---|---|
-| Claude Code | ✅ after step 7 | ✅ after step 11 |
-| Codex | ✅ after step 5 (needs `thread/revert`; older PATH runtimes refuse with a reason) | ✅ after step 10 (needs `thread/fork lastTurnId`) |
+| Claude Code | ✅ after step 8 (first message: swap, step 4) | ✅ after step 13 |
+| Codex | ✅ after step 6 (needs `thread/revert`; older PATH runtimes refuse with a reason) | ✅ after step 12 (needs `thread/fork lastTurnId`) |
 | OpenCode | ⬜ (v2 `revert/stage files:false`); v1 🚫 conversation-only revert | ⬜ (v2 `fork before`) |
-| Pi | ⬜ (no RPC command; Sesori extension `navigateTree` + prompt) | ⬜ (`--fork` + leaf move) |
+| Pi | ⬜ (swap through RPC `fork {entryId}`) | ⬜ (RPC `fork` in a new process) |
 | Oh My Pi | ⬜ text copy (phase 2) | ⬜ text copy (phase 2) |
 | Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes | ⬜ text copy (phase 2) | ⬜ text copy (phase 2) |
 
-The ACP harnesses were not checked for native message-level rewind or fork in this plan; phase 2 checks each before
-choosing the text copy, and marks 🚫 only what it verifies. Footnotes name the verified versions. Phase 2 adds a "text copy" column state when the fallback lands.
+Edits of follow-ups sent mid-turn: ⬜ for Claude Code, OpenCode and Pi (later phase), 🚫 for Codex (cuts only between
+turns). The ACP harnesses were not checked for native message-level rewind or fork in this plan; phase 2 checks each
+before choosing the text copy, and marks 🚫 only what it verifies. Footnotes name the verified versions. Phase 2 adds a
+"text copy" column state when the fallback lands.
 
 ## Verification
 
@@ -646,64 +829,76 @@ Highest level: **L3 release** for the delivered behaviour, through these boundar
 
 | Boundary | Claim | Matrix |
 |---|---|---|
-| Automated | turn validation, store removal ordering, fork row copy, migration, capability mapping, cubit edit state, menu items per message kind | — |
-| Live plugin | native rewind and fork at the pinned versions, history after each agrees with the store, files untouched | Claude Code 2.1.322, Codex 0.167.2; a refusal check on Codex 0.139.0 and Claude at `minVersion` if it lacks the flag |
-| Client end to end | menu, edit banner, busy popup, removal motion, fork navigation, "Forked from" link, archive/delete of a forked pair | headless iOS simulator (phone) and desktop macOS, each against Claude Code and Codex |
-| Relay integration | a second client sees removed rows fold away and the fork appear | one plugin (representative) |
+| Automated | turn validation, store removal ordering, the swap's rebind and tombstones, fork points, fork row copy, migration, capability mapping, message-to-draft restore, cubit edit state, menu items per message kind | — |
+| Live plugin | native rewind and fork at the pinned versions, a first-message swap, history after each agrees with the store, files untouched, an archived origin forks | Claude Code 2.1.322, Codex 0.167.2; a refusal check on Codex 0.139.0 and Claude at `minVersion` if it lacks the flag |
+| Client end to end | menu with Select text, edit banner with restored attachments, mid-turn follow-up popup, busy popup, removal motion, first-message edit, fork from a reply, from your own message (text in the fork's composer) and from the ⋯ menu, "Forked from" link, archive/delete of a forked pair, fork of an archived session | headless iOS simulator (phone) against Claude Code and Codex; desktop macOS for the right-click menu only |
+| Relay integration | a second client sees removed rows fold away, a swapped session stay one session, and the fork appear | one plugin (representative) |
 
 Per the user's testing rule, phone cells run only on a headless iOS simulator (`xcrun simctl boot`, no Simulator.app) on
-the device the local testing setup assigns. Desktop is in the matrix because the right-click menu is desktop-specific.
+the device the local testing setup assigns. Desktop is in the matrix only because the right-click menu is
+desktop-specific.
 
 ## Complexity budget
 
-New persistent state: two nullable columns (`forkedFromSessionId`, `forkedFromTitle`). New wire state: one capability
-set, two request models, one error response, one nullable session field. New in-memory state: the client's edit-mode
-draft (one saved draft and one target message id) and a set of leaving row ids during the exit motion.
-Plugin state: none new in Codex (turn ids are read from history); Claude gains one launch variant.
+New persistent state: two nullable columns (`forkedFromSessionId`, `forkedFromTitle`). The swap reuses the existing
+tombstone table and adds no column. New wire state: one capability set, two request models with one sealed
+`ForkPoint`, one error response, one nullable session field. New in-memory state: the client's edit-mode draft (one
+saved draft and one target message id) and a set of leaving row ids during the exit motion. Plugin state: none new in
+Codex (turn ids are read from history); Claude gains one launch variant. The bridge gains one binding-commit kind.
 
 Deliberately not added: no file snapshots or restore; no per-harness safety prompts; no queued edits that wait for a
 turn to end (Stop and resend instead); no cut inside a turn; no join for the origin's live title; no new worktree
-reference counting (the existing shared-worktree rule covers it); no plugin-side turn segmentation.
+reference counting (the existing shared-worktree rule covers it); no plugin-side turn segmentation; no swap for edits
+that native rewind can do (see "Edit mechanism"); no re-upload of saved files (they are resent by path); no worktree
+recreation for archived origins (open question 2).
 
 ## Cleanup assessment
 
-No existing code becomes obsolete. The Pi `--fork` launch flag stays (it serves session restore, not this feature).
+No existing code becomes obsolete. The Pi `--fork` launch flag stays (it serves session restore, not this feature). The
+saved-file note builder moves from `PromptPartDeliveryService` to `sesori_shared` rather than being duplicated.
 
 ## Risks
 
 - **Claude's flag is undocumented** (see the Claude section): a removal would turn Claude edit and fork into
   branch-point refusals until the fallback or a replacement lands. The plugin's tests pin the flags' presence at the
   target version so a runtime refresh notices.
-- **Codex rollout format drift**: step 4 depends on unstable on-disk details; its live fixtures guard runtime refreshes.
-- **Feel of removal**: removing rows below a detached reader in a reversed list is the riskiest motion; step 8 needs a
+- **Codex rollout format drift**: step 5 depends on unstable on-disk details; its live fixtures guard runtime refreshes.
+- **Feel of removal**: removing rows below a detached reader in a reversed list is the riskiest motion; step 10 needs a
   recording before it is called done.
+- **Swap events**: the swap depends on the event tracker holding the new session's events until the rebind commits, as
+  it does for created sessions. Step 4's live run is the check.
+- **Archived forks fail more than live ones**: Claude Code prunes transcripts after 30 days by default and archive may
+  have removed the worktree. Both are refused with a reason until phase 2's text copy (accepted).
+- **A forked session's attachments live in its origin's upload folder.** Deleting the origin deletes them; the fork's
+  agent already read them, and restoring them later just leaves them out (accepted, low damage).
 
 ## Open questions (for the user; provisional defaults are used until answered)
 
-1. **"Fork from here" on your own message:** should the fork include that message and the agent's replies to it
-   (provisional), or stop just before it and put its text in the fork's composer, ready to change?
-2. **Fork title:** the same title as the original (provisional), the title with "(fork)" added, or a new title written
-   by the agent?
-3. **Long-press and text selection:** today a long-press selects text in a message. Should long-press open the new
-   menu with a "Select text" item (provisional), or should the menu need some other gesture on phones?
-4. **Archived sessions:** should "Fork from here" work on an archived session, as a way to pick an old conversation up
-   again? Provisional: no, archived sessions only offer "Copy".
-5. **Attachments:** when you edit a message that had images or files, should they be sent again with the edited text?
-   Provisional: text only, and the edit banner says the attachments are not included.
-6. **Follow-ups sent while the agent was working:** they belong to the running turn, so "Edit and resend" is not
-   offered on them (only "Fork from here" and "Copy"). Is that acceptable, or should Edit there cut at the start of the
-   whole turn?
-7. **The first message of a Claude Code session** may not be editable in place (to be confirmed in step 7). If it isn't,
-   should Edit there say it can't, or start a new session with the edited message (linked as "Forked from")?
+Round 2 answered the earlier seven (decisions 7 to 13). These are new:
+
+1. **"Fork from here" on a follow-up sent mid-turn.** Codex can't cut inside a turn, and phase 1 cuts at turns
+   everywhere. Provisional: the fork keeps the whole turn that holds the follow-up and puts the follow-up's text and
+   attachments in the fork's composer, so you can send a corrected instruction there. Alternative: cut before the turn
+   (dropping its opening prompt and the agent's work in it). The later phase that edits mid-turn follow-ups on Claude
+   Code, OpenCode and Pi would cut right before the follow-up there.
+2. **Forking an archived session whose worktree was removed at archive.** Archive keeps the branch but deletes a
+   dedicated worktree. Provisional: refuse with "Its worktree was removed when it was archived". Alternative: recreate
+   the worktree at its old path on the kept branch, so the agent's remembered paths still work (a bridge step of
+   roughly 300 to 400 lines).
 
 ## Later phases (rough)
 
 - **Phase 2 — OpenCode and Pi native.** OpenCode v2 edit through `revert/stage {files: false}` + prompt and fork through
-  `fork {before}`; add the routes to the v2 surface allowlist. Pi edit through a Sesori extension command that moves the leaf
-  (`navigateTree`) and sends in the same process; Pi fork by spawning `--fork` and moving the leaf. Why: the two other harnesses the user named for native support.
+  `fork {before}`; add the routes to the v2 surface allowlist. Pi edit through the swap: RPC `fork {entryId}`, rebind
+  to the new session id, then the prompt; Pi fork the same in a new process. Pi's synthetic message ids embed the
+  session id, so phase 2 must keep the kept messages' ids stable across the swap. Why: the two other harnesses the user
+  named for native support.
 - **Phase 2 — text fallback.** Bridge-owned: a new session seeded with the earlier conversation as text (no tool memory),
   labelled as such, for every harness without native support, and Edit as "a copy with your edit" where rewind is
-  missing. Shares the transcript renderer with the merge plan. Why: parity across harnesses (decision 6).
+  missing. It also covers archived origins whose harness session is gone. Shares the transcript renderer with the
+  merge plan. Why: parity across harnesses (decision 6).
+- **Later — edit follow-ups sent mid-turn** on Claude Code, OpenCode and Pi, which can cut at a single message
+  (decision 12). Why: removes the "can't be edited" answer where the harness allows it.
 - **Later — whole-session ACP forks** where a harness grows message-level fork or rewind over ACP; re-check on runtime
   refreshes. Why: replace the fallback with native behaviour when it becomes possible.
 
@@ -716,3 +911,6 @@ No existing code becomes obsolete. The Pi `--fork` launch flag stays (it serves 
   `SessionDetailCubit`; a `module_prego` interaction wrapper for the menu; a shell-composed `returnToSession`; a flat
   rewind request and a shared `SessionBranchErrorResponse`; the fork contract emits `session.created`; the
   `SessionForkService` constructor and lane; the side-question seam corrected.
+- 2026-11-15: updated for the round-2 answers (edit as fork, fork title, Select text, archived forks, attachments,
+  mid-turn follow-ups, fork and replace). The new swap step and the fork-point union were not re-reviewed; they are a
+  considerable change, so an `architecture-plan-review` pass is due before step 4 starts.
