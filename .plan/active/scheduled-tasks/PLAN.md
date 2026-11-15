@@ -8,9 +8,8 @@
   The decisions below are final; do not reopen them.
 - **Phase 1:** steps 2–11. Steps 12 and 13 are the regression-doc and
   retirement steps. The later phase (agent MCP tool) has rough intent only.
-- **Open product question:** Q1, the auto-compact quiet window (cost against
-  reliability). Step 11 carries a provisional default and waits for the answer
-  only if it would change the default. Nothing before step 11 depends on it.
+- **Q1 resolved (2026-11-15): option B.** The auto-compact quiet window
+  follows each session's prompt-cache life (P10). No product question is open.
 
 ## Goal
 
@@ -516,9 +515,22 @@ be its latest started run and S its session (not archived).
      permission or form; readiness idle where reported; on Claude, background
      tasks read busy and a pending wake-up reads `queued`);
    - `now − max(tracker.lastActivity(S), R.firedAt) ≥ W`, where W is the quiet
-     window (provisional 25 minutes, Q1). Any plugin event, including every
-     PR-monitor or background wake, moves the tracker's instant and so pushes
-     the compaction back.
+     window (Q1 = B): `W = min(cacheLife − 2 minutes, 25 minutes)`, and an
+     unknown cache life means 25 minutes. A 5-minute cache gives about 3 quiet
+     minutes; Codex (30 minutes) and Claude on a subscription (1 hour) give 25.
+     Any plugin event, including every PR-monitor or background wake, moves the
+     tracker's instant and so pushes the compaction back; harness signals
+     (pending wake, background task, readiness not idle) only ever extend the
+     wait.
+   - **Cache-life source.** The plugin answers it: step 11 adds a
+     plugin-interface query for a session's prompt-cache life (nullable =
+     unknown). Each plugin derives it from what it already knows (evidence in
+     P11): Claude from its billing route (`promptCacheTtlSeconds` follows the
+     route after #2612), Codex 30 minutes, OpenCode by provider (Anthropic 5
+     minutes), Pi 5 minutes, Hermes 5 minutes, Cursor by model (Anthropic 5
+     minutes), Oh My Pi per seat. Copilot, Antigravity (Gemini) and Grok report
+     unknown. The margin and cap live only in `ScheduledTaskCompactionService`
+     in bridge core, and no harness names appear in core.
    The compaction runs on S's lane, re-checks quietness and
    `R.compactRequestedAt` inside the lane, calls
    `SessionRepository.compactSession`, and sets `R.compactRequestedAt` on
@@ -541,9 +553,11 @@ be its latest started run and S its session (not archived).
    that session entirely.
 5. **Accepted limits.** A harness's own automatic compaction is not detected,
    so the bridge may compact once more (a summary of a summary; cheap). An
-   external wake slower than W (for example a monitor that reports less often
-   than every 25 minutes) can land in a compacted session; the agent continues
-   from the summary. No harness exposes a signal for future external wakes.
+   external wake slower than W can land in a compacted session; the agent
+   continues from the summary. On a 5-minute cache route W is about 3 minutes,
+   so a PR-monitor wake after that lands in an already-compacted session; the
+   user accepted this with Q1 = B. No harness exposes a signal for future
+   external wakes.
 6. **Client.** The Each run sheet shows the switch only for Continue in the
    same session. When the chosen harness lacks
    `supportsCompactionOnRequest`, the switch is shown off and inert, and a tap
@@ -584,10 +598,10 @@ What it means:
 - No harness can tell whether an external sender (an MCP monitor, a peer
   message) will wake the session later, so harness signals can only *extend*
   the window, never prove "done".
-- Extending cache life at launch for task sessions (Claude Code, Pi, Hermes,
-  OpenCode settings) would keep 25 minutes warm, but raises every cache write
-  in those sessions to 2× base input instead of 1.25× and needs per-session
-  launch plumbing; not in this plan unless Q1 picks it.
+- Q1 = B outcome: the window follows each session's cache life, so post-run
+  compaction reads warm wherever the cache life is known (about 3 minutes on
+  5-minute routes, 25 minutes on Codex and Claude subscriptions). Cache life is
+  not extended at launch, so cache writes keep their 1.25× price.
 
 ### P12. Analytics
 
@@ -643,7 +657,7 @@ What it means:
 - Waking a sleeping machine for a run (`pmset` schedules).
 - Run-outcome analytics (P12).
 - A separate push category or preference toggle for task pushes (P2).
-- Harness-launch cache-TTL changes (P11), unless Q1 picks them.
+- Harness-launch cache-TTL changes (P11); Q1 = B does not need them.
 
 ## Security And Privacy
 
@@ -802,8 +816,8 @@ parallel with the bridge chain.
     a "Compaction on request" table in `docs/HARNESS_CAPABILITIES.md`. [1]
 11. 🚧 **Auto-compact same-session tasks.** `ScheduledTaskCompactionService`
     and `ScheduledTaskActivityTracker` in the tick (P10 cases 1–4), the auto-compact switch and its
-    unsupported-harness tap on the Each run sheet. Uses Q1's answer, else the
-    provisional 25 minutes. [5, 9, 10]
+    unsupported-harness tap on the Each run sheet, and the plugin-interface
+    prompt-cache-life query. Uses Q1 = B. [5, 9, 10]
 12. 🌱 **Regression docs.** Write `scheduled-tasks.md`, update the documents
     listed under Regression Coverage and the README index. [2–11]
 13. 🌱 **Run the L3 regression and retire the plan.** Run the matrix above,
@@ -822,19 +836,11 @@ parallel with the bridge chain.
 
 ## Open Questions
 
-- **Q1. Auto-compact quiet window (cost against reliability).** Provisional
-  default: option A below.
-  - A. One 25-minute quiet window everywhere, extended (never shortened) by
-    harness signals. Matches the user's note; warm on Claude subscription,
-    Codex, OMP subscription and DeepSeek; cold (about 0.9× of one context read
-    extra per run) on 5-minute Anthropic routes.
-  - B. Per-harness window: about 3 minutes where the cache lives 5 minutes,
-    25 minutes where it lives 30 minutes or more. Cheapest, but a monitor
-    wake after 3 minutes lands in a compacted session on those routes.
-  - C. A, plus a 1-hour cache for task-run sessions where the harness allows
-    it (Claude Code, Pi, Hermes, OpenCode). Warm at 25 minutes there, but every
-    cache write in those sessions costs 2× instead of 1.25×, plus per-session
-    launch plumbing; not possible for Cursor, Copilot, Gemini or Grok.
+None open.
+
+- **Q1. Auto-compact quiet window: resolved 2026-11-15 as B**, a window that
+  follows each session's prompt-cache life (P10). Not chosen: A, one 25-minute
+  window everywhere; C, A plus a 1-hour cache for task-run sessions.
 
 ## Plan Review Record
 
