@@ -110,10 +110,13 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     final compact = widget.compact;
     // Locking leaves each pill's geometry untouched, so nothing shifts as the
     // options turn read-only, and blocks its taps, hover cursor, keyboard focus
-    // and actions.
-    Widget lock(Widget control) => ExcludeFocus(
-      excluding: widget.readOnly,
-      child: IgnorePointer(ignoring: widget.readOnly, child: control),
+    // and actions. Each pill carries its own halo.
+    Widget lock(Widget control) => _pillHalo(
+      reachesLayerBottom: false,
+      child: ExcludeFocus(
+        excluding: widget.readOnly,
+        child: IgnorePointer(ignoring: widget.readOnly, child: control),
+      ),
     );
     Widget slot(Widget menu) => _pickerSlot(compact: compact, child: lock(menu));
     Widget agentMenu({required String agent, required bool hugLabel}) => _AgentMenu(
@@ -184,9 +187,9 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
             ),
           ),
       ],
-      ...widget.trailing,
+      for (final chip in widget.trailing) _pillHalo(reachesLayerBottom: false, child: chip),
     ];
-    final row = _pillRow(compact: compact, reachesLayerBottom: false, pills: selectors);
+    final row = _pillRow(compact: compact, pills: selectors);
     // Under a pointer they sit on the composer's action row, in its line.
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
     if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) return row;
@@ -215,14 +218,19 @@ class const ReadOnlyAgentModelPills({
     final variant = model?.variant;
     Widget pill({required IconData icon, required String label}) => _pickerSlot(
       compact: compact,
-      child: _pickerButton(
-        // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
-        pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
-        hugLabel: compact,
-        leadingIcon: icon,
-        label: label,
-        surfaceStyle: PregoComposerSurfaceStyle.subtle,
-        onPressed: null,
+      child: _pillHalo(
+        // The bottom-most row: its halos run on to the bottom edge, so nothing
+        // shows below the pills.
+        reachesLayerBottom: true,
+        child: _pickerButton(
+          // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
+          pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
+          hugLabel: compact,
+          leadingIcon: icon,
+          label: label,
+          surfaceStyle: PregoComposerSurfaceStyle.subtle,
+          onPressed: null,
+        ),
       ),
     );
     final pills = [
@@ -238,23 +246,20 @@ class const ReadOnlyAgentModelPills({
     if (pills.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
-      // The bottom-most row: its halo runs on to the bottom edge, so nothing
-      // shows below the pills.
-      child: _pillRow(compact: compact, reachesLayerBottom: true, pills: pills),
+      child: _pillRow(compact: compact, pills: pills),
     );
   }
 }
 
-/// The pills under one [PregoPageHalo], so no transcript words show through the
-/// gaps between them. Hugging pointer pills keep the halo to their own width,
-/// leading-aligned; touch pills fill the strip, and the halo with them.
-Widget _pillRow({required bool compact, required bool reachesLayerBottom, required List<Widget> pills}) {
-  final halo = PregoPageHalo(
-    radius: PregoRadius.full,
-    reachesLayerBottom: reachesLayerBottom,
-    child: Row(mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max, spacing: 8, children: pills),
-  );
-  return compact ? Align(alignment: AlignmentDirectional.centerStart, heightFactor: 1, child: halo) : halo;
+/// A pill's own halo. The row has none, so transcript words between the pills
+/// stay readable; the halos still merge across the narrow gaps.
+Widget _pillHalo({required bool reachesLayerBottom, required Widget child}) =>
+    PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: reachesLayerBottom, child: child);
+
+/// Hugging pointer pills sit leading-aligned; touch pills fill the strip.
+Widget _pillRow({required bool compact, required List<Widget> pills}) {
+  final row = Row(mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max, spacing: 8, children: pills);
+  return compact ? Align(alignment: AlignmentDirectional.centerStart, heightFactor: 1, child: row) : row;
 }
 
 /// A pill's share of the strip: a pointer (compact) pill hugs its label up to a
