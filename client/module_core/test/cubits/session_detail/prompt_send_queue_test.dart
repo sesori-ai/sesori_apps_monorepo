@@ -160,7 +160,7 @@ void main() {
           final retained = queue.bridgePromptAttachments;
           expect(retained[submission.promptId], orderedEquals(submission.attachments));
           final retainedAttachments = retained[submission.promptId] ?? fail("no retained attachments");
-          expect(retainedAttachments.first.bytes, same(submission.attachments.first.bytes));
+          expect(_bytesOf(retainedAttachments.first), same(_bytesOf(submission.attachments.first)));
           expect(queue.items, isEmpty);
           expect(queue.awaitingBridge, isEmpty);
           if (!accepted) {
@@ -200,7 +200,7 @@ void main() {
         queue.reconcileBridgeQueue(promptIds: promptIds);
         final retainedBytes = queue.bridgePromptAttachments.values
             .expand((attachments) => attachments)
-            .fold(0, (total, attachment) => total + attachment.bytes.length);
+            .fold(0, (total, attachment) => total + attachment.inlineByteCount);
         expect(retainedBytes, lessThanOrEqualTo(PromptSendQueue.maxBridgePreviewBytes));
         expect(queue.bridgePromptAttachments[submission.promptId], orderedEquals(submission.attachments));
       }
@@ -430,3 +430,8 @@ void main() {
     });
   });
 }
+
+Uint8List _bytesOf(ComposerAttachment attachment) => switch (attachment) {
+  ComposerImageAttachment(:final bytes) || ComposerFileAttachment(:final bytes) => bytes,
+  ComposerHostFileAttachment() => fail("a file the bridge holds has no bytes"),
+};

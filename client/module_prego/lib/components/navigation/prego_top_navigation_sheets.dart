@@ -74,7 +74,7 @@ class const PregoTopNavigationSheets({
   final Widget? leading,
 }) extends StatelessWidget implements PreferredSizeWidget {
   /// Height of the drag-grabber block above the nav row.
-  static const double grabberBlockHeight = 16;
+  static const double grabberBlockHeight = PregoSheetGrabber.blockHeight;
 
   /// Height of the nav (controls) row — matches the glass button diameter.
   static const double controlsRowHeight = 44;
@@ -82,9 +82,6 @@ class const PregoTopNavigationSheets({
   /// Total header height, exposed so [PregoBottomSheet] can reserve the space
   /// its body must scroll behind.
   static const double headerHeight = grabberBlockHeight + controlsRowHeight;
-
-  static const double _grabberWidth = 36;
-  static const double _grabberHeight = 5;
 
   /// Line-height multiplier for the title/subtitle, overriding the body-text
   /// leading so a two-line title+subtitle stack fits the fixed
@@ -134,28 +131,9 @@ class const PregoTopNavigationSheets({
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (showGrabber) _buildGrabber(context),
+            if (showGrabber) const PregoSheetGrabber(),
             controls,
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGrabber(BuildContext context) {
-    // Decorative: no semantics node. Drag-to-dismiss is unreachable by screen
-    // readers, so the close button and the modal barrier are the announced
-    // dismiss affordances.
-    return SizedBox(
-      height: grabberBlockHeight,
-      child: Center(
-        child: Container(
-          width: _grabberWidth,
-          height: _grabberHeight,
-          decoration: BoxDecoration(
-            color: context.prego.colors.textSecondary.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(PregoRadius.full),
-          ),
         ),
       ),
     );
@@ -202,6 +180,37 @@ class const PregoTopNavigationSheets({
       icon: TablerRegular.x,
       onPressed: onClose,
       semanticLabel: MaterialLocalizations.of(context).closeButtonTooltip,
+    );
+  }
+}
+
+/// The decorative drag pill at the top of a sheet, centred in a
+/// [blockHeight]-tall block.
+///
+/// It has no semantics node: dragging is unreachable by screen readers, so the
+/// sheet's close button and modal barrier are the announced dismiss
+/// affordances. The drag itself is owned by the enclosing sheet.
+class const PregoSheetGrabber({super.key}) extends StatelessWidget {
+  /// Height of the block the pill is centred in.
+  static const double blockHeight = 16;
+
+  static const double _width = 36;
+  static const double _height = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: blockHeight,
+      child: Center(
+        child: Container(
+          width: _width,
+          height: _height,
+          decoration: BoxDecoration(
+            color: context.prego.colors.textSecondary.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(PregoRadius.full),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -84,7 +84,8 @@ final class DeferredProductAnalyticsCandidates {
     ComputerManagedEvent() ||
     SessionPinChangedEvent() ||
     FounderCallLinkOpenedEvent() ||
-    FounderCallDeclinedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
+    FounderCallDeclinedEvent() ||
+    SideQuestionAskedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
   };
 
   DeferredProductAnalyticsDrain drainNext() {

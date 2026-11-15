@@ -42,7 +42,8 @@ final class ClaudePlugin({
         McpManagementPluginApi,
         McpAuthenticationPluginApi,
         FormInteractionPluginApi,
-        SessionExternalActionsPluginApi {
+        SessionExternalActionsPluginApi,
+        SideQuestionPluginApi {
   this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
     _sessions.dispatches.listen(_handleTurnDispatched).addTo(_subscriptions);
@@ -372,6 +373,29 @@ final class ClaudePlugin({
   @override
   Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async =>
       _sessions.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
+
+  @override
+  Future<PluginSideAnswer> askSideQuestion({
+    required String sessionId,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async {
+    // A session created here has no transcript until its first turn starts,
+    // so there is nothing to resume or answer from.
+    if (_unstartedSessions.contains(sessionId)) {
+      return const PluginSideRefused(reason: PluginSideRefusal.noTurnYet);
+    }
+    final directory = await _directoryForSession(sessionId);
+    if (directory == null) {
+      throw const PluginOperationException.notFound(operation: "askSideQuestion", message: "session not found");
+    }
+    return await _sessions.askSideQuestion(
+      sessionId: sessionId,
+      directory: directory,
+      question: question,
+      history: history,
+    );
+  }
 
   @override
   Future<PluginAbortResult> abortSession({

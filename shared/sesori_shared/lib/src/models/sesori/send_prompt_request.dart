@@ -46,6 +46,11 @@ sealed class PromptPart with _$PromptPart {
   const factory text({required String text}) = PromptPartText;
 
   /// Local file on the host filesystem, referenced by absolute path.
+  ///
+  /// The path is on the bridge's computer. Clients send it for a file the
+  /// bridge already holds, such as one it saved for an earlier prompt, and
+  /// the bridge gives the agent the same text part naming the path that a
+  /// saved [PromptPart.fileData] gets.
   @FreezedUnionValue("file_path")
   const factory filePath({
     required String mime,

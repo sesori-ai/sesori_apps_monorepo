@@ -507,6 +507,48 @@ void main() {
       ]);
     });
 
+    test("sendMessage sends a file the bridge holds by its path, without its bytes", () async {
+      when(
+        () => client.post<void>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      await api.sendMessage(
+        promptId: "prompt-1",
+        sessionId: "session-1",
+        text: "again",
+        attachments: const [
+          ComposerHostFileAttachment(path: "/uploads/ses_1/2026-11-01-abc/notes.txt", filename: "notes.txt"),
+        ],
+        agent: null,
+        model: null,
+        variant: null,
+        fastMode: false,
+        command: null,
+        commandSource: null,
+      );
+
+      final verification = verify(
+        () => client.post<void>(
+          "/session/prompt_async",
+          fromJson: any(named: "fromJson"),
+          body: captureAny(named: "body"),
+        ),
+      )..called(1);
+      final request = verification.captured.single as SendPromptRequest;
+      expect(request.parts, const [
+        PromptPart.text(text: "again"),
+        PromptPart.filePath(
+          mime: "application/octet-stream",
+          path: "/uploads/ses_1/2026-11-01-abc/notes.txt",
+          filename: "notes.txt",
+        ),
+      ]);
+    });
+
     test("attachment create sends a staged file as application/octet-stream", () async {
       when(
         () => client.post<Session>(

@@ -303,6 +303,17 @@ void main() {
         ),
         (ProductAnalyticsEvent.founderCallDeclined(surface: surface), "founder_call_declined", {"surface": wireValue}),
       ],
+      for (final (outcome, wireValue) in [
+        (AnalyticsSideQuestionOutcome.answered, "answered"),
+        (AnalyticsSideQuestionOutcome.noAnswer, "no_answer"),
+        (AnalyticsSideQuestionOutcome.unavailable, "unavailable"),
+        (AnalyticsSideQuestionOutcome.failed, "failed"),
+      ])
+        (
+          ProductAnalyticsEvent.sideQuestionAsked(harness: AnalyticsHarness.claudeCode, outcome: outcome),
+          "side_question_asked",
+          {"harness": "claude_code", "outcome": wireValue},
+        ),
     ];
 
     for (final (event, expectedName, expectedParameters) in cases) {

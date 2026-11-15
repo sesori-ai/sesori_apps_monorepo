@@ -134,6 +134,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     supportsPromptAttachments: true,
     supportsFileUploads: false,
     offersSessionMcp: true,
+    sideQuestions: SideQuestionAvailability.unresolved,
     assistantAgentModel: null,
     children: const [_child],
     childStatuses: const {"child-1": SessionStatus.idle()},

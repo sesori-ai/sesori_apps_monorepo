@@ -72,7 +72,12 @@ void main() {
       });
 
       expect(logs, contains("rollout catalog scan: files=3, recognizedRollouts=1, parsedHeaders=1, indexEntries=2"));
-      expect(logs, contains("rollout catalog records: unreadableOrMissingMetadata=0, mismatchedMetadata=0, records=1"));
+      expect(
+        logs,
+        contains(
+          "rollout catalog records: unreadableOrMissingMetadata=0, mismatchedMetadata=0, attachedThreads=0, records=1",
+        ),
+      );
       expect(logs, isNot(contains(rolloutId)));
       expect(logs, isNot(contains("private-project")));
     });
@@ -359,6 +364,46 @@ void main() {
         isA<PluginSessionActivityUnavailable>(),
       );
     });
+
+    test("leaves attached threads, such as Codex terminal side chats, out of every listing", () async {
+      final codexHome = Directory.systemTemp.createTempSync("codex-home-");
+      addTearDown(() => codexHome.deleteSync(recursive: true));
+      const parentId = "01a1e120-7139-7373-8689-c31428316c27";
+      const attachedId = "01a1e120-7b26-7591-8188-d232e50ebf69";
+      final day = p.join(codexHome.path, "sessions", "2026", "11", "15");
+      // Session metadata recorded from codex-cli 0.169.0 for a thread and a
+      // `thread/fork` with `attachToSource`, which the Codex terminal workspace
+      // uses for its side chats. Instructions and git details are omitted.
+      File(p.join(day, "rollout-2026-11-15T21-32-42-$parentId.jsonl"))
+        ..createSync(recursive: true)
+        ..writeAsStringSync(
+          '{"timestamp":"2026-11-15T21:32:42.195Z","type":"session_meta","payload":'
+          '{"session_id":"$parentId","id":"$parentId","timestamp":"2026-11-15T21:32:42.195Z",'
+          '"cwd":"/repo/app","originator":"codex_cli_rs","cli_version":"0.169.0","source":"cli",'
+          '"model_provider":"openai","history_mode":"paginated"}}\n',
+        );
+      File(p.join(day, "rollout-2026-11-15T21-32-44-$attachedId.jsonl"))
+        ..createSync(recursive: true)
+        ..writeAsStringSync(
+          '{"timestamp":"2026-11-15T21:32:44.711Z","type":"session_meta","payload":'
+          '{"session_id":"$attachedId","id":"$attachedId","forked_from_id":"$parentId",'
+          '"attached_thread":true,"forked_from_ordinal_exclusive":14,"timestamp":"2026-11-15T21:32:44.711Z",'
+          '"cwd":"/repo/app","originator":"codex_cli_rs","cli_version":"0.169.0","source":"cli",'
+          '"model_provider":"openai","history_mode":"paginated",'
+          '"history_base":{"thread_id":"$parentId","end_ordinal_exclusive":14,"end_byte_offset":42889}}}\n',
+        );
+      final repository = CodexCatalogRepository(
+        rolloutApi: CodexRolloutApi(environment: {"CODEX_HOME": codexHome.path}),
+      );
+
+      expect((await repository.listSessionRecords()).map((record) => record.id), [parentId]);
+      expect(
+        (await repository.listAllSessions(knownDirectories: const {"/repo/app"})).map((session) => session.id),
+        [parentId],
+      );
+      expect((await repository.getSessions(projectId: "/repo/app")).map((session) => session.id), [parentId]);
+      expect(await repository.getChildSessions(sessionId: parentId), isEmpty);
+    });
   });
 }
 
@@ -419,6 +464,7 @@ class _InMemoryRolloutApi({required final List<String> sessionIds}) extends Code
             threadSource: null,
             agentNickname: null,
             agentPath: null,
+            historyBase: null,
           ),
         ),
       ],
@@ -545,6 +591,7 @@ class _DiagnosticsRolloutApi({required final String rolloutId}) extends CodexRol
           threadSource: null,
           agentNickname: null,
           agentPath: null,
+          historyBase: null,
         ),
       ),
     ],
@@ -595,6 +642,7 @@ class _LogLevelCheckingRolloutApi() extends CodexRolloutApi {
             threadSource: null,
             agentNickname: null,
             agentPath: null,
+            historyBase: null,
           ),
         ),
       ],

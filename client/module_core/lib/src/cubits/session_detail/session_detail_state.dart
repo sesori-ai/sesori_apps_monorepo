@@ -9,6 +9,7 @@ import "../../foundation/models/session_launch/launch_follow_up.dart";
 import "../../foundation/models/session_launch/session_launch_composer.dart";
 import "../../foundation/models/session_launch/session_launch_handoff.dart";
 import "../../foundation/models/session_options/model_orbits.dart";
+import "../../foundation/models/side_question_availability.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/model_orbits_calculator.dart";
 import "../../services/session_approval_calculator.dart";
@@ -98,6 +99,8 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Whether the session's plugin names the command a user turn ran, so a
     // command not confirmed yet shows as the card it will be confirmed as.
     required bool namesCommandInvocations,
+    // Whether the session can ask side questions, and if not, why.
+    required SideQuestionAvailability sideQuestions,
     // Model from the latest assistant message.
     required AgentModel? assistantAgentModel,
     // Background tasks (child sessions).

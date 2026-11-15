@@ -89,14 +89,39 @@ void main() {
     ]);
   });
 
-  test("passes text, path and url parts through", () async {
+  test("passes text and url parts through", () async {
     const parts = [
       PromptPart.text(text: "hi"),
-      PromptPart.filePath(mime: "text/plain", path: "/tmp/a.txt", filename: null),
       PromptPart.fileUrl(mime: "text/plain", url: "https://example.com/a.txt", filename: null),
     ];
 
     expect(await deliver(parts: parts), parts);
+    expect(uploads.sweepCutoffs, isEmpty);
+  });
+
+  test("notes a file this computer already holds in place, without saving it again", () async {
+    final delivered = await deliver(
+      parts: const [
+        PromptPart.text(text: "again"),
+        PromptPart.filePath(
+          mime: "application/octet-stream",
+          path: "/uploads/ses_1/2026-11-01-abc/My Report.pdf",
+          filename: "My Report.pdf",
+        ),
+        PromptPart.filePath(
+          mime: "application/octet-stream",
+          path: "/uploads/ses_1/2026-11-01-def/a.txt",
+          filename: null,
+        ),
+      ],
+    );
+
+    expect(delivered, const [
+      PromptPart.text(text: "again"),
+      PromptPart.text(text: 'Attached file "My Report.pdf": `/uploads/ses_1/2026-11-01-abc/My Report.pdf`'),
+      PromptPart.text(text: 'Attached file "a.txt": `/uploads/ses_1/2026-11-01-def/a.txt`'),
+    ]);
+    expect(uploads.saves, isEmpty);
     expect(uploads.sweepCutoffs, isEmpty);
   });
 

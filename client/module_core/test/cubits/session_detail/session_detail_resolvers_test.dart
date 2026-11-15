@@ -2,6 +2,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_resolvers.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
+import "package:sesori_dart_core/src/foundation/models/side_question_availability.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -98,6 +99,7 @@ SessionDetailLoaded _state({
     supportsPromptAttachments: false,
     supportsFileUploads: false,
     offersSessionMcp: true,
+    sideQuestions: SideQuestionAvailability.unresolved,
     assistantAgentModel: null,
     children: const [],
     childStatuses: const {},

@@ -4614,6 +4614,7 @@ void _stubPromptAttachmentCapability({
         bridgeId: "bridge-test",
         supportsSessionOptions: true,
         supportsFileUploads: supportsFileUploads,
+        supportsSideQuestions: false,
         plugins: [
           PluginMetadata(
             id: pluginId,

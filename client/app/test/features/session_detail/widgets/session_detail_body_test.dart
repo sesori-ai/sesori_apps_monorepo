@@ -198,6 +198,7 @@ SessionDetailLoaded _loadedState({
     supportsPromptAttachments: supportsPromptAttachments,
     supportsFileUploads: false,
     offersSessionMcp: true,
+    sideQuestions: SideQuestionAvailability.unresolved,
     assistantAgentModel: null,
     children: children,
     childStatuses: childStatuses,
@@ -1668,6 +1669,7 @@ void main() {
       supportsPromptAttachments: false,
       supportsFileUploads: false,
       offersSessionMcp: true,
+      sideQuestions: SideQuestionAvailability.unresolved,
       assistantAgentModel: null,
       children: const [],
       childStatuses: const {},
@@ -5837,7 +5839,7 @@ void main() {
     ).captured.single;
     expect(
       sentAttachments,
-      isA<List<ComposerAttachment>>().having((it) => [for (final a in it) a.bytes], "bytes", [_tinyPng]),
+      isA<List<ComposerAttachment>>().having((it) => [for (final a in it) _bytesOf(a)], "bytes", [_tinyPng]),
     );
   });
 
@@ -7158,3 +7160,8 @@ void main() {
     });
   });
 }
+
+Uint8List? _bytesOf(ComposerAttachment? attachment) => switch (attachment) {
+  ComposerImageAttachment(:final bytes) || ComposerFileAttachment(:final bytes) => bytes,
+  ComposerHostFileAttachment() || null => null,
+};
