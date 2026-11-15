@@ -1781,8 +1781,8 @@ abstract class AcpPlugin({
   /// as busy (see [isBusyPromptRejection]) is sent again every
   /// [_busyPromptRetryInterval]; its user message is already shown, and the
   /// session stays busy meanwhile. Returns null when a stop or delete ends the
-  /// wait. A rejection after [_promptInactivityTimeout] of them is rethrown and
-  /// fails the turn like any other.
+  /// wait. Once [_promptInactivityTimeout] has passed, the last rejection is
+  /// rethrown instead of resending, and fails the turn like any other.
   Future<({Object? raw})?> _awaitPromptResponse({
     required AcpStdioClient client,
     required String sessionId,
@@ -1795,16 +1795,21 @@ abstract class AcpPlugin({
     final waited = Stopwatch()..start();
     var response = firstResponse;
     while (true) {
+      final AcpRpcException busyRejection;
+      final StackTrace busyStack;
       try {
         return (raw: await response);
-      } on AcpRpcException catch (error) {
-        if (!isBusyPromptRejection(error: error) || waited.elapsed >= _promptInactivityTimeout) rethrow;
-        if (identical(response, firstResponse)) {
-          Log.i("[$id] agent is busy with its own turn on $sessionId; resending the prompt until it takes it");
-        }
+      } on AcpRpcException catch (error, stack) {
+        if (!isBusyPromptRejection(error: error)) rethrow;
+        busyRejection = error;
+        busyStack = stack;
+      }
+      if (identical(response, firstResponse)) {
+        Log.i("[$id] agent is busy with its own turn on $sessionId; resending the prompt until it takes it");
       }
       await Future<void>.delayed(_busyPromptRetryInterval);
       if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) return null;
+      if (waited.elapsed >= _promptInactivityTimeout) Error.throwWithStackTrace(busyRejection, busyStack);
       final dispatched = await client.dispatchSessionRequest(
         method: AcpMethods.sessionPrompt,
         params: params,
