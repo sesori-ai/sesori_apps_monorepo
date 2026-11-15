@@ -168,6 +168,9 @@ class ScheduledTaskService({
   static bool _isValidTime({required TaskTimeOfDay time}) => _isValidClock(hour: time.hour, minute: time.minute);
 
   static bool _isValidLocalDateTime({required TaskLocalDateTime local}) {
+    // Years outside 1–9999 are not a real schedule, and DateTime rejects the
+    // far ones outright.
+    if (local.year < 1 || local.year > 9999) return false;
     if (local.month < 1 || local.month > 12 || local.day < 1) return false;
     // Day 0 of the next month is this month's last day.
     final daysInMonth = DateTime.utc(local.year, local.month + 1, 0).day;

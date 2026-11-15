@@ -3,6 +3,7 @@ import "dart:math";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/database/daos/scheduled_task_dao.dart";
+import "../api/database/tables/scheduled_task_runs_table.dart";
 import "mappers/scheduled_task_mapper.dart";
 import "models/scheduled_task_record.dart";
 import "random_hex_id.dart";
@@ -120,7 +121,11 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
       outcome: outcome,
       firedAt: firedAt,
     );
-    await _dao.insertRunAndTrim(row: row, keep: runHistoryLimit);
+    await _dao.insertRunAndTrim(
+      row: row,
+      keep: runHistoryLimit,
+      alwaysKeepNewest: ScheduledTaskRunOutcomeKind.started,
+    );
     return _mapper.runFromDto(row: row);
   }
 }
