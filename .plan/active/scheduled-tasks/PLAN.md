@@ -525,8 +525,10 @@ be its latest started run and S its session (not archived).
    - **Cache-life source.** The plugin answers it: step 11 adds a
      plugin-interface query for a session's prompt-cache life (nullable =
      unknown). Each plugin derives it from what it already knows (evidence in
-     P11): Claude from its billing route (`promptCacheTtlSeconds` follows the
-     route after #2612), Codex 30 minutes, OpenCode by provider (Anthropic 5
+     P11): Claude reads the `promptCacheTtlSeconds` it already sets from the
+     init handshake's account since #2612 (1 hour on a subscription, 5 minutes
+     for an API provider without one, 1 hour when no route is known) and does
+     not recompute it, Codex 30 minutes, OpenCode by provider (Anthropic 5
      minutes), Pi 5 minutes, Hermes 5 minutes, Cursor by model (Anthropic 5
      minutes), Oh My Pi per seat. Copilot, Antigravity (Gemini) and Grok report
      unknown. The margin and cap live only in `ScheduledTaskCompactionService`
