@@ -52,11 +52,13 @@ class SessionSendService({
   /// Fails every summary wait still open, so bridge shutdown does not wait
   /// out the summary timeout.
   final Set<void Function()> _shutdownHooks = {};
+  bool _shuttingDown = false;
 
   /// Ends every send still waiting for its summary as `summaryStopped`. The
   /// orchestrator calls this before it removes event producers and drains
   /// routes.
   void beginShutdown() {
+    _shuttingDown = true;
     for (final hook in _shutdownHooks.toList(growable: false)) {
       hook();
     }
@@ -130,6 +132,8 @@ class SessionSendService({
         sessionId: source.id,
         operation: SessionOperation.sendToSession,
         body: () async {
+          // A send still validating when shutdown began must not start a turn.
+          if (_shuttingDown) throw _rejected(code: SendToSessionErrorCode.sourceUnavailable);
           if (await _sourceRefusal(sessionId: source.id, pluginId: source.pluginId) case final code?) {
             throw _rejected(code: code);
           }
@@ -254,7 +258,7 @@ class SessionSendService({
   /// of the agent's replies after it, up to the next user message.
   ///
   /// A history refresh can replace the live echo with a replayed message under
-  /// another id, so the request is also found by its exact text.
+  /// another id, so a request missing under its echo id is found by its exact text.
   Future<({List<MessageWithParts> transcript, String summary})> _readSummary({
     required String sessionId,
     required String summaryRequestMessageId,
@@ -290,11 +294,12 @@ class SessionSendService({
         causeStackTrace: stackTrace,
       );
     }
-    final requestIndex = messages.lastIndexWhere(
-      (message) =>
-          message.info.id == summaryRequestMessageId ||
-          (message.info is MessageUser && _textOf(message: message) == requestText),
-    );
+    final echoIndex = messages.indexWhere((message) => message.info.id == summaryRequestMessageId);
+    final requestIndex = echoIndex >= 0
+        ? echoIndex
+        : messages.lastIndexWhere(
+            (message) => message.info is MessageUser && _textOf(message: message) == requestText,
+          );
     if (requestIndex < 0) {
       Log.w(
         "Session $sessionId history (${messages.length} messages) lacks summary request message "

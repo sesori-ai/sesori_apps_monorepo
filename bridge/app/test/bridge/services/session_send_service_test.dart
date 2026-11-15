@@ -324,6 +324,22 @@ void main() {
     expect(transcripts.saved, isEmpty);
   });
 
+  test("a send that reaches the source after shutdown began sends nothing", () async {
+    service.beginShutdown();
+
+    expect(await refusalOf(send()), SendToSessionErrorCode.sourceUnavailable);
+    expect(prompts.sends, isEmpty);
+  });
+
+  test("the echo id wins over a later message with the request's text", () async {
+    finishSummaryTurn();
+    history.repeatRequestTextLater = () => prompts.sends.first.text;
+
+    await send();
+
+    expect(prompts.sends.last.text, contains(_summary));
+  });
+
   test("a replayed summary request is found by its text", () async {
     finishSummaryTurn();
     // A replay gives the request a new id, as ACP replays do.
@@ -716,10 +732,21 @@ final class _History() implements ChatHistoryService {
   /// under another id, carrying this text.
   String Function()? replayRequestText;
 
+  /// When set, a backfill appends a later user message carrying this text and
+  /// an unrelated reply.
+  String Function()? repeatRequestTextLater;
+
   @override
   Future<void> backfillSession({required String sessionId}) async {
     if (backfillFailure case final failure?) throw failure;
     backfilled.add(sessionId);
+    if (repeatRequestTextLater case final text?) {
+      messages = [
+        ...messages,
+        _userMessage(id: "later-user", text: text()),
+        _assistantMessage(id: "later-reply", text: "Fixture later reply."),
+      ];
+    }
     if (replayRequestText case final text?) {
       messages = [
         for (final message in messages)

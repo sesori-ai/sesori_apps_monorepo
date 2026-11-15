@@ -225,7 +225,8 @@ The bridge sends the source session a summarise prompt through the existing prom
    `NormalizedStatusEvent` or as `BridgeSseSessionIdle` (Claude uses the latter), so both count. A terminal handoff
    (the plugin stopping mid-turn) fails with `summaryFailed`, and so does an error message for the source after the
    echo (Codex ends a failed turn with an error message and a plain idle). Bridge shutdown ends an open wait as
-   `summaryStopped`, so the route does not hold shutdown for the rest of the 15 minutes.
+   `summaryStopped`, so the route does not hold shutdown for the rest of the 15 minutes; a send that reaches the
+   source reservation after shutdown began sends nothing and fails as `sourceUnavailable`.
    - A session error event for the source fails with `summaryFailed`.
    - A user stop of the source fails with `summaryStopped`. Stopping is the natural way to cancel a send, and a half
      summary must never reach the target.
@@ -236,7 +237,7 @@ The bridge sends the source session a summarise prompt through the existing prom
      because the live capture of the reply's parts can trail the idle event. A failed refresh is logged and the read
      uses the stored history.
    - A refresh can replace the live echo with a replayed message under another id (ACP replays do), so the split
-     finds the request by its id or by its exact text, taking the last match. The summary stops at the next user
+     finds the request by its echo id, or failing that by its exact text, taking the last match. The summary stops at the next user
      message, so a prompt queued behind the summary stays out of it.
    - The transcript is every message before the summarise user message.
    - The summary is the text parts of the assistant messages after it.
