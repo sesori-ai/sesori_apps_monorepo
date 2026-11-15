@@ -317,7 +317,10 @@ class _FakeRewindPlugin() extends FakeBridgePlugin implements SessionRewindPlugi
       sessionId: sessionId,
       beforeMessageId: beforeMessageId,
       promptId: promptId,
-      text: [for (final part in parts) if (part case PluginPromptPartText(:final text)) text].join(),
+      text: [
+        for (final part in parts)
+          if (part case PluginPromptPartText(:final text)) text,
+      ].join(),
     ));
   }
 }
