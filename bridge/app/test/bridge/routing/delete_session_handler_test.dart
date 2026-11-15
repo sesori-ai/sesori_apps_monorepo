@@ -43,6 +43,7 @@ void main() {
     late String scratchRoot;
     late _RecordingScratchRepository scratchRepository;
     late _RecordingPromptUploadRepository promptUploadRepository;
+    late _RecordingPromptUploadRepository transcriptRepository;
 
     setUp(() {
       db = createTestDatabase();
@@ -55,6 +56,12 @@ void main() {
         delegate: PromptUploadRepository(
           filesystemApi: const FilesystemApi(),
           uploadsRoot: p.join(scratchParent.path, "uploads"),
+        ),
+      );
+      transcriptRepository = _RecordingPromptUploadRepository(
+        delegate: PromptUploadRepository(
+          filesystemApi: const FilesystemApi(),
+          uploadsRoot: p.join(scratchParent.path, "transcripts"),
         ),
       );
       operationLog = [];
@@ -102,6 +109,7 @@ void main() {
           chatHistoryService: chatHistory.service,
           scratchRepository: scratchRepository,
           promptUploadRepository: promptUploadRepository,
+          transcriptRepository: transcriptRepository,
         ),
       );
     });
@@ -176,56 +184,68 @@ void main() {
       });
     });
 
-    group("prompt uploads", () {
-      setUp(() async {
-        await _insertSession(db: db, sessionId: "s1", projectId: "/repo", worktreePath: null);
-        await _insertSession(db: db, sessionId: "s2", projectId: "/repo", worktreePath: null);
-        await db.sessionDao.setParentSessionId(sessionId: "s2", parentSessionId: "s1");
-        await _insertSession(db: db, sessionId: "other", projectId: "/repo", worktreePath: null);
-        for (final sessionId in ["s1", "s2", "other"]) {
-          await promptUploadRepository.save(sessionId: sessionId, bytes: [1], filename: "notes.txt");
-        }
-      });
+    // The prompt uploads and the transcripts sent into a session share one
+    // folder layout and are deleted the same way.
+    for (final (folder, repositoryOf, otherRepositoryOf) in [
+      ("uploads", () => promptUploadRepository, () => transcriptRepository),
+      ("transcripts", () => transcriptRepository, () => promptUploadRepository),
+    ]) {
+      group("session files in $folder", () {
+        late _RecordingPromptUploadRepository repository;
 
-      Future<void> delete({required bool deleteSessionFolder}) async {
-        await handler.handle(
-          request: makeRequest("DELETE", "/session/delete"),
-          body: DeleteSessionRequest(
-            sessionId: "s1",
-            deleteWorktree: false,
-            deleteBranch: false,
-            force: false,
-            deleteSessionFolder: deleteSessionFolder,
-          ),
-        );
-      }
-
-      for (final deleteSessionFolder in [false, true]) {
-        test("are deleted for every family member with deleteSessionFolder=$deleteSessionFolder", () async {
-          await delete(deleteSessionFolder: deleteSessionFolder);
-          await Future.wait(promptUploadRepository.deletions);
-
-          expect(promptUploadRepository.deletedSessionIds.single, unorderedEquals(["s1", "s2"]));
-          expect(
-            Directory(p.join(scratchParent.path, "uploads")).listSync().map((entry) => p.basename(entry.path)),
-            ["other"],
-          );
+        setUp(() async {
+          repository = repositoryOf();
+          await _insertSession(db: db, sessionId: "s1", projectId: "/repo", worktreePath: null);
+          await _insertSession(db: db, sessionId: "s2", projectId: "/repo", worktreePath: null);
+          await db.sessionDao.setParentSessionId(sessionId: "s2", parentSessionId: "s1");
+          await _insertSession(db: db, sessionId: "other", projectId: "/repo", worktreePath: null);
+          for (final sessionId in ["s1", "s2", "other"]) {
+            await repository.save(sessionId: sessionId, bytes: [1], filename: "notes.txt");
+          }
         });
-      }
 
-      test("a failed delete is logged with the ids and does not fail the session delete", () async {
-        final logs = captureLogOutput();
-        promptUploadRepository.failure = const FileSystemException("Device busy");
+        Future<void> delete({required bool deleteSessionFolder}) async {
+          await handler.handle(
+            request: makeRequest("DELETE", "/session/delete"),
+            body: DeleteSessionRequest(
+              sessionId: "s1",
+              deleteWorktree: false,
+              deleteBranch: false,
+              force: false,
+              deleteSessionFolder: deleteSessionFolder,
+            ),
+          );
+        }
 
-        await delete(deleteSessionFolder: false);
-        await pumpEventQueue();
+        for (final deleteSessionFolder in [false, true]) {
+          test("are deleted for every family member with deleteSessionFolder=$deleteSessionFolder", () async {
+            await delete(deleteSessionFolder: deleteSessionFolder);
+            await Future.wait(repository.deletions);
 
-        expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
-        final deletedSessionIds = promptUploadRepository.deletedSessionIds.single;
-        expect(deletedSessionIds, unorderedEquals(["s1", "s2"]));
-        expect(logs.text, allOf(contains(deletedSessionIds.join(", ")), contains("Device busy")));
+            expect(repository.deletedSessionIds.single, unorderedEquals(["s1", "s2"]));
+            expect(
+              Directory(p.join(scratchParent.path, folder)).listSync().map((entry) => p.basename(entry.path)),
+              ["other"],
+            );
+          });
+        }
+
+        test("a failed delete is logged with the ids and does not fail the session delete", () async {
+          final logs = captureLogOutput();
+          repository.failure = const FileSystemException("Device busy");
+
+          await delete(deleteSessionFolder: false);
+          await pumpEventQueue();
+
+          expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
+          final deletedSessionIds = repository.deletedSessionIds.single;
+          expect(deletedSessionIds, unorderedEquals(["s1", "s2"]));
+          expect(logs.text, allOf(contains(deletedSessionIds.join(", ")), contains("Device busy")));
+          // The other store's cleanup still runs.
+          expect(otherRepositoryOf().deletedSessionIds.single, unorderedEquals(["s1", "s2"]));
+        });
       });
-    });
+    }
 
     test("throws 400 on empty session id", () async {
       expect(
@@ -678,7 +698,7 @@ class _RecordingScratchRepository({required final ScratchRepository _delegate}) 
   }
 }
 
-/// Records each uploads deletion so a test can await the work the deletion
+/// Records each session-files deletion so a test can await the work the deletion
 /// service leaves running, and fails it with [failure] when that is set.
 class _RecordingPromptUploadRepository({required final PromptUploadRepository _delegate})
     implements PromptUploadRepository {

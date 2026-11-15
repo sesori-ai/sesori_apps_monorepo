@@ -52,6 +52,11 @@ abstract class const BridgePluginDescriptor() {
   /// the send's prompt id, so the bridge can name the command on that turn.
   bool get namesCommandInvocations => false;
 
+  /// Whether the started plugin answers side questions through
+  /// `SideQuestionPluginApi`. Declared here so the bridge can say so before
+  /// the plugin starts.
+  bool get supportsSideQuestions => false;
+
   /// What this backend does with a prompt sent while a session runs a turn,
   /// so a client can warn before a send stops that turn.
   PluginBusyPromptHandling get busyPromptHandling;

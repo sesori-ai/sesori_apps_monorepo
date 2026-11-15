@@ -98,6 +98,11 @@ sealed class PluginMetadata with _$PluginMetadata {
     // Remove @Default and require the field once all supported production bridges send it.
     @Default(false) bool namesCommandInvocations,
 
+    /// Whether this harness answers side questions.
+    // COMPATIBILITY 2026-11-15 (v1.14.0): Older bridges omit this capability because they have no side-question routes.
+    // Remove @Default and require the field once all supported production bridges send it.
+    @Default(false) bool supportsSideQuestions,
+
     /// What this harness does with a prompt sent while a session runs a turn,
     /// so a client can warn before a send stops that turn.
     // COMPATIBILITY 2026-11-15 (v1.14.0): Bridges before session sending omit busyPromptHandling; the picker
@@ -138,6 +143,12 @@ sealed class PluginListResponse with _$PluginListResponse {
     // only images reach them and the client says so. Remove @Default and require
     // supportsFileUploads once those bridges are unsupported.
     @Default(false) bool supportsFileUploads,
+
+    /// Whether the bridge has the side-question routes (`/session/side-chats`
+    /// and `/session/side-question`).
+    // COMPATIBILITY 2026-11-15 (v1.14.0): Older bridges omit this capability because they have no side-question routes.
+    // Remove @Default and require the field once all supported production bridges send it.
+    @Default(false) bool supportsSideQuestions,
   }) = _PluginListResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);
