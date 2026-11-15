@@ -7,6 +7,7 @@ import "../models/plugin_quota_interruption.dart";
 import "../models/plugin_session_activity.dart";
 import "bridge_plugin.dart";
 import "plugin_activation_policy.dart";
+import "plugin_busy_prompt_handling.dart";
 import "plugin_config.dart";
 import "plugin_control_capability.dart";
 import "plugin_mcp_capability.dart";
@@ -54,6 +55,10 @@ abstract class const BridgePluginDescriptor() {
   /// `SideQuestionPluginApi`. Declared here so the bridge can say so before
   /// the plugin starts.
   bool get supportsSideQuestions => false;
+
+  /// What this backend does with a prompt sent while a session runs a turn,
+  /// so a client can warn before a send stops that turn.
+  PluginBusyPromptHandling get busyPromptHandling;
 
   /// Live terminal quota reporting, available only for verified plugin seams.
   PluginQuotaReportingSupport get quotaReportingSupport => PluginQuotaReportingSupport.unavailable;
