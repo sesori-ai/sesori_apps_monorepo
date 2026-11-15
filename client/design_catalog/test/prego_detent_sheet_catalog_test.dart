@@ -11,7 +11,10 @@ void main() {
     expect(useCase.name, detentSheetUseCaseName);
 
     await tester.pumpWidget(
-      material.MaterialApp(theme: pregoCatalogLightTheme, home: material.Builder(builder: useCase.build)),
+      material.MaterialApp(
+        theme: pregoCatalogLightTheme,
+        home: material.Builder(builder: useCase.build),
+      ),
     );
     await tester.tap(find.text("Ask a side question"));
     await tester.pumpAndSettle();

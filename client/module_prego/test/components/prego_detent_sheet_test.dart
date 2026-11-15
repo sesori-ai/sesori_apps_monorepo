@@ -1,3 +1,4 @@
+import "package:flutter/semantics.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -243,6 +244,67 @@ void main() {
       expect(_sheetTop(tester), inExclusiveRange(_fullTop, _halfTop - 250));
       await tester.pumpAndSettle();
       expect(_sheetTop(tester), _fullTop);
+    });
+
+    testWidgets("a screen reader expands and collapses the sheet with the same spring", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _open(tester);
+      final sheet = find.semantics.byLabel("Bottom Sheet");
+
+      tester.semantics.customAction(sheet, const CustomSemanticsAction(label: "Expand"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(_sheetTop(tester), inExclusiveRange(_fullTop, _halfTop));
+      await tester.pumpAndSettle();
+      expect(_sheetTop(tester), _fullTop);
+
+      tester.semantics.customAction(sheet, const CustomSemanticsAction(label: "Collapse"));
+      await tester.pumpAndSettle();
+      expect(_sheetTop(tester), _halfTop);
+      semantics.dispose();
+    });
+
+    testWidgets("with reduced motion, a screen reader changes height at once", (tester) async {
+      final semantics = tester.ensureSemantics();
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await _open(tester);
+
+      tester.semantics.customAction(
+        find.semantics.byLabel("Bottom Sheet"),
+        const CustomSemanticsAction(label: "Expand"),
+      );
+      // One frame: a spring would still be on its way.
+      await tester.pump();
+
+      expect(_sheetTop(tester), _fullTop);
+      semantics.dispose();
+    });
+
+    testWidgets("keeps the presenting page's theme", (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Theme(
+            data: ThemeData(extensions: [PregoDesignSystem.dark]),
+            child: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showPregoDetentSheet<void>(context: context, builder: (_, _) => const SizedBox()),
+                child: const Text(_openLabel),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text(_openLabel));
+      await tester.pumpAndSettle();
+
+      final surface = tester.widget<Material>(
+        find.ancestor(of: find.byType(PregoSheetGrabber), matching: find.byType(Material)).first,
+      );
+      expect(surface.color, PregoDesignSystem.dark.colors.bgSecondary);
     });
   });
 }

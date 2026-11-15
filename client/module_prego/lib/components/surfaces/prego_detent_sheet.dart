@@ -1,6 +1,7 @@
 import "dart:math" as math;
 
 import "package:flutter/physics.dart";
+import "package:flutter/semantics.dart";
 import "package:material_ui/material_ui.dart";
 
 import "../../module_prego.dart";
@@ -32,13 +33,17 @@ typedef PregoDetentSheetBuilder = Widget Function(BuildContext context, ScrollCo
 /// example [PregoTopNavigationSheets] with `showGrabber: false`) and fills the
 /// rest of the height.
 Future<T?> showPregoDetentSheet<T>({required BuildContext context, required PregoDetentSheetBuilder builder}) {
+  // ignore: no_slop_linter/avoid_navigator_of, design module has no go_router dep; pushes the sheet's own route
+  final navigator = Navigator.of(context);
   final route = _PregoDetentSheetRoute<T>(
     builder: builder,
     reducedMotion: prefersReducedMotion(context),
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    // The sheet builds under the navigator, so it keeps the presenter's theme
+    // explicitly, as the standard modal presenters do.
+    capturedThemes: InheritedTheme.capture(from: context, to: navigator.context),
   );
-  // ignore: no_slop_linter/avoid_navigator_of, design module has no go_router dep; pushes the sheet's own route
-  return Navigator.of(context).push(route);
+  return navigator.push(route);
 }
 
 const _enterDuration = Duration(milliseconds: 300);
@@ -64,6 +69,7 @@ final _spring = SpringDescription.withDurationAndBounce(duration: const Duration
 class _PregoDetentSheetRoute<T>({
   required final PregoDetentSheetBuilder builder,
   required final bool reducedMotion,
+  required final CapturedThemes capturedThemes,
   @override required final String barrierLabel,
 }) extends PopupRoute<T> {
   // The sheet paints its own scrim, whose depth follows the sheet's height;
@@ -90,7 +96,7 @@ class _PregoDetentSheetRoute<T>({
 
   @override
   Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
-    return _PregoDetentSheet(route: this, animation: animation);
+    return capturedThemes.wrap(_PregoDetentSheet(route: this, animation: animation));
   }
 }
 
@@ -245,6 +251,16 @@ class _PregoDetentSheetState() extends State<_PregoDetentSheet> with SingleTicke
     });
   }
 
+  /// Moves the sheet to [detent] for a screen reader, with the same motion as
+  /// a release.
+  void _moveTo(_Detent detent) {
+    _height.stop();
+    _height.value = _heightIn(_SheetGeometry.of(context));
+    _settleTo(detent: detent, velocity: 0);
+    // Offer the opposite action right away, not only once the spring rests.
+    setState(() {});
+  }
+
   /// The scrim's opacity at [height] when fully presented: none when closed,
   /// light at half height so the page behind stays readable, and as deep as a
   /// dialog's at full height.
@@ -271,11 +287,21 @@ class _PregoDetentSheetState() extends State<_PregoDetentSheet> with SingleTicke
       child: Builder(builder: (context) => widget.route.builder(context, _scrollController)),
     );
 
+    final localizations = MaterialLocalizations.of(context);
+    final detent = switch (_motion) {
+      _Resting(:final detent) || _Settling(:final detent) => detent,
+      _Following() => null,
+    };
     final surface = Semantics(
       scopesRoute: true,
       namesRoute: true,
       explicitChildNodes: true,
-      label: MaterialLocalizations.of(context).bottomSheetLabel,
+      label: localizations.bottomSheetLabel,
+      customSemanticsActions: switch (detent) {
+        .half => {CustomSemanticsAction(label: localizations.collapsedIconTapHint): () => _moveTo(.full)},
+        .full => {CustomSemanticsAction(label: localizations.expandedIconTapHint): () => _moveTo(.half)},
+        null => null,
+      },
       child: GestureDetector(
         // Drags anywhere a scroll view doesn't claim move the sheet, and taps
         // on its background don't reach the barrier behind it.

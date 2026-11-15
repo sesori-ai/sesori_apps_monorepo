@@ -17,7 +17,7 @@ a static Flutter Web application.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated: validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, rendering of every curated state, and the detent sheet use case opening its sheet. |
-| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, iOS/Android viewports, enabled clicks, disabled/loading states, and the all-states matrix in a browser. On a headless iOS simulator, drag the detent sheet between half and full height, scroll its list, raise the keyboard, and close it by dragging down and by tapping the scrim. |
+| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, iOS/Android viewports, enabled clicks, disabled/loading states, and the all-states matrix in a browser. On a headless iOS simulator, the detent sheet's drag, scroll, keyboard, dismissal, and screen-reader behavior match Exploration Guidance. |
 | L3 Release | Packaged or external: once private PR previews are enabled, verify a trusted same-repository PR receives an Access-protected interactive preview without production credentials, services, data, or analytics. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -38,7 +38,9 @@ a static Flutter Web application.
   list at its top moves the sheet; a drag up at half height grows it before
   the list scrolls. The scrim is light at half height and deeper at full, the
   page behind keeps adding lines, and the keyboard lifts the input without the
-  sheet covering the status bar.
+  sheet covering the status bar. It closes on a fast drag down from half
+  height and on a scrim tap; a screen reader offers Expand at half height and
+  Collapse at full.
 - Confirm `web/catalog_manifest.json` changes only after the typed registry is
   intentionally changed and regenerated.
 
