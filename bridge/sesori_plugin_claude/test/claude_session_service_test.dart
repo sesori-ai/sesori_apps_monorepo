@@ -1440,7 +1440,7 @@ void main() {
             isA<PluginBranchPointUnavailableException>().having(
               (error) => error.cause,
               "cause",
-              isA<ClaudeUnknownOptionException>(),
+              isA<ClaudeRewindUnsupportedException>(),
             ),
           ),
         );

@@ -15,6 +15,7 @@ import "../models/claude_process_purpose.dart";
 import "mappers/claude_mcp_mapper.dart";
 import "mappers/claude_side_answer_mapper.dart";
 import "models/claude_mcp_authentication_context.dart";
+import "models/claude_rewind_point.dart";
 
 sealed class const ClaudeTurnOutcome();
 
@@ -307,7 +308,7 @@ final class ClaudeSessionProcessRepository({
   ///
   /// Nothing is written to the transcript until that prompt is sent, so a
   /// failure here leaves the conversation as it was. A CLI that does not know
-  /// the option fails with [ClaudeUnknownOptionException].
+  /// the option fails with [ClaudeRewindUnsupportedException].
   Future<void> resumeAt({
     required String sessionId,
     required String directory,
@@ -320,17 +321,21 @@ final class ClaudeSessionProcessRepository({
   }) async {
     if (_disposed) throw StateError("Claude process repository is disposed");
     await teardown(sessionId: sessionId);
-    await _establish(
-      sessionId: sessionId,
-      directory: directory,
-      launch: ClaudeRewoundSession(sessionId: sessionId, entryUuid: entryUuid),
-      purpose: ClaudeProcessPurpose.session,
-      model: model,
-      effort: effort,
-      permissionMode: permissionMode,
-      fastMode: fastMode,
-      allowedTools: allowedTools,
-    );
+    try {
+      await _establish(
+        sessionId: sessionId,
+        directory: directory,
+        launch: ClaudeRewoundSession(sessionId: sessionId, entryUuid: entryUuid),
+        purpose: ClaudeProcessPurpose.session,
+        model: model,
+        effort: effort,
+        permissionMode: permissionMode,
+        fastMode: fastMode,
+        allowedTools: allowedTools,
+      );
+    } on ClaudeUnknownOptionException catch (error) {
+      throw ClaudeRewindUnsupportedException(innerError: error);
+    }
   }
 
   Future<void> _establish({

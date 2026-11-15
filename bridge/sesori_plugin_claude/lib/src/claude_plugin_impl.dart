@@ -309,7 +309,6 @@ final class ClaudePlugin({
       displayText: _displayText(parts),
       command: null,
       attachmentCount: _attachmentCount(parts),
-      rewindBeforeMessageId: null,
     );
   }
 
@@ -324,26 +323,38 @@ final class ClaudePlugin({
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    _requireTurn(parts: parts, operation: "rewindAndSendPrompt");
+    const operation = "rewindAndSendPrompt";
+    _requireTurn(parts: parts, operation: operation);
     final directory = await _directoryForSession(sessionId);
     if (directory == null) {
-      throw const PluginOperationException.notFound(operation: "rewindAndSendPrompt", message: "session not found");
+      throw const PluginOperationException.notFound(operation: operation, message: "session not found");
     }
-    await _enqueueQueued(
+    final (:effort, :permissionMode) = _queuedSelections(
       sessionId: sessionId,
-      directory: directory,
-      parts: parts,
       variant: variant,
-      fastMode: fastMode,
       agent: agent,
       model: model,
-      operation: "rewindAndSendPrompt",
-      promptId: promptId,
-      displayText: _displayText(parts),
-      command: null,
-      attachmentCount: _attachmentCount(parts),
-      rewindBeforeMessageId: beforeMessageId,
+      operation: operation,
     );
+    try {
+      await _sessions.rewindAndEnqueueTurn(
+        sessionId: sessionId,
+        directory: directory,
+        beforeMessageId: beforeMessageId,
+        parts: parts,
+        model: model?.modelID,
+        effort: effort,
+        permissionMode: permissionMode,
+        fastMode: fastMode,
+        promptId: promptId,
+        displayText: _displayText(parts),
+        attachmentCount: _attachmentCount(parts),
+      );
+    } on PluginOperationException {
+      rethrow;
+    } on Object catch (error) {
+      throw PluginOperationException(operation: operation, message: "Claude did not accept the rewind", cause: error);
+    }
   }
 
   @override
@@ -383,7 +394,6 @@ final class ClaudePlugin({
       displayText: visible == null || visible.isEmpty ? null : visible,
       command: command,
       attachmentCount: 0,
-      rewindBeforeMessageId: null,
     );
   }
 
@@ -683,9 +693,7 @@ final class ClaudePlugin({
     await _eventBuffer.close();
   }
 
-  /// Queues a send to an existing session, accepted at enqueue. With
-  /// [rewindBeforeMessageId] the send replaces that prompt and everything
-  /// after it, and every refusal comes before acceptance.
+  /// Queues a send to an existing session, accepted at enqueue.
   Future<void> _enqueueQueued({
     required String sessionId,
     required String directory,
@@ -699,8 +707,44 @@ final class ClaudePlugin({
     required String? displayText,
     required String? command,
     required int attachmentCount,
-    required String? rewindBeforeMessageId,
   }) async {
+    final (:effort, :permissionMode) = _queuedSelections(
+      sessionId: sessionId,
+      variant: variant,
+      agent: agent,
+      model: model,
+      operation: operation,
+    );
+    try {
+      await _sessions.enqueueTurn(
+        sessionId: sessionId,
+        directory: directory,
+        createNew: _unstartedSessions.contains(sessionId),
+        parts: parts,
+        model: model?.modelID,
+        effort: effort,
+        permissionMode: permissionMode,
+        fastMode: fastMode,
+        promptId: promptId,
+        displayText: displayText,
+        command: command,
+        attachmentCount: attachmentCount,
+      );
+    } on PluginOperationException {
+      rethrow;
+    } on Object catch (error) {
+      throw PluginOperationException(operation: operation, message: "Claude did not accept the turn", cause: error);
+    }
+  }
+
+  /// Validates a send to an existing session, before anything is queued.
+  ({ClaudeEffortLevel? effort, ClaudePermissionMode? permissionMode}) _queuedSelections({
+    required String sessionId,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+    required String operation,
+  }) {
     // A sub-agent transcript is not a Claude process session: nothing can be
     // resumed under its id, so a write to it is refused rather than spawning a
     // CLI that fails.
@@ -712,44 +756,10 @@ final class ClaudePlugin({
       );
     }
     _validateModel(model, operation: operation, staleOptions: true);
-    final effort = _effort(variant, operation: operation, staleOptions: true);
-    final permissionMode = _permissionMode(agent, operation: operation, staleOptions: true);
-    try {
-      if (rewindBeforeMessageId == null) {
-        await _sessions.enqueueTurn(
-          sessionId: sessionId,
-          directory: directory,
-          createNew: _unstartedSessions.contains(sessionId),
-          parts: parts,
-          model: model?.modelID,
-          effort: effort,
-          permissionMode: permissionMode,
-          fastMode: fastMode,
-          promptId: promptId,
-          displayText: displayText,
-          command: command,
-          attachmentCount: attachmentCount,
-        );
-      } else {
-        await _sessions.rewindAndEnqueueTurn(
-          sessionId: sessionId,
-          directory: directory,
-          beforeMessageId: rewindBeforeMessageId,
-          parts: parts,
-          model: model?.modelID,
-          effort: effort,
-          permissionMode: permissionMode,
-          fastMode: fastMode,
-          promptId: promptId,
-          displayText: displayText,
-          attachmentCount: attachmentCount,
-        );
-      }
-    } on PluginOperationException {
-      rethrow;
-    } on Object catch (error) {
-      throw PluginOperationException(operation: operation, message: "Claude did not accept the turn", cause: error);
-    }
+    return (
+      effort: _effort(variant, operation: operation, staleOptions: true),
+      permissionMode: _permissionMode(agent, operation: operation, staleOptions: true),
+    );
   }
 
   /// Runs a new session's first turn with acceptance at dispatch, so session

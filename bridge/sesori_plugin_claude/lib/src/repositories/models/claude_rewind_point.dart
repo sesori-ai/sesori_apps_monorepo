@@ -19,3 +19,9 @@ enum ClaudeRewindRefusal() {
   /// with `No message found` (verified live on 2.1.322).
   beforeCompaction,
 }
+
+/// The installed Claude Code does not support resuming at a chain entry.
+final class const ClaudeRewindUnsupportedException({required final Object innerError}) implements Exception {
+  @override
+  String toString() => "ClaudeRewindUnsupportedException($innerError)";
+}

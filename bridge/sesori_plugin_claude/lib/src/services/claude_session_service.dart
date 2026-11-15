@@ -4,7 +4,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../api/claude_stream_client.dart" show ClaudeUnknownOptionException;
 import "../api/models/claude_stream_message.dart";
 import "../claude_approval_registry.dart";
 import "../models/claude_effort_level.dart";
@@ -395,7 +394,7 @@ final class ClaudeSessionService({
     state.dispatchTail = respawn.catchError((Object _) {});
     try {
       await respawn;
-    } on ClaudeUnknownOptionException catch (error) {
+    } on ClaudeRewindUnsupportedException catch (error) {
       throw PluginBranchPointUnavailableException(
         operation: operation,
         userFacingReason: "This Claude Code version can't edit messages from Sesori.",
