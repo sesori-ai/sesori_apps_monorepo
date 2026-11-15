@@ -235,6 +235,27 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
+  /// Writes what a fork takes beyond [insertSession]: its origin, its own
+  /// [title], and the origin's [branchName]. A fork never inherits the
+  /// origin's approval override, so the row follows the bridge setting.
+  Future<void> setForkOrigin({
+    required String sessionId,
+    required String forkedFromSessionId,
+    required String? forkedFromTitle,
+    required String? title,
+    required String? branchName,
+  }) async {
+    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(
+        forkedFromSessionId: Value(forkedFromSessionId),
+        forkedFromTitle: Value(forkedFromTitle),
+        title: Value(title),
+        branchName: Value(branchName),
+        approvalOverride: const Value(null),
+      ),
+    );
+  }
+
   /// Returns the updated row, or null when [sessionId] has none.
   Future<SessionDto?> updatePromptDefaults({
     required String sessionId,

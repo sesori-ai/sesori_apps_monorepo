@@ -975,6 +975,8 @@ class CatalogImportRepository({
       approvalOverride: existing?.approvalOverride,
       // Only a root can be pinned, so a session imported under a parent loses its pin.
       pinned: parentSessionId == null && (existing?.pinned ?? false),
+      forkedFromSessionId: existing?.forkedFromSessionId,
+      forkedFromTitle: existing?.forkedFromTitle,
     );
   }
 

@@ -106,6 +106,7 @@ import "routing/create_session_handler.dart";
 import "routing/decline_form_handler.dart";
 import "routing/delete_session_handler.dart";
 import "routing/filesystem_suggestions_handler.dart";
+import "routing/fork_session_handler.dart";
 import "routing/get_base_branch_handler.dart";
 import "routing/get_bridge_settings_handler.dart";
 import "routing/get_catalog_import_statuses_handler.dart";
@@ -201,6 +202,7 @@ import "services/session_deletion_service.dart";
 import "services/session_diff_service.dart";
 import "services/session_event_dispatcher.dart";
 import "services/session_event_service.dart";
+import "services/session_fork_service.dart";
 import "services/session_lifecycle_service.dart";
 import "services/session_mutation_dispatcher.dart";
 import "services/session_operation_dispatcher.dart";
@@ -589,6 +591,12 @@ class Orchestrator({
       promptPartDelivery: promptPartDeliveryService,
       chatHistory: chatHistoryService,
     );
+    final sessionForkService = SessionForkService(
+      sessionRepository: sessionRepository,
+      chatHistory: chatHistoryService,
+      views: sessionViews,
+      dispatcher: sessionOperationDispatcher,
+    );
     final sessionContinuationService = SessionContinuationService(
       continuations: sessionContinuations,
       sessions: sessionRepository,
@@ -767,6 +775,7 @@ class Orchestrator({
         DeleteSessionHandler(sessionDeletionService: sessionDeletionService),
         SendPromptHandler(sessionPromptService: sessionPromptService),
         RewindSessionHandler(sessionPromptService: sessionPromptService),
+        ForkSessionHandler(sessionForkService: sessionForkService),
         SendToSessionHandler(sessionSendService: sessionSendService),
         GetQueuedPromptsHandler(sessionRepository: sessionRepository),
         CancelQueuedPromptHandler(sessionPromptService: sessionPromptService),

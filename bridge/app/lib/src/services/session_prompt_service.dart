@@ -199,7 +199,10 @@ class SessionPromptService({
       _PromptSendPrompt(:final handoff) => () async => await _sessionRepository.sendPrompt(
         sessionId: sessionId,
         promptId: promptId,
-        parts: await _deliverableParts(sessionId: sessionId, parts: parts),
+        parts: await _withFirstPromptContext(
+          sessionId: sessionId,
+          parts: await _deliverableParts(sessionId: sessionId, parts: parts),
+        ),
         variant: variant,
         fastMode: fastMode,
         agent: agent,
@@ -291,6 +294,17 @@ class SessionPromptService({
     inlineImages: await _sessionRepository.inlineImagesSupportedForSession(sessionId: sessionId),
     parts: parts,
   );
+
+  /// [parts], led by the bridge's worktree context when they open the
+  /// conversation of a session with a dedicated worktree, as a new session's
+  /// first prompt is. A fork that kept nothing has had no first prompt yet.
+  Future<List<DeliverablePromptPart>> _withFirstPromptContext({
+    required String sessionId,
+    required List<DeliverablePromptPart> parts,
+  }) async {
+    if (!await _chatHistory.isKnownEmpty(sessionId: sessionId)) return parts;
+    return [...await _worktreeContextParts(sessionId: sessionId), ...parts];
+  }
 
   /// Checks the edit, then returns the send that rewinds through the plugin
   /// and removes the rewound messages from the store and every client by

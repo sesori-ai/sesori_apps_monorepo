@@ -66,6 +66,11 @@ _Session _$SessionFromJson(Map json) => _Session(
       : SessionScheduledTaskMark.fromJson(
           Map<String, dynamic>.from(json['scheduledTask'] as Map),
         ),
+  forkedFrom: json['forkedFrom'] == null
+      ? null
+      : SessionForkOrigin.fromJson(
+          Map<String, dynamic>.from(json['forkedFrom'] as Map),
+        ),
 );
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
@@ -85,12 +90,24 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'approvalOverride': ?_$SessionApprovalModeEnumMap[instance.approvalOverride],
   'pinned': instance.pinned,
   'scheduledTask': ?instance.scheduledTask?.toJson(),
+  'forkedFrom': ?instance.forkedFrom?.toJson(),
 };
 
 const _$SessionApprovalModeEnumMap = {
   SessionApprovalMode.ask: 'ask',
   SessionApprovalMode.yolo: 'yolo',
 };
+
+_SessionForkOrigin _$SessionForkOriginFromJson(Map json) => _SessionForkOrigin(
+  sessionId: json['sessionId'] as String?,
+  title: json['title'] as String?,
+);
+
+Map<String, dynamic> _$SessionForkOriginToJson(_SessionForkOrigin instance) =>
+    <String, dynamic>{
+      'sessionId': ?instance.sessionId,
+      'title': ?instance.title,
+    };
 
 _SessionPromptDefaults _$SessionPromptDefaultsFromJson(Map json) =>
     _SessionPromptDefaults(

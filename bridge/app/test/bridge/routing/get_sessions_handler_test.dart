@@ -318,6 +318,8 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          forkedFromSessionId: null,
+          forkedFromTitle: null,
         ),
       );
 
@@ -394,6 +396,8 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          forkedFromSessionId: null,
+          forkedFromTitle: null,
         ),
       );
 
@@ -463,6 +467,8 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          forkedFromSessionId: null,
+          forkedFromTitle: null,
         ),
       );
       sessionDao.setSession(
@@ -492,6 +498,8 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          forkedFromSessionId: null,
+          forkedFromTitle: null,
         ),
       );
 
@@ -545,6 +553,8 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          forkedFromSessionId: null,
+          forkedFromTitle: null,
         ),
       );
 
@@ -595,6 +605,8 @@ void main() {
           catalogTitle: null,
           approvalOverride: null,
           pinned: false,
+          forkedFromSessionId: null,
+          forkedFromTitle: null,
         ),
       );
 

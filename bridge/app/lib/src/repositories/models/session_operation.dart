@@ -6,6 +6,7 @@ enum SessionOperation() {
   sendCommand,
   sendPrompt,
   rewindSession,
+  forkSession,
   sendToSession,
   askSideQuestion,
   getSessionMessages,

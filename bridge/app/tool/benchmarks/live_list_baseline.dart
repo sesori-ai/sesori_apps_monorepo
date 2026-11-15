@@ -418,6 +418,8 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           catalogTitle: "Child session",
           approvalOverride: null,
           pinned: false,
+          forkedFromSessionId: null,
+          forkedFromTitle: null,
         ),
       ],
     );
@@ -578,6 +580,8 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
         catalogTitle: "Session $index",
         approvalOverride: null,
         pinned: false,
+        forkedFromSessionId: null,
+        forkedFromTitle: null,
       ),
       growable: false,
     );

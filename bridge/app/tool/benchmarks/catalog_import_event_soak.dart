@@ -533,6 +533,8 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           catalogTitle: "last-committed-sentinel",
           approvalOverride: null,
           pinned: false,
+          forkedFromSessionId: null,
+          forkedFromTitle: null,
         ),
       ],
     );
@@ -587,6 +589,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          forkedFrom: null,
         ).toJson(),
         titleChanged: false,
       ),

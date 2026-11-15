@@ -81,6 +81,15 @@ class SessionTable() extends Table {
   /// Only an unarchived root is pinned; archiving drops the pin.
   BoolColumn get pinned => boolean().withDefault(const Constant(false))();
 
+  /// The session this root session was forked from. Deleting the origin
+  /// nulls it, and [forkedFromTitle] keeps naming the origin.
+  TextColumn get forkedFromSessionId =>
+      text().nullable().references(SessionTable, #sessionId, onDelete: KeyAction.setNull)();
+
+  /// The origin's displayed title when the fork was made, or null for a
+  /// session that is not a fork or whose origin was untitled.
+  TextColumn get forkedFromTitle => text().nullable()();
+
   @override
   bool get withoutRowId => true;
 
@@ -116,5 +125,7 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required String? catalogTitle,
     required SessionApprovalMode? approvalOverride,
     required bool pinned,
+    required String? forkedFromSessionId,
+    required String? forkedFromTitle,
   }) = _SessionDto;
 }

@@ -340,6 +340,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        forkedFrom: null,
       );
       const event = SesoriSseEvent.sessionCreated(info: session);
       final json = event.toJson();
@@ -375,6 +376,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        forkedFrom: null,
       );
       const event = SesoriSseEvent.sessionUpdated(info: session);
       final json = event.toJson();
@@ -408,6 +410,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        forkedFrom: null,
       );
       const event = SesoriSseEvent.sessionDeleted(info: session);
       final json = event.toJson();
@@ -697,6 +700,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          forkedFrom: null,
         ),
       );
       expect(created, isA<SesoriSessionEvent>());
@@ -718,6 +722,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          forkedFrom: null,
         ),
       );
       expect(updated, isA<SesoriSessionEvent>());
@@ -739,6 +744,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          forkedFrom: null,
         ),
       );
       expect(deleted, isA<SesoriSessionEvent>());
@@ -987,6 +993,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          forkedFrom: null,
         ),
       ).toJson();
       expect(json['type'], 'session.created');
@@ -1008,6 +1015,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          forkedFrom: null,
         ),
       ).toJson();
       expect(json['type'], 'session.updated');
@@ -1029,6 +1037,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          forkedFrom: null,
         ),
       ).toJson();
       expect(json['type'], 'session.deleted');

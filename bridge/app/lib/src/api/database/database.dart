@@ -47,7 +47,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 26;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -361,6 +361,11 @@ class AppDatabase(super.e) extends _$AppDatabase {
       from24To25: (m, schema) async {
         await m.createTable(schema.sideChatExchanges);
         await m.createIndex(schema.idxSideChatExchangesSession);
+      },
+      from25To26: (m, schema) async {
+        // No session was forked before v26, so null is the honest backfill.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.forkedFromSessionId);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.forkedFromTitle);
       },
     ),
     beforeOpen: (details) async {
