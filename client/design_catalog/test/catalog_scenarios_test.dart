@@ -29,6 +29,7 @@ void main() {
   test("manifest source paths resolve to repository files", () {
     expect(File("../../$catalogScenarioSourcePath").existsSync(), isTrue);
     expect(File("../../$catalogComponentSourcePath").existsSync(), isTrue);
+    expect(File("../../$catalogDetentSheetSourcePath").existsSync(), isTrue);
   });
 
   test("checked-in manifest matches the scenario registry", () {

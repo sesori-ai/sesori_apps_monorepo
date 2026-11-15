@@ -227,6 +227,24 @@ enum AnalyticsFileSource({required final String wireValue}) {
   mixed(wireValue: "mixed"),
 }
 
+/// How one side question ended.
+enum AnalyticsSideQuestionOutcome({required final String wireValue}) {
+  /// The bridge stored an answer.
+  answered(wireValue: "answered"),
+
+  /// The model gave no usable answer.
+  noAnswer(wireValue: "no_answer"),
+
+  /// The bridge refused before the model answered: the harness can't, the
+  /// session has no turn yet, the question was too long, or a reason this app
+  /// doesn't know.
+  unavailable(wireValue: "unavailable"),
+
+  /// The request failed or timed out, or the bridge sent a response this app
+  /// doesn't know.
+  failed(wireValue: "failed"),
+}
+
 @immutable
 sealed class const ProductAnalyticsEvent() {
   const factory analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
@@ -311,6 +329,10 @@ sealed class const ProductAnalyticsEvent() {
   const factory founderCallShown({required FounderCallSurface surface}) = FounderCallShownEvent;
   const factory founderCallLinkOpened({required FounderCallSurface surface}) = FounderCallLinkOpenedEvent;
   const factory founderCallDeclined({required FounderCallSurface surface}) = FounderCallDeclinedEvent;
+  const factory sideQuestionAsked({
+    required AnalyticsHarness harness,
+    required AnalyticsSideQuestionOutcome outcome,
+  }) = SideQuestionAskedEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -695,6 +717,19 @@ final class const FounderCallDeclinedEvent({required final FounderCallSurface su
 
   @override
   Map<String, String> get parameters => {"surface": surface.wireValue};
+}
+
+/// A side question got its result from the bridge. The question, the answer,
+/// the session and the side chat stay off the wire.
+final class const SideQuestionAskedEvent({
+  required final AnalyticsHarness harness,
+  required final AnalyticsSideQuestionOutcome outcome,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "side_question_asked";
+
+  @override
+  Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};
 }
 
 final class ProductAnalyticsEnvelope({required final ProductAnalyticsEvent event, required DateTime occurredAtUtc}) {

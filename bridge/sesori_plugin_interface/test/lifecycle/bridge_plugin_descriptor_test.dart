@@ -10,6 +10,7 @@ void main() {
       expect(descriptor.stateStorage, PluginStateStorage.isolated);
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isFalse);
+      expect(descriptor.supportsSideQuestions, isFalse);
       expect(descriptor.mcpCapabilities, isEmpty);
       expect(descriptor.mcpScopes, isEmpty);
     });
@@ -249,6 +250,9 @@ class const _MinimalDescriptor() extends BridgePluginDescriptor {
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
 
   @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
+  @override
   List<PluginOption> get options => const [];
 
   @override
@@ -293,6 +297,9 @@ class const _ValidatingDescriptor() extends BridgePluginDescriptor {
 
   @override
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
+
+  @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
 
   @override
   List<PluginOption> get options => const [

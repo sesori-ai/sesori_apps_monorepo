@@ -290,6 +290,7 @@ class MockPluginRepository() extends Mock implements PluginRepository;
 MockPluginRepository stubbedPluginRepository({
   List<PluginMetadata> plugins = const <PluginMetadata>[],
   bool supportsFileUploads = false,
+  bool supportsSideQuestions = false,
 }) {
   final mock = MockPluginRepository();
   when(mock.listPlugins).thenAnswer(
@@ -298,6 +299,7 @@ MockPluginRepository stubbedPluginRepository({
         bridgeId: "bridge-test",
         supportsSessionOptions: true,
         supportsFileUploads: supportsFileUploads,
+        supportsSideQuestions: supportsSideQuestions,
         plugins: plugins,
       ),
     ),

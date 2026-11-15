@@ -66,6 +66,9 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   @override
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
 
+  @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
+
   /// Hermes advertises `prompt_capabilities.image` at initialize, so the
   /// phone attachment flow works against this backend as-is.
   @override

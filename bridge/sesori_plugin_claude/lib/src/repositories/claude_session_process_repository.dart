@@ -13,6 +13,7 @@ import "../models/claude_message_origin_kind.dart";
 import "../models/claude_permission_mode.dart";
 import "../models/claude_process_purpose.dart";
 import "mappers/claude_mcp_mapper.dart";
+import "mappers/claude_side_answer_mapper.dart";
 import "models/claude_mcp_authentication_context.dart";
 
 sealed class const ClaudeTurnOutcome();
@@ -101,6 +102,10 @@ final class ClaudeSessionProcessRepository({
   required final String _uploadsDirectory,
   required Map<String, String> environment,
 }) {
+  /// The CLI's own side-question deadline is 11 minutes; nobody waits that
+  /// long for a quick answer, so the ask is cancelled sooner.
+  static const Duration _sideQuestionTimeout = Duration(minutes: 3);
+
   final Map<String, String> _environment = Map.unmodifiable(environment);
   final Map<String, _ResidentProcess> _resident = {};
   final Map<String, Future<void>> _connecting = {};
@@ -399,6 +404,28 @@ final class ClaudeSessionProcessRepository({
     required String requestId,
     required Map<String, Object?> payload,
   }) => _resident[sessionId]?.client.sendControlResponse(requestId: requestId, payload: payload) ?? false;
+
+  /// Asks the resident process a side question beside any running turn.
+  /// Never starts or reconfigures a process; throws when none is resident.
+  Future<PluginSideAnswer> sendSideQuestion({
+    required String sessionId,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async {
+    final process = _resident[sessionId];
+    if (process == null) throw StateError("Claude session is not resident: $sessionId");
+    const mapper = ClaudeSideAnswerMapper();
+    try {
+      final response = await process.client.sendSideQuestion(
+        question: question,
+        history: [for (final exchange in history) (question: exchange.question, response: exchange.answer)],
+        timeout: _sideQuestionTimeout,
+      );
+      return mapper.map(response: response);
+    } on ClaudeControlUnsupportedSubtypeException {
+      return mapper.unsupported();
+    }
+  }
 
   Future<void> interrupt({required String sessionId}) async {
     final process = _resident[sessionId];

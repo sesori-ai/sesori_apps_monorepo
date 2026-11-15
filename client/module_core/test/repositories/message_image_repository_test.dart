@@ -727,6 +727,28 @@ void main() {
     expect(thumbnailStorage.deletedScopes, isEmpty);
   });
 
+  test("a whole image is a stored image's original and an inline image as it is", () async {
+    when(
+      () => sessionApi.getAttachment(
+        sessionId: "session-1",
+        attachmentId: "attachment-1",
+        rendition: SessionAttachmentRendition.original,
+      ),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionAttachmentResponse(mime: "image/png", base64: base64Encode(_pngBytes), byteLength: 8),
+      ),
+    );
+
+    expect(await repository.loadWhole(sessionId: "session-1", attachment: _stored), isA<MessageImageLoadSuccess>());
+    expect(thumbnailStorage.reads, isEmpty);
+    final inline = await repository.loadWhole(
+      sessionId: "session-1",
+      attachment: MessageAttachment.inlineImage(mime: "image/png", base64: base64Encode(_pngBytes), filename: null),
+    );
+    expect(inline, isA<MessageImageLoadSuccess>().having((success) => success.bytes, "bytes", _pngBytes));
+  });
+
   test("late thumbnail fetch during logout never writes", () async {
     final session = _FakeAuthSession(const AuthState.authenticated(user: _userA));
     final serviceRepository = MessageImageRepository(

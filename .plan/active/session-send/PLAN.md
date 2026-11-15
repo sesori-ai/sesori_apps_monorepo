@@ -58,8 +58,8 @@ Out of scope for phase 1: see "Later phases".
   `SessionRepository.getQuotaContinuationReadiness`, reads history, then sends with the session's `promptDefaults`.
   That is the template for this feature.
 - **Prompts to a busy session are never rejected.**
-  - Claude queues them.
-  - Codex, Pi, OpenCode and OMP steer them into the running turn.
+  - Claude, Codex, Pi, OpenCode and OMP steer them into the running turn. Claude writes them with its `next`
+    priority, so the running turn takes them at its next tool boundary.
   - The ACP family (Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes) stops the running turn and then sends
     (`docs/HARNESS_CAPABILITIES.md` "Transcript turn boundaries").
 - **Turn tracking.** `SessionEventDispatcher.events` (`services/session_event_dispatcher.dart:31`) carries
@@ -150,8 +150,12 @@ The bridge sends the source session a summarise prompt through the existing prom
 - The bridge sends the summarise prompt only when the source is idle.
 - A busy source would mix the request into the running turn, and on ACP harnesses it would stop that turn.
 - The bridge checks readiness right before sending and refuses with a typed code:
-  - `sourceBusy` covers busy, retrying and queued;
+  - `sourceBusy` covers busy and retrying. Step 3 reads no queue: a prompt queues only behind a running turn, so a
+    queue implies busy;
   - `sourceAwaitingInput` covers a pending question or permission.
+  - A plugin listed in `unavailablePluginIds` whose backend is not running has no turn, so it counts as idle. A
+    running backend listed there failed its status read, so readiness is unknown and the send is refused as
+    `sourceUnavailable`. Any failure of the summarise send itself, including a refusal, is also `sourceUnavailable`.
 - Readiness comes from sources that every plugin supplies:
   - `SessionRepository.getSessionStatuses()` decides idle, busy or retrying;
   - `PermissionRepository.getPendingPermissions` and `QuestionRepository.getPendingQuestions` decide awaiting input.
@@ -164,16 +168,16 @@ The bridge sends the source session a summarise prompt through the existing prom
 ### D3. A busy target behaves exactly like a typed prompt
 
 - The decision says the target receives the send "as a normal prompt", so it follows each harness's normal rule.
-  Claude queues it, Codex, Pi, OpenCode and OMP steer it in, and ACP harnesses stop the running turn first.
+  Claude, Codex, Pi, OpenCode and OMP steer it in, and ACP harnesses stop the running turn first.
 - Running targets are allowed on every harness (S2). The picker labels them before the user chooses:
   - "Running: sending stops its current turn" where a prompt to a busy session stops its turn (the ACP family);
-  - "Running" where it queues or steers (Claude, Codex, OpenCode, Pi, OMP).
+  - "Running" where it steers (Claude, Codex, OpenCode, Pi, OMP).
 - The client can't tell those apart today: no `PluginMetadata` field says it, and naming harnesses in the client would
   leak backend behaviour out of the plugins. So each plugin declares it. There are two enums, because
   `sesori_plugin_interface` doesn't depend on `sesori_shared`:
-  - `PluginBusyPromptHandling {queue, steer, stopTurn}` in `sesori_plugin_interface`, read through the abstract
+  - `PluginBusyPromptHandling {steer, stopTurn}` in `sesori_plugin_interface`, read through the abstract
     `BridgePluginDescriptor.busyPromptHandling` getter with no default (every plugin states it);
-  - `BusyPromptHandling {queue, steer, stopTurn, unknown}` in `sesori_shared`, on `PluginMetadata.busyPromptHandling`
+  - `BusyPromptHandling {steer, stopTurn, unknown}` in `sesori_shared`, on `PluginMetadata.busyPromptHandling`
     with `@JsonKey(unknownEnumValue: BusyPromptHandling.unknown)` and an honest `@Default(BusyPromptHandling.unknown)`:
     `// COMPATIBILITY 2026-11-15 (v1.14.0): Bridges before session sending omit busyPromptHandling; the picker shows
     a plain "Running" for them. Remove @Default once the minimum supported bridge sends it.`
@@ -181,6 +185,8 @@ The bridge sends the source session a summarise prompt through the existing prom
     `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`. `PluginLifecycleService._rebuildMetadata`
     sets the field next to `namesCommandInvocations`.
   - The values follow `docs/HARNESS_CAPABILITIES.md` "Transcript turn boundaries".
+  - Step 6 dropped the planned `queue` value: Claude steers (#977), so no harness would declare it. A harness that
+    really queues can add it later; older clients read the new value as `unknown` and show plain "Running".
 
 ### D4. One bridge-owned operation: a long request, no new event
 
@@ -195,6 +201,10 @@ The bridge sends the source session a summarise prompt through the existing prom
   request open that long. If it can't, step 3 switches to "accept, then report through an SSE event" and records that
   change here. That fallback adds an orchestrator-emitted event and a new wire model. It is a
   considerable change, so it gets another architecture plan review before it is built.
+- Step 3 result: no fallback is needed. The relay server (`sesori_relay_server`) forwards opaque E2E frames between
+  the phone and bridge sockets and has no per-request state or timeout; the sockets stay up with 30-second pings. The
+  bridge sets no route timeout either. The only limit is the client's per-call timeout, which step 4 sets to 16
+  minutes. The live run went through the bridge's debug server, since no client calls the route yet.
 
 ### D5. Flow inside the bridge
 
@@ -211,13 +221,24 @@ The bridge sends the source session a summarise prompt through the existing prom
    and the send. The reservation is released before the wait, so the user can still stop the turn or answer its
    questions.
 4. **Wait for the turn to end.** It records the user message whose live echo carries the prompt id. It then waits for
-   an idle `NormalizedStatusEvent` for the source after that echo.
+   an idle for the source after that echo. Step 3 found that harnesses report idle either as an idle
+   `NormalizedStatusEvent` or as `BridgeSseSessionIdle` (Claude uses the latter), so both count. A terminal handoff
+   (the plugin stopping mid-turn) fails with `summaryFailed`, and so does an error message for the source after the
+   echo (Codex ends a failed turn with an error message and a plain idle). Bridge shutdown ends an open wait as
+   `summaryStopped`, so the route does not hold shutdown for the rest of the 15 minutes; a send that reaches the
+   source reservation after shutdown began sends nothing and fails as `sourceUnavailable`.
    - A session error event for the source fails with `summaryFailed`.
    - A user stop of the source fails with `summaryStopped`. Stopping is the natural way to cancel a send, and a half
      summary must never reach the target.
    - Fifteen minutes without an end fails with `summaryTimedOut`.
    - A pending question or permission doesn't stop the wait: the user answers it in the source.
 5. **Read and split.** It reads the whole history once through `ChatHistoryService`.
+   - Step 3 divergence: it first calls `ChatHistoryService.backfillSession` for the source, as archive export does,
+     because the live capture of the reply's parts can trail the idle event. A failed refresh is logged and the read
+     uses the stored history.
+   - A refresh can replace the live echo with a replayed message under another id (ACP replays do), so the split
+     finds the request by its echo id, or failing that by its exact text, taking the last match. The summary stops at the next user
+     message, so a prompt queued behind the summary stays out of it.
    - The transcript is every message before the summarise user message.
    - The summary is the text parts of the assistant messages after it.
    - No text fails with `summaryMissing`.
@@ -252,7 +273,7 @@ returns 404. The exception lives in `bridge/app/lib/src/services/`, next to `ses
 | The transcripts `PromptUploadRepository` instance | Saving the file |
 | `SessionTranscriptMarkdownBuilder` | Rendering |
 | `PluginLifecycleService` | The harness display name, from the same metadata `GetPluginsHandler` returns |
-| `Clock` | The 15-minute wait |
+| `Clock` | The export time in the Markdown header. The 15-minute wait is a constructor `Duration`, so tests can shorten it |
 
 **Logs** carry session ids, prompt ids, message counts, byte sizes, the file path and the failure code. They never carry
 the summary, the transcript or prompt text.
@@ -701,7 +722,7 @@ docs.
 
 - **Complexity:** straightforward. One required descriptor field per plugin and one wire field.
 - **What:**
-  - adds `PluginBusyPromptHandling {queue, steer, stopTurn}` and the abstract
+  - adds `PluginBusyPromptHandling {steer, stopTurn}` and the abstract
     `BridgePluginDescriptor.busyPromptHandling` in `sesori_plugin_interface`;
   - sets it in every plugin from "Transcript turn boundaries";
   - adds the shared `BusyPromptHandling` with `unknown` on `PluginMetadata.busyPromptHandling` with its compatibility
@@ -836,8 +857,10 @@ transcript file | Asks first | Running target`.
 | OpenCode | To check live; a stock config may ask through `external_directory` |
 | Hermes, Cursor, Copilot, Antigravity | Unverified until checked live |
 
-- **Running target:** queued (Claude), steered in (Codex, Pi, OpenCode, OMP), or stops the running turn (the ACP
+- **Running target:** steered in (Claude, Codex, Pi, OpenCode, OMP), or stops the running turn (the ACP
   family), from each plugin's `busyPromptHandling`.
+  OMP's value is static: an older OMP on PATH that does not advertise `_session/steering` stops the turn without
+  the picker's warning. Record that limitation in the OMP row.
 - **Notes:**
   - A busy source is refused in the bridge core for every harness. Readiness comes from session statuses and pending
     permissions and questions, which every plugin supplies.

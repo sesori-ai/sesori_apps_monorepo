@@ -69,6 +69,10 @@ class TestPluginRuntime({
   /// a test removes one, as nearly every production plugin takes them.
   late final Set<String> promptAttachmentPluginIds = {..._plugins.keys};
   late final Set<String> invocationNamingPluginIds = {..._plugins.keys};
+
+  /// Plugin ids whose descriptor declares side questions: none unless a test
+  /// adds one, as no production plugin declares them by default.
+  final Set<String> sideQuestionPluginIds = {};
   Completer<void>? useStarted;
   Future<void>? useGate;
   bool generationCurrent = true;
@@ -97,6 +101,9 @@ class TestPluginRuntime({
 
   @override
   bool namesCommandInvocations({required String pluginId}) => invocationNamingPluginIds.contains(pluginId);
+
+  @override
+  bool supportsSideQuestions({required String pluginId}) => sideQuestionPluginIds.contains(pluginId);
 
   /// Backend activity times by backend session id, as a dormant descriptor
   /// would read them. Absent sessions report unavailable.
@@ -465,6 +472,9 @@ class const _TestDescriptor({
 
   @override
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
+
+  @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
 
   @override
   List<PluginOption> get options => const [];

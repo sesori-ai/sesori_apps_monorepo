@@ -1044,6 +1044,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
     supportsPromptAttachments: true,
     supportsFileUploads: false,
     offersSessionMcp: true,
+    sideQuestions: SideQuestionAvailability.unresolved,
     assistantAgentModel: null,
     children: const [],
     childStatuses: const {},

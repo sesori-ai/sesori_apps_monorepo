@@ -326,6 +326,37 @@ void main() {
       await subscription.cancel();
     });
 
+    test("declares side questions and implements them", () {
+      expect(const ClaudePluginDescriptor().supportsSideQuestions, isTrue);
+      expect(harness.plugin, isA<SideQuestionPluginApi>());
+    });
+
+    test("a side question on a session with no turn yet refuses without a process", () async {
+      final session = await harness.plugin.createSession(
+        fastMode: false,
+        directory: "/tmp/project",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+
+      final answer = await harness.plugin.askSideQuestion(sessionId: session.id, question: "Why?", history: const []);
+
+      expect(answer, isA<PluginSideRefused>().having((r) => r.reason, "reason", PluginSideRefusal.noTurnYet));
+      expect(harness.processes, isEmpty);
+    });
+
+    test("a side question on an unknown session is not found and starts nothing", () async {
+      await expectLater(
+        harness.plugin.askSideQuestion(sessionId: otherTestSessionId, question: "Why?", history: const []),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "not found", isTrue)),
+      );
+      expect(harness.processes, isEmpty);
+    });
+
     test("creates an empty session and surfaces command initialization failure as a session error", () async {
       await harness.close();
       harness = _PluginHarness(failInitialize: true);

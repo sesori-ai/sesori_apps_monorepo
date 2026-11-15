@@ -1205,6 +1205,133 @@ void main() {
       await deletion;
       expect(completed, isTrue);
     });
+
+    group("side questions", () {
+      test("ask the running process as is, without a selection change or teardown", () async {
+        unawaited(harness.enqueue("prompt", model: "haiku"));
+        final process = await harness.firstProcess;
+        await waitForFrame(process, "user");
+        final controlsBefore = _controlSubtypes(process).length;
+
+        final answer = harness.ask();
+        final request = await _waitForControlSubtype(process, "side_question");
+        process.emitControlResponse(
+          requestId: request.field<String>("request_id"),
+          payload: {"response": "Midway.", "synthetic": false},
+        );
+
+        expect(await answer, isA<PluginSideAnswered>().having((a) => a.text, "text", "Midway."));
+        expect(_controlSubtypes(process).skip(controlsBefore), ["side_question"]);
+        expect(harness.processes, hasLength(1));
+        expect(process.stdinClosed, isFalse);
+        expect(harness.service.currentWorkState, PluginWorkState.busy);
+      });
+
+      test("resume an idle session with no selection, then reap it", () async {
+        final answer = harness.ask();
+        final process = await harness.firstProcess;
+        final request = await _waitForControlSubtype(process, "side_question");
+        final spec = harness.specs.single;
+        expect(spec.launch, isA<ClaudeResumedSession>());
+        expect(spec.purpose, ClaudeProcessPurpose.session);
+        expect([spec.model, spec.effort, spec.permissionMode], [null, null, null]);
+        expect(_controlSubtypes(process), ["initialize", "side_question"]);
+        expect(_userFrames(process), isEmpty);
+
+        process.emitControlResponse(
+          requestId: request.field<String>("request_id"),
+          payload: {"response": null, "synthetic": false},
+        );
+        expect(
+          await answer,
+          isA<PluginSideRefused>().having((r) => r.reason, "reason", PluginSideRefusal.noAnswer),
+        );
+        expect(harness.service.currentWorkState, PluginWorkState.idle);
+        expect(harness.clock.delays, [const Duration(minutes: 5)]);
+
+        harness.clock.elapse();
+        await _waitForStdinClose(process);
+        expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+      });
+
+      test("a prompt sent while the resume connects still applies its own selection", () async {
+        final answer = harness.ask();
+        unawaited(harness.enqueue("prompt", model: "haiku"));
+        final process = await harness.firstProcess;
+        final request = await _waitForControlSubtype(process, "side_question");
+        final setModel = await _waitForControlSubtype(process, "set_model");
+        expect(setModel.field<Map<String, Object?>>("request")["model"], "haiku");
+        process.emitControlResponse(requestId: setModel.field<String>("request_id"), payload: const {});
+        await waitForFrame(process, "user");
+        process.emitControlResponse(
+          requestId: request.field<String>("request_id"),
+          payload: {"response": "Fine.", "synthetic": false},
+        );
+
+        expect(await answer, isA<PluginSideAnswered>());
+        expect(harness.processes, hasLength(1));
+      });
+
+      test("an idle reap waits for an ask on the resident process, then rearms", () async {
+        unawaited(harness.enqueue("first"));
+        final process = await harness.firstProcess;
+        await waitForFrame(process, "user");
+        process.emit(_result());
+        await harness.waitForIdle();
+
+        final answer = harness.ask();
+        final request = await _waitForControlSubtype(process, "side_question");
+        harness.clock.elapse();
+        await pump();
+        expect(process.stdinClosed, isFalse);
+
+        process.emitControlResponse(
+          requestId: request.field<String>("request_id"),
+          payload: {"response": "Still here.", "synthetic": false},
+        );
+        expect(await answer, isA<PluginSideAnswered>());
+        expect(harness.clock.delays, [const Duration(minutes: 5), const Duration(minutes: 5)]);
+        harness.clock.elapse();
+        await _waitForStdinClose(process);
+      });
+
+      test("an ask during an abort's teardown resumes only after it", () async {
+        await harness.dispose();
+        harness = _ServiceHarness(stdinCloseCompletes: false);
+        unawaited(harness.enqueue("first"));
+        final first = await harness.firstProcess;
+        await waitForFrame(first, "user");
+        final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+        final interrupt = await _waitForControlSubtype(first, "interrupt");
+        first.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
+        await _waitForStdinClose(first);
+
+        final answer = harness.ask();
+        await pump();
+        expect(harness.processes, hasLength(1));
+
+        first.completeStdinClose();
+        await abort;
+        final second = await harness.processAt(1);
+        final request = await _waitForControlSubtype(second, "side_question");
+        second.emitControlResponse(
+          requestId: request.field<String>("request_id"),
+          payload: {"response": "After.", "synthetic": false},
+        );
+        expect(await answer, isA<PluginSideAnswered>());
+        second.completeStdinClose();
+      });
+
+      test("a session deleted while the resume waits is not brought back", () async {
+        unawaited(harness.enqueue("prompt").then<void>((_) {}, onError: (Object _) {}));
+        final answer = expectLater(harness.ask(), throwsStateError);
+        await harness.firstProcess;
+        await harness.service.deleteSession(sessionId: testSessionId);
+
+        await answer;
+        expect(harness.processes, hasLength(1));
+      });
+    });
   });
 }
 
@@ -1289,6 +1416,13 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
         )
         .catchError((Object _) {});
   }
+
+  Future<PluginSideAnswer> ask() => service.askSideQuestion(
+    sessionId: testSessionId,
+    directory: "/tmp/project",
+    question: "Why?",
+    history: const [],
+  );
 
   Future<FakeClaudeProcess> processAt(int index) async {
     for (var attempt = 0; attempt < 100; attempt++) {

@@ -768,6 +768,7 @@ SessionDetailState _loaded({required Map<ToolOutputKey, ToolOutputFetch> toolOut
   supportsPromptAttachments: false,
   supportsFileUploads: false,
   offersSessionMcp: true,
+  sideQuestions: SideQuestionAvailability.unresolved,
   assistantAgentModel: null,
   children: const [],
   childStatuses: const {},

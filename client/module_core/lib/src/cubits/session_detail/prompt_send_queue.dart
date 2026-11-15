@@ -64,7 +64,7 @@ class PromptSendQueue() {
   }
 
   static int _attachmentBytes({required List<ComposerAttachment> attachments}) =>
-      attachments.fold(0, (total, attachment) => total + attachment.bytes.length);
+      attachments.fold(0, (total, attachment) => total + attachment.inlineByteCount);
 
   /// Unmodifiable snapshot of the current queue contents.
   List<QueuedSessionSubmission> get items => List.unmodifiable(_items.toList());

@@ -19,6 +19,7 @@ class GetPluginsHandler({
       plugins: _lifecycleService.selectableMetadataSnapshot,
       supportsSessionOptions: true,
       supportsFileUploads: true,
+      supportsSideQuestions: true,
     );
   }
 }

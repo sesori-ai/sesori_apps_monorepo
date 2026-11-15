@@ -159,6 +159,7 @@ void main() {
             threadSource: source,
             agentNickname: null,
             agentPath: null,
+            historyBase: null,
           ),
         );
     CodexRolloutLineDto taskStarted({required String turnId}) => CodexRolloutLineDto.eventMessage(
@@ -916,6 +917,7 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
         threadSource: null,
         agentNickname: null,
         agentPath: null,
+        historyBase: null,
       ),
       _child => const CodexRolloutSessionMetadataPayloadDto(
         id: "01a06259-6e4f-77f2-8bc7-000000000002",
@@ -926,6 +928,7 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
         threadSource: CodexRolloutThreadSource.subagent,
         agentNickname: "Raman",
         agentPath: "/root/sleep_then_done",
+        historyBase: null,
       ),
       _ => const CodexRolloutSessionMetadataPayloadDto(
         id: "01a06259-6e4f-77f2-8bc7-000000000003",
@@ -936,6 +939,7 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
         threadSource: null,
         agentNickname: null,
         agentPath: null,
+        historyBase: null,
       ),
     };
     return CodexRolloutHeader(
@@ -955,6 +959,7 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
               threadSource: null,
               agentNickname: null,
               agentPath: null,
+              historyBase: null,
             ),
           ),
       ],
