@@ -510,6 +510,22 @@ class ChatHistoryService({
         : RewindRemovalLaterTurn(removedMessageIds: removedMessageIds);
   }
 
+  /// Which of [messageIds] [sessionId]'s harness no longer has, read from its
+  /// own transcript. An edit whose resend failed after the harness rewound
+  /// (Codex reverts, then starts the turn) leaves the store showing messages
+  /// the harness dropped; a failure that changed nothing finds none.
+  Future<List<String>> messagesMissingFromHarness({
+    required String sessionId,
+    required List<String> messageIds,
+  }) async {
+    final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+    final kept = {for (final message in snapshot.messages) message.info.id};
+    return [
+      for (final id in messageIds)
+        if (!kept.contains(id)) id,
+    ];
+  }
+
   /// The prompts in the session's history whose whole text holds [query],
   /// ignoring case, oldest first, each with the words around its first match.
   ///

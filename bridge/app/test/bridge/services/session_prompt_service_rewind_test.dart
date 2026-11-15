@@ -250,6 +250,23 @@ void main() {
     expect(mutations.rewound, isEmpty);
   });
 
+  test("a resend that fails after the harness rewound removes what the harness dropped", () async {
+    plugin.onRewind = () async {
+      plugin.messagesResult = _transcript.take(2).toList();
+      throw StateError("turn/start failed");
+    };
+
+    await expectLater(rewind(messageId: "u2"), throwsA(isA<StateError>()));
+    expect(mutations.rewound.single.removedMessageIds, ["u2", "a2"]);
+  });
+
+  test("a failure that changed nothing removes nothing", () async {
+    plugin.onRewind = () async => throw StateError("connection lost");
+
+    await expectLater(rewind(messageId: "u2"), throwsA(isA<StateError>()));
+    expect(mutations.rewound, isEmpty);
+  });
+
   test("the route answers a refusal with 409 and the branch error code", () async {
     final response = await RewindSessionHandler(sessionPromptService: service).routeForTest(
       makeRequest(

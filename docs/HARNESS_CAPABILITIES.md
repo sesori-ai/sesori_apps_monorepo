@@ -311,8 +311,8 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
 
 Editing rewinds the conversation in place: the edited message and everything
 after it leave the session, then the edited message is sent. Files are never
-touched. An edit of a session's first message swaps in a new harness session
-under the same Sesori session on every harness that offers Edit. Edits run only
+touched. The bridge refuses an edit of a session's first message for now,
+because no native point precedes it. Edits run only
 on a message that opens a turn; a follow-up sent while the agent was working is
 refused with a reason.
 
