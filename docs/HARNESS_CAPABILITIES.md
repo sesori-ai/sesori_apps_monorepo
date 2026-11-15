@@ -292,9 +292,9 @@ leaves a running turn alone and is never written to the main transcript.
 Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
 
 - An ask during a streaming main turn answered in about 3 s; the main turn kept
-  streaming and finished normally. Every stream frame seen meanwhile belonged
-  to the main turn: the side question emits only `control_request_progress`
-  and its `control_response` on stdout.
+  streaming and finished normally. Every message frame seen meanwhile belonged
+  to the main turn: the side question emits only the control frames
+  `control_request_progress` and its `control_response` on stdout.
 - An ask on an idle resident process, and as the first frame after a cold
   `--resume`, answered from the conversation.
 - Follow-ups pass earlier exchanges as `history`; the answer used them.
@@ -302,7 +302,8 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
   ask appends only a `cost-state` accounting record.
 - An unknown subtype fails with `Unsupported control request subtype: <name>`,
   which Sesori maps to "update Claude Code". The first CLI release with the
-  handler is unknown; 2.1.321 to 2.1.325 have it.
+  handler is unknown. The plan's research found it in 2.1.321 to 2.1.325;
+  only 2.1.322 was probed live.
 - `control_cancel_request` ends the ask with "Side question cancelled". Sesori
   sends it when its own 3-minute wait ends, below the CLI's 11-minute deadline.
 

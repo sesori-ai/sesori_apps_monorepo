@@ -540,6 +540,13 @@ final class ClaudeSessionService({
     }
     final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
     final residency = state.dispatchTail.then((_) async {
+      // Like a turn, the resume waits out an abort's teardown, and a session
+      // deleted or disposed meanwhile is not brought back.
+      final aborting = state.aborting?.future;
+      if (aborting != null) await aborting;
+      if (_disposed || !identical(_turns[sessionId], state)) {
+        throw StateError("Claude session $sessionId closed before the side question could resume it");
+      }
       if (_processes.isResident(sessionId: sessionId)) return;
       await _processes.ensureResident(
         sessionId: sessionId,

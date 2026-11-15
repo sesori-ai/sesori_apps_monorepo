@@ -1271,6 +1271,43 @@ void main() {
         expect(await answer, isA<PluginSideAnswered>());
         expect(harness.processes, hasLength(1));
       });
+
+      test("an ask during an abort's teardown resumes only after it", () async {
+        await harness.dispose();
+        harness = _ServiceHarness(stdinCloseCompletes: false);
+        unawaited(harness.enqueue("first"));
+        final first = await harness.firstProcess;
+        await waitForFrame(first, "user");
+        final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+        final interrupt = await _waitForControlSubtype(first, "interrupt");
+        first.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
+        await _waitForStdinClose(first);
+
+        final answer = harness.ask();
+        await pump();
+        expect(harness.processes, hasLength(1));
+
+        first.completeStdinClose();
+        await abort;
+        final second = await harness.processAt(1);
+        final request = await _waitForControlSubtype(second, "side_question");
+        second.emitControlResponse(
+          requestId: request.field<String>("request_id"),
+          payload: {"response": "After.", "synthetic": false},
+        );
+        expect(await answer, isA<PluginSideAnswered>());
+        second.completeStdinClose();
+      });
+
+      test("a session deleted while the resume waits is not brought back", () async {
+        unawaited(harness.enqueue("prompt").then<void>((_) {}, onError: (Object _) {}));
+        final answer = expectLater(harness.ask(), throwsStateError);
+        await harness.firstProcess;
+        await harness.service.deleteSession(sessionId: testSessionId);
+
+        await answer;
+        expect(harness.processes, hasLength(1));
+      });
     });
   });
 }
