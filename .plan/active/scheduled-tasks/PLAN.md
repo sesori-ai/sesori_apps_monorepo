@@ -1,0 +1,810 @@
+# Scheduled And Recurring Tasks
+
+## Status
+
+- **Date:** 2026-11-15. Code facts are from `origin/main` at `25d9a40a2f`
+  (product version 1.14.0, bridge drift schema 25).
+- **Design source:** three review rounds the user answered on 2026-11-14/15.
+  The decisions below are final; do not reopen them.
+- **Phase 1:** steps 2–11. Steps 12 and 13 are the regression-doc and
+  retirement steps. The later phase (agent MCP tool) has rough intent only.
+- **Open product question:** Q1, the auto-compact quiet window (cost against
+  reliability). Step 11 carries a provisional default and waits for the answer
+  only if it would change the default. Nothing before step 11 depends on it.
+
+## Goal
+
+A user sets up a task once: a prompt, where it runs, when, and how each run
+behaves. The bridge runs it headlessly, once or on repeat, with every app
+closed. Tasks have their own **Scheduled** page next to Archived, with
+Recurring and Once headings. A task run is an ordinary session with a small
+repeat or clock mark and the task's name. The user hears about a run only when
+it needs them or can't start.
+
+## User Decisions (final)
+
+- D1. **Separation.** Automation stays out of the normal send flow. Tasks are
+  set up and managed on a **Scheduled** page next to Archived (phone: Settings;
+  tablet: from Settings; desktop: sidebar row under Archived and the command
+  palette). Headings: Recurring, then Once. A heading is absent when it has no
+  tasks. Recurring rows have an on/off switch; Once rows show when they run.
+- D2. A one-off task leaves the Scheduled page after it runs. Its session keeps
+  the clock mark.
+- D3. **Run rows** are ordinary session-list rows with a repeat mark (recurring)
+  or clock mark (once) and the task name.
+- D4. **New task screen** = the new-session composer and its pickers (project,
+  harness, agent, model and effort, fast mode, worktree switch) with two summary
+  lines above the composer, **When** and **Each run**. Each line shows its
+  current choice and opens a small sheet that slides up; nothing on the screen
+  moves. Defaults are pre-filled so saving after picking only the time works.
+  The button is **Save task**.
+- D5. **When sheet:** presets Once, Every day, Weekdays, Weekly (chosen days),
+  Every few hours (1–12); day and time fields; the missed-run choice.
+- D6. **Each run sheet:** New session or Continue in the same session;
+  Approvals (Ask me / Approve everything, defaulting to what new sessions use);
+  Auto-compact, shown only for Continue in the same session.
+- D7. **Missed runs:** per task, "Run when back" (default; one run, marked
+  "ran late", never a pile-up) or "Wait for the next time".
+- D8. **Overlap:** if the previous run is still going, the run is skipped and
+  the history says so.
+- D9. **Same-session task whose session is gone** (archived or deleted): the
+  next run starts a fresh session and continues there.
+- D10. **Run history:** only the last 5 finished runs are kept; older ones are
+  archived automatically. Archiving skips a pinned run, a run still working or
+  waiting on the user, and a run with uncommitted work (the usual cleanup
+  refusal keeps that work).
+- D11. **Pushes:** only when a run needs the user (question, permission) or
+  can't start (with the reason). A finished run's "turn completed" push is
+  suppressed.
+- D12. **Runs on the bridge**, headless. Tasks belong to one computer, like its
+  sessions.
+- D13. **Auto-compact policy (round 3, option A):** compact right after the
+  run, and before the next run only if that did not happen. The user's note,
+  verbatim: "I think we need a "compact" after 25 mins idle or something like
+  this. Cause a PR monitor may be active or similar which keeps the session idle
+  for a bit despite not having "completed" the task. We need to think about
+  edge cases here around tasks scheduled to start within this time window/etc."
+- D14. Where a harness cannot compact on request, the switch still shows and a
+  tap explains why. Gaps go into `docs/HARNESS_CAPABILITIES.md`.
+- D15. Earlier "decided without asking" calls the user did not veto: a task
+  saves prompt (text or slash command), project, harness, agent, model, effort,
+  fast mode and worktree switch; no attachments in v1; with the worktree switch
+  on, each new-session run gets its own worktree, a same-session task keeps
+  one; editing changes future runs only; deleting a task leaves its sessions as
+  ordinary sessions; a run that can't start shows as failed with the reason and
+  never swaps in another model; the task name is the prompt's first line,
+  editable; Run now, Pause/Resume, Edit and Delete live on the task's own page
+  with its run history (ran, ran late, skipped, couldn't start); an older
+  computer answers a tap with "Update this computer to schedule tasks".
+
+## Current Behavior (origin/main `25d9a40a2f`)
+
+### Bridge
+
+- **Durable timer precedent.** Quota auto-continue:
+  `bridge/app/lib/src/listeners/session_continuation_timer_listener.dart`
+  runs `runDue()` at start (startup catch-up) and re-arms a 30 s one-shot timer
+  after each pass. Policy in `services/session_continuation_service.dart`:
+  per-session operation lane (`SessionOperationDispatcher`), readiness checks,
+  a `consumed` marker written before sending (at most once; a crash can miss a
+  run, never double-send), send through
+  `SessionPromptService.sendPromptAlreadyReserved`. Storage table
+  `session_continuations` with JSON outcome. No wake hook: after sleep the next
+  tick compares wall-clock time, so catch-up happens within ~30 s.
+- **Create path.** `POST /session/create` →
+  `SessionCreationService.createSession(CreateSessionRequest)`: validates
+  project and plugin (`ensurePluginRoutable`), prepares a worktree, creates the
+  session and sends the first prompt or command, **records new-session
+  defaults** for the harness, starts late title generation.
+  `CreateSessionRequest` has no approval field.
+- **Follow-up sends.** `POST /session/prompt_async` →
+  `SessionPromptService.sendPrompt` on the session lane: refuses archived
+  sessions, dedupes on `promptId`, cancels pending quota continuation, calls the
+  plugin. Archived sessions can never be prompted again (read-only archiving).
+- **Database.** `bridge/app/lib/src/api/database/database.dart`,
+  `schemaVersion 25`, `stepByStep` migrations, dumps under
+  `bridge/app/drift_schemas/default/`, migration tests under
+  `bridge/app/test/drift/default/`. `sessions_table` has `pinned`,
+  `archivedAt`, `approvalOverride` (`ask`/`yolo`/null = follow global),
+  `lastActivityAt` (written on message updates and question/permission events,
+  not on status changes or deltas), `lastUserMessageAt`, worktree columns.
+- **Approvals.** Global `BridgeSettings.yolo` (JSON config). Per session
+  `approvalOverride` via `YoloSettingsService.setSessionOverride`;
+  `PermissionAutoApprovalService.isYolo/approvePending`; the orchestrator
+  auto-approves `PermissionAsked` before any push. YOLO covers permissions, not
+  questions.
+- **Archive/cleanup.** `SessionLifecycleService.cleanupAlreadyReserved` refuses
+  without `force` when the worktree is shared or `checkWorktreeSafety` finds
+  unstaged changes or commits on no branch. No automatic archiving job exists.
+- **Pushes.** `push/completion_notifier.dart` debounces busy→idle with the whole
+  family idle and nothing pending; `CompletionPushListener` builds and sends
+  via `PushDispatcher.dispatchCompletion` and already carries abort
+  suppression. Needs-you pushes go out immediately as category
+  `aiInteraction`. `NotificationCategory` has an `unknown` fallback.
+- **Status signals.** `PluginSessionStatus` idle/busy/retry; pending questions
+  and permissions; `PushSessionStateTracker.hasPendingInteraction`.
+  `getQuotaContinuationReadiness` (idle, busy, retrying, queued, awaitingInput,
+  unavailable, unknown) is implemented only by Claude and Pi; others return
+  `unavailable`. On Claude, background tasks keep status busy and a pending
+  `ScheduleWakeup` reads idle status but `queued` readiness.
+- **Compaction.** No route, interface method or capability flag. It is the
+  catalog command named `compact` (`PluginCommand.compaction`), run through
+  `sendCommand`: Claude native `/compact`, Codex `thread/compact/start`,
+  OpenCode v1 reserved message / v2 `POST /session/:id/compact`, Pi RPC
+  `compact`, Cursor maps it to `/summarize`. The ACP harnesses (Copilot,
+  Hermes, OMP, Grok, DeepSeek, Antigravity) have it only if their native
+  command list does; unverified. **On shared ACP, `sendCommand` cancels an
+  active turn** (`cancelsActiveTurnForQueuedInput`), so compaction must only be
+  sent to an idle session.
+- **Wire gating.** No capabilities handshake. Unknown route → 404
+  `no handler found for`, which clients treat as an older bridge; per-response
+  flags with `@Default` and `COMPATIBILITY` comments for omitted fields.
+- **Analytics.** The bridge emits no product analytics.
+- **Time zones.** `timezone` is a dependency of `sesori_plugin_claude` only.
+
+### Client
+
+- **Archived.** `AppRouteDef.archivedSessions`; phone Settings row
+  `settings_archived` in `module_app_ui/.../settings/widgets/bridge_settings_section.dart`;
+  desktop `desktop-sidebar-archived` in `desktop/lib/core/widgets/desktop_sidebar.dart`
+  and a command-palette entry in `desktop_cockpit_shell.dart`; mobile route is
+  a ShellRoute in `app/lib/core/routing/app_router.dart`, desktop a plain
+  GoRoute in `desktop_router.dart`.
+- **New session.** `NewSessionView` (1,306 lines) reads `NewSessionCubit`
+  (1,644 lines) throughout. The cubit owns harness discovery, option loading,
+  remembered choices, drafts and login-required states, and submits through
+  `SessionLaunchService.launch`. `PromptInput.onSend` is generic but its send
+  icon is fixed. Slash commands are staged through `CommandPicker`.
+- **Rows.** `SessionTile` shows a grey pin after a pinned title and the meta
+  line (status, project). `SessionScheduledResume` already uses a clock plus a
+  time in the time slot for quota auto-continuation.
+- **Sheets/pickers.** `showPregoModal` is adaptive (sheet on touch, dialog on
+  pointer). There is **no time or date picker** in the client and no IANA time
+  zone source (`flutter_timezone` is absent).
+- **Gating precedent.** Auto-continuation: 404/405 →
+  `...UnavailableException`; UI shows an older-bridge row whose tap opens
+  `showBridgeUpdateSheet`.
+- **Multi-computer.** One live target computer; screens are bound to it
+  through `ComputerSwitchDispatcher`. Pushes carry `bridgeId`; opening one
+  switches computer first.
+- **Analytics.** Closed events in
+  `client/module_core/lib/src/foundation/models/product_analytics/`; example
+  `SessionCreatedWithMessageEvent` fired by `SessionLaunchService` on success.
+  `analytics_route_listener.dart` maps every route to an `AnalyticsScreen`.
+
+## Planning Decisions
+
+Engineering calls made from code evidence. P-numbers are referenced by steps.
+
+### P1. Ownership and placement
+
+- Tasks belong to the bridge that runs them (D12). Each bridge stores its own
+  tasks in its drift database; the client shows the current computer's tasks.
+  No cross-computer list in phase 1.
+- Bridge (`bridge/app`): drift tables and DAO; `ScheduledTaskRepository`;
+  `ScheduledTaskService` (CRUD, validation, next-run times, a change stream);
+  `ScheduledTaskRunService` (firing, missed/overlap rules, history, archiving,
+  and the only entry the tick calls); `ScheduledTaskCompactionService`
+  (step 11, injected into the run service); `ScheduledTaskTimerListener` (the
+  tick); `ScheduledTaskFailurePushListener` in `push/`; route handlers. The
+  pure `ScheduledTaskOccurrenceCalculator` lives in `services/` (beside
+  `project_glossary_term_calculator.dart`) and owns both occurrence math and
+  the grace/missed decision.
+- `ScheduledTaskRunService` dependencies, all constructor-injected:
+  `ScheduledTaskRepository`, `SessionCreationService`, `SessionPromptService`,
+  `SessionOperationDispatcher`, `SessionRepository` (quietness, P6),
+  `SessionLifecycleService` (archiving; each archived session's lane is
+  reserved before `cleanupAlreadyReserved`), `YoloSettingsService` /
+  `PermissionAutoApprovalService`, `SessionOptionsService` (model check, not
+  plugin calls), `ScheduledTaskOccurrenceCalculator`, `ScheduledTaskCompactionService`
+  (step 11) and a `Clock`.
+- Plugin interface: a typed `compactSession` method and a descriptor flag
+  (P9). Backend specifics stay in plugins.
+- Shared (`shared/sesori_shared`): wire DTOs only.
+- Client: `module_core` API → repository → cubits (`ScheduledTasksCubit`,
+  `ScheduledTaskDetailCubit`, `ScheduledTaskEditorCubit`); shared views in
+  `module_app_ui/lib/src/features/scheduled_tasks/`; shells wire routes and
+  entries; the time picker lives in `module_prego`.
+
+### P2. Wire contract (sesori_shared)
+
+- `ScheduledTask`: `id`, `name`, `prompt` (text parts and optional staged
+  command with its `CommandSource`), `projectId`, `pluginId`, `agent`, `model`,
+  `variant`, `fastMode`, `dedicatedWorktree`, `schedule`, `timeZone` (IANA
+  name), `missedRunPolicy` (`runWhenBack`, `waitForNext`), `runMode`,
+  `approvalMode` (`ask`, `approveAll`), `enabled`, `nextRunAt` (UTC, null when
+  paused or done), `lastRun` (summary, nullable).
+- `TaskSchedule` sealed: `once(localDateTime)`, `daily(time)`,
+  `weekdays(time)`, `weekly(days, time)`, `everyHours(hours 1–12,
+  startLocalDateTime)`, plus an `unknown` fallback union so an app older than a
+  future schedule kind shows the task read-only ("Edit on a newer app") instead
+  of failing to decode the list.
+- `TaskRunMode` sealed: `newSession` | `sameSession(autoCompact)` | `unknown`
+  fallback. Auto-compact exists only on the variant that can have it. The
+  target session id is bridge state, not editable wire input.
+- `ScheduledTaskRun`: `id`, `scheduledFor`, `outcome` sealed:
+  `started(sessionId: String?, late)` (null honestly means the session was
+  deleted since) | `skipped(previousRunActive)` | `missed` | `failed(reason)` |
+  `unknown` fallback; `reason` is a closed enum (`projectMissing`,
+  `harnessUnavailable`, `modelUnavailable`, `startFailed`).
+- Every wire enum (`missedRunPolicy`, `approvalMode`, failure `reason`, mark
+  `kind`) has an `unknownEnumValue` fallback, so a newer bridge never breaks an
+  older app's list or history.
+- Every instant the app shows (`nextRunAt`, run `scheduledFor`) travels as UTC
+  plus the task zone's UTC offset at that instant (`…OffsetMinutes`). The app
+  renders wall-clock time from the pair and needs no time-zone database.
+- `Session.scheduledTask`: nullable `SessionScheduledTaskMark(taskId, name,
+  kind: recurring|once)`. Null honestly means "not a task run", including from
+  bridges before this feature, so no compatibility default is needed.
+- `PluginMetadata.supportsCompactionOnRequest` (step 10) with `@Default(false)`
+  and a `COMPATIBILITY` comment: older bridges cannot run tasks, so false is
+  honest.
+- Can't-start push: **no new category** (the auth server stores a fixed
+  per-category preference record, and the client maps categories
+  exhaustively). It reuses `NotificationCategory.sessionMessage` with a new
+  `NotificationEventType.scheduledTaskRunFailed` (the enum already falls back
+  to `unknown`) and a new nullable `NotificationData.taskId`. Step 6 confirms
+  the auth server's `/notifications/send` passes an unknown event type and
+  extra `data` fields through unchanged; if it does not, that becomes an
+  explicit cross-repo dependency before step 6 merges.
+- Routes, all new (exact paths follow `request_router.dart` conventions):
+  list tasks, create, update, delete, set enabled, run now, list a task's runs.
+  Validation errors are typed responses (unknown zone, unknown project/harness,
+  hours out of range, empty prompt).
+- One new SSE event, `scheduledTasks.changed` (no payload beyond the bridge's
+  usual envelope). The Orchestrator emits it from `ScheduledTaskService`'s and
+  `ScheduledTaskRunService`'s change streams on create, update, delete,
+  enable and every run row written. The Scheduled and task pages refetch on it,
+  so skipped, missed and failed runs and edits from another device show live.
+  Older apps already ignore unknown SSE types (`ConnectionService`).
+
+### P3. Compatibility
+
+- **New app, older bridge:** task routes return 404. The Scheduled entry is
+  still shown; the page shows "Update this computer to schedule tasks" and its
+  tap opens `showBridgeUpdateSheet` (never ignore the tap). No run marks.
+- **Older app, newer bridge:** tasks created from another device still run.
+  Their sessions are ordinary rows without marks. Can't-start pushes arrive as
+  a session-message push with an unknown event type (shown by the OS as
+  usual; a tap opens the app). Completion pushes for runs are suppressed
+  regardless of app version, as decided. The new SSE event is ignored.
+- Within phase 1 every wire shape is unreleased until it ships, so steps may
+  change each other's shapes freely before release (AGENTS.md compatibility
+  baselines).
+
+### P4. Persistence
+
+- One migration at the next free schema version after `main` at
+  implementation time (26 today; never fold into a merged version). Two tables
+  plus one session column:
+  - `sessions.scheduledTaskId`: nullable FK to `scheduled_tasks`, set null on
+    task delete. Written by the internal creation entry (P7) in the session
+    insert, together with `approvalOverride`. It is the source of the run mark
+    and of the auto-archive candidate list, so trimming history never loses
+    either.
+  - `scheduled_tasks`: id (PK), name, prompt JSON, projectId, pluginId, agent,
+    model JSON, variant, fastMode, dedicatedWorktree, schedule JSON, timeZone,
+    missedRunPolicy, runMode, autoCompact, approvalMode, enabled, `nextDueAt`
+    (UTC ms, nullable, **indexed**), `targetSessionId` (nullable, FK to
+    sessions, set null on delete), `completedAt` (one-off done), createdAt,
+    updatedAt.
+  - `scheduled_task_runs`: id (PK), taskId (FK, cascade delete), sessionId
+    (nullable FK, set null on delete), scheduledFor, firedAt, outcome, reason,
+    late, `userPromptedAt` (nullable), `compactRequestedAt` (nullable); index on
+    (taskId, firedAt) and on sessionId.
+- Run rows are trimmed to the newest 20 per task when a new one is written.
+  This bounds history only; marks and archiving read `sessions.scheduledTaskId`.
+- Deleting a task cascades its runs and nulls `sessions.scheduledTaskId`; its
+  sessions remain as ordinary sessions without the mark (D15). A one-off task
+  is never deleted by running: it gets `completedAt`, leaves the list and keeps
+  its session's clock mark (D2).
+- Task writes that race a fire: the run service's write of `targetSessionId`
+  after a same-session creation is conditional on the task's `updatedAt` seen
+  at fire start, so an edit that cleared the target in the meantime wins. A
+  task deleted during a fire makes the run-row write a logged no-op. No lock
+  is added for this.
+
+### P5. Schedule times, zones and DST
+
+- The app sends the device's IANA zone through a `DeviceTimeZoneSource` port
+  in `module_core`, implemented once by a `flutter_timezone` adapter in
+  `module_app_ui/lib/src/platform/` and registered by each shell. The task
+  stores it; occurrences are computed in that zone, so 09:00 stays 09:00 across
+  DST and the bridge host's own zone is irrelevant. An unknown zone is rejected
+  at save.
+- The bridge app adds the `timezone` package and initializes its database once
+  in bridge startup, before the scheduler starts.
+- Wall-clock presets (once, daily, weekdays, weekly): a local time that does
+  not exist (spring-forward gap) runs at the same offset into the gap after the
+  jump (02:30 → 03:30); a repeated local time (fall-back) runs once, at the
+  first instant.
+- Every few hours: a fixed real-time interval from the chosen start, so it
+  stays every N real hours across DST. When 24 is not a multiple of N the
+  times drift across days; that is honest for an interval.
+- `nextDueAt` is recomputed on create, edit, resume and after every fire,
+  always as the first occurrence strictly after "now" (edits change future
+  runs only; resuming does not replay the paused period).
+- The task list and detail render times from the UTC-plus-offset pairs (P2),
+  so they show the task zone's wall clock, and add the zone name when the
+  offset differs from the viewing device's.
+
+### P6. The tick, missed runs and overlap
+
+- `ScheduledTaskTimerListener` copies the quota listener's pattern: run at
+  start, then re-arm a 30 s timer after each pass. A second 30 s timer is
+  cheaper and safer than merging two different policies behind one ticker.
+- The listener calls only `ScheduledTaskRunService.runDue()`. All scheduler
+  work (each tick's firing pass and post-run compaction pass, and Run now) is
+  serialized through one async lock in that service. That is the coarsest
+  mechanism that prevents a tick and a Run now from firing or compacting the
+  same task twice; throughput is irrelevant at this scale.
+- **Quietness has one owner:** a new `SessionRepository.getSessionQuietness`
+  returning a closed enum (`quiet`, `working`, `awaitingUser`, `unknown`). It
+  aggregates `getSessionStatuses`, pending questions, permissions and forms,
+  and readiness where the harness reports it. Lands in step 4; overlap (here),
+  "finished" for auto-archive (P8) and compaction (P10) all use it. Nothing in
+  core reads `PushSessionStateTracker`.
+- Due selection: enabled tasks with `nextDueAt <= now` (indexed).
+- Grace: a fire within 2 minutes of `scheduledFor` is on time; later is
+  "ran late".
+- Missed (first seen more than the grace after due, i.e. the bridge was off or
+  the machine asleep): `runWhenBack` fires once, marked late;
+  `waitForNext` writes one `missed` row. Either way `nextDueAt` becomes the
+  first occurrence after now, so a week away yields one run or one missed
+  row, never a pile-up. One-off tasks always run when back: the missed-run line
+  is hidden for Once, because "wait for the next time" has no next time.
+- Overlap (D8): a run is skipped with `previousRunActive` when the latest run's
+  session is not `quiet` (busy or retry, a pending question, permission or
+  form, or non-idle readiness on Claude and Pi, where `queued` covers a pending
+  `ScheduleWakeup` and user-queued prompts). Exception: busy because of this
+  task's own pending compaction (P10).
+- At most once: the run row and the advanced `nextDueAt` are written in one
+  transaction before the create or send is attempted, like the quota
+  `consumed` marker. A crash between write and send loses that run; it never
+  sends twice.
+- Run now: same rules, does not move `nextDueAt`; when the previous run is
+  still going it returns a typed refusal and the app explains it.
+
+### P7. Firing a run
+
+- New-session runs call an internal entry on `SessionCreationService` that:
+  - skips `_recordNewSessionDefaults` (a scheduled run must not change the
+    user's remembered picks);
+  - writes the task's approval mode as `approvalOverride` and the task id as
+    `scheduledTaskId` in the session insert. Step 4 confirms the insert
+    precedes permission handling for the first prompt; if any plugin path
+    inserts later, it sets both right after and calls `approvePending()`, and
+    the residual (one possible push for a permission asked in the first
+    instant) is accepted;
+  - keeps title generation, worktree preparation and every other validation.
+- Same-session runs: the first run creates the session (as above) and stores
+  `targetSessionId`. Later runs send the prompt on the session lane with the
+  task's current agent, model, variant and fast mode, and set the session's
+  approval override to the task's mode. If the target is archived or deleted,
+  the run creates a fresh session and retargets (D9). Editing a same-session
+  task's project, harness or worktree switch clears the target, so the next run
+  starts fresh.
+- Model check: before firing, the run checks the task's model against the
+  harness's current option list when one is readable; a missing model fails
+  the run with `modelUnavailable` rather than letting a harness fall back
+  (D15). If the list can't be read, the run proceeds and any harness error
+  surfaces in the session as usual.
+- A failure to start writes `failed(reason)`, logs the original error locally
+  with task and project context (no prompt text), and emits a
+  `ScheduledTaskRunFailure` on the run service's failure stream (P8). A
+  recurring task stays enabled and tries again next time.
+
+### P8. Marks, history, archiving and pushes
+
+- `SessionViewService.enrich` (and the batch list path, one join per list)
+  attaches `Session.scheduledTask` from `sessions.scheduledTaskId` joined to the
+  task (name, once vs recurring). `session.created` therefore already carries
+  the mark.
+- Auto-archive (D10): when a new-session task fires, its sessions (by
+  `scheduledTaskId`) older than the newest 5 finished ones are archived
+  through `SessionLifecycleService.cleanupAlreadyReserved` without `force`,
+  each on its reserved lane. "Finished" means `getSessionQuietness == quiet`.
+  Pinned, active and refused (uncommitted work) runs stay; a refusal is
+  logged, not pushed. Same-session tasks have one session and archive nothing.
+- Completion push (D11): the Orchestrator injects a resolver
+  `Future<bool> Function({required String sessionId}) isUnattendedTaskRun`
+  into `CompletionPushListener`, composed from `ScheduledTaskRepository` (same
+  pattern as `resolveSessionTitle`), so `push/` never depends on core
+  repositories. It is true when the session's latest run has
+  `userPromptedAt == null`; such completions are not pushed. Once the user
+  sends their own prompt into that session, it behaves like any session.
+- `userPromptedAt` has one writer: `SessionPromptService.sendPrompt`, the human
+  path behind `send_prompt_handler.dart`, through a new
+  `ScheduledTaskRepository` dependency (mirroring its existing
+  `SessionContinuationRepository` one). `sendPromptAlreadyReserved`, used by
+  the scheduler and quota continuation, never writes it. Needs-you pushes are
+  unchanged.
+- Can't-start push: the Orchestrator hands the run service's failure stream to
+  a new `ScheduledTaskFailurePushListener` in `push/`, which calls a new
+  `PushDispatcher.dispatchScheduledTaskFailure`; `PushNotificationContentBuilder`
+  builds the body (task name and a short reason). Rate-limit and collapse keys
+  are per `taskId` (today they fall back to one global key when `sessionId` is
+  null, which would merge two tasks failing at 09:00). The payload carries
+  `taskId`; the client routes a tap to the task's page (step 8) through
+  `NotificationOpenDispatcher`, which gains a task target. An older app opens
+  its home.
+
+### P9. Compaction on request (all harnesses)
+
+- Add `BridgePluginApi.compactSession({sessionId})` returning a sealed
+  `PluginCompactionResult` (`accepted` | `sessionBusy` | `unsupported`), and a
+  static descriptor getter `supportsCompactionOnRequest` set from the recorded
+  probes, surfaced as `PluginMetadata.supportsCompactionOnRequest`. Every
+  plugin implements the method (full-surface rule); non-supporting ones return
+  `unsupported`. The user-facing `compact` catalog command stays as it is.
+- Implementations reuse each plugin's existing path: Claude `/compact`, Codex
+  `thread/compact/start`, OpenCode v1/v2, Pi RPC `compact`, Cursor
+  `/summarize`. Shared ACP implements it for a harness whose native command
+  list advertises compaction and returns `unsupported` when the live list
+  lacks it (probe Copilot, Hermes, OMP, Grok, DeepSeek, Antigravity live and
+  record each result).
+- `compactSession` must not cancel work: the bridge calls it only on a `quiet`
+  session, and the ACP implementation returns `sessionBusy` when a turn is
+  active instead of cancelling it.
+- Bridge core reaches it only through a new `SessionRepository.compactSession`
+  (via `_useSessionPlugin`, with a new `SessionOperation`), never the plugin
+  directly.
+- `getQuotaContinuationReadiness` gains its second consumer (quietness, P6);
+  rename it to a neutral `getSessionReadiness` in the same step, including
+  `SessionOperation.getQuotaContinuationReadiness`,
+  `PluginQuotaContinuationReadiness` and `SessionContinuationReadiness`. A
+  mechanical rename across the interface, Claude, Pi and the quota service.
+  Until step 10 lands, step 4's quietness calls the old name.
+
+### P10. Auto-compact policy (step 11)
+
+All inputs are persisted or read live; there is **no in-memory compaction
+timer**, so a bridge restart loses nothing. `ScheduledTaskRunService.runDue()`
+runs, under its lock, the post-run compaction pass (case 1) and the pre-run
+gate (cases 2–3), both through the injected `ScheduledTaskCompactionService`.
+That service re-reads `R.compactRequestedAt` inside S's lane before sending,
+so a Run now and a tick can never compact twice. Each tick, for every enabled
+same-session task with auto-compact on and a harness that supports it, let R
+be its latest started run and S its session (not archived).
+
+1. **After the run.** Compact S when all hold:
+   - `R.compactRequestedAt` and `R.userPromptedAt` are null (a user prompt in
+     that session cancels the post-run compaction);
+   - `getSessionQuietness(S) == quiet` (status idle; no pending question,
+     permission or form; readiness idle where reported; on Claude, background
+     tasks read busy and a pending wake-up reads `queued`);
+   - `now − max(S.lastActivityAt, R.firedAt) ≥ W`, where W is the quiet window
+     (provisional 25 minutes, Q1). Any message activity, including every
+     PR-monitor or background wake, moves `lastActivityAt` and so pushes the
+     compaction back.
+   The compaction runs on S's lane, re-checks quietness and
+   `R.compactRequestedAt` inside the lane, calls
+   `SessionRepository.compactSession`, and sets `R.compactRequestedAt` on
+   `accepted` and on a failed send (logged), so the tick never retries every
+   30 s. `sessionBusy` leaves it unset for a later tick; `unsupported` sets it.
+2. **Before the next run (fallback).** When a run (scheduled or Run now) comes
+   due and `R.compactRequestedAt` is null (the window had not passed, the user
+   prompted, the run was waiting on the user, or compaction was unsupported at
+   the time), and S is `quiet`: compact first, set `R.compactRequestedAt`, and
+   fire on a later tick once S is quiet again. This covers a next run due inside the
+   window and any state from before a restart.
+3. **Compaction still running when a run is due.** S busy with
+   `R.compactRequestedAt` set: the run waits (stays due) up to 10 minutes
+   after `compactRequestedAt`, then fires when idle, or records
+   `skipped(previousRunActive)` and advances if still busy. A run delayed past
+   the grace by compaction is marked late; accepted.
+4. **Edits mid-window.** Auto-compact turned off, switched to new session,
+   project/harness changed (target cleared), task paused or deleted: the next
+   tick finds no candidate, so nothing compacts. Pausing stops automation on
+   that session entirely.
+5. **Accepted limits.** A harness's own automatic compaction is not detected,
+   so the bridge may compact once more (a summary of a summary; cheap). An
+   external wake slower than W (for example a monitor that reports less often
+   than every 25 minutes) can land in a compacted session; the agent continues
+   from the summary. No harness exposes a signal for future external wakes.
+6. **Client.** The Each run sheet shows the switch only for Continue in the
+   same session. When the chosen harness lacks
+   `supportsCompactionOnRequest`, the switch is shown off and inert, and a tap
+   explains "<Harness> can't compact on request".
+
+### P11. Prompt-cache TTL findings (2026-11-15)
+
+| Harness | Default cache life after last use | Warm at 25 min? |
+|---|---|---|
+| Claude Code | 1 h on a subscription within plan usage; 5 min with API key, Bedrock/Vertex or usage credits; sub-agents 5 min. `CLAUDE_CODE_PROMPT_CACHE_TTL=1h` / `ENABLE_PROMPT_CACHING_1H` extend it. | Subscription yes; API key no |
+| Codex | GPT-5.6+: at least 30 min, each read extends it. GPT-5.1–5.5: usually ~30 min, up to 24 h (non-ZDR). Codex sends `prompt_cache_key`, no explicit TTL. | Usually yes |
+| OpenCode | Anthropic 5 min (no TTL sent); per-model `cache.ttl` and opt-in warming exist, off by default. | Anthropic no |
+| Pi | "short": 5 min on Anthropic; `PI_CACHE_RETENTION=long` gives 1 h. Pi's compaction request is sent uncached anyway. | No (irrelevant to compaction) |
+| Oh My Pi | Like Pi; Anthropic subscription seats default to 1 h. | Subscription yes |
+| Hermes | `cache_ttl` default 5 min; `1h` or `auto` available. | No |
+| Cursor | Anthropic 5 min, most OpenAI 24 h, GPT-5.6 30 min (Cursor staff). | Model-dependent |
+| Copilot | Not published; Anthropic presumably 5 min, OpenAI 24 h retention in VS Code. | Unknown |
+| DeepSeek | Disk cache, hours to days. | Yes |
+| Antigravity (Gemini) | Implicit, best effort, undocumented TTL. | Unknown |
+| Grok | Undocumented, evicted under memory pressure. | Unknown |
+
+Sources: Claude Code prompt-caching and env-var docs, OpenAI prompt-caching
+guide, Cursor forum staff answer, VS Code Copilot token-efficiency blog, open
+source of Codex, OpenCode, pi-mono, Oh My Pi and Hermes, DeepSeek KV-cache
+guide, xAI caching docs, Vertex context-cache overview.
+
+What it means:
+
+- Compacting cold costs about one full uncached read of the context instead of
+  roughly 0.1× for a warm read. A cold compaction is still never worse than the
+  round-2 "compact before the next run", because the next run, hours later,
+  reads cold anyway. Warm compaction saves about 0.9× of one context read per
+  run.
+- A 25-minute window stays warm for Claude Code on a subscription, Codex,
+  Oh My Pi on a subscription and DeepSeek. It goes cold on every default
+  5-minute Anthropic route (Claude Code with an API key or cloud provider,
+  OpenCode, Hermes, Cursor's and probably Copilot's Anthropic models).
+- No harness can tell whether an external sender (an MCP monitor, a peer
+  message) will wake the session later, so harness signals can only *extend*
+  the window, never prove "done".
+- Extending cache life at launch for task sessions (Claude Code, Pi, Hermes,
+  OpenCode settings) would keep 25 minutes warm, but raises every cache write
+  in those sessions to 2× base input instead of 1.25× and needs per-session
+  launch plumbing; not in this plan unless Q1 picks it.
+
+### P12. Analytics
+
+- `scheduled_task_saved` (account-linked, `ProductAnalyticsService`), fired
+  by the editor's save path on the bridge's success response only. Closed
+  parameters: `action` (created, edited), `repeat_kind` (once, daily,
+  weekdays, weekly, every_hours), `run_mode` (new_session, same_session),
+  `approval_mode` (ask, approve_all), `missed_run_policy` (run_when_back,
+  wait_for_next), `auto_compact` (boolean, same-session only). Answers: is the
+  feature adopted, and which shapes matter (same-session, approvals) for the
+  MCP phase.
+- Screen mapping for the new routes (`scheduled_tasks`,
+  `scheduled_task_detail`, `scheduled_task_editor`) in the exhaustive
+  `AnalyticsScreen` map.
+- **Run outcomes are not tracked in phase 1.** Runs happen headlessly on the
+  bridge, which has no analytics pipeline; reconstructing them in the app
+  would miss headless runs and double-count across devices. This narrows the
+  round-1 note ("task run" events); see "Decided without asking" in the
+  report.
+- Warehouse: add the event to the curated product-events transform with a
+  fixture assertion, per the add-analytics checklist.
+
+### P13. Composer reuse (client)
+
+- `NewSessionCubit` is created with a sealed `NewSessionPurpose`:
+  `startSession()` (today) or `editTask(initialSelection)`, where the
+  selection (project, harness, agent, model, variant, fast mode, worktree,
+  prompt, staged command) is non-null and may be the defaults for a new task.
+  In `editTask` the cubit uses its own draft slot (never the new-session
+  draft), writes no remembered picks, hides attachments, fires no new-session
+  analytics, and on submit emits a submitted-selection state instead of
+  launching.
+- `NewSessionView` gains a header slot above the composer (the When and Each
+  run lines) and a submit label/icon (Save task) passed down to `PromptInput`.
+- `ScheduledTaskEditorCubit` owns When and Each run state, defaults,
+  validation and `save(selection)`. The editor screen's `BlocListener` on the
+  new-session cubit forwards the submitted selection to
+  `ScheduledTaskEditorCubit.save`. Neither cubit references the other, and no
+  callbacks are passed into a cubit.
+- Defaults: When = Every day at 09:00 in the device zone; missed = Run when
+  back; Each run = New session; approvals = the computer's current YOLO
+  setting; auto-compact = on when the harness supports it (only matters for
+  same session).
+- The time field is a new `module_prego` component built on Flutter's
+  Cupertino date picker in time and date-and-time modes, inside
+  `showPregoModal` (sheet on touch, popover/dialog on pointer).
+
+## Explicitly Excluded From Phase 1
+
+- Scheduling from an open session or the send button (D1).
+- Custom cron, natural-language schedules, attachments in task prompts.
+- A cross-computer task list; tasks moving between computers.
+- Waking a sleeping machine for a run (`pmset` schedules).
+- Run-outcome analytics (P12).
+- A separate push category or preference toggle for task pushes (P2).
+- Harness-launch cache-TTL changes (P11), unless Q1 picks them.
+
+## Security And Privacy
+
+- Task prompts are stored in the bridge's local database like session data
+  and travel only through the encrypted relay. Logs record task id, project
+  and harness context and errors, never prompt text.
+- "Approve everything" runs commands unattended; it is the user's explicit
+  per-task choice, defaulting to the computer's existing setting. Questions
+  still wait and push.
+- Pushes carry the task name (the prompt's first line, like session titles in
+  existing pushes) and a closed reason. Analytics carry closed values only.
+
+## Complexity Budget
+
+New persistent parts: two tables (`scheduled_tasks`, `scheduled_task_runs`)
+including the `userPromptedAt` and `compactRequestedAt` run columns, one
+`sessions.scheduledTaskId` column, one nullable `Session` wire field, one
+`PluginMetadata` flag, one notification event type and `taskId` payload
+field, one SSE event. In-memory: one 30 s timer, one scheduler lock, and two
+change/failure streams consumed by the Orchestrator (one feeding the new
+`ScheduledTaskFailurePushListener`). Each is justified by a decided behavior
+(D7–D13) or by an ownership rule (pushes through a listener, SSE decisions in
+the Orchestrator).
+
+Deliberately not added: in-memory quiet timers or per-session activity maps
+(the window reads `lastActivityAt`), a generic scheduler shared with quota
+continuation, detection of harness-native compaction, optimistic concurrency
+for two devices editing one task at the same moment (last write wins), a
+consecutive-failure auto-pause, a new push category.
+
+## Cleanup Assessment
+
+- Rename `getQuotaContinuationReadiness` and its types to neutral names when
+  they gain their second consumer (step 10).
+- No other code becomes obsolete. The quota timer stays separate on purpose
+  (P6); `bridge/app` never sends the `compact` command today, so the new typed
+  method replaces nothing.
+
+## Proportionality And Accepted Risk
+
+| Case | Evidence | Handling |
+|---|---|---|
+| Crash between run write and send | Theoretical | Run lost, never doubled (P6). |
+| Early permission before override lands | Only if a plugin inserts the session row late | One possible push; accepted (P7). |
+| Task edited while a fire is creating its session | Rare | Conditional target write; the edit wins (P4). |
+| Two devices edit one task at once | Theoretical | Last write wins. |
+| External wake slower than W | Ordinary (monitors) | Lands in a compacted session; agent continues (P10.5). |
+| Harness auto-compacted already | Ordinary | One extra cheap compaction. |
+| Compaction in flight at restart | Rare | Treated as compacted; next run uncompacted. |
+| Daily failure pushes when a harness is gone | Ordinary | Accepted; each push names the reason. |
+
+## Regression Coverage
+
+- **New feature document:** `docs/regression/scheduled-tasks.md` (step 12):
+  task CRUD and validation, schedule times and DST, missed and overlap rules,
+  new- and same-session runs, approvals, run marks, auto-archive, push policy,
+  auto-compact, older-peer behavior, analytics.
+- **Updated documents:** `notifications.md` (completion suppression,
+  can't-start push), `session-archiving-and-deletion.md` (automatic archiving
+  of runs), `permission-auto-approval.md` (per-task approvals),
+  `projects-and-sessions.md` (run marks), `analytics.md` (new event and
+  screens), and `docs/HARNESS_CAPABILITIES.md` (compaction on request, step 10).
+- **Retirement level: L3** for `scheduled-tasks.md`, plus the L2 entries the
+  updated documents gain.
+- **Matrix:**
+  - Automated: occurrence calculator (zones, DST gap and overlap, every-hours,
+    missed decisions), migration test, mappers, cubits and widgets.
+  - Headless bridge: CRUD routes; firing a one-off a few minutes ahead;
+    missed run across a bridge stop (both policies); overlap skip; Run now
+    refusal; at-most-once after a forced crash; auto-archive refusal on
+    uncommitted work; completion suppression and can't-start push dispatch
+    (debug events).
+  - Live plugin: run firing is **Representative** (Claude Code and Codex);
+    compaction on request is **Every supporting production plugin**;
+    the auto-compact policy is Representative with Claude (readiness path)
+    and Codex (status-only path).
+  - Client end to end on a headless iOS simulator (`xcrun simctl boot`, the
+    device the local-testing skill assigns): Scheduled page with both
+    headings, New task screen with both sheets, save and edit, Run now, marks
+    on rows, older-bridge update sheet against a v1.14.0 bridge.
+  - Packaged or external: push receipt on a device is not part of L3 (no
+    iOS-simulator FCM delivery); the headless dispatch check covers L3.
+
+## Delivery Rules
+
+- PR titles are fixed in [TRACKER.md](TRACKER.md). Use
+  `<emoji> [scheduled-tasks] <description> [step x/13]`.
+- Soft cap ~1,500 changed lines; lower for lifecycle steps (4, 5, 11). Drift
+  and Freezed output can push steps 2 and 3 over; report generated versus
+  authored lines. Clean splits (for example 8.a/8.b, 9.a/9.b) need no
+  permission.
+- Worktrees go under `~/.claude-worktrees/sesori_apps_monorepo/<name>`.
+- On-screen checks only on a headless iOS simulator.
+- Each step ships behind no flag; user-visible entry points arrive only in
+  step 9, so main never shows a Scheduled page without a way to add a task.
+- Steps 4, 5 and 11 touch the orchestrator or session lanes: keep them free of
+  unrelated refactors.
+- Coordinate with the active `side-questions` plan if step 7 touches
+  `PromptInput`; rebase rather than duplicate.
+
+## Steps
+
+Dependencies in brackets. Steps 7 and 10 can start right after step 1, in
+parallel with the bridge chain.
+
+1. 🌱 **Raise the plan.** This document and the tracker. [—]
+2. ⚙️ **Task contract and schedule times.** `sesori_shared` DTOs (P2), the
+   bridge `ScheduledTaskOccurrenceCalculator` with the `timezone` package and
+   its tests (P5), the pure missed-run/grace decision (P6). No routes or
+   storage. [1]
+3. 🚧 **Store tasks on the bridge and serve the task routes.** Migration,
+   tables and the `sessions.scheduledTaskId` column (P4), DAO, repository,
+   `ScheduledTaskService` (validation, `nextDueAt`, change stream), handlers
+   for list, create, update, delete, enabled and runs, and the
+   `scheduledTasks.changed` SSE event from the Orchestrator. Nothing fires
+   yet. [2]
+4. 🚧 **Fire new-session runs.** Timer listener, `ScheduledTaskRunService`
+   (due selection, grace, missed policies, overlap skip, at-most-once,
+   failure reasons and failure stream, one-off completion),
+   `SessionRepository.getSessionQuietness`, the internal creation entry
+   writing `approvalOverride` and `scheduledTaskId` with no remembered picks
+   (P7), the model check, Run now. [3]
+5. 🚧 **Continue same-session tasks.** First run creates and targets the
+   session (conditional target write); later runs send on its lane with the
+   task's options and approval override; fresh session when the target is
+   gone; edits that clear the target. [4]
+6. ⚙️ **Marks, automatic archiving and pushes.** `Session.scheduledTask`
+   enrichment from the session column, auto-archive beyond the last 5
+   finished runs, completion suppression through the injected resolver and
+   the `userPromptedAt` writer, `ScheduledTaskFailurePushListener` with
+   per-task keys and the `taskId` payload, the auth-server pass-through check
+   (P8). [5]
+7. ⚙️ **Let the new-session composer serve a task editor.** Client refactor
+   with no visible change (P13): sealed `NewSessionPurpose`, own draft slot,
+   submitted-selection state, header slot, submit label. [1]
+8. ⚙️ **Scheduled page and task page.** `module_core` API, repository and
+   cubits; routes in both shells; the list with Recurring/Once headings and
+   switches, refreshed by `scheduledTasks.changed`; the task page with history,
+   Run now, Pause/Resume, Rename and Delete; the older-bridge state;
+   repeat/clock marks with the task name in the row meta line; the push tap to
+   a task page through `NotificationOpenDispatcher`; screen analytics mapping.
+   Entry points stay unwired. [2, 3, 4, 6]
+9. 🚧 **New task screen.** `ScheduledTaskEditorCubit`; When and Each run
+   lines and sheets (P13 defaults; missed-run line hidden for Once); the
+   `module_prego` time and date fields; the `DeviceTimeZoneSource` port and its
+   one `flutter_timezone` adapter in `module_app_ui`; save and edit; the `+`
+   on the Scheduled page; entry points next to Archived (phone Settings,
+   desktop sidebar and palette); `scheduled_task_saved`. [4, 7, 8]
+10. ⚙️ **Compaction on request in every harness that can.**
+    `compactSession`, `PluginCompactionResult` and
+    `supportsCompactionOnRequest` (P9) across all plugins,
+    `SessionRepository.compactSession`, live ACP probes, the readiness rename,
+    a "Compaction on request" table in `docs/HARNESS_CAPABILITIES.md`. [1]
+11. 🚧 **Auto-compact same-session tasks.** `ScheduledTaskCompactionService`
+    in the tick (P10 cases 1–4), the auto-compact switch and its
+    unsupported-harness tap on the Each run sheet. Uses Q1's answer, else the
+    provisional 25 minutes. [5, 9, 10]
+12. 🌱 **Regression docs.** Write `scheduled-tasks.md`, update the documents
+    listed under Regression Coverage and the README index. [2–11]
+13. 🌱 **Run the L3 regression and retire the plan.** Run the matrix above,
+    record the result, move the plan to `.plan/completed/`. [12]
+
+## Later Phases (rough intent only)
+
+- **Sesori MCP tool for agents.** A Sesori MCP server injected when the bridge
+  starts a harness, so an agent can list, create, pause and run tasks through
+  the same bridge services the app uses. Why: the user's stated direction is
+  agent-driven control ("query/schedule tasks"), and humans and automation
+  should share one API seam (North Star).
+- It needs its own plan, including which harnesses accept an injected MCP
+  server, how a task created by an agent is attributed and confirmed, and
+  whether agent-created tasks may use "Approve everything".
+
+## Open Questions
+
+- **Q1. Auto-compact quiet window (cost against reliability).** Provisional
+  default: option A below.
+  - A. One 25-minute quiet window everywhere, extended (never shortened) by
+    harness signals. Matches the user's note; warm on Claude subscription,
+    Codex, OMP subscription and DeepSeek; cold (about 0.9× of one context read
+    extra per run) on 5-minute Anthropic routes.
+  - B. Per-harness window: about 3 minutes where the cache lives 5 minutes,
+    25 minutes where it lives 30 minutes or more. Cheapest, but a monitor
+    wake after 3 minutes lands in a compacted session on those routes.
+  - C. A, plus a 1-hour cache for task-run sessions where the harness allows
+    it (Claude Code, Pi, Hermes, OpenCode). Warm at 25 minutes there, but every
+    cache write in those sessions costs 2× instead of 1.25×, plus per-session
+    launch plumbing; not possible for Cursor, Copilot, Gemini or Grok.
+
+## Plan Review Record
+
+- 2026-11-15, `architecture-plan-review` (sub-agent): **rejected** with 14
+  concrete findings, none of them "too vague". All were valid and are applied
+  without re-review, as the repository rules require: reuse an existing push
+  category with a new event type and `taskId`; a dedicated failure push
+  listener with per-task keys; an injected completion-suppression resolver
+  and one named `userPromptedAt` writer; a `sessions.scheduledTaskId` column
+  as the mark and archive source; nullable `started.sessionId` and unknown
+  fallbacks on every wire union and enum; one `scheduledTasks.changed` SSE
+  event instead of refetch heuristics; one lock-holding owner for firing and
+  compaction; one `getSessionQuietness` owner; named collaborators and
+  placements; a sealed `NewSessionPurpose` with listener forwarding; one
+  time-zone adapter and UTC-plus-offset instants; corrected step
+  dependencies and the push-tap route; a sealed compaction result through
+  `SessionRepository`; a conditional target write. This revised version has
+  not been re-reviewed.
