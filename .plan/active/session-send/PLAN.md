@@ -634,7 +634,7 @@ Dart rules:
 
 ### Step 1: raise the plan
 
-`🌱 [session-send] Raise the session sending plan [step 1/12]`
+`🌱 [session-send] Raise the session sending plan [step 1/13]`
 
 - **Complexity:** trivial. Documents only.
 - **What:** adds `.plan/active/session-send/PLAN.md` and `TRACKER.md`.
@@ -644,7 +644,7 @@ Dart rules:
 
 ### Step 2: transcript Markdown and its file store
 
-`⚙️ [session-send] Render a session transcript as Markdown and store it with the receiving session [step 2/12]`. About
+`⚙️ [session-send] Render a session transcript as Markdown and store it with the receiving session [step 2/13]`. About
 650 lines.
 
 - **Complexity:** moderate. A pure builder with many part kinds, plus file lifetime wired into deletion.
@@ -661,7 +661,7 @@ Dart rules:
 
 ### Step 3: the bridge send flow
 
-`🚧 [session-send] Send one session into another from the bridge [step 3/12]`. About 1,450 lines, about 370 of them
+`🚧 [session-send] Send one session into another from the bridge [step 3/13]`. About 1,450 lines, about 370 of them
 generated.
 
 - **Complexity:** complex. A cross-layer flow with an event-driven wait, cancellation and new wire contracts.
@@ -690,7 +690,7 @@ generated.
 
 ### Step 4: the handoff marker in the bridge
 
-`🚧 [session-send] Mark handoff messages in the bridge [step 4/12]`. About 650 lines, about 350 of them generated.
+`🚧 [session-send] Mark handoff messages in the bridge [step 4/13]`. About 650 lines, about 350 of them generated.
 
 - **Complexity:** complex. A new field on the core message model, stamped live and kept through the history store's
   merge and replay paths.
@@ -717,7 +717,7 @@ generated.
 
 ### Step 5: Claude reads the transcripts and uploads folders without asking
 
-`🌿 [session-send] Let Claude Code read Sesori transcripts and uploads without a prompt [step 5/12]`. About 120 lines plus
+`🌿 [session-send] Let Claude Code read Sesori transcripts and uploads without a prompt [step 5/13]`. About 120 lines plus
 docs.
 
 - **Complexity:** straightforward. Two launch arguments, their test and two doc lines.
@@ -736,7 +736,7 @@ docs.
 
 ### Step 6: declare what a prompt to a busy session does
 
-`🌿 [session-send] Declare each harness's busy-prompt behaviour [step 6/12]`. About 300 lines, mostly generated.
+`🌿 [session-send] Declare each harness's busy-prompt behaviour [step 6/13]`. About 300 lines, mostly generated.
 
 - **Complexity:** straightforward. One required descriptor field per plugin and one wire field.
 - **What:**
@@ -752,7 +752,7 @@ docs.
 
 ### Step 7: the client send flow
 
-`⚙️ [session-send] Send a session into another from its menu [step 7/12]`. About 1,350 lines including l10n output.
+`⚙️ [session-send] Send a session into another from its menu [step 7/13]`. About 1,350 lines including l10n output.
 
 - **Complexity:** moderate. A new sheet and picker, menu wiring on four surfaces, and an async outcome.
 - **What:**
@@ -781,10 +781,26 @@ docs.
 - If the diff passes about 1,500 lines, split the sheet and picker into their own PR as step 7.a and update the series
   total.
 - The switch is hidden until step 9 if step 9 won't land in the same release.
+- **As built (2026-11-15):** the full step came to about 1,680 lines (about 1,330 authored, 350 generated l10n), so it
+  split into two PRs, and the series total is now 13. The sheet and picker cannot land without the menu entry that
+  opens them, so the split runs along the layer boundary instead:
+  - step 7, `⚙️ [session-send] Add the client send and stop pipeline [step 7/13]`: everything in `module_core` (API,
+    `SendToSessionResult`, repository, service, `SessionActionsCubit.sendToSession` and `stopSession`, the
+    `SessionSearchCubit` changes and `createSessionSearchCubit`), plus the desktop palette moving to the factory. No
+    user-visible change;
+  - step 7.a, `⚙️ [session-send] Send a session into another from its menu [step 7.a/13]`, stacked on step 7: the
+    sheet, `SessionPicker`, the menu entry, the busy alert, the outcome alerts, the strings and the shell wiring.
+  - `openSession` is context-free (`{projectId, projectName, session}`): the shells open the target through their
+    global router, because the Open action can fire after the sending page is gone.
+  - The picker under touch is a second bottom sheet stacked over the send sheet, as `ProjectPicker` opens, rather than
+    an in-sheet second page; Prego has no paged-sheet pattern yet. Under a pointer the send sheet is a centred dialog
+    and the picker a popover anchored to its "To" row.
+  - The archive switch is shown, on by default, kept as widget state and not yet acted on; step 9 adds the storage and
+    the archive.
 
 ### Step 8: the handoff marker and card in the chats
 
-`⚙️ [session-send] Show handoffs as a marker in the source and a card in the target [step 8/12]`. About 900 lines.
+`⚙️ [session-send] Show handoffs as a marker in the source and a card in the target [step 8/13]`. About 900 lines.
 
 - **Complexity:** moderate. Turn folding in the transcript builder, two new transcript items and an in-place expansion.
 - **What:**
@@ -803,7 +819,7 @@ docs.
 
 ### Step 9: archive the source after sending
 
-`🌿 [session-send] Archive the source after a send when asked [step 9/12]`. About 350 lines.
+`🌿 [session-send] Archive the source after a send when asked [step 9/13]`. About 350 lines.
 
 - **Complexity:** straightforward. Reuses the archive flow behind a remembered switch.
 - **What:**
@@ -821,7 +837,7 @@ docs.
 
 ### Step 10: analytics
 
-`🌿 [session-send] Report sessions sent into another session [step 10/12]`. About 250 lines.
+`🌿 [session-send] Report sessions sent into another session [step 10/13]`. About 250 lines.
 
 - **Complexity:** straightforward. A closed event that follows the existing pattern.
 - **What:**
@@ -837,7 +853,7 @@ docs.
 
 ### Step 11: reconcile docs and harness rows
 
-`🌿 [session-send] Document session sending and its harness differences [step 11/12]`
+`🌿 [session-send] Document session sending and its harness differences [step 11/13]`
 
 - **Complexity:** straightforward. Docs, plus live read checks.
 - **What:**
@@ -855,7 +871,7 @@ docs.
 
 ### Step 12: verify and retire
 
-`🌱 [session-send] Verify session sending and retire its plan [step 12/12]`
+`🌱 [session-send] Verify session sending and retire its plan [step 12/13]`
 
 Run the matrix under Verification, record results in `TRACKER.md`, then move the plan to
 `.plan/completed/session-send/`.
