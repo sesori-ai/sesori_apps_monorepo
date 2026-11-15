@@ -255,6 +255,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Audit:** stream-json/control envelopes, tool and subagent lifecycle, replay,
   permissions, questions, models and settings. This plugin drives the CLI seam,
   not an arbitrary new SDK feature. Use approved live probes for adopted changes.
+  The `side_question` control request is undocumented, so every refresh runs a
+  live side-question probe (mid-turn, after a cold `--resume`, and the session
+  `.jsonl` unchanged) and checks the `{response, synthetic, refusal_fallback}`
+  reply shape.
 
 ## Hermes Agent
 

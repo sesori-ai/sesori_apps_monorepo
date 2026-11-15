@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "claude_launch_spec.dart";
 import "claude_process_factory.dart";
 import "models/claude_mcp_status_dto.dart";
+import "models/claude_side_question_response_dto.dart";
 import "models/claude_stream_message.dart";
 
 /// A control request that the CLI answered with a failure, or that could not be
@@ -14,6 +15,15 @@ import "models/claude_stream_message.dart";
 class ClaudeControlException({required final String subtype, required final String message}) implements Exception {
   @override
   String toString() => "ClaudeControlException($subtype, $message)";
+}
+
+/// The CLI has no handler for the control request [subtype]: it predates it.
+final class const ClaudeControlUnsupportedSubtypeException({
+  required final String subtype,
+  required final ClaudeControlException innerError,
+}) implements Exception {
+  @override
+  String toString() => "ClaudeControlUnsupportedSubtypeException($subtype)";
 }
 
 /// Native status decoding failed; presentation excludes the native payload.
@@ -217,6 +227,47 @@ class ClaudeStreamClient({
     await sendControlRequest(subtype: "mcp_toggle", params: {"serverName": serverName, "enabled": enabled});
   }
 
+  /// Asks the session a question beside any running turn. The CLI answers in
+  /// one model call with tools denied and writes nothing to the transcript; it
+  /// sends no partial answer, only `control_request_progress` frames.
+  ///
+  /// On [timeout] the request is cancelled, so the CLI stops working on an ask
+  /// nobody waits for. Throws [ClaudeControlUnsupportedSubtypeException] when
+  /// the CLI has no `side_question` handler.
+  Future<ClaudeSideQuestionResponseDto> sendSideQuestion({
+    required String question,
+    required List<ClaudeSideQuestionHistoryEntry> history,
+    required Duration timeout,
+  }) async {
+    const subtype = "side_question";
+    final Map<String, Object?> response;
+    try {
+      response = await _sendControlRequest(
+        subtype: subtype,
+        params: {
+          "question": question,
+          if (history.isNotEmpty)
+            "history": [
+              for (final entry in history) {"question": entry.question, "response": entry.response},
+            ],
+        },
+        timeout: timeout,
+        cancelOnTimeout: true,
+      );
+    } on ClaudeControlException catch (error, stackTrace) {
+      // The CLI's generic dispatcher error for a subtype it does not know
+      // (verified on 2.1.322 with a made-up subtype).
+      if (error.message.startsWith("Unsupported control request subtype")) {
+        Error.throwWithStackTrace(
+          ClaudeControlUnsupportedSubtypeException(subtype: subtype, innerError: error),
+          stackTrace,
+        );
+      }
+      rethrow;
+    }
+    return ClaudeSideQuestionResponseDto.fromJson(response);
+  }
+
   /// Sends a control request and awaits its response payload.
   ///
   /// Throws [ClaudeControlException] when the CLI answers with a failure, when
@@ -225,6 +276,13 @@ class ClaudeStreamClient({
   Future<Map<String, Object?>> sendControlRequest({
     required String subtype,
     Map<String, Object?> params = const {},
+  }) => _sendControlRequest(subtype: subtype, params: params, timeout: _controlTimeout, cancelOnTimeout: false);
+
+  Future<Map<String, Object?>> _sendControlRequest({
+    required String subtype,
+    required Map<String, Object?> params,
+    required Duration timeout,
+    required bool cancelOnTimeout,
   }) async {
     final process = _process;
     if (process == null) {
@@ -256,9 +314,14 @@ class ClaudeStreamClient({
     }
 
     try {
-      return await completer.future.timeout(_controlTimeout);
+      return await completer.future.timeout(timeout);
     } on TimeoutException {
       _pending.remove(requestId);
+      if (cancelOnTimeout && !_exited.isCompleted) {
+        // The CLI answers the cancel with an error for this id, which then
+        // arrives as a response for an unknown request and is only logged.
+        _writeFrame(process: process, envelope: {"type": "control_cancel_request", "request_id": requestId});
+      }
       rethrow;
     }
   }

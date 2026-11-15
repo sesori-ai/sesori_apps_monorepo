@@ -518,6 +518,54 @@ final class ClaudeSessionService({
     _emitQueueUpdate(sessionId: sessionId, state: state);
   }
 
+  /// Answers [question] beside whatever the session is doing.
+  ///
+  /// A resident process is asked as is. Making it resident again would
+  /// reapply the turn selection, and an effort change tears the process down,
+  /// killing a running main turn. A session with no process is resumed with no
+  /// selection, which answers from the resumed conversation (verified on CLI
+  /// 2.1.322). That resume runs in the dispatch chain, so a prompt sent
+  /// meanwhile still applies its own selection afterwards; if that restarts
+  /// the process, this ask fails and the user can retry. A process resumed
+  /// for the ask is reaped like one left by a finished turn.
+  Future<PluginSideAnswer> askSideQuestion({
+    required String sessionId,
+    required String directory,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async {
+    if (_disposed) throw StateError("Claude session service is disposed");
+    if (_processes.isResident(sessionId: sessionId)) {
+      return await _processes.sendSideQuestion(sessionId: sessionId, question: question, history: history);
+    }
+    final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
+    final residency = state.dispatchTail.then((_) async {
+      if (_processes.isResident(sessionId: sessionId)) return;
+      await _processes.ensureResident(
+        sessionId: sessionId,
+        directory: directory,
+        createNew: false,
+        purpose: ClaudeProcessPurpose.session,
+        model: null,
+        effort: null,
+        permissionMode: null,
+        fastMode: false,
+        allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
+      );
+    });
+    // The asker awaits [residency] and receives its failure; the chain only
+    // needs to continue past it.
+    state.dispatchTail = residency.catchError((Object _) {});
+    try {
+      await residency;
+      return await _processes.sendSideQuestion(sessionId: sessionId, question: question, history: history);
+    } finally {
+      if (identical(_turns[sessionId], state) && !state.hasWork && _processes.isResident(sessionId: sessionId)) {
+        _scheduleIdleReap(sessionId: sessionId, state: state);
+      }
+    }
+  }
+
   /// Stops the session's work with the given sub-agent scope.
   ///
   /// `confirm` is refused while typed sub-agents run, with no side effect, so

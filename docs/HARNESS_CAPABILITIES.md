@@ -275,6 +275,37 @@ dispatched state suppresses trash. A late cancellation refusal is not success:
 the client reports it without hiding still-live input; existing queue events and
 reconnect snapshots keep the displayed state authoritative.
 
+## Side questions
+
+A side question answers from what the session already knows, runs no tools,
+leaves a running turn alone and is never written to the main transcript.
+
+| Harness | Native seam | Sesori availability |
+|---|---|---|
+| Claude Code | `side_question` control request in `-p` stream-json, with `history` (verified 2.1.322) | ✅ Native, mid-turn, no tools, no transcript write. CLIs without the handler get "update Claude Code" |
+| Codex | Experimental `thread/sample` (mid-turn from 0.169.0) | ⬜ Native from step 5 of the side-questions plan. History goes in the 4,000-byte prompt. PATH Codex 0.139–0.168 gets "update Codex" |
+| OpenCode | `/btw` only on its dev branch; session fork exists | ⬜ Phase-2 fork fallback |
+| Pi | No side question; RPC `fork`/`clone` | ⬜ Phase-2 fork fallback |
+| Oh My Pi | RPC-only `btw`, not over ACP; ACP `session/fork` | ⬜ Phase-2 fork fallback |
+| Hermes, Grok Build, Cursor, GitHub Copilot, Antigravity, DeepSeek | TUI-only; whole-session fork via the vendor or the ACP draft | ⬜ Phase-2 fork fallback where the fork plan provides a fork. Otherwise 🚫, with the verified version |
+
+Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
+
+- An ask during a streaming main turn answered in about 3 s; the main turn kept
+  streaming and finished normally. Every stream frame seen meanwhile belonged
+  to the main turn: the side question emits only `control_request_progress`
+  and its `control_response` on stdout.
+- An ask on an idle resident process, and as the first frame after a cold
+  `--resume`, answered from the conversation.
+- Follow-ups pass earlier exchanges as `history`; the answer used them.
+- The session `.jsonl` never contained the question or answer. A cold-resume
+  ask appends only a `cost-state` accounting record.
+- An unknown subtype fails with `Unsupported control request subtype: <name>`,
+  which Sesori maps to "update Claude Code". The first CLI release with the
+  handler is unknown; 2.1.321 to 2.1.325 have it.
+- `control_cancel_request` ends the ask with "Side question cancelled". Sesori
+  sends it when its own 3-minute wait ends, below the CLI's 11-minute deadline.
+
 ## Explicit shell-command presentation
 
 Ordinary tools retain name, bounded title, status and attachments; only

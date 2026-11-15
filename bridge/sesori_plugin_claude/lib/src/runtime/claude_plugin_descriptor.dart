@@ -105,6 +105,9 @@ final class const ClaudePluginDescriptor({
   bool get namesCommandInvocations => true;
 
   @override
+  bool get supportsSideQuestions => true;
+
+  @override
   Set<PluginMcpCapability> get mcpCapabilities => const {
     PluginMcpCapability.management,
     PluginMcpCapability.authentication,
