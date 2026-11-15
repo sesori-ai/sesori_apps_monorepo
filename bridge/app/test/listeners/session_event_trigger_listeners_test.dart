@@ -60,9 +60,9 @@ void main() {
     listener.start();
     const updated = (
       pluginId: "plugin",
-      event: BridgeSseSessionUpdated(info: <String, dynamic>{}, titleChanged: true),
+      events: [BridgeSseSessionUpdated(info: <String, dynamic>{}, titleChanged: true)],
     );
-    const deleted = (pluginId: "plugin", event: BridgeSseSessionDeleted(info: <String, dynamic>{}));
+    const deleted = (pluginId: "plugin", events: [BridgeSseSessionDeleted(info: <String, dynamic>{})]);
 
     source
       ..add(updated)
