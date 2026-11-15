@@ -97,6 +97,10 @@ import "trackers/prompt_stamp_tracker.dart";
 enum SessionBindingCommitKind() {
   sessionCreation,
   catalogSync,
+
+  /// An existing session now runs on a new harness session; its id is
+  /// unchanged.
+  sessionReplacement,
 }
 
 typedef SessionBindingsCommitted = ({
@@ -619,6 +623,87 @@ class SessionRepository({
     ),
   );
 
+  /// Moves root session [sessionId] onto a new harness session, created in
+  /// its directory with [parts] as its first prompt, keeping the session id.
+  ///
+  /// The old harness session is deleted the way [deleteSession] deletes one:
+  /// its subtree is tombstoned and its sub-agent rows removed, in the
+  /// transaction that rebinds the row. Returns the ids of the removed rows,
+  /// whose history the caller purges. A failed backend delete is only logged:
+  /// startup reconciliation retries it through the tombstone.
+  Future<List<String>> replaceBackendSession({
+    required String sessionId,
+    required List<DeliverablePromptPart> parts,
+    required String? userVisibleText,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    const operation = SessionOperation.rewindSession;
+    final binding = await _requireBinding(sessionId: sessionId, operation: operation);
+    final result = await _runtime.useAndCommit(
+      pluginId: binding.pluginId,
+      operation: operation,
+      prepare: (plugin) => plugin.createSession(
+        directory: binding.directory,
+        parentSessionId: null,
+        parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+        userVisibleText: userVisibleText,
+        variant: _toPluginVariant(variant),
+        fastMode: fastMode,
+        agent: agent,
+        model: _toPluginModel(model),
+      ),
+      commit: (created, generation) async {
+        final removedSessionIds = await _tombstoneSubtree(
+          root: binding,
+          removeRows: (subtree) async {
+            // Catalog import may have bound the new harness session to a row
+            // of its own before this commit; that row is this replacement.
+            final stray = await _sessionDao.getSessionByBinding(
+              pluginId: binding.pluginId,
+              backendSessionId: created.id,
+            );
+            final straySubtree = stray == null ? const <SessionDto>[] : await _getSessionSubtree(root: stray);
+            if (stray != null) await _sessionDao.deleteSession(sessionId: stray.sessionId);
+            await _sessionDao.rebindBackendSession(sessionId: sessionId, backendSessionId: created.id);
+            final children = subtree.skip(1).toList(growable: false);
+            for (final child in children) {
+              if (child.parentSessionId == sessionId) await _sessionDao.deleteSession(sessionId: child.sessionId);
+            }
+            return [
+              for (final row in [...straySubtree, ...children]) row.sessionId,
+            ];
+          },
+        );
+        return (backendSessionId: created.id, generation: generation, removedSessionIds: removedSessionIds);
+      },
+    );
+    _publishBindingsCommitted(
+      pluginId: binding.pluginId,
+      projectId: binding.projectId,
+      generation: result.generation,
+      kind: SessionBindingCommitKind.sessionReplacement,
+      backendSessionIds: [result.backendSessionId],
+    );
+    try {
+      await _useBoundSessionPlugin(
+        binding: binding,
+        operation: SessionOperation.deleteSession,
+        body: (plugin) => plugin.deleteSession(binding.backendSessionId),
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "Failed to delete harness session ${binding.backendSessionId} replaced in session $sessionId; "
+        "its tombstone keeps it out of the catalog",
+        error,
+        stackTrace,
+      );
+    }
+    return result.removedSessionIds;
+  }
+
   /// Asks [sessionId]'s harness a side question with this side chat's
   /// [history]. A harness that does not declare side questions is refused
   /// before its plugin is started.
@@ -971,7 +1056,6 @@ class SessionRepository({
       sessionId: sessionId,
       operation: SessionOperation.deleteSession,
     );
-    final subtree = await _getSessionSubtree(root: binding);
     final deletionSnapshot = _mapCatalogSessions(rows: [binding]).single;
     // An unreachable backend must not strand the session in the catalog: an
     // uninstalled or unstartable plugin would otherwise leave the user with a
@@ -1002,7 +1086,26 @@ class SessionRepository({
         stackTrace,
       );
     }
-    await _sessionDao.transaction(() async {
+    final sessionIds = await _tombstoneSubtree(
+      root: binding,
+      removeRows: (subtree) async {
+        await _sessionDao.deleteSession(sessionId: binding.sessionId);
+        return [for (final binding in subtree) binding.sessionId];
+      },
+    );
+    return (session: deletionSnapshot, sessionIds: sessionIds);
+  }
+
+  /// Tombstones the harness session of every row in [root]'s subtree, so
+  /// catalog import and startup reconciliation never bring one back, and
+  /// runs [removeRows] over that subtree in the same transaction. Returns the
+  /// session ids [removeRows] removed.
+  Future<List<String>> _tombstoneSubtree({
+    required SessionDto root,
+    required Future<List<String>> Function(List<SessionDto> subtree) removeRows,
+  }) async {
+    final (:subtree, :removedSessionIds) = await _sessionDao.transaction(() async {
+      final subtree = await _getSessionSubtree(root: root);
       final deletedAt = DateTime.now().millisecondsSinceEpoch;
       for (final binding in subtree) {
         await _sessionDao.insertSessionTombstone(
@@ -1011,17 +1114,14 @@ class SessionRepository({
           deletedAt: deletedAt,
         );
       }
-      await _sessionDao.deleteSession(sessionId: binding.sessionId);
+      return (subtree: subtree, removedSessionIds: await removeRows(subtree));
     });
-    _deletedSessionIds.addAll(subtree.map((binding) => binding.sessionId));
+    _deletedSessionIds.addAll(removedSessionIds);
     for (final binding in subtree) {
       _tombstonesFor(binding.pluginId).add(binding.backendSessionId);
-      _busyObservations.remove(binding.sessionId);
     }
-    return (
-      session: deletionSnapshot,
-      sessionIds: [for (final binding in subtree) binding.sessionId],
-    );
+    removedSessionIds.forEach(_busyObservations.remove);
+    return removedSessionIds;
   }
 
   Future<List<SessionDto>> _getSessionSubtree({required SessionDto root}) async {

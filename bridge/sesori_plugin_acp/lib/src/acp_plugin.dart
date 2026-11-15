@@ -295,6 +295,13 @@ abstract class AcpPlugin({
     required List<Map<String, dynamic>> prompt,
   }) => throw UnsupportedError("$id does not support active-turn steering");
 
+  /// Whether [error] rejected a `session/prompt` only because the agent is
+  /// running a turn no Sesori prompt started, such as one it began itself for
+  /// a background result. The agent took nothing from the prompt, so it is
+  /// sent again every second until the agent takes it. ACP defines no such
+  /// rejection, so the base classifies none.
+  bool isBusyPromptRejection({required AcpRpcException error}) => false;
+
   /// Optional top-level metadata for an outbound `session/prompt` request.
   Map<String, dynamic>? outboundPromptMeta({
     required String sessionId,
@@ -1770,23 +1777,37 @@ abstract class AcpPlugin({
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
       final meta = outboundPromptMeta(sessionId: sessionId, messageId: turn.messageId);
+      final params = {
+        "sessionId": sessionId,
+        "prompt": turn.blocks,
+        "_meta": ?meta,
+      };
       final dispatched = await client.dispatchSessionRequest(
         method: AcpMethods.sessionPrompt,
-        params: {
-          "sessionId": sessionId,
-          "prompt": turn.blocks,
-          "_meta": ?meta,
-        },
+        params: params,
         sessionId: sessionId,
-        inactivityTimeout: const Duration(minutes: 30),
+        inactivityTimeout: _promptInactivityTimeout,
       );
       _markTurnDispatched(sessionId: sessionId, state: state, turn: turn);
-      final raw = await dispatched.response;
+      final response = await _awaitPromptResponse(
+        client: client,
+        sessionId: sessionId,
+        params: params,
+        firstResponse: dispatched.response,
+        state: state,
+        expectedGeneration: expectedGeneration,
+        turn: turn,
+      );
+      if (response == null) {
+        // Stopped while the busy agent still had not taken the prompt.
+        _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
+        return;
+      }
       _retireInputOfEndedTurn(sessionId: sessionId);
-      final result = AcpPromptResult.fromJson(switch (raw) {
+      final result = AcpPromptResult.fromJson(switch (response.raw) {
         null => const <String, dynamic>{},
         final Map<dynamic, dynamic> map => map.cast<String, dynamic>(),
-        _ => throw FormatException("session/prompt result is not an object: ${raw.runtimeType}"),
+        final raw => throw FormatException("session/prompt result is not an object: ${raw.runtimeType}"),
       });
       _finishTurn(
         sessionId: sessionId,
@@ -1816,6 +1837,52 @@ abstract class AcpPlugin({
       }
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
+    }
+  }
+
+  static const Duration _promptInactivityTimeout = Duration(minutes: 30);
+  static const Duration _busyPromptRetryInterval = Duration(seconds: 1);
+
+  /// Awaits a dispatched `session/prompt` response. A prompt the agent rejects
+  /// as busy (see [isBusyPromptRejection]) is sent again every
+  /// [_busyPromptRetryInterval]; its user message is already shown, and the
+  /// session stays busy meanwhile. Returns null when a stop or delete ends the
+  /// wait. Once [_promptInactivityTimeout] has passed, the last rejection is
+  /// rethrown instead of resending, and fails the turn like any other.
+  Future<({Object? raw})?> _awaitPromptResponse({
+    required AcpStdioClient client,
+    required String sessionId,
+    required Map<String, Object?> params,
+    required Future<dynamic> firstResponse,
+    required _SessionTurnState state,
+    required int expectedGeneration,
+    required _AcpTurn turn,
+  }) async {
+    final waited = Stopwatch()..start();
+    var response = firstResponse;
+    while (true) {
+      final AcpRpcException busyRejection;
+      final StackTrace busyStack;
+      try {
+        return (raw: await response);
+      } on AcpRpcException catch (error, stack) {
+        if (!isBusyPromptRejection(error: error)) rethrow;
+        busyRejection = error;
+        busyStack = stack;
+      }
+      if (identical(response, firstResponse)) {
+        Log.i("[$id] agent is busy with its own turn on $sessionId; resending the prompt until it takes it");
+      }
+      await Future<void>.delayed(_busyPromptRetryInterval);
+      if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) return null;
+      if (waited.elapsed >= _promptInactivityTimeout) Error.throwWithStackTrace(busyRejection, busyStack);
+      final dispatched = await client.dispatchSessionRequest(
+        method: AcpMethods.sessionPrompt,
+        params: params,
+        sessionId: sessionId,
+        inactivityTimeout: _promptInactivityTimeout,
+      );
+      response = dispatched.response;
     }
   }
 

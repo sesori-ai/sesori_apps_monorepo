@@ -935,6 +935,8 @@ void main() {
       when(() => cubit.canSubmit).thenReturn(true);
       when(() => cubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+      when(() => cubit.offersAttachments).thenReturn(true);
+      when(() => cubit.composerDraftIdentity).thenReturn(ComposerDraftRepository.newSessionIdentity);
       return cubit;
     }
 

@@ -7,7 +7,8 @@ that prompt and every later message from the session's conversation and sends
 the edited prompt in its place. Conversation only: files are never restored.
 Each harness declares the branching operations it implements in
 `PluginMetadata.sessionBranching`; today Claude Code and Codex declare `rewind`.
-Clients offer no Edit yet.
+Clients offer no Edit yet. A first-message edit needs no plugin rewind, so the
+route accepts it on every harness.
 
 ## Required Behavior
 
@@ -26,9 +27,19 @@ Clients offer no Edit yet.
 - The bridge reads the whole stored transcript, backfilling it first when the
   store is behind the backend, and finds the message's turn by the shared
   `splitPromptTurns` rule. A message that does not open a turn (a reply or a
-  follow-up) and the first turn are refused with `branchPointUnavailable`.
-  First-turn edits arrive with a later step that swaps in a fresh harness
-  session.
+  follow-up) is refused with `branchPointUnavailable`.
+- An edit of the first turn never reaches a plugin rewind, so it works on
+  every harness. The bridge creates a new harness session in the session's
+  directory with the edited prompt as its first prompt (with the worktree
+  context, for a dedicated worktree) and moves the same Sesori session onto
+  it in one transaction. The new harness session's events reach clients under
+  the unchanged session id, with no `session.created`.
+- The old harness session is deleted the way a session delete does it: it and
+  its sub-agent sessions are tombstoned in that same transaction, so catalog
+  import and startup cleanup never bring them back, and their sub-agent rows
+  and history are removed. Its late events and `session.deleted` change
+  nothing. A failed backend delete is only logged; the edit still succeeds.
+  A row catalog import already bound to the new harness session is replaced.
 - A harness that cannot rewind, or whose plugin cannot map the message to a
   native boundary, is refused with `branchPointUnavailable`. The plugin's own
   user-facing sentence travels as the message; transcript text never does.
@@ -36,7 +47,7 @@ Clients offer no Edit yet.
   invalidated; a plugin refusal answers `refused`.
 - Every branch refusal is a 409 `SessionBranchErrorResponse` and leaves the
   transcript untouched; the archived rejection keeps its own shared shape.
-- After the plugin accepts, the bridge removes exactly the messages it read
+- After the plugin accepts (or the new harness session is bound), the bridge removes exactly the messages it read
   before the call, by id, from the store and from clients
   (`message.removed`). The edited prompt's echo, captured during the call, is
   never among them.
@@ -86,7 +97,7 @@ Clients offer no Edit yet.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, first-turn, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`; a failed resend after the harness rewound removes exactly the dropped messages, and a failure that changed nothing removes none. Codex plugin tests against a fake app-server: resume, revert and `turn/start` order with the prompt id; history follows the reverted rollout; steered, unknown-id, attachment and revert-error refusals happen before any revert. Claude Code plugin tests against a fake CLI: the respawn's arguments and carried-over selection, then the prompt on the respawned process; a later plain `--resume`; an armed idle reap superseded; a second edit refused and a mid-respawn send ordered after the edit; no-entry, busy and unknown-option refusals before acceptance; the rewind point against recorded transcripts and a compaction. |
+| L2 Routine | Automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`; a failed resend after the harness rewound removes exactly the dropped messages, and a failure that changed nothing removes none. A first-turn edit binds the new harness session (with the worktree context in a dedicated worktree), tombstones and deletes the old one and its sub-agent rows and history, survives a failed old delete, replaces a stray imported row, and leaves the binding, rows and transcript untouched when the new session cannot be created; the event service releases the new session's held events under the old id and ignores the old session's late events. Codex plugin tests against a fake app-server: resume, revert and `turn/start` order with the prompt id; history follows the reverted rollout; steered, unknown-id, attachment and revert-error refusals happen before any revert. Claude Code plugin tests against a fake CLI: the respawn's arguments and carried-over selection, then the prompt on the respawned process; a later plain `--resume`; an armed idle reap superseded; a second edit refused and a mid-respawn send ordered after the edit; no-entry, busy and unknown-option refusals before acceptance; the rewind point against recorded transcripts and a compaction. |
 | L3 Release | Not included until clients offer Edit. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -97,6 +108,9 @@ Clients offer no Edit yet.
   screen until reload.
 - A retried edit rewinds twice.
 - A refusal changes the transcript, or its message carries transcript text.
+- After a first-message edit the session shows twice, the old conversation
+  comes back after a catalog refresh or restart, or the new prompt's replies
+  never arrive.
 - A Codex edit whose resend failed leaves the reverted messages on screen.
 - A Claude Code edit continues from the old branch, or a later prompt lands on
   a rewound branch the edit never used.
@@ -104,10 +118,9 @@ Clients offer no Edit yet.
 
 ## Known Limitations
 
-- Only Claude Code and Codex implement rewind; every other harness refuses the
-  edit.
+- Only Claude Code and Codex implement rewind; every other harness refuses an
+  edit after the first turn.
 - Claude Code cannot edit a prompt from before the latest compaction.
-- The first turn cannot be edited yet.
 - An edit the plugin refuses keeps the attachment files the bridge saved for
   it, as a refused send does.
 
@@ -116,6 +129,8 @@ Clients offer no Edit yet.
 - `bridge/sesori_plugin_interface/lib/src/session_rewind_plugin_api.dart`
 - `bridge/app/lib/src/routing/rewind_session_handler.dart`
 - `bridge/app/lib/src/services/session_prompt_service.dart`
+- `bridge/app/lib/src/repositories/session_repository.dart`
+- `bridge/app/lib/src/services/session_event_service.dart`
 - `bridge/app/lib/src/services/chat_history_service.dart`
 - `bridge/sesori_plugin_claude/lib/src/services/claude_session_service.dart`
 - `bridge/sesori_plugin_claude/lib/src/repositories/claude_transcript_catalog_repository.dart`

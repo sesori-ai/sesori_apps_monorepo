@@ -1311,6 +1311,74 @@ as RemoteFailureReason,
 }
 
 /// @nodoc
+
+
+class NewSessionPhaseTaskSubmitted implements NewSessionPhase {
+  const NewSessionPhaseTaskSubmitted({required this.submission});
+  
+
+ final  TaskComposerSubmission submission;
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionPhaseTaskSubmittedCopyWith<NewSessionPhaseTaskSubmitted> get copyWith => _$NewSessionPhaseTaskSubmittedCopyWithImpl<NewSessionPhaseTaskSubmitted>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseTaskSubmitted&&(identical(other.submission, submission) || other.submission == submission));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,submission);
+}
+
+@override
+String toString() {
+    return 'NewSessionPhase.taskSubmitted(submission: $submission)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionPhaseTaskSubmittedCopyWith<$Res> implements $NewSessionPhaseCopyWith<$Res> {
+  factory $NewSessionPhaseTaskSubmittedCopyWith(NewSessionPhaseTaskSubmitted value, $Res Function(NewSessionPhaseTaskSubmitted) _then) = _$NewSessionPhaseTaskSubmittedCopyWithImpl;
+@useResult
+$Res call({
+ TaskComposerSubmission submission
+});
+
+
+
+
+}
+/// @nodoc
+class _$NewSessionPhaseTaskSubmittedCopyWithImpl<$Res>
+    implements $NewSessionPhaseTaskSubmittedCopyWith<$Res> {
+  _$NewSessionPhaseTaskSubmittedCopyWithImpl(this._self, this._then);
+
+  final NewSessionPhaseTaskSubmitted _self;
+  final $Res Function(NewSessionPhaseTaskSubmitted) _then;
+
+/// Create a copy of NewSessionPhase
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? submission = null,}) {
+  return _then(NewSessionPhaseTaskSubmitted(
+submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
+as TaskComposerSubmission,
+  ));
+}
+
+
+}
+
+/// @nodoc
 mixin _$NewSessionProject {
 
  String get id;/// The project as the composer names it, for an alert about a creation

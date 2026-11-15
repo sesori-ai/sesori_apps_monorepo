@@ -177,7 +177,7 @@ context the full-history index sees. See `docs/regression/transcript-turn-naviga
 | Codex | `turn/start` steers the active turn | ✅ |
 | Pi | Sent with the `steer` streaming behavior | ✅ |
 | OpenCode | Sent at once into the running turn | ✅ |
-| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, as does the 18.19.0 source) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. |
+| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, as does the 18.19.0 source) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. While OMP runs a turn no Sesori prompt started (a background-job wake, which OMP before 18.20.1 starts after a prompt ends), it refuses steering and rejects `session/prompt` with `-32003`; the bridge resends the prompt every second until OMP takes it, for up to 30 minutes. Checked in the OMP 18.20.2 source on 2026-11-15. |
 | ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and none of these plugins implements the shared steering hook (checked in code on 2026-11-05). |
 
 ## Quota-reset auto continuation
@@ -311,8 +311,8 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
 
 Editing rewinds the conversation in place: the edited message and everything
 after it leave the session, then the edited message is sent. Files are never
-touched. The bridge refuses an edit of a session's first message for now,
-because no native point precedes it. Edits run only
+touched. An edit of a session's first message has no native point before it,
+so the bridge swaps in a new harness session instead, on every harness. Edits run only
 on a message that opens a turn; a follow-up sent while the agent was working is
 refused with a reason.
 
@@ -329,8 +329,8 @@ directory, 2026-11-15):
   plain `--resume` continues from the edited branch. A respawn at the cut
   without a prompt appends only a `cost-state` record, so the transcript is not
   changed until the edited prompt is sent.
-- The first message has no entry before it, so it is refused with "Claude Code
-  can't edit the first message in place."
+- The first message has no entry before it. The bridge edits it by swapping in
+  a new session, and the plugin refuses it if asked to rewind there.
 - 2.1.322 resumes only from the latest compaction on: an entry before it fails
   with `No message found with message.uuid of: …`. Sesori refuses such a prompt
   before stopping the session.

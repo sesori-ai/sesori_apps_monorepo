@@ -236,7 +236,7 @@ void main() {
               ),
               dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
               pluginManagementService: stubbedPluginManagementService(),
-              project: project,
+              purpose: NewSessionPurpose.startSession(project: project),
             ),
             onOpenSession: ({required context, required project, required displayName, required session}) {},
             onOpenHarnessSettings: () {},

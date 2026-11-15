@@ -150,6 +150,8 @@ Requires=opencode.service
 ExecStart=/root/.local/bin/sesori-bridge --opencode-no-auto-start --opencode-port 9921 --log-level debug
 Restart=always
 RestartSec=3
+# Under systemd's default OOM policy (stop), an OOM kill of one session's child process (a browser, say) stops the whole bridge.
+OOMPolicy=continue
 User=root
 
 [Install]

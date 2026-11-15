@@ -12,6 +12,7 @@ import "../../services/models/new_session_options_source.dart";
 import "../../services/new_session_options_service.dart";
 import "../../services/session_selection_calculator.dart";
 import "../session_detail/prompt_turn_shape.dart";
+import "new_session_purpose.dart";
 
 part "new_session_state.freezed.dart";
 
@@ -154,6 +155,10 @@ sealed class NewSessionPhase with _$NewSessionPhase {
   const factory creationError({required RemoteFailureReason reason}) = NewSessionPhaseCreationError;
 
   const factory discoveryError({required RemoteFailureReason reason}) = NewSessionPhaseDiscoveryError;
+
+  /// A task's composer was saved with [submission]. It stays editable, so a
+  /// failed save can be corrected and saved again.
+  const factory taskSubmitted({required TaskComposerSubmission submission}) = NewSessionPhaseTaskSubmitted;
 }
 
 /// The project a new session starts in. The composer can move to another one

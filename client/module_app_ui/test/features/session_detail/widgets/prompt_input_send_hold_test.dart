@@ -76,6 +76,7 @@ void main() {
                 isBusy: false,
                 hasMessages: false,
                 canSend: true,
+                submitAction: null,
                 onSend: ({required draft, required command, required attachments}) =>
                     sent.add((text: draft.text, attachments: attachments)),
                 onVoiceTranscriptionFinished: null,
