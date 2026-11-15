@@ -3507,6 +3507,545 @@ class SessionContinuationTableCompanion
   }
 }
 
+mixin $SideChatExchangesTableTableToColumns
+    implements Insertable<SideChatExchangeDto> {
+  String get id;
+  String get sessionId;
+  String get sideChatId;
+  String get question;
+  String get answer;
+  String? get answerNotice;
+  int get askedAt;
+  int get answeredAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['session_id'] = Variable<String>(sessionId);
+    map['side_chat_id'] = Variable<String>(sideChatId);
+    map['question'] = Variable<String>(question);
+    map['answer'] = Variable<String>(answer);
+    if (!nullToAbsent || answerNotice != null) {
+      map['answer_notice'] = Variable<String>(answerNotice);
+    }
+    map['asked_at'] = Variable<int>(askedAt);
+    map['answered_at'] = Variable<int>(answeredAt);
+    return map;
+  }
+}
+
+class $SideChatExchangesTableTable extends SideChatExchangesTable
+    with TableInfo<$SideChatExchangesTableTable, SideChatExchangeDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SideChatExchangesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _sideChatIdMeta = const VerificationMeta(
+    'sideChatId',
+  );
+  @override
+  late final GeneratedColumn<String> sideChatId = GeneratedColumn<String>(
+    'side_chat_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _questionMeta = const VerificationMeta(
+    'question',
+  );
+  @override
+  late final GeneratedColumn<String> question = GeneratedColumn<String>(
+    'question',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _answerMeta = const VerificationMeta('answer');
+  @override
+  late final GeneratedColumn<String> answer = GeneratedColumn<String>(
+    'answer',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _answerNoticeMeta = const VerificationMeta(
+    'answerNotice',
+  );
+  @override
+  late final GeneratedColumn<String> answerNotice = GeneratedColumn<String>(
+    'answer_notice',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _askedAtMeta = const VerificationMeta(
+    'askedAt',
+  );
+  @override
+  late final GeneratedColumn<int> askedAt = GeneratedColumn<int>(
+    'asked_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _answeredAtMeta = const VerificationMeta(
+    'answeredAt',
+  );
+  @override
+  late final GeneratedColumn<int> answeredAt = GeneratedColumn<int>(
+    'answered_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    sessionId,
+    sideChatId,
+    question,
+    answer,
+    answerNotice,
+    askedAt,
+    answeredAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'side_chat_exchanges';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SideChatExchangeDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('side_chat_id')) {
+      context.handle(
+        _sideChatIdMeta,
+        sideChatId.isAcceptableOrUnknown(
+          data['side_chat_id']!,
+          _sideChatIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sideChatIdMeta);
+    }
+    if (data.containsKey('question')) {
+      context.handle(
+        _questionMeta,
+        question.isAcceptableOrUnknown(data['question']!, _questionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_questionMeta);
+    }
+    if (data.containsKey('answer')) {
+      context.handle(
+        _answerMeta,
+        answer.isAcceptableOrUnknown(data['answer']!, _answerMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_answerMeta);
+    }
+    if (data.containsKey('answer_notice')) {
+      context.handle(
+        _answerNoticeMeta,
+        answerNotice.isAcceptableOrUnknown(
+          data['answer_notice']!,
+          _answerNoticeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('asked_at')) {
+      context.handle(
+        _askedAtMeta,
+        askedAt.isAcceptableOrUnknown(data['asked_at']!, _askedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_askedAtMeta);
+    }
+    if (data.containsKey('answered_at')) {
+      context.handle(
+        _answeredAtMeta,
+        answeredAt.isAcceptableOrUnknown(data['answered_at']!, _answeredAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_answeredAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SideChatExchangeDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SideChatExchangeDto(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      sideChatId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}side_chat_id'],
+      )!,
+      question: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}question'],
+      )!,
+      answer: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}answer'],
+      )!,
+      answerNotice: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}answer_notice'],
+      ),
+      askedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}asked_at'],
+      )!,
+      answeredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}answered_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SideChatExchangesTableTable createAlias(String alias) {
+    return $SideChatExchangesTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class SideChatExchangeDto extends DataClass
+    with $SideChatExchangesTableTableToColumns {
+  @override
+  final String id;
+  @override
+  final String sessionId;
+  @override
+  final String sideChatId;
+  @override
+  final String question;
+  @override
+  final String answer;
+  @override
+  final String? answerNotice;
+  @override
+  final int askedAt;
+  @override
+  final int answeredAt;
+  const SideChatExchangeDto({
+    required this.id,
+    required this.sessionId,
+    required this.sideChatId,
+    required this.question,
+    required this.answer,
+    this.answerNotice,
+    required this.askedAt,
+    required this.answeredAt,
+  });
+  SideChatExchangesTableCompanion toCompanion(bool nullToAbsent) {
+    return SideChatExchangesTableCompanion(
+      id: Value(id),
+      sessionId: Value(sessionId),
+      sideChatId: Value(sideChatId),
+      question: Value(question),
+      answer: Value(answer),
+      answerNotice: answerNotice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(answerNotice),
+      askedAt: Value(askedAt),
+      answeredAt: Value(answeredAt),
+    );
+  }
+
+  factory SideChatExchangeDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SideChatExchangeDto(
+      id: serializer.fromJson<String>(json['id']),
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      sideChatId: serializer.fromJson<String>(json['sideChatId']),
+      question: serializer.fromJson<String>(json['question']),
+      answer: serializer.fromJson<String>(json['answer']),
+      answerNotice: serializer.fromJson<String?>(json['answerNotice']),
+      askedAt: serializer.fromJson<int>(json['askedAt']),
+      answeredAt: serializer.fromJson<int>(json['answeredAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'sessionId': serializer.toJson<String>(sessionId),
+      'sideChatId': serializer.toJson<String>(sideChatId),
+      'question': serializer.toJson<String>(question),
+      'answer': serializer.toJson<String>(answer),
+      'answerNotice': serializer.toJson<String?>(answerNotice),
+      'askedAt': serializer.toJson<int>(askedAt),
+      'answeredAt': serializer.toJson<int>(answeredAt),
+    };
+  }
+
+  SideChatExchangeDto copyWith({
+    String? id,
+    String? sessionId,
+    String? sideChatId,
+    String? question,
+    String? answer,
+    Value<String?> answerNotice = const Value.absent(),
+    int? askedAt,
+    int? answeredAt,
+  }) => SideChatExchangeDto(
+    id: id ?? this.id,
+    sessionId: sessionId ?? this.sessionId,
+    sideChatId: sideChatId ?? this.sideChatId,
+    question: question ?? this.question,
+    answer: answer ?? this.answer,
+    answerNotice: answerNotice.present ? answerNotice.value : this.answerNotice,
+    askedAt: askedAt ?? this.askedAt,
+    answeredAt: answeredAt ?? this.answeredAt,
+  );
+  SideChatExchangeDto copyWithCompanion(SideChatExchangesTableCompanion data) {
+    return SideChatExchangeDto(
+      id: data.id.present ? data.id.value : this.id,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      sideChatId: data.sideChatId.present
+          ? data.sideChatId.value
+          : this.sideChatId,
+      question: data.question.present ? data.question.value : this.question,
+      answer: data.answer.present ? data.answer.value : this.answer,
+      answerNotice: data.answerNotice.present
+          ? data.answerNotice.value
+          : this.answerNotice,
+      askedAt: data.askedAt.present ? data.askedAt.value : this.askedAt,
+      answeredAt: data.answeredAt.present
+          ? data.answeredAt.value
+          : this.answeredAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SideChatExchangeDto(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('sideChatId: $sideChatId, ')
+          ..write('question: $question, ')
+          ..write('answer: $answer, ')
+          ..write('answerNotice: $answerNotice, ')
+          ..write('askedAt: $askedAt, ')
+          ..write('answeredAt: $answeredAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    sessionId,
+    sideChatId,
+    question,
+    answer,
+    answerNotice,
+    askedAt,
+    answeredAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SideChatExchangeDto &&
+          other.id == this.id &&
+          other.sessionId == this.sessionId &&
+          other.sideChatId == this.sideChatId &&
+          other.question == this.question &&
+          other.answer == this.answer &&
+          other.answerNotice == this.answerNotice &&
+          other.askedAt == this.askedAt &&
+          other.answeredAt == this.answeredAt);
+}
+
+class SideChatExchangesTableCompanion
+    extends UpdateCompanion<SideChatExchangeDto> {
+  final Value<String> id;
+  final Value<String> sessionId;
+  final Value<String> sideChatId;
+  final Value<String> question;
+  final Value<String> answer;
+  final Value<String?> answerNotice;
+  final Value<int> askedAt;
+  final Value<int> answeredAt;
+  const SideChatExchangesTableCompanion({
+    this.id = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.sideChatId = const Value.absent(),
+    this.question = const Value.absent(),
+    this.answer = const Value.absent(),
+    this.answerNotice = const Value.absent(),
+    this.askedAt = const Value.absent(),
+    this.answeredAt = const Value.absent(),
+  });
+  SideChatExchangesTableCompanion.insert({
+    required String id,
+    required String sessionId,
+    required String sideChatId,
+    required String question,
+    required String answer,
+    this.answerNotice = const Value.absent(),
+    required int askedAt,
+    required int answeredAt,
+  }) : id = Value(id),
+       sessionId = Value(sessionId),
+       sideChatId = Value(sideChatId),
+       question = Value(question),
+       answer = Value(answer),
+       askedAt = Value(askedAt),
+       answeredAt = Value(answeredAt);
+  static Insertable<SideChatExchangeDto> custom({
+    Expression<String>? id,
+    Expression<String>? sessionId,
+    Expression<String>? sideChatId,
+    Expression<String>? question,
+    Expression<String>? answer,
+    Expression<String>? answerNotice,
+    Expression<int>? askedAt,
+    Expression<int>? answeredAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (sessionId != null) 'session_id': sessionId,
+      if (sideChatId != null) 'side_chat_id': sideChatId,
+      if (question != null) 'question': question,
+      if (answer != null) 'answer': answer,
+      if (answerNotice != null) 'answer_notice': answerNotice,
+      if (askedAt != null) 'asked_at': askedAt,
+      if (answeredAt != null) 'answered_at': answeredAt,
+    });
+  }
+
+  SideChatExchangesTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? sessionId,
+    Value<String>? sideChatId,
+    Value<String>? question,
+    Value<String>? answer,
+    Value<String?>? answerNotice,
+    Value<int>? askedAt,
+    Value<int>? answeredAt,
+  }) {
+    return SideChatExchangesTableCompanion(
+      id: id ?? this.id,
+      sessionId: sessionId ?? this.sessionId,
+      sideChatId: sideChatId ?? this.sideChatId,
+      question: question ?? this.question,
+      answer: answer ?? this.answer,
+      answerNotice: answerNotice ?? this.answerNotice,
+      askedAt: askedAt ?? this.askedAt,
+      answeredAt: answeredAt ?? this.answeredAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (sideChatId.present) {
+      map['side_chat_id'] = Variable<String>(sideChatId.value);
+    }
+    if (question.present) {
+      map['question'] = Variable<String>(question.value);
+    }
+    if (answer.present) {
+      map['answer'] = Variable<String>(answer.value);
+    }
+    if (answerNotice.present) {
+      map['answer_notice'] = Variable<String>(answerNotice.value);
+    }
+    if (askedAt.present) {
+      map['asked_at'] = Variable<int>(askedAt.value);
+    }
+    if (answeredAt.present) {
+      map['answered_at'] = Variable<int>(answeredAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SideChatExchangesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('sideChatId: $sideChatId, ')
+          ..write('question: $question, ')
+          ..write('answer: $answer, ')
+          ..write('answerNotice: $answerNotice, ')
+          ..write('askedAt: $askedAt, ')
+          ..write('answeredAt: $answeredAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3524,6 +4063,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AcceptedPromptsTableTable(this);
   late final $SessionContinuationTableTable sessionContinuationTable =
       $SessionContinuationTableTable(this);
+  late final $SideChatExchangesTableTable sideChatExchangesTable =
+      $SideChatExchangesTableTable(this);
   late final Index idxProjectsUpdated = Index(
     'idx_projects_updated',
     'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
@@ -3539,6 +4080,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final Index idxSessionsChildren = Index(
     'idx_sessions_children',
     'CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)',
+  );
+  late final Index idxSideChatExchangesSession = Index(
+    'idx_side_chat_exchanges_session',
+    'CREATE INDEX idx_side_chat_exchanges_session ON side_chat_exchanges (session_id, side_chat_id, answered_at)',
   );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
@@ -3558,10 +4103,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     newSessionDefaultsTable,
     acceptedPromptsTable,
     sessionContinuationTable,
+    sideChatExchangesTable,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
+    idxSideChatExchangesSession,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3585,6 +4132,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('session_continuations', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('side_chat_exchanges', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -4082,6 +4636,37 @@ final class $$SessionTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $SideChatExchangesTableTable,
+    List<SideChatExchangeDto>
+  >
+  _sideChatExchangesTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sideChatExchangesTable,
+        aliasName:
+            'sessions_table__session_id__side_chat_exchanges__session_id',
+      );
+
+  $$SideChatExchangesTableTableProcessedTableManager
+  get sideChatExchangesTableRefs {
+    final manager =
+        $$SideChatExchangesTableTableTableManager(
+          $_db,
+          $_db.sideChatExchangesTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _sideChatExchangesTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$SessionTableTableFilterComposer
@@ -4278,6 +4863,32 @@ class $$SessionTableTableFilterComposer
               }) => $$SessionContinuationTableTableFilterComposer(
                 $db: $db,
                 $table: $db.sessionContinuationTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> sideChatExchangesTableRefs(
+    Expression<bool> Function($$SideChatExchangesTableTableFilterComposer f) f,
+  ) {
+    final $$SideChatExchangesTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sideChatExchangesTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SideChatExchangesTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sideChatExchangesTable,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -4639,6 +5250,32 @@ class $$SessionTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> sideChatExchangesTableRefs<T extends Object>(
+    Expression<T> Function($$SideChatExchangesTableTableAnnotationComposer a) f,
+  ) {
+    final $$SideChatExchangesTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sideChatExchangesTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SideChatExchangesTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sideChatExchangesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -4658,6 +5295,7 @@ class $$SessionTableTableTableManager
             bool projectId,
             bool parentSessionId,
             bool sessionContinuationTableRefs,
+            bool sideChatExchangesTableRefs,
           })
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
@@ -4794,12 +5432,14 @@ class $$SessionTableTableTableManager
                 projectId = false,
                 parentSessionId = false,
                 sessionContinuationTableRefs = false,
+                sideChatExchangesTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (sessionContinuationTableRefs)
                       db.sessionContinuationTable,
+                    if (sideChatExchangesTableRefs) db.sideChatExchangesTable,
                   ],
                   addJoins:
                       <
@@ -4864,6 +5504,26 @@ class $$SessionTableTableTableManager
                           referencedColumn: 'session_id',
                           typedResults: items,
                         ),
+                      if (sideChatExchangesTableRefs)
+                        await $_getPrefetchedDataByColumns<
+                          SessionDto,
+                          $SessionTableTable,
+                          SideChatExchangeDto,
+                          $SideChatExchangesTableTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sideChatExchangesTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sideChatExchangesTableRefs,
+                          currentColumn: 'session_id',
+                          referencedColumn: 'session_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -4888,6 +5548,7 @@ typedef $$SessionTableTableProcessedTableManager =
         bool projectId,
         bool parentSessionId,
         bool sessionContinuationTableRefs,
+        bool sideChatExchangesTableRefs,
       })
     >;
 typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
@@ -6319,6 +6980,404 @@ typedef $$SessionContinuationTableTableProcessedTableManager =
       SessionContinuationDto,
       PrefetchHooks Function({bool sessionId})
     >;
+typedef $$SideChatExchangesTableTableCreateCompanionBuilder =
+    SideChatExchangesTableCompanion Function({
+      required String id,
+      required String sessionId,
+      required String sideChatId,
+      required String question,
+      required String answer,
+      Value<String?> answerNotice,
+      required int askedAt,
+      required int answeredAt,
+    });
+typedef $$SideChatExchangesTableTableUpdateCompanionBuilder =
+    SideChatExchangesTableCompanion Function({
+      Value<String> id,
+      Value<String> sessionId,
+      Value<String> sideChatId,
+      Value<String> question,
+      Value<String> answer,
+      Value<String?> answerNotice,
+      Value<int> askedAt,
+      Value<int> answeredAt,
+    });
+
+final class $$SideChatExchangesTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SideChatExchangesTableTable,
+          SideChatExchangeDto
+        > {
+  $$SideChatExchangesTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'side_chat_exchanges__session_id__sessions_table__session_id',
+      );
+
+  $$SessionTableTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SideChatExchangesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SideChatExchangesTableTable> {
+  $$SideChatExchangesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sideChatId => $composableBuilder(
+    column: $table.sideChatId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get question => $composableBuilder(
+    column: $table.question,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get answer => $composableBuilder(
+    column: $table.answer,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get answerNotice => $composableBuilder(
+    column: $table.answerNotice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get askedAt => $composableBuilder(
+    column: $table.askedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get answeredAt => $composableBuilder(
+    column: $table.answeredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SideChatExchangesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SideChatExchangesTableTable> {
+  $$SideChatExchangesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sideChatId => $composableBuilder(
+    column: $table.sideChatId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get question => $composableBuilder(
+    column: $table.question,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get answer => $composableBuilder(
+    column: $table.answer,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get answerNotice => $composableBuilder(
+    column: $table.answerNotice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get askedAt => $composableBuilder(
+    column: $table.askedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get answeredAt => $composableBuilder(
+    column: $table.answeredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SideChatExchangesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SideChatExchangesTableTable> {
+  $$SideChatExchangesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sideChatId => $composableBuilder(
+    column: $table.sideChatId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get question =>
+      $composableBuilder(column: $table.question, builder: (column) => column);
+
+  GeneratedColumn<String> get answer =>
+      $composableBuilder(column: $table.answer, builder: (column) => column);
+
+  GeneratedColumn<String> get answerNotice => $composableBuilder(
+    column: $table.answerNotice,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get askedAt =>
+      $composableBuilder(column: $table.askedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get answeredAt => $composableBuilder(
+    column: $table.answeredAt,
+    builder: (column) => column,
+  );
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SideChatExchangesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SideChatExchangesTableTable,
+          SideChatExchangeDto,
+          $$SideChatExchangesTableTableFilterComposer,
+          $$SideChatExchangesTableTableOrderingComposer,
+          $$SideChatExchangesTableTableAnnotationComposer,
+          $$SideChatExchangesTableTableCreateCompanionBuilder,
+          $$SideChatExchangesTableTableUpdateCompanionBuilder,
+          (SideChatExchangeDto, $$SideChatExchangesTableTableReferences),
+          SideChatExchangeDto,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$SideChatExchangesTableTableTableManager(
+    _$AppDatabase db,
+    $SideChatExchangesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SideChatExchangesTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SideChatExchangesTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SideChatExchangesTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> sessionId = const Value.absent(),
+                Value<String> sideChatId = const Value.absent(),
+                Value<String> question = const Value.absent(),
+                Value<String> answer = const Value.absent(),
+                Value<String?> answerNotice = const Value.absent(),
+                Value<int> askedAt = const Value.absent(),
+                Value<int> answeredAt = const Value.absent(),
+              }) => SideChatExchangesTableCompanion(
+                id: id,
+                sessionId: sessionId,
+                sideChatId: sideChatId,
+                question: question,
+                answer: answer,
+                answerNotice: answerNotice,
+                askedAt: askedAt,
+                answeredAt: answeredAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String sessionId,
+                required String sideChatId,
+                required String question,
+                required String answer,
+                Value<String?> answerNotice = const Value.absent(),
+                required int askedAt,
+                required int answeredAt,
+              }) => SideChatExchangesTableCompanion.insert(
+                id: id,
+                sessionId: sessionId,
+                sideChatId: sideChatId,
+                question: question,
+                answer: answer,
+                answerNotice: answerNotice,
+                askedAt: askedAt,
+                answeredAt: answeredAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $SideChatExchangesTableTable,
+                    SideChatExchangeDto
+                  >(table),
+                  $$SideChatExchangesTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.sessionId,
+                        referencedTable: $$SideChatExchangesTableTableReferences
+                            ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SideChatExchangesTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SideChatExchangesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SideChatExchangesTableTable,
+      SideChatExchangeDto,
+      $$SideChatExchangesTableTableFilterComposer,
+      $$SideChatExchangesTableTableOrderingComposer,
+      $$SideChatExchangesTableTableAnnotationComposer,
+      $$SideChatExchangesTableTableCreateCompanionBuilder,
+      $$SideChatExchangesTableTableUpdateCompanionBuilder,
+      (SideChatExchangeDto, $$SideChatExchangesTableTableReferences),
+      SideChatExchangeDto,
+      PrefetchHooks Function({bool sessionId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6350,5 +7409,10 @@ class $AppDatabaseManager {
       $$SessionContinuationTableTableTableManager(
         _db,
         _db.sessionContinuationTable,
+      );
+  $$SideChatExchangesTableTableTableManager get sideChatExchangesTable =>
+      $$SideChatExchangesTableTableTableManager(
+        _db,
+        _db.sideChatExchangesTable,
       );
 }
