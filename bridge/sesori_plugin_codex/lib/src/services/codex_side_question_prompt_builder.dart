@@ -17,11 +17,17 @@ class const CodexSideQuestionPromptBuilder() {
   /// the oldest kept answer is shortened when that is enough, otherwise the
   /// oldest exchange is dropped.
   String? build({required String question, required List<PluginSideExchange> history}) {
+    final aloneBytes = _byteLength(
+      value: _render(question: question, history: const []),
+    );
+    // Sizes are counted once so trimming a long side chat stays linear.
+    final exchangeBytes = [for (final exchange in history) _byteLength(value: _renderExchange(exchange: exchange))];
+    // The header line and the blank line closing the history.
+    var historyBytes = _byteLength(value: _historyHeader) + 2 + exchangeBytes.fold<int>(0, (sum, bytes) => sum + bytes);
     for (var oldest = 0; oldest < history.length; oldest++) {
       final kept = history.sublist(oldest);
-      final whole = _render(question: question, history: kept);
-      final overflow = _byteLength(value: whole) - maxBytes;
-      if (overflow <= 0) return whole;
+      final overflow = historyBytes + aloneBytes - maxBytes;
+      if (overflow <= 0) return _render(question: question, history: kept);
       final shortened = _shortenedAnswer(answer: kept.first.answer, removeBytes: overflow);
       if (shortened != null) {
         return _render(
@@ -32,20 +38,20 @@ class const CodexSideQuestionPromptBuilder() {
           ],
         );
       }
+      historyBytes -= exchangeBytes[oldest];
     }
-    final alone = _render(question: question, history: const []);
-    return _byteLength(value: alone) <= maxBytes ? alone : null;
+    return aloneBytes <= maxBytes ? _render(question: question, history: const []) : null;
   }
+
+  String _renderExchange({required PluginSideExchange exchange}) =>
+      "\nQuestion: ${exchange.question}\nAnswer: ${exchange.answer}\n";
 
   String _render({required String question, required List<PluginSideExchange> history}) {
     final buffer = StringBuffer();
     if (history.isNotEmpty) {
       buffer.writeln(_historyHeader);
       for (final exchange in history) {
-        buffer
-          ..writeln()
-          ..writeln("Question: ${exchange.question}")
-          ..writeln("Answer: ${exchange.answer}");
+        buffer.write(_renderExchange(exchange: exchange));
       }
       buffer.writeln();
     }

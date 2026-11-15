@@ -156,8 +156,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   so every refresh runs a live side-question probe over WebSocket with a local
   test provider (mid-turn, idle, a follow-up with history in the prompt, and the
   rollout byte-identical afterwards). Recheck the error texts the plugin maps:
-  ``unknown variant `thread/sample` ``, `sample source must be idle`, and
-  `is not materialized yet` from `thread/turns/list`.
+  `` unknown variant `thread/sample` `` (before 0.164.0), `sample source must be
+  idle` (0.164.0 to 0.168.x ignore `allowInProgressTurn`; mid-turn needs
+  0.169.0), and `is not materialized yet` from `thread/turns/list`.
 - **Install:** use `ManagedRuntimeComposition.createInstaller()` with candidate
   manifest and asset resolver, then the production install/extract chain. The
   descriptor's installer hard-codes the current pin. Confirm the final
