@@ -49,6 +49,12 @@ From the user, round 2 (final):
     session's first message and Pi's edit in place, instead of the copy fallback. Which harnesses use it is decided in
     "Edit mechanism" below.
 
+From the user, round 4 (final):
+
+14. **Forking an archived session whose worktree was removed recreates it.** The fork gets a fresh worktree on the kept
+    branch, with its files as last committed. If the branch is gone too, the fork asks for a new worktree from the base
+    branch. Its own PR (step 11.b), about 300 to 400 lines.
+
 Decided without asking (not vetoed):
 
 - Native support first for Claude Code, Codex, OpenCode and Pi; the others use the fallback. Gaps go in
@@ -377,18 +383,26 @@ The research brief quoted older pins (Claude 2.1.310, Pi 1.4.0).
     private builder over `buildWorktreeSystemContext`, also used for an empty fork's first send); the repository only
     forwards the parts it is given.
 - **Fork flow** — new `SessionForkService` (Layer 3, beside `SessionCreationService`, which it mirrors but which it
-  doesn't belong in: it creates no worktree, sends no prompt and generates no title). Constructor:
+  doesn't belong in: it creates no new worktree (it only recreates an archived origin's removed one, step 11.b), sends no prompt and generates no title). Constructor:
   `SessionRepository`, `ChatHistoryService`, `WorktreeRepository`, `SessionViewService`,
   `SessionOperationDispatcher`. No `ArchivedSessionValidator`: archived origins are allowed, so nothing here refuses
   them. It runs on the origin's lane as `SessionOperation.forkSession`:
   1. requires the origin routable and a root session. An archived origin is allowed (decision 10): the fork reads the
      origin and never mutates it, so the archived read-only rule is not broken. Archive keeps the harness session (Claude
      and Codex archive only cancel pending approvals; `CodexPluginImpl.archiveSession` leaves the rollout in place), so
-     a native fork works. Two archived cases are refused with `branchPointUnavailable` and a plain reason until the
-     phase-2 text copy: the harness no longer has the session (Claude Code prunes transcripts after its
-     `cleanupPeriodDays`, 30 days by default; the plugin reports it as `PluginBranchPointUnavailableException`), and
-     the origin's dedicated worktree was removed at archive (open question 2), which the service checks with a new
-     `WorktreeRepository.worktreeExists({path})` over `FilesystemApi` for an archived origin with a `worktreePath`;
+     a native fork works. An archived origin whose harness no longer has the session (Claude Code prunes transcripts
+     after its `cleanupPeriodDays`, 30 days by default; the plugin reports it as
+     `PluginBranchPointUnavailableException`) is refused with `branchPointUnavailable` and a plain reason until the
+     phase-2 text copy. An archived origin whose dedicated worktree was removed at archive gets it recreated
+     (decision 14, step 11.b): `SessionForkService` checks `WorktreeRepository.worktreeExists({path})` over
+     `FilesystemApi` for an archived origin with a `worktreePath`, and when it is missing asks `WorktreeRepository` to
+     add a worktree at the same path on the kept `branchName`, so the harness session's cwd and the agent's remembered
+     paths still hold and the files are as last committed. When the branch is gone too, the fork answers a new
+     `SessionBranchErrorCode.worktreeBranchMissing`; the client offers "Create a new worktree from <base branch>", and the
+     retry (`ForkSessionRequest.recreateFromBase: true`) recreates `branchName` from `baseBranch` at the same path. A
+     path now taken by something else is refused with a plain reason. The fork row copies the recreated path like any
+     other; the archived origin doesn't count as a sharer, so archiving or deleting the fork removes the worktree as for
+     any dedicated session;
   2. `ChatHistoryService.forkBoundary({sessionId, point})` reads the stored history (the archive audit record for an
      archived origin) and returns either `throughMessage(id)`, the last stored message of the kept turn, or `empty`
      when nothing is kept. `point` is the request's `ForkPoint`: `afterMessage(id)` keeps through the end of the
@@ -592,7 +606,9 @@ fallback lands.
 
 ## Steps
 
-Phase 1 is fifteen PRs. Titles use `<emoji> [session-edit-fork] <description> [step <x>/15]`.
+Phase 1 is seventeen PRs. Titles use `<emoji> [session-edit-fork] <description> [step <x>/17]`, where `<x>` is the PR
+ordinal: steps 1 to 9 keep their number, 9.b is 10, step 10 is 11, step 11 is 12, 11.b is 13, and steps 12 to 15 are 14
+to 17.
 
 Merge gate and testing rule for every implementer brief: right before `gh pr merge`, re-fetch the inline comments and
 confirm each one on the head commit has a reply or a fix, confirm Codex's completion comment names that head, and wait
@@ -602,11 +618,11 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 1: raise the plan
 
-`🌱 [session-edit-fork] Raise the session edit and fork plan [step 1/15]`. This file and `TRACKER.md`. Docs only.
+`🌱 [session-edit-fork] Raise the session edit and fork plan [step 1/17]`. This file and `TRACKER.md`. Docs only.
 
 ### Step 2: message menu with Copy and Select text
 
-`⚙️ [session-edit-fork] Add a long-press and right-click menu to transcript messages [step 2/15]`
+`⚙️ [session-edit-fork] Add a long-press and right-click menu to transcript messages [step 2/17]`
 
 - **What:** the `module_prego` context-menu interaction wrapper, and `TranscriptMessageMenu` on user bubbles and agent
   reply cards, phone and desktop, with "Copy" and "Select text". The session row moves onto the same wrapper.
@@ -622,7 +638,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 3: edit contract and bridge route
 
-`🚧 [session-edit-fork] Add the bridge route that rewinds a session and resends an edited message [step 3/15]`
+`🚧 [session-edit-fork] Add the bridge route that rewinds a session and resends an edited message [step 3/17]`
 
 - **What:** `PluginSessionBranching`, `SessionRewindPluginApi`, `PluginBranchPointUnavailableException`; descriptor
   getter and its flow into `PluginMetadata.sessionBranching`; `RewindSessionRequest`; `RewindSessionHandler`;
@@ -638,7 +654,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 4: first-message edits replace the harness session
 
-`🚧 [session-edit-fork] Edit a session's first message by swapping in a new harness session [step 4/15]`
+`🚧 [session-edit-fork] Edit a session's first message by swapping in a new harness session [step 4/17]`
 
 - **What:** `SessionRepository.replaceBackendSession` and its use from `rewindAndSendPrompt` for a first-turn edit, as
   in "Harness-session swap": `useAndCommit` with `createSession` and a rebinding commit, removal of a stray imported
@@ -658,7 +674,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 5: Codex reads reverted and forked rollouts
 
-`🚧 [session-edit-fork] Read Codex history across revert and fork rollouts [step 5/15]`
+`🚧 [session-edit-fork] Read Codex history across revert and fork rollouts [step 5/17]`
 
 - **What:** teach the Codex plugin the `<threadId>_<rolloutId>` rollout names and `session_meta.history_base`, so
   history follows the kept prefix of a reverted or forked thread (resolving the base rollout in the sessions and
@@ -677,7 +693,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 6: Codex native edit
 
-`⚙️ [session-edit-fork] Rewind and resend Codex sessions natively [step 6/15]`
+`⚙️ [session-edit-fork] Rewind and resend Codex sessions natively [step 6/17]`
 
 - **What:** `CodexPluginImpl` implements `SessionRewindPluginApi` and only delegates. `thread/revert` gets a wrapper in
   `CodexAppServerApi`, reached only through a new `CodexThreadRepository.revertThread` (beside `resumeThread` and
@@ -701,7 +717,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 7: Claude reads the active branch of a transcript
 
-`🚧 [session-edit-fork] Read the active branch of Claude Code transcripts [step 7/15]`
+`🚧 [session-edit-fork] Read the active branch of Claude Code transcripts [step 7/17]`
 
 - **What:** parse `parentUuid` (and `last-prompt.leafUuid`) in the Claude transcript record DTO;
   `ClaudeTranscriptApi.readTranscript` stays a raw record reader, and `ClaudeTranscriptCatalogRepository` builds history
@@ -716,7 +732,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 8: Claude native edit
 
-`🚧 [session-edit-fork] Rewind and resend Claude Code sessions natively [step 8/15]`
+`🚧 [session-edit-fork] Rewind and resend Claude Code sessions natively [step 8/17]`
 
 - **What:** `ClaudePluginImpl` implements `SessionRewindPluginApi` and only delegates: `ClaudeSessionService` runs the
   sequence and `ClaudeSessionProcessRepository` launches a new `ClaudeSessionLaunch` variant that resumes at a chain
@@ -733,7 +749,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 9: restore a message's text and attachments into a composer
 
-`⚙️ [session-edit-fork] Bring a sent message's text and attachments back into the composer [step 9/15]`
+`⚙️ [session-edit-fork] Bring a sent message's text and attachments back into the composer [step 9/17]`
 
 - **What:** the saved-file note builder and parser in `sesori_shared` (the bridge's `PromptPartDeliveryService` uses
   the moved builder); `ComposerHostFileAttachment` and its `PromptPart.filePath` send path, with `bytes`/`mime` moved
@@ -748,9 +764,23 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 - **Expected result:** no user-visible change. No database change; no wire change (existing part kinds only).
 - **Estimate:** ~600 lines.
 
+### Step 9.b: retire the plugin-side file-path prompt part
+
+`🌿 [session-edit-fork] Retire the unreachable file-path prompt part from plugins [step 10/17]`
+
+- **What:** step 9 made the bridge's `PromptPartDeliveryService` turn every `PromptPart.filePath` into the shared
+  saved-file note, so no `PluginPromptPartFilePath` reaches a plugin any more. Remove that plugin prompt part and its
+  handler in every plugin, and settle in the delivery seam how an already-delivered part is modelled, so the bridge's
+  `PromptPart` → `PluginPromptPart` mapping no longer needs a case for it.
+- **Why:** AGENTS.md removes what a change makes obsolete; the dead per-plugin mappings (Codex sends a path as an
+  image, Pi throws) would otherwise invite a wrong reuse.
+- **Risk and test focus:** every plugin's prompt mapping and tests; no change on the wire.
+- **Expected result:** no user-visible, wire or database change.
+- **Estimate:** ~250 lines.
+
 ### Step 10: client edit flow
 
-`🚧 [session-edit-fork] Edit and resend earlier messages from the transcript [step 10/15]`
+`🚧 [session-edit-fork] Edit and resend earlier messages from the transcript [step 11/17]`
 
 - **What:** "Edit and resend" in the message menu; edit mode in `SessionDetailCubit` (it owns the composer draft and
   restorations, and a sibling cubit couldn't depend on it) with saved draft, restored attachments, banner, Cancel, and
@@ -769,24 +799,41 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 11: fork contract, origin link and bridge route
 
-`🚧 [session-edit-fork] Fork a session from a message on the bridge [step 11/15]`
+`🚧 [session-edit-fork] Fork a session from a message on the bridge [step 12/17]`
 
 - **What:** `SessionForkPluginApi`; `ForkSessionRequest` with `ForkPoint`; `ForkSessionHandler`; `SessionForkService`;
   `ChatHistoryService.forkBoundary` (including the archive audit record and `nothingToFork`);
   `SessionRepository.forkSession`, with the empty-prefix `createSession` path and the `sessionCreation` binding
-  commit; the " (fork)" title decided in `SessionForkService`; the archived-origin refusals, with
-  `WorktreeRepository.worktreeExists`; the worktree context on an empty fork's first send; the next schema version with `forkedFromSessionId` and `forkedFromTitle`;
+  commit; the " (fork)" title decided in `SessionForkService`; the pruned-harness refusal for archived origins (the
+  removed-worktree case is step 11.b); the worktree context on an empty fork's first send; the next schema version with `forkedFromSessionId` and `forkedFromTitle`;
   `Session.forkedFrom` in `SessionCatalogMapper`. No plugin declares `fork` yet (the empty-prefix path still needs the
   declaration before a client offers it).
 - **Risk and test focus:** the copied worktree fields (archive or delete of either session keeps the worktree while the
   other is live, then the last one removes it); origin deletion nulls the link; an already-imported backend binding;
-  running-turn refusal; archived origins with and without their worktree. Drift migration test.
+  running-turn refusal; archived origins with their worktree. Drift migration test.
 - **Expected result:** no user-visible change; sessions gain an always-null `forkedFrom`.
 - **Estimate:** ~900 authored + Drift schema snapshot and steps (likely ~800 generated; report the split).
 
+### Step 11.b: recreate an archived origin's removed worktree for a fork
+
+`⚙️ [session-edit-fork] Recreate an archived session's worktree when it is forked [step 13/17]`
+
+- **What:** decision 14, as in "Fork flow" step 1: `WorktreeRepository.worktreeExists` and a worktree add at the
+  origin's old path on the kept branch, used by `SessionForkService` for an archived origin whose dedicated worktree is
+  missing; `SessionBranchErrorCode.worktreeBranchMissing` when the branch is gone; `ForkSessionRequest.recreateFromBase`
+  to recreate the branch from `baseBranch` on the retry; a plain refusal when the old path is now taken by something
+  else. The client's "Create a new worktree from <base branch>" prompt lands in step 14.
+- **Why:** the user chose recreation over refusal (round 4), so archived forks keep the agent's remembered paths.
+- **Risk and test focus:** git worktree add on an existing branch versus a recreated one; the path taken by another
+  directory; the fork's later archive or delete removing the recreated worktree while the archived origin doesn't
+  count as a sharer; the `history_base`/cwd assumptions of Codex and Claude (both keep the old cwd). Bridge tests with a
+  fake git; one live run.
+- **Expected result:** no user-visible change until step 14 offers fork. No database change.
+- **Estimate:** ~350 lines. Must merge before steps 12 and 13 declare `fork`.
+
 ### Step 12: Codex native fork
 
-`⚙️ [session-edit-fork] Fork Codex sessions from a turn [step 12/15]`
+`⚙️ [session-edit-fork] Fork Codex sessions from a turn [step 14/17]`
 
 - **What:** `CodexPluginImpl` implements `SessionForkPluginApi` and delegates to `CodexSessionService`, which calls a
   new `CodexThreadRepository.forkThread` over a `CodexAppServerApi` `thread/fork {lastTurnId}` wrapper (not
@@ -805,7 +852,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 13: Claude native fork
 
-`🚧 [session-edit-fork] Fork Claude Code sessions from a message [step 13/15]`
+`🚧 [session-edit-fork] Fork Claude Code sessions from a message [step 15/17]`
 
 - **What:** `ClaudePluginImpl` implements `SessionForkPluginApi` and delegates to `ClaudeSessionService` (the turn's
   last chain record comes from `ClaudeTranscriptCatalogRepository`): choose the new session id, have
@@ -825,7 +872,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 14: client fork flow
 
-`⚙️ [session-edit-fork] Fork from a message or the session menu and show where a fork came from [step 14/15]`
+`⚙️ [session-edit-fork] Fork from a message or the session menu and show where a fork came from [step 16/17]`
 
 - **What:** "Fork from here" in the message menu and "Fork" in `sessionMenuEntries` (gated by
   `SessionActionsCubit.canFork`); `SessionDetailCubit` and `SessionActionsCubit` both call
@@ -834,7 +881,8 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
   ~300 ms; own-message forks hand the restored composer (step 9) to the fork through
   `ComposerDraftRepository.handOverForSession` before navigating; the view navigates through `SessionDetailPresentationScope.openSession` and the new
   `returnToSession` callback each shell implements; the "Forked from" row at the oldest edge with its back-or-open
-  behaviour; the mid-turn follow-up popup's Fork action; the "No project" delete warning wording.
+  behaviour; the mid-turn follow-up popup's Fork action; the "Create a new worktree from <base branch>" prompt for
+  `worktreeBranchMissing` (step 11.b), which retries with `recreateFromBase`; the "No project" delete warning wording.
 - **Risk and test focus:** navigation stack on phone (origin → fork → origin must not pile up); desktop selection; the
   row only once the oldest page is loaded; the composer draft present on the fork's first frame (no text popping in);
   forking an archived session from its ⋯ menu; feel of the transition. Headless iOS simulator recording in the PR body.
@@ -844,7 +892,7 @@ only for the desktop-specific right-click menu. Worktrees go under `~/.claude-wo
 
 ### Step 15: reconcile docs, verify and retire
 
-`🌱 [session-edit-fork] Reconcile edit and fork docs and retire the plan [step 15/15]`
+`🌱 [session-edit-fork] Reconcile edit and fork docs and retire the plan [step 17/17]`
 
 The plan-maker lifecycle asks for the regression reconciliation and the verified retirement as the last two steps. They
 are folded into one here because each feature step already updates its regression and harness rows; if reconciliation
@@ -915,11 +963,12 @@ Deliberately not added: no file snapshots or restore; no per-harness safety prom
 turn to end (Stop and resend instead); no cut inside a turn; no join for the origin's live title; no new worktree
 reference counting (the existing shared-worktree rule covers it); no plugin-side turn segmentation; no swap for edits
 that native rewind can do (see "Edit mechanism"); no re-upload of saved files (they are resent by path); no worktree
-recreation for archived origins (open question 2).
+copying for archived origins (a removed worktree is recreated from git, decision 14).
 
 ## Cleanup assessment
 
-No existing code becomes obsolete. The Pi `--fork` launch flag stays (it serves session restore, not this feature). The
+Step 9 makes the plugin-side `PluginPromptPartFilePath` unreachable (the bridge turns file paths into notes); step
+9.b removes it from every plugin. The Pi `--fork` launch flag stays (it serves session restore, not this feature). The
 saved-file note builder moves from `PromptPartDeliveryService` to `sesori_shared` rather than being duplicated.
 
 ## Risks
@@ -932,8 +981,9 @@ saved-file note builder moves from `PromptPartDeliveryService` to `sesori_shared
   recording before it is called done.
 - **Swap events**: the swap depends on the event tracker holding the new session's events until the rebind commits, as
   it does for created sessions. Step 4's live run is the check.
-- **Archived forks fail more than live ones**: Claude Code prunes transcripts after 30 days by default and archive may
-  have removed the worktree. Both are refused with a reason until phase 2's text copy (accepted).
+- **Archived forks fail more than live ones**: Claude Code prunes transcripts after 30 days by default; that is refused
+  with a reason until phase 2's text copy (accepted). A worktree removed at archive is recreated from git (step 11.b);
+  a deleted branch needs the user's go-ahead to start again from the base branch.
 - **A forked session's attachments live in its origin's upload folder.** Deleting the origin deletes them; the fork's
   agent already read them, and restoring them later just leaves them out (accepted, low damage).
 
@@ -946,10 +996,8 @@ Round 2 answered the earlier seven (decisions 7 to 13). These are new:
    attachments in the fork's composer, so you can send a corrected instruction there. Alternative: cut before the turn
    (dropping its opening prompt and the agent's work in it). The later phase that edits mid-turn follow-ups on Claude
    Code, OpenCode and Pi would cut right before the follow-up there.
-2. **Forking an archived session whose worktree was removed at archive.** Archive keeps the branch but deletes a
-   dedicated worktree. Provisional: refuse with "Its worktree was removed when it was archived". Alternative: recreate
-   the worktree at its old path on the kept branch, so the agent's remembered paths still work (a bridge step of
-   roughly 300 to 400 lines).
+2. ~~Forking an archived session whose worktree was removed at archive.~~ Answered in round 4: recreate it
+   (decision 14, step 11.b).
 
 ## Later phases (rough)
 
@@ -988,3 +1036,5 @@ Round 2 answered the earlier seven (decisions 7 to 13). These are new:
   `bytes`/`mime` off the sealed `ComposerAttachment` base; an in-memory composer handoff for forks; one
   `SessionActionService.forkSession` pipeline with a `module_core` capability gate for the ⋯ menu; the session row
   moves onto the new interaction wrapper. Open question 2's provisional default was left as it is.
+- 2026-11-15: round 4 answered open question 2 (recreate the removed worktree, step 11.b); step 9.b added for the
+  cleanup step 9 made necessary; the series is seventeen PRs.

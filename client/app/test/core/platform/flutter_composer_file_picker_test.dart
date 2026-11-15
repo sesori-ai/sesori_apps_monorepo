@@ -110,8 +110,8 @@ void main() {
     );
     final attachment = outcome.attachments.single;
 
-    expect(attachment.mime, "image/jpeg");
-    expect(attachment.bytes, same(bytes));
+    expect(_mimeOf(attachment), "image/jpeg");
+    expect(_bytesOf(attachment), same(bytes));
     expect(attachment.filename, isNull);
   });
 
@@ -126,9 +126,9 @@ void main() {
     final attachment = await pickAttachment();
 
     if (attachment == null) fail("no image was picked");
-    expect(attachment.mime, "image/png");
+    expect(_mimeOf(attachment), "image/png");
     expect(attachment.filename, "shot.png");
-    expect(attachment.bytes, png);
+    expect(_bytesOf(attachment), png);
   });
 
   test("Android asks for the original image, so an animated GIF stays animated", () async {
@@ -147,8 +147,8 @@ void main() {
 
     final attachment = await pickAttachment();
 
-    expect(attachment?.mime, "image/gif");
-    expect(attachment?.bytes, gif);
+    expect(_mimeOf(attachment), "image/gif");
+    expect(_bytesOf(attachment), gif);
   });
 
   test("Android shrinks any other photo with the platform decoder and names it after the result", () async {
@@ -163,8 +163,8 @@ void main() {
     final attachment = await pickAttachment();
 
     expect(downscaleBuilder.given, [heic]);
-    expect(attachment?.mime, "image/jpeg");
-    expect(attachment?.bytes, jpeg);
+    expect(_mimeOf(attachment), "image/jpeg");
+    expect(_bytesOf(attachment), jpeg);
     expect(attachment?.filename, "IMG_0001.jpg");
   });
 
@@ -200,7 +200,7 @@ void main() {
 
     final attachment = await pickAttachment();
 
-    expect(attachment?.mime, "image/jpeg");
+    expect(_mimeOf(attachment), "image/jpeg");
   });
 
   test("unsupported selected content is rejected by shared validation", () async {
@@ -335,3 +335,13 @@ void main() {
     }
   });
 }
+
+String? _mimeOf(ComposerAttachment? attachment) => switch (attachment) {
+  ComposerImageAttachment(:final mime) || ComposerFileAttachment(:final mime) => mime,
+  ComposerHostFileAttachment() || null => null,
+};
+
+Uint8List? _bytesOf(ComposerAttachment? attachment) => switch (attachment) {
+  ComposerImageAttachment(:final bytes) || ComposerFileAttachment(:final bytes) => bytes,
+  ComposerHostFileAttachment() || null => null,
+};

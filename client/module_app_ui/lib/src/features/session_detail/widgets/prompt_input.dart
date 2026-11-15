@@ -2539,9 +2539,10 @@ class _PromptInputState() extends State<PromptInput> {
       children: [
         for (var index = 0; index < _attachments.length; index++)
           switch (_attachments[index]) {
-            final ComposerFileAttachment file => PregoFileAttachmentPreview(
-              key: ObjectKey(file),
-              fileName: file.filename,
+            ComposerFileAttachment(:final filename) ||
+            ComposerHostFileAttachment(:final filename) => PregoFileAttachmentPreview(
+              key: ObjectKey(_attachments[index]),
+              fileName: filename,
               removeLabel: loc.sessionDetailRemoveAttachment,
               onRemove: () => _removeAttachment(index: index),
             ),
@@ -3215,9 +3216,9 @@ class _PromptInputState() extends State<PromptInput> {
   /// added. The outbound budget is aggregate, so multiple images cannot each
   /// consume the full transport allowance.
   int _attachmentsDecodedSizeWith({required ComposerAttachment attachment}) =>
-      attachment.bytes.length + _stagedAttachmentBytes;
+      attachment.inlineByteCount + _stagedAttachmentBytes;
 
-  int get _stagedAttachmentBytes => _attachments.fold(0, (total, staged) => total + staged.bytes.length);
+  int get _stagedAttachmentBytes => _attachments.fold(0, (total, staged) => total + staged.inlineByteCount);
 
   /// The leading slot: the options accordion at rest, the pencil to slide onto
   /// while recording, and a plain cancel button while transcribing. A pointer
