@@ -30,8 +30,8 @@ class ScheduledTaskDao({required AppDatabase database})
 
   /// Writes [row]'s definition columns, next due time and update time, and
   /// clears the target session when [clearTarget] is set. The other bridge
-  /// state is left alone, so a target a run wrote meanwhile survives. Returns
-  /// the rows changed.
+  /// state is left alone, so a target a run wrote meanwhile survives, and a
+  /// task completed meanwhile is not written. Returns the rows changed.
   Future<int> updateTaskDefinition({required ScheduledTaskDto row, required bool clearTarget}) {
     final changes = row
         .toCompanion(false)
@@ -42,22 +42,33 @@ class ScheduledTaskDao({required AppDatabase database})
           completedAt: const Value.absent(),
           createdAt: const Value.absent(),
         );
-    return (update(scheduledTasksTable)..where((task) => task.id.equals(row.id))).write(changes);
+    return (update(
+      scheduledTasksTable,
+    )..where((task) => task.id.equals(row.id) & task.completedAt.isNull())).write(changes);
   }
 
-  /// Returns the rows changed.
+  /// Leaves completed tasks alone. Returns the rows changed.
   Future<int> setTaskEnabled({
     required String taskId,
     required bool enabled,
     required int? nextDueAt,
     required int updatedAt,
   }) {
-    return (update(scheduledTasksTable)..where((task) => task.id.equals(taskId))).write(
+    return (update(
+      scheduledTasksTable,
+    )..where((task) => task.id.equals(taskId) & task.completedAt.isNull())).write(
       ScheduledTasksTableCompanion(
         enabled: Value(enabled),
         nextDueAt: Value(nextDueAt),
         updatedAt: Value(updatedAt),
       ),
+    );
+  }
+
+  /// Points tasks of merged-away projects at the project that absorbed them.
+  Future<int> moveTasksToProject({required Set<String> fromProjectIds, required String toProjectId}) {
+    return (update(scheduledTasksTable)..where((task) => task.projectId.isIn(fromProjectIds))).write(
+      ScheduledTasksTableCompanion(projectId: Value(toProjectId)),
     );
   }
 
@@ -74,8 +85,12 @@ class ScheduledTaskDao({required AppDatabase database})
   }
 
   /// Inserts [row], then deletes its task's runs beyond the newest [keep],
-  /// except the newest started run, in one transaction.
-  Future<void> insertRunAndTrim({required ScheduledTaskRunDto row, required int keep}) {
+  /// except the newest run with [alwaysKeepNewest], in one transaction.
+  Future<void> insertRunAndTrim({
+    required ScheduledTaskRunDto row,
+    required int keep,
+    required ScheduledTaskRunOutcomeKind alwaysKeepNewest,
+  }) {
     return transaction(() async {
       await into(scheduledTaskRunsTable).insert(row);
       final taskRuns = scheduledTaskRunsTable;
@@ -84,13 +99,13 @@ class ScheduledTaskDao({required AppDatabase database})
         ..where(taskRuns.taskId.equals(row.taskId))
         ..orderBy(_newestFirstColumns(taskRuns))
         ..limit(keep);
-      final newestStarted = selectOnly(taskRuns)
+      final newestKept = selectOnly(taskRuns)
         ..addColumns([taskRuns.id])
-        ..where(taskRuns.taskId.equals(row.taskId) & taskRuns.outcome.equalsValue(ScheduledTaskRunOutcomeKind.started))
+        ..where(taskRuns.taskId.equals(row.taskId) & taskRuns.outcome.equalsValue(alwaysKeepNewest))
         ..orderBy(_newestFirstColumns(taskRuns))
         ..limit(1);
       await (delete(taskRuns)..where(
-            (run) => run.taskId.equals(row.taskId) & run.id.isNotInQuery(newest) & run.id.isNotInQuery(newestStarted),
+            (run) => run.taskId.equals(row.taskId) & run.id.isNotInQuery(newest) & run.id.isNotInQuery(newestKept),
           ))
           .go();
     });

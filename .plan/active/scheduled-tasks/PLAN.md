@@ -548,7 +548,9 @@ be its latest started run and S its session (not archived).
      in bridge core, and no harness names appear in core.
    - **Hermes pending.** Hermes compaction (`/compress`) waits on a live check
      of whether it switches the Hermes session id; that check runs before
-     step 11.
+     step 11. If it does, Hermes answers `unsupported` until the run can
+     store the replacement id as the task's target, because a payload-free
+     `accepted` would leave `targetSessionId` stale.
    The compaction runs on S's lane, re-checks quietness and
    `R.compactRequestedAt` inside the lane, calls
    `SessionRepository.compactSession`, and sets `R.compactRequestedAt` on
@@ -767,7 +769,7 @@ consecutive-failure auto-pause, a new push category.
 - PR titles are fixed in [TRACKER.md](TRACKER.md). Use
   `<emoji> [scheduled-tasks] <description> [step x/14]`.
 - Soft cap ~1,500 changed lines; lower for lifecycle steps (4, 5, 11). Drift
-  and Freezed output can push steps 2 and 3 over; report generated versus
+  and Freezed output can push steps 2 and 3.a over; report generated versus
   authored lines. Clean splits (for example 8.a/8.b, 9.a/9.b) need no
   permission.
 - Worktrees go under `~/.claude-worktrees/sesori_apps_monorepo/<name>`.
@@ -801,7 +803,7 @@ parallel with the bridge chain.
    failure reasons and failure stream, one-off completion),
    `SessionRepository.getSessionQuietness`, the internal creation entry
    writing `approvalOverride` and `scheduledTaskId` with no remembered picks
-   (P7), the model check, Run now. [3]
+   (P7), the model check, Run now. [3.b]
 5. 🚧 **Continue same-session tasks.** First run creates and targets the
    session (conditional target write); later runs send on its lane with the
    task's options and approval override; fresh session when the target is

@@ -170,6 +170,14 @@ void main() {
         ),
         ScheduledTaskErrorCode.invalidSchedule,
       ),
+      "a year DateTime cannot hold": (
+        definition.copyWith(
+          schedule: const TaskSchedule.once(
+            at: TaskLocalDateTime(year: 300000, month: 1, day: 1, hour: 8, minute: 0),
+          ),
+        ),
+        ScheduledTaskErrorCode.invalidSchedule,
+      ),
       "an hour past 23": (
         definition.copyWith(schedule: const TaskSchedule.daily(time: TaskTimeOfDay(hour: 24, minute: 0))),
         ScheduledTaskErrorCode.invalidSchedule,

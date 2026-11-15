@@ -65,6 +65,32 @@ void main() {
     expect((await repository.listUncompleted()).map((task) => task.id), [created.id]);
   });
 
+  test("a task completed meanwhile is neither edited nor re-enabled", () async {
+    final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+    await db.customStatement("UPDATE scheduled_tasks SET completed_at = 1 WHERE id = ?", [task.id]);
+
+    final edited = await repository.updateDefinition(
+      taskId: task.id,
+      definition: definition.copyWith(name: "Renamed"),
+      nextDueAt: null,
+      clearTarget: false,
+      now: now,
+    );
+    final enabled = await repository.setEnabled(taskId: task.id, enabled: false, nextDueAt: null, now: now);
+
+    expect(edited, isNull);
+    expect(enabled, isNull);
+    expect((await repository.get(taskId: task.id))?.definition.name, definition.name);
+  });
+
+  test("tasks follow their project when it is merged into another", () async {
+    final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+
+    await ScheduledTaskDao(database: db).moveTasksToProject(fromProjectIds: {"/repo"}, toProjectId: "/survivor");
+
+    expect((await repository.get(taskId: task.id))?.definition.projectId, "/survivor");
+  });
+
   test("run history keeps the newest rows, newest first, with their outcomes", () async {
     final task = await repository.create(definition: definition, nextDueAt: null, now: now);
     await recordRun(
