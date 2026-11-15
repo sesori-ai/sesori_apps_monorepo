@@ -14,10 +14,6 @@ Map<String, dynamic> _$CodexTurnTextInputDtoToJson(
   'type': instance.$type,
 };
 
-Map<String, dynamic> _$CodexTurnLocalImageInputDtoToJson(
-  CodexTurnLocalImageInputDto instance,
-) => <String, dynamic>{'path': instance.path, 'type': instance.$type};
-
 Map<String, dynamic> _$CodexTurnImageInputDtoToJson(
   CodexTurnImageInputDto instance,
 ) => <String, dynamic>{'url': instance.url, 'type': instance.$type};

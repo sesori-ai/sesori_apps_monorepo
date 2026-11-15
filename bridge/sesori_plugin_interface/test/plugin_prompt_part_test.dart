@@ -2,7 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
-  const file = PluginPromptPart.filePath(mime: "text/plain", path: "/tmp/a.txt", filename: "a.txt");
+  const file = PluginPromptPart.fileUrl(mime: "text/plain", url: "https://example.com/a.txt", filename: "a.txt");
 
   test("joins each run of adjacent texts a blank line apart and drops blank texts", () {
     final joined = joinAdjacentPromptTextParts(

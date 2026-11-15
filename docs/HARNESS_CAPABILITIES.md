@@ -665,8 +665,12 @@ first turn already runs fast.
 
 Claude Code reports fast-mode support per model as `supportsFastMode: true` in
 the stream-json `initialize` response (omitted for models without it; in CLI
-2.1.281 only some Opus models carry it), which sets `PluginModel.fastMode` with a
-60-minute prompt-cache lifetime. Fast mode is not a launch flag: a fresh process
+2.1.281 only some Opus models carry it), which sets `PluginModel.fastMode`. Its
+prompt-cache lifetime follows the handshake's `account`: 60 minutes when it
+reports a `subscriptionType` (which wins even beside `apiProvider`), 5 minutes
+when it reports `apiProvider` without `subscriptionType` (an API key, Bedrock,
+or Vertex), and 60 minutes when it reports neither. Account shapes verified
+against CLI 2.1.325 on 2026-11-15. Fast mode is not a launch flag: a fresh process
 starts with it off, and the plugin sends the `apply_flag_settings`
 control request (`{"subtype":"apply_flag_settings","settings":{"fastMode":…}}`, the shape the Agent SDK's `applyFlagSettings` sends) before a turn whenever the session's choice
 differs from what the resident process last applied. The CLI acknowledges the

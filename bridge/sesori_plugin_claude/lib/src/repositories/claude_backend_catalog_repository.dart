@@ -54,8 +54,10 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
   /// selection owns that setting, and the process state it tracks would drift.
   static const String fastModeCommand = "fast";
 
-  /// Claude keeps a prompt cache for about 60 minutes (maintainer-provided).
-  static const int _promptCacheTtlSeconds = 60 * 60;
+  /// Claude Code asks for a 60-minute prompt cache on subscription logins and
+  /// gets the API's default 5 minutes on API-key, Bedrock and Vertex routes.
+  static const int _subscriptionPromptCacheTtlSeconds = 60 * 60;
+  static const int _meteredPromptCacheTtlSeconds = 5 * 60;
 
   /// A directory a probe for [directory] runs in, which lists the project's
   /// commands and skills without running anything the project controls.
@@ -89,7 +91,10 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
   /// [skillNames] is labelled a skill and every other one a command.
   ClaudeBackendCatalog map({required Map<String, Object?> handshake, required Set<String> skillNames}) {
     final dto = ClaudeBackendCatalogDto.fromJson(handshake);
-    final fastMode = _fastMode(disabledReason: dto.fastModeDisabledReason);
+    final fastMode = _fastMode(
+      disabledReason: dto.fastModeDisabledReason,
+      promptCacheTtlSeconds: _promptCacheTtlSeconds(account: dto.account),
+    );
     final entries = _newestPerFamily([
       for (final model in dto.models)
         if (_model(model, fastMode: fastMode) case final mapped?) (dto: model, model: mapped),
@@ -149,7 +154,7 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
   static const String _sdkOptInRequired = "sdk_opt_in_required";
 
   /// The account-level fast mode every fast-capable model shares.
-  PluginFastModeSupport _fastMode({required String? disabledReason}) {
+  PluginFastModeSupport _fastMode({required String? disabledReason, required int promptCacheTtlSeconds}) {
     final reason = switch (disabledReason) {
       // Still masked only when the probe's opt-in failed. Prompts opt in
       // through apply_flag_settings, so fast mode stays offered.
@@ -167,9 +172,17 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
       final unmapped => _unmappedFastModeReason(raw: unmapped),
     };
     return reason == null
-        ? const PluginFastModeSupport.available(promptCacheTtlSeconds: _promptCacheTtlSeconds)
+        ? PluginFastModeSupport.available(promptCacheTtlSeconds: promptCacheTtlSeconds)
         : PluginFastModeSupport.unavailable(reason: reason);
   }
+
+  /// The prompt-cache lifetime for [account]'s billing route. An unknown route
+  /// keeps the subscription lifetime, the common case for Sesori users.
+  int _promptCacheTtlSeconds({required ClaudeAccountDto? account}) => switch (account) {
+    ClaudeAccountDto(subscriptionType: _?) => _subscriptionPromptCacheTtlSeconds,
+    ClaudeAccountDto(apiProvider: _?) => _meteredPromptCacheTtlSeconds,
+    _ => _subscriptionPromptCacheTtlSeconds,
+  };
 
   PluginFastModeUnavailableReason? _transientFastModeReason({required String raw}) {
     Log.w("[claude] fast mode offered while its availability is transiently unknown: $raw");

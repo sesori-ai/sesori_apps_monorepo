@@ -4,6 +4,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/deliverable_prompt_part.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/new_session_defaults_repository.dart";
 import "../repositories/project_catalog_identity_calculator.dart";
@@ -65,7 +66,9 @@ class SessionCreationService({
             ),
       fastMode: request.fastMode,
     );
-    final firstText = _extractTexts(parts: request.parts).firstOrNull;
+    final firstText = _nonBlankTexts(
+      texts: request.parts.whereType<PromptPartText>().map((part) => part.text),
+    ).firstOrNull;
     await _sessionRepository.ensurePluginRoutable(
       pluginId: request.pluginId,
       operation: SessionOperation.createSession,
@@ -81,10 +84,12 @@ class SessionCreationService({
             inlineImages: _sessionRepository.inlineImagesSupported(pluginId: request.pluginId),
             parts: request.parts,
           )
-        : request.parts;
+        : const <DeliverablePromptPart>[];
     // From the delivered parts, so each saved file's note shows in place and
     // the live user message matches the reloaded one.
-    final userTexts = _extractTexts(parts: userParts);
+    final userTexts = _nonBlankTexts(
+      texts: userParts.whereType<DeliverablePromptPartText>().map((part) => part.text),
+    );
     final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
     final WorktreeResult? worktreeResult;
     final _SessionCreationWorktreeState worktreeState;
@@ -160,13 +165,8 @@ class SessionCreationService({
 
   Future<void> drain() => _drainFuture ??= _drain();
 
-  List<String> _extractTexts({required List<PromptPart> parts}) {
-    return parts
-        .whereType<PromptPartText>()
-        .map((part) => part.text)
-        .where((text) => text.trim().isNotEmpty)
-        .toList(growable: false);
-  }
+  List<String> _nonBlankTexts({required Iterable<String> texts}) =>
+      texts.where((text) => text.trim().isNotEmpty).toList(growable: false);
 
   Future<WorktreeResult?> _prepareWorktree({
     required CreateSessionRequest request,
@@ -177,8 +177,8 @@ class SessionCreationService({
     return await _worktreeService.prepareWorktreeForSession(projectId: request.projectId);
   }
 
-  List<PromptPart> _buildPromptParts({
-    required List<PromptPart> parts,
+  List<DeliverablePromptPart> _buildPromptParts({
+    required List<DeliverablePromptPart> parts,
     required WorktreeResult? worktreeResult,
     required String? command,
   }) {
@@ -190,8 +190,8 @@ class SessionCreationService({
       return parts;
     }
     if (worktreeResult case WorktreeSuccess(:final path, :final baseBranch)) {
-      final promptParts = <PromptPart>[
-        PromptPart.text(
+      final promptParts = <DeliverablePromptPart>[
+        DeliverablePromptPart.text(
           text: buildWorktreeSystemContext(
             worktreePath: path,
             baseBranch: baseBranch,

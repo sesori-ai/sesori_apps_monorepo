@@ -7,6 +7,8 @@ import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/claude_transcript_chain.dart";
+
 const _sessionId = "11111111-2222-4333-8444-555555555555";
 
 void main() {
@@ -544,6 +546,6 @@ Map<String, Object?> _messageRecord({
 void _writeTranscript({required Directory temp, required List<Map<String, Object?>> records}) {
   final project = Directory(p.join(temp.path, "projects", "-workspace"))..createSync(recursive: true);
   File(p.join(project.path, "$_sessionId.jsonl")).writeAsStringSync(
-    records.map(jsonEncode).join("\n"),
+    chainTranscriptRecords(records).map(jsonEncode).join("\n"),
   );
 }

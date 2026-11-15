@@ -140,14 +140,17 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
     Log.d("[claude] transcript catalog scan: files=${scan.present.length}, parsed=${scan.parsed.length}");
   }
 
-  /// Reads and maps every record for one session. Full transcript reads can
-  /// reach tens of megabytes, so they stay off the bridge event loop.
+  /// Reads and maps the records of one session's active branch. Full
+  /// transcript reads can reach tens of megabytes, so they stay off the bridge
+  /// event loop.
   Future<List<ClaudeTranscriptRecord>> readTranscriptRecordsInIsolate({required String sessionId}) async {
     final path = await findTranscriptPath(sessionId: sessionId);
     if (path == null) throw StateError("Claude transcript not found for session $sessionId");
     final transcriptApi = _transcriptApi;
     return await Isolate.run(
-      () => transcriptApi.readTranscript(transcriptPath: path).map(_mapTranscriptRecord).toList(growable: false),
+      () => _activeBranch(
+        records: transcriptApi.readTranscript(transcriptPath: path),
+      ).map(_mapTranscriptRecord).toList(growable: false),
     );
   }
 
@@ -358,7 +361,13 @@ ClaudeSessionRecord? _readRootRecord({
         sawContent = true;
         cwd ??= trimmedOrNull(value: record.cwd);
         createdAt ??= record.timestamp;
-        if (record is ClaudeTranscriptUserRecord) prompts.add(record);
+        if (record is ClaudeTranscriptUserRecord) {
+          // Another root prompt is a rewind to before the first message, which
+          // started the conversation over. Deeper rewinds keep the first
+          // prompt, so the header alone decides the title.
+          if (line.parentUuid == null && _isPrompt(line)) prompts.clear();
+          prompts.add(record);
+        }
       case ClaudeTranscriptTitleRecord():
         if (record.sessionId != null && record.sessionId != id) continue;
         titles[record.kind] = record.title;
@@ -517,6 +526,91 @@ String? _promptTitle(ClaudeTranscriptUserRecord record) {
   }
   return null;
 }
+
+/// The records of a transcript's active branch, in file order.
+///
+/// A transcript is a tree. A rewind, from the terminal's Esc Esc or from
+/// `--resume-session-at`, leaves the old turns in the file and parents the
+/// next prompt to an earlier record, so the conversation is the chain from the
+/// active leaf back to the root. That is what Claude Code resumes, so history
+/// shows the same.
+///
+/// The leaf is the newest main-chain record, unless a later `last-prompt`
+/// record names another one. A `last-prompt` naming no record, such as the
+/// all-zero id the CLI writes after a rewind, is ignored.
+///
+/// Only a branch that a user prompt or a compaction starts beside the chain is
+/// dropped: that is what a rewind leaves behind. Everything else off the chain
+/// stays:
+/// - parallel tool calls, whose results hang off the separate records of one
+///   assistant message rather than off the chain;
+/// - records above a link the file no longer resolves, such as a skipped
+///   malformed line;
+/// - records without an id, which carry metadata, not turns.
+///
+/// A `compact_boundary` continues its [ClaudeTranscriptRecordDto.logicalParentUuid],
+/// so the turns before a compaction still show. Sub-agent records are not part
+/// of the main chain and stay as they are.
+List<ClaudeTranscriptRecordDto> _activeBranch({required List<ClaudeTranscriptRecordDto> records}) {
+  final parents = <String, String?>{};
+  String? leaf;
+  for (final record in records) {
+    if (_chainId(record) case final id?) {
+      parents[id] = record.parentUuid ?? record.logicalParentUuid;
+      leaf = id;
+    } else if (record.type == _lastPromptType) {
+      if (record.leafUuid case final named? when parents.containsKey(named)) leaf = named;
+    }
+  }
+  if (leaf == null) return records;
+
+  // The walk stops at the root, at a link the file does not resolve, or at a
+  // cycle a corrupt file could hold.
+  final chain = <String>{};
+  String? cursor = leaf;
+  while (cursor != null && parents.containsKey(cursor) && chain.add(cursor)) {
+    cursor = parents[cursor];
+  }
+  // Only then is another root prompt a rewind to before the first message.
+  final reachesRoot = cursor == null;
+
+  // A parent precedes its children in the file, so one pass decides every
+  // parent before its children.
+  final dropped = <String>{};
+  final branch = <ClaudeTranscriptRecordDto>[];
+  for (final record in records) {
+    final id = _chainId(record);
+    if (id != null && !chain.contains(id)) {
+      final parent = parents[id];
+      final forksFromChain = parent == null ? reachesRoot : chain.contains(parent);
+      if (dropped.contains(parent) || (forksFromChain && _startsBranch(record))) {
+        dropped.add(id);
+        continue;
+      }
+    }
+    branch.add(record);
+  }
+  return branch;
+}
+
+/// A main-chain record's id; null for sub-agent records and records without
+/// one.
+String? _chainId(ClaudeTranscriptRecordDto record) =>
+    (record.isSidechain ?? false) ? null : trimmedOrNull(value: record.uuid);
+
+/// What a rewound branch starts with: a prompt, or a compaction when the
+/// rewind went back to just before it. An active compaction is on the chain,
+/// so a boundary off it was always left behind.
+bool _startsBranch(ClaudeTranscriptRecordDto record) =>
+    _isPrompt(record) ||
+    (record.type == ClaudeTranscriptContextKind.system.wireType &&
+        record.subtype == ClaudeTranscriptCompactBoundaryRecord.subtype);
+
+/// A user record that is not a tool result.
+bool _isPrompt(ClaudeTranscriptRecordDto record) =>
+    record.type == ClaudeTranscriptUserRecord.wireType && record.sourceToolAssistantUuid == null;
+
+const String _lastPromptType = "last-prompt";
 
 /// Maps the generated API DTO into the closed variants the repository uses.
 ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptRecordDto dto) {

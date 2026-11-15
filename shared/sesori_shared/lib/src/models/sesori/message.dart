@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "command_invocation.dart";
+import "message_handoff.dart";
 
 part "message.freezed.dart";
 
@@ -54,6 +55,10 @@ sealed class const Message._() with _$Message {
     /// invocation; clients then render the message's text as typed. The text
     /// parts keep their own content for clients that predate this field.
     required CommandInvocation? invocation,
+
+    /// Marks a message Sesori wrote to send one session into another; null
+    /// for every other message. Clients that predate it ignore the key.
+    required MessageHandoff? handoff,
   }) = MessageUser;
 
   const factory assistant({

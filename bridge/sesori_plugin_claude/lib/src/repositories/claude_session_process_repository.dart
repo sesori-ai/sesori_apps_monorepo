@@ -770,9 +770,6 @@ List<Map<String, Object?>> _promptContent(List<PluginPromptPart> parts) => [
         },
       ],
       PluginPromptPartFileData() => const <Map<String, Object?>>[],
-      PluginPromptPartFilePath(:final path) => [
-        {"type": "text", "text": path},
-      ],
       PluginPromptPartFileUrl(:final url) => [
         {"type": "text", "text": url},
       ],

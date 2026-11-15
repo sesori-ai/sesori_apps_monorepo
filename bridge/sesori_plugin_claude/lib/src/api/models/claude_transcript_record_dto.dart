@@ -29,6 +29,22 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     /// The name a user gave the session with `/rename`.
     @JsonKey(fromJson: _stringOrNull) required String? customTitle,
     @JsonKey(fromJson: _stringOrNull) required String? uuid,
+
+    /// The record this one continues; null on a conversation's first record
+    /// and on a `compact_boundary`. A transcript is a tree: a rewind appends a
+    /// new branch beside the old one instead of rewriting the file.
+    @JsonKey(fromJson: _stringOrNull) required String? parentUuid,
+
+    /// The record before a `compact_boundary`, which has no [parentUuid].
+    @JsonKey(fromJson: _stringOrNull) required String? logicalParentUuid,
+
+    /// On a tool result, the assistant record holding its `tool_use`, which is
+    /// also its [parentUuid]. Parallel tool calls therefore hang their results
+    /// off different records of the same assistant message.
+    @JsonKey(name: "sourceToolAssistantUUID", fromJson: _stringOrNull) required String? sourceToolAssistantUuid,
+
+    /// The conversation's newest record, on a `last-prompt` record.
+    @JsonKey(fromJson: _stringOrNull) required String? leafUuid,
     @JsonKey(fromJson: _boolOrNull) required bool? isMeta,
     @JsonKey(fromJson: _boolOrNull) required bool? isVisibleInTranscriptOnly,
 
