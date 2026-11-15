@@ -641,6 +641,7 @@ class const BridgeRuntimeRunner._() {
             managementCapabilities: descriptor.managementCapabilities(config: config),
             supportsPromptAttachments: descriptor.supportsPromptAttachments,
             namesCommandInvocations: descriptor.namesCommandInvocations,
+            supportsSideQuestions: descriptor.supportsSideQuestions,
             mcpScopes: descriptor.mcpScopes,
           ),
       ];

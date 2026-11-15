@@ -14,6 +14,9 @@ entirely along with its transcript and its dedicated worktree.
   through the session foreign key. See
   [Quota auto continuation](quota-auto-continuation.md) for action races and
   cancellation-failure coverage.
+- A session's stored side chats stay when it is archived, and a new side
+  question on it gets the archived read-only rejection. Deleting the session
+  deletes its side chats through the session foreign key.
 
 - Archiving is final. An archived session can never be unarchived, prompted,
   renamed, replied to, or otherwise mutated in place; those attempts receive the

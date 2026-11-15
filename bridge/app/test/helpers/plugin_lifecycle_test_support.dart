@@ -50,6 +50,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
           namesCommandInvocations: false,
+          supportsSideQuestions: false,
           mcpScopes: noMcpScopes,
         ),
     ],
