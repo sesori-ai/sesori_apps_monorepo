@@ -3691,6 +3691,66 @@ abstract class AppLocalizations {
   /// **'“{title}” is still running. Archiving stops it and makes it permanently read-only.'**
   String sessionListArchiveRunningMessage(String title);
 
+  /// Title of the question shown before archiving a pinned session, on the phone as a sheet and on desktop as a dialog. Also used when the pinned session is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive a pinned session?'**
+  String get sessionListArchivePinnedTitle;
+
+  /// Body of the question shown before archiving a pinned session.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” is pinned. Archiving removes it from your lists for good and drops the pin.'**
+  String sessionListArchivePinnedMessage(String title);
+
+  /// Second paragraph of the archive question for a pinned session that is also running, so one question covers both.
+  ///
+  /// In en, this message translates to:
+  /// **'It is still running, and archiving stops it.'**
+  String get sessionListArchivePinnedRunningNotice;
+
+  /// Heading above the pinned sessions at the top of the session list, and the spoken label of the pin mark after a pinned session's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned'**
+  String get sessionListPinned;
+
+  /// Session menu action that pins the session to the top of the session list.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin'**
+  String get sessionListPin;
+
+  /// Session menu action that removes a session from the pinned sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get sessionListUnpin;
+
+  /// Alert shown after tapping Pin when the computer's Sesori Bridge is too old to pin sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Update this computer to pin sessions'**
+  String get sessionListPinUnsupported;
+
+  /// Error alert when the computer could not pin a session.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to pin session'**
+  String get sessionListPinFailed;
+
+  /// Error alert when the computer could not unpin a session.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to unpin session'**
+  String get sessionListUnpinFailed;
+
+  /// Extra line of the delete question when the session being deleted is pinned.
+  ///
+  /// In en, this message translates to:
+  /// **'It is pinned.'**
+  String get sessionListDeletePinnedNotice;
+
   /// Title of the desktop alert shown when the bridge refuses to delete a session's worktree while archiving.
   ///
   /// In en, this message translates to:

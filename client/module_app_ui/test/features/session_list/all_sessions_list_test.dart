@@ -2320,83 +2320,182 @@ void main() {
     }
   });
 
-  testWidgets("a row renamed deep in the list moves to the top under a new Today heading, moving no row on screen", (
-    tester,
-  ) async {
-    final now = DateTime.now();
-    // Midday on a day of last month, so the rows' 100 minutes stay on one day
-    // under one month heading whatever the clock and time zone.
-    final lastMonth = DateTime(now.year, now.month - 1, 15, 12);
-    final rows = [
-      for (var index = 0; index < 100; index++)
-        row(
-          title: "Session $index",
-          updatedAt: lastMonth.subtract(Duration(minutes: index)),
-          archivedAt: null,
+  for (final pinned in [false, true]) {
+    testWidgets(
+      "a row ${pinned ? "pinned" : "renamed"} deep in the list moves to the top under a new "
+      "${pinned ? "Pinned" : "Today"} heading, moving no row on screen",
+      (tester) async {
+        final now = DateTime.now();
+        // Midday on a day of last month, so the rows' 100 minutes stay on one day
+        // under one month heading whatever the clock and time zone.
+        final lastMonth = DateTime(now.year, now.month - 1, 15, 12);
+        final rows = [
+          for (var index = 0; index < 100; index++)
+            row(
+              title: "Session $index",
+              updatedAt: lastMonth.subtract(Duration(minutes: index)),
+              archivedAt: null,
+              isRunning: false,
+            ),
+        ];
+        AllSessionsState listing(List<AllSessionsRow> rows) => state(
+          query: "",
+          failure: null,
+          rows: rows,
+          scratchProjectId: null,
+          counts: SessionListChipCounts(all: rows.length, running: 0, unread: 0),
+        );
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpList(tester, mode: AllSessionsMode.active, initial: listing(rows), updates: updates.stream);
+        final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+        position.jumpTo(3000);
+        await tester.pump();
+
+        final onScreen = [
+          for (var index = 0; index < rows.length; index++)
+            if (find.text("Session $index").evaluate().isNotEmpty) index,
+        ];
+        expect(onScreen.length, greaterThan(4));
+        final renamed = onScreen[onScreen.length ~/ 2];
+        final renamedRow = AllSessionsRow(
+          // A pin keeps the session's time; a rename makes it the newest.
+          session: pinned
+              ? testSession(
+                  id: "Session $renamed",
+                  title: "Renamed",
+                  updatedAt: rows[renamed].session.time?.updated,
+                ).copyWith(pinned: true)
+              : testSession(id: "Session $renamed", title: "Renamed", updatedAt: now.millisecondsSinceEpoch),
+          project: project,
           isRunning: false,
-        ),
+          isUnseen: false,
+          isAwaitingInput: false,
+          isRetrying: false,
+          backgroundTaskCount: 0,
+        );
+        final finders = [for (final index in onScreen) find.text("Session $index")];
+        List<double?> readTops() => [for (final finder in finders) topOf(tester, finder)];
+        final frames = [readTops()];
+        updates.add(listing([renamedRow, ...rows.where((row) => row.session.id != "Session $renamed")]));
+        await tester.pump(Duration.zero);
+        frames.add(readTops());
+        // The frame after the update runs long, as a slow device's can; the rows
+        // below still close up from there rather than in one step.
+        await tester.pump(const Duration(milliseconds: 400));
+        frames.add(readTops());
+        for (var elapsed = 0; elapsed < 500; elapsed += 5) {
+          await tester.pump(const Duration(milliseconds: 5));
+          frames.add(readTops());
+        }
+
+        for (final (position, index) in onScreen.indexed) {
+          final readings = [for (final frame in frames) frame[position]];
+          if (index < renamed) {
+            // Rows above the renamed one hold still on every frame.
+            expect(readings, everyElement(readings.first), reason: "Session $index");
+          } else if (index > renamed) {
+            // Rows below it close up smoothly as it closes where it stood.
+            expect(steps(readings), everyElement(inInclusiveRange(-maxStep, 0)), reason: "Session $index");
+            expect(readings.last, frames.first[position - 1], reason: "Session $index");
+          }
+        }
+        final heading = pinned ? "Pinned" : "Today";
+        expect(find.text(heading), findsNothing);
+
+        position.jumpTo(0);
+        await tester.pumpAndSettle();
+        expect(find.text(heading), findsOneWidget);
+        expect(tester.getTopLeft(find.text(heading)).dy, lessThan(tester.getTopLeft(find.text("Renamed")).dy));
+      },
+    );
+  }
+
+  testWidgets("pinned rows lead the list under Pinned, a launch leads Today below them, and with no pin "
+      "the heading leaves", (tester) async {
+    final today = DateTime.now();
+    final yesterday = today.subtract(const Duration(days: 1));
+    final launches = inMemorySessionLaunchRepository();
+    AllSessionsRow pinnedRow({required String title, required DateTime updatedAt, required bool isRunning}) {
+      final listed = row(title: title, updatedAt: updatedAt, archivedAt: null, isRunning: isRunning);
+      return AllSessionsRow(
+        session: listed.session.copyWith(pinned: true),
+        project: project,
+        isRunning: isRunning,
+        isUnseen: false,
+        isAwaitingInput: false,
+        isRetrying: false,
+        backgroundTaskCount: 0,
+      );
+    }
+
+    final unpinned = [
+      row(title: "Tidy the docs", updatedAt: today, archivedAt: null, isRunning: false),
+      row(title: "Rename the module", updatedAt: yesterday, archivedAt: null, isRunning: false),
     ];
     AllSessionsState listing(List<AllSessionsRow> rows) => state(
       query: "",
       failure: null,
       rows: rows,
       scratchProjectId: null,
-      counts: SessionListChipCounts(all: rows.length, running: 0, unread: 0),
+      counts: SessionListChipCounts(all: rows.length, running: 1, unread: 0),
     );
     final updates = StreamController<AllSessionsState>();
     addTearDown(updates.close);
-    await pumpList(tester, mode: AllSessionsMode.active, initial: listing(rows), updates: updates.stream);
-    final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
-    position.jumpTo(3000);
-    await tester.pump();
-
-    final onScreen = [
-      for (var index = 0; index < rows.length; index++)
-        if (find.text("Session $index").evaluate().isNotEmpty) index,
-    ];
-    expect(onScreen.length, greaterThan(4));
-    final renamed = onScreen[onScreen.length ~/ 2];
-    final renamedRow = AllSessionsRow(
-      session: testSession(id: "Session $renamed", title: "Renamed", updatedAt: now.millisecondsSinceEpoch),
-      project: project,
-      isRunning: false,
-      isUnseen: false,
-      isAwaitingInput: false,
-      isRetrying: false,
-      backgroundTaskCount: 0,
+    await pumpList(
+      tester,
+      mode: AllSessionsMode.active,
+      launches: launches,
+      updates: updates.stream,
+      initial: listing([
+        // A running pinned row stays in Pinned, at its time.
+        pinnedRow(title: "Fix the parser", updatedAt: today, isRunning: true),
+        pinnedRow(title: "Plan the release", updatedAt: yesterday, isRunning: false),
+        ...unpinned,
+      ]),
     );
-    final finders = [for (final index in onScreen) find.text("Session $index")];
-    List<double?> readTops() => [for (final finder in finders) topOf(tester, finder)];
-    final frames = [readTops()];
-    updates.add(listing([renamedRow, ...rows.where((row) => row.session.id != "Session $renamed")]));
-    await tester.pump(Duration.zero);
-    frames.add(readTops());
-    // The frame after the update runs long, as a slow device's can; the rows
-    // below still close up from there rather than in one step.
-    await tester.pump(const Duration(milliseconds: 400));
-    frames.add(readTops());
-    for (var elapsed = 0; elapsed < 500; elapsed += 5) {
-      await tester.pump(const Duration(milliseconds: 5));
-      frames.add(readTops());
+    launches.start(
+      launchId: "launch-1",
+      projectId: project.id,
+      pluginId: "claude",
+      startedAt: today,
+      projectName: project.name,
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Add a test"),
+        attachments: const [],
+      ),
+    );
+    for (var elapsed = 0; elapsed < 700; elapsed += 50) {
+      await tester.pump(const Duration(milliseconds: 50));
     }
 
-    for (final (position, index) in onScreen.indexed) {
-      final readings = [for (final frame in frames) frame[position]];
-      if (index < renamed) {
-        // Rows above the renamed one hold still on every frame.
-        expect(readings, everyElement(readings.first), reason: "Session $index");
-      } else if (index > renamed) {
-        // Rows below it close up smoothly as it closes where it stood.
-        expect(steps(readings), everyElement(inInclusiveRange(-maxStep, 0)), reason: "Session $index");
-        expect(readings.last, frames.first[position - 1], reason: "Session $index");
-      }
+    List<String> headings() => [
+      for (final heading in tester.widgetList<SessionListHeading>(find.byType(SessionListHeading))) heading.heading,
+    ];
+    expect(headings(), ["Pinned", "Today", "Yesterday"]);
+    final order = [
+      find.text("Pinned"),
+      find.text("Fix the parser"),
+      find.text("Plan the release"),
+      find.text("Today"),
+      find.byType(PendingSessionLaunchTile),
+      find.text("Tidy the docs"),
+      find.text("Yesterday"),
+      find.text("Rename the module"),
+    ];
+    final tops = [for (final finder in order) tester.getTopLeft(finder).dy];
+    for (var index = 1; index < tops.length; index++) {
+      expect(tops[index], greaterThan(tops[index - 1]), reason: "${order[index]} below ${order[index - 1]}");
     }
-    expect(find.text("Today"), findsNothing);
+    // Each pinned row carries the pin after its title.
+    expect(find.byIcon(TablerRegular.pinned), findsNWidgets(2));
 
-    position.jumpTo(0);
-    await tester.pumpAndSettle();
-    expect(find.text("Today"), findsOneWidget);
-    expect(tester.getTopLeft(find.text("Today")).dy, lessThan(tester.getTopLeft(find.text("Renamed")).dy));
+    updates.add(listing(unpinned));
+    for (var elapsed = 0; elapsed < 700; elapsed += 50) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(headings(), ["Today", "Yesterday"]);
+    expect(find.byIcon(TablerRegular.pinned), findsNothing);
   });
 }
 

@@ -324,17 +324,24 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
         headingOf: (row) => sessionListHeading(
           timestamp: row.session.time?.archived ?? row.session.time?.updated,
           isRunning: row.isRunning && row.session.time?.archived == null,
+          pinned: row.session.pinned,
           now: now,
           loc: loc,
         ),
       );
+      // Only a still-unarchived session hides, as on every list.
+      final sessions = [
+        for (final (index, row) in state.rows.indexed)
+          if (row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id))
+            _SessionItem(row: row, heading: headings[index]),
+      ];
+      // Pinned rows lead the list, so launches lead Today right below them.
+      final pinned = sessions.takeWhile((item) => item.row.session.pinned).length;
       return groupUnderHeadings<_HeadedItem>(
         items: [
+          ...sessions.take(pinned),
           for (final launch in launchesOf(state)) _LaunchItem(launch: launch),
-          // Only a still-unarchived session hides, as on every list.
-          for (final (index, row) in state.rows.indexed)
-            if (row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id))
-              _SessionItem(row: row, heading: headings[index]),
+          ...sessions.skip(pinned),
         ],
         headingOf: (item) => switch (item) {
           // A launch is the newest running thing, so it leads Today.
@@ -924,6 +931,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
           session: row.session,
           isRunning: row.isRunning,
           readEntry: SessionReadMenuToggle(unseen: row.isUnseen),
+          surfaceEntries: const [],
         ),
         onArchive: () =>
             dispatcher.handleSessionArchive(context: context, session: row.session, isRunning: row.isRunning),

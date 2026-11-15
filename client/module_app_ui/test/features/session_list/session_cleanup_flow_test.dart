@@ -30,6 +30,7 @@ void main() {
   Future<void> pumpArchiveButton({
     required WidgetTester tester,
     required bool running,
+    bool pinned = false,
   }) async {
     final dispatcher = SessionListActionDispatcher(
       deleteConfirmation: SessionDeleteConfirmation.sheet,
@@ -52,8 +53,11 @@ void main() {
                 child: Material(
                   child: Builder(
                     builder: (context) => TextButton(
-                      onPressed: () =>
-                          dispatcher.handleSessionArchive(context: context, session: session, isRunning: running),
+                      onPressed: () => dispatcher.handleSessionArchive(
+                        context: context,
+                        session: session.copyWith(pinned: pinned),
+                        isRunning: running,
+                      ),
                       child: const Text("go"),
                     ),
                   ),
@@ -87,9 +91,10 @@ void main() {
     );
     expect(archives.state.hiddenIds, isEmpty);
 
-    await tester.tap(find.text("Cancel"));
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Cancel"));
     await tester.pumpAndSettle();
     expect(archives.state.hiddenIds, isEmpty);
+    expect(find.byType(PregoSheetActions), findsNothing);
 
     await tester.tap(find.text("go"));
     await tester.pumpAndSettle();
@@ -99,6 +104,119 @@ void main() {
     expect(archives.state.hiddenIds, {"s1"});
     // Closing inside the window cancels its timer and sends nothing.
     await archives.close();
+  });
+
+  testWidgets("a pinned session is asked about first; Archive enters the Undo window", (tester) async {
+    await pumpArchiveButton(tester: tester, running: false, pinned: true);
+    expect(find.text("Archive a pinned session?"), findsOneWidget);
+    expect(
+      find.text("“Fix the build” is pinned. Archiving removes it from your lists for good and drops the pin."),
+      findsOneWidget,
+    );
+    expect(find.text("It is still running, and archiving stops it."), findsNothing);
+
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Cancel"));
+    await tester.pumpAndSettle();
+    expect(archives.state.hiddenIds, isEmpty);
+    expect(find.byType(PregoSheetActions), findsNothing);
+
+    await tester.tap(find.text("go"));
+    await tester.pumpAndSettle();
+    final archive = find.widgetWithText(PregoButtonsSolid, "Archive");
+    expect(tester.widget<PregoButtonsSolid>(archive).type, PregoButtonsSolidType.destructive);
+    await tester.tap(archive);
+    await tester.pumpAndSettle();
+    expect(archived, ["s1"]);
+    expect(archives.state.hiddenIds, {"s1"});
+    await archives.close();
+  });
+
+  testWidgets("a running pinned session gets one question that covers both", (tester) async {
+    await pumpArchiveButton(tester: tester, running: true, pinned: true);
+    expect(find.text("Archive a pinned session?"), findsOneWidget);
+    expect(find.text("Archive a running session?"), findsNothing);
+    expect(find.text("It is still running, and archiving stops it."), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Archive"));
+    await tester.pumpAndSettle();
+    expect(archived, ["s1"]);
+    expect(find.text("Archive a running session?"), findsNothing);
+    await archives.close();
+  });
+
+  group("pin", () {
+    const dispatcher = SessionListActionDispatcher(
+      deleteConfirmation: SessionDeleteConfirmation.alert,
+      onSessionArchived: null,
+      onSessionDeleted: null,
+      onSessionMarkedUnread: null,
+    );
+
+    /// The menu entries for [target], kept in [entries] once built.
+    Future<List<PregoMenuItem>> menuFor({required WidgetTester tester, required shared.Session target}) async {
+      late List<PregoMenuItem> entries;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Material(
+            child: Builder(
+              builder: (context) {
+                entries = dispatcher
+                    .sessionMenuEntries(
+                      context: context,
+                      actions: actions,
+                      session: target,
+                      isRunning: false,
+                      readEntry: const SessionReadMenuNone(),
+                      surfaceEntries: [
+                        PregoMenuItem(
+                          leadingIcon: TablerRegular.plug,
+                          title: "Page action",
+                          subtitle: null,
+                          isSelected: false,
+                          shortcutLabel: null,
+                          onTap: () {},
+                        ),
+                      ],
+                    )
+                    .whereType<PregoMenuItem>()
+                    .toList();
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      return entries;
+    }
+
+    testWidgets("Pin or Unpin leads the menu of an unarchived top-level session only", (tester) async {
+      List<String> titlesOf(List<PregoMenuItem> entries) => [for (final entry in entries) entry.title];
+
+      expect(titlesOf(await menuFor(tester: tester, target: session)).take(3), ["Pin", "Page action", "Rename"]);
+      expect(titlesOf(await menuFor(tester: tester, target: session.copyWith(pinned: true))).first, "Unpin");
+      final archivedSession = testSession(id: "s1", title: "Fix the build", archivedAt: DateTime(2026));
+      expect(titlesOf(await menuFor(tester: tester, target: archivedSession)), isNot(contains("Pin")));
+      final child = testSession(id: "c1", parentID: "s1", title: "Sub-task");
+      expect(titlesOf(await menuFor(tester: tester, target: child)), isNot(contains("Pin")));
+    });
+
+    for (final (result, message) in [
+      (const SessionPinUnsupported(), "Update this computer to pin sessions"),
+      (SessionPinFailure(error: ApiError.generic()), "Failed to pin session"),
+    ]) {
+      testWidgets("a Pin the bridge cannot honour is answered: $message", (tester) async {
+        when(() => actions.setPinned(sessionId: "s1", pinned: true)).thenAnswer((_) async => result);
+        final entries = await menuFor(tester: tester, target: session);
+
+        entries.first.onTap();
+        await tester.pump();
+        expect(find.text(message), findsOneWidget);
+        await tester.pumpAndSettle(const Duration(seconds: 5));
+      });
+    }
   });
 
   testWidgets("the row menu offers one Archive, never a keep-worktree variant", (tester) async {
@@ -125,6 +243,7 @@ void main() {
                     session: worktreeSession,
                     isRunning: false,
                     readEntry: const SessionReadMenuNone(),
+                    surfaceEntries: const [],
                   )
                   .whereType<PregoMenuItem>()
                   .map((entry) => entry.title)
@@ -243,6 +362,16 @@ void main() {
         verify(
           () => actions.deleteSession(sessionId: "s1", deleteWorktree: true, deleteSessionFolder: false, force: false),
         ).called(1);
+      });
+
+      testWidgets("the ${confirmation.name} says a pinned session is pinned", (tester) async {
+        await pumpDeleteButton(
+          tester: tester,
+          target: session.copyWith(pinned: true),
+          deleteConfirmation: confirmation,
+        );
+
+        expect(find.text("It is pinned."), findsOneWidget);
       });
 
       testWidgets("the ${confirmation.name} omits the worktree line without one", (tester) async {

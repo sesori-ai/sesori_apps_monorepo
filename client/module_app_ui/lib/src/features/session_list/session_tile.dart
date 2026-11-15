@@ -19,8 +19,9 @@ import "session_scheduled_resume.dart";
 /// says how the session is doing: the sparkle rotates while an agent works and
 /// rests solid — the same "new activity" mark the project list uses — when the
 /// session has activity the user hasn't opened; an amber dot means it waits
-/// for the user. A long title fades out before the mark, and a quiet session
-/// shows none. The time always shows at the trailing edge; a quiet session
+/// for the user. A pinned session's title is followed by a small grey pin,
+/// before any status mark. A long title fades out before the marks, and a
+/// quiet session shows none. The time always shows at the trailing edge; a quiet session
 /// with a scheduled auto-continuation shows when it resumes. States that need
 /// words lead the meta line in their colour.
 ///
@@ -32,7 +33,8 @@ import "session_scheduled_resume.dart";
 /// The frequent actions are also behind swipes ([PregoSwipeActions]): toward
 /// the start edge an unarchived row opens on a delete pill and an archive
 /// pill, with a full swipe committing the archive. Archiving happens at once
-/// behind an Undo window; only a running session asks for confirmation first.
+/// behind an Undo window; only a running or pinned session asks first, and a
+/// full swipe's row springs back while the question is open.
 /// An archived row has no archive action left and opens on delete alone.
 /// Toward the end edge the row opens on the mail-style read toggle, committed
 /// by a full swipe likewise. The swipes are the quick paths; the menu stays the
@@ -300,6 +302,7 @@ class const SessionTile({
           Expanded(
             child: _TitleLine(
               title: _title(context: context, pointer: false),
+              pin: _pin(context: context, pointer: false),
               mark: state != null ? Semantics(label: state.label, child: state.mark) : null,
             ),
           ),
@@ -319,6 +322,12 @@ class const SessionTile({
           spacing: PregoSpacing.xs,
           children: [
             Expanded(child: _title(context: context, pointer: true)),
+            if (_pin(context: context, pointer: true) case final pin?)
+              SizedBox(
+                width: _markSize,
+                height: _titleLineHeightOf(pointer: true),
+                child: Center(child: pin),
+              ),
             if (state != null)
               SizedBox(
                 width: _markSize,
@@ -331,6 +340,21 @@ class const SessionTile({
           ],
         ),
       );
+
+  /// The pin after a pinned session's title, in the meta line's grey; null
+  /// when the session is not pinned.
+  Widget? _pin({required BuildContext context, required bool pointer}) {
+    if (!session.pinned) return null;
+    final colors = context.prego.colors;
+    return Semantics(
+      label: context.loc.sessionListPinned,
+      child: Icon(
+        TablerRegular.pinned,
+        size: _pinGlyphSize,
+        color: pointer ? colors.textSecondary : colors.textTertiary,
+      ),
+    );
+  }
 
   /// The session's title, cut off by a fade rather than an ellipsis: a long
   /// title trails away before its status mark instead of stopping on a hard
@@ -724,6 +748,7 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                               softWrap: false,
                               overflow: TextOverflow.fade,
                             ),
+                            pin: null,
                             // "Creating…" already says what the sparkle means.
                             mark: const ExcludeSemantics(child: PregoAiLoader(size: _markSize)),
                           ),
@@ -846,17 +871,28 @@ const double _hoverActionHeight = 20;
 /// A finger needs a roomier row than a mouse does.
 double _rowVerticalPadding({required bool pointer}) => pointer ? PregoSpacing.sm : PregoSpacing.lg;
 
-/// A title with the status mark right after its text. A long title fades out
-/// before the mark, so the mark always shows; without one the title takes the
-/// whole line.
-class const _TitleLine({required final Widget title, required final Widget? mark}) extends StatelessWidget {
+/// A title with the pin and the status mark right after its text, each in a
+/// slot of the mark's size, so neither changes the line's height. A long title
+/// fades out before them, so they always show; without them the title takes
+/// the whole line.
+class const _TitleLine({
+  required final Widget title,
+  required final Widget? pin,
+  required final Widget? mark,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final pin = this.pin;
     final mark = this.mark;
     return Row(
       spacing: PregoSpacing.xs,
       children: [
         Flexible(child: title),
+        if (pin != null)
+          SizedBox.square(
+            dimension: _markSize,
+            child: Center(child: pin),
+          ),
         if (mark != null)
           SizedBox.square(
             dimension: _markSize,
@@ -1051,6 +1087,9 @@ const List<double> _identity = [
 ];
 
 const double _markSize = 16;
+
+/// A little under the status marks, as the pin is a quieter glyph.
+const double _pinGlyphSize = 14;
 const double _titleFadeWidth = 18;
 
 /// Fits the widest relative time, "59m" at 12 pt (26 px), past its 4 px start

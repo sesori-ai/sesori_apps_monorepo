@@ -61,6 +61,9 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   the switch is made, before the new connection's outcome is known.
 - Renaming or removing a computer reports `computer_managed` with a pinned `action` (`renamed`, `removed`) only after
   the auth server confirms the change, never a name, nickname or identifier. A failed change reports nothing.
+- Pinning or unpinning a session reports `session_pin_changed` with `pinned` (`true`, `false`) only after the bridge
+  answers the updated session, never the session or its title. A refused, failed or unsupported pin reports nothing.
+  The desktop does not send it to the warehouse.
 - The CEO call invitation reports `founder_call_shown` and `founder_call_declined` with `surface`
   `computer_connected_sheet`, and `founder_call_link_opened` with `computer_connected_sheet` or `settings`; see
   [founder call](founder-call.md).

@@ -460,6 +460,7 @@ void main() {
           session: unseen,
           isRunning: isBusy,
           readEntry: const SessionReadMenuMarkUnread(),
+          surfaceEntries: const [],
         ),
       ),
     );

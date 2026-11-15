@@ -4,8 +4,9 @@ part of "session_list_action_dispatcher.dart";
 /// a delete without depending on which shell rendered the question.
 const Key sessionDeleteConfirmKey = Key("session-delete-confirm");
 
-/// The phone's delete question: what deleting means, the worktree or folder
-/// notice when the session has one, then Cancel and a destructive Delete.
+/// The phone's delete question: what deleting means, that the session is
+/// pinned when it is, the worktree or folder notice when the session has one,
+/// then Cancel and a destructive Delete.
 /// Deleting always removes them, so the sheet states it rather than asking.
 class const _DeleteSessionSheet({
   required final Session session,
@@ -25,6 +26,10 @@ class const _DeleteSessionSheet({
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(loc.sessionListDeleteConfirmMessage, style: bodyStyle),
+            if (session.pinned) ...[
+              const SizedBox(height: 12),
+              Text(loc.sessionListDeletePinnedNotice, style: bodyStyle),
+            ],
             if (session.hasWorktree) ...[
               const SizedBox(height: 12),
               Text(loc.sessionListDeleteWorktreeNotice, style: bodyStyle),

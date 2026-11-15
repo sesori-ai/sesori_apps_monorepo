@@ -3,19 +3,23 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
+import "../session_detail/widgets/transcript_motion.dart";
 import "session_date_label.dart";
 
-/// The date heading a row sits under, without changing the list's order.
-/// [timestamp] must be the time the list sorts by (an archive list's archive
-/// time, otherwise the last update), or headings would repeat out of order. A
-/// running session is a row of Today, whatever its stored time, and the row
-/// itself says it is running.
+/// The heading a row sits under, without changing the list's order. A pinned
+/// session sits under Pinned, which the list orders before every date. Below
+/// it, [timestamp] must be the time the list sorts by (an archive list's
+/// archive time, otherwise the last update), or headings would repeat out of
+/// order. An unpinned running session is a row of Today, whatever its stored
+/// time, and the row itself says it is running.
 String sessionListHeading({
   required int? timestamp,
   required bool isRunning,
+  required bool pinned,
   required DateTime now,
   required AppLocalizations loc,
 }) {
+  if (pinned) return loc.sessionListPinned;
   if (isRunning) return sessionDateLabel(date: now, now: now, loc: loc);
 
   return sessionDateLabel(
@@ -49,7 +53,7 @@ class SessionListHeadingCache<T>() {
   }
 }
 
-/// One entry of a date-grouped session list: a heading or an item under it.
+/// One entry of a grouped session list: a heading or an item under it.
 ///
 /// Headings are entries of their own, so removing the first item of a group
 /// animates only that row; the heading leaves only with its last item.
@@ -90,7 +94,10 @@ List<SessionListEntry<T>> groupUnderHeadings<T>({
   return entries;
 }
 
-/// A date heading row of a session list.
+/// A heading row of a session list: Pinned or a date.
+///
+/// A heading that becomes or stops being the first, as Today does when Pinned
+/// arrives above it or leaves, eases into its new room instead of jumping.
 class const SessionListHeading({super.key, required final String heading, required final bool isFirst})
     extends StatelessWidget {
   @override
@@ -99,7 +106,9 @@ class const SessionListHeading({super.key, required final String heading, requir
     // loosens its constraints and centres what it holds, as the animated
     // list's rows do.
     width: double.infinity,
-    child: Padding(
+    child: AnimatedPadding(
+      duration: context.isReducedMotion ? Duration.zero : pregoAnimatedListItemDuration,
+      curve: transcriptMotionCurve,
       padding: _paddingOf(context: context, isFirst: isFirst),
       child: Text(heading, style: _styleOf(context: context)),
     ),

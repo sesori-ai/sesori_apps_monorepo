@@ -13,6 +13,7 @@ import "models/session_diff_summary_result.dart";
 import "models/session_messages_through_result.dart";
 import "models/session_options_repository_result.dart";
 import "models/session_page_result.dart";
+import "models/session_pin_result.dart";
 import "models/session_prompt_index_result.dart";
 import "models/session_prompt_search_result.dart";
 import "models/tool_output_result.dart";
@@ -56,6 +57,18 @@ class SessionRepository({
     required SessionApprovalMode? approvalOverride,
   }) {
     return _api.setApprovalOverride(sessionId: sessionId, approvalOverride: approvalOverride);
+  }
+
+  Future<SessionPinResult> setPinned({required String sessionId, required bool pinned}) async {
+    final response = await _api.setPinned(sessionId: sessionId, pinned: pinned);
+    return switch (response) {
+      SuccessResponse(:final data) => SessionPinUpdated(session: data),
+      // COMPATIBILITY 2026-11-14 (v1.14.0): a bridge without the
+      // /session/pinned route answers with the router's route-not-found 404.
+      // Remove once no supported bridge predates the route.
+      ErrorResponse(:final error) when _isMissingRoute(error: error) => const SessionPinUnsupported(),
+      ErrorResponse(:final error) => SessionPinFailure(error: error),
+    };
   }
 
   Future<ApiResponse<void>> deleteSession({

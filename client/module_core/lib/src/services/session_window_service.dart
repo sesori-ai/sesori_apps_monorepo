@@ -12,8 +12,11 @@ import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/models/sse_event.dart";
 import "../capabilities/server_connection/target_bridge_change_tracker.dart";
 import "../errors/api_error_remote_failure_x.dart";
+import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../logging/logging.dart";
+import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/models/session_page_result.dart";
+import "../repositories/models/session_pin_result.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 import "catalog_rescan_service.dart";
@@ -23,13 +26,15 @@ import "models/project_list_state.dart";
 import "models/session_list_item_state.dart";
 import "models/session_list_quick_filter.dart";
 import "models/session_window_state.dart";
+import "product_analytics_service.dart";
 import "project_inventory_service.dart";
 import "session_unseen_tracker.dart";
 import "sse_event_tracker.dart";
 
 /// The root sessions of one [AllSessionsMode] under one [key], loaded from
-/// the bridge a page at a time, newest first, and kept current by live
-/// events. It owns the one rule for whether a session matches a key.
+/// the bridge a page at a time, pinned sessions first, then newest first, and
+/// kept current by live events. It owns the one rule for whether a session
+/// matches a key.
 ///
 /// The caller owns this factory instance and disposes it with its scope.
 @injectable
@@ -41,6 +46,7 @@ class SessionWindowService({
   required final ConnectionService _connectionService,
   required final SseEventTracker _sseEventTracker,
   required final SessionUnseenTracker _sessionUnseenTracker,
+  required final ProductAnalyticsService _productAnalyticsService,
   required CatalogRescanService catalogRescanService,
 }) {
   static const int pageSize = 200;
@@ -317,6 +323,8 @@ class SessionWindowService({
             filter: SessionPageFilter.all,
             cursor: null,
             limit: limit,
+            // A search lists by time alone, pinned or not.
+            pinnedFirst: false,
           ),
         ),
         lost.future,
@@ -343,8 +351,8 @@ class SessionWindowService({
 
   /// What can be shown for [query] before [search] answers: the loaded rows
   /// (in complete mode every session of the mode) and [earlier], an earlier
-  /// answer, that match it, newest first, at most [limit]. A blank query
-  /// matches every row.
+  /// answer, that match it, newest first whether pinned or not, at most
+  /// [limit]. A blank query matches every row.
   List<Session> searchLoaded({required String query, required List<Session> earlier, required int limit}) {
     final loaded = _loadedSessions();
     // A loaded row is the fresher copy of a session both hold.
@@ -356,7 +364,7 @@ class SessionWindowService({
     final projects = _projectsById();
     final matches =
         candidates.where((session) => _matchesQuery(session: session, query: query, projects: projects)).toList()
-          ..sort((a, b) => _compare(a: a, b: b));
+          ..sort((a, b) => _compareTime(a: a, b: b));
     return matches.take(limit).toList();
   }
 
@@ -388,6 +396,42 @@ class SessionWindowService({
       }
     }
     return renamed;
+  }
+
+  /// Pins or unpins [sessionId]. Its row moves once the bridge answers, which
+  /// also tells every other surface through the session's live update.
+  Future<SessionPinResult> setPinned({required String sessionId, required bool pinned}) async {
+    final result = await _sessionRepository.setPinned(sessionId: sessionId, pinned: pinned);
+    switch (result) {
+      case SessionPinUpdated(:final session):
+        if (!_state.isClosed && session.parentID == null) {
+          final _SessionChange change = (session: session, removed: false);
+          _replay?.add(change);
+          _applyChange(change);
+        }
+        _reportPinChanged(pinned: pinned);
+      case SessionPinUnsupported():
+        break;
+      case SessionPinFailure(:final error):
+        // The result keeps no detail, so the original error is logged here.
+        loge("Failed to ${pinned ? "pin" : "unpin"} session $sessionId", error);
+    }
+    return result;
+  }
+
+  void _reportPinChanged({required bool pinned}) {
+    unawaited(
+      _productAnalyticsService
+          .logEvent(
+            event: ProductAnalyticsEvent.sessionPinChanged(pinned: pinned),
+            occurredAtUtc: DateTime.now().toUtc(),
+          )
+          .then<void>((result) {
+            if (result == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
+              logw("Failed to deliver session pin analytics event");
+            }
+          }),
+    );
   }
 
   /// Starts tracking renames of [sessionId] from its listed title; null when
@@ -892,9 +936,16 @@ class SessionWindowService({
   bool _isUnseen(Session session) =>
       _sessionUnseenTracker.currentSessionUnseen[session.projectID]?[session.id]?.unseen ?? session.unseen;
 
-  /// The bridge's order: newest first (archived: most recently archived
-  /// first), then by id descending.
+  /// The bridge's list order: pinned sessions first, then [_compareTime].
+  /// Archived sessions are never pinned.
   int _compare({required Session a, required Session b}) {
+    if (_mode == AllSessionsMode.active && a.pinned != b.pinned) return a.pinned ? -1 : 1;
+    return _compareTime(a: a, b: b);
+  }
+
+  /// The bridge's search order: newest first (archived: most recently
+  /// archived first), then by id descending.
+  int _compareTime({required Session a, required Session b}) {
     final order = switch (_mode) {
       AllSessionsMode.active => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
       AllSessionsMode.archived => (b.time?.archived ?? 0).compareTo(a.time?.archived ?? 0),
@@ -904,8 +955,8 @@ class SessionWindowService({
 
   List<Session> _searchLocally({required List<Session> sessions, required String query, required int limit}) {
     final projects = _projectsById();
-    return sessions
-        .where((session) => _matchesQuery(session: session, query: query, projects: projects))
+    return (sessions.where((session) => _matchesQuery(session: session, query: query, projects: projects)).toList()
+          ..sort((a, b) => _compareTime(a: a, b: b)))
         .take(limit)
         .toList();
   }
@@ -926,6 +977,7 @@ class SessionWindowService({
     },
     cursor: cursor,
     limit: limit,
+    pinnedFirst: _mode == AllSessionsMode.active,
   );
 
   SessionPageMode get _pageMode => switch (_mode) {

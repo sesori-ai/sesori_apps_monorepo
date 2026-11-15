@@ -307,6 +307,7 @@ sealed class const ProductAnalyticsEvent() {
     required bool targetOnline,
   }) = ComputerSwitchedEvent;
   const factory computerManaged({required ComputerManageAction action}) = ComputerManagedEvent;
+  const factory sessionPinChanged({required bool pinned}) = SessionPinChangedEvent;
   const factory founderCallShown({required FounderCallSurface surface}) = FounderCallShownEvent;
   const factory founderCallLinkOpened({required FounderCallSurface surface}) = FounderCallLinkOpenedEvent;
   const factory founderCallDeclined({required FounderCallSurface surface}) = FounderCallDeclinedEvent;
@@ -656,6 +657,16 @@ final class const ComputerManagedEvent({required final ComputerManageAction acti
 
   @override
   Map<String, String> get parameters => {"action": action.wireValue};
+}
+
+/// The user pinned or unpinned a session, once the bridge confirmed it. Which
+/// session, and its title, stays off the wire.
+final class const SessionPinChangedEvent({required final bool pinned}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "session_pin_changed";
+
+  @override
+  Map<String, String> get parameters => {"pinned": pinned.toString()};
 }
 
 /// The CEO call invitation appeared by itself; the A/B test's activation event.

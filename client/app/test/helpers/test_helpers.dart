@@ -194,6 +194,7 @@ void _registerListServices({
       connectionService: getIt<ConnectionService>(),
       sseEventTracker: getIt<SseEventTracker>(),
       sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+      productAnalyticsService: getIt<ProductAnalyticsService>(),
       catalogRescanService: getIt<CatalogRescanService>(),
     ),
   );

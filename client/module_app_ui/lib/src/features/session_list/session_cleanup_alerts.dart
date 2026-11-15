@@ -3,41 +3,58 @@ part of "session_list_action_dispatcher.dart";
 String _sessionName({required AppLocalizations loc, required Session session}) =>
     session.title ?? loc.sessionDetailTitle;
 
-Future<bool> _confirmArchiveRunning({required BuildContext context, required Session session}) async {
+/// Whether the user confirmed archiving [session], which is running or
+/// pinned. One question covers a pinned session that is also running; only a
+/// pinned session's question marks Archive destructive, since it drops the pin.
+Future<bool> _confirmArchive({
+  required BuildContext context,
+  required Session session,
+  required bool isRunning,
+}) async {
   final loc = context.loc;
+  final name = _sessionName(loc: loc, session: session);
+  final pinned = session.pinned;
   final confirmed = await showPregoModal<bool>(
     context: context,
-    title: loc.sessionListArchiveRunningTitle,
-    builder: (sheetContext) => Padding(
-      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            loc.sessionListArchiveRunningMessage(_sessionName(loc: loc, session: session)),
-            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-          ),
-          const SizedBox(height: PregoSpacing.x2l),
-          PregoSheetActions(
-            secondary: PregoButtonsSolid(
-              label: loc.sessionListDeleteConfirmCancel,
-              hierarchy: PregoButtonsSolidHierarchy.secondary,
-              size: PregoButtonsSolidSize.lg,
-              fullWidth: true,
-              onPressed: () => sheetContext.pop(false),
+    title: pinned ? loc.sessionListArchivePinnedTitle : loc.sessionListArchiveRunningTitle,
+    builder: (sheetContext) {
+      final bodyStyle = context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary);
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              pinned ? loc.sessionListArchivePinnedMessage(name) : loc.sessionListArchiveRunningMessage(name),
+              style: bodyStyle,
             ),
-            primary: PregoButtonsSolid(
-              label: loc.sessionListArchiveConfirmAction,
-              hierarchy: PregoButtonsSolidHierarchy.primary,
-              size: PregoButtonsSolidSize.lg,
-              fullWidth: true,
-              onPressed: () => sheetContext.pop(true),
+            if (pinned && isRunning) ...[
+              const SizedBox(height: PregoSpacing.md),
+              Text(loc.sessionListArchivePinnedRunningNotice, style: bodyStyle),
+            ],
+            const SizedBox(height: PregoSpacing.x2l),
+            PregoSheetActions(
+              secondary: PregoButtonsSolid(
+                label: loc.sessionListDeleteConfirmCancel,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => sheetContext.pop(false),
+              ),
+              primary: PregoButtonsSolid(
+                label: loc.sessionListArchiveConfirmAction,
+                hierarchy: PregoButtonsSolidHierarchy.primary,
+                type: pinned ? PregoButtonsSolidType.destructive : PregoButtonsSolidType.regular,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => sheetContext.pop(true),
+              ),
             ),
-          ),
-        ],
-      ),
-    ),
+          ],
+        ),
+      );
+    },
   );
   return confirmed ?? false;
 }
@@ -59,8 +76,9 @@ Future<bool> _confirmDelete({
   return confirmed ?? false;
 }
 
-/// The delete question's body: what deleting means, the worktree or folder
-/// notice when the session has one, then Cancel and a destructive Delete.
+/// The delete question's body: what deleting means, that the session is
+/// pinned when it is, the worktree or folder notice when the session has one,
+/// then Cancel and a destructive Delete.
 class const _DeleteConfirmation({
   required final Session session,
   required final bool deletesFolder,
@@ -76,6 +94,10 @@ class const _DeleteConfirmation({
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(loc.sessionListDeleteConfirmMessage, style: bodyStyle),
+          if (session.pinned) ...[
+            const SizedBox(height: PregoSpacing.md),
+            Text(loc.sessionListDeletePinnedNotice, style: bodyStyle),
+          ],
           if (session.hasWorktree) ...[
             const SizedBox(height: PregoSpacing.md),
             Text(loc.sessionListDeleteWorktreeNotice, style: bodyStyle),

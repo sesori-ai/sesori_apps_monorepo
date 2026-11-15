@@ -82,6 +82,7 @@ final class DeferredProductAnalyticsCandidates {
     ProductScreenViewedEvent() ||
     ComputerSwitchedEvent() ||
     ComputerManagedEvent() ||
+    SessionPinChangedEvent() ||
     FounderCallLinkOpenedEvent() ||
     FounderCallDeclinedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
   };
