@@ -273,11 +273,12 @@ the summary, the transcript or prompt text.
 | Tool | One line with the title or shell command and the status, then the error if any, then the output capped at 4 KB with a "[truncated: N characters]" note |
 | File | `[Attached file: name (mime)]`, without the bytes |
 | Subtask | `[Sub-agent: description]`. Child transcripts are not inlined |
-| Patch | The list of changed files |
-| Compaction | `[Context compacted]` |
-| Reasoning, step markers, snapshot, agent, retry, unknown | Left out |
+| Compaction | `[Context compacted]` once it completed; a running or failed one is left out |
+| Reasoning, step markers, snapshot, patch, agent, retry | Left out |
 
 - Leaving out reasoning keeps the file to the conversation itself, and some harnesses encrypt reasoning.
+- Patch is left out because the part carries no file list on the wire or in the plugin interface (step 2
+  finding); the tool lines already name the edited files. `MessagePart` has no unknown variant.
 - No redaction: the file stays on the same computer, in an owner-only folder.
 
 ### D7. Where the file lives, and when it is deleted

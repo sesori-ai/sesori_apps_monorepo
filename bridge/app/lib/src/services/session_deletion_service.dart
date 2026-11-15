@@ -17,6 +17,7 @@ class SessionDeletionService({
   required final ChatHistoryService _chatHistoryService,
   required final ScratchRepository _scratchRepository,
   required final PromptUploadRepository _promptUploadRepository,
+  required final PromptUploadRepository _transcriptRepository,
 }) {
   Future<CleanupResult> deleteSession({
     required String sessionId,
@@ -36,9 +37,11 @@ class SessionDeletionService({
       onDeleted: (deleted) async {
         await _purgeHistory(deleted.sessionIds);
         // Not awaited: the family lock must not be held while large folders
-        // are removed. The uploads go on every delete, because they are
-        // Sesori's copies and not the user's project files.
+        // are removed. The uploads and the transcripts sent into the family go
+        // on every delete, because they are Sesori's copies and not the user's
+        // project files.
         unawaited(_deletePromptUploads(sessionIds: deleted.sessionIds));
+        unawaited(_deleteTranscripts(sessionIds: deleted.sessionIds));
         if (deleteSessionFolder) {
           unawaited(_deleteSessionFolder(deleted: deleted));
         }
@@ -70,6 +73,16 @@ class SessionDeletionService({
       await _promptUploadRepository.deleteSessions(sessionIds: sessionIds);
     } on Object catch (error, stackTrace) {
       Log.w("Failed to delete the prompt uploads of deleted sessions ${sessionIds.join(", ")}", error, stackTrace);
+    }
+  }
+
+  /// Best-effort: the sessions are already gone, so a failure leaves only the
+  /// transcripts sent into them on disk.
+  Future<void> _deleteTranscripts({required List<String> sessionIds}) async {
+    try {
+      await _transcriptRepository.deleteSessions(sessionIds: sessionIds);
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to delete the transcripts of deleted sessions ${sessionIds.join(", ")}", error, stackTrace);
     }
   }
 

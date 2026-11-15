@@ -67,6 +67,10 @@ void main() {
       expect(sesoriScratchDirectory(), path.join(home, ".sesori", "scratch"));
     });
 
+    test("puts sent transcripts in <home>/.sesori/transcripts", () {
+      expect(sesoriTranscriptsDirectory(), path.join(home, ".sesori", "transcripts"));
+    });
+
     test("keeps both roots under one .sesori folder", () {
       expect(path.dirname(sesoriWorktreesDirectory()), path.dirname(sesoriScratchDirectory()));
     });
