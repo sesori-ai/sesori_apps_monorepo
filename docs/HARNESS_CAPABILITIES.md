@@ -283,7 +283,7 @@ leaves a running turn alone and is never written to the main transcript.
 | Harness | Native seam | Sesori availability |
 |---|---|---|
 | Claude Code | `side_question` control request in `-p` stream-json, with `history` (verified 2.1.322) | ✅ Native, mid-turn, no tools, no transcript write. CLIs without the handler get "update Claude Code" |
-| Codex | Experimental `thread/sample` (mid-turn from 0.169.0) | ⬜ Native from step 5 of the side-questions plan. History goes in the 4,000-byte prompt. PATH Codex 0.139–0.168 gets "update Codex" |
+| Codex | Experimental `thread/sample` (since 0.164.0; mid-turn with `allowInProgressTurn` from 0.169.0) | ✅ Native, mid-turn, no tools, no rollout write. History goes in the 4,000-byte prompt, oldest text trimmed first. PATH Codex before 0.164 always gets "update Codex"; 0.164 to 0.168 answer only between turns |
 | OpenCode | `/btw` only on its dev branch; session fork exists | ⬜ Phase-2 fork fallback |
 | Pi | No side question; RPC `fork`/`clone` | ⬜ Phase-2 fork fallback |
 | Oh My Pi | RPC-only `btw`, not over ACP; ACP `session/fork` | ⬜ Phase-2 fork fallback |
@@ -306,6 +306,18 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
   only 2.1.322 was probed live.
 - `control_cancel_request` ends the ask with "Side question cancelled". Sesori
   sends it when its own 3-minute wait ends, below the CLI's 11-minute deadline.
+
+Codex (live probe against 0.169.0 with a local test provider, 2026-11-15):
+
+- A mid-turn ask answered in about 1.3 s while the turn kept running and then
+  completed normally. The rollout never contained the side question.
+- An idle ask and a follow-up with history in the prompt both answered from
+  the conversation. The rollout stayed byte-identical and no rollout file was
+  added.
+- An over-budget history was trimmed to exactly 4,000 bytes and still answered
+  from the newest exchange.
+- A stale turn id fails with "sample source turn must be the latest turn",
+  which shows as a failed ask with Retry.
 
 ## Edit and fork
 
