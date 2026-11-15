@@ -184,6 +184,49 @@ class SessionPromptService({
       Log.i("Ignoring repeated prompt $promptId for session $sessionId: it was already accepted");
       return;
     }
+    // Built before the quota cancellation below, so an edit its own checks
+    // refuse leaves a pending continuation alone.
+    final sendToPlugin = switch (send) {
+      _PromptSendPrompt() => () async => await _sessionRepository.sendPrompt(
+        sessionId: sessionId,
+        promptId: promptId,
+        parts: await _deliverableParts(sessionId: sessionId, parts: parts),
+        variant: variant,
+        fastMode: fastMode,
+        agent: agent,
+        model: model,
+      ),
+      _PromptSendCommand(:final command, :final commandSource) => () {
+        final arguments = parts.whereType<PromptPartText>().firstOrNull?.text;
+        // Per the BridgePluginApi contract, sendCommand completes once the
+        // backend has accepted the command — not when its run finishes — so
+        // awaiting it here never holds the phone's relay request open for
+        // the duration of the command's agent run. A command sends only its
+        // text, so it saves no files.
+        return _sessionRepository.sendCommand(
+          sessionId: sessionId,
+          promptId: promptId,
+          command: command,
+          arguments: arguments ?? '',
+          userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
+          variant: variant,
+          fastMode: fastMode,
+          agent: agent,
+          model: model,
+          commandSource: commandSource,
+        );
+      },
+      _PromptSendRewind(:final beforeMessageId) => await _checkedRewind(
+        sessionId: sessionId,
+        beforeMessageId: beforeMessageId,
+        promptId: promptId,
+        parts: parts,
+        variant: variant,
+        fastMode: fastMode,
+        agent: agent,
+        model: model,
+      ),
+    };
     if (await _continuations.cancelCurrentObservationAlreadyReserved(sessionId: sessionId)) {
       try {
         _mutations.continuationUpdated(session: await _views.get(sessionId: sessionId));
@@ -191,50 +234,7 @@ class SessionPromptService({
         Log.w("Could not publish quota cancellation before prompt for session $sessionId", error, stackTrace);
       }
     }
-    await _sendMappingRejections(
-      sessionId: sessionId,
-      send: switch (send) {
-        _PromptSendPrompt() => () async => await _sessionRepository.sendPrompt(
-          sessionId: sessionId,
-          promptId: promptId,
-          parts: await _deliverableParts(sessionId: sessionId, parts: parts),
-          variant: variant,
-          fastMode: fastMode,
-          agent: agent,
-          model: model,
-        ),
-        _PromptSendCommand(:final command, :final commandSource) => () {
-          final arguments = parts.whereType<PromptPartText>().firstOrNull?.text;
-          // Per the BridgePluginApi contract, sendCommand completes once the
-          // backend has accepted the command — not when its run finishes — so
-          // awaiting it here never holds the phone's relay request open for
-          // the duration of the command's agent run. A command sends only its
-          // text, so it saves no files.
-          return _sessionRepository.sendCommand(
-            sessionId: sessionId,
-            promptId: promptId,
-            command: command,
-            arguments: arguments ?? '',
-            userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
-            variant: variant,
-            fastMode: fastMode,
-            agent: agent,
-            model: model,
-            commandSource: commandSource,
-          );
-        },
-        _PromptSendRewind(:final beforeMessageId) => () => _rewindAndSend(
-          sessionId: sessionId,
-          beforeMessageId: beforeMessageId,
-          promptId: promptId,
-          parts: parts,
-          variant: variant,
-          fastMode: fastMode,
-          agent: agent,
-          model: model,
-        ),
-      },
-    );
+    await _sendMappingRejections(sessionId: sessionId, send: sendToPlugin);
     try {
       await _acceptedPromptsRepository.recordAccepted(sessionId: sessionId, promptId: promptId);
     } catch (error, stackTrace) {
@@ -280,11 +280,12 @@ class SessionPromptService({
         parts: parts,
       );
 
-  /// Checks the edit, rewinds and sends through the plugin, then removes the
-  /// rewound messages from the store and every client by exact id. The ids are
-  /// read before the send, so the edited prompt's own messages, which may be
-  /// captured before the plugin returns, are never among them.
-  Future<void> _rewindAndSend({
+  /// Checks the edit, then returns the send that rewinds through the plugin
+  /// and removes the rewound messages from the store and every client by
+  /// exact id. The ids are read before the send, so the edited prompt's own
+  /// messages, which may be captured before the plugin returns, are never
+  /// among them.
+  Future<Future<void> Function()> _checkedRewind({
     required String sessionId,
     required String beforeMessageId,
     required String promptId,
@@ -315,37 +316,39 @@ class SessionPromptService({
         causeStackTrace: null,
       ),
     };
-    try {
-      await _sessionRepository.rewindAndSendPrompt(
-        sessionId: sessionId,
-        beforeMessageId: beforeMessageId,
-        promptId: promptId,
-        parts: await _deliverableParts(sessionId: sessionId, parts: parts),
-        variant: variant,
-        fastMode: fastMode,
-        agent: agent,
-        model: model,
-      );
-    } on PluginBranchPointUnavailableException catch (error, stackTrace) {
-      throw SessionBranchRefusedException(
-        code: SessionBranchErrorCode.branchPointUnavailable,
-        message: error.userFacingReason,
-        cause: error,
-        causeStackTrace: stackTrace,
-      );
-    }
-    try {
-      final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
-      if (session == null) {
-        Log.w("Session $sessionId disappeared after its edit; its rewound messages stay stored");
-        return;
+    return () async {
+      try {
+        await _sessionRepository.rewindAndSendPrompt(
+          sessionId: sessionId,
+          beforeMessageId: beforeMessageId,
+          promptId: promptId,
+          parts: await _deliverableParts(sessionId: sessionId, parts: parts),
+          variant: variant,
+          fastMode: fastMode,
+          agent: agent,
+          model: model,
+        );
+      } on PluginBranchPointUnavailableException catch (error, stackTrace) {
+        throw SessionBranchRefusedException(
+          code: SessionBranchErrorCode.branchPointUnavailable,
+          message: error.userFacingReason,
+          cause: error,
+          causeStackTrace: stackTrace,
+        );
       }
-      _mutations.messagesRewound(session: session, removedMessageIds: removedMessageIds);
-    } on Object catch (error, stackTrace) {
-      // The plugin already owns the edit; failing it would only make the
-      // client retry it. The next backfill drops the rewound messages.
-      Log.w("Could not publish the rewound messages of session $sessionId", error, stackTrace);
-    }
+      try {
+        final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+        if (session == null) {
+          Log.w("Session $sessionId disappeared after its edit; its rewound messages stay stored");
+          return;
+        }
+        _mutations.messagesRewound(session: session, removedMessageIds: removedMessageIds);
+      } on Object catch (error, stackTrace) {
+        // The plugin already owns the edit; failing it would only make the
+        // client retry it. The next backfill drops the rewound messages.
+        Log.w("Could not publish the rewound messages of session $sessionId", error, stackTrace);
+      }
+    };
   }
 
   Future<void> _invalidateStaleOptionsCache({required String sessionId}) async {

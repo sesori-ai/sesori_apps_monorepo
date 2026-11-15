@@ -20,7 +20,9 @@ refuses every edit and clients offer no Edit.
 - The request carries a client-generated prompt id. A repeat of an accepted id
   succeeds without reaching the plugin, even after the rewind removed the
   edited message.
-- A running session is refused with `sessionBusy` before anything changes.
+- A running session is refused with `sessionBusy`. This and the turn checks
+  below run before anything changes, a pending quota auto-continuation
+  included.
 - The bridge reads the whole stored transcript, backfilling it first when the
   store is behind the backend, and finds the message's turn by the shared
   `splitPromptTurns` rule. A message that does not open a turn (a reply or a
@@ -32,8 +34,8 @@ refuses every edit and clients offer no Edit.
   user-facing sentence travels as the message; transcript text never does.
 - Stale prompt options answer `staleSessionOptions` after the options cache is
   invalidated; a plugin refusal answers `refused`.
-- Every refusal is a 409 `SessionBranchErrorResponse` and leaves the
-  transcript untouched.
+- Every branch refusal is a 409 `SessionBranchErrorResponse` and leaves the
+  transcript untouched; the archived rejection keeps its own shared shape.
 - After the plugin accepts, the bridge removes exactly the messages it read
   before the call, by id, from the store and from clients
   (`message.removed`). The edited prompt's echo, captured during the call, is
@@ -61,6 +63,8 @@ refuses every edit and clients offer no Edit.
 
 - No harness implements rewind yet, so every edit is refused.
 - The first turn cannot be edited yet.
+- An edit the plugin refuses keeps the attachment files the bridge saved for
+  it, as a refused send does.
 
 ## Sources
 

@@ -38,6 +38,7 @@ void main() {
   late SessionOperationDispatcher dispatcher;
   late TestChatHistory history;
   late _RecordingRewindMutations mutations;
+  late RecordingSessionContinuations continuations;
   late SessionPromptService service;
 
   /// The harness the session runs on; a test swaps it before `setUp` runs.
@@ -53,7 +54,7 @@ void main() {
     dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
     history = createTestChatHistory(sessionRepository: sessionRepository);
     return SessionPromptService(
-      continuations: RecordingSessionContinuations(),
+      continuations: continuations = RecordingSessionContinuations(),
       mutations: mutations = _RecordingRewindMutations(),
       views: const PassThroughSessionViews(),
       sessionRepository: sessionRepository,
@@ -122,6 +123,8 @@ void main() {
   test("rewinds a later turn and publishes exactly the removed messages", () async {
     await rewind(messageId: "u2");
 
+    expect(continuations.cancellations, ["s1"]);
+
     expect(plugin.rewinds, [
       (sessionId: "backend-s1", beforeMessageId: "u2", promptId: "edit-1", text: "second, edited"),
     ]);
@@ -173,6 +176,7 @@ void main() {
     await expectLater(rewind(messageId: "u2"), refusedWith(SessionBranchErrorCode.sessionBusy));
     expect(plugin.rewinds, isEmpty);
     expect(mutations.rewound, isEmpty);
+    expect(continuations.cancellations, isEmpty, reason: "a refused edit leaves a pending continuation alone");
   });
 
   test("backfills a partial store before validating the turn", () async {
@@ -191,6 +195,7 @@ void main() {
   test("refuses a message that does not open a turn", () async {
     await expectLater(rewind(messageId: "a1"), refusedWith(SessionBranchErrorCode.branchPointUnavailable));
     expect(plugin.rewinds, isEmpty);
+    expect(continuations.cancellations, isEmpty);
   });
 
   test("refuses the first turn until a fresh harness session can replace it", () async {
