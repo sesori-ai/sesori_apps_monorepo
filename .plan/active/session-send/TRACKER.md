@@ -9,7 +9,7 @@
 | 5 Claude read rules (transcripts and uploads) | In PR | #2613 |
 | 6 Busy-prompt declaration | In PR | #2589 |
 | 7 Client send flow | Not started | |
-| 8 Handoff marker and card in the chats | In PR | |
+| 8 Handoff marker and card in the chats | In PR | #2629 |
 | 9 Archive the source after sending | Not started | |
 | 10 Analytics | Not started | |
 | 11 Reconcile docs and harness rows | Not started | |
