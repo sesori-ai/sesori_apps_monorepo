@@ -249,13 +249,24 @@ void main() {
     });
 
     test("times out when no reply arrives", () async {
-      final connected = await connectTestClient(controlTimeout: const Duration(milliseconds: 50));
-      addTearDown(connected.client.dispose);
-
-      await expectLater(
-        connected.client.sendControlRequest(subtype: "list_models"),
-        throwsA(isA<TimeoutException>()),
+      // The short timeout also covers the handshake, so the fake answers it as
+      // it is written: no timer turn lets the timeout win on a loaded machine.
+      final fake = FakeClaudeProcess();
+      var handshakeAnswered = false;
+      fake.onWrite((frame) {
+        if (handshakeAnswered || frame["type"] != "control_request") return;
+        handshakeAnswered = true;
+        fake.emitControlResponse(requestId: frame.field<String>("request_id"), payload: const {});
+      });
+      final client = ClaudeStreamClient(
+        launchSpec: testLaunchSpec(),
+        processFactory: (_) async => fake,
+        controlTimeout: const Duration(milliseconds: 50),
       );
+      addTearDown(client.dispose);
+      await client.connect();
+
+      await expectLater(client.sendControlRequest(subtype: "list_models"), throwsA(isA<TimeoutException>()));
     });
 
     test("fails an in-flight request on dispose", () async {
