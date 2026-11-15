@@ -40,9 +40,9 @@ bridge.
   the prompt.
 - A prompt with only attachments, or a command with no arguments, has no menu:
   there is nothing to copy or select.
-- A long-press no longer selects a word. A held primary mouse button still
-  drag-selects, and a secondary click wins over the selection area's own
-  right-click toolbar.
+- A long-press no longer selects a word. A held primary mouse button on a
+  message still drag-selects, and a secondary click wins over the selection
+  area's own right-click toolbar.
 - Taps, one-finger scrolls, the timestamp peek, a code block's horizontal
   scroll and a pinch to Prompts all behave as before when they move or add a
   finger before the long-press fires.
