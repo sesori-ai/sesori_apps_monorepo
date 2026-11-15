@@ -194,6 +194,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
             fileUploadsSupported: fileUploadsSupported,
             isBusy: isBusy,
             canSend: true,
+            submitAction: null,
             onSend: ({required draft, required command, required attachments}) =>
                 context.read<SessionDetailCubit>().sendMessage(
                   text: draft.text,

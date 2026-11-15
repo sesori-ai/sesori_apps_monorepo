@@ -1255,6 +1255,7 @@ class _ScreenState() extends State<_Screen> {
                 isBusy: false,
                 hasMessages: true,
                 canSend: true,
+                submitAction: null,
                 onSend: ({required draft, required command, required attachments}) {
                   if (widget.buildsRows) setState(() => _rows.add(draft.text));
                 },

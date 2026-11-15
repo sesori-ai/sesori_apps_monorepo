@@ -13,8 +13,10 @@ import "../models/claude_task_status.dart";
 import "../models/claude_task_type.dart";
 import "../models/claude_tool_use_result.dart";
 import "../repositories/claude_session_process_repository.dart";
+import "../repositories/claude_transcript_catalog_repository.dart";
 import "../repositories/mappers/claude_content_mapper.dart";
 import "../repositories/mappers/claude_quota_interruption_mapper.dart";
+import "../repositories/models/claude_rewind_point.dart";
 
 /// A queued prompt that the service wrote to Claude's stdin.
 final class const ClaudeTurnDispatched({
@@ -96,6 +98,7 @@ final class _SessionTurnState() {
 /// bridge-owned queued-prompt state.
 final class ClaudeSessionService({
   required final ClaudeSessionProcessRepository _processes,
+  required final ClaudeTranscriptCatalogRepository _transcripts,
   required final ClaudeApprovalRegistry _approvals,
   required final ServerClock _clock,
   required final ClaudeQuotaInterruptionMapper _quotaMapper,
@@ -153,26 +156,26 @@ final class ClaudeSessionService({
 
   /// Named-session readiness, including retries, queued work and pending input.
   /// [sessionExists] establishes idle for a known nonresident transcript.
-  PluginQuotaContinuationReadiness getQuotaContinuationReadiness({
+  PluginSessionReadiness getSessionReadiness({
     required String sessionId,
     required bool sessionExists,
   }) {
-    if (_disposed) return PluginQuotaContinuationReadiness.unavailable;
+    if (_disposed) return PluginSessionReadiness.unavailable;
     if (_approvals.pendingQuestionsForSession(sessionId: sessionId).isNotEmpty ||
         _approvals.pendingPermissionsForSession(sessionId: sessionId).isNotEmpty) {
-      return PluginQuotaContinuationReadiness.awaitingInput;
+      return PluginSessionReadiness.awaitingInput;
     }
-    if (_retryStatuses.containsKey(sessionId)) return PluginQuotaContinuationReadiness.retrying;
+    if (_retryStatuses.containsKey(sessionId)) return PluginSessionReadiness.retrying;
     final state = _turns[sessionId];
     if (state?.aborting != null || _teardownsBySession.containsKey(sessionId)) {
-      return PluginQuotaContinuationReadiness.busy;
+      return PluginSessionReadiness.busy;
     }
-    if ((state?.queue.isNotEmpty ?? false) || state?.wakeupAt != null) return PluginQuotaContinuationReadiness.queued;
-    if (state?.hasWork ?? false) return PluginQuotaContinuationReadiness.busy;
+    if ((state?.queue.isNotEmpty ?? false) || state?.wakeupAt != null) return PluginSessionReadiness.queued;
+    if (state?.hasWork ?? false) return PluginSessionReadiness.busy;
     if (state != null || (!_processes.isResident(sessionId: sessionId) && sessionExists)) {
-      return PluginQuotaContinuationReadiness.idle;
+      return PluginSessionReadiness.idle;
     }
-    return PluginQuotaContinuationReadiness.unknown;
+    return PluginSessionReadiness.unknown;
   }
 
   /// The session's accepted-but-not-yet-visible prompts, in dispatch order.
@@ -318,6 +321,124 @@ final class ClaudeSessionService({
       ),
     );
     return acceptance.future;
+  }
+
+  /// Removes the user prompt [beforeMessageId] and everything after it from
+  /// the idle session's conversation, then queues [parts] in its place exactly
+  /// like [enqueueTurn].
+  ///
+  /// Claude Code has no live rewind, so the session's process is replaced by
+  /// one resumed at the prompt's parent entry. That process holds the cut in
+  /// memory and parents the next record to it; the transcript changes only
+  /// when the prompt is written. Every refusal therefore comes before
+  /// acceptance and leaves the conversation as it was: a prompt with no
+  /// resumable entry, or a CLI without `--resume-session-at`, throws
+  /// [PluginBranchPointUnavailableException]. Later respawns use plain
+  /// `--resume`, which follows the new leaf.
+  Future<void> rewindAndEnqueueTurn({
+    required String sessionId,
+    required String directory,
+    required String beforeMessageId,
+    required List<PluginPromptPart> parts,
+    required String? model,
+    required ClaudeEffortLevel? effort,
+    required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
+    required String promptId,
+    required String? displayText,
+    required int attachmentCount,
+  }) async {
+    const operation = "rewindAndSendPrompt";
+    if (_disposed) throw StateError("Claude session service is disposed");
+    // Read before the transcript lookup, so a deletion meanwhile is noticed.
+    final existing = _turns[sessionId];
+    final entryUuid = switch (await _transcripts.rewindPointBefore(sessionId: sessionId, messageId: beforeMessageId)) {
+      ClaudeRewindEntry(:final entryUuid) => entryUuid,
+      ClaudeRewindUnavailable(:final reason) => throw PluginBranchPointUnavailableException(
+        operation: operation,
+        userFacingReason: switch (reason) {
+          ClaudeRewindRefusal.notOnActiveBranch => "This message is no longer in the Claude Code conversation.",
+          ClaudeRewindRefusal.firstMessage => "Claude Code can't edit the first message in place.",
+          ClaudeRewindRefusal.beforeCompaction =>
+            "Claude Code compacted the conversation after this message, so it can't be edited.",
+        },
+        cause: null,
+      ),
+    };
+    if (_disposed || (existing != null && !identical(_turns[sessionId], existing))) {
+      throw StateError("Claude session $sessionId closed before it could be rewound");
+    }
+    final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
+    // The bridge rewinds only idle sessions; a wakeup or task that started
+    // since must not be torn down under the user.
+    if (state.hasWork || state.aborting != null) {
+      throw const PluginOperationException(operation: operation, statusCode: 409, message: "session is busy");
+    }
+    // The edited prompt's turn starts now: the session is busy, so a second
+    // rewind is refused and an armed idle reap cannot end the respawned process.
+    _beginTurnAccounting(sessionId: sessionId, state: state);
+    final generation = state.generation;
+    final entry = _QueuedPrompt(
+      id: promptId,
+      displayText: displayText,
+      command: null,
+      attachmentCount: attachmentCount,
+      createdAt: _clock.now().millisecondsSinceEpoch,
+    );
+    final respawn = state.dispatchTail.then((_) async {
+      final reaping = _teardownsBySession[sessionId];
+      if (reaping != null) await reaping;
+      if (_disposed || !identical(_turns[sessionId], state)) {
+        throw StateError("Claude session $sessionId closed before it could be rewound");
+      }
+      await _processes.resumeAt(
+        sessionId: sessionId,
+        directory: directory,
+        entryUuid: entryUuid,
+        model: model,
+        effort: effort,
+        permissionMode: permissionMode,
+        fastMode: fastMode,
+        allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
+      );
+    });
+    // The edited prompt takes the chain slot right after the respawn, so a
+    // send that arrives meanwhile cannot reach the process first. It is
+    // queued at the front: anything already queued arrived after it.
+    state.dispatchTail = respawn.then(
+      (_) {
+        state.queue.insert(0, entry);
+        _emitQueueUpdate(sessionId: sessionId, state: state);
+        return _dispatchTurn(
+          sessionId: sessionId,
+          directory: directory,
+          createNew: false,
+          parts: parts,
+          model: model,
+          effort: effort,
+          permissionMode: permissionMode,
+          fastMode: fastMode,
+          state: state,
+          generation: generation,
+          mode: _QueuedTurnMode(entry: entry),
+        );
+      },
+      // The caller receives the respawn's failure below.
+      onError: (Object _) {},
+    );
+    try {
+      await respawn;
+    } on Object catch (error) {
+      _finish(sessionId: sessionId, state: state, outcome: null);
+      if (error is ClaudeRewindUnsupportedException) {
+        throw PluginBranchPointUnavailableException(
+          operation: operation,
+          userFacingReason: "This Claude Code version can't edit messages from Sesori.",
+          cause: error,
+        );
+      }
+      rethrow;
+    }
   }
 
   void _beginTurnAccounting({required String sessionId, required _SessionTurnState state}) {

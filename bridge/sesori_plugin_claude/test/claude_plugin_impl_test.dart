@@ -326,6 +326,49 @@ void main() {
       await subscription.cancel();
     });
 
+    test("compactSession runs /compact with the applied selection and refuses a working session", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+      await harness.plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "plan it")],
+        variant: null,
+        agent: "Plan",
+        model: (providerID: "anthropic", modelID: "small"),
+      );
+      await _waitForUserText(first, "plan it");
+      first.emit(_result());
+      await pump();
+      int selectionChanges() => first.written
+          .where(
+            (frame) =>
+                frame["type"] == "control_request" &&
+                {"set_model", "set_permission_mode"}.contains(_request(frame)["subtype"]),
+          )
+          .length;
+      final changesBefore = selectionChanges();
+
+      expect(
+        await harness.plugin.compactSession(sessionId: testSessionId, promptId: "prompt-compact"),
+        PluginCompactionResult.accepted,
+      );
+      await _waitForUserText(first, "/compact");
+      expect(selectionChanges(), changesBefore, reason: "compaction keeps the session's model and mode");
+      expect(harness.processes, hasLength(1));
+
+      expect(
+        await harness.plugin.compactSession(sessionId: testSessionId, promptId: "prompt-again"),
+        PluginCompactionResult.sessionBusy,
+      );
+      first.emit(_result());
+      await pump();
+    });
+
     test("declares side questions and implements them", () {
       expect(const ClaudePluginDescriptor().supportsSideQuestions, isTrue);
       expect(harness.plugin, isA<SideQuestionPluginApi>());
@@ -869,12 +912,12 @@ void main() {
       transcript.parent.createSync(recursive: true);
       transcript.writeAsStringSync("{}\n");
       expect(
-        await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
-        PluginQuotaContinuationReadiness.idle,
+        await harness.plugin.getSessionReadiness(sessionId: testSessionId),
+        PluginSessionReadiness.idle,
       );
       expect(
-        await harness.plugin.getQuotaContinuationReadiness(sessionId: "missing"),
-        PluginQuotaContinuationReadiness.unknown,
+        await harness.plugin.getSessionReadiness(sessionId: "missing"),
+        PluginSessionReadiness.unknown,
       );
       expect(harness.processes, isEmpty);
     });
@@ -985,8 +1028,8 @@ void main() {
         isNotEmpty,
       );
       expect(
-        await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
-        PluginQuotaContinuationReadiness.retrying,
+        await harness.plugin.getSessionReadiness(sessionId: testSessionId),
+        PluginSessionReadiness.retrying,
       );
 
       // The retried request streaming again is the recovery signal; the turn
@@ -1012,8 +1055,8 @@ void main() {
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
       expect(events.whereType<BridgeSseProjectUpdated>(), isNotEmpty);
       expect(
-        await harness.plugin.getQuotaContinuationReadiness(sessionId: testSessionId),
-        PluginQuotaContinuationReadiness.busy,
+        await harness.plugin.getSessionReadiness(sessionId: testSessionId),
+        PluginSessionReadiness.busy,
       );
       await subscription.cancel();
     });
@@ -1750,8 +1793,14 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
           allowApprovalWrites &&
           processRepository.answerControlRequest(sessionId: sessionId, requestId: requestId, payload: payload),
     );
+    final transcripts = ClaudeTranscriptCatalogRepository(
+      transcriptApi: failTranscriptDelete
+          ? _ThrowingDeleteTranscriptApi()
+          : ClaudeTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": temporary.path}),
+    );
     sessionService = ClaudeSessionService(
       processes: processRepository,
+      transcripts: transcripts,
       approvals: approvals,
       quotaMapper: ClaudeQuotaInterruptionMapper(contentMapper: const ClaudeContentMapper()),
       clock: const _NeverIdleClock(),
@@ -1759,11 +1808,6 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       idleTimeoutChanges: const Stream<Duration?>.empty(),
     );
     const content = ClaudeContentMapper();
-    final transcripts = ClaudeTranscriptCatalogRepository(
-      transcriptApi: failTranscriptDelete
-          ? _ThrowingDeleteTranscriptApi()
-          : ClaudeTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": temporary.path}),
-    );
     plugin = ClaudePlugin(
       processes: processRepository,
       mcpAuthentication: ClaudeMcpAuthenticationService(

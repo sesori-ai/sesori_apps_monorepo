@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/models/deliverable_prompt_part.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
+import "package:sesori_bridge/src/repositories/models/session_compaction_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -373,6 +374,47 @@ void main() {
 
       expect(plugin.lastRenameSessionId, equals("backend-s1"));
       expect(plugin.lastRenameSessionTitle, equals("Renamed"));
+    });
+
+    test("compactSession sends the backend id and maps the plugin result", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSession(
+        fastMode: false,
+        pluginId: plugin.id,
+        sessionId: "s1",
+        backendSessionId: "backend-s1",
+        projectId: "p1",
+        isDedicated: false,
+        createdAt: 10,
+        worktreePath: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+
+      for (final (pluginResult, expected) in [
+        (PluginCompactionResult.accepted, SessionCompactionResult.accepted),
+        (PluginCompactionResult.sessionBusy, SessionCompactionResult.sessionBusy),
+        (PluginCompactionResult.unsupported, SessionCompactionResult.unsupported),
+      ]) {
+        plugin.compactionResult = pluginResult;
+        expect(await repository.compactSession(sessionId: "s1", promptId: "compact-1"), expected);
+      }
+      expect(plugin.compactSessionCalls.last, (sessionId: "backend-s1", promptId: "compact-1"));
+      await expectLater(
+        repository.compactSession(sessionId: "missing", promptId: "compact-2"),
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
+      );
+      expect(plugin.compactSessionCalls, hasLength(3));
     });
 
     test("sendCommand names nothing for a plugin that does not name its runs", () async {

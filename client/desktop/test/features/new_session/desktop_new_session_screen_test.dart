@@ -77,6 +77,8 @@ void main() {
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(() => newSessionCubit.offersAttachments).thenReturn(true);
+    when(() => newSessionCubit.composerDraftIdentity).thenReturn(ComposerDraftRepository.newSessionIdentity);
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.voiceFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
 
@@ -138,6 +140,8 @@ void main() {
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(() => newSessionCubit.offersAttachments).thenReturn(true);
+    when(() => newSessionCubit.composerDraftIdentity).thenReturn(ComposerDraftRepository.newSessionIdentity);
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
 
@@ -201,6 +205,8 @@ void main() {
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(() => newSessionCubit.offersAttachments).thenReturn(true);
+    when(() => newSessionCubit.composerDraftIdentity).thenReturn(ComposerDraftRepository.newSessionIdentity);
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
     await tester.pumpWidget(
@@ -290,6 +296,8 @@ void main() {
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(() => newSessionCubit.offersAttachments).thenReturn(true);
+    when(() => newSessionCubit.composerDraftIdentity).thenReturn(ComposerDraftRepository.newSessionIdentity);
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
 
@@ -426,6 +434,8 @@ void main() {
       when(cubit.readDedicatedWorktreePreference).thenAnswer((_) => worktreePreference ?? Future.value(true));
       when(() => cubit.canSubmit).thenReturn(false);
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+      when(() => cubit.offersAttachments).thenReturn(true);
+      when(() => cubit.composerDraftIdentity).thenReturn(ComposerDraftRepository.newSessionIdentity);
       whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
       await tester.pumpWidget(
         MultiBlocProvider(
@@ -653,6 +663,8 @@ void main() {
       when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       var draft = ComposerDraft.typed(text: "");
       when(() => newSessionCubit.composerDraft).thenAnswer((_) => draft);
+      when(() => newSessionCubit.offersAttachments).thenReturn(true);
+      when(() => newSessionCubit.composerDraftIdentity).thenReturn(ComposerDraftRepository.newSessionIdentity);
       when(() => newSessionCubit.saveComposerDraft(draft: any(named: "draft"))).thenAnswer((invocation) {
         draft = invocation.namedArguments[#draft] as ComposerDraft;
       });

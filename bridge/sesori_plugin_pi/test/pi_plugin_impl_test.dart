@@ -466,6 +466,37 @@ void main() {
       expect(visibleText, everyElement(isNot(contains("secret-instructions"))));
     });
 
+    test("compactSession runs RPC compact on a quiet session and refuses while it works", () async {
+      final session = await harness.plugin.createSession(
+        fastMode: false,
+        directory: harness.project.path,
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      final accepted = harness.plugin.compactSession(sessionId: session.id, promptId: "prompt-compact");
+      final process = await harness.nextSessionProcess();
+      final request = await waitForCommand(process: process, type: "compact");
+      expect(request["customInstructions"], isNull);
+      process.emit(frame: {"type": "compaction_start", "reason": "manual"});
+      expect(await accepted, PluginCompactionResult.accepted);
+
+      expect(
+        await harness.plugin.compactSession(sessionId: session.id, promptId: "prompt-again"),
+        PluginCompactionResult.sessionBusy,
+      );
+      expect(process.written.where((frame) => frame["type"] == "compact"), hasLength(1));
+
+      final idle = harness.plugin.events.firstWhere((event) => event is BridgeSseSessionIdle);
+      process.emit(frame: {"type": "compaction_end", "reason": "manual", "aborted": false, "willRetry": false});
+      process.emitResponse(id: request.requestId, command: "compact", data: const {});
+      await idle;
+    });
+
     test("native compaction settles before the session goes idle", () async {
       final session = await harness.plugin.createSession(
         fastMode: false,
