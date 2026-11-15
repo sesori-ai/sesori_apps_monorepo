@@ -1098,9 +1098,10 @@ class ChatHistoryRepository({
         }
       }
       // A run the replay doesn't hold keeps the reply rows it doesn't hold
-      // either (Hermes records neither for `/compress`).
+      // either (Hermes records neither for `/compress`). Any other row, the
+      // replayed turns included, ends the run.
       var inUnreplayedRun = false;
-      for (final row in staleRows) {
+      for (final row in storedRows) {
         if (keptStaleIds.contains(row.messageId)) {
           inUnreplayedRun = true;
         } else if (inUnreplayedRun && unreplayedStaleIds.contains(row.messageId) && !_isUserRow(row: row)) {
