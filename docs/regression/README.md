@@ -186,6 +186,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Quota auto continuation](quota-auto-continuation.md)
 - [Session archiving and deletion](session-archiving-and-deletion.md)
 - [Session creation and options](session-creation-and-options.md)
+- [Session edit and fork](session-edit-and-fork.md)
 - [Session history and recovery](session-history-and-recovery.md)
 - [Session turns](session-turns.md)
 - [Tools and file changes](tools-and-file-changes.md)

@@ -220,6 +220,7 @@ Session _deletedSessionInfo(String sessionId) => Session(
   time: null,
   promptDefaults: null,
   lastUserActivityAt: null,
+  scheduledTask: null,
 );
 
 Future<void> recordSessionBinding({
@@ -284,6 +285,7 @@ Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
     },
     promptDefaults: null,
     lastUserActivityAt: null,
+    scheduledTask: null,
   );
 }
 
@@ -404,6 +406,7 @@ class FakeSessionRepository({
       time: SessionTime(created: stored.createdAt, updated: stored.updatedAt, archived: stored.archivedAt),
       promptDefaults: null,
       lastUserActivityAt: stored.lastUserMessageAt,
+      scheduledTask: null,
     );
   }
 
@@ -477,6 +480,7 @@ class FakeSessionRepository({
     time: null,
     promptDefaults: null,
     lastUserActivityAt: null,
+    scheduledTask: null,
   );
 
   SessionPage sessionPage = (
@@ -853,6 +857,18 @@ class FakeSessionRepository({
       null => null,
     };
   }
+
+  @override
+  Future<void> rewindAndSendPrompt({
+    required String sessionId,
+    required String beforeMessageId,
+    required String promptId,
+    required List<DeliverablePromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) => throw UnimplementedError("FakeSessionRepository does not rewind sessions");
 
   @override
   Future<void> renameSession({required String sessionId, required String title}) async {}

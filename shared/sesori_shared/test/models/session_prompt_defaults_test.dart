@@ -91,6 +91,7 @@ void main() {
             variant: "variant-1",
           ),
         ),
+        scheduledTask: null,
       );
 
       final json = session.toJson();

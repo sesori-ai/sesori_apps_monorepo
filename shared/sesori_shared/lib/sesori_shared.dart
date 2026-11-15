@@ -81,6 +81,8 @@ export "src/models/sesori/rename_session_request.dart";
 export "src/models/sesori/reply_to_permission_request.dart";
 export "src/models/sesori/reply_to_question_request.dart";
 export "src/models/sesori/rewind_session_request.dart";
+export "src/models/sesori/scheduled_task.dart";
+export "src/models/sesori/scheduled_task_requests.dart";
 export "src/models/sesori/send_notification_payload.dart";
 export "src/models/sesori/send_prompt_error_response.dart";
 export "src/models/sesori/send_prompt_request.dart";

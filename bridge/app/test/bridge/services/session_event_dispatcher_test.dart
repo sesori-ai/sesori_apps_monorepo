@@ -51,11 +51,12 @@ void main() {
       promptDefaults: null,
       lastUserActivityAt: null,
       branchName: null,
+      scheduledTask: null,
     );
     final deletedDispatch = dispatcher.dispatchLocalEvent(
       source: (
         pluginId: deletedSession.pluginId,
-        event: BridgeSseSessionDeleted(info: deletedSession.toJson()),
+        events: [BridgeSseSessionDeleted(info: deletedSession.toJson())],
       ),
     );
     normalizeGate.complete();
@@ -84,12 +85,13 @@ void main() {
       promptDefaults: null,
       lastUserActivityAt: null,
       branchName: null,
+      scheduledTask: null,
     );
 
     await dispatcher.dispatchLocalEvent(
       source: (
         pluginId: session.pluginId,
-        event: BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
+        events: [BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true)],
       ),
     );
 
@@ -229,7 +231,7 @@ void main() {
     expect(disposed, isFalse);
     await expectLater(
       dispatcher.dispatchLocalEvent(
-        source: (pluginId: "plugin", event: const BridgeSseProjectUpdated()),
+        source: (pluginId: "plugin", events: const [BridgeSseProjectUpdated()]),
       ),
       throwsStateError,
     );
@@ -256,7 +258,7 @@ void main() {
       terminalHandoffConsumed: null,
     );
     await dispatcher.dispatchLocalEvent(
-      source: (pluginId: "plugin", event: const BridgeSseProjectUpdated()),
+      source: (pluginId: "plugin", events: const [BridgeSseProjectUpdated()]),
     );
     await Future<void>.delayed(Duration.zero);
 
