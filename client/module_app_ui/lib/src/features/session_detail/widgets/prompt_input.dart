@@ -16,6 +16,7 @@ import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../l10n/app_localizations.dart";
 import "../../../widgets/composer_or_notice.dart";
 import "../composer_presentation_scope.dart";
 import "command_picker.dart";
@@ -151,6 +152,11 @@ typedef VoiceTranscriptionFinishedCallback = void Function({
   required AnalyticsVoiceMode mode,
 });
 
+/// A submit that hands the composer's content over instead of sending it, such
+/// as saving a task: its button says [label] and shows [icon], and the composer
+/// keeps what it holds, as the caller decides whether that is done with.
+class const PromptSubmitAction({required final String label, required final IconData icon});
+
 class const PromptInput({
   super.key,
   required final bool isBusy,
@@ -164,6 +170,9 @@ class const PromptInput({
   /// is false the draft simply waits in the field.
   required final bool canSend,
   required final PromptSubmitCallback onSend,
+
+  /// Null for Send with its arrow, which empties the composer once it goes.
+  required final PromptSubmitAction? submitAction,
 
   /// Told what became of a dictation's words, once that is decided.
   required final VoiceTranscriptionFinishedCallback? onVoiceTranscriptionFinished,
@@ -740,12 +749,14 @@ class _PromptInputState() extends State<PromptInput> {
 
     // Here rather than before this method: a refusal above leaves the words
     // for the box, with no bubble expected.
-    if (fromDictation) SentBubbleLanding.of(context: context).expect();
+    final handsOver = widget.submitAction != null;
+    if (fromDictation && !handsOver) SentBubbleLanding.of(context: context).expect();
     widget.onSend(
       draft: submission,
       command: stagedCommand,
       attachments: attachments,
     );
+    if (handsOver) return true;
     if (stagedCommand != null) widget.onCommandCleared();
 
     _startPasteGeneration();
@@ -2684,7 +2695,7 @@ class _PromptInputState() extends State<PromptInput> {
     // its label, translated or at a larger text size, would not fit over them.
     final sendWidth = max(
       _pointerVoiceGroupWidth,
-      PregoVoiceSendButton.widthFor(context: context, label: loc.sessionDetailSend),
+      PregoVoiceSendButton.widthFor(context: context, label: _submitLabel(loc)),
     );
     final groupWidth = merged ? sendWidth + sendEnd : _pointerVoiceGroupWidth;
     final motion = prefersReducedMotion(context) ? Duration.zero : _morphDuration;
@@ -2728,10 +2739,11 @@ class _PromptInputState() extends State<PromptInput> {
                 duration: _morphDuration,
                 curve: merged ? _intoClearRowCurve : Curves.linear,
                 child: Tooltip(
-                  message: loc.sessionDetailSend,
+                  message: _submitLabel(loc),
                   excludeFromSemantics: true,
                   child: PregoVoiceSendButton(
-                    label: loc.sessionDetailSend,
+                    label: _submitLabel(loc),
+                    icon: _submitIcon,
                     enabled: _voicePresentation == _VoicePresentation.recording,
                     onPressed: () => unawaited(_handleRecordEnd()),
                   ),
@@ -3544,7 +3556,7 @@ class _PromptInputState() extends State<PromptInput> {
                 // Only the fade out: a disabled send at rest still shows its tooltip.
                 ignoring: !enabled && !settled,
                 child: PregoButtonSemantics(
-                  label: context.loc.sessionDetailSend,
+                  label: _submitLabel(context.loc),
                   enabled: enabled,
                   showsTooltip: true,
                   child: _buildSendLook(
@@ -3563,10 +3575,14 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
+  String _submitLabel(AppLocalizations loc) => widget.submitAction?.label ?? loc.sessionDetailSend;
+
+  IconData get _submitIcon => widget.submitAction?.icon ?? TablerRegular.arrow_up;
+
   /// Send's look for [onPressed], with no screen reader node of its own.
   Widget _buildSendLook({required VoidCallback? onPressed}) {
     return PregoButtonsSolid.iconOnly(
-      leadingIcon: TablerRegular.arrow_up,
+      leadingIcon: _submitIcon,
       semanticLabel: null,
       hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
       size: _actionSize,

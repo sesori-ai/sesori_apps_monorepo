@@ -369,8 +369,10 @@ The research brief quoted older pins (Claude 2.1.310, Pi 1.4.0).
     child rows, then call `plugin.deleteSession(<old backend id>)`, which clears the plugin's own per-session caches
     (Claude's process and `_createdSessions`, Codex's turn and approval maps). Its `session.deleted` event names a
     backend id that no row binds any more, so it removes nothing. A failed backend delete is logged and left to
-    startup reconciliation through the tombstone; the edit still succeeds. The tombstone-and-backend-delete code is
-    one private helper that `deleteSession` and `replaceBackendSession` share, not a second copy.
+    startup reconciliation through the tombstone; the edit still succeeds. The tombstone-and-row-removal code is
+    one private helper (`_tombstoneSubtree`) that `deleteSession` and `replaceBackendSession` share, not a second
+    copy. Each keeps its own `plugin.deleteSession` call: a delete runs it first and tolerates an unreachable plugin,
+    the swap runs it after the commit and only logs a failure.
     `replaceBackendSession` returns the removed child session ids, and `SessionPromptService` purges their history
     through `ChatHistoryService.purgeSessionsHistory`, the way `SessionDeletionService` coordinates the two stores
     (`SessionRepository` owns no history dependency).

@@ -3,7 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
 import "../cubits/new_session/new_session_cubit.dart";
-import "../cubits/new_session/new_session_state.dart";
+import "../cubits/new_session/new_session_purpose.dart";
 import "../cubits/session_detail/session_detail_cubit.dart";
 import "../cubits/session_list/session_actions_cubit.dart";
 import "../platform/lifecycle_source.dart";
@@ -78,7 +78,7 @@ SessionActionsCubit createSessionActionsCubit({required GetIt locator, required 
   return SessionActionsCubit(window: window, actionService: locator<SessionActionService>());
 }
 
-NewSessionCubit createNewSessionCubit({required GetIt locator, required NewSessionProject project}) {
+NewSessionCubit createNewSessionCubit({required GetIt locator, required NewSessionPurpose purpose}) {
   return NewSessionCubit(
     connectionService: locator<ConnectionService>(),
     newSessionPluginService: locator<NewSessionPluginService>(),
@@ -90,6 +90,6 @@ NewSessionCubit createNewSessionCubit({required GetIt locator, required NewSessi
     sessionLaunchService: locator<SessionLaunchService>(),
     dedicatedWorktreePreferenceStore: locator<DedicatedWorktreePreferenceStore>(),
     pluginManagementService: locator<PluginManagementService>(),
-    project: project,
+    purpose: purpose,
   );
 }

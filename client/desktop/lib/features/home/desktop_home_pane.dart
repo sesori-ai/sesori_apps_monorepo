@@ -98,7 +98,10 @@ class _DesktopHomePaneState() extends State<DesktopHomePane> {
         return DesktopHomeStart(
           key: const Key("desktop-home-ready"),
           projects: projects,
-          createNewSessionCubit: ({required project}) => createNewSessionCubit(locator: getIt, project: project),
+          createNewSessionCubit: ({required project}) => createNewSessionCubit(
+            locator: getIt,
+            purpose: NewSessionPurpose.startSession(project: project),
+          ),
           onOpenSession: widget.onOpenSession,
           onOpenHarnessSettings: widget.onOpenHarnessSettings,
         );
@@ -527,6 +530,8 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
           ),
           // The desktop root owns its single connection banner.
           banner: null,
+          aboveComposer: null,
+          submitAction: null,
           pageChrome: const NewSessionPageChrome(
             maxContentWidth: desktopComposerWidth,
             transcriptWidth: desktopTranscriptWidth,
