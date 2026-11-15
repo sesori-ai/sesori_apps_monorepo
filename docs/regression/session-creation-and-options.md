@@ -636,8 +636,9 @@ variant, and worktree mode, and creating the session with its first input.
   turned off by the organization, or unknown).
 - Switching speed drops the backend's prompt cache. When the session has
   history and the model was last active less than the model's cache lifetime
-  ago (Codex 30 minutes; Claude 60 minutes on a subscription login and 5
-  minutes on API-key, Bedrock, or Vertex routes), a confirmation explains the full
+  ago (Codex 30 minutes; Claude 60 minutes on a subscription login, 5 minutes
+  on API-key, Bedrock, or Vertex routes, and 60 minutes when the handshake
+  reports no route), a confirmation explains the full
   re-read, and in both directions; turning fast mode on also mentions the extra
   usage. A session without history, or one whose cache has expired, switches
   at once. Last activity is the newest assistant message's completion time

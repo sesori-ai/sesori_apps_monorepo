@@ -26,7 +26,9 @@ sealed class ClaudeBackendCatalogDto with _$ClaudeBackendCatalogDto {
 /// PII-free subset of the handshake's `account`, which also carries the
 /// account's email and organization. Verified against CLI 2.1.325: a
 /// subscription login reports `subscriptionType`; an API key reports
-/// `apiKeySource` instead; Bedrock and Vertex report only `apiProvider`.
+/// `apiProvider: firstParty` without it; Bedrock and Vertex report only
+/// `apiProvider`. A metered route is therefore recognized by `apiProvider`
+/// without `subscriptionType`, so both fields are needed.
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeAccountDto with _$ClaudeAccountDto {
   const factory({
