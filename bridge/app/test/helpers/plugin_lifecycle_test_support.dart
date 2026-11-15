@@ -51,6 +51,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
           supportsPromptAttachments: false,
           namesCommandInvocations: false,
           supportsSideQuestions: false,
+          busyPromptHandling: PluginBusyPromptHandling.steer,
           mcpScopes: noMcpScopes,
         ),
     ],

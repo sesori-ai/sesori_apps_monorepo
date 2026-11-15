@@ -13,6 +13,7 @@ export "src/lifecycle/bridge_plugin_descriptor.dart";
 export "src/lifecycle/plugin_activation_policy.dart";
 export "src/lifecycle/plugin_authentication.dart";
 export "src/lifecycle/plugin_authentication_required_exception.dart";
+export "src/lifecycle/plugin_busy_prompt_handling.dart";
 export "src/lifecycle/plugin_config.dart";
 export "src/lifecycle/plugin_control_capability.dart";
 export "src/lifecycle/plugin_diagnostics.dart";

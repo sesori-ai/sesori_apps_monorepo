@@ -13,6 +13,7 @@ import "package:sesori_shared/sesori_shared.dart" hide PluginRuntimeState;
 import "../auth/bridge_id_provider.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
+import "../repositories/mappers/plugin_to_shared_mapping.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
 import "../runtime/plugin_runtime.dart";
 
@@ -35,6 +36,7 @@ typedef RegisteredPluginMetadata = ({
   bool supportsPromptAttachments,
   bool namesCommandInvocations,
   bool supportsSideQuestions,
+  PluginBusyPromptHandling busyPromptHandling,
   Set<PluginMcpScopeKind> mcpScopes,
 });
 
@@ -1164,6 +1166,7 @@ class PluginLifecycleService({
               failureReason: _failureReason(snapshot: snapshot),
               namesCommandInvocations: plugin.namesCommandInvocations,
               supportsSideQuestions: plugin.supportsSideQuestions,
+              busyPromptHandling: plugin.busyPromptHandling.toShared(),
             );
           }(),
     };

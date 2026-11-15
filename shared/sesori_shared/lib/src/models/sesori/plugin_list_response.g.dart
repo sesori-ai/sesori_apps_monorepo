@@ -35,6 +35,13 @@ _PluginMetadata _$PluginMetadataFromJson(Map json) => _PluginMetadata(
   failureReason: json['failureReason'] as String?,
   namesCommandInvocations: json['namesCommandInvocations'] as bool? ?? false,
   supportsSideQuestions: json['supportsSideQuestions'] as bool? ?? false,
+  busyPromptHandling:
+      $enumDecodeNullable(
+        _$BusyPromptHandlingEnumMap,
+        json['busyPromptHandling'],
+        unknownValue: BusyPromptHandling.unknown,
+      ) ??
+      BusyPromptHandling.unknown,
 );
 
 Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
@@ -52,6 +59,8 @@ Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
       'failureReason': ?instance.failureReason,
       'namesCommandInvocations': instance.namesCommandInvocations,
       'supportsSideQuestions': instance.supportsSideQuestions,
+      'busyPromptHandling':
+          _$BusyPromptHandlingEnumMap[instance.busyPromptHandling]!,
     };
 
 const _$PluginLifecycleStateEnumMap = {
@@ -72,6 +81,12 @@ const _$McpScopeKindEnumMap = {
   McpScopeKind.project: 'project',
   McpScopeKind.session: 'session',
   McpScopeKind.unknown: 'unknown',
+};
+
+const _$BusyPromptHandlingEnumMap = {
+  BusyPromptHandling.steer: 'steer',
+  BusyPromptHandling.stopTurn: 'stopTurn',
+  BusyPromptHandling.unknown: 'unknown',
 };
 
 _PluginListResponse _$PluginListResponseFromJson(Map json) =>

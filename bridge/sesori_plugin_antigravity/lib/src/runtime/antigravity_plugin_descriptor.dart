@@ -71,6 +71,9 @@ class const AntigravityPluginDescriptor({
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.bridgeDerived;
   @override
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
+
+  @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
   @override
   bool get supportsPromptAttachments => true;
 
