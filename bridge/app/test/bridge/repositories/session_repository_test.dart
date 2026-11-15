@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/repositories/models/deliverable_prompt_part.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
@@ -591,7 +592,7 @@ void main() {
         projectId: "stable-project",
         directory: "/repo/.worktrees/blue-otter",
         parentSessionId: null,
-        parts: const [PromptPart.text(text: "Ship it")],
+        parts: const [DeliverablePromptPart.text(text: "Ship it")],
         userVisibleText: "Ship it",
         variant: null,
         agent: "agent",
@@ -775,7 +776,7 @@ void main() {
           projectId: "/repo",
           directory: "/repo",
           parentSessionId: null,
-          parts: const [PromptPart.text(text: "Ship it")],
+          parts: const [DeliverablePromptPart.text(text: "Ship it")],
           userVisibleText: "Ship it",
           variant: variant,
           agent: null,
@@ -993,7 +994,7 @@ void main() {
           fastMode: false,
           promptId: "prompt-1",
           sessionId: "stable-s1",
-          parts: const [PromptPart.text(text: "Prompt")],
+          parts: const [DeliverablePromptPart.text(text: "Prompt")],
           variant: variant,
           agent: null,
           model: null,

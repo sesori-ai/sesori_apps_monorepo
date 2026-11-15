@@ -28,12 +28,6 @@ class const SendPromptBody({
             "text": text,
             if (syntheticText) "synthetic": true,
           },
-          PluginPromptPartFilePath(:final mime, :final path, :final filename) => <String, dynamic>{
-            "type": "file",
-            "mime": mime,
-            "url": Uri.file(path).toString(),
-            "filename": ?filename,
-          },
           PluginPromptPartFileUrl(:final mime, :final url, :final filename) => <String, dynamic>{
             "type": "file",
             "mime": mime,

@@ -4,6 +4,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/deliverable_prompt_part.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/new_session_defaults_repository.dart";
 import "../repositories/project_catalog_identity_calculator.dart";
@@ -81,10 +82,14 @@ class SessionCreationService({
             inlineImages: _sessionRepository.inlineImagesSupported(pluginId: request.pluginId),
             parts: request.parts,
           )
-        : request.parts;
+        : const <DeliverablePromptPart>[];
     // From the delivered parts, so each saved file's note shows in place and
     // the live user message matches the reloaded one.
-    final userTexts = _extractTexts(parts: userParts);
+    final userTexts = userParts
+        .whereType<DeliverablePromptPartText>()
+        .map((part) => part.text)
+        .where((text) => text.trim().isNotEmpty)
+        .toList(growable: false);
     final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
     final WorktreeResult? worktreeResult;
     final _SessionCreationWorktreeState worktreeState;
@@ -177,8 +182,8 @@ class SessionCreationService({
     return await _worktreeService.prepareWorktreeForSession(projectId: request.projectId);
   }
 
-  List<PromptPart> _buildPromptParts({
-    required List<PromptPart> parts,
+  List<DeliverablePromptPart> _buildPromptParts({
+    required List<DeliverablePromptPart> parts,
     required WorktreeResult? worktreeResult,
     required String? command,
   }) {
@@ -190,8 +195,8 @@ class SessionCreationService({
       return parts;
     }
     if (worktreeResult case WorktreeSuccess(:final path, :final baseBranch)) {
-      final promptParts = <PromptPart>[
-        PromptPart.text(
+      final promptParts = <DeliverablePromptPart>[
+        DeliverablePromptPart.text(
           text: buildWorktreeSystemContext(
             worktreePath: path,
             baseBranch: baseBranch,

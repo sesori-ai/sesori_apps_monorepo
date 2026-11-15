@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/repositories/mappers/plugin_session_status_map
 import "package:sesori_bridge/src/repositories/mappers/plugin_to_shared_mapping.dart";
 import "package:sesori_bridge/src/repositories/mappers/prompt_part_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
+import "package:sesori_bridge/src/repositories/models/deliverable_prompt_part.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
@@ -451,7 +452,7 @@ class FakeSessionRepository({
     required String projectId,
     required String directory,
     required String? parentSessionId,
-    required List<PromptPart> parts,
+    required List<DeliverablePromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
     required bool fastMode,
@@ -819,7 +820,7 @@ class FakeSessionRepository({
   Future<void> sendPrompt({
     required String promptId,
     required String sessionId,
-    required List<PromptPart> parts,
+    required List<DeliverablePromptPart> parts,
     required SessionVariant? variant,
     required bool fastMode,
     required String? agent,

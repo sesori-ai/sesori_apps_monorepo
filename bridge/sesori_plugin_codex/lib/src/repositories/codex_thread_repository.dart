@@ -217,7 +217,6 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
   }) {
     return switch (part) {
       PluginPromptPartText(:final text) => (input: CodexTurnInputDto.text(text: text), inlineBytes: 0),
-      PluginPromptPartFilePath(:final path) => (input: CodexTurnInputDto.localImage(path: path), inlineBytes: 0),
       PluginPromptPartFileUrl(:final url) => (input: CodexTurnInputDto.image(url: url), inlineBytes: 0),
       PluginPromptPartFileData(:final mime, :final base64) => _mapInlineImage(
         mime: mime,
