@@ -3,6 +3,7 @@ import "package:widgetbook/widgetbook.dart";
 
 import "src/prego_button_catalog.dart";
 import "src/prego_catalog_theme.dart";
+import "src/prego_detent_sheet_catalog.dart";
 
 void main() {
   runApp(const DesignCatalogApp());
@@ -25,7 +26,7 @@ class const DesignCatalogApp({super.key}) extends StatelessWidget {
         WidgetbookFolder(
           name: "Prego",
           isInitiallyExpanded: true,
-          children: [buildPregoSolidButtonComponent()],
+          children: [buildPregoSolidButtonComponent(), buildPregoDetentSheetComponent()],
         ),
       ],
       header: const Text(_catalogHeader),

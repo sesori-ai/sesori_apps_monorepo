@@ -18,8 +18,8 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   parameter map. No account-linked event may carry code, prompts, transcripts, coding-provider, model, agent, tool, or
   command names, paths, repository, project, session, branch or worktree names, raw error text, OAuth identity, email,
   or raw or hashed project, session, bridge, or device identifiers. The account-less authentication catalog's pinned
-  provider/method enum is the explicit provider-name exception, and the pinned `harness` on the two message outcomes is
-  the explicit harness-name exception.
+  provider/method enum is the explicit provider-name exception, and the pinned `harness` on the two message outcomes and
+  on `side_question_asked` is the explicit harness-name exception.
 - Account-linked events require an enabled runtime capability (release build, supported platform, sink present),
   authentication, and a server preference resolved to enabled for that generation; anything else suppresses them.
   They carry the validated server-derived key, never a raw account ID, and never set Firebase's global SDK identity.
@@ -64,6 +64,15 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
 - Pinning or unpinning a session reports `session_pin_changed` with `pinned` (`true`, `false`) only after the bridge
   answers the updated session, never the session or its title. A refused, failed or unsupported pin reports nothing.
   The desktop does not send it to the warehouse.
+- A side question reports `side_question_asked` once per ask, when the bridge's result arrives, even if the side chat
+  has closed meanwhile. It carries the session's pinned `harness` and an `outcome`: `answered` when the bridge stored
+  an answer, `no_answer` when the model gave no usable one, `unavailable` for any other refusal (the harness can't,
+  the session has no turn yet, the question is too long, or a reason the app doesn't know), and `failed` for a failed or
+  timed-out request or a response kind the app doesn't know. It never carries the question, the answer, the session,
+  the side chat, or a count. An ask the app never sends (an archived or unavailable session, blank text, or one asked
+  while another waits) reports nothing. The desktop does not send it to the warehouse yet, because the auth server's
+  product-event route doesn't accept it. Reporting reads it from the raw export: no curated view consumes it, so
+  adoption is read as asks per harness and the share of each outcome.
 - The CEO call invitation reports `founder_call_shown` and `founder_call_declined` with `surface`
   `computer_connected_sheet`, and `founder_call_link_opened` with `computer_connected_sheet` or `settings`; see
   [founder call](founder-call.md).
@@ -168,6 +177,8 @@ account against a real property.
   carries a route path instead of a pinned screen, or the home reports a screen other than `sessions`.
 - A "No project" creation reports `workspace_kind` `project` or `dedicated_worktree`, or a folder project's reports
   `no_project`.
+- `side_question_asked` fires more than once for one ask, fires for an ask the app never sent, or carries anything
+  beyond `harness` and `outcome`.
 - `prompt_files_sent` fires for a failed, locally queued or image-only prompt, fires twice for one accepted prompt, or
   carries anything beyond its two pinned parameters.
 - A delayed Remote Config response holds the native splash or first product frame; automatic screen reporting is

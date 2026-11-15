@@ -96,6 +96,7 @@ void main() {
             bridgeId: "bridge-1",
             supportsSessionOptions: true,
             supportsFileUploads: false,
+            supportsSideQuestions: false,
             plugins: [defaultPlugin],
           ),
         ),
@@ -431,6 +432,7 @@ void main() {
               bridgeId: "bridge-1",
               supportsSessionOptions: true,
               supportsFileUploads: false,
+              supportsSideQuestions: false,
               plugins: const [
                 PluginMetadata(
                   id: "codex",
@@ -515,6 +517,7 @@ void main() {
                 bridgeId: "bridge-1",
                 supportsSessionOptions: true,
                 supportsFileUploads: supportsFileUploads,
+                supportsSideQuestions: false,
                 plugins: const [
                   PluginMetadata(
                     id: "grok",
@@ -764,6 +767,7 @@ void main() {
               bridgeId: "bridge-1",
               supportsSessionOptions: true,
               supportsFileUploads: false,
+              supportsSideQuestions: false,
               plugins: [defaultPlugin.copyWith(namesCommandInvocations: namesCommandInvocations)],
             ),
           ),
@@ -920,6 +924,7 @@ void main() {
             bridgeId: "bridge-1",
             supportsSessionOptions: true,
             supportsFileUploads: false,
+            supportsSideQuestions: false,
             plugins: const [
               PluginMetadata(
                 id: "plugin-1",
@@ -1002,6 +1007,7 @@ void main() {
             bridgeId: "bridge-1",
             supportsSessionOptions: true,
             supportsFileUploads: false,
+            supportsSideQuestions: false,
             plugins: const [
               PluginMetadata(
                 id: "plugin-1",
@@ -1198,6 +1204,7 @@ void main() {
             bridgeId: "bridge-1",
             supportsSessionOptions: true,
             supportsFileUploads: false,
+            supportsSideQuestions: false,
             plugins: const [defaultPlugin],
           ),
         );
@@ -2801,6 +2808,7 @@ void main() {
                 bridgeId: "bridge-1",
                 supportsSessionOptions: true,
                 supportsFileUploads: true,
+                supportsSideQuestions: false,
                 plugins: [defaultPlugin],
               ),
             ),
@@ -3353,6 +3361,7 @@ void main() {
               bridgeId: "bridge-1",
               supportsSessionOptions: true,
               supportsFileUploads: false,
+              supportsSideQuestions: false,
               plugins: const [defaultPlugin],
             ),
           ),
@@ -3476,6 +3485,7 @@ void main() {
               bridgeId: bridgeId,
               supportsSessionOptions: true,
               supportsFileUploads: false,
+              supportsSideQuestions: false,
               plugins: plugins,
             ),
           );
@@ -4085,6 +4095,7 @@ void main() {
               bridgeId: "bridge-1",
               supportsSessionOptions: false,
               supportsFileUploads: false,
+              supportsSideQuestions: false,
               plugins: const [
                 PluginMetadata(
                   id: "plugin-1",
@@ -4293,6 +4304,7 @@ void main() {
               bridgeId: "bridge-1",
               supportsSessionOptions: true,
               supportsFileUploads: false,
+              supportsSideQuestions: false,
               plugins: const [defaultPlugin, otherPlugin],
             ),
           ),

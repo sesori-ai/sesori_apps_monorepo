@@ -7,6 +7,9 @@ final class PluginDiscoverySnapshot({
   /// Whether the bridge saves prompt files that are not inline images, for
   /// every plugin it runs.
   required final bool supportsFileUploads,
+
+  /// Whether the bridge has the side-question routes.
+  required final bool supportsSideQuestions,
   required List<PluginMetadata> plugins,
 }) {
   final List<PluginMetadata> plugins = List.unmodifiable(plugins);

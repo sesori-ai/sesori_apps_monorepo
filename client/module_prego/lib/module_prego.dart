@@ -42,6 +42,7 @@ export 'components/prego_readable_selection_area.dart';
 export 'components/prego_size_observer.dart';
 export 'components/surfaces/prego_action_sheet.dart';
 export 'components/surfaces/prego_bottom_sheet.dart';
+export 'components/surfaces/prego_detent_sheet.dart';
 export 'components/surfaces/prego_grouped_notice_row.dart';
 export 'components/surfaces/prego_grouped_rows.dart';
 export 'components/surfaces/prego_modal.dart';
