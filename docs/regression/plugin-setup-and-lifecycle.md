@@ -28,13 +28,15 @@ are recommendation metadata, not forced upgrades. Compatible PATH binaries remai
 Independent minimums are unchanged; Antigravity retains its exact-pair policy rather than an
 independent floor. On 2026-11-12 the production managed install (digest sentinel) passed on macOS
 arm64 for all eight managed harnesses; it had network and normal file reads. The native probes
-below ran with network denied, home reads denied and no credentials.
+below ran with network denied, home reads denied and no credentials. Codex was raised again on
+2026-11-15 in a single-harness follow-up; its row records that run's own evidence and probe
+conditions.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
 | OpenCode | `2.2.7` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes (npm integrity agrees) and layouts verified; v2 models regenerated against `v2.2.7` and the event manifest re-checked (no event change). The managed binary reports `opencode v2.2.7`; `serve` answers authenticated `/api/info` (`2.2.7`) and rejects unauthenticated reads, also when started without a password. Provider list, SSE startup and teardown, provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
 | Antigravity | package/server `1.4.5` | Exact package/server/ACP 1 | Six archive hashes/layouts independently verified and matching the registry's published hashes; the production managed install passed, including its initialize-only ACP validation, and the installed server reports `Build label: 1.4.5`. Other native targets and authenticated behavior remain unverified. |
-| Codex | `0.167.2` | `0.139.0` | Six package hashes match `codex-package_SHA256SUMS` and the GitHub digests; the managed package reports `codex-cli 0.167.2`, and stdio and WebSocket app-server initialize and `thread/list` passed. A no-account probe confirmed that a thread started with a non-configured `modelProvider` rejects its first turn (`modelProviderMismatch`), which is why Sesori no longer sends one. Authenticated turns remain unverified. |
+| Codex | `0.169.0` | `0.139.0` | Six package hashes downloaded and matched against `codex-package_SHA256SUMS` and the GitHub digests; on 2026-11-15 the production managed install on macOS arm64 wrote the digest sentinel and the package reports `codex-cli 0.169.0`. With an isolated HOME and `CODEX_HOME` and a filtered environment (no OS sandbox), stdio and WebSocket app-server initialize and `thread/list` passed, and turns against a local OpenAI-compatible test provider completed. `thread/sample` with `allowInProgressTurn` answered mid-turn, was refused ("sample source must be idle") without the flag, and left the thread's turns and rollout unchanged. On 0.167.x a no-account probe confirmed that a thread started with a non-configured `modelProvider` rejects its first turn (`modelProviderMismatch`), which is why Sesori sends none. Turns with a real OpenAI account remain unverified. |
 | GitHub Copilot | `1.0.109` | `1.0.78` | Six archive hashes match `SHA256SUMS.txt` and the GitHub digests; the managed binary reports `GitHub Copilot CLI 1.0.109.` and answered ACP initialize (agent `1.0.109`, protocol 1). The configured lifecycle remains unverified. |
 | Cursor | `2026.11.11-b912975` | date `2026.09.23` | Four self-computed package hashes; the managed package reports `2026.11.11-b912975` and answered ACP initialize (protocol 1). Configured load/replay/model/mode and cleanup remain unverified. The floor is the oldest build with evidence for native sub-agent child sessions, which Sesori always enables; an older PATH build is reported outdated and asked to update. Sub-agent frame shapes come from the CLI bundle; the authenticated live checks (spawn/state pair, child streaming, nested and resumed children, root stop cascade, refused child stop, stop-and-send) and the open questions (child-id `session/load` transcript, children in `session/list`, `agentId` in pre-capability transcripts) remain pending. |
 | Claude Code | `2.1.322` | `2.1.221` | Target is npm `latest`. Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
@@ -458,9 +460,10 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   remains authoritative when present.
 - A new Codex thread sends the chosen `model` but never a `modelProvider`, so it
   runs on the provider Codex resolves from its own config and profiles. Codex
-  0.166.0+ rejects every prompt on a thread whose provider differs from that one
-  (`modelProviderMismatch`), so a failure here shows as a new session whose first
-  prompt errors with "This chat uses X, but your current provider is Y".
+  0.166.0 to 0.167.x rejects every prompt on a thread whose provider differs from
+  that one (`modelProviderMismatch`), so on such a PATH install a failure here
+  shows as a new session whose first prompt errors with "This chat uses X, but
+  your current provider is Y".
 - Interactive authentication is optional per descriptor. A capable harness owns its
   backend process and credentials, exposes only a safe challenge and sanitized terminal
   state, cancels cooperatively, and settles process cleanup before the operation ends.
