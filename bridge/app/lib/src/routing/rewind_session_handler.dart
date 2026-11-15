@@ -23,6 +23,8 @@ class RewindSessionHandler({required final SessionPromptService _sessionPromptSe
     final sessionId = requireNonEmpty(request: request, value: body.sessionId, label: "session id");
     final messageId = requireNonEmpty(request: request, value: body.messageId, label: "message id");
     final promptId = requireNonEmpty(request: request, value: body.promptId, label: "prompt id");
+    // An empty edit would rewind with nothing to resend.
+    if (body.parts.isEmpty) throw buildErrorResponse(request: request, status: 400, message: "empty parts");
 
     await _sessionPromptService.rewindAndSendPrompt(
       sessionId: sessionId,

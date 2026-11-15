@@ -250,6 +250,57 @@ void main() {
     expect(mutations.rewound, isEmpty);
   });
 
+  test("a resend that fails after the harness rewound removes what the harness dropped", () async {
+    plugin.onRewind = () async {
+      plugin.messagesResult = _transcript.take(2).toList();
+      throw StateError("turn/start failed");
+    };
+
+    await expectLater(rewind(messageId: "u2"), throwsA(isA<StateError>()));
+    expect(mutations.rewound.single.removedMessageIds, ["u2", "a2"]);
+  });
+
+  test("a failure that changed nothing removes nothing", () async {
+    plugin.onRewind = () async => throw StateError("connection lost");
+
+    await expectLater(rewind(messageId: "u2"), throwsA(isA<StateError>()));
+    expect(mutations.rewound, isEmpty);
+  });
+
+  test("an empty harness read after a failure removes nothing", () async {
+    plugin.onRewind = () async {
+      plugin.messagesResult = [];
+      throw StateError("turn/start failed");
+    };
+
+    await expectLater(rewind(messageId: "u2"), throwsA(isA<StateError>()));
+    expect(mutations.rewound, isEmpty);
+  });
+
+  test("the route rejects an edit with no parts before reaching the plugin", () async {
+    final response = await RewindSessionHandler(sessionPromptService: service).routeForTest(
+      makeRequest(
+        "POST",
+        "/session/rewind",
+        body: jsonEncode(
+          const RewindSessionRequest(
+            sessionId: "s1",
+            messageId: "u2",
+            promptId: "edit-1",
+            parts: [],
+            agent: null,
+            model: null,
+            variant: null,
+            fastMode: false,
+          ).toJson(),
+        ),
+      ),
+    );
+
+    expect(response.status, 400);
+    expect(plugin.rewinds, isEmpty);
+  });
+
   test("the route answers a refusal with 409 and the branch error code", () async {
     final response = await RewindSessionHandler(sessionPromptService: service).routeForTest(
       makeRequest(
