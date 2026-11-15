@@ -17,6 +17,7 @@ extension PluginMessageMapper on PluginMessage {
       // A plugin names a run from its backend's record; otherwise bridge core
       // names the commands it sent itself.
       invocation: invocation?.toShared(),
+      handoff: null,
     ),
     PluginMessageAssistant(
       :final id,

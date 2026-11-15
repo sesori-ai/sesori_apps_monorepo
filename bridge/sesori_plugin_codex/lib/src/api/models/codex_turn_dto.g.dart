@@ -15,6 +15,15 @@ _CodexTurnStartResponseDto _$CodexTurnStartResponseDtoFromJson(Map json) =>
             ),
     );
 
+_CodexThreadTurnsPageDto _$CodexThreadTurnsPageDtoFromJson(Map json) =>
+    _CodexThreadTurnsPageDto(
+      data: (json['data'] as List<dynamic>?)
+          ?.map(
+            (e) => CodexTurnDto.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
+          .toList(),
+    );
+
 _CodexTurnDto _$CodexTurnDtoFromJson(Map json) => _CodexTurnDto(
   id: json['id'] as String?,
   status: $enumDecodeNullable(

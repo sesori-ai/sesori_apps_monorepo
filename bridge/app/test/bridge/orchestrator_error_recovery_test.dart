@@ -48,6 +48,7 @@ void main() {
           supportsSideQuestions: false,
           busyPromptHandling: PluginBusyPromptHandling.steer,
           mcpScopes: noMcpScopes,
+          sessionBranching: noSessionBranching,
         ),
       ],
       disabledPluginIds: const {"opencode"},

@@ -266,23 +266,44 @@ class ChatHistoryRepository({
         sessionId: sessionId,
         messageId: message.id,
         seq: seq,
-        infoJson: jsonEncode(_withStoredInvocation(update: message, stored: stored).toJson()),
+        infoJson: jsonEncode(_withStoredStamps(update: message, stored: stored).toJson()),
         updatedAt: updatedAt,
       ),
     );
   }
 
-  /// [update] with the command invocation [stored] already names, when
-  /// [update] names none: a later update or a replay of the same user turn
-  /// doesn't know the invocation the bridge stamped live.
-  Message _withStoredInvocation({required Message update, required Message? stored}) {
-    if ((update, stored)
-        case (
-          final MessageUser user,
-          MessageUser(invocation: final invocation?),
-        )
-        when user.invocation == null) {
-      return user.copyWith(invocation: invocation);
+  /// Turns the stored `sent` handoff of the user message [messageId] into its
+  /// not-sent form, as an update at [updatedAt] so a later replay still pairs
+  /// the row with its replayed turn. Anything else stored for it is left as it is.
+  Future<void> markHandoffNotSent({
+    required String sessionId,
+    required String messageId,
+    required int updatedAt,
+  }) async {
+    final existing = await _chatHistoryDao.getMessage(sessionId: sessionId, messageId: messageId);
+    if (existing == null) return;
+    final stored = Message.fromJson(jsonDecodeMap(existing.infoJson));
+    if (stored case MessageUser(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle))) {
+      final marked = stored.copyWith(
+        handoff: MessageHandoff.notSent(targetSessionId: targetSessionId, targetTitle: targetTitle),
+      );
+      await _chatHistoryDao.upsertMessage(
+        row: existing.copyWith(infoJson: jsonEncode(marked.toJson()), updatedAt: updatedAt),
+      );
+    }
+  }
+
+  /// [update] with the command invocation and handoff [stored] already
+  /// carries, for each that [update] lacks: a later update or a replay of the
+  /// same user turn doesn't know the stamps the bridge applied live.
+  Message _withStoredStamps({required Message update, required Message? stored}) {
+    if ((update, stored) case (final MessageUser user, final MessageUser storedUser)
+        when (user.invocation == null && storedUser.invocation != null) ||
+            (user.handoff == null && storedUser.handoff != null)) {
+      return user.copyWith(
+        invocation: user.invocation ?? storedUser.invocation,
+        handoff: user.handoff ?? storedUser.handoff,
+      );
     }
     return update;
   }
@@ -960,9 +981,9 @@ class ChatHistoryRepository({
         storedNamedTurns[index] = storedIndex;
       }
       final notice = _reconciledNotice(imported: imported, stored: stored, sameIdentity: exactStoredIndex != null);
-      // The stored row's invocation survives the import that replaces it,
-      // unless the import names its own.
-      final reconciled = notice ?? _withStoredInvocation(update: imported, stored: stored);
+      // The stored row's stamps survive the import that replaces it, unless
+      // the import carries its own.
+      final reconciled = notice ?? _withStoredStamps(update: imported, stored: stored);
       if (!identical(reconciled, imported)) {
         importedMessageRows[index] = importedMessageRows[index].copyWith(infoJson: jsonEncode(reconciled.toJson()));
       }
@@ -1018,7 +1039,7 @@ class ChatHistoryRepository({
           final imported = messages[index].info;
           final pairedInImport = storedIds.contains(imported.id) || semanticPairs.containsKey(index);
           if (!pairedInImport && imported is MessageUser && imported.invocation == null) {
-            final reconciled = _withStoredInvocation(
+            final reconciled = _withStoredStamps(
               update: imported,
               stored: Message.fromJson(jsonDecodeMap(row.infoJson)),
             );
@@ -1646,8 +1667,8 @@ class ChatHistoryRepository({
         source: message.toJson(),
         fields: {
           "id", "sessionID", "promptId", "time", "agent", "modelID", "providerID",
-          // Only a live turn the bridge sent carries it; its replay doesn't.
-          "invocation",
+          // Only a live turn the bridge sent carries them; its replay doesn't.
+          "invocation", "handoff",
           // An error notice says that a turn failed. Its wording may differ
           // between live and replay: a backend can send the real reason live
           // and save only a fixed closing row (see [_reconciledNotice]).

@@ -2958,6 +2958,7 @@ void main() {
         await _awaitLoaded(cubit);
         const message = Message.user(
           invocation: null,
+          handoff: null,
           promptId: null,
           id: "msg-new",
           sessionID: sessionId,

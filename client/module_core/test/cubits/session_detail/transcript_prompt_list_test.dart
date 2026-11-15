@@ -10,6 +10,7 @@ MessageWithParts _user({required String id, int? at, List<MessagePart>? parts, C
     MessageWithParts(
       info: Message.user(
         invocation: invocation,
+        handoff: null,
         id: id,
         sessionID: "s",
         agent: null,
