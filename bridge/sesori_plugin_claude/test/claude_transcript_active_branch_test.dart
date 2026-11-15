@@ -132,6 +132,89 @@ void main() {
     expect(messages, isNot(contains("user: Reply with just the word: blue")));
   });
 
+  group("rewind point", () {
+    // The prompts' uuids and parents in the recorded fixtures.
+    const one = "40c0127f-683f-45bd-848d-47bf2dc8e1cd";
+    const two = "511f77e8-652e-47db-a1fa-27345ad265f6";
+    const three = "2f3824a0-c722-4b54-a5ee-f7127dfd198a";
+    const afterOne = "394d3466-c6ea-4f94-850c-a82bb34068df";
+
+    Future<ClaudeRewindPoint> before(String messageId, {required String sessionId}) =>
+        transcripts.rewindPointBefore(sessionId: sessionId, messageId: messageId);
+
+    test("is the parent of the edited prompt", () async {
+      install(fixture: "linear", sessionId: _linear);
+
+      expect(
+        await before(two, sessionId: _linear),
+        isA<ClaudeRewindEntry>().having((point) => point.entryUuid, "entry", afterOne),
+      );
+    });
+
+    test("refuses the first message, which has nothing before it", () async {
+      install(fixture: "linear", sessionId: _linear);
+
+      expect(await before(one, sessionId: _linear), _refused(ClaudeRewindRefusal.firstMessage));
+    });
+
+    test("refuses a prompt an earlier rewind left behind, and an unknown id", () async {
+      install(fixture: "resumed_at_earlier_record", sessionId: _linear);
+
+      expect(await before(two, sessionId: _linear), _refused(ClaudeRewindRefusal.notOnActiveBranch));
+      expect(await before(afterOne, sessionId: _linear), _refused(ClaudeRewindRefusal.notOnActiveBranch));
+      expect(await before("unknown", sessionId: _linear), _refused(ClaudeRewindRefusal.notOnActiveBranch));
+      expect(
+        await before(three, sessionId: _linear),
+        isA<ClaudeRewindEntry>().having((point) => point.entryUuid, "entry", afterOne),
+      );
+    });
+
+    test("is found after a compaction and refused before it", () async {
+      final project = Directory(p.join(temp.path, "projects", "-work-fixture-project"))..createSync(recursive: true);
+      Map<String, Object?> record(String uuid, String? parent, String type, {Map<String, Object?> extra = const {}}) =>
+          {
+            "type": type,
+            "uuid": uuid,
+            "parentUuid": parent,
+            "isSidechain": false,
+            "sessionId": _compacted,
+            if (type == "user" || type == "assistant")
+              "message": {
+                "role": type,
+                "content": [
+                  {"type": "text", "text": uuid},
+                ],
+              },
+            ...extra,
+          };
+      const ids = [
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000002",
+        "00000000-0000-4000-8000-000000000003",
+        "00000000-0000-4000-8000-000000000004",
+        "00000000-0000-4000-8000-000000000005",
+        "00000000-0000-4000-8000-000000000006",
+        "00000000-0000-4000-8000-000000000007",
+      ];
+      final records = [
+        record(ids[0], null, "user"),
+        record(ids[1], ids[0], "assistant"),
+        record(ids[2], ids[1], "user"),
+        record(ids[3], ids[2], "assistant"),
+        record(ids[4], null, "system", extra: {"subtype": "compact_boundary", "logicalParentUuid": ids[3]}),
+        record(ids[5], ids[4], "user", extra: {"isCompactSummary": true}),
+        record(ids[6], ids[5], "user"),
+      ];
+      File(p.join(project.path, "$_compacted.jsonl")).writeAsStringSync("${records.map(jsonEncode).join("\n")}\n");
+
+      expect(await before(ids[2], sessionId: _compacted), _refused(ClaudeRewindRefusal.beforeCompaction));
+      expect(
+        await before(ids[6], sessionId: _compacted),
+        isA<ClaudeRewindEntry>().having((point) => point.entryUuid, "entry", ids[5]),
+      );
+    });
+  });
+
   group("leaf", () {
     test("is the newest record without a last-prompt record", () async {
       final file = install(fixture: "terminal_rewind", sessionId: _terminalRewind);
@@ -162,6 +245,9 @@ void main() {
     });
   });
 }
+
+Matcher _refused(ClaudeRewindRefusal reason) =>
+    isA<ClaudeRewindUnavailable>().having((point) => point.reason, "reason", reason);
 
 /// One line per message: its role and its text, or its tools' states.
 String _describe(PluginMessageWithParts message) {

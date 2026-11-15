@@ -43,6 +43,7 @@ final class ClaudePlugin({
         McpAuthenticationPluginApi,
         FormInteractionPluginApi,
         SessionExternalActionsPluginApi,
+        SessionRewindPluginApi,
         SideQuestionPluginApi {
   this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
@@ -295,12 +296,6 @@ final class ClaudePlugin({
     if (directory == null) {
       throw const PluginOperationException.notFound(operation: "sendPrompt", message: "session not found");
     }
-    final text = parts
-        .whereType<PluginPromptPartText>()
-        .map((part) => part.text)
-        .where((text) => text.trim().isNotEmpty)
-        .join("\n\n")
-        .trim();
     await _enqueueQueued(
       sessionId: sessionId,
       directory: directory,
@@ -311,9 +306,43 @@ final class ClaudePlugin({
       model: model,
       operation: "sendPrompt",
       promptId: promptId,
-      displayText: text.isEmpty ? null : text,
+      displayText: _displayText(parts),
       command: null,
-      attachmentCount: parts.length - parts.whereType<PluginPromptPartText>().length,
+      attachmentCount: _attachmentCount(parts),
+      rewindBeforeMessageId: null,
+    );
+  }
+
+  @override
+  Future<void> rewindAndSendPrompt({
+    required String sessionId,
+    required String beforeMessageId,
+    required String promptId,
+    required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    _requireTurn(parts: parts, operation: "rewindAndSendPrompt");
+    final directory = await _directoryForSession(sessionId);
+    if (directory == null) {
+      throw const PluginOperationException.notFound(operation: "rewindAndSendPrompt", message: "session not found");
+    }
+    await _enqueueQueued(
+      sessionId: sessionId,
+      directory: directory,
+      parts: parts,
+      variant: variant,
+      fastMode: fastMode,
+      agent: agent,
+      model: model,
+      operation: "rewindAndSendPrompt",
+      promptId: promptId,
+      displayText: _displayText(parts),
+      command: null,
+      attachmentCount: _attachmentCount(parts),
+      rewindBeforeMessageId: beforeMessageId,
     );
   }
 
@@ -354,6 +383,7 @@ final class ClaudePlugin({
       displayText: visible == null || visible.isEmpty ? null : visible,
       command: command,
       attachmentCount: 0,
+      rewindBeforeMessageId: null,
     );
   }
 
@@ -653,7 +683,9 @@ final class ClaudePlugin({
     await _eventBuffer.close();
   }
 
-  /// Queues a send to an existing session, accepted at enqueue.
+  /// Queues a send to an existing session, accepted at enqueue. With
+  /// [rewindBeforeMessageId] the send replaces that prompt and everything
+  /// after it, and every refusal comes before acceptance.
   Future<void> _enqueueQueued({
     required String sessionId,
     required String directory,
@@ -667,6 +699,7 @@ final class ClaudePlugin({
     required String? displayText,
     required String? command,
     required int attachmentCount,
+    required String? rewindBeforeMessageId,
   }) async {
     // A sub-agent transcript is not a Claude process session: nothing can be
     // resumed under its id, so a write to it is refused rather than spawning a
@@ -681,22 +714,37 @@ final class ClaudePlugin({
     _validateModel(model, operation: operation, staleOptions: true);
     final effort = _effort(variant, operation: operation, staleOptions: true);
     final permissionMode = _permissionMode(agent, operation: operation, staleOptions: true);
-    final createNew = _unstartedSessions.contains(sessionId);
     try {
-      await _sessions.enqueueTurn(
-        sessionId: sessionId,
-        directory: directory,
-        createNew: createNew,
-        parts: parts,
-        model: model?.modelID,
-        effort: effort,
-        permissionMode: permissionMode,
-        fastMode: fastMode,
-        promptId: promptId,
-        displayText: displayText,
-        command: command,
-        attachmentCount: attachmentCount,
-      );
+      if (rewindBeforeMessageId == null) {
+        await _sessions.enqueueTurn(
+          sessionId: sessionId,
+          directory: directory,
+          createNew: _unstartedSessions.contains(sessionId),
+          parts: parts,
+          model: model?.modelID,
+          effort: effort,
+          permissionMode: permissionMode,
+          fastMode: fastMode,
+          promptId: promptId,
+          displayText: displayText,
+          command: command,
+          attachmentCount: attachmentCount,
+        );
+      } else {
+        await _sessions.rewindAndEnqueueTurn(
+          sessionId: sessionId,
+          directory: directory,
+          beforeMessageId: rewindBeforeMessageId,
+          parts: parts,
+          model: model?.modelID,
+          effort: effort,
+          permissionMode: permissionMode,
+          fastMode: fastMode,
+          promptId: promptId,
+          displayText: displayText,
+          attachmentCount: attachmentCount,
+        );
+      }
     } on PluginOperationException {
       rethrow;
     } on Object catch (error) {
@@ -975,6 +1023,19 @@ void _requireTurn({required List<PluginPromptPart> parts, required String operat
     throw PluginOperationException(operation: operation, statusCode: 400, message: "prompt must not be empty");
   }
 }
+
+/// A prompt's text parts as its queued bubble shows them, or null for none.
+String? _displayText(List<PluginPromptPart> parts) {
+  final text = parts
+      .whereType<PluginPromptPartText>()
+      .map((part) => part.text)
+      .where((text) => text.trim().isNotEmpty)
+      .join("\n\n")
+      .trim();
+  return text.isEmpty ? null : text;
+}
+
+int _attachmentCount(List<PluginPromptPart> parts) => parts.length - parts.whereType<PluginPromptPartText>().length;
 
 List<PluginSession> _mergeSessions({
   required Iterable<PluginSession> persisted,

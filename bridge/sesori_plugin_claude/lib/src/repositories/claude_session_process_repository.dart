@@ -287,12 +287,68 @@ final class ClaudeSessionProcessRepository({
       await existing;
       return;
     }
+    await _establish(
+      sessionId: sessionId,
+      directory: directory,
+      launch: createNew && !_startedSessions.contains(sessionId)
+          ? ClaudeNewSession(sessionId: sessionId)
+          : ClaudeResumedSession(sessionId: sessionId),
+      purpose: purpose,
+      model: model,
+      effort: effort,
+      permissionMode: permissionMode,
+      fastMode: fastMode,
+      allowedTools: allowedTools,
+    );
+  }
 
+  /// Replaces the session's process with one resumed at the chain entry
+  /// [entryUuid], so the next prompt continues from there.
+  ///
+  /// Nothing is written to the transcript until that prompt is sent, so a
+  /// failure here leaves the conversation as it was. A CLI that does not know
+  /// the option fails with [ClaudeUnknownOptionException].
+  Future<void> resumeAt({
+    required String sessionId,
+    required String directory,
+    required String entryUuid,
+    required String? model,
+    required ClaudeEffortLevel? effort,
+    required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
+    required List<String> allowedTools,
+  }) async {
+    if (_disposed) throw StateError("Claude process repository is disposed");
+    await teardown(sessionId: sessionId);
+    await _establish(
+      sessionId: sessionId,
+      directory: directory,
+      launch: ClaudeRewoundSession(sessionId: sessionId, entryUuid: entryUuid),
+      purpose: ClaudeProcessPurpose.session,
+      model: model,
+      effort: effort,
+      permissionMode: permissionMode,
+      fastMode: fastMode,
+      allowedTools: allowedTools,
+    );
+  }
+
+  Future<void> _establish({
+    required String sessionId,
+    required String directory,
+    required ClaudeSessionLaunch launch,
+    required ClaudeProcessPurpose purpose,
+    required String? model,
+    required ClaudeEffortLevel? effort,
+    required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
+    required List<String> allowedTools,
+  }) async {
     final generation = _sessionGenerations[sessionId] ?? 0;
     final connection = _connect(
       sessionId: sessionId,
       directory: directory,
-      createNew: createNew,
+      launch: launch,
       purpose: purpose,
       model: model,
       effort: effort,
@@ -484,7 +540,7 @@ final class ClaudeSessionProcessRepository({
   Future<void> _connect({
     required String sessionId,
     required String directory,
-    required bool createNew,
+    required ClaudeSessionLaunch launch,
     required ClaudeProcessPurpose purpose,
     required String? model,
     required ClaudeEffortLevel? effort,
@@ -492,9 +548,6 @@ final class ClaudeSessionProcessRepository({
     required List<String> allowedTools,
     required int generation,
   }) async {
-    final launch = createNew && !_startedSessions.contains(sessionId)
-        ? ClaudeNewSession(sessionId: sessionId)
-        : ClaudeResumedSession(sessionId: sessionId);
     final client = ClaudeStreamClient(
       launchSpec: ClaudeLaunchSpec(
         binaryPath: _binaryPath,
@@ -524,7 +577,7 @@ final class ClaudeSessionProcessRepository({
 
     final process = _ResidentProcess(
       client: client,
-      resumed: launch is ClaudeResumedSession,
+      resumed: launch is! ClaudeNewSession,
       appliedModel: model,
       appliedEffort: effort,
       appliedPermissionMode: permissionMode,

@@ -1,4 +1,6 @@
 import "dart:async";
+import "dart:convert";
+import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:claude_plugin/src/repositories/mappers/claude_quota_interruption_mapper.dart";
@@ -1332,10 +1334,128 @@ void main() {
         expect(harness.processes, hasLength(1));
       });
     });
+
+    group("rewind", () {
+      setUp(() => harness.writeTranscript());
+
+      test("respawns the idle session at the edited prompt's parent, then sends the prompt there", () async {
+        unawaited(harness.enqueue("first"));
+        final first = await harness.firstProcess;
+        await waitForFrame(first, "user");
+        first.emit(_result());
+        await harness.waitForIdle();
+
+        await harness.rewind("edited", model: "haiku");
+        await _waitForStdinClose(first);
+        final second = await harness.processAt(1);
+        final frame = await waitForFrame(second, "user");
+
+        expect(
+          harness.specs[1].arguments,
+          containsAllInOrder(["--resume=$testSessionId", "--resume-session-at=$_cutEntry"]),
+        );
+        // The selection the edit was sent with is the respawned process's own.
+        expect(harness.specs[1].arguments, containsAllInOrder(["--permission-mode", "plan"]));
+        expect(harness.specs[1].arguments, containsAllInOrder(["--model", "haiku"]));
+        expect(frame.field<Map<String, Object?>>("message")["content"], [
+          {"type": "text", "text": "edited"},
+        ]);
+        expect(harness.service.queuedPrompts(sessionId: testSessionId).single.id, "prompt-edited");
+        expect(harness.processes, hasLength(2));
+
+        second.emit(_result());
+        await harness.waitForIdle();
+        // The respawned process is reaped like any other; the next resume is a
+        // plain one, which follows the new leaf.
+        harness.clock.elapse();
+        await _waitForStdinClose(second);
+        unawaited(harness.enqueue("later"));
+        await harness.processAt(2);
+        expect(harness.specs[2].arguments, contains("--resume=$testSessionId"));
+        expect(harness.specs[2].arguments.where((argument) => argument.startsWith("--resume-session-at")), isEmpty);
+      });
+
+      test("supersedes an armed idle reap", () async {
+        unawaited(harness.enqueue("first"));
+        final first = await harness.firstProcess;
+        await waitForFrame(first, "user");
+        first.emit(_result());
+        await harness.waitForIdle();
+
+        final rewind = harness.rewind("edited");
+        // The transcript read runs in an isolate, past the harness's pumps.
+        while (harness.processes.length < 2) {
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+        final second = harness.processes[1];
+        // The reap armed when the first turn ended fires while the respawn
+        // connects.
+        harness.clock.elapseAt(index: 0);
+        await rewind;
+        await waitForFrame(second, "user");
+
+        expect(second.stdinClosed, isFalse);
+        expect(harness.processes, hasLength(2));
+      });
+
+      test("refuses a prompt with no resumable entry before touching the process", () async {
+        unawaited(harness.enqueue("first"));
+        final first = await harness.firstProcess;
+        await waitForFrame(first, "user");
+        first.emit(_result());
+        await harness.waitForIdle();
+
+        await expectLater(
+          harness.rewind("edited", beforeMessageId: _firstPrompt),
+          throwsA(isA<PluginBranchPointUnavailableException>()),
+        );
+        await expectLater(
+          harness.rewind("edited", beforeMessageId: "00000000-0000-4000-8000-00000000ffff"),
+          throwsA(isA<PluginBranchPointUnavailableException>()),
+        );
+        expect(first.stdinClosed, isFalse);
+        expect(harness.processes, hasLength(1));
+        expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+      });
+
+      test("refuses a busy session", () async {
+        unawaited(harness.enqueue("first"));
+        final first = await harness.firstProcess;
+        await waitForFrame(first, "user");
+
+        await expectLater(
+          harness.rewind("edited"),
+          throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 409)),
+        );
+        expect(first.stdinClosed, isFalse);
+      });
+
+      test("a CLI without the option refuses the edit before accepting it", () async {
+        await harness.dispose();
+        harness = _ServiceHarness(rewindUnsupported: true)..writeTranscript();
+
+        await expectLater(
+          harness.rewind("edited"),
+          throwsA(
+            isA<PluginBranchPointUnavailableException>().having(
+              (error) => error.cause,
+              "cause",
+              isA<ClaudeUnknownOptionException>(),
+            ),
+          ),
+        );
+        expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+        expect(harness.service.currentWorkState, PluginWorkState.idle);
+      });
+    });
   });
 }
 
-final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool failInterrupt = false}) {
+final class _ServiceHarness({
+  final bool stdinCloseCompletes = true,
+  final bool failInterrupt = false,
+  final bool rewindUnsupported = false,
+}) {
   /// Mutable so tests can exercise runtime settings changes.
   Duration? idleTimeout = const Duration(minutes: 5);
   final StreamController<Duration?> idleTimeoutChanges = StreamController<Duration?>.broadcast(sync: true);
@@ -1354,6 +1474,9 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     );
     service = ClaudeSessionService(
       processes: repository,
+      transcripts: ClaudeTranscriptCatalogRepository(
+        transcriptApi: ClaudeTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": configDirectory.path}),
+      ),
       approvals: approvals,
       quotaMapper: ClaudeQuotaInterruptionMapper(contentMapper: const ClaudeContentMapper()),
       clock: clock,
@@ -1363,6 +1486,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     subscription = service.events.listen(events.add);
   }
 
+  final Directory configDirectory = Directory.systemTemp.createTempSync("claude-session-service-");
   final List<ClaudeLaunchSpec> specs = [];
   final List<FakeClaudeProcess> processes = [];
   final List<BridgeSseEvent> events = [];
@@ -1380,6 +1504,13 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     processes.add(process);
     unawaited(() async {
       final request = await waitForFrame(process, "control_request");
+      if (rewindUnsupported && spec.arguments.any((argument) => argument.startsWith("--resume-session-at"))) {
+        process
+          ..emitStderrRaw(utf8.encode("error: unknown option '--resume-session-at=$_cutEntry'\n"))
+          ..exit(1);
+        await process.close();
+        return;
+      }
       process.emitControlResponse(requestId: request.field<String>("request_id"), payload: sampleHandshake);
       if (failInterrupt) {
         final interrupt = await _waitForControlSubtype(process, "interrupt");
@@ -1415,6 +1546,48 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
         .catchError((Object _) {});
   }
 
+  /// Writes a two-turn transcript whose second prompt is [_secondPrompt].
+  void writeTranscript() {
+    final project = Directory("${configDirectory.path}/projects/-tmp-project")..createSync(recursive: true);
+    Map<String, Object?> record(String uuid, String? parent, String type) => {
+      "type": type,
+      "uuid": uuid,
+      "parentUuid": parent,
+      "isSidechain": false,
+      "sessionId": testSessionId,
+      "cwd": "/tmp/project",
+      "message": {
+        "role": type,
+        "content": [
+          {"type": "text", "text": uuid},
+        ],
+      },
+    };
+    File("${project.path}/$testSessionId.jsonl").writeAsStringSync(
+      "${[
+        record(_firstPrompt, null, "user"),
+        record(_cutEntry, _firstPrompt, "assistant"),
+        record(_secondPrompt, _cutEntry, "user"),
+        record("00000000-0000-4000-8000-000000000004", _secondPrompt, "assistant"),
+      ].map(jsonEncode).join("\n")}\n",
+    );
+  }
+
+  Future<void> rewind(String text, {String beforeMessageId = _secondPrompt, String? model}) =>
+      service.rewindAndEnqueueTurn(
+        sessionId: testSessionId,
+        directory: "/tmp/project",
+        beforeMessageId: beforeMessageId,
+        parts: [PluginPromptPart.text(text: text)],
+        model: model,
+        effort: null,
+        permissionMode: ClaudePermissionMode.plan,
+        fastMode: false,
+        promptId: "prompt-$text",
+        displayText: text,
+        attachmentCount: 0,
+      );
+
   Future<PluginSideAnswer> ask() => service.askSideQuestion(
     sessionId: testSessionId,
     directory: "/tmp/project",
@@ -1445,8 +1618,13 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
     for (final process in processes) {
       await process.close();
     }
+    configDirectory.deleteSync(recursive: true);
   }
 }
+
+const String _firstPrompt = "00000000-0000-4000-8000-000000000001";
+const String _cutEntry = "00000000-0000-4000-8000-000000000002";
+const String _secondPrompt = "00000000-0000-4000-8000-000000000003";
 
 final class _ControlledClock() extends ServerClock {
   final List<Completer<void>> _delays = [];

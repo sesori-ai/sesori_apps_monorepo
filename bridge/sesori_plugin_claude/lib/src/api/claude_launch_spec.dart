@@ -35,6 +35,25 @@ final class ClaudeNewSession({required super.sessionId}) extends ClaudeSessionLa
 /// Continues an existing session from its transcript (`--resume`).
 final class ClaudeResumedSession({required super.sessionId}) extends ClaudeSessionLaunch;
 
+/// Continues an existing session cut back to one of its chain entries
+/// (`--resume` with `--resume-session-at`).
+///
+/// The process keeps [entryUuid] and every record before it, drops the rest in
+/// memory and parents the next prompt to [entryUuid]. The file is not
+/// rewritten: it becomes a tree whose newest leaf a later plain `--resume`
+/// follows. An unknown entry makes the CLI exit before the handshake with
+/// `No message found with message.uuid of: …`. The flag is hidden from
+/// `--help` but present from 1.0.125 through 2.1.322, and the Agent SDK
+/// documents it as `resumeSessionAt` (verified live on 2.1.221 and 2.1.322).
+final class ClaudeRewoundSession({required super.sessionId, required final String entryUuid})
+    extends ClaudeSessionLaunch {
+  this {
+    if (!_uuidPattern.hasMatch(entryUuid)) {
+      throw ArgumentError.value(entryUuid, "entryUuid", "must be a UUID");
+    }
+  }
+}
+
 final RegExp _uuidPattern = RegExp(
   r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
 );
@@ -148,9 +167,10 @@ class ClaudeLaunchSpec({
     // accepts both spellings, so this is parity rather than correctness — but
     // parity is the contract this package holds itself to, and it removes a
     // place for future drift.
-    switch (launch) {
-      ClaudeNewSession() => "--session-id=${launch.sessionId}",
-      ClaudeResumedSession() => "--resume=${launch.sessionId}",
+    ...switch (launch) {
+      ClaudeNewSession() => ["--session-id=${launch.sessionId}"],
+      ClaudeResumedSession() => ["--resume=${launch.sessionId}"],
+      ClaudeRewoundSession(:final entryUuid) => ["--resume=${launch.sessionId}", "--resume-session-at=$entryUuid"],
     },
   ];
 }

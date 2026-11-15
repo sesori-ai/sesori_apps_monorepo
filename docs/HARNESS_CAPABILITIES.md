@@ -1380,3 +1380,29 @@ minimum predates it.
 
 ¹⁸ DeepSeek model ids are deliberately opaque tokens with no vendor signal, so
 its models keep DeepSeek's catalog order; its efforts are ordered.
+
+## Edit and fork
+
+Editing a sent message rewinds the session to just before it and sends the
+edited text in its place.
+
+| Harness | Native seam | Edit and resend |
+|---|---|---|
+| Claude Code | Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>` (verified 2.1.221 and 2.1.322) | ✅ Native, from any prompt on the active branch after the latest compaction |
+
+Claude Code (live probes against 2.1.221 and 2.1.322 in a scratch config
+directory, 2026-11-15):
+
+- The new prompt's `parentUuid` is the entry Sesori resumes at, and a later
+  plain `--resume` continues from the edited branch. A respawn at the cut
+  without a prompt appends only a `cost-state` record, so the transcript is not
+  changed until the edited prompt is sent.
+- The first message has no entry before it, so it is refused with "Claude Code
+  can't edit the first message in place."
+- 2.1.322 resumes only from the latest compaction on: an entry before it fails
+  with `No message found with message.uuid of: …`. Sesori refuses such a prompt
+  before stopping the session.
+- An unknown entry fails the same way on both versions, and the CLI exits
+  before answering `initialize`. A CLI that does not know the flag exits with
+  `error: unknown option`, which Sesori reports as "This Claude Code version
+  can't edit messages from Sesori."
