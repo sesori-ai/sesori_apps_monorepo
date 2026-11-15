@@ -533,9 +533,10 @@ class SessionRepository({
     required List<PluginSideExchange> history,
   }) async {
     const operation = SessionOperation.askSideQuestion;
-    const unsupported = SideQuestionRefused(reason: SideQuestionRefusal.harnessUnsupported);
     final binding = await _requireBinding(sessionId: sessionId, operation: operation);
-    if (!_runtime.supportsSideQuestions(pluginId: binding.pluginId)) return unsupported;
+    if (!_runtime.supportsSideQuestions(pluginId: binding.pluginId)) {
+      return const SideQuestionRefused(reason: SideQuestionRefusal.harnessUnsupported);
+    }
     return await _useBoundSessionPlugin(
       binding: binding,
       operation: operation,
@@ -548,7 +549,11 @@ class SessionRepository({
           );
           return answer.toAskResult();
         }
-        return unsupported;
+        throw PluginOperationException(
+          operation: operation.name,
+          statusCode: 500,
+          message: "plugin ${binding.pluginId} declares side questions but does not implement SideQuestionPluginApi",
+        );
       },
     );
   }

@@ -15,8 +15,9 @@ entirely along with its transcript and its dedicated worktree.
   [Quota auto continuation](quota-auto-continuation.md) for action races and
   cancellation-failure coverage.
 - A session's stored side chats stay when it is archived, and a new side
-  question on it gets the archived read-only rejection. Deleting the session
-  deletes its side chats through the session foreign key.
+  question on it gets the archived read-only rejection. A side question
+  already in flight when the session is archived still stores its answer.
+  Deleting the session deletes its side chats through the session foreign key.
 
 - Archiving is final. An archived session can never be unarchived, prompted,
   renamed, replied to, or otherwise mutated in place; those attempts receive the
@@ -214,8 +215,8 @@ entirely along with its transcript and its dedicated worktree.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation. |
-| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a running session stopped before the flip, still archived when its stop fails or never answers, and left running when its worktree cleanup is refused; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
+| L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation, including a new side question, while its stored side chats still list. |
+| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history, side chats and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a running session stopped before the flip, still archived when its stop fails or never answers, and left running when its worktree cleanup is refused; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete of a session with and without a dedicated worktree, a dirty-worktree refusal forced through from the modal, a shared-worktree refusal retried silently, branch retained. Deleting a "No project" session warns that its folder goes too and removes it. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
