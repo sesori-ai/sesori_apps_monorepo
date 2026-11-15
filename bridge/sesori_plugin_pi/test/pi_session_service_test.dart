@@ -3460,7 +3460,6 @@ void main() {
     );
     expect(imageOnly.message, isEmpty);
     for (final attachment in <PluginPromptPart>[
-      const PluginPromptPart.filePath(mime: "image/png", path: "/private/a.png", filename: null),
       const PluginPromptPart.fileUrl(mime: "image/png", url: "https://private.invalid/a.png", filename: null),
       const PluginPromptPart.fileData(mime: "text/plain", base64: "YQ==", filename: null),
       const PluginPromptPart.fileData(mime: "image/png", base64: "not-base64", filename: null),

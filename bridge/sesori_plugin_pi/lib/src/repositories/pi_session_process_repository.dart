@@ -604,8 +604,6 @@ final class PiSessionProcessRepository({
             _throwAttachmentFailure(cause: const PiInvalidPromptImageException(reason: "image exceeds size limit"));
           }
           images.add({"type": "image", "data": normalized, "mimeType": mime.toLowerCase()});
-        case PluginPromptPartFilePath():
-          _throwAttachmentFailure(cause: const PiUnsupportedPromptAttachmentException(variant: "file path"));
         case PluginPromptPartFileUrl():
           _throwAttachmentFailure(cause: const PiUnsupportedPromptAttachmentException(variant: "file URL"));
       }

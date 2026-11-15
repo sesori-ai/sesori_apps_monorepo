@@ -548,7 +548,6 @@ class OpenCodeV2Repository({
     for (final part in parts) {
       final file = switch (part) {
         PluginPromptPartText() => null,
-        PluginPromptPartFilePath() => (uri: Uri.file(part.path).toString(), name: part.filename),
         PluginPromptPartFileUrl() => (uri: part.url, name: part.filename),
         PluginPromptPartFileData() => (uri: "data:${part.mime};base64,${part.base64}", name: part.filename),
       };
