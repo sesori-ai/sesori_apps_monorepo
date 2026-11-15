@@ -179,7 +179,10 @@ class SessionEventService({
         pluginId: commit.pluginId,
         backendSessionId: backendSessionId,
       );
+      // A replacement's session already exists for clients, so its new
+      // harness session's `session.created` announces nothing.
       if (pendingRoot != null &&
+          commit.kind != SessionBindingCommitKind.sessionReplacement &&
           isCurrentGeneration(
             pluginId: pendingRoot.pluginId,
             generation: pendingRoot.generation,
