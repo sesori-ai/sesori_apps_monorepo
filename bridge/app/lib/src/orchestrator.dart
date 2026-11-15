@@ -19,6 +19,7 @@ import "api/database/daos/accepted_prompts_dao.dart";
 import "api/database/daos/new_session_defaults_dao.dart";
 import "api/database/daos/session_continuation_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
+import "api/database/daos/side_chat_dao.dart";
 import "api/database/database.dart";
 import "api/database/history/chat_history_database.dart";
 import "api/drive_roots_api.dart";
@@ -91,9 +92,11 @@ import "repositories/session_options_repository.dart";
 import "repositories/session_repository.dart";
 import "repositories/session_unseen_calculator.dart";
 import "repositories/session_unseen_repository.dart";
+import "repositories/side_chat_repository.dart";
 import "repositories/trackers/session_event_tracker.dart";
 import "repositories/worktree_repository.dart";
 import "routing/abort_session_handler.dart";
+import "routing/ask_side_question_handler.dart";
 import "routing/cancel_catalog_import_handler.dart";
 import "routing/cancel_queued_prompt_handler.dart";
 import "routing/create_directory_handler.dart";
@@ -130,6 +133,7 @@ import "routing/get_session_questions_handler.dart";
 import "routing/get_session_statuses_handler.dart";
 import "routing/get_session_tool_output_handler.dart";
 import "routing/get_sessions_handler.dart";
+import "routing/get_side_chats_handler.dart";
 import "routing/health_check_handler.dart";
 import "routing/hide_project_handler.dart";
 import "routing/mark_session_seen_handler.dart";
@@ -202,6 +206,7 @@ import "services/session_prompt_service.dart";
 import "services/session_unseen_service.dart";
 import "services/session_view_service.dart";
 import "services/session_view_tracker.dart";
+import "services/side_question_service.dart";
 import "services/worktree_service.dart";
 import "services/yolo_settings_service.dart";
 import "sse/bridge_event_mapper.dart";
@@ -376,6 +381,12 @@ class Orchestrator({
       resetBuffer: quotaResetBuffer,
     );
     final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
+    final sideChatRepository = SideChatRepository(dao: SideChatDao(database: _database));
+    final sideQuestionService = SideQuestionService(
+      archivedSessionValidator: archivedSessionValidator,
+      sessionRepository: sessionRepository,
+      sideChatRepository: sideChatRepository,
+    );
     final sessionMutationDispatcher = SessionMutationDispatcher(
       sessionRepository: sessionRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
@@ -737,6 +748,8 @@ class Orchestrator({
         GetQueuedPromptsHandler(sessionRepository: sessionRepository),
         CancelQueuedPromptHandler(sessionPromptService: sessionPromptService),
         AbortSessionHandler(sessionAbortService: sessionAbortService),
+        GetSideChatsHandler(sideChatRepository: sideChatRepository),
+        AskSideQuestionHandler(sideQuestionService: sideQuestionService),
         GetProvidersHandler(repository: providerRepository),
         PostAgentsHandler(repository: agentRepository),
         GetSessionQuestionsHandler(questionRepository: questionRepository),
