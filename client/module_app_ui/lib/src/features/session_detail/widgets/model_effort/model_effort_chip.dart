@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show EffortLevel, ModelOrbits;
 import "package:theme_prego/module_prego.dart";
@@ -24,6 +26,8 @@ class const ModelEffortChip({
   static const double height = 36;
 
   static const _change = Duration(milliseconds: 220);
+  static const double _boltGap = 4;
+  static const double _boltWidth = _boltGap + PregoIconSize.sm;
 
   @override
   Widget build(BuildContext context) {
@@ -50,28 +54,33 @@ class const ModelEffortChip({
                   child: AnimatedSwitcher(
                     duration: _change,
                     layoutBuilder: _layOutFaces,
-                    // The name keeps its end behind a leading ellipsis, as the
-                    // pills' labels do, and the chip hugs it when there is room.
-                    child: IntrinsicWidth(
+                    // Text sized to its content, so the chip hugs it. When
+                    // large text leaves too little room, the level takes at
+                    // most half of what the bolt leaves and the name the rest,
+                    // each cut with an ellipsis, so neither hides the other.
+                    child: LayoutBuilder(
                       key: ValueKey((name, level, fast)),
-                      child: Row(
+                      builder: (context, constraints) => Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Flexible(
-                            child: PregoEllipsisText(
+                            child: _oneLine(
                               text: name,
-                              ellipsis: PregoEllipsis.start,
                               style: style.copyWith(color: colors.textPrimary),
                             ),
                           ),
                           if (level != null)
-                            Text(
-                              " · ${_levelWord(level: level)}",
-                              maxLines: 1,
-                              softWrap: false,
-                              style: style.copyWith(color: colors.textTertiary),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: math.max(0, constraints.maxWidth - (fast ? _boltWidth : 0)) / 2,
+                              ),
+                              child: _oneLine(
+                                text: " · ${_levelWord(level: level)}",
+                                style: style.copyWith(color: colors.textTertiary),
+                              ),
                             ),
                           if (fast) ...[
-                            const SizedBox(width: 4),
+                            const SizedBox(width: _boltGap),
                             Icon(TablerRegular.bolt, size: PregoIconSize.sm, color: colors.textPrimary),
                           ],
                         ],
@@ -111,3 +120,6 @@ String _levelWord({required EffortLevel level}) {
   final word = level.wireId;
   return word.substring(0, 1).toUpperCase() + word.substring(1);
 }
+
+Widget _oneLine({required String text, required TextStyle style}) =>
+    Text(text, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: style);

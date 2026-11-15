@@ -48,13 +48,14 @@ Future<List<_Pick>> _pump(
   PregoInteractionMode mode = PregoInteractionMode.touch,
   bool readOnly = false,
   FastModeControl fastModeControl = FastModeControl.off,
+  Size screen = _screen,
   bool settle = true,
   double textScale = 1,
   List<AgentInfo> agents = const [],
   List<Widget> trailing = const [],
 }) async {
   tester.view
-    ..physicalSize = _screen
+    ..physicalSize = screen
     ..devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final picks = <_Pick>[];
@@ -356,6 +357,31 @@ void main() {
 
     await _pump(tester, orbits: orbits, readOnly: true);
     expect(caretOpacity(), 0);
+  });
+
+  testWidgets("the largest reader text on a narrow phone cuts both texts without overflowing", (tester) async {
+    const status = Key("status");
+    await _pump(
+      tester,
+      orbits: orbits.copyWith(currentLevel: EffortLevel.medium),
+      fastModeControl: FastModeControl.on,
+      screen: const Size(320, 700),
+      textScale: 3,
+      agents: const [
+        AgentInfo(name: "build", description: null, model: null, mode: AgentMode.all),
+        AgentInfo(name: "plan", description: null, model: null, mode: AgentMode.all),
+      ],
+      trailing: const [SizedBox.square(key: status, dimension: 36)],
+    );
+
+    expect(tester.takeException(), isNull);
+    final name = tester.getRect(find.descendant(of: chip, matching: find.text("Opus 5.5")));
+    final level = tester.getRect(find.descendant(of: chip, matching: find.text(" · Medium")));
+    // Both keep a share of the pill, and the pill stays clear of the agent pill.
+    expect(name.width, greaterThan(0));
+    expect(level.width, greaterThan(0));
+    expect(level.left, greaterThanOrEqualTo(name.right));
+    expect(tester.getRect(chip).right, lessThanOrEqualTo(tester.getRect(find.byType(PregoPickerButton)).left));
   });
 
   testWidgets("larger reader text grows the chip, at the pills' height", (tester) async {

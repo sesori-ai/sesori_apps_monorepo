@@ -678,8 +678,10 @@ variant, and worktree mode, and creating the session with its first input.
 - The chip is the same pill as the agent pill: height, surface, border,
   shadow, font and selector caret. It hugs its text: the model name in full
   ink, then `· <Level>` in the tertiary colour (`Opus 5.5 · High`, `· Off`),
-  or the name alone for a model without levels; a long name keeps its end
-  behind a leading ellipsis. Fast mode adds a small bolt after the level. A
+  or the name alone for a model without levels. Fast mode adds a small bolt
+  after the level, or after the name when the model has no levels. When large
+  text leaves too little room, the level takes at most half the space and the
+  name the rest, each cut with an ellipsis; nothing overflows. A
   model, level or speed change cross-fades the text and eases the pill to its
   new width; nothing snaps. Its text follows the system text size settings.
 - The chip is one control: a keyboard focuses it with Tab and shows the focus
