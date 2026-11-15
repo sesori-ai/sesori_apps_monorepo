@@ -310,7 +310,10 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
     outcome, reason, late, `userPromptedAt` (nullable), `compactRequestedAt`
     (nullable); index on (taskId, firedAt) and on sessionId.
 - Run rows are trimmed to the newest 20 per task when a new one is written.
-  They are the outcome history (ran, ran late, skipped, missed, couldn't
+  The trim never deletes the task's latest `started` row (one exclusion in the
+  trim query, step 3): twenty skipped rows in a row must not erase the only
+  row that points at a still-running session, or the overlap check (P6) would
+  miss it and start a second run, breaking D8. They are the outcome history (ran, ran late, skipped, missed, couldn't
   start), not the "last 5 finished runs" of D10, which counts run *sessions*
   left unarchived. A `started` row whose session was archived links to it in
   Archived. Marks and archiving read `sessions.scheduledTaskId`.
@@ -388,7 +391,9 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   is not `quiet` (busy or retry, a pending question, permission or
   form, or non-idle readiness on Claude and Pi, where `queued` covers a pending
   `ScheduleWakeup` and user-queued prompts). Exception: busy because of this
-  task's own pending compaction (P10).
+  task's own pending compaction (P10). Step 4 tests that many skipped
+  occurrences in a row (more than the 20-row trim) still leave the earlier
+  started run counted as active, so the next run is skipped too.
 - At most once: the run row and the advanced `nextDueAt` are written in one
   transaction before the create or send is attempted, like the quota
   `consumed` marker. A crash between write and send loses that run; it never
