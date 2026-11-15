@@ -6,9 +6,9 @@ The bridge can edit a prompt that opens a turn: `POST /session/rewind` removes
 that prompt and every later message from the session's conversation and sends
 the edited prompt in its place. Conversation only: files are never restored.
 Each harness declares the branching operations it implements in
-`PluginMetadata.sessionBranching`; today none declares any, so clients offer
-no Edit. A first-message edit needs no plugin rewind, so the route accepts it
-on every harness.
+`PluginMetadata.sessionBranching`; today only Codex declares `rewind`.
+Clients offer no Edit yet. A first-message edit needs no plugin rewind, so the
+route accepts it on every harness.
 
 ## Required Behavior
 
@@ -51,14 +51,35 @@ on every harness.
   before the call, by id, from the store and from clients
   (`message.removed`). The edited prompt's echo, captured during the call, is
   never among them.
+- When the plugin fails after it may have rewound (anything other than a
+  branch-point, stale-options or refusal rejection), the bridge reads the
+  harness transcript once and removes, by exact id, the messages it read
+  before the call that the harness no longer has, then returns the failure.
+  A failure that changed nothing, or a harness read that comes back empty,
+  removes nothing.
+- An edit with no parts is rejected with 400 before anything changes.
+
+### Codex edit
+
+- The edit maps the message to its native turn from the rollout's
+  `UserMessage` items, resumes the thread if needed, calls
+  `thread/revert {beforeTurnId}`, then starts the edited turn with the same
+  prompt id. History follows the reverted rollout as soon as the edit is
+  accepted.
+- Refused with a plain reason without changing the conversation: a runtime without
+  `thread/revert` (for example 0.139.0), a legacy non-paginated thread, an
+  ephemeral thread, an id the rollout does not have, a follow-up steered into
+  a running turn, and an attachment or option the turn cannot take.
+- If `turn/start` fails after the revert, the bridge reconcile above removes
+  the reverted messages; the edit still fails and the client keeps its text.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`. A first-turn edit binds the new harness session (with the worktree context in a dedicated worktree), tombstones and deletes the old one and its sub-agent rows and history, survives a failed old delete, replaces a stray imported row, and leaves the binding, rows and transcript untouched when the new session cannot be created; the event service releases the new session's held events under the old id and ignores the old session's late events. |
-| L3 Release | Not included until a harness declares rewind. |
+| L2 Routine | Automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`; a failed resend after the harness rewound removes exactly the dropped messages, and a failure that changed nothing removes none. A first-turn edit binds the new harness session (with the worktree context in a dedicated worktree), tombstones and deletes the old one and its sub-agent rows and history, survives a failed old delete, replaces a stray imported row, and leaves the binding, rows and transcript untouched when the new session cannot be created; the event service releases the new session's held events under the old id and ignores the old session's late events. Codex plugin tests against a fake app-server: resume, revert and `turn/start` order with the prompt id; history follows the reverted rollout; steered, unknown-id, attachment and revert-error refusals happen before any revert. |
+| L3 Release | Not included until clients offer Edit. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
 
@@ -71,12 +92,13 @@ on every harness.
 - After a first-message edit the session shows twice, the old conversation
   comes back after a catalog refresh or restart, or the new prompt's replies
   never arrive.
+- A Codex edit whose resend failed leaves the reverted messages on screen.
 - An edit reaches the plugin while the session runs or after it was archived.
 
 ## Known Limitations
 
-- No harness implements rewind yet, so every edit after the first turn is
-  refused.
+- Only Codex implements rewind; every other harness refuses an edit after
+  the first turn.
 - An edit the plugin refuses keeps the attachment files the bridge saved for
   it, as a refused send does.
 
@@ -88,4 +110,6 @@ on every harness.
 - `bridge/app/lib/src/repositories/session_repository.dart`
 - `bridge/app/lib/src/services/session_event_service.dart`
 - `bridge/app/lib/src/services/chat_history_service.dart`
+- `bridge/sesori_plugin_codex/lib/src/services/codex_session_service.dart`
+- `bridge/sesori_plugin_codex/lib/src/repositories/codex_message_repository.dart`
 - `shared/sesori_shared/lib/src/models/sesori/session_branch_error_response.dart`

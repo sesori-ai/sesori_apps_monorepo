@@ -533,6 +533,7 @@ class _SessionRecord({
     promptDefaults: null,
     lastUserActivityAt: null,
     branchName: "branch-$id",
+    scheduledTask: null,
   );
 }
 

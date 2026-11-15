@@ -49,6 +49,7 @@ Session _childSession({required String id}) => Session(
   lastUserActivityAt: null,
   autoContinuation: null,
   approvalOverride: null,
+  scheduledTask: null,
 );
 
 void main() {

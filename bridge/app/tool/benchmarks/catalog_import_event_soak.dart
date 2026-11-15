@@ -586,6 +586,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           ),
           promptDefaults: null,
           lastUserActivityAt: null,
+          scheduledTask: null,
         ).toJson(),
         titleChanged: false,
       ),

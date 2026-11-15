@@ -148,6 +148,9 @@ class const CodexPluginDescriptor({
   bool get namesCommandInvocations => true;
 
   @override
+  Set<PluginSessionBranching> get sessionBranching => const {PluginSessionBranching.rewind};
+
+  @override
   Set<PluginMcpCapability> get mcpCapabilities => const {
     PluginMcpCapability.management,
     PluginMcpCapability.authentication,
@@ -196,6 +199,10 @@ class const CodexPluginDescriptor({
 
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
+  /// Codex compacts a thread through `thread/compact/start`.
+  @override
+  bool get supportsCompactionOnRequest => true;
 
   @override
   PluginStateStorage get stateStorage => PluginStateStorage.legacySharedRuntime;

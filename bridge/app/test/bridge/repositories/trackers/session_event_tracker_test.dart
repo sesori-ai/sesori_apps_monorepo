@@ -181,6 +181,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         branchName: null,
+        scheduledTask: null,
       );
 
       tracker.addChild(
@@ -252,6 +253,7 @@ PendingSessionEvent _pending({
     promptDefaults: null,
     lastUserActivityAt: null,
     branchName: null,
+    scheduledTask: null,
   );
   return PendingSessionEvent(
     pluginId: pluginId,

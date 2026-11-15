@@ -295,6 +295,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
             promptDefaults: null,
             lastUserActivityAt: null,
             branchName: null,
+            scheduledTask: null,
           ).toJson(),
           titleChanged: false,
         ),

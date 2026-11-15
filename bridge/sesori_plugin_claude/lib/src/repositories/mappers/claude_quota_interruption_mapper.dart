@@ -1,5 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:timezone/data/latest.dart" as tz_data;
+// The zone database is process-wide and the bridge loads the full set, so load
+// the same set: the smaller `latest.dart` would replace it and drop zones such
+// as `UTC`.
+import "package:timezone/data/latest_all.dart" as tz_data;
 import "package:timezone/timezone.dart" as tz;
 
 import "../../api/models/claude_stream_message.dart";

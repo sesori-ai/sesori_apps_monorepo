@@ -208,6 +208,13 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     return _pathsById[sessionId];
   }
 
+  /// Rescans now, for a caller that just made Codex write a newer rollout of
+  /// a known session (a revert), which a lookup would otherwise miss until the
+  /// next scan.
+  Future<void> refresh() async {
+    await _rescan();
+  }
+
   /// A session from the last scan, or from one rescan on a miss.
   Future<CodexSessionRecord?> findSessionById({required String sessionId}) async {
     final rolloutPath = await findRolloutPath(sessionId: sessionId);

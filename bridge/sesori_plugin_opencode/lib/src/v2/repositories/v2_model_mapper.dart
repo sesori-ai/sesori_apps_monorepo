@@ -59,6 +59,7 @@ class const V2ModelMapper({required final String _pluginId}) {
     lastUserActivityAt: null,
     autoContinuation: null,
     approvalOverride: null,
+    scheduledTask: null,
   );
 
   shared.Session mapSessionDetails({
