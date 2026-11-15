@@ -180,11 +180,11 @@ Checked in the upstream source at the tag, and in the local 0.169.0 schema.
   example `/session/questions`. Unknown routes return 404.
 - **Relay timeout.** It defaults to 30 s; individual calls pass longer ones, for
   example 3 min 30 s for MCP (`client/module_core/lib/src/api/mcp_api.dart:16`).
-- **Bridge database.** It is at schema version 23
+- **Bridge database.** It is at schema version 24
   (`bridge/app/lib/src/api/database/database.dart:48`), with foreign keys on.
   - Session-owned tables reference `SessionTable.sessionId` with
     `onDelete: KeyAction.cascade`, for example `session_continuations`.
-  - Deleting a session deletes its row (`session_dao.dart:746`).
+  - Deleting a session deletes its row (`daos/session_dao.dart:781`).
 - **Phone session screen.**
   - The top bar is full.
   - The overflow menu holds MCP and the session actions
@@ -262,7 +262,7 @@ because Claude takes a list and Codex needs the history inside one prompt.
 
 ### Bridge (`bridge/app`)
 
-- **Storage.** Schema v24 adds one table, `side_chat_exchanges`
+- **Storage.** Schema v25 adds one table, `side_chat_exchanges`
   (`SideChatExchangesTable`, `SideChatExchangeDto`) with these columns:
   - `id` (text, primary key)
   - `sessionId` (references `SessionTable.sessionId`, cascades on delete)
@@ -277,7 +277,7 @@ because Claude takes a list and Codex needs the history inside one prompt.
   group of rows sharing a `sideChatId`; there is no separate table. Only
   successful exchanges are written, in one write after success, so there are no
   pending rows, no startup repair, and nothing to reconcile. Rows go when the
-  session is deleted, and stay when it is archived. If another plan lands a v24
+  session is deleted, and stay when it is archived. If another plan lands a v25
   first, move this to the next version, following the Drift conflict rule in
   `bridge/AGENTS.md`.
 - **Layers.**
@@ -702,7 +702,7 @@ This branch. Plan files only.
 
 - The plugin interface types, and the descriptor flag defaulting to false.
 - The `sesori_shared` wire models and the capability fields.
-- Schema v24, the DAO, `SideChatRepository`, `SessionRepository.askSideQuestion`,
+- Schema v25, the DAO, `SideChatRepository`, `SessionRepository.askSideQuestion`,
   `SideQuestionService`, the two handlers and the metadata plumbing.
 - `PluginListResponse.supportsSideQuestions = true` is sent from this step,
   while no plugin flag is set yet. Clients then show `harnessUnsupported`,
