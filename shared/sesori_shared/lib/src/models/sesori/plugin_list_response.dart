@@ -40,6 +40,19 @@ enum BusyPromptHandling() {
   unknown,
 }
 
+/// A message-level branching operation a harness supports.
+enum SessionBranchingOperation() {
+  /// Edit and resend: the harness removes a turn and everything after it from
+  /// the conversation, then sends the edited prompt.
+  rewind,
+
+  /// The harness forks a session from a message into a new session.
+  fork,
+
+  /// An operation this app does not know yet.
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginMetadata with _$PluginMetadata {
   const factory({
@@ -97,6 +110,14 @@ sealed class PluginMetadata with _$PluginMetadata {
     @JsonKey(unknownEnumValue: BusyPromptHandling.unknown)
     @Default(BusyPromptHandling.unknown)
     BusyPromptHandling busyPromptHandling,
+
+    /// The message-level branching operations this harness supports; empty
+    /// when it offers neither edit nor fork.
+    // COMPATIBILITY 2026-11-14 (v1.14.0): Bridges before edit and fork omit sessionBranching, so their harnesses offer
+    // neither. Remove @Default once the minimum supported bridge sends it.
+    @JsonKey(unknownEnumValue: SessionBranchingOperation.unknown)
+    @Default(<SessionBranchingOperation>{})
+    Set<SessionBranchingOperation> sessionBranching,
   }) = _PluginMetadata;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);
