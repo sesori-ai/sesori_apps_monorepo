@@ -6,6 +6,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/foundation/models/side_question_availability.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -312,6 +313,62 @@ void main() {
             .having((value) => value.snapshot.supportsPromptAttachments, "supportsPromptAttachments", isFalse),
       );
       verify(() => pluginRepository.listPlugins()).called(1);
+    });
+
+    test("load reads side-question availability from the bridge and the session's harness", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      PluginMetadata plugin({required bool supportsSideQuestions}) => PluginMetadata(
+        id: "plugin-1",
+        displayName: "Plugin One",
+        isDefault: true,
+        state: PluginLifecycleState.ready,
+        actionHint: null,
+        failureBlock: null,
+        mcpScopes: null,
+        failureReason: null,
+        supportsSideQuestions: supportsSideQuestions,
+      );
+      final cases = <({List<PluginMetadata> plugins, bool bridgeSupports, SideQuestionAvailability expected})>[
+        (
+          plugins: [plugin(supportsSideQuestions: true)],
+          bridgeSupports: true,
+          expected: SideQuestionAvailability.available,
+        ),
+        (
+          plugins: [plugin(supportsSideQuestions: false)],
+          bridgeSupports: true,
+          expected: SideQuestionAvailability.harnessUnsupported,
+        ),
+        // An older bridge omits both flags, which read as false.
+        (
+          plugins: [plugin(supportsSideQuestions: false)],
+          bridgeSupports: false,
+          expected: SideQuestionAvailability.bridgeUpdateRequired,
+        ),
+        (plugins: const [], bridgeSupports: true, expected: SideQuestionAvailability.unresolved),
+      ];
+      for (final (:plugins, :bridgeSupports, :expected) in cases) {
+        service = SessionDetailLoadService(
+          repository: repository,
+          pluginRepository: stubbedPluginRepository(plugins: plugins, supportsSideQuestions: bridgeSupports),
+          connectionService: connectionService,
+        );
+
+        final result = await _load(service: service, projectId: "project-1");
+
+        expect((result as SessionDetailLoadResultLoaded).snapshot.sideQuestions, expected, reason: "$expected");
+      }
+    });
+
+    test("a failed plugin listing leaves side questions unresolved", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      when(() => pluginRepository.listPlugins()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      final result = await _load(service: service, projectId: "project-1");
+
+      expect((result as SessionDetailLoadResultLoaded).snapshot.sideQuestions, SideQuestionAvailability.unresolved);
     });
 
     test("load marks archived sessions and names their options from the cache alone", () async {

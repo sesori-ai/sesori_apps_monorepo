@@ -275,6 +275,38 @@ dispatched state suppresses trash. A late cancellation refusal is not success:
 the client reports it without hiding still-live input; existing queue events and
 reconnect snapshots keep the displayed state authoritative.
 
+## Side questions
+
+A side question answers from what the session already knows, runs no tools,
+leaves a running turn alone and is never written to the main transcript.
+
+| Harness | Native seam | Sesori availability |
+|---|---|---|
+| Claude Code | `side_question` control request in `-p` stream-json, with `history` (verified 2.1.322) | ✅ Native, mid-turn, no tools, no transcript write. CLIs without the handler get "update Claude Code" |
+| Codex | Experimental `thread/sample` (mid-turn from 0.169.0) | ⬜ Native from step 5 of the side-questions plan. History goes in the 4,000-byte prompt. PATH Codex 0.139–0.168 gets "update Codex" |
+| OpenCode | `/btw` only on its dev branch; session fork exists | ⬜ Phase-2 fork fallback |
+| Pi | No side question; RPC `fork`/`clone` | ⬜ Phase-2 fork fallback |
+| Oh My Pi | RPC-only `btw`, not over ACP; ACP `session/fork` | ⬜ Phase-2 fork fallback |
+| Hermes, Grok Build, Cursor, GitHub Copilot, Antigravity, DeepSeek | TUI-only; whole-session fork via the vendor or the ACP draft | ⬜ Phase-2 fork fallback where the fork plan provides a fork. Otherwise 🚫, with the verified version |
+
+Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
+
+- An ask during a streaming main turn answered in about 3 s; the main turn kept
+  streaming and finished normally. Every message frame seen meanwhile belonged
+  to the main turn: the side question emits only the control frames
+  `control_request_progress` and its `control_response` on stdout.
+- An ask on an idle resident process, and as the first frame after a cold
+  `--resume`, answered from the conversation.
+- Follow-ups pass earlier exchanges as `history`; the answer used them.
+- The session `.jsonl` never contained the question or answer. A cold-resume
+  ask appends only a `cost-state` accounting record.
+- An unknown subtype fails with `Unsupported control request subtype: <name>`,
+  which Sesori maps to "update Claude Code". The first CLI release with the
+  handler is unknown. The plan's research found it in 2.1.321 to 2.1.325;
+  only 2.1.322 was probed live.
+- `control_cancel_request` ends the ask with "Side question cancelled". Sesori
+  sends it when its own 3-minute wait ends, below the CLI's 11-minute deadline.
+
 ## Explicit shell-command presentation
 
 Ordinary tools retain name, bounded title, status and attachments; only
@@ -451,7 +483,7 @@ Only OMP and Codex are assessed here. Other harnesses are not assessed.
 | Harness | Status |
 |---|---|
 | OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.12.6` and `18.19.0` sources, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
-| Codex | 🚫 Not supported when the thread's model provider is no longer the configured one, by upstream design (probed live on codex-cli `0.167.1` with an isolated `CODEX_HOME`, 2026-11-12): `thread/resume` answers JSON-RPC `-32600` with `data` `{"type": "modelProviderMismatch", "modelProvider": <thread's>, "currentModelProvider": <configured>}`; per the schema, `modelProviderNotConfigured` carries only the thread's provider and `modelProviderPolicyConflict` adds `requiredModelProvider`. The send fails with a 409: a mismatch names both providers and how to switch back, not-configured names the thread's provider and says to add it back to the config, and a policy conflict names both providers and says the session can't be continued. The app shows that message as a second line under "Couldn't send", with Retry and Remove. |
+| Codex | ✅ From codex-cli `0.168.0` a thread whose model provider is still defined in the config resumes on that provider even after the default provider changes (upstream #59503; probed live on `0.169.0` with an isolated `CODEX_HOME`, 2026-11-15: `thread/resume` returned the thread's provider and the next turn completed). 🚫 Not supported when the thread's provider is no longer defined, or a managed policy requires another provider, by upstream design: `thread/resume` answers JSON-RPC `-32600` with `data` `{"type": "modelProviderNotConfigured", "modelProvider": <thread's>}` (probed live on `0.169.0`) or `modelProviderPolicyConflict`. PATH installs from `0.166.0` to `0.167.x` also refuse a thread whose provider merely differs from the default (probed live on `0.167.1`, 2026-11-12): `data` `{"type": "modelProviderMismatch", "modelProvider": <thread's>, "currentModelProvider": <configured>}`; per the schema, `modelProviderNotConfigured` carries only the thread's provider and `modelProviderPolicyConflict` adds `requiredModelProvider`. The send fails with a 409: a mismatch names both providers and how to switch back, not-configured names the thread's provider and says to add it back to the config, and a policy conflict names both providers and says the session can't be continued. The app shows that message as a second line under "Couldn't send", with Retry and Remove. |
 
 ## Failure reasons shown to the user
 
@@ -633,8 +665,12 @@ first turn already runs fast.
 
 Claude Code reports fast-mode support per model as `supportsFastMode: true` in
 the stream-json `initialize` response (omitted for models without it; in CLI
-2.1.281 only some Opus models carry it), which sets `PluginModel.fastMode` with a
-60-minute prompt-cache lifetime. Fast mode is not a launch flag: a fresh process
+2.1.281 only some Opus models carry it), which sets `PluginModel.fastMode`. Its
+prompt-cache lifetime follows the handshake's `account`: 60 minutes when it
+reports a `subscriptionType` (which wins even beside `apiProvider`), 5 minutes
+when it reports `apiProvider` without `subscriptionType` (an API key, Bedrock,
+or Vertex), and 60 minutes when it reports neither. Account shapes verified
+against CLI 2.1.325 on 2026-11-15. Fast mode is not a launch flag: a fresh process
 starts with it off, and the plugin sends the `apply_flag_settings`
 control request (`{"subtype":"apply_flag_settings","settings":{"fastMode":…}}`, the shape the Agent SDK's `applyFlagSettings` sends) before a turn whenever the session's choice
 differs from what the resident process last applied. The CLI acknowledges the

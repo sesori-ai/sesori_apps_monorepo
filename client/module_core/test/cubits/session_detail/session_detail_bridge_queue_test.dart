@@ -25,6 +25,7 @@ import "package:sesori_dart_core/src/foundation/models/session_launch/session_la
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_composer.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_handoff.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/foundation/models/side_question_availability.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
@@ -262,6 +263,7 @@ void main() {
             supportsPromptAttachments: supportsPromptAttachments,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: snapshotMessages,
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -297,6 +299,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -349,6 +352,7 @@ void main() {
             supportsPromptAttachments: supportsPromptAttachments,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: messages,
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1714,6 +1718,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2063,6 +2068,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2115,6 +2121,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2161,6 +2168,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2206,6 +2214,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "other-1",
             sessionID: _sessionId,
             agent: null,
@@ -2253,6 +2262,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2408,6 +2418,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2631,6 +2642,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2660,6 +2672,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -2904,6 +2917,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-first",
             sessionID: _sessionId,
             agent: null,
@@ -3038,6 +3052,7 @@ void main() {
         SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "echo-1",
             sessionID: _sessionId,
             agent: null,
@@ -3570,6 +3585,7 @@ void main() {
             SesoriMessageUpdated(
               info: Message.user(
                 invocation: null,
+                handoff: null,
                 id: "echo-1",
                 sessionID: _sessionId,
                 agent: null,
@@ -3711,6 +3727,7 @@ void main() {
             const MessageWithParts(
               info: Message.user(
                 invocation: null,
+                handoff: null,
                 id: "msg-1",
                 sessionID: _sessionId,
                 agent: null,
@@ -3737,6 +3754,7 @@ void main() {
           const SesoriMessageUpdated(
             info: Message.user(
               invocation: null,
+              handoff: null,
               id: "msg-1",
               sessionID: _sessionId,
               agent: null,
@@ -4559,6 +4577,7 @@ void main() {
             const SesoriMessageUpdated(
               info: Message.user(
                 invocation: null,
+                handoff: null,
                 id: "msg-a",
                 sessionID: _sessionId,
                 agent: null,

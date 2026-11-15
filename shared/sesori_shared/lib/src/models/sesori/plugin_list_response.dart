@@ -40,6 +40,20 @@ enum BusyPromptHandling() {
   unknown,
 }
 
+/// A message-level branching operation a harness supports.
+enum SessionBranchingOperation() {
+  /// Edit and resend: the harness removes a turn and everything after it from
+  /// the conversation, then sends the edited prompt.
+  rewind,
+
+  /// The harness forks a session from a message into a new session in the
+  /// same directory.
+  fork,
+
+  /// An operation this app does not know yet.
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginMetadata with _$PluginMetadata {
   const factory({
@@ -85,6 +99,11 @@ sealed class PluginMetadata with _$PluginMetadata {
     // Remove @Default and require the field once all supported production bridges send it.
     @Default(false) bool namesCommandInvocations,
 
+    /// Whether this harness answers side questions.
+    // COMPATIBILITY 2026-11-15 (v1.14.0): Older bridges omit this capability because they have no side-question routes.
+    // Remove @Default and require the field once all supported production bridges send it.
+    @Default(false) bool supportsSideQuestions,
+
     /// What this harness does with a prompt sent while a session runs a turn,
     /// so a client can warn before a send stops that turn.
     // COMPATIBILITY 2026-11-15 (v1.14.0): Bridges before session sending omit busyPromptHandling; the picker
@@ -92,6 +111,14 @@ sealed class PluginMetadata with _$PluginMetadata {
     @JsonKey(unknownEnumValue: BusyPromptHandling.unknown)
     @Default(BusyPromptHandling.unknown)
     BusyPromptHandling busyPromptHandling,
+
+    /// The message-level branching operations this harness supports; empty
+    /// when it offers neither edit nor fork.
+    // COMPATIBILITY 2026-11-14 (v1.14.0): Bridges before edit and fork omit sessionBranching, so their harnesses offer
+    // neither. Remove @Default once the minimum supported bridge sends it.
+    @JsonKey(unknownEnumValue: SessionBranchingOperation.unknown)
+    @Default(<SessionBranchingOperation>{})
+    Set<SessionBranchingOperation> sessionBranching,
   }) = _PluginMetadata;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);
@@ -117,6 +144,12 @@ sealed class PluginListResponse with _$PluginListResponse {
     // only images reach them and the client says so. Remove @Default and require
     // supportsFileUploads once those bridges are unsupported.
     @Default(false) bool supportsFileUploads,
+
+    /// Whether the bridge has the side-question routes (`/session/side-chats`
+    /// and `/session/side-question`).
+    // COMPATIBILITY 2026-11-15 (v1.14.0): Older bridges omit this capability because they have no side-question routes.
+    // Remove @Default and require the field once all supported production bridges send it.
+    @Default(false) bool supportsSideQuestions,
   }) = _PluginListResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);

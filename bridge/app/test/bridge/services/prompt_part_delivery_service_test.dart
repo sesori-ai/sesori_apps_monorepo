@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:clock/clock.dart";
+import "package:sesori_bridge/src/repositories/models/deliverable_prompt_part.dart";
 import "package:sesori_bridge/src/repositories/prompt_upload_repository.dart";
 import "package:sesori_bridge/src/services/prompt_part_delivery_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -16,14 +17,19 @@ void main() {
     service = PromptPartDeliveryService(uploads: uploads, clock: Clock.fixed(now));
   });
 
-  Future<List<PromptPart>> deliver({required List<PromptPart> parts, bool inlineImages = true}) {
+  Future<List<DeliverablePromptPart>> deliver({required List<PromptPart> parts, bool inlineImages = true}) {
     return service.deliverableParts(sessionId: "ses_1", inlineImages: inlineImages, parts: parts);
   }
 
   const image = PromptPart.fileData(mime: "image/png", base64: "iVBORw0KGgo=", filename: "shot.png");
+  const deliverableImage = DeliverablePromptPart.fileData(
+    mime: "image/png",
+    base64: "iVBORw0KGgo=",
+    filename: "shot.png",
+  );
 
   test("passes an image through when the plugin takes images, and saves nothing", () async {
-    expect(await deliver(parts: const [image]), const [image]);
+    expect(await deliver(parts: const [image]), const [deliverableImage]);
     expect(uploads.saves, isEmpty);
     expect(uploads.sweepCutoffs, isEmpty);
   });
@@ -46,9 +52,9 @@ void main() {
     expect(utf8.decode(save.bytes), "report");
     expect(save.filename, "My Report.pdf");
     expect(delivered, const [
-      PromptPart.text(text: "Read"),
-      PromptPart.text(text: 'Attached file "My Report.pdf": `/uploads/ses_1/My Report.pdf`'),
-      image,
+      DeliverablePromptPart.text(text: "Read"),
+      DeliverablePromptPart.text(text: 'Attached file "My Report.pdf": `/uploads/ses_1/My Report.pdf`'),
+      deliverableImage,
     ]);
   });
 
@@ -56,7 +62,7 @@ void main() {
     final delivered = await deliver(parts: const [image], inlineImages: false);
 
     expect(uploads.saves.map((save) => save.filename), ["shot.png"]);
-    expect(delivered, const [PromptPart.text(text: 'Attached file "shot.png": `/uploads/ses_1/shot.png`')]);
+    expect(delivered, const [DeliverablePromptPart.text(text: 'Attached file "shot.png": `/uploads/ses_1/shot.png`')]);
   });
 
   test("names a file without a name, or with an empty one, attachment", () async {
@@ -69,8 +75,8 @@ void main() {
 
     expect(uploads.saves.map((save) => save.filename), ["attachment", "attachment"]);
     expect(delivered, const [
-      PromptPart.text(text: 'Attached file "attachment": `/uploads/ses_1/attachment`'),
-      PromptPart.text(text: 'Attached file "attachment": `/uploads/ses_1/attachment`'),
+      DeliverablePromptPart.text(text: 'Attached file "attachment": `/uploads/ses_1/attachment`'),
+      DeliverablePromptPart.text(text: 'Attached file "attachment": `/uploads/ses_1/attachment`'),
     ]);
   });
 
@@ -84,19 +90,51 @@ void main() {
 
     expect(uploads.saves.map((save) => save.filename), ["a`b.txt", 'my "final"\r\nnotes.txt']);
     expect(delivered, const [
-      PromptPart.text(text: 'Attached file "a\'b.txt": `/uploads/ses_1/a`b.txt`'),
-      PromptPart.text(text: 'Attached file "my \'final\'  notes.txt": `/uploads/ses_1/my "final"\r\nnotes.txt`'),
+      DeliverablePromptPart.text(text: 'Attached file "a\'b.txt": `/uploads/ses_1/a`b.txt`'),
+      DeliverablePromptPart.text(
+        text: 'Attached file "my \'final\'  notes.txt": `/uploads/ses_1/my "final"\r\nnotes.txt`',
+      ),
     ]);
   });
 
-  test("passes text, path and url parts through", () async {
-    const parts = [
-      PromptPart.text(text: "hi"),
-      PromptPart.filePath(mime: "text/plain", path: "/tmp/a.txt", filename: null),
-      PromptPart.fileUrl(mime: "text/plain", url: "https://example.com/a.txt", filename: null),
-    ];
+  test("passes text and url parts through", () async {
+    final delivered = await deliver(
+      parts: const [
+        PromptPart.text(text: "hi"),
+        PromptPart.fileUrl(mime: "text/plain", url: "https://example.com/a.txt", filename: null),
+      ],
+    );
 
-    expect(await deliver(parts: parts), parts);
+    expect(delivered, const [
+      DeliverablePromptPart.text(text: "hi"),
+      DeliverablePromptPart.fileUrl(mime: "text/plain", url: "https://example.com/a.txt", filename: null),
+    ]);
+    expect(uploads.sweepCutoffs, isEmpty);
+  });
+
+  test("notes a file this computer already holds in place, without saving it again", () async {
+    final delivered = await deliver(
+      parts: const [
+        PromptPart.text(text: "again"),
+        PromptPart.filePath(
+          mime: "application/octet-stream",
+          path: "/uploads/ses_1/2026-11-01-abc/My Report.pdf",
+          filename: "My Report.pdf",
+        ),
+        PromptPart.filePath(
+          mime: "application/octet-stream",
+          path: "/uploads/ses_1/2026-11-01-def/a.txt",
+          filename: null,
+        ),
+      ],
+    );
+
+    expect(delivered, const [
+      DeliverablePromptPart.text(text: "again"),
+      DeliverablePromptPart.text(text: 'Attached file "My Report.pdf": `/uploads/ses_1/2026-11-01-abc/My Report.pdf`'),
+      DeliverablePromptPart.text(text: 'Attached file "a.txt": `/uploads/ses_1/2026-11-01-def/a.txt`'),
+    ]);
+    expect(uploads.saves, isEmpty);
     expect(uploads.sweepCutoffs, isEmpty);
   });
 

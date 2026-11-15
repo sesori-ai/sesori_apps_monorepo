@@ -20,6 +20,7 @@ const defaultManagementCapabilities = <PluginControlCapability>{
 };
 
 const noMcpScopes = <PluginMcpScopeKind>{};
+const noSessionBranching = <PluginSessionBranching>{};
 
 Future<PluginLifecycleService> createSinglePluginLifecycleService({
   required BridgePluginApi plugin,
@@ -50,8 +51,10 @@ Future<PluginLifecycleService> createPluginLifecycleService({
           managementCapabilities: defaultManagementCapabilities,
           supportsPromptAttachments: false,
           namesCommandInvocations: false,
+          supportsSideQuestions: false,
           busyPromptHandling: PluginBusyPromptHandling.steer,
           mcpScopes: noMcpScopes,
+          sessionBranching: noSessionBranching,
         ),
     ],
     disabledPluginIds: const {},

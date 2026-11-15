@@ -123,6 +123,7 @@ SessionDetailLoaded _loadedState({required List<MessageWithParts> messages}) {
     supportsPromptAttachments: true,
     supportsFileUploads: false,
     offersSessionMcp: true,
+    sideQuestions: SideQuestionAvailability.unresolved,
     assistantAgentModel: null,
     children: const [],
     childStatuses: const {},
@@ -161,7 +162,15 @@ void main() {
   group("the Prompts screen", () {
     MessageWithParts textMessage({required String id, required bool user, required String text}) => MessageWithParts(
       info: user
-          ? Message.user(invocation: null, promptId: null, id: id, sessionID: "session-1", agent: null, time: null)
+          ? Message.user(
+              invocation: null,
+              handoff: null,
+              promptId: null,
+              id: id,
+              sessionID: "session-1",
+              agent: null,
+              time: null,
+            )
           : Message.assistant(id: id, sessionID: "session-1", agent: null, modelID: null, providerID: null, time: null),
       parts: [MessagePart.text(id: "$id-part", sessionID: "session-1", messageID: id, text: text)],
     );

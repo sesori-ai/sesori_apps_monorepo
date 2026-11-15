@@ -35,8 +35,10 @@ typedef RegisteredPluginMetadata = ({
   Set<PluginControlCapability> managementCapabilities,
   bool supportsPromptAttachments,
   bool namesCommandInvocations,
+  bool supportsSideQuestions,
   PluginBusyPromptHandling busyPromptHandling,
   Set<PluginMcpScopeKind> mcpScopes,
+  Set<PluginSessionBranching> sessionBranching,
 });
 
 typedef PluginStartupPolicy = ({
@@ -1164,7 +1166,9 @@ class PluginLifecycleService({
               mcpScopes: {for (final scope in plugin.mcpScopes) _mapMcpScope(scope: scope)},
               failureReason: _failureReason(snapshot: snapshot),
               namesCommandInvocations: plugin.namesCommandInvocations,
+              supportsSideQuestions: plugin.supportsSideQuestions,
               busyPromptHandling: plugin.busyPromptHandling.toShared(),
+              sessionBranching: {for (final operation in plugin.sessionBranching) operation.toShared()},
             );
           }(),
     };

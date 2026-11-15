@@ -5,16 +5,18 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/external_action_repository.dart";
 import "package:sesori_bridge/src/repositories/form_repository.dart";
+import "package:sesori_bridge/src/repositories/mappers/deliverable_prompt_part_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_command_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_session_status_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_to_shared_mapping.dart";
-import "package:sesori_bridge/src/repositories/mappers/prompt_part_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
+import "package:sesori_bridge/src/repositories/models/deliverable_prompt_part.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_page_cursor.dart";
+import "package:sesori_bridge/src/repositories/models/side_question_ask_result.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -318,6 +320,13 @@ class FakeSessionRepository({
       (await _plugin.getQueuedPrompts(sessionId: sessionId)).toSharedQueuedPrompts();
 
   @override
+  Future<SideQuestionAskResult> askSideQuestion({
+    required String sessionId,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async => const SideQuestionRefused(reason: SideQuestionRefusal.harnessUnsupported);
+
+  @override
   Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) =>
       _plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
 
@@ -443,7 +452,7 @@ class FakeSessionRepository({
     required String projectId,
     required String directory,
     required String? parentSessionId,
-    required List<PromptPart> parts,
+    required List<DeliverablePromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
     required bool fastMode,
@@ -673,6 +682,9 @@ class FakeSessionRepository({
   Future<Session?> getCatalogSession({required String sessionId}) async => null;
 
   @override
+  bool isPluginActive({required String pluginId}) => pluginId == _plugin.id;
+
+  @override
   Future<SessionStatusResponse> getSessionStatuses() async {
     final statuses = await _plugin.getSessionStatuses();
     return SessionStatusResponse(
@@ -698,7 +710,10 @@ class FakeSessionRepository({
   void markSessionIdle({required String sessionId}) {}
 
   @override
-  Message stampLiveInvocation({required Message message}) => message;
+  Message stampLiveMessage({required Message message}) => message;
+
+  @override
+  void markHandoffNotSent({required String sessionId, required String promptId}) {}
 
   @override
   List<QueuedSessionPrompt> stampQueuedCommandSources({
@@ -811,11 +826,12 @@ class FakeSessionRepository({
   Future<void> sendPrompt({
     required String promptId,
     required String sessionId,
-    required List<PromptPart> parts,
+    required List<DeliverablePromptPart> parts,
     required SessionVariant? variant,
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required MessageHandoff? handoff,
   }) async {
     await _plugin.sendPrompt(
       fastMode: fastMode,

@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
+import "package:sesori_dart_core/src/foundation/models/side_question_availability.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
@@ -44,6 +45,7 @@ const _emptyState = SessionDetailState.loaded(
     MessageWithParts(
       info: Message.user(
         invocation: null,
+        handoff: null,
         promptId: null,
         id: "empty-user-envelope",
         sessionID: "session-1",
@@ -66,6 +68,7 @@ const _emptyState = SessionDetailState.loaded(
   supportsPromptAttachments: false,
   supportsFileUploads: false,
   offersSessionMcp: true,
+  sideQuestions: SideQuestionAvailability.unresolved,
   assistantAgentModel: null,
   children: [],
   childStatuses: {},
@@ -104,6 +107,7 @@ const _nonEmptyState = SessionDetailState.loaded(
   supportsPromptAttachments: false,
   supportsFileUploads: false,
   offersSessionMcp: true,
+  sideQuestions: SideQuestionAvailability.unresolved,
   assistantAgentModel: null,
   children: [],
   childStatuses: {},

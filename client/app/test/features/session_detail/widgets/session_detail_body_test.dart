@@ -198,6 +198,7 @@ SessionDetailLoaded _loadedState({
     supportsPromptAttachments: supportsPromptAttachments,
     supportsFileUploads: false,
     offersSessionMcp: true,
+    sideQuestions: SideQuestionAvailability.unresolved,
     assistantAgentModel: null,
     children: children,
     childStatuses: childStatuses,
@@ -677,6 +678,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "empty-user-envelope",
             sessionID: "session-1",
@@ -895,6 +897,7 @@ void main() {
     const echo = MessageWithParts(
       info: Message.user(
         invocation: null,
+        handoff: null,
         promptId: "prm_first",
         id: "user-first",
         sessionID: "session-1",
@@ -1169,6 +1172,7 @@ void main() {
               MessageWithParts(
                 info: Message.user(
                   invocation: null,
+                  handoff: null,
                   promptId: "prm_follow",
                   id: "user-next",
                   sessionID: "session-1",
@@ -1385,6 +1389,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "markdown-user",
             sessionID: "session-1",
@@ -1421,6 +1426,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "remote-image-user",
             sessionID: "session-1",
@@ -1455,6 +1461,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "unknown-attachment-user",
             sessionID: "session-1",
@@ -1487,6 +1494,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "empty-user",
             sessionID: "session-1",
@@ -1661,6 +1669,7 @@ void main() {
       supportsPromptAttachments: false,
       supportsFileUploads: false,
       offersSessionMcp: true,
+      sideQuestions: SideQuestionAvailability.unresolved,
       assistantAgentModel: null,
       children: const [],
       childStatuses: const {},
@@ -1803,7 +1812,15 @@ void main() {
   group("the Prompts screen", () {
     MessageWithParts textMessage({required String id, required bool user, required String text}) => MessageWithParts(
       info: user
-          ? Message.user(invocation: null, promptId: null, id: id, sessionID: "session-1", agent: null, time: null)
+          ? Message.user(
+              invocation: null,
+              handoff: null,
+              promptId: null,
+              id: id,
+              sessionID: "session-1",
+              agent: null,
+              time: null,
+            )
           : Message.assistant(id: id, sessionID: "session-1", agent: null, modelID: null, providerID: null, time: null),
       parts: [MessagePart.text(id: "$id-part", sessionID: "session-1", messageID: id, text: text)],
     );
@@ -5822,7 +5839,7 @@ void main() {
     ).captured.single;
     expect(
       sentAttachments,
-      isA<List<ComposerAttachment>>().having((it) => [for (final a in it) a.bytes], "bytes", [_tinyPng]),
+      isA<List<ComposerAttachment>>().having((it) => [for (final a in it) _bytesOf(a)], "bytes", [_tinyPng]),
     );
   });
 
@@ -6284,6 +6301,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             id: "delivered",
             sessionID: "session-1",
             promptId: "handoff",
@@ -6568,6 +6586,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "user-$i",
             sessionID: "session-1",
@@ -6792,6 +6811,7 @@ void main() {
               const MessageWithParts(
                 info: Message.user(
                   invocation: null,
+                  handoff: null,
                   promptId: null,
                   id: "user-12",
                   sessionID: "session-1",
@@ -6942,6 +6962,7 @@ void main() {
               MessageWithParts(
                 info: Message.user(
                   invocation: null,
+                  handoff: null,
                   promptId: null,
                   id: "long-$i",
                   sessionID: "session-1",
@@ -7139,3 +7160,8 @@ void main() {
     });
   });
 }
+
+Uint8List? _bytesOf(ComposerAttachment? attachment) => switch (attachment) {
+  ComposerImageAttachment(:final bytes) || ComposerFileAttachment(:final bytes) => bytes,
+  ComposerHostFileAttachment() || null => null,
+};

@@ -29,9 +29,12 @@ mixin _$PluginMetadata {
  String? get failureReason;/// Whether this plugin's confirmed command turns carry
 /// `MessageUser.invocation`, so a client can show a command as its card
 /// from the moment it is sent.
- bool get namesCommandInvocations;/// What this harness does with a prompt sent while a session runs a turn,
+ bool get namesCommandInvocations;/// Whether this harness answers side questions.
+ bool get supportsSideQuestions;/// What this harness does with a prompt sent while a session runs a turn,
 /// so a client can warn before a send stops that turn.
-@JsonKey(unknownEnumValue: BusyPromptHandling.unknown) BusyPromptHandling get busyPromptHandling;
+@JsonKey(unknownEnumValue: BusyPromptHandling.unknown) BusyPromptHandling get busyPromptHandling;/// The message-level branching operations this harness supports; empty
+/// when it offers neither edit nor fork.
+@JsonKey(unknownEnumValue: SessionBranchingOperation.unknown) Set<SessionBranchingOperation> get sessionBranching;
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -45,20 +48,20 @@ $PluginMetadataCopyWith<PluginMetadata> get copyWith => _$PluginMetadataCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as PluginMetadata;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetadata&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.isDefault, _this.isDefault) || other.isDefault == _this.isDefault)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint)&&(identical(other.failureBlock, _this.failureBlock) || other.failureBlock == _this.failureBlock)&&(identical(other.supportsPromptAttachments, _this.supportsPromptAttachments) || other.supportsPromptAttachments == _this.supportsPromptAttachments)&&const DeepCollectionEquality().equals(other.mcpScopes, _this.mcpScopes)&&(identical(other.failureReason, _this.failureReason) || other.failureReason == _this.failureReason)&&(identical(other.namesCommandInvocations, _this.namesCommandInvocations) || other.namesCommandInvocations == _this.namesCommandInvocations)&&(identical(other.busyPromptHandling, _this.busyPromptHandling) || other.busyPromptHandling == _this.busyPromptHandling));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetadata&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.isDefault, _this.isDefault) || other.isDefault == _this.isDefault)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint)&&(identical(other.failureBlock, _this.failureBlock) || other.failureBlock == _this.failureBlock)&&(identical(other.supportsPromptAttachments, _this.supportsPromptAttachments) || other.supportsPromptAttachments == _this.supportsPromptAttachments)&&const DeepCollectionEquality().equals(other.mcpScopes, _this.mcpScopes)&&(identical(other.failureReason, _this.failureReason) || other.failureReason == _this.failureReason)&&(identical(other.namesCommandInvocations, _this.namesCommandInvocations) || other.namesCommandInvocations == _this.namesCommandInvocations)&&(identical(other.supportsSideQuestions, _this.supportsSideQuestions) || other.supportsSideQuestions == _this.supportsSideQuestions)&&(identical(other.busyPromptHandling, _this.busyPromptHandling) || other.busyPromptHandling == _this.busyPromptHandling)&&const DeepCollectionEquality().equals(other.sessionBranching, _this.sessionBranching));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PluginMetadata;
-  return Object.hash(runtimeType,_this.id,_this.displayName,_this.isDefault,_this.state,_this.actionHint,_this.failureBlock,_this.supportsPromptAttachments,const DeepCollectionEquality().hash(_this.mcpScopes),_this.failureReason,_this.namesCommandInvocations,_this.busyPromptHandling);
+  return Object.hash(runtimeType,_this.id,_this.displayName,_this.isDefault,_this.state,_this.actionHint,_this.failureBlock,_this.supportsPromptAttachments,const DeepCollectionEquality().hash(_this.mcpScopes),_this.failureReason,_this.namesCommandInvocations,_this.supportsSideQuestions,_this.busyPromptHandling,const DeepCollectionEquality().hash(_this.sessionBranching));
 }
 
 @override
 String toString() {
   final _this = this as PluginMetadata;
-  return 'PluginMetadata(id: ${_this.id}, displayName: ${_this.displayName}, isDefault: ${_this.isDefault}, state: ${_this.state}, actionHint: ${_this.actionHint}, failureBlock: ${_this.failureBlock}, supportsPromptAttachments: ${_this.supportsPromptAttachments}, mcpScopes: ${_this.mcpScopes}, failureReason: ${_this.failureReason}, namesCommandInvocations: ${_this.namesCommandInvocations}, busyPromptHandling: ${_this.busyPromptHandling})';
+  return 'PluginMetadata(id: ${_this.id}, displayName: ${_this.displayName}, isDefault: ${_this.isDefault}, state: ${_this.state}, actionHint: ${_this.actionHint}, failureBlock: ${_this.failureBlock}, supportsPromptAttachments: ${_this.supportsPromptAttachments}, mcpScopes: ${_this.mcpScopes}, failureReason: ${_this.failureReason}, namesCommandInvocations: ${_this.namesCommandInvocations}, supportsSideQuestions: ${_this.supportsSideQuestions}, busyPromptHandling: ${_this.busyPromptHandling}, sessionBranching: ${_this.sessionBranching})';
 }
 
 
@@ -69,7 +72,7 @@ abstract mixin class $PluginMetadataCopyWith<$Res>  {
   factory $PluginMetadataCopyWith(PluginMetadata value, $Res Function(PluginMetadata) _then) = _$PluginMetadataCopyWithImpl;
 @useResult
 $Res call({
- String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint,@JsonKey(unknownEnumValue: PluginFailureBlock.unknown) PluginFailureBlock? failureBlock, bool supportsPromptAttachments,@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? mcpScopes, String? failureReason, bool namesCommandInvocations,@JsonKey(unknownEnumValue: BusyPromptHandling.unknown) BusyPromptHandling busyPromptHandling
+ String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint,@JsonKey(unknownEnumValue: PluginFailureBlock.unknown) PluginFailureBlock? failureBlock, bool supportsPromptAttachments,@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? mcpScopes, String? failureReason, bool namesCommandInvocations, bool supportsSideQuestions,@JsonKey(unknownEnumValue: BusyPromptHandling.unknown) BusyPromptHandling busyPromptHandling,@JsonKey(unknownEnumValue: SessionBranchingOperation.unknown) Set<SessionBranchingOperation> sessionBranching
 });
 
 
@@ -86,7 +89,7 @@ class _$PluginMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? failureBlock = freezed,Object? supportsPromptAttachments = null,Object? mcpScopes = freezed,Object? failureReason = freezed,Object? namesCommandInvocations = null,Object? busyPromptHandling = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? failureBlock = freezed,Object? supportsPromptAttachments = null,Object? mcpScopes = freezed,Object? failureReason = freezed,Object? namesCommandInvocations = null,Object? supportsSideQuestions = null,Object? busyPromptHandling = null,Object? sessionBranching = null,}) {
   return _then(PluginMetadata(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -98,8 +101,10 @@ as PluginFailureBlock?,supportsPromptAttachments: null == supportsPromptAttachme
 as bool,mcpScopes: freezed == mcpScopes ? _self.mcpScopes : mcpScopes // ignore: cast_nullable_to_non_nullable
 as Set<McpScopeKind>?,failureReason: freezed == failureReason ? _self.failureReason : failureReason // ignore: cast_nullable_to_non_nullable
 as String?,namesCommandInvocations: null == namesCommandInvocations ? _self.namesCommandInvocations : namesCommandInvocations // ignore: cast_nullable_to_non_nullable
+as bool,supportsSideQuestions: null == supportsSideQuestions ? _self.supportsSideQuestions : supportsSideQuestions // ignore: cast_nullable_to_non_nullable
 as bool,busyPromptHandling: null == busyPromptHandling ? _self.busyPromptHandling : busyPromptHandling // ignore: cast_nullable_to_non_nullable
-as BusyPromptHandling,
+as BusyPromptHandling,sessionBranching: null == sessionBranching ? _self.sessionBranching : sessionBranching // ignore: cast_nullable_to_non_nullable
+as Set<SessionBranchingOperation>,
   ));
 }
 
@@ -111,7 +116,7 @@ as BusyPromptHandling,
 @JsonSerializable()
 
 class _PluginMetadata implements PluginMetadata {
-  const _PluginMetadata({required this.id, required this.displayName, required this.isDefault, @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required this.state, required this.actionHint, @JsonKey(unknownEnumValue: PluginFailureBlock.unknown) required this.failureBlock, this.supportsPromptAttachments = false, @JsonKey(unknownEnumValue: McpScopeKind.unknown) required  Set<McpScopeKind>? mcpScopes, required this.failureReason, this.namesCommandInvocations = false, @JsonKey(unknownEnumValue: BusyPromptHandling.unknown) this.busyPromptHandling = BusyPromptHandling.unknown}): _mcpScopes = mcpScopes;
+  const _PluginMetadata({required this.id, required this.displayName, required this.isDefault, @JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) required this.state, required this.actionHint, @JsonKey(unknownEnumValue: PluginFailureBlock.unknown) required this.failureBlock, this.supportsPromptAttachments = false, @JsonKey(unknownEnumValue: McpScopeKind.unknown) required  Set<McpScopeKind>? mcpScopes, required this.failureReason, this.namesCommandInvocations = false, this.supportsSideQuestions = false, @JsonKey(unknownEnumValue: BusyPromptHandling.unknown) this.busyPromptHandling = BusyPromptHandling.unknown, @JsonKey(unknownEnumValue: SessionBranchingOperation.unknown)  Set<SessionBranchingOperation> sessionBranching = const <SessionBranchingOperation>{}}): _mcpScopes = mcpScopes,_sessionBranching = sessionBranching;
   factory _PluginMetadata.fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);
 
 @override final  String id;
@@ -147,9 +152,22 @@ class _PluginMetadata implements PluginMetadata {
 /// `MessageUser.invocation`, so a client can show a command as its card
 /// from the moment it is sent.
 @override@JsonKey() final  bool namesCommandInvocations;
+/// Whether this harness answers side questions.
+@override@JsonKey() final  bool supportsSideQuestions;
 /// What this harness does with a prompt sent while a session runs a turn,
 /// so a client can warn before a send stops that turn.
 @override@JsonKey(unknownEnumValue: BusyPromptHandling.unknown) final  BusyPromptHandling busyPromptHandling;
+/// The message-level branching operations this harness supports; empty
+/// when it offers neither edit nor fork.
+ final  Set<SessionBranchingOperation> _sessionBranching;
+/// The message-level branching operations this harness supports; empty
+/// when it offers neither edit nor fork.
+@override@JsonKey(unknownEnumValue: SessionBranchingOperation.unknown) Set<SessionBranchingOperation> get sessionBranching {
+  if (_sessionBranching is EqualUnmodifiableSetView) return _sessionBranching;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_sessionBranching);
+}
+
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
@@ -164,18 +182,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.failureBlock, failureBlock) || other.failureBlock == failureBlock)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments)&&const DeepCollectionEquality().equals(other.mcpScopes, _mcpScopes)&&(identical(other.failureReason, failureReason) || other.failureReason == failureReason)&&(identical(other.namesCommandInvocations, namesCommandInvocations) || other.namesCommandInvocations == namesCommandInvocations)&&(identical(other.busyPromptHandling, busyPromptHandling) || other.busyPromptHandling == busyPromptHandling));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetadata&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault)&&(identical(other.state, state) || other.state == state)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.failureBlock, failureBlock) || other.failureBlock == failureBlock)&&(identical(other.supportsPromptAttachments, supportsPromptAttachments) || other.supportsPromptAttachments == supportsPromptAttachments)&&const DeepCollectionEquality().equals(other.mcpScopes, _mcpScopes)&&(identical(other.failureReason, failureReason) || other.failureReason == failureReason)&&(identical(other.namesCommandInvocations, namesCommandInvocations) || other.namesCommandInvocations == namesCommandInvocations)&&(identical(other.supportsSideQuestions, supportsSideQuestions) || other.supportsSideQuestions == supportsSideQuestions)&&(identical(other.busyPromptHandling, busyPromptHandling) || other.busyPromptHandling == busyPromptHandling)&&const DeepCollectionEquality().equals(other.sessionBranching, _sessionBranching));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,displayName,isDefault,state,actionHint,failureBlock,supportsPromptAttachments,const DeepCollectionEquality().hash(_mcpScopes),failureReason,namesCommandInvocations,busyPromptHandling);
+    return Object.hash(runtimeType,id,displayName,isDefault,state,actionHint,failureBlock,supportsPromptAttachments,const DeepCollectionEquality().hash(_mcpScopes),failureReason,namesCommandInvocations,supportsSideQuestions,busyPromptHandling,const DeepCollectionEquality().hash(_sessionBranching));
 }
 
 @override
 String toString() {
-    return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint, failureBlock: $failureBlock, supportsPromptAttachments: $supportsPromptAttachments, mcpScopes: $mcpScopes, failureReason: $failureReason, namesCommandInvocations: $namesCommandInvocations, busyPromptHandling: $busyPromptHandling)';
+    return 'PluginMetadata(id: $id, displayName: $displayName, isDefault: $isDefault, state: $state, actionHint: $actionHint, failureBlock: $failureBlock, supportsPromptAttachments: $supportsPromptAttachments, mcpScopes: $mcpScopes, failureReason: $failureReason, namesCommandInvocations: $namesCommandInvocations, supportsSideQuestions: $supportsSideQuestions, busyPromptHandling: $busyPromptHandling, sessionBranching: $sessionBranching)';
 }
 
 
@@ -186,7 +204,7 @@ abstract mixin class _$PluginMetadataCopyWith<$Res> implements $PluginMetadataCo
   factory _$PluginMetadataCopyWith(_PluginMetadata value, $Res Function(_PluginMetadata) _then) = __$PluginMetadataCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint,@JsonKey(unknownEnumValue: PluginFailureBlock.unknown) PluginFailureBlock? failureBlock, bool supportsPromptAttachments,@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? mcpScopes, String? failureReason, bool namesCommandInvocations,@JsonKey(unknownEnumValue: BusyPromptHandling.unknown) BusyPromptHandling busyPromptHandling
+ String id, String displayName, bool isDefault,@JsonKey(unknownEnumValue: PluginLifecycleState.unavailable) PluginLifecycleState state, String? actionHint,@JsonKey(unknownEnumValue: PluginFailureBlock.unknown) PluginFailureBlock? failureBlock, bool supportsPromptAttachments,@JsonKey(unknownEnumValue: McpScopeKind.unknown) Set<McpScopeKind>? mcpScopes, String? failureReason, bool namesCommandInvocations, bool supportsSideQuestions,@JsonKey(unknownEnumValue: BusyPromptHandling.unknown) BusyPromptHandling busyPromptHandling,@JsonKey(unknownEnumValue: SessionBranchingOperation.unknown) Set<SessionBranchingOperation> sessionBranching
 });
 
 
@@ -203,7 +221,7 @@ class __$PluginMetadataCopyWithImpl<$Res>
 
 /// Create a copy of PluginMetadata
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? failureBlock = freezed,Object? supportsPromptAttachments = null,Object? mcpScopes = freezed,Object? failureReason = freezed,Object? namesCommandInvocations = null,Object? busyPromptHandling = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = null,Object? isDefault = null,Object? state = null,Object? actionHint = freezed,Object? failureBlock = freezed,Object? supportsPromptAttachments = null,Object? mcpScopes = freezed,Object? failureReason = freezed,Object? namesCommandInvocations = null,Object? supportsSideQuestions = null,Object? busyPromptHandling = null,Object? sessionBranching = null,}) {
   return _then(_PluginMetadata(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: null == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -215,8 +233,10 @@ as PluginFailureBlock?,supportsPromptAttachments: null == supportsPromptAttachme
 as bool,mcpScopes: freezed == mcpScopes ? _self._mcpScopes : mcpScopes // ignore: cast_nullable_to_non_nullable
 as Set<McpScopeKind>?,failureReason: freezed == failureReason ? _self.failureReason : failureReason // ignore: cast_nullable_to_non_nullable
 as String?,namesCommandInvocations: null == namesCommandInvocations ? _self.namesCommandInvocations : namesCommandInvocations // ignore: cast_nullable_to_non_nullable
+as bool,supportsSideQuestions: null == supportsSideQuestions ? _self.supportsSideQuestions : supportsSideQuestions // ignore: cast_nullable_to_non_nullable
 as bool,busyPromptHandling: null == busyPromptHandling ? _self.busyPromptHandling : busyPromptHandling // ignore: cast_nullable_to_non_nullable
-as BusyPromptHandling,
+as BusyPromptHandling,sessionBranching: null == sessionBranching ? _self._sessionBranching : sessionBranching // ignore: cast_nullable_to_non_nullable
+as Set<SessionBranchingOperation>,
   ));
 }
 
@@ -230,7 +250,9 @@ mixin _$PluginListResponse {
  List<PluginMetadata> get plugins; String? get bridgeId; bool get supportsSessionOptions;/// Whether the bridge saves prompt files that it doesn't pass to the
 /// plugin inline, and gives the agent their paths (see
 /// `PromptPart.fileData`).
- bool get supportsFileUploads;
+ bool get supportsFileUploads;/// Whether the bridge has the side-question routes (`/session/side-chats`
+/// and `/session/side-question`).
+ bool get supportsSideQuestions;
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -244,20 +266,20 @@ $PluginListResponseCopyWith<PluginListResponse> get copyWith => _$PluginListResp
 @override
 bool operator ==(Object other) {
   final _this = this as PluginListResponse;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, _this.plugins)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId)&&(identical(other.supportsSessionOptions, _this.supportsSessionOptions) || other.supportsSessionOptions == _this.supportsSessionOptions)&&(identical(other.supportsFileUploads, _this.supportsFileUploads) || other.supportsFileUploads == _this.supportsFileUploads));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, _this.plugins)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId)&&(identical(other.supportsSessionOptions, _this.supportsSessionOptions) || other.supportsSessionOptions == _this.supportsSessionOptions)&&(identical(other.supportsFileUploads, _this.supportsFileUploads) || other.supportsFileUploads == _this.supportsFileUploads)&&(identical(other.supportsSideQuestions, _this.supportsSideQuestions) || other.supportsSideQuestions == _this.supportsSideQuestions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PluginListResponse;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.plugins),_this.bridgeId,_this.supportsSessionOptions,_this.supportsFileUploads);
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.plugins),_this.bridgeId,_this.supportsSessionOptions,_this.supportsFileUploads,_this.supportsSideQuestions);
 }
 
 @override
 String toString() {
   final _this = this as PluginListResponse;
-  return 'PluginListResponse(plugins: ${_this.plugins}, bridgeId: ${_this.bridgeId}, supportsSessionOptions: ${_this.supportsSessionOptions}, supportsFileUploads: ${_this.supportsFileUploads})';
+  return 'PluginListResponse(plugins: ${_this.plugins}, bridgeId: ${_this.bridgeId}, supportsSessionOptions: ${_this.supportsSessionOptions}, supportsFileUploads: ${_this.supportsFileUploads}, supportsSideQuestions: ${_this.supportsSideQuestions})';
 }
 
 
@@ -268,7 +290,7 @@ abstract mixin class $PluginListResponseCopyWith<$Res>  {
   factory $PluginListResponseCopyWith(PluginListResponse value, $Res Function(PluginListResponse) _then) = _$PluginListResponseCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> plugins, String? bridgeId, bool supportsSessionOptions, bool supportsFileUploads
+ List<PluginMetadata> plugins, String? bridgeId, bool supportsSessionOptions, bool supportsFileUploads, bool supportsSideQuestions
 });
 
 
@@ -285,12 +307,13 @@ class _$PluginListResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,Object? supportsFileUploads = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,Object? supportsFileUploads = null,Object? supportsSideQuestions = null,}) {
   return _then(PluginListResponse(
 plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,supportsSessionOptions: null == supportsSessionOptions ? _self.supportsSessionOptions : supportsSessionOptions // ignore: cast_nullable_to_non_nullable
 as bool,supportsFileUploads: null == supportsFileUploads ? _self.supportsFileUploads : supportsFileUploads // ignore: cast_nullable_to_non_nullable
+as bool,supportsSideQuestions: null == supportsSideQuestions ? _self.supportsSideQuestions : supportsSideQuestions // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -303,7 +326,7 @@ as bool,
 @JsonSerializable()
 
 class _PluginListResponse implements PluginListResponse {
-  const _PluginListResponse({required  List<PluginMetadata> plugins, required this.bridgeId, this.supportsSessionOptions = false, this.supportsFileUploads = false}): _plugins = plugins;
+  const _PluginListResponse({required  List<PluginMetadata> plugins, required this.bridgeId, this.supportsSessionOptions = false, this.supportsFileUploads = false, this.supportsSideQuestions = false}): _plugins = plugins;
   factory _PluginListResponse.fromJson(Map<String, dynamic> json) => _$PluginListResponseFromJson(json);
 
  final  List<PluginMetadata> _plugins;
@@ -319,6 +342,9 @@ class _PluginListResponse implements PluginListResponse {
 /// plugin inline, and gives the agent their paths (see
 /// `PromptPart.fileData`).
 @override@JsonKey() final  bool supportsFileUploads;
+/// Whether the bridge has the side-question routes (`/session/side-chats`
+/// and `/session/side-question`).
+@override@JsonKey() final  bool supportsSideQuestions;
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -333,18 +359,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, _plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.supportsSessionOptions, supportsSessionOptions) || other.supportsSessionOptions == supportsSessionOptions)&&(identical(other.supportsFileUploads, supportsFileUploads) || other.supportsFileUploads == supportsFileUploads));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginListResponse&&const DeepCollectionEquality().equals(other.plugins, _plugins)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.supportsSessionOptions, supportsSessionOptions) || other.supportsSessionOptions == supportsSessionOptions)&&(identical(other.supportsFileUploads, supportsFileUploads) || other.supportsFileUploads == supportsFileUploads)&&(identical(other.supportsSideQuestions, supportsSideQuestions) || other.supportsSideQuestions == supportsSideQuestions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),bridgeId,supportsSessionOptions,supportsFileUploads);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),bridgeId,supportsSessionOptions,supportsFileUploads,supportsSideQuestions);
 }
 
 @override
 String toString() {
-    return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId, supportsSessionOptions: $supportsSessionOptions, supportsFileUploads: $supportsFileUploads)';
+    return 'PluginListResponse(plugins: $plugins, bridgeId: $bridgeId, supportsSessionOptions: $supportsSessionOptions, supportsFileUploads: $supportsFileUploads, supportsSideQuestions: $supportsSideQuestions)';
 }
 
 
@@ -355,7 +381,7 @@ abstract mixin class _$PluginListResponseCopyWith<$Res> implements $PluginListRe
   factory _$PluginListResponseCopyWith(_PluginListResponse value, $Res Function(_PluginListResponse) _then) = __$PluginListResponseCopyWithImpl;
 @override @useResult
 $Res call({
- List<PluginMetadata> plugins, String? bridgeId, bool supportsSessionOptions, bool supportsFileUploads
+ List<PluginMetadata> plugins, String? bridgeId, bool supportsSessionOptions, bool supportsFileUploads, bool supportsSideQuestions
 });
 
 
@@ -372,12 +398,13 @@ class __$PluginListResponseCopyWithImpl<$Res>
 
 /// Create a copy of PluginListResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,Object? supportsFileUploads = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? plugins = null,Object? bridgeId = freezed,Object? supportsSessionOptions = null,Object? supportsFileUploads = null,Object? supportsSideQuestions = null,}) {
   return _then(_PluginListResponse(
 plugins: null == plugins ? _self._plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<PluginMetadata>,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,supportsSessionOptions: null == supportsSessionOptions ? _self.supportsSessionOptions : supportsSessionOptions // ignore: cast_nullable_to_non_nullable
 as bool,supportsFileUploads: null == supportsFileUploads ? _self.supportsFileUploads : supportsFileUploads // ignore: cast_nullable_to_non_nullable
+as bool,supportsSideQuestions: null == supportsSideQuestions ? _self.supportsSideQuestions : supportsSideQuestions // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

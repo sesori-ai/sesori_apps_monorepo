@@ -14,32 +14,46 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 
 import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
+import "../api/models/codex_rollout_file_name.dart";
 import "mappers/codex_sub_agent_name_mapper.dart";
 import "models/codex_session_record.dart";
 
 /// Layer-2 aggregation, mapping, selection, and deletion for the rollout catalog.
 class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
+  static const Duration _activityRevertWindow = Duration(days: 30);
+
   /// Every recognized rollout of the last scan by path, with its parsed
   /// header, so a rescan only parses new or growing rollouts.
   final Map<String, _CachedRollout> _rollouts = {};
 
-  /// Session id to rollout path over [_rollouts].
+  /// Session id to its current rollout path over [_rollouts].
   final Map<String, String> _pathsById = {};
+
+  /// Session id to the earlier rollouts a `thread/revert` left behind. They
+  /// are read only through the current rollout's history base, and deleted
+  /// with the session.
+  Map<String, List<String>> _supersededPathsById = const {};
 
   /// The session index as of the last scan; later index lines win.
   Map<String, CodexSessionIndexEntryDto> _indexById = const {};
 
   /// Every rollout-backed session, newest first. Listing, stats and header
   /// parses run in an isolate: a cold catalog decodes tens of megabytes.
+  /// Attached threads are left out, as Codex's own thread list leaves them out.
   Future<List<CodexSessionRecord>> listSessionRecords() async {
     await _rescan();
     final records = <CodexSessionRecord>[];
     var unreadableOrMissingMetadata = 0;
     var mismatchedMetadata = 0;
+    var attachedThreads = 0;
     for (final MapEntry(key: id, value: rolloutPath) in _pathsById.entries) {
       final metadata = _rollouts[rolloutPath]?.parsed?.metadata;
       if (metadata == null) unreadableOrMissingMetadata++;
       if (metadata != null && metadata.id != id) mismatchedMetadata++;
+      if (metadata != null && metadata.attachedThread) {
+        attachedThreads++;
+        continue;
+      }
       if (_cachedRecord(id: id, rolloutPath: rolloutPath) case final record?) records.add(record);
     }
     records.sort((a, b) {
@@ -53,7 +67,8 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     Log.d(
       "[codex] rollout catalog records: "
       "unreadableOrMissingMetadata=$unreadableOrMissingMetadata, "
-      "mismatchedMetadata=$mismatchedMetadata, records=${records.length}",
+      "mismatchedMetadata=$mismatchedMetadata, attachedThreads=$attachedThreads, "
+      "records=${records.length}",
     );
     return records;
   }
@@ -104,12 +119,13 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     final previous = Map.of(_rollouts);
     _rollouts.clear();
     _pathsById.clear();
-    for (final MapEntry(key: path, value: modified) in scan.modifiedByPath.entries) {
+    for (final MapEntry(key: id, value: path) in scan.pathsById.entries) {
       if (_deletedDuringScan.contains(path)) continue;
       final parsed = scan.parsed.containsKey(path) ? scan.parsed[path] : previous[path]?.parsed;
-      _rollouts[path] = _CachedRollout(modified: modified, parsed: parsed);
-      if (_sessionIdFromRolloutName(fileName: p.basename(path)) case final id?) _pathsById[id] = path;
+      _rollouts[path] = _CachedRollout(modified: scan.modifiedByPath[path], parsed: parsed);
+      _pathsById[id] = path;
     }
+    _supersededPathsById = scan.supersededPathsById;
     _indexById = scan.indexById;
     Log.d(
       "[codex] rollout catalog scan: files=${scan.fileCount}, "
@@ -219,47 +235,64 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
 
   /// A rollout from its creation-date directories only, for a live tail
   /// polling for a rollout Codex had not written when the tail started.
-  String? findRecentRolloutPath({required String sessionId}) =>
-      _rolloutApi.findRolloutPathAround(sessionId: sessionId, around: DateTime.now());
+  String? findRecentRolloutPath({required String sessionId}) {
+    final now = DateTime.now();
+    return _rolloutApi.findNewestRolloutPathBetween(sessionId: sessionId, oldest: now, newest: now);
+  }
 
-  /// [sessionId]'s rollout modification time, located from the id alone with
-  /// no scan, so a dormant plugin can answer. Codex thread ids are UUIDv7,
-  /// whose leading 48 bits are the creation time in epoch milliseconds, and
-  /// Codex files a rollout under its creation date. The catalog also folds in
-  /// the session index and creation time; the mtime alone suffices here
-  /// because every turn appends to the rollout, moving it past both.
+  /// [sessionId]'s current rollout modification time, located from the id
+  /// alone with no scan, so a dormant plugin can answer. Codex thread ids are
+  /// UUIDv7, whose leading 48 bits are the creation time in epoch
+  /// milliseconds, and Codex files a rollout under its creation date, so the
+  /// thread's rollouts sit in the date folders from then on. The catalog also
+  /// folds in the session index and creation time; the mtime alone suffices
+  /// here because every turn appends to the current rollout, moving it past
+  /// both.
+  ///
+  /// A revert writes a new rollout in that day's folder. Only the last
+  /// [_activityRevertWindow] of folders is searched for one, so an old thread
+  /// costs a bounded walk; past that the creation-date folders answer.
+  // ponytail: a revert made outside Sesori over a month ago and never opened
+  // since is missed; search the days since the client's watermark if it matters.
   PluginSessionActivityResult readSessionActivity({required String sessionId}) {
-    final match = _uuidV7Pattern.firstMatch(sessionId);
-    if (match == null) return const PluginSessionActivityUnavailable();
-    final createdAt = DateTime.fromMillisecondsSinceEpoch(int.parse("${match[1]}${match[2]}", radix: 16));
-    final rolloutPath = _rolloutApi.findRolloutPathAround(sessionId: sessionId, around: createdAt);
+    final createdAt = codexUuidV7Time(id: sessionId);
+    if (createdAt == null) return const PluginSessionActivityUnavailable();
+    final now = DateTime.now();
+    final windowStart = now.subtract(_activityRevertWindow);
+    final rolloutPath =
+        _rolloutApi.findNewestRolloutPathBetween(
+          sessionId: sessionId,
+          oldest: createdAt.isAfter(windowStart) ? createdAt : windowStart,
+          newest: now,
+        ) ??
+        _rolloutApi.findNewestRolloutPathBetween(sessionId: sessionId, oldest: createdAt, newest: createdAt);
     final modified = rolloutPath == null ? null : _rolloutApi.lastModified(rolloutPath: rolloutPath);
     return modified == null
         ? const PluginSessionActivityUnavailable()
         : PluginSessionActivityAvailable(updatedAt: modified.millisecondsSinceEpoch);
   }
 
-  static final RegExp _uuidV7Pattern = RegExp(
-    r"^([0-9a-f]{8})-([0-9a-f]{4})-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-    caseSensitive: false,
-  );
-
-  /// Deletes [sessionId]'s rollout and its session index lines, rescanning
+  /// Deletes [sessionId]'s rollouts and its session index lines, rescanning
   /// once when the last scan does not know the session. Returns false when
-  /// the rollout's absence cannot be confirmed or a write fails.
+  /// the rollouts' absence cannot be confirmed or a write fails.
   Future<bool> deleteSession({required String sessionId}) async {
     if (!_pathsById.containsKey(sessionId) && !await _rescan()) return false;
     final rolloutPath = _pathsById[sessionId];
     if (rolloutPath != null) {
+      // The current rollout goes last: a failure part-way leaves the
+      // session listed, so the delete can be retried.
+      final paths = [...?_supersededPathsById[sessionId], rolloutPath];
       try {
-        _rolloutApi.deleteRollout(rolloutPath: rolloutPath);
+        for (final path in paths) {
+          _rolloutApi.deleteRollout(rolloutPath: path);
+        }
       } on Object catch (error, stackTrace) {
         Log.w("[codex] failed to delete rollout for $sessionId", error, stackTrace);
         return false;
       }
       _rollouts.remove(rolloutPath);
       _pathsById.remove(sessionId);
-      _deletedDuringScan.add(rolloutPath);
+      _deletedDuringScan.addAll(paths);
     }
 
     final List<CodexSessionIndexLine> indexLines;
@@ -296,12 +329,15 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       return null;
     }
     final indexEntry = _indexById[id];
+    // A reverted thread's current rollout carries the revert time; the
+    // thread itself is as old as its id.
+    final isLaterRollout = CodexRolloutFileName.tryParse(fileName: p.basename(rolloutPath))?.rolloutId != id;
     return CodexSessionRecord(
       id: id,
       rolloutPath: rolloutPath,
       cwd: metadata?.cwd,
       threadName: indexEntry?.threadName,
-      createdAt: metadata?.timestamp,
+      createdAt: (isLaterRollout ? codexUuidV7Time(id: id)?.toUtc() : null) ?? metadata?.timestamp,
       updatedAt: _latest(
         candidates: // Native turns append to the rollout without necessarily updating the
             // session index, so its modification time counts as activity too.
@@ -398,10 +434,12 @@ class const _CachedRollout({
   required final _ParsedRollout? parsed,
 });
 
-/// [modifiedByPath] holds one recognized rollout per session id; [parsed]
-/// only the headers this scan read.
+/// [pathsById] holds each session's current rollout, [modifiedByPath] their
+/// modification times; [parsed] only the headers this scan read.
 typedef _ScanResult = ({
   int fileCount,
+  Map<String, String> pathsById,
+  Map<String, List<String>> supersededPathsById,
   Map<String, DateTime?> modifiedByPath,
   Map<String, _ParsedRollout?> parsed,
   Map<String, CodexSessionIndexEntryDto> indexById,
@@ -421,10 +459,22 @@ _ScanResult? _scanRollouts({
     Log.w("[codex] failed to enumerate rollout files", error, stackTrace);
     return null;
   }
-  // A later path wins when two rollouts claim the same session id.
-  final pathsById = {
-    for (final path in paths) ?_sessionIdFromRolloutName(fileName: p.basename(path)): path,
-  };
+  // A thread's newest rollout is its current one; `thread/revert` keeps the
+  // earlier ones as the history base of the next.
+  final newestById = <String, ({String path, CodexRolloutFileName name})>{};
+  final supersededPathsById = <String, List<String>>{};
+  for (final path in paths) {
+    final name = CodexRolloutFileName.tryParse(fileName: p.basename(path));
+    if (name == null) continue;
+    final current = newestById[name.threadId];
+    if (current != null && !name.isNewerThan(other: current.name)) {
+      (supersededPathsById[name.threadId] ??= []).add(path);
+      continue;
+    }
+    if (current != null) (supersededPathsById[name.threadId] ??= []).add(current.path);
+    newestById[name.threadId] = (path: path, name: name);
+  }
+  final pathsById = {for (final MapEntry(:key, :value) in newestById.entries) key: value.path};
   final modifiedByPath = <String, DateTime?>{};
   final parsed = <String, _ParsedRollout?>{};
   for (final path in pathsById.values) {
@@ -444,6 +494,8 @@ _ScanResult? _scanRollouts({
   }
   return (
     fileCount: paths.length,
+    pathsById: pathsById,
+    supersededPathsById: supersededPathsById,
     modifiedByPath: modifiedByPath,
     parsed: parsed,
     indexById: _readSessionIndexById(rolloutApi: rolloutApi),
@@ -465,15 +517,6 @@ Map<String, CodexSessionIndexEntryDto> _readSessionIndexById({required CodexRoll
   };
 }
 
-String? _sessionIdFromRolloutName({required String fileName}) {
-  if (!fileName.endsWith(".jsonl")) return null;
-  final stem = fileName.substring(0, fileName.length - ".jsonl".length);
-  final parts = stem.split("-");
-  if (parts.length < 5) return null;
-  final uuid = parts.sublist(parts.length - 5).join("-");
-  return uuid.length == 36 ? uuid : null;
-}
-
 class const _CodexSessionMetadata({
   required final String id,
   required final String? cwd,
@@ -483,6 +526,7 @@ class const _CodexSessionMetadata({
   required final String? agentNickname,
   required final String? agentPath,
   required final String? parentId,
+  required final bool attachedThread,
 });
 
 /// A parsed rollout header. Rollouts are append-only, so a header that filled
@@ -515,6 +559,7 @@ _ParsedRollout? _parseRollout({
   String? agentNickname;
   String? agentPath;
   String? parentId;
+  var attachedThread = false;
   for (final line in header.lines) {
     switch (line) {
       case CodexRolloutSessionMetadataLineDto(:final payload):
@@ -528,6 +573,7 @@ _ParsedRollout? _parseRollout({
         cwd = payload.cwd;
         timestamp = _tryParseDate(raw: payload.timestamp);
         modelProvider = payload.modelProvider;
+        attachedThread = payload.attachedThread;
         if (payload.threadSource == CodexRolloutThreadSource.subagent) {
           parentId = payload.parentThreadId;
           agentNickname = payload.agentNickname;
@@ -556,6 +602,7 @@ _ParsedRollout? _parseRollout({
             agentNickname: agentNickname,
             agentPath: agentPath,
             parentId: parentId,
+            attachedThread: attachedThread,
           ),
     shortFileLength: header.reachedLineLimit ? null : header.fileLength,
   );

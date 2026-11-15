@@ -352,6 +352,7 @@ MessageWithParts _message({
   final info = role == "user"
       ? Message.user(
           invocation: null,
+          handoff: null,
           promptId: promptId,
           id: messageId,
           sessionID: "session-1",
@@ -408,6 +409,7 @@ MessageWithParts _automatedMessage({
 const _emptyUserMessage = MessageWithParts(
   info: Message.user(
     invocation: null,
+    handoff: null,
     promptId: null,
     id: "empty-user",
     sessionID: "session-1",
@@ -591,7 +593,15 @@ class _UnpreviewedImageRepository() extends Mock implements MessageImageReposito
 
 /// A prompt of an attached screenshot and a line of [text].
 MessageWithParts _imagePrompt({required String messageId, required String text}) => MessageWithParts(
-  info: Message.user(invocation: null, promptId: null, id: messageId, sessionID: "session-1", agent: null, time: null),
+  info: Message.user(
+    invocation: null,
+    handoff: null,
+    promptId: null,
+    id: messageId,
+    sessionID: "session-1",
+    agent: null,
+    time: null,
+  ),
   parts: [
     MessagePart.file(
       id: "$messageId-image",
@@ -2995,6 +3005,7 @@ void main() {
                 MessageWithParts(
                   info: Message.user(
                     invocation: null,
+                    handoff: null,
                     promptId: null,
                     id: "hidden-$requested",
                     sessionID: "session-1",

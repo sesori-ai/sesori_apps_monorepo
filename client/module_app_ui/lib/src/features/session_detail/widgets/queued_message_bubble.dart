@@ -555,7 +555,8 @@ class const _QueuedAttachmentPreviews({required final List<ComposerAttachment> a
         children: [
           for (final attachment in attachments)
             switch (attachment) {
-              ComposerFileAttachment(:final filename) => _QueuedFilePreview(
+              ComposerFileAttachment(:final filename) ||
+              ComposerHostFileAttachment(:final filename) => _QueuedFilePreview(
                 fileName: filename,
                 size: _thumbnailSize,
               ),

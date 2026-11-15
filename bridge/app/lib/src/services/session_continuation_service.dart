@@ -164,18 +164,17 @@ class const SessionContinuationService({
         attemptedAt: _clock.now(),
       ),
     );
-    final defaults = snapshot.promptDefaults;
-    final model = defaults?.model;
-    final variant = model?.variant;
+    final settings = SessionPromptService.settingsFrom(defaults: snapshot.promptDefaults);
     try {
       await _prompts.sendPromptAlreadyReserved(
         sessionId: sessionId,
         promptId: promptId,
         parts: const [PromptPart.text(text: "Continue.")],
-        agent: defaults?.agent,
-        model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
-        variant: variant == null ? null : SessionVariant(id: variant),
-        fastMode: defaults?.fastMode ?? false,
+        agent: settings.agent,
+        model: settings.model,
+        variant: settings.variant,
+        fastMode: settings.fastMode,
+        handoff: null,
       );
     } on Object catch (error, stackTrace) {
       Log.w("Quota continuation submission failed for session $sessionId, prompt $promptId", error, stackTrace);

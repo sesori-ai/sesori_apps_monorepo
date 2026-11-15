@@ -2,10 +2,10 @@
 
 | Step | Status | PR |
 | --- | --- | --- |
-| 1 Raise the plan | Not started | |
-| 2 Transcript Markdown and file store | Not started | |
-| 3 Bridge send flow | Not started | |
-| 4 Handoff marker in the bridge | Not started | |
+| 1 Raise the plan | Done | #2587 |
+| 2 Transcript Markdown and file store | Done | #2588 |
+| 3 Bridge send flow | Done | #2600 |
+| 4 Handoff marker in the bridge | In PR | #2608 |
 | 5 Claude read rules (transcripts and uploads) | Not started | |
 | 6 Busy-prompt declaration | In PR | #2589 |
 | 7 Client send flow | Not started | |

@@ -31,6 +31,13 @@ extension PluginBusyPromptHandlingMapping on PluginBusyPromptHandling {
   };
 }
 
+extension PluginSessionBranchingMapping on PluginSessionBranching {
+  SessionBranchingOperation toShared() => switch (this) {
+    PluginSessionBranching.rewind => SessionBranchingOperation.rewind,
+    PluginSessionBranching.fork => SessionBranchingOperation.fork,
+  };
+}
+
 extension SessionAbortSubAgentPolicyMapping on SessionAbortSubAgentPolicy {
   PluginAbortSubAgentPolicy toPlugin() => switch (this) {
     SessionAbortSubAgentPolicy.confirm => PluginAbortSubAgentPolicy.confirm,

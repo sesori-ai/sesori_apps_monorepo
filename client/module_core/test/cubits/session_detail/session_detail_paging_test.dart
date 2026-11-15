@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/load_through_outcome.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/tool_output_fetch.dart";
+import "package:sesori_dart_core/src/foundation/models/side_question_availability.dart";
 import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/repositories/models/tool_output_result.dart";
@@ -606,6 +607,7 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
 MessageWithParts _message({required String id}) => MessageWithParts(
   info: Message.user(
     invocation: null,
+    handoff: null,
     promptId: null,
     id: id,
     sessionID: _sessionId,
@@ -626,6 +628,7 @@ SessionDetailSnapshot _snapshot({
   supportsPromptAttachments: true,
   supportsFileUploads: false,
   offersSessionMcp: true,
+  sideQuestions: SideQuestionAvailability.unresolved,
   messages: messages,
   olderMessagesCursor: olderMessagesCursor,
   userMessagesBefore: userMessagesBefore,

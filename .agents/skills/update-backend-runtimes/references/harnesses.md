@@ -146,9 +146,19 @@ concrete problem can justify a documented temporary hold with a resolution path.
   discovery and experimental gates. Core/TUI/`exec --json` events are not
   automatically app-server notifications; `turn/completed` is not Pi's settled
   event. Prove ownership before replacing queue, retry, interrupt or history code.
-  Check provider admission (`ModelProviderError`): since 0.166.0 a turn on a
-  thread whose `modelProvider` differs from the configured one fails with
-  `modelProviderMismatch`, so Sesori sends only `model` on `thread/start`.
+  Check provider admission (`ModelProviderError`): on 0.166.0 to 0.167.x a turn
+  on a thread whose `modelProvider` differs from the configured one fails with
+  `modelProviderMismatch`, so Sesori sends only `model` on `thread/start`. From
+  0.168.0 a thread keeps its saved provider while that provider is still
+  defined; only `modelProviderNotConfigured` and `modelProviderPolicyConflict`
+  remain on resume.
+  Side questions use the experimental `thread/sample` with `allowInProgressTurn`,
+  so every refresh runs a live side-question probe over WebSocket with a local
+  test provider (mid-turn, idle, a follow-up with history in the prompt, and the
+  rollout byte-identical afterwards). Recheck the error texts the plugin maps:
+  `` unknown variant `thread/sample` `` (before 0.164.0), `sample source must be
+  idle` (0.164.0 to 0.168.x ignore `allowInProgressTurn`; mid-turn needs
+  0.169.0), and `is not materialized yet` from `thread/turns/list`.
 - **Install:** use `ManagedRuntimeComposition.createInstaller()` with candidate
   manifest and asset resolver, then the production install/extract chain. The
   descriptor's installer hard-codes the current pin. Confirm the final
@@ -255,6 +265,11 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Audit:** stream-json/control envelopes, tool and subagent lifecycle, replay,
   permissions, questions, models and settings. This plugin drives the CLI seam,
   not an arbitrary new SDK feature. Use approved live probes for adopted changes.
+  The `side_question` control request is undocumented, so every refresh runs a
+  live side-question probe (mid-turn, and after a cold `--resume`). It checks
+  that the session `.jsonl` gains no question or answer record (a cold resume
+  may append a `cost-state` accounting record) and the
+  `{response, synthetic, refusal_fallback}` reply shape.
 
 ## Hermes Agent
 

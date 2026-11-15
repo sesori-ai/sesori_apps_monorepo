@@ -13,6 +13,7 @@ void main() {
     time: null,
     promptId: null,
     invocation: invocation,
+    handoff: null,
   );
 
   QueuedSessionSubmission command({required CommandSource? source, required String text}) =>

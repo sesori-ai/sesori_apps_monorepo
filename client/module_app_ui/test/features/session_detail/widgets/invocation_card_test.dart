@@ -27,6 +27,7 @@ const _message = MessageWithParts(
       source: CommandSource.skill,
       arguments: "Greet the team\nin two lines",
     ),
+    handoff: null,
   ),
   parts: [MessagePart.text(id: "t1", sessionID: "s1", messageID: "m1", text: "Greet the team\nin two lines")],
 );

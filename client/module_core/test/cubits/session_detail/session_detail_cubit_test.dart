@@ -2958,6 +2958,7 @@ void main() {
         await _awaitLoaded(cubit);
         const message = Message.user(
           invocation: null,
+          handoff: null,
           promptId: null,
           id: "msg-new",
           sessionID: sessionId,
@@ -4613,6 +4614,7 @@ void _stubPromptAttachmentCapability({
         bridgeId: "bridge-test",
         supportsSessionOptions: true,
         supportsFileUploads: supportsFileUploads,
+        supportsSideQuestions: false,
         plugins: [
           PluginMetadata(
             id: pluginId,

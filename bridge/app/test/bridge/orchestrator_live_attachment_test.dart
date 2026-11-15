@@ -455,12 +455,14 @@ class _LiveAttachmentHarness({
     }
   }
 
+  /// Deliberately has no timeout of its own. An image part's live event waits
+  /// for its spill file to be flushed to disk, and a busy CI disk can stall
+  /// that flush for several seconds; the test framework's timeout bounds it.
   Future<SesoriMessagePartUpdated> nextMessagePartUpdated({String? partId}) {
     return composition.session.localWireEvents
         .where((event) => event is SesoriMessagePartUpdated && (partId == null || event.part.id == partId))
         .cast<SesoriMessagePartUpdated>()
-        .first
-        .timeout(const Duration(seconds: 5));
+        .first;
   }
 
   Future<void> close() async {

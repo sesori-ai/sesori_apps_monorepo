@@ -15,6 +15,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_attachm
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/foundation/models/side_question_availability.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
@@ -156,6 +157,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -219,6 +221,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: [],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -311,6 +314,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -386,6 +390,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -446,6 +451,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -523,6 +529,7 @@ void main() {
           supportsPromptAttachments: supportsPromptAttachments,
           supportsFileUploads: false,
           offersSessionMcp: true,
+          sideQuestions: SideQuestionAvailability.unresolved,
           messages: const <MessageWithParts>[],
           olderMessagesCursor: null,
           userMessagesBefore: null,
@@ -596,6 +603,7 @@ void main() {
           supportsPromptAttachments: false,
           supportsFileUploads: supportsFileUploads,
           offersSessionMcp: true,
+          sideQuestions: SideQuestionAvailability.unresolved,
           messages: const <MessageWithParts>[],
           olderMessagesCursor: null,
           userMessagesBefore: null,
@@ -666,6 +674,7 @@ void main() {
         supportsPromptAttachments: true,
         supportsFileUploads: false,
         offersSessionMcp: true,
+        sideQuestions: SideQuestionAvailability.unresolved,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -791,6 +800,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -862,6 +872,7 @@ void main() {
         supportsPromptAttachments: false,
         supportsFileUploads: false,
         offersSessionMcp: true,
+        sideQuestions: SideQuestionAvailability.unresolved,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -956,6 +967,7 @@ void main() {
         supportsPromptAttachments: true,
         supportsFileUploads: false,
         offersSessionMcp: true,
+        sideQuestions: SideQuestionAvailability.unresolved,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -981,6 +993,7 @@ void main() {
         supportsPromptAttachments: false,
         supportsFileUploads: false,
         offersSessionMcp: true,
+        sideQuestions: SideQuestionAvailability.unresolved,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -1114,6 +1127,7 @@ void main() {
         supportsPromptAttachments: true,
         supportsFileUploads: false,
         offersSessionMcp: true,
+        sideQuestions: SideQuestionAvailability.unresolved,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -1246,6 +1260,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1330,6 +1345,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1374,6 +1390,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1451,6 +1468,7 @@ void main() {
         supportsPromptAttachments: false,
         supportsFileUploads: false,
         offersSessionMcp: true,
+        sideQuestions: SideQuestionAvailability.unresolved,
         messages: messages,
         olderMessagesCursor: null,
         userMessagesBefore: null,
@@ -1520,6 +1538,7 @@ void main() {
               MessageWithParts(
                 info: const Message.user(
                   invocation: null,
+                  handoff: null,
                   promptId: null,
                   id: "message-1",
                   sessionID: _sessionId,
@@ -1883,6 +1902,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -1921,6 +1941,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "message-1",
             sessionID: _sessionId,
@@ -1952,6 +1973,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -2003,6 +2025,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "message-1",
             sessionID: _sessionId,
@@ -2045,6 +2068,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[newest],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -2072,6 +2096,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "message-1",
             sessionID: _sessionId,
@@ -2127,6 +2152,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[assistant],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -2154,6 +2180,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "z-user",
             sessionID: _sessionId,
@@ -2176,6 +2203,7 @@ void main() {
         MessageWithParts(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "user-1",
             sessionID: _sessionId,
@@ -2210,6 +2238,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: messages,
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -2237,6 +2266,7 @@ void main() {
         const SesoriMessageUpdated(
           info: Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "user-2",
             sessionID: _sessionId,
@@ -2285,6 +2315,7 @@ void main() {
             supportsPromptAttachments: false,
             supportsFileUploads: false,
             offersSessionMcp: true,
+            sideQuestions: SideQuestionAvailability.unresolved,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
             userMessagesBefore: null,
@@ -2405,6 +2436,7 @@ SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, int? 
       supportsPromptAttachments: false,
       supportsFileUploads: false,
       offersSessionMcp: true,
+      sideQuestions: SideQuestionAvailability.unresolved,
       messages: messages,
       olderMessagesCursor: olderMessagesCursor,
       userMessagesBefore: null,
