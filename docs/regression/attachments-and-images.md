@@ -426,8 +426,9 @@ older than file uploads).
   ask before reading them (see `docs/HARNESS_CAPABILITIES.md`). Claude Code
   does not: every Claude launch carries read-only `--allowedTools` rules for
   `~/.sesori/uploads` and `~/.sesori/transcripts`, and a Claude read of a saved
-  file that raises a permission request is a regression. Nothing grants Claude
-  write access there.
+  file that raises a permission request is a regression. These rules grant no
+  write access; Claude writes there only under a write rule the user approves
+  for the session.
 - The noted path opens the file preview only when it reads as a file path: a
   saved name without an extension holding a letter (`Makefile`, `LICENSE`, the
   `attachment` fallback) or a bridge home folder with whitespace in its path

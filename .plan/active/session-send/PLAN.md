@@ -320,9 +320,9 @@ the summary, the transcript or prompt text.
 - **Approval prompts.**
   - Claude Code asks today, so step 5 adds two read-only rules at every launch (S4 = B):
     `--allowedTools "Read(/<transcripts root>/**)" "Read(/<uploads root>/**)"`. With each root's leading `/`, that is
-    Claude's `//` absolute-path form; a Windows drive root is written in the POSIX form Claude matches
+    Claude's `//` absolute-path form; a Windows drive path is written in the POSIX form Claude matches
     (`C:\Users\a` as `/c/Users/a`). They go through the plugin's existing `allowedTools` path. Every Claude process
-    the bridge starts after an update carries them. The rules are read-only; nothing lets the agent write there.
+    the bridge starts after an update carries them. The rules are read-only and grant no write access; only a write rule the user approves for the session could.
   - The uploads rule covers files the user attached to prompts (`~/.sesori/uploads`, written by
     `PromptUploadRepository`), so attachments stop asking on Claude Code too. That reverses the file-transfer plan's D1
     (`.plan/completed/file-transfer/PLAN.md`, kept as history). The live records that still say Claude asks are updated
