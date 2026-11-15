@@ -1943,6 +1943,97 @@ void main() {
       });
     });
 
+    group("handoff stamps", () {
+      const sent = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Target");
+      MessageWithParts stamped({required String id, required MessageHandoff? handoff}) {
+        final message = _messageWithText(id: id, text: "Fixture request", createdAt: 100, promptId: null);
+        return switch (message.info) {
+          final MessageUser user => MessageWithParts(
+            info: user.copyWith(handoff: handoff),
+            parts: message.parts,
+          ),
+          _ => message,
+        };
+      }
+
+      Future<List<MessageHandoff?>> storedHandoffs({required TestChatHistory history}) async => [
+        for (final message in await _storedMessages(history: history, sessionId: "ses_a"))
+          switch (message.info) {
+            MessageUser(:final handoff) => handoff,
+            _ => null,
+          },
+      ];
+
+      test("a later update of the user turn keeps the handoff stored live", () async {
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
+        await _captureMessageWithParts(
+          history: history,
+          message: stamped(id: "m1", handoff: sent),
+        );
+        await _captureMessageWithParts(
+          history: history,
+          message: stamped(id: "m1", handoff: null),
+        );
+
+        expect(await storedHandoffs(history: history), [sent]);
+      });
+
+      test("a replay keeps the stored handoff, under the same id or another one", () async {
+        for (final replayId in ["live", "replay"]) {
+          final history = createTestChatHistory(
+            sessionRepository: _FakeSessionRepository(transcript: [stamped(id: replayId, handoff: null)]),
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "live", handoff: sent),
+          );
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          final stored = await _storedMessages(history: history, sessionId: "ses_a");
+          expect(stored.map((message) => message.info.id), [replayId]);
+          expect(await storedHandoffs(history: history), [sent]);
+        }
+      });
+
+      test("marking a send as not sent turns only a sent stamp", () async {
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
+        const received = MessageHandoff.received(
+          sourceSessionId: "source",
+          sourceTitle: null,
+          summary: "Fixture summary",
+          transcriptPath: "/fixture/transcript.md",
+        );
+        await _captureMessageWithParts(
+          history: history,
+          message: stamped(id: "m1", handoff: sent),
+        );
+        await _captureMessageWithParts(
+          history: history,
+          message: stamped(id: "m2", handoff: received),
+        );
+        await _captureMessageWithParts(
+          history: history,
+          message: stamped(id: "m3", handoff: null),
+        );
+
+        for (final messageId in ["m1", "m2", "m3", "missing"]) {
+          await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId);
+        }
+        // A later update of the turn keeps the replaced stamp.
+        await _captureMessageWithParts(
+          history: history,
+          message: stamped(id: "m1", handoff: null),
+        );
+
+        expect(await storedHandoffs(history: history), [
+          const MessageHandoff.notSent(targetSessionId: "target", targetTitle: "Target"),
+          received,
+          null,
+        ]);
+      });
+    });
+
     test("semantic replay matching preserves repeated-message multiplicity", () async {
       final repository = _FakeSessionRepository(
         transcript: [
@@ -2641,6 +2732,7 @@ Message _message({required String id}) => _messageAt(id: id, createdAt: 1);
 
 Message _messageAt({required String id, required int createdAt}) => Message.user(
   invocation: null,
+  handoff: null,
   promptId: null,
   id: id,
   sessionID: "ses_a",
@@ -2667,6 +2759,7 @@ MessageWithParts _messageWithText({
 }) => MessageWithParts(
   info: Message.user(
     invocation: null,
+    handoff: null,
     promptId: promptId,
     id: id,
     sessionID: "ses_a",

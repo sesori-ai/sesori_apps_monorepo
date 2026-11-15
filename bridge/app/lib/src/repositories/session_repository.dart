@@ -33,6 +33,8 @@ import "package:sesori_shared/sesori_shared.dart"
         CommandListResponse,
         CommandSource,
         Message,
+        MessageHandoff,
+        MessageHandoffSent,
         MessagePartSubtask,
         MessageUser,
         MessageWithParts,
@@ -85,7 +87,8 @@ import "models/stored_session.dart";
 import "project_catalog_identity_calculator.dart";
 import "random_hex_id.dart";
 import "session_unseen_calculator.dart";
-import "trackers/command_invocation_tracker.dart";
+import "trackers/prompt_stamp.dart";
+import "trackers/prompt_stamp_tracker.dart";
 
 enum SessionBindingCommitKind() {
   sessionCreation,
@@ -131,7 +134,7 @@ class SessionRepository({
   final Map<String, Future<void>> _tombstoneLoads = <String, Future<void>>{};
   final Set<String> _tombstonesLoaded = <String>{};
   final Map<String, _BusyObservation> _busyObservations = <String, _BusyObservation>{};
-  final CommandInvocationTracker _invocations = CommandInvocationTracker();
+  final PromptStampTracker _stamps = PromptStampTracker();
   int _lastProjectionTimestamp = 0;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
@@ -417,7 +420,7 @@ class SessionRepository({
   }
 
   /// Sends [command] and remembers it under [promptId], so the user message
-  /// that fulfils it is named by [stampLiveInvocation].
+  /// that fulfils it is named by [stampLiveMessage].
   ///
   /// [commandSource] is the command's source as the client's picker listed
   /// it; null from clients that predate it.
@@ -443,13 +446,15 @@ class SessionRepository({
           // Recorded before the plugin call: its echo can arrive before the
           // call returns. A definitely refused send forgets it again.
           if (_runtime.namesCommandInvocations(pluginId: plugin.id)) {
-            _invocations.record(
+            _stamps.record(
               sessionId: sessionId,
               promptId: promptId,
-              invocation: CommandInvocation(
-                name: command,
-                source: commandSource ?? CommandSource.unknown,
-                arguments: userVisibleArguments,
+              stamp: PromptStampCommand(
+                invocation: CommandInvocation(
+                  name: command,
+                  source: commandSource ?? CommandSource.unknown,
+                  arguments: userVisibleArguments,
+                ),
               ),
             );
           }
@@ -470,22 +475,53 @@ class SessionRepository({
       // Only a definite refusal forgets the entry. A send whose outcome is
       // unknown (timeout, 5xx, no status) may still have run, and its late
       // echo must come back named, or its card would turn into a bubble.
-      if (error.statusCode case final status? when status >= 400 && status < 500) {
-        _invocations.remove(sessionId: sessionId, promptId: promptId);
-      }
+      _forgetStampOnRefusal(sessionId: sessionId, promptId: promptId, error: error);
       rethrow;
     }
   }
 
-  /// [message] with the invocation this bridge sent under its prompt id.
+  void _forgetStampOnRefusal({
+    required String sessionId,
+    required String promptId,
+    required PluginOperationException error,
+  }) {
+    if (error.statusCode case final status? when status >= 400 && status < 500) {
+      _stamps.remove(sessionId: sessionId, promptId: promptId);
+    }
+  }
+
+  /// [message] with the stamp this bridge recorded under its prompt id.
   ///
   /// A plugin that named the invocation itself keeps its own value.
-  Message stampLiveInvocation({required Message message}) {
-    if (message case MessageUser(:final sessionID, promptId: final promptId?, invocation: null)) {
-      final invocation = _invocations.invocationFor(sessionId: sessionID, promptId: promptId);
-      if (invocation != null) return message.copyWith(invocation: invocation);
+  Message stampLiveMessage({required Message message}) {
+    if (message case MessageUser(:final sessionID, promptId: final promptId?)) {
+      switch (_stamps.stampFor(sessionId: sessionID, promptId: promptId)) {
+        case PromptStampCommand(:final invocation) when message.invocation == null:
+          return message.copyWith(invocation: invocation);
+        case PromptStampHandoff(:final handoff):
+          return message.copyWith(handoff: handoff);
+        case PromptStampCommand() || null:
+          break;
+      }
     }
     return message;
+  }
+
+  /// Turns the `sent` handoff recorded for the prompt [promptId] to
+  /// [sessionId] into its not-sent form, so an echo that has yet to arrive,
+  /// or a later live update of one that has, is stamped as not sent.
+  void markHandoffNotSent({required String sessionId, required String promptId}) {
+    if (_stamps.stampFor(sessionId: sessionId, promptId: promptId) case PromptStampHandoff(
+      handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle),
+    )) {
+      _stamps.record(
+        sessionId: sessionId,
+        promptId: promptId,
+        stamp: PromptStampHandoff(
+          handoff: MessageHandoff.notSent(targetSessionId: targetSessionId, targetTitle: targetTitle),
+        ),
+      );
+    }
   }
 
   /// [prompts] with the source of each command this bridge sent to [sessionId].
@@ -496,12 +532,18 @@ class SessionRepository({
     for (final prompt in prompts)
       if (prompt.command != null && prompt.commandSource == null)
         prompt.copyWith(
-          commandSource: _invocations.invocationFor(sessionId: sessionId, promptId: prompt.id)?.source,
+          commandSource: switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
+            PromptStampCommand(:final invocation) => invocation.source,
+            PromptStampHandoff() || null => null,
+          },
         )
       else
         prompt,
   ];
 
+  /// Sends [parts] as the prompt [promptId]. A [handoff] is remembered under
+  /// [promptId], so the user message that fulfils it is stamped by
+  /// [stampLiveMessage].
   Future<void> sendPrompt({
     required String sessionId,
     required String promptId,
@@ -510,19 +552,38 @@ class SessionRepository({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
-  }) => _useSessionPlugin(
-    sessionId: sessionId,
-    operation: SessionOperation.sendPrompt,
-    body: (plugin, binding) => plugin.sendPrompt(
-      sessionId: binding.backendSessionId,
-      promptId: promptId,
-      parts: parts.map((part) => part.toPlugin()).toList(growable: false),
-      variant: _toPluginVariant(variant),
-      fastMode: fastMode,
-      agent: agent,
-      model: _toPluginModel(model),
-    ),
-  );
+    required MessageHandoff? handoff,
+  }) async {
+    try {
+      await _useSessionPlugin(
+        sessionId: sessionId,
+        operation: SessionOperation.sendPrompt,
+        body: (plugin, binding) {
+          // Recorded before the plugin call: its echo can arrive before the
+          // call returns. A definitely refused send forgets it again.
+          if (handoff != null) {
+            _stamps.record(
+              sessionId: sessionId,
+              promptId: promptId,
+              stamp: PromptStampHandoff(handoff: handoff),
+            );
+          }
+          return plugin.sendPrompt(
+            sessionId: binding.backendSessionId,
+            promptId: promptId,
+            parts: parts.map((part) => part.toPlugin()).toList(growable: false),
+            variant: _toPluginVariant(variant),
+            fastMode: fastMode,
+            agent: agent,
+            model: _toPluginModel(model),
+          );
+        },
+      );
+    } on PluginOperationException catch (error) {
+      _forgetStampOnRefusal(sessionId: sessionId, promptId: promptId, error: error);
+      rethrow;
+    }
+  }
 
   /// Asks [sessionId]'s harness a side question with this side chat's
   /// [history]. A harness that does not declare side questions is refused

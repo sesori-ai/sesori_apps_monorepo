@@ -128,7 +128,7 @@ $MessageTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class MessageUser extends Message {
-  const MessageUser({required this.id, required this.sessionID, required this.agent, required this.time, required this.promptId, required this.invocation,  String? $type}): $type = $type ?? 'user',super._();
+  const MessageUser({required this.id, required this.sessionID, required this.agent, required this.time, required this.promptId, required this.invocation, required this.handoff,  String? $type}): $type = $type ?? 'user',super._();
   factory MessageUser.fromJson(Map<String, dynamic> json) => _$MessageUserFromJson(json);
 
 @override final  String id;
@@ -147,6 +147,9 @@ class MessageUser extends Message {
 /// invocation; clients then render the message's text as typed. The text
 /// parts keep their own content for clients that predate this field.
  final  CommandInvocation? invocation;
+/// Marks a message Sesori wrote to send one session into another; null
+/// for every other message. Clients that predate it ignore the key.
+ final  MessageHandoff? handoff;
 
 @JsonKey(name: 'role')
 final String $type;
@@ -165,18 +168,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageUser&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.time, time) || other.time == time)&&(identical(other.promptId, promptId) || other.promptId == promptId)&&(identical(other.invocation, invocation) || other.invocation == invocation));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageUser&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.time, time) || other.time == time)&&(identical(other.promptId, promptId) || other.promptId == promptId)&&(identical(other.invocation, invocation) || other.invocation == invocation)&&(identical(other.handoff, handoff) || other.handoff == handoff));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,agent,time,promptId,invocation);
+    return Object.hash(runtimeType,id,sessionID,agent,time,promptId,invocation,handoff);
 }
 
 @override
 String toString() {
-    return 'Message.user(id: $id, sessionID: $sessionID, agent: $agent, time: $time, promptId: $promptId, invocation: $invocation)';
+    return 'Message.user(id: $id, sessionID: $sessionID, agent: $agent, time: $time, promptId: $promptId, invocation: $invocation, handoff: $handoff)';
 }
 
 
@@ -187,11 +190,11 @@ abstract mixin class $MessageUserCopyWith<$Res> implements $MessageCopyWith<$Res
   factory $MessageUserCopyWith(MessageUser value, $Res Function(MessageUser) _then) = _$MessageUserCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String? agent, MessageTime? time, String? promptId, CommandInvocation? invocation
+ String id, String sessionID, String? agent, MessageTime? time, String? promptId, CommandInvocation? invocation, MessageHandoff? handoff
 });
 
 
-@override $MessageTimeCopyWith<$Res>? get time;$CommandInvocationCopyWith<$Res>? get invocation;
+@override $MessageTimeCopyWith<$Res>? get time;$CommandInvocationCopyWith<$Res>? get invocation;$MessageHandoffCopyWith<$Res>? get handoff;
 
 }
 /// @nodoc
@@ -204,7 +207,7 @@ class _$MessageUserCopyWithImpl<$Res>
 
 /// Create a copy of Message
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? time = freezed,Object? promptId = freezed,Object? invocation = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? time = freezed,Object? promptId = freezed,Object? invocation = freezed,Object? handoff = freezed,}) {
   return _then(MessageUser(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -212,7 +215,8 @@ as String,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as MessageTime?,promptId: freezed == promptId ? _self.promptId : promptId // ignore: cast_nullable_to_non_nullable
 as String?,invocation: freezed == invocation ? _self.invocation : invocation // ignore: cast_nullable_to_non_nullable
-as CommandInvocation?,
+as CommandInvocation?,handoff: freezed == handoff ? _self.handoff : handoff // ignore: cast_nullable_to_non_nullable
+as MessageHandoff?,
   ));
 }
 
@@ -239,6 +243,18 @@ $CommandInvocationCopyWith<$Res>? get invocation {
 
   return $CommandInvocationCopyWith<$Res>(_self.invocation!, (value) {
     return _then(_self.copyWith(invocation: value));
+  });
+}/// Create a copy of Message
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MessageHandoffCopyWith<$Res>? get handoff {
+    if (_self.handoff == null) {
+    return null;
+  }
+
+  return $MessageHandoffCopyWith<$Res>(_self.handoff!, (value) {
+    return _then(_self.copyWith(handoff: value));
   });
 }
 }

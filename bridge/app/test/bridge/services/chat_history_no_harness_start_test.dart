@@ -97,6 +97,7 @@ void main() {
       sessionId: "ses_a",
       message: const Message.user(
         invocation: null,
+        handoff: null,
         promptId: null,
         id: "live",
         sessionID: "ses_a",

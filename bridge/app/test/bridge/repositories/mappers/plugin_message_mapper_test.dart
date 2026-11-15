@@ -20,6 +20,7 @@ void main() {
         equals(
           const Message.user(
             invocation: null,
+            handoff: null,
             promptId: null,
             id: "m1",
             sessionID: "stable-session",
