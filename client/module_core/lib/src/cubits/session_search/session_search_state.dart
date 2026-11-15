@@ -1,7 +1,17 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-/// A session that matches the search, with the project it opens in.
-typedef SessionSearchMatch = ({Session session, ProjectSummary project});
+/// What a prompt to a running session does, as its plugin declares it.
+enum RunningTarget() {
+  /// The prompt stops the running turn, then starts.
+  stopsTurn,
+
+  /// The running turn takes the prompt in, or the plugin does not say.
+  keepsTurn,
+}
+
+/// A session that matches the search, with the project it opens in, and
+/// what a prompt to it does while it runs: null when it is idle.
+typedef SessionSearchMatch = ({Session session, ProjectSummary project, RunningTarget? running});
 
 final class const SessionSearchState({
   /// Newest first, at most the cubit's limit. The list stays the same

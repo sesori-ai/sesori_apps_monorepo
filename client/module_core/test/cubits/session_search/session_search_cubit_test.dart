@@ -44,6 +44,7 @@ void main() {
   late StreamController<SseEvent> events;
   late BehaviorSubject<ConnectionStatus> status;
   late List<SessionPageRequest> requests;
+  late MockPluginRepository plugins;
 
   /// Answers each page request, the bridge's newest-first order applied.
   late Future<SessionPageResult> Function(SessionPageRequest request) answer;
@@ -110,6 +111,7 @@ void main() {
       requests.add(request);
       return answer(request);
     });
+    plugins = stubbedPluginRepository();
   });
 
   tearDown(() async {
@@ -133,6 +135,15 @@ void main() {
     catalogRescanService: catalog,
   );
 
+  SessionSearchCubit createCubit({required SessionWindowService window, required String? excludedSessionId}) =>
+      SessionSearchCubit(
+        window: window,
+        projectInventory: projectInventory,
+        sseEventTracker: activity,
+        pluginRepository: plugins,
+        excludedSessionId: excludedSessionId,
+      );
+
   List<String> ids(SessionSearchCubit cubit) => [for (final match in cubit.state.matches) match.session.id];
 
   /// The cubit's requests: a blank query's has no query, so they are told
@@ -145,7 +156,7 @@ void main() {
   test("lists the newest loaded sessions once the window loads, with their projects", () {
     fakeAsync((async) {
       final window = createWindow();
-      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      final cubit = createCubit(window: window, excludedSessionId: null);
       expect(cubit.state.matches, isEmpty);
 
       async.flushMicrotasks();
@@ -177,7 +188,7 @@ void main() {
       expect((window.state.value as SessionWindowLoaded).sessions.first.id, "s000");
       requests.clear();
 
-      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      final cubit = createCubit(window: window, excludedSessionId: null);
       // The sidebar's rows show at once, while the bridge is asked.
       expect(ids(cubit).first, "s000");
       expect(cubit.state.isSearching, isTrue);
@@ -210,7 +221,7 @@ void main() {
       final loadedProjects = inventory.value;
       inventory.add(const ProjectListState.loading());
       final window = createWindow();
-      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      final cubit = createCubit(window: window, excludedSessionId: null);
       async.flushMicrotasks();
       expect(window.state.value, isA<SessionWindowLoaded>());
       expect(cubit.state.matches, isEmpty);
@@ -228,7 +239,7 @@ void main() {
   test("shows the loaded rows' matches at once, then the bridge's 200 ms after the last keystroke", () {
     fakeAsync((async) {
       final window = createWindow();
-      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      final cubit = createCubit(window: window, excludedSessionId: null);
       async.flushMicrotasks();
       requests.clear();
 
@@ -264,7 +275,7 @@ void main() {
   test("drops an answer for a query the user has typed past", () {
     fakeAsync((async) {
       final window = createWindow();
-      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      final cubit = createCubit(window: window, excludedSessionId: null);
       async.flushMicrotasks();
       final pending = <Completer<SessionPageResult>>[];
       answer = (_) {
@@ -312,7 +323,7 @@ void main() {
   test("a failed search keeps the loaded rows' matches", () {
     fakeAsync((async) {
       final window = createWindow();
-      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      final cubit = createCubit(window: window, excludedSessionId: null);
       async.flushMicrotasks();
       answer = (_) async => SessionPageFailure(error: ApiError.generic());
 
@@ -346,7 +357,7 @@ void main() {
       expect((window.state.value as SessionWindowLoaded).sessions.first.id, "s000");
       requests.clear();
 
-      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      final cubit = createCubit(window: window, excludedSessionId: null);
       expect(ids(cubit), hasLength(20));
       expect(ids(cubit).take(2), ["b1", "s000"]);
       async.flushMicrotasks();
@@ -374,7 +385,7 @@ void main() {
         ),
       );
       final window = createWindow();
-      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      final cubit = createCubit(window: window, excludedSessionId: null);
       async.flushMicrotasks();
       requests.clear();
       expect(ids(cubit), hasLength(20));
@@ -391,6 +402,102 @@ void main() {
       unawaited(cubit.close());
       unawaited(window.dispose());
       async.flushMicrotasks();
+    });
+  });
+
+  test("never lists the excluded session, among loaded rows or the bridge's answer", () {
+    fakeAsync((async) {
+      final window = createWindow();
+      final cubit = createCubit(window: window, excludedSessionId: "s000");
+      async.flushMicrotasks();
+
+      expect(ids(cubit), hasLength(19));
+      expect(ids(cubit), isNot(contains("s000")));
+      expect(ids(cubit).first, "s001");
+
+      cubit.setQuery(query: "session 0");
+      async.elapse(SessionSearchCubit.searchDelay);
+      expect(ids(cubit), isNot(contains("s000")));
+
+      unawaited(cubit.close());
+      unawaited(window.dispose());
+      async.flushMicrotasks();
+    });
+  });
+
+  group("running matches", () {
+    PluginMetadata plugin({required String id, required BusyPromptHandling busyPromptHandling}) => PluginMetadata(
+      id: id,
+      displayName: id,
+      isDefault: false,
+      state: PluginLifecycleState.ready,
+      actionHint: null,
+      failureBlock: null,
+      mcpScopes: null,
+      failureReason: null,
+      busyPromptHandling: busyPromptHandling,
+    );
+
+    SessionActivityInfo running() =>
+        const SessionActivityInfo(isRunning: true, lastUserActivityAt: null, updatedAt: null);
+
+    setUp(() {
+      final sessions = [
+        _session(id: "acp", updatedAt: 30, title: "ACP").copyWith(pluginId: "acp"),
+        _session(id: "codex", updatedAt: 20, title: "Codex").copyWith(pluginId: "codex"),
+        _session(id: "idle", updatedAt: 10, title: "Idle").copyWith(pluginId: "acp"),
+      ];
+      answer = (request) async => page(sessions: sessions, request: request);
+      activity.emitSessionActivity({
+        "alpha": {"acp": running(), "codex": running()},
+      });
+    });
+
+    Map<String, RunningTarget?> runningById(SessionSearchCubit cubit) => {
+      for (final match in cubit.state.matches) match.session.id: match.running,
+    };
+
+    test("say whether a prompt stops the turn, from each plugin's declaration", () {
+      fakeAsync((async) {
+        plugins = stubbedPluginRepository(
+          plugins: [
+            plugin(id: "acp", busyPromptHandling: BusyPromptHandling.stopTurn),
+            plugin(id: "codex", busyPromptHandling: BusyPromptHandling.steer),
+          ],
+        );
+        final window = createWindow();
+        final cubit = createCubit(window: window, excludedSessionId: null);
+        async.flushMicrotasks();
+
+        expect(runningById(cubit), {"acp": RunningTarget.stopsTurn, "codex": RunningTarget.keepsTurn, "idle": null});
+
+        // A session that starts running gets its label at once.
+        activity.emitSessionActivity({
+          "alpha": {"acp": running(), "codex": running(), "idle": running()},
+        });
+        async.flushMicrotasks();
+        expect(runningById(cubit)["idle"], RunningTarget.stopsTurn);
+
+        unawaited(cubit.close());
+        unawaited(window.dispose());
+        async.flushMicrotasks();
+      });
+    });
+
+    test("warn of nothing when the plugins cannot be listed", () {
+      fakeAsync((async) {
+        plugins = MockPluginRepository();
+        when(plugins.listPlugins).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final window = createWindow();
+        final cubit = createCubit(window: window, excludedSessionId: null);
+        async.flushMicrotasks();
+
+        expect(runningById(cubit), {"acp": RunningTarget.keepsTurn, "codex": RunningTarget.keepsTurn, "idle": null});
+
+        unawaited(cubit.close());
+        unawaited(window.dispose());
+        async.flushMicrotasks();
+      });
     });
   });
 }
