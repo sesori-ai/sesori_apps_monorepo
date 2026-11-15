@@ -6,6 +6,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/deliverable_prompt_part.dart";
 import "../repositories/prompt_upload_repository.dart";
 
 /// Decides which prompt parts reach the plugin as they are, and saves every
@@ -28,22 +29,23 @@ class PromptPartDeliveryService({
   /// saved for an earlier prompt, gets the same note without a save. Other
   /// parts pass through. Call it only with parts that will reach the plugin. A
   /// failed save propagates, so the prompt fails visibly.
-  Future<List<PromptPart>> deliverableParts({
+  Future<List<DeliverablePromptPart>> deliverableParts({
     required String sessionId,
     required bool inlineImages,
     required List<PromptPart> parts,
   }) async {
-    final delivered = <PromptPart>[];
+    final delivered = <DeliverablePromptPart>[];
     var savedAny = false;
     for (final part in parts) {
       switch (part) {
-        case PromptPartFileData(:final mime) when inlineImages && mime.startsWith("image/"):
-          delivered.add(part);
+        case PromptPartFileData(:final mime, :final base64, :final filename)
+            when inlineImages && mime.startsWith("image/"):
+          delivered.add(DeliverablePromptPart.fileData(mime: mime, base64: base64, filename: filename));
         case PromptPartFileData(:final base64, :final filename):
           final name = filename == null || filename.isEmpty ? _unnamedFileName : filename;
           final path = await _uploads.save(sessionId: sessionId, bytes: base64Decode(base64), filename: name);
           delivered.add(
-            PromptPart.text(
+            DeliverablePromptPart.text(
               text: savedFileNote(name: name, path: path),
             ),
           );
@@ -51,12 +53,14 @@ class PromptPartDeliveryService({
         case PromptPartFilePath(:final path, :final filename):
           final name = filename == null || filename.isEmpty ? p.basename(path) : filename;
           delivered.add(
-            PromptPart.text(
+            DeliverablePromptPart.text(
               text: savedFileNote(name: name, path: path),
             ),
           );
-        case PromptPartText() || PromptPartFileUrl():
-          delivered.add(part);
+        case PromptPartText(:final text):
+          delivered.add(DeliverablePromptPart.text(text: text));
+        case PromptPartFileUrl(:final mime, :final url, :final filename):
+          delivered.add(DeliverablePromptPart.fileUrl(mime: mime, url: url, filename: filename));
       }
     }
     if (savedAny) unawaited(sweepExpiredUploads());

@@ -94,7 +94,8 @@ class CodexPlugin._({
     McpConnectorSetupPluginApi,
     McpAuthenticationPluginApi,
     FormInteractionPluginApi,
-    SessionExternalActionsPluginApi {
+    SessionExternalActionsPluginApi,
+    SideQuestionPluginApi {
   @override
   Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
       PluginQuotaContinuationReadiness.unavailable;
@@ -1091,6 +1092,26 @@ class CodexPlugin._({
       variant: variant,
       fastMode: fastMode,
       collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
+    );
+  }
+
+  @override
+  Future<PluginSideAnswer> askSideQuestion({
+    required String sessionId,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async {
+    await _connectedClient();
+    // Codex samples only a loaded thread. A resume can also reveal a turn
+    // still running, which then becomes the active turn below.
+    final evidenceRevision = _turnEvidenceRevisionByThread[sessionId] ?? 0;
+    final resumed = await _sessionService.resumeThreadIfNeeded(threadId: sessionId, force: false);
+    _applyResumedThread(threadId: sessionId, resumed: resumed, evidenceRevision: evidenceRevision);
+    return await _sessionService.askSideQuestion(
+      threadId: sessionId,
+      activeTurnId: _activeTurnByThread[sessionId],
+      question: question,
+      history: history,
     );
   }
 

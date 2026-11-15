@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -1899,14 +1898,6 @@ abstract class AcpPlugin({
   Map<String, dynamic>? _promptPartToContentBlock(PluginPromptPart part) {
     return switch (part) {
       PluginPromptPartText(:final text) => textContentBlock(text),
-      PluginPromptPartFilePath(:final path, :final filename) => {
-        "type": "resource_link",
-        // Uri.file encodes spaces and Windows drive/backslash paths; plain
-        // "file://$path" interpolation emits an invalid uri (e.g.
-        // `file://C:\a b.png`) that the agent rejects or ignores.
-        "uri": Uri.file(path).toString(),
-        "name": filename ?? p.basename(path),
-      },
       PluginPromptPartFileUrl(:final url, :final filename) => {
         "type": "resource_link",
         "uri": url,

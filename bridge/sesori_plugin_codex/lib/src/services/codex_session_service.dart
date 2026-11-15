@@ -19,6 +19,7 @@ import "../repositories/models/codex_resumed_thread.dart";
 import "../repositories/models/codex_session_record.dart";
 import "../repositories/models/codex_sub_agent_rollout_fact.dart";
 import "../repositories/models/codex_thread_record.dart";
+import "codex_side_question_prompt_builder.dart";
 
 final class const CodexSessionMessageRead._({
   required final CodexPreparedMessageRead _messages,
@@ -47,6 +48,8 @@ class CodexSessionService({
   static const String compactionCommandName = "compact";
 
   static final PluginCommand _compactionCommand = PluginCommand.compaction(name: compactionCommandName);
+
+  static const _sideQuestionPromptBuilder = CodexSideQuestionPromptBuilder();
 
   CodexThreadRepository? _threadRepository;
   CodexModelRepository? _modelRepository;
@@ -588,6 +591,24 @@ class CodexSessionService({
     _loadedThreads.add(threadId);
     _rememberThreadModel(threadId: threadId, model: resumed.thread.model);
     return resumed;
+  }
+
+  /// Answers [question] on the loaded [threadId] from a throwaway copy of the
+  /// thread, so a running turn continues and nothing is written to it.
+  /// [activeTurnId] is the turn running now, if any; otherwise the copy is
+  /// taken after the thread's latest turn.
+  Future<PluginSideAnswer> askSideQuestion({
+    required String threadId,
+    required String? activeTurnId,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async {
+    final threadRepository = _connectedThreadRepository;
+    final expectedTurnId = activeTurnId ?? await threadRepository.latestTurnId(threadId: threadId);
+    if (expectedTurnId == null) return const PluginSideRefused(reason: PluginSideRefusal.noTurnYet);
+    final prompt = _sideQuestionPromptBuilder.build(question: question, history: history);
+    if (prompt == null) return const PluginSideRefused(reason: PluginSideRefusal.tooLong);
+    return await threadRepository.sampleThread(threadId: threadId, expectedTurnId: expectedTurnId, prompt: prompt);
   }
 
   /// The user's own developer instructions followed by the Sesori note, the
