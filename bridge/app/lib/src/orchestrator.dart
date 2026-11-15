@@ -159,6 +159,7 @@ import "routing/reply_to_form_handler.dart";
 import "routing/reply_to_permission_handler.dart";
 import "routing/reply_to_question_handler.dart";
 import "routing/request_router.dart";
+import "routing/rewind_session_handler.dart";
 import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
 import "routing/search_session_prompts_handler.dart";
@@ -564,6 +565,16 @@ class Orchestrator({
       readyPluginIds: _pluginLifecycleService.readyPluginIds,
       catalogImportService: catalogImportService,
     );
+    final chatHistoryService = ChatHistoryService(
+      chatHistoryRepository: ChatHistoryRepository(
+        chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
+        attachmentSpillStorage: _attachmentSpillStorage,
+        archivedSessionStorage: _archivedSessionStorage,
+      ),
+      sessionRepository: sessionRepository,
+      attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
+      bridgeIdProvider: _bridgeRegistrationService,
+    );
     final sessionPromptService = SessionPromptService(
       continuations: sessionContinuations,
       views: sessionViews,
@@ -576,6 +587,7 @@ class Orchestrator({
       archivedSessionValidator: archivedSessionValidator,
       sessionOptionsService: sessionOptionsService,
       promptPartDelivery: promptPartDeliveryService,
+      chatHistory: chatHistoryService,
     );
     final sessionContinuationService = SessionContinuationService(
       continuations: sessionContinuations,
@@ -589,16 +601,6 @@ class Orchestrator({
       clock: clock,
     );
     final sessionContinuationTimer = SessionContinuationTimerListener(service: sessionContinuationService);
-    final chatHistoryService = ChatHistoryService(
-      chatHistoryRepository: ChatHistoryRepository(
-        chatHistoryDao: _chatHistoryDatabase.chatHistoryDao,
-        attachmentSpillStorage: _attachmentSpillStorage,
-        archivedSessionStorage: _archivedSessionStorage,
-      ),
-      sessionRepository: sessionRepository,
-      attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
-      bridgeIdProvider: _bridgeRegistrationService,
-    );
     final sessionAbortService = SessionAbortService(
       continuations: sessionContinuations,
       views: sessionViews,
@@ -764,6 +766,7 @@ class Orchestrator({
         ),
         DeleteSessionHandler(sessionDeletionService: sessionDeletionService),
         SendPromptHandler(sessionPromptService: sessionPromptService),
+        RewindSessionHandler(sessionPromptService: sessionPromptService),
         SendToSessionHandler(sessionSendService: sessionSendService),
         GetQueuedPromptsHandler(sessionRepository: sessionRepository),
         CancelQueuedPromptHandler(sessionPromptService: sessionPromptService),
@@ -892,20 +895,31 @@ class Orchestrator({
     required LocalSessionMutation mutation,
     required SessionViewService sessionViews,
   }) async {
-    final session = mutation is SessionDeleted || mutation is SessionContinuationUpdated || mutation is SessionArchived
-        ? mutation.session
-        : await sessionViews.enrich(session: mutation.session);
+    final session = switch (mutation) {
+      SessionDeleted() ||
+      SessionContinuationUpdated() ||
+      SessionArchived() ||
+      SessionMessagesRewound() => mutation.session,
+      SessionTitleUpdated() || SessionApprovalOverrideUpdated() || SessionPinnedUpdated() => await sessionViews.enrich(
+        session: mutation.session,
+      ),
+    };
     return (
       pluginId: session.pluginId,
-      event: switch (mutation) {
-        SessionTitleUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
-        SessionContinuationUpdated() ||
-        SessionApprovalOverrideUpdated() ||
-        SessionPinnedUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
-        SessionDeleted() => BridgeSseSessionDeleted(info: session.toJson()),
+      events: switch (mutation) {
+        SessionTitleUpdated() => [BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true)],
+        SessionContinuationUpdated() || SessionApprovalOverrideUpdated() || SessionPinnedUpdated() => [
+          BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
+        ],
+        SessionDeleted() => [BridgeSseSessionDeleted(info: session.toJson())],
         // A backend may keep reporting an archived session running or waiting,
         // so rebuild the summary, which drops archived sessions, at once.
-        SessionArchived() => const BridgeSseProjectUpdated(),
+        SessionArchived() => const [BridgeSseProjectUpdated()],
+        // Each removal is stored and fanned out like a backend's own.
+        SessionMessagesRewound(:final removedMessageIds) => [
+          for (final messageId in removedMessageIds)
+            BridgeSseMessageRemoved(sessionID: session.id, messageID: messageId),
+        ],
       },
     );
   }

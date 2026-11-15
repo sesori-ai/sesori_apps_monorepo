@@ -15,9 +15,13 @@ void main() {
       ClaudePermissionMode? permissionMode,
       List<String> allowedTools = const [],
       ClaudeProcessPurpose purpose = ClaudeProcessPurpose.session,
+      String transcriptsDirectory = "/tmp/sesori/transcripts",
+      String uploadsDirectory = "/tmp/sesori/uploads",
     }) {
       return ClaudeLaunchSpec(
         binaryPath: "claude",
+        transcriptsDirectory: transcriptsDirectory,
+        uploadsDirectory: uploadsDirectory,
         workingDirectory: "/tmp/project",
         launch: launch,
         purpose: purpose,
@@ -127,7 +131,52 @@ void main() {
         allowedTools: const ["Write", "Bash(git status:*)"],
       ).arguments;
 
-      expect(arguments, containsAllInOrder(["--allowedTools", "Write", "Bash(git status:*)"]));
+      expect(
+        arguments,
+        containsAllInOrder([
+          "--allowedTools",
+          "Read(//tmp/sesori/transcripts/**)",
+          "Read(//tmp/sesori/uploads/**)",
+          "Write",
+          "Bash(git status:*)",
+        ]),
+      );
+    });
+
+    test("lets every launch read the transcripts and uploads folders, and nothing more", () {
+      for (final purpose in ClaudeProcessPurpose.values) {
+        for (final launch in [
+          ClaudeNewSession(sessionId: _newSessionId),
+          ClaudeResumedSession(sessionId: _oldSessionId),
+        ]) {
+          final arguments = specFor(launch, purpose: purpose).arguments;
+          final rules = arguments.skip(arguments.indexOf("--allowedTools") + 1).takeWhile((a) => !a.startsWith("--"));
+
+          // Only the two read rules: no Edit or Write rule grants writing there.
+          expect(
+            rules,
+            ["Read(//tmp/sesori/transcripts/**)", "Read(//tmp/sesori/uploads/**)"],
+            reason: "$purpose $launch",
+          );
+        }
+      }
+    });
+
+    test("writes Windows folders in the POSIX form Claude matches", () {
+      final arguments = specFor(
+        ClaudeNewSession(sessionId: _newSessionId),
+        transcriptsDirectory: r"C:\Users\Ana Pop\.sesori\transcripts",
+        uploadsDirectory: r"D:\sesori\uploads",
+      ).arguments;
+
+      expect(
+        arguments,
+        containsAllInOrder([
+          "--allowedTools",
+          "Read(//c/Users/Ana Pop/.sesori/transcripts/**)",
+          "Read(//d/sesori/uploads/**)",
+        ]),
+      );
     });
 
     test("turns hooks and MCP servers off only for a catalog probe", () {
@@ -145,6 +194,8 @@ void main() {
     test("rejects a HOME override when describing its child process", () {
       final spec = ClaudeLaunchSpec(
         binaryPath: "claude",
+        transcriptsDirectory: "/tmp/sesori/transcripts",
+        uploadsDirectory: "/tmp/sesori/uploads",
         workingDirectory: "/tmp/project",
         launch: ClaudeNewSession(sessionId: _newSessionId),
         purpose: ClaudeProcessPurpose.session,
@@ -162,6 +213,8 @@ void main() {
       final environment = {"CLAUDE_CONFIG_DIR": "/tmp/claude-config"};
       final spec = ClaudeLaunchSpec(
         binaryPath: "claude",
+        transcriptsDirectory: "/tmp/sesori/transcripts",
+        uploadsDirectory: "/tmp/sesori/uploads",
         workingDirectory: "/tmp/project",
         launch: ClaudeNewSession(sessionId: _newSessionId),
         purpose: ClaudeProcessPurpose.session,

@@ -71,6 +71,14 @@ class ClaudeLaunchSpec({
   /// Starting permission mode, or null to accept the CLI's own default.
   required final ClaudePermissionMode? permissionMode,
   required List<String> allowedTools,
+
+  /// Sesori's transcripts folder (`sesoriTranscriptsDirectory()`), which the
+  /// agent may read without asking.
+  required final String transcriptsDirectory,
+
+  /// Sesori's prompt uploads folder (`sesoriUploadsDirectory()`), which the
+  /// agent may read without asking.
+  required final String uploadsDirectory,
   Map<String, String> environment = const {},
 }) {
   /// Extra environment entries merged over the bridge's own environment.
@@ -107,6 +115,28 @@ class ClaudeLaunchSpec({
     "--strict-mcp-config",
   ];
 
+  /// A rule that lets the agent read everything under [directory] without a
+  /// permission request, and grants nothing else: `Edit` and `Write` stay
+  /// gated.
+  ///
+  /// Claude spells an absolute path as `//` followed by the path without its
+  /// leading `/`, so a POSIX root gains one `/`. On Windows Claude matches paths
+  /// in POSIX form (`C:\Users\a` as `/c/Users/a`, per Claude's permission
+  /// docs), so a drive path is converted first. Verified live on macOS on 2026-11-15 with Claude Code 2.1.325: with the rule
+  /// a `-p` turn read a file under the folder, including through a folder name
+  /// with a space; without it the read was refused, and a Write there was still
+  /// refused with it.
+  static String _readOnlyDirectoryRule({required String directory}) => "Read(/${_posixPath(directory: directory)}/**)";
+
+  static String _posixPath({required String directory}) {
+    if (!_windowsDrivePathPattern.hasMatch(directory)) return directory;
+    final drive = directory.substring(0, 1).toLowerCase();
+    final rest = directory.substring(3).replaceAll(r"\", "/");
+    return "/$drive/$rest";
+  }
+
+  static final RegExp _windowsDrivePathPattern = RegExp(r"^[A-Za-z]:[\\/]");
+
   /// The child process this spec starts.
   ClaudeProcessLaunch get processLaunch => ClaudeProcessLaunch(
     binaryPath: binaryPath,
@@ -141,7 +171,13 @@ class ClaudeLaunchSpec({
     if (permissionMode case final mode?) ...["--permission-mode", mode.cliValue],
     if (model case final model?) ...["--model", model],
     if (effort case final effort?) ...["--effort", effort.wireValue],
-    if (allowedTools.isNotEmpty) ...["--allowedTools", ...allowedTools],
+    // Sesori writes transcripts and prompt uploads outside the session's
+    // directory and passes their absolute paths in prompts, so reading them
+    // must not ask. The session's granted rules follow.
+    "--allowedTools",
+    _readOnlyDirectoryRule(directory: transcriptsDirectory),
+    _readOnlyDirectoryRule(directory: uploadsDirectory),
+    ...allowedTools,
     if (purpose == ClaudeProcessPurpose.catalogProbe) ...catalogProbeIsolationArguments,
     // Single-token `--flag=value`, matching the Agent SDK's own argument builder
     // (`sdk.mjs` emits `--session-id=${id}` and `--resume=${id}`). The CLI

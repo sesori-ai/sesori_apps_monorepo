@@ -6,7 +6,7 @@
 | 2 Transcript Markdown and file store | Done | #2588 |
 | 3 Bridge send flow | Done | #2600 |
 | 4 Handoff marker in the bridge | Done | #2608 |
-| 5 Claude read rules (transcripts and uploads) | Not started | |
+| 5 Claude read rules (transcripts and uploads) | Done | #2613 |
 | 6 Busy-prompt declaration | Done | #2589 |
 | 7 Client send and stop pipeline | In PR | |
 | 7.a Send from the session menu | In PR | |

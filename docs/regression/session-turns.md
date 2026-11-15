@@ -192,6 +192,12 @@ defaults and queued client sends coherent.
   settlement and remains retryable. The event is additive: older clients ignore
   it and retain snapshot reconciliation, while newer clients keep that same
   fallback with older bridges.
+- An edited prompt sent through `POST /session/rewind` is a send like any
+  other: the same prompt id dedup, attachment delivery, stale-options
+  invalidation and prompt-defaults update apply. Its branch refusals answer
+  `SessionBranchErrorResponse` instead of `SendPromptErrorResponse`; an
+  archived session still answers the shared archived rejection
+  ([session edit and fork](session-edit-and-fork.md)).
 - A client send that fails on the connection it started on (a non-stale error
   response or a thrown failure) is held under its message with "Couldn’t send",
   Retry and Remove; later local sends wait behind it. When the harness refused
