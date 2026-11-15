@@ -24,7 +24,11 @@ void main() {
     addTearDown(database.close);
     await verifier.migrateAndValidate(database, 19, options: const ValidationOptions(validateDropped: true));
 
-    expect((await database.sessionDao.getSession(sessionId: "s1"))?.approvalOverride, isNull);
+    // A raw read: the current table class carries columns this version lacks.
+    final row = await database
+        .customSelect("SELECT approval_override FROM sessions_table WHERE session_id = 's1'")
+        .getSingle();
+    expect(row.read<String?>("approval_override"), isNull);
     expect(await database.sessionDao.hasApprovalOverride(approvalOverride: SessionApprovalMode.yolo), isFalse);
   });
 }

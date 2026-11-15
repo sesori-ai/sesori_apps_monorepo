@@ -180,6 +180,7 @@ class FakeSessionDao() {
       title: null,
       catalogTitle: null,
       approvalOverride: null,
+      pinned: false,
     );
   }
 
@@ -369,6 +370,9 @@ class FakeSessionRepository({
   }) async => null;
 
   @override
+  Future<Session?> setPinned({required String sessionId, required bool pinned}) async => null;
+
+  @override
   Future<SessionApprovalMode?> resolveApprovalOverride({required String sessionId}) async => null;
 
   @override
@@ -473,6 +477,7 @@ class FakeSessionRepository({
   );
   ({
     SessionPageMode mode,
+    bool pinnedFirst,
     String? projectId,
     String? query,
     SessionPageFilter filter,
@@ -484,6 +489,7 @@ class FakeSessionRepository({
   @override
   Future<SessionPage> getSessionPage({
     required SessionPageMode mode,
+    required bool pinnedFirst,
     required String? projectId,
     required String? query,
     required SessionPageFilter filter,
@@ -492,6 +498,7 @@ class FakeSessionRepository({
   }) async {
     lastSessionPageArgs = (
       mode: mode,
+      pinnedFirst: pinnedFirst,
       projectId: projectId,
       query: query,
       filter: filter,

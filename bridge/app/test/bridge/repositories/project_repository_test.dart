@@ -1089,6 +1089,7 @@ void main() {
         title: null,
         catalogTitle: null,
         approvalOverride: null,
+        pinned: false,
       );
       await db.sessionDao.upsertSessionRows(
         rows: [

@@ -46,6 +46,7 @@ class GetSessionPageHandler({
 
     final page = await _sessionRepository.getSessionPage(
       mode: body.mode,
+      pinnedFirst: body.pinnedFirst,
       projectId: body.projectId,
       query: body.query,
       filter: body.filter,

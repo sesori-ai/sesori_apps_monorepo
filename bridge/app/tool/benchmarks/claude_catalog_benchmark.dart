@@ -212,6 +212,7 @@ Future<Map<String, Object?>> _timeSessionPages({
       final stopwatch = Stopwatch()..start();
       final page = await sessions.getSessionPage(
         mode: SessionPageMode.active,
+        pinnedFirst: true,
         projectId: null,
         query: query,
         filter: filter,
@@ -245,6 +246,7 @@ Future<Map<String, Object?>> _timeSessionPages({
   for (var index = 0; index < 19 && cursor != null; index++) {
     cursor = (await sessions.getSessionPage(
       mode: SessionPageMode.active,
+      pinnedFirst: true,
       projectId: null,
       query: null,
       filter: SessionPageFilter.all,

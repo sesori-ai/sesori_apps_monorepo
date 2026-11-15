@@ -71,6 +71,7 @@ void main() {
             title: "User session title",
             catalogTitle: "Old catalog title",
             projectionUpdatedAt: 20,
+            pinned: true,
           ),
         ],
       );
@@ -136,6 +137,7 @@ void main() {
       expect(root?.title, "User session title");
       expect(root?.catalogTitle, "Fresh catalog title");
       expect(root?.archivedAt, isNull);
+      expect(root?.pinned, isTrue);
       expect(child?.sessionId, startsWith("ses_"));
       expect(child?.parentSessionId, root?.sessionId);
       expect(grandchild?.parentSessionId, child?.sessionId);
@@ -2828,6 +2830,7 @@ SessionDto _sessionRow({
   String? catalogTitle,
   required int projectionUpdatedAt,
   int updatedAt = 20,
+  bool pinned = false,
 }) {
   return SessionDto(
     fastMode: false,
@@ -2854,6 +2857,7 @@ SessionDto _sessionRow({
     title: title,
     catalogTitle: catalogTitle,
     approvalOverride: null,
+    pinned: pinned,
   );
 }
 

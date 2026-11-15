@@ -28,8 +28,9 @@ typedef ObservedRootSession = ({
   int projectionUpdatedAt,
 });
 
-/// Where a session page continues: the last row's sort time and id.
-typedef SessionPageKey = ({int sortAt, String sessionId});
+/// Where a session page continues: the last row's pin group, sort time and
+/// id. [pinned] is false whenever the page is not ordered pinned first.
+typedef SessionPageKey = ({bool pinned, int sortAt, String sessionId});
 
 /// A search word and the projects whose own name holds it, so their sessions
 /// match the word whatever their title.
@@ -81,6 +82,19 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
       SessionTableCompanion(approvalOverride: Value(approvalOverride)),
     );
     return updatedRows == 1;
+  }
+
+  /// Pins or unpins [sessionId]. Pinning writes only an unarchived root row;
+  /// unpinning writes the row whatever it is. Like the approval override, a
+  /// pin is not activity, so the row's times stay. Returns whether a row was
+  /// written.
+  Future<bool> setPinned({required String sessionId, required bool pinned}) async {
+    final query = update(sessionTable)
+      ..where((t) {
+        final row = t.sessionId.equals(sessionId);
+        return pinned ? row & t.parentSessionId.isNull() & t.archivedAt.isNull() : row;
+      });
+    return await query.write(SessionTableCompanion(pinned: Value(pinned))) == 1;
   }
 
   Future<bool> hasApprovalOverride({required SessionApprovalMode approvalOverride}) async {
@@ -488,10 +502,13 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   ///
   /// Active pages order by the displayed time and archived pages by
   /// `archived_at`, both newest first with ties broken by `session_id`
-  /// descending. The scope is the mode's roots in [projectIds] matching every
-  /// one of [words]; the [filter] narrows only the page, not the counts.
+  /// descending. With [pinnedFirst], an active page lists its pinned rows
+  /// before the rest, each group in that order; archived pages ignore it. The
+  /// scope is the mode's roots in [projectIds] matching every one of [words];
+  /// the [filter] narrows only the page, not the counts.
   Future<SessionPageRows> getSessionPage({
     required SessionPageMode mode,
+    required bool pinnedFirst,
     required List<String> projectIds,
     required List<SessionPageWord> words,
     required SessionPageFilter filter,
@@ -504,6 +521,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
       SessionPageMode.active => _displayedAt,
       SessionPageMode.archived => table.archivedAt,
     };
+    final pinnedGroupFirst = pinnedFirst && mode == SessionPageMode.active;
     // The scope holds nearly every root, so one pass over the table beats an
     // index lookup per row (7x at 50,000 roots). SQLite only finds that plan
     // with ANALYZE statistics, which the bridge never gathers, so `+column`
@@ -545,21 +563,36 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         SessionPageFilter.running => scope & running,
         SessionPageFilter.unread => scope & unseen,
       };
-      if (after case (:final sortAt, :final sessionId)) {
+      if (after case (:final pinned, :final sortAt, :final sessionId)) {
+        final laterInGroup =
+            sortKey.isSmallerThanValue(sortAt) |
+            (sortKey.equals(sortAt) & table.sessionId.isSmallerThanValue(sessionId));
         where =
             where &
-            (sortKey.isSmallerThanValue(sortAt) |
-                (sortKey.equals(sortAt) & table.sessionId.isSmallerThanValue(sessionId)));
+            switch ((pinnedGroupFirst, pinned)) {
+              (false, _) => laterInGroup,
+              // Every unpinned row follows the pinned group.
+              (true, true) => table.pinned.not() | (table.pinned & laterInGroup),
+              (true, false) => table.pinned.not() & laterInGroup,
+            };
       }
       final rows =
           await (select(table).addColumns([sortKey])
                 ..where(where)
-                ..orderBy([OrderingTerm.desc(sortKey), OrderingTerm.desc(table.sessionId)])
+                ..orderBy([
+                  if (pinnedGroupFirst) OrderingTerm.desc(table.pinned),
+                  OrderingTerm.desc(sortKey),
+                  OrderingTerm.desc(table.sessionId),
+                ])
                 ..limit(limit + 1))
               .get();
       final page = [for (final row in rows.take(limit)) row.readTable(table)];
       final SessionPageKey? nextKey = rows.length > limit
-          ? (sortAt: rows[limit - 1].read(sortKey) ?? 0, sessionId: page.last.sessionId)
+          ? (
+              pinned: pinnedGroupFirst && page.last.pinned,
+              sortAt: rows[limit - 1].read(sortKey) ?? 0,
+              sessionId: page.last.sessionId,
+            )
           : null;
       return (rows: page, nextKey: nextKey, counts: pageCounts);
     });
@@ -597,6 +630,8 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         archivedAt: Value(archivedAt),
+        // Archiving drops the pin.
+        pinned: const Value(false),
         lastAgent: const Value(null),
         lastAgentModel: const Value(null),
         updatedAt: Value(updatedAt),

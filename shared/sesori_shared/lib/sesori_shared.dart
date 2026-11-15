@@ -101,6 +101,7 @@ export "src/models/sesori/session_tool_output.dart";
 export "src/models/sesori/session_variant.dart";
 export "src/models/sesori/set_base_branch_request.dart";
 export "src/models/sesori/set_session_auto_continuation_request.dart";
+export "src/models/sesori/set_session_pinned_request.dart";
 export "src/models/sesori/success_empty_response.dart";
 export "src/models/sesori/update_session_archive_request.dart";
 export "src/models/sesori/yolo_settings.dart";

@@ -67,6 +67,10 @@ sealed class Session with _$Session {
     // from a newer bridge also reads as null.
     // COMPATIBILITY 2026-09-25 (v1.9.1): Bridges before per-session approval omit approvalOverride, which reads as null because their sessions always follow the bridge setting. Remove this comment once the minimum supported bridge always reports YoloSettingsResponse.supportsSessionOverride.
     @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required SessionApprovalMode? approvalOverride,
+    // Whether the user pinned this root session above the time-ordered list.
+    // The bridge stores it; archiving a session drops its pin.
+    // COMPATIBILITY 2026-11-14 (v1.14.0): Bridges before pinning omit pinned; they cannot pin, so false is honest. Remove the default once the minimum supported bridge always sends it.
+    @Default(false) bool pinned,
   }) = _Session;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

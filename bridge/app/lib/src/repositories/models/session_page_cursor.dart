@@ -1,8 +1,12 @@
 import "dart:convert";
 
-/// Where a session page continues: the sort time and id of the previous
-/// page's last row. Clients hold it as an opaque string.
-class const SessionPageCursor({required final int sortAt, required final String sessionId}) {
+/// Where a session page continues: the pin group, sort time and id of the
+/// previous page's last row. Clients hold it as an opaque string.
+class const SessionPageCursor({
+  required final bool pinned,
+  required final int sortAt,
+  required final String sessionId,
+}) {
   /// The cursor [encoded] holds, or null when it is not one this bridge wrote.
   static SessionPageCursor? tryParse({required String encoded}) {
     final String decoded;
@@ -11,13 +15,21 @@ class const SessionPageCursor({required final int sortAt, required final String 
     } on FormatException {
       return null;
     }
-    final separator = decoded.indexOf(":");
-    if (separator < 0) return null;
-    final sortAt = int.tryParse(decoded.substring(0, separator));
-    final sessionId = decoded.substring(separator + 1);
-    if (sortAt == null || sessionId.isEmpty) return null;
-    return SessionPageCursor(sortAt: sortAt, sessionId: sessionId);
+    // The session id comes last, so it may itself hold the separator.
+    final pinnedEnd = decoded.indexOf(":");
+    if (pinnedEnd < 0) return null;
+    final sortAtEnd = decoded.indexOf(":", pinnedEnd + 1);
+    if (sortAtEnd < 0) return null;
+    final pinned = switch (decoded.substring(0, pinnedEnd)) {
+      "1" => true,
+      "0" => false,
+      _ => null,
+    };
+    final sortAt = int.tryParse(decoded.substring(pinnedEnd + 1, sortAtEnd));
+    final sessionId = decoded.substring(sortAtEnd + 1);
+    if (pinned == null || sortAt == null || sessionId.isEmpty) return null;
+    return SessionPageCursor(pinned: pinned, sortAt: sortAt, sessionId: sessionId);
   }
 
-  String encode() => base64Url.encode(utf8.encode("$sortAt:$sessionId"));
+  String encode() => base64Url.encode(utf8.encode("${pinned ? 1 : 0}:$sortAt:$sessionId"));
 }

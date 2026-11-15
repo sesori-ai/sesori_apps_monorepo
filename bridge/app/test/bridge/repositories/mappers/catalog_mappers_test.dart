@@ -104,6 +104,7 @@ void main() {
       title: null,
       catalogTitle: "Observed title",
       approvalOverride: null,
+      pinned: false,
     );
 
     final session = mapper.map(row: row, unseen: true);
@@ -151,6 +152,7 @@ void main() {
       title: null,
       catalogTitle: null,
       approvalOverride: null,
+      pinned: false,
     );
 
     Session mapped(SessionDto row) => mapper.map(row: row, unseen: false);
@@ -195,6 +197,7 @@ void main() {
       title: "Override",
       catalogTitle: "Observed",
       approvalOverride: null,
+      pinned: false,
     );
 
     final stored = row.toStoredSession();

@@ -196,9 +196,11 @@ class SessionRepository({
   /// One page of root sessions across the visible projects, or only
   /// [projectId] when it is visible, with the counts behind each chip. Every
   /// word of [query] must occur in a session's title or its project's own
-  /// name; Running sessions come from the plugins' live activity.
+  /// name; Running sessions come from the plugins' live activity. With
+  /// [pinnedFirst], an active page lists pinned sessions first.
   Future<SessionPage> getSessionPage({
     required SessionPageMode mode,
+    required bool pinnedFirst,
     required String? projectId,
     required String? query,
     required SessionPageFilter filter,
@@ -227,6 +229,7 @@ class SessionRepository({
     ];
     final page = await _sessionDao.getSessionPage(
       mode: mode,
+      pinnedFirst: pinnedFirst,
       projectIds: [for (final project in projects) project.id],
       words: [
         for (final word in query == null ? const <String>[] : searchWords(query: query))
@@ -244,13 +247,17 @@ class SessionRepository({
       ],
       filter: filter,
       runningIds: runningIds,
-      after: cursor == null ? null : (sortAt: cursor.sortAt, sessionId: cursor.sessionId),
+      after: cursor == null ? null : (pinned: cursor.pinned, sortAt: cursor.sortAt, sessionId: cursor.sessionId),
       limit: limit,
     );
     return (
       items: _mapCatalogSessions(rows: page.rows),
       nextCursor: switch (page.nextKey) {
-        (:final sortAt, :final sessionId) => SessionPageCursor(sortAt: sortAt, sessionId: sessionId),
+        (:final pinned, :final sortAt, :final sessionId) => SessionPageCursor(
+          pinned: pinned,
+          sortAt: sortAt,
+          sessionId: sessionId,
+        ),
         null => null,
       },
       counts: SessionPageCounts(all: page.counts.all, running: page.counts.running, unread: page.counts.unread),
@@ -681,6 +688,14 @@ class SessionRepository({
     required SessionApprovalMode? approvalOverride,
   }) async {
     final stored = await _sessionDao.setApprovalOverride(sessionId: sessionId, approvalOverride: approvalOverride);
+    return stored ? await getCatalogSession(sessionId: sessionId) : null;
+  }
+
+  /// Pins or unpins the session and returns the updated catalog session, or
+  /// null when no row was written: the session is not stored, or a pin
+  /// targeted a child or an archived session.
+  Future<Session?> setPinned({required String sessionId, required bool pinned}) async {
+    final stored = await _sessionDao.setPinned(sessionId: sessionId, pinned: pinned);
     return stored ? await getCatalogSession(sessionId: sessionId) : null;
   }
 

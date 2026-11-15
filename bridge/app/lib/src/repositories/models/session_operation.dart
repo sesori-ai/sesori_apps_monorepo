@@ -32,6 +32,7 @@ enum SessionOperation() {
   insertObservedChild,
   setAutoContinuation,
   setApprovalOverride,
+  setPinned,
   observeQuotaInterruption,
   cancelQuotaContinuation,
   continueAfterQuota,

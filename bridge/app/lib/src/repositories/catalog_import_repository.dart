@@ -973,6 +973,7 @@ class CatalogImportRepository({
       title: existing?.title,
       catalogTitle: _usefulText(session.title) ?? existing?.catalogTitle,
       approvalOverride: existing?.approvalOverride,
+      pinned: existing?.pinned ?? false,
     );
   }
 

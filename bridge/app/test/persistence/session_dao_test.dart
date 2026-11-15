@@ -357,6 +357,71 @@ void main() {
       expect(result.archivedAt, equals(1234567890));
     });
 
+    group("pins", () {
+      Future<void> insertRow({required String id, String? parentId, int? archivedAt, bool pinned = false}) {
+        return db
+            .into(db.sessionTable)
+            .insert(
+              SessionTableCompanion.insert(
+                sessionId: id,
+                backendSessionId: "backend-$id",
+                projectId: "proj-1",
+                parentSessionId: Value(parentId),
+                directory: "/proj-1",
+                isDedicated: false,
+                archivedAt: Value(archivedAt),
+                createdAt: 1,
+                updatedAt: 2,
+                projectionUpdatedAt: 3,
+                pluginId: "opencode",
+                pinned: Value(pinned),
+              ),
+            );
+      }
+
+      Future<bool?> pinnedOf(String id) async => (await dao.getSession(sessionId: id))?.pinned;
+
+      test("setPinned pins an unarchived root without touching its times", () async {
+        await insertRow(id: "root");
+
+        expect(await dao.setPinned(sessionId: "root", pinned: true), isTrue);
+
+        final row = await dao.getSession(sessionId: "root") ?? fail("session root is not stored");
+        expect(row.pinned, isTrue);
+        expect((row.updatedAt, row.projectionUpdatedAt), (2, 3));
+      });
+
+      test("setPinned refuses to pin a child, an archived or a missing session", () async {
+        await insertRow(id: "root");
+        await insertRow(id: "child", parentId: "root");
+        await insertRow(id: "archived", archivedAt: 5);
+
+        expect(await dao.setPinned(sessionId: "child", pinned: true), isFalse);
+        expect(await dao.setPinned(sessionId: "archived", pinned: true), isFalse);
+        expect(await dao.setPinned(sessionId: "missing", pinned: true), isFalse);
+        expect((await pinnedOf("child"), await pinnedOf("archived")), (false, false));
+      });
+
+      test("setPinned unpins any stored session", () async {
+        await insertRow(id: "root");
+        await insertRow(id: "child", parentId: "root", pinned: true);
+        await insertRow(id: "archived", archivedAt: 5, pinned: true);
+
+        expect(await dao.setPinned(sessionId: "child", pinned: false), isTrue);
+        expect(await dao.setPinned(sessionId: "archived", pinned: false), isTrue);
+        expect(await dao.setPinned(sessionId: "missing", pinned: false), isFalse);
+        expect((await pinnedOf("child"), await pinnedOf("archived")), (false, false));
+      });
+
+      test("setArchived drops the pin", () async {
+        await insertRow(id: "root", pinned: true);
+
+        await dao.setArchived(sessionId: "root", archivedAt: 10, updatedAt: 10, projectionUpdatedAt: 10);
+
+        expect(await pinnedOf("root"), isFalse);
+      });
+    });
+
     test("getSessionsByIds returns expected sessions", () async {
       await dao.insertSession(
         fastMode: false,

@@ -45,7 +45,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -351,6 +351,10 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // Projects are read by id, visibility and recency only, so no query
         // reads the path index any more.
         await customStatement("DROP INDEX idx_projects_path");
+      },
+      from23To24: (m, schema) async {
+        // No session was pinned before v24, so false is the honest backfill.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.pinned);
       },
     ),
     beforeOpen: (details) async {

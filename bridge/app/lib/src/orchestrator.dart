@@ -161,6 +161,7 @@ import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
 import "routing/set_session_auto_continuation_handler.dart";
+import "routing/set_session_pinned_handler.dart";
 import "routing/start_catalog_import_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
@@ -717,6 +718,7 @@ class Orchestrator({
         RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
         SetSessionAutoContinuationHandler(service: sessionContinuationService),
         SetSessionApprovalOverrideHandler(yoloSettingsService: yoloSettingsService, sessionViews: sessionViews),
+        SetSessionPinnedHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
         MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
         UpdateSessionArchiveStatusHandler(
           sessionViews: sessionViews,
@@ -857,7 +859,8 @@ class Orchestrator({
       event: switch (mutation) {
         SessionTitleUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
         SessionContinuationUpdated() ||
-        SessionApprovalOverrideUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
+        SessionApprovalOverrideUpdated() ||
+        SessionPinnedUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         SessionDeleted() => BridgeSseSessionDeleted(info: session.toJson()),
         // A backend may keep reporting an archived session running or waiting,
         // so rebuild the summary, which drops archived sessions, at once.

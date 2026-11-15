@@ -84,6 +84,8 @@ entirely along with its transcript and its dedicated worktree.
   clears them from the session row and omits them from the archive snapshot;
   deletion removes them with the row. The separate last-successful New Session
   preference is plugin-scoped and survives retiring any individual session.
+- Archiving drops the session's pin on the bridge, so no archived session is
+  pinned.
 - Once deletion cleanup starts, the bridge suppresses session-created and
   session-updated events for the named session and its persisted descendants.
   Suppression remains for the bridge lifetime after success and is removed if
