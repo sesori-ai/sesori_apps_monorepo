@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
+import "../foundation/models/side_question_availability.dart";
 import "../logging/logging.dart";
 import "../repositories/models/session_messages_through_result.dart";
 import "../repositories/models/session_options_repository_result.dart";
@@ -258,6 +259,7 @@ class SessionDetailLoadService({
           supportsFileUploads: pluginCapabilities.supportsFileUploads,
           offersSessionMcp: pluginCapabilities.offersSessionMcp,
           namesCommandInvocations: pluginCapabilities.namesCommandInvocations,
+          sideQuestions: pluginCapabilities.sideQuestions,
           messages: messagesPage.messages,
           olderMessagesCursor: messagesPage.nextCursor,
           userMessagesBefore: messagesPage.userMessagesBefore,
@@ -412,11 +414,12 @@ class SessionDetailLoadService({
     supportsFileUploads: null,
     offersSessionMcp: true,
     namesCommandInvocations: false,
+    sideQuestions: SideQuestionAvailability.unresolved,
   );
 
-  /// Reads the prompt and MCP capabilities from one plugin listing. An
-  /// archived session cannot prompt, so its prompt capabilities stay
-  /// unresolved.
+  /// Reads the prompt, MCP and side-question capabilities from one plugin
+  /// listing. An archived session cannot prompt, so its prompt capabilities
+  /// stay unresolved; its side chats stay readable, so side questions don't.
   Future<_PluginCapabilities> _loadPluginCapabilities({required String? pluginId, required bool isArchived}) async {
     if (pluginId == null) return _unresolvedPluginCapabilities;
 
@@ -436,6 +439,14 @@ class SessionDetailLoadService({
               null => true,
             },
             namesCommandInvocations: plugin?.namesCommandInvocations ?? false,
+            sideQuestions: switch (plugin) {
+              // An older bridge has no side-question routes, whatever its
+              // harnesses could answer.
+              _ when !data.supportsSideQuestions => SideQuestionAvailability.bridgeUpdateRequired,
+              null => SideQuestionAvailability.unresolved,
+              PluginMetadata(supportsSideQuestions: false) => SideQuestionAvailability.harnessUnsupported,
+              PluginMetadata(supportsSideQuestions: true) => SideQuestionAvailability.available,
+            },
           );
         case ErrorResponse(:final error):
           logw("Failed to load plugin capabilities for plugin $pluginId", error);
@@ -471,6 +482,9 @@ class const SessionDetailSnapshot({
   /// user turn ran, so a command not confirmed yet can show its card. False
   /// when plugin metadata could not be resolved.
   required final bool namesCommandInvocations,
+
+  /// Whether the session can ask side questions, and if not, why.
+  required final SideQuestionAvailability sideQuestions,
   required final List<MessageWithParts> messages,
 
   /// Cursor for the page before [messages], or null when the transcript is
@@ -523,6 +537,7 @@ typedef _PluginCapabilities = ({
   bool? supportsFileUploads,
   bool offersSessionMcp,
   bool namesCommandInvocations,
+  SideQuestionAvailability sideQuestions,
 });
 
 typedef _SessionDetailOptions = ({

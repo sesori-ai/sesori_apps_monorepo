@@ -36,6 +36,7 @@ const _loaded = SessionDetailState.loaded(
   supportsPromptAttachments: false,
   supportsFileUploads: false,
   offersSessionMcp: true,
+  sideQuestions: SideQuestionAvailability.unresolved,
   assistantAgentModel: null,
   children: [],
   childStatuses: {},

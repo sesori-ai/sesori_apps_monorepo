@@ -335,6 +335,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: const [
             PluginMetadata(
               id: "plugin-1",
@@ -567,6 +568,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: true,
+          supportsSideQuestions: false,
           plugins: const [
             PluginMetadata(
               id: "plugin-1",
@@ -734,6 +736,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: false,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: const [
             PluginMetadata(
               id: "plugin-1",
@@ -978,6 +981,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: const [
             PluginMetadata(
               id: "failed-id",
@@ -1056,6 +1060,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: const [
             PluginMetadata(
               id: "other-id",
@@ -1122,6 +1127,7 @@ void main() {
           bridgeId: "bridge-1",
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: [
             ready,
             PluginMetadata(
@@ -1305,6 +1311,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: [
             for (var index = 0; index < 8; index++)
               PluginMetadata(
@@ -1418,6 +1425,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: const [toolA, toolB],
         ),
       ),
@@ -1515,6 +1523,7 @@ void main() {
               bridgeId: null,
               supportsSessionOptions: true,
               supportsFileUploads: false,
+              supportsSideQuestions: false,
               plugins: const [toolA, toolB],
             ),
           ),
@@ -1560,6 +1569,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: const [toolA, toolB],
         ),
       ),
@@ -1590,6 +1600,7 @@ void main() {
             bridgeId: null,
             supportsSessionOptions: true,
             supportsFileUploads: false,
+            supportsSideQuestions: false,
             plugins: const [
               PluginMetadata(
                 id: "plugin-1",
@@ -1704,6 +1715,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: const [],
         ),
       ),
@@ -1733,6 +1745,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: discoveryCalls == 1
               ? const []
               : const [
@@ -1789,6 +1802,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: discoveryCalls == 1
               ? const []
               : const [
@@ -1858,6 +1872,7 @@ void main() {
         bridgeId: "bridge-1",
         supportsSessionOptions: true,
         supportsFileUploads: false,
+        supportsSideQuestions: false,
         plugins: const [],
       ),
     );
@@ -1905,6 +1920,7 @@ void main() {
         bridgeId: "bridge-1",
         supportsSessionOptions: true,
         supportsFileUploads: false,
+        supportsSideQuestions: false,
         plugins: const [
           PluginMetadata(
             id: "plugin-1",
@@ -1990,6 +2006,7 @@ void main() {
         bridgeId: "bridge-1",
         supportsSessionOptions: true,
         supportsFileUploads: false,
+        supportsSideQuestions: false,
         plugins: const [
           PluginMetadata(
             id: "plugin-1",
@@ -2093,6 +2110,7 @@ void main() {
         bridgeId: "bridge-1",
         supportsSessionOptions: true,
         supportsFileUploads: false,
+        supportsSideQuestions: false,
         plugins: const [
           PluginMetadata(
             id: "plugin-1",
@@ -2286,6 +2304,7 @@ void main() {
         bridgeId: "bridge-1",
         supportsSessionOptions: true,
         supportsFileUploads: false,
+        supportsSideQuestions: false,
         plugins: const [
           PluginMetadata(
             id: "plugin-1",
@@ -2565,6 +2584,7 @@ void main() {
         bridgeId: null,
         supportsSessionOptions: true,
         supportsFileUploads: false,
+        supportsSideQuestions: false,
         plugins: const [],
       ),
     );
@@ -2659,6 +2679,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: const [],
         ),
       ),
@@ -3444,6 +3465,7 @@ void main() {
           bridgeId: null,
           supportsSessionOptions: true,
           supportsFileUploads: false,
+          supportsSideQuestions: false,
           plugins: const [
             PluginMetadata(
               id: "plugin-1",
@@ -4081,6 +4103,7 @@ void main() {
               bridgeId: null,
               supportsSessionOptions: true,
               supportsFileUploads: false,
+              supportsSideQuestions: false,
               plugins: const [],
             ),
           ),
