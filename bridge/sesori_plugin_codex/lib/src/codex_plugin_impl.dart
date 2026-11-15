@@ -1111,13 +1111,17 @@ class CodexPlugin._({
     required ({String providerID, String modelID})? model,
   }) async {
     await _connectedClient();
-    final evidenceRevision = _turnEvidenceRevisionByThread[sessionId] ?? 0;
-    final resumed = await _sessionService.revertBeforeMessage(
+    final turnId = await _sessionService.rewindTurnId(
       threadId: sessionId,
       beforeMessageId: beforeMessageId,
       parts: parts,
     );
+    // Applied before the revert, which may still refuse the edit.
+    final evidenceRevision = _turnEvidenceRevisionByThread[sessionId] ?? 0;
+    final resumed = await _sessionService.resumeThreadIfNeeded(threadId: sessionId, force: false);
     _applyResumedThread(threadId: sessionId, resumed: resumed, evidenceRevision: evidenceRevision);
+    final forcedResume = await _sessionService.revertThread(threadId: sessionId, beforeTurnId: turnId);
+    _applyResumedThread(threadId: sessionId, resumed: forcedResume, evidenceRevision: evidenceRevision);
     await _startTurn(
       threadId: sessionId,
       promptId: promptId,

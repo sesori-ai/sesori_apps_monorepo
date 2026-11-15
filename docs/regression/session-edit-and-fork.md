@@ -44,7 +44,9 @@ Clients offer no Edit yet.
   branch-point, stale-options or refusal rejection), the bridge reads the
   harness transcript once and removes, by exact id, the messages it read
   before the call that the harness no longer has, then returns the failure.
-  A failure that changed nothing removes nothing.
+  A failure that changed nothing, or a harness read that comes back empty,
+  removes nothing.
+- An edit with no parts is rejected with 400 before anything changes.
 
 ### Codex edit
 
@@ -53,7 +55,7 @@ Clients offer no Edit yet.
   `thread/revert {beforeTurnId}`, then starts the edited turn with the same
   prompt id. History follows the reverted rollout as soon as the edit is
   accepted.
-- Refused with a plain reason before the revert: a runtime without
+- Refused with a plain reason without changing the conversation: a runtime without
   `thread/revert` (for example 0.139.0), a legacy non-paginated thread, an
   ephemeral thread, an id the rollout does not have, a follow-up steered into
   a running turn, and an attachment or option the turn cannot take.

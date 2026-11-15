@@ -318,7 +318,8 @@ refused with a reason.
 
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
-| Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start` (verified 0.167.2). Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ⬜ `thread/fork {lastTurnId}` |
+| Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ⬜ `thread/fork {lastTurnId}` |
+| Every other harness | ⬜ Not implemented yet; the bridge refuses the edit | ⬜ Not implemented yet |
 
 ## Explicit shell-command presentation
 

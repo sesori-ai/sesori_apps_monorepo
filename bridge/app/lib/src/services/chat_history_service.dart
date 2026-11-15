@@ -519,6 +519,10 @@ class ChatHistoryService({
     required List<String> messageIds,
   }) async {
     final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+    // A rewind always keeps the first turn, so an empty transcript is a read
+    // that failed (Codex answers [] when it can't read the rollout), not a
+    // harness that dropped everything.
+    if (snapshot.messages.isEmpty) return const [];
     final kept = {for (final message in snapshot.messages) message.info.id};
     return [
       for (final id in messageIds)
