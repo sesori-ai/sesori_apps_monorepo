@@ -364,22 +364,20 @@ void main() {
     });
 
     test("cancels the ask when its own timeout passes", () async {
-      // The generic control timeout is shorter, so passing proves the ask uses
-      // its own.
-      final connected = await connectTestClient(controlTimeout: const Duration(milliseconds: 10));
+      // The generic control timeout never fires within the test, so a timeout
+      // proves the ask uses its own.
+      final connected = await connectTestClient(controlTimeout: const Duration(hours: 1));
       addTearDown(connected.client.dispose);
 
       final pending = connected.client.sendSideQuestion(
         question: "Why?",
         history: const [],
-        timeout: const Duration(milliseconds: 80),
+        timeout: const Duration(milliseconds: 10),
       );
-      final expectation = expectLater(pending, throwsA(isA<TimeoutException>()));
       final requestId = connected.fake.written.last.field<String>("request_id");
-      await Future<void>.delayed(const Duration(milliseconds: 40));
       expect(connected.fake.written.where((frame) => frame["type"] == "control_cancel_request"), isEmpty);
 
-      await expectation;
+      await expectLater(pending, throwsA(isA<TimeoutException>()));
       expect(connected.fake.written.last, {"type": "control_cancel_request", "request_id": requestId});
 
       // The CLI's reply to the cancel is for a request nobody waits on.
