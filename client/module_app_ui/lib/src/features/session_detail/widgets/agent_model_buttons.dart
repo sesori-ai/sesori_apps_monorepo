@@ -3,13 +3,19 @@ import "dart:async";
 import "package:flutter/services.dart" show HapticFeedback;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart"
-    show FastModeControl, FastModeToggleDecision, ModelOrbits, ModelPickerSection, ModelPickerSectionBuilder;
+    show
+        EffortLevel,
+        FastModeControl,
+        FastModeToggleDecision,
+        ModelOrbits,
+        ModelPickerSection,
+        ModelPickerSectionBuilder;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "fast_mode_toggle.dart";
-import "model_effort/medallion_chip.dart";
+import "model_effort/model_effort_chip.dart";
 import "model_effort/orbits_picker.dart";
 import "model_picker.dart";
 
@@ -19,7 +25,7 @@ import "model_picker.dart";
 /// [ModelPicker] for models.
 ///
 /// On touch, a catalog the orbits picker can draw ([modelOrbits]) gets one
-/// [MedallionChip] in place of the model, variant and fast-mode pills. The chip
+/// [ModelEffortChip] in place of the model, variant and fast-mode pills. The chip
 /// leads the row; the agent pill and [trailing] chips sit at its end.
 ///
 /// The widget owns the menu contents, so it receives the selectable data and
@@ -129,6 +135,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
             child: lock(
               _OrbitsMenu(
                 surfaceStyle: widget.surfaceStyle,
+                readOnly: widget.readOnly,
                 orbits: orbits,
                 sections: _modelSections,
                 selected: selected,
@@ -266,7 +273,7 @@ Widget _pickerSlot({required bool compact, required Widget child}) {
 /// its label would show only a few characters.
 const double _minLabelledPickerWidth = 96;
 
-/// How wide a picker at the end of the medallion chip's row may hug its
+/// How wide a picker at the end of the model and effort chip's row may hug its
 /// label, so the chip keeps room for its model name.
 const double _endAlignedPickerMaxWidth = 140;
 
@@ -394,10 +401,11 @@ Widget _modelPicker({
   onClose: close,
 );
 
-/// The medallion chip and the orbits picker it opens, with the searchable
+/// The model and effort chip and the orbits picker it opens, with the searchable
 /// [ModelPicker] behind the picker's "All N models".
 class const _OrbitsMenu({
   required final PregoComposerSurfaceStyle surfaceStyle,
+  required final bool readOnly,
   required final ModelOrbits orbits,
   required final List<ModelPickerSection> sections,
   required final AgentModel? selected,
@@ -414,6 +422,7 @@ class const _OrbitsMenu({
       onClosed: null,
       triggerBuilder: (context, toggle) => _OrbitsChip(
         surfaceStyle: surfaceStyle,
+        readOnly: readOnly,
         orbits: orbits,
         onModelSelected: onModelSelected,
         fastModeControl: fastModeControl,
@@ -442,6 +451,9 @@ class const _OrbitsMenu({
 /// picker open for a second tap.
 class const _OrbitsChip({
   required final PregoComposerSurfaceStyle surfaceStyle,
+
+  /// Shows the chip without its caret, as the read-only pills do.
+  required final bool readOnly,
   required final ModelOrbits orbits,
   required final void Function({required String providerID, required String modelID, required SessionVariant? variant})
   onModelSelected,
@@ -507,7 +519,11 @@ class _OrbitsChipState() extends State<_OrbitsChip> {
     final activate = CallbackAction<Intent>(onInvoke: (_) => _open(handoff: null));
     return Semantics(
       button: true,
-      label: level == null ? orbits.current.name : loc.orbitsPickerLevel(orbits.current.name, level.wireId),
+      label: switch (level) {
+        null => orbits.current.name,
+        EffortLevel.off => loc.orbitsPickerLevelOff(orbits.current.name),
+        final level => loc.orbitsPickerLevel(orbits.current.name, level.wireId),
+      },
       onTap: () => _open(handoff: null),
       excludeSemantics: true,
       // Part of the composer: pressing it leaves the prompt field focused, so
@@ -523,7 +539,7 @@ class _OrbitsChipState() extends State<_OrbitsChip> {
             actions: {ActivateIntent: activate, ButtonActivateIntent: activate},
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(MedallionChip.height / 2),
+                borderRadius: BorderRadius.circular(ModelEffortChip.height / 2),
                 boxShadow: _focused
                     ? [
                         BoxShadow(color: colors.focusRing, spreadRadius: 4),
@@ -531,9 +547,10 @@ class _OrbitsChipState() extends State<_OrbitsChip> {
                       ]
                     : null,
               ),
-              child: MedallionChip(
+              child: ModelEffortChip(
                 orbits: orbits,
                 fast: widget.fastModeControl == FastModeControl.on,
+                showsCaret: !widget.readOnly,
                 surfaceStyle: widget.surfaceStyle,
               ),
             ),

@@ -1,12 +1,11 @@
 import "dart:math" as math;
 
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show EffortLevel, ModelOrbits, OrbitRing;
+import "package:sesori_dart_core/sesori_dart_core.dart" show ModelOrbits, OrbitRing;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "orbit_geometry.dart";
-import "orbit_metal.dart";
 
 /// How long the orbits take to arrive and to leave.
 abstract final class OrbitsMotion() {
@@ -49,17 +48,25 @@ abstract final class OrbitsMotion() {
   }
 }
 
-/// The neutral colours of the picker, from the Prego theme. The metal comes
-/// from [OrbitMetal].
+/// The neutral colours of the picker, from the Prego theme.
 final class OrbitPalette({required PregoColors colors}) {
+  /// The colour behind the rings, also the gap around the current choice.
+  final Color background = colors.bgSurface2;
+
   /// Strong enough that the transcript and composer behind read as
   /// background and never compete with ring names and level words. Light
   /// text on dark shows through a scrim more, so dark takes a little more.
   final Color scrim = colors.bgSurface2.withValues(alpha: colors.brightness == Brightness.dark ? .97 : .96);
+
+  /// Full contrast: ring names, and the ring marking the current choice.
   final Color text = colors.textPrimary;
   final Color quietText = colors.textQuaternary;
   final Color line = colors.fgQuaternary;
   final Color track = colors.bgQuaternary;
+
+  /// The current ring's line, the trail up to the current level and the
+  /// ripple: a step stronger than the track.
+  final Color trail = colors.brightness == Brightness.dark ? colors.fgSecondary : colors.fgQuaternary;
 
   /// The fill of the fast toggle and the thin highlight along each track.
   final Color surface = colors.alphaWhite100;
@@ -203,7 +210,6 @@ final class OrbitsPainter({
   required final OrbitGeometry geometry,
   required final OrbitLabels labels,
   required final OrbitPalette palette,
-  required final OrbitMetal metal,
 
   /// The chip the picker opened from, left clear of the scrim.
   required final Rect anchorRect,
@@ -223,6 +229,12 @@ final class OrbitsPainter({
 
   static const double _dotRadius = 5.5;
   static const double _hotGrowth = .4;
+
+  /// The current choice: an ink ring with a dot in it, in a thin gap.
+  static const double _markerRadius = 7.5;
+  static const double _markerStroke = 1.8;
+  static const double _markerDotRadius = 3.4;
+  static const double _markerGap = 2.5;
 
   ModelOrbits get _orbits => geometry.orbits;
   Offset get _origin => geometry.origin;
@@ -256,7 +268,7 @@ final class OrbitsPainter({
     final scrim = Path()
       ..fillType = PathFillType.evenOdd
       ..addRect(Offset.zero & size)
-      ..addRRect(RRect.fromRectAndRadius(anchorRect, const Radius.circular(PregoRadius.md)));
+      ..addRRect(RRect.fromRectAndRadius(anchorRect, Radius.circular(anchorRect.height / 2)));
     canvas.drawPath(scrim, Paint()..color = palette.scrim.withValues(alpha: palette.scrim.a * opacity));
   }
 
@@ -327,7 +339,7 @@ final class OrbitsPainter({
       to: OrbitGeometry.ringLineToAngle,
       paint: isCurrent
           ? (Paint()
-              ..shader = metal.rimShader()
+              ..color = palette.trail
               ..style = PaintingStyle.stroke
               ..strokeWidth = 1.4)
           : (Paint()
@@ -345,7 +357,7 @@ final class OrbitsPainter({
       final center = geometry.levellessDotCenter(ringIndex: ringIndex);
       final target = OrbitNameTarget(ringIndex: ringIndex);
       if (isCurrent) {
-        _paintMedallion(canvas: canvas, ring: ring, center: center, radius: 11, target: target, level: null);
+        _paintMarker(canvas: canvas, center: center, target: target);
       } else {
         _paintHollowDot(canvas: canvas, center: center, target: target);
       }
@@ -378,14 +390,14 @@ final class OrbitsPainter({
     );
     final currentLevel = isCurrent ? ring.levels.indexWhere((level) => level.level == _orbits.currentLevel) : -1;
     if (currentLevel >= 0) {
-      // The polished trail from the weakest level up to the current one.
+      // The trail from the weakest level up to the current one.
       _arc(
         canvas: canvas,
         radius: radius,
         from: first + 4,
         to: geometry.levelAngle(ringIndex: ringIndex, levelIndex: currentLevel),
         paint: Paint()
-          ..shader = metal.rimShader()
+          ..color = palette.trail
           ..style = PaintingStyle.stroke
           ..strokeWidth = 6
           ..strokeCap = StrokeCap.round,
@@ -395,14 +407,7 @@ final class OrbitsPainter({
       final center = geometry.dotCenter(ringIndex: ringIndex, levelIndex: levelIndex);
       final target = OrbitLevelTarget(ringIndex: ringIndex, levelIndex: levelIndex);
       if (levelIndex == currentLevel) {
-        _paintMedallion(
-          canvas: canvas,
-          ring: ring,
-          center: center,
-          radius: 12.5,
-          target: target,
-          level: ring.levels[levelIndex].level,
-        );
+        _paintMarker(canvas: canvas, center: center, target: target);
       } else {
         _paintHollowDot(canvas: canvas, center: center, target: target);
       }
@@ -431,33 +436,23 @@ final class OrbitsPainter({
       );
   }
 
-  void _paintMedallion({
-    required Canvas canvas,
-    required OrbitRing ring,
-    required Offset center,
-    required double radius,
-    required OrbitTarget target,
-    required EffortLevel? level,
-  }) {
-    // The current choice grows less than a hollow dot: it is already large.
-    final grown = radius * (1 + _hotGrowth * .4 * _growth(target));
-    canvas.drawCircle(
-      center,
-      grown + 2.5,
-      Paint()
-        ..color = metal.m1.withValues(alpha: .7)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.2),
-    );
-    paintMedallion(
-      canvas: canvas,
-      center: center,
-      radius: grown,
-      metal: metal,
-      finish: MedallionFinish.polished,
-      bladeCount: ring.bladeCount,
-      litBlades: ring.litBlades(level: level),
-      monogram: ring.name.characters.first,
-    );
+  /// The current choice, like a selected radio button: an ink ring with an
+  /// ink dot in it, set apart from the trail by a gap in the background.
+  void _paintMarker({required Canvas canvas, required Offset center, required OrbitTarget target}) {
+    // It grows less than a hollow dot under the finger: it is already large.
+    final scale = 1 + _hotGrowth * .4 * _growth(target);
+    final ink = palette.text;
+    canvas
+      ..drawCircle(center, (_markerRadius + _markerGap) * scale, Paint()..color = palette.background)
+      ..drawCircle(
+        center,
+        (_markerRadius - _markerStroke / 2) * scale,
+        Paint()
+          ..color = ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _markerStroke * scale,
+      )
+      ..drawCircle(center, _markerDotRadius * scale, Paint()..color = ink);
   }
 
   void _paintAllModels(Canvas canvas) {
@@ -483,7 +478,7 @@ final class OrbitsPainter({
     text.paint(canvas, pill.center - Offset(text.width / 2, text.height / 2));
   }
 
-  /// One ripple leaves the medallion as the rings arrive.
+  /// One ripple leaves the chip as the rings arrive.
   void _paintRipple(Canvas canvas) {
     if (reducedMotion || _closing) return;
     final progress = (_openMs / OrbitsMotion.open.inMilliseconds).clamp(0.0, 1.0);
@@ -496,7 +491,7 @@ final class OrbitsPainter({
         _origin,
         330 * geometry.scale * (.12 + .92 * spread),
         Paint()
-          ..shader = metal.rimShader()
+          ..color = palette.trail
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.4,
       )
@@ -525,7 +520,7 @@ final class OrbitsPainter({
   bool shouldRepaint(OrbitsPainter oldDelegate) =>
       oldDelegate.geometry != geometry ||
       oldDelegate.labels != labels ||
-      oldDelegate.metal != metal ||
+      oldDelegate.palette != palette ||
       oldDelegate.anchorRect != anchorRect ||
       oldDelegate.reducedMotion != reducedMotion ||
       oldDelegate.hot != hot ||
