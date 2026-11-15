@@ -58,6 +58,9 @@ class FakeClaudeProcess({bool stdinCloseCompletes = true}) implements ClaudeProc
 
   void failNextStdinWrite() => _stdin.failNextAdd = true;
 
+  /// Calls [callback] with each frame as the client writes it.
+  void onWrite(void Function(Map<String, Object?> frame) callback) => _stdin.onFrame = callback;
+
   void completeStdinClose() => _stdin.completeClose();
 
   /// Pushes one stdout frame as an ndjson line.
@@ -122,6 +125,10 @@ class CapturingIOSink({bool closeCompletes = true}) implements IOSink {
   bool closed = false;
   bool failNextAdd = false;
 
+  /// Called with each frame as the transport writes it, so a test can answer
+  /// without waiting a timer turn.
+  void Function(Map<String, Object?> frame)? onFrame;
+
   @override
   Encoding encoding = utf8;
 
@@ -139,7 +146,10 @@ class CapturingIOSink({bool closeCompletes = true}) implements IOSink {
       _buffer.removeRange(0, index + 1);
       if (line.trim().isEmpty) continue;
       final Object? decoded = jsonDecode(line);
-      if (decoded case final Map<String, Object?> frame) frames.add(frame);
+      if (decoded case final Map<String, Object?> frame) {
+        frames.add(frame);
+        onFrame?.call(frame);
+      }
     }
   }
 
