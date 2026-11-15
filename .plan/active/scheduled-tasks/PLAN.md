@@ -231,8 +231,8 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   `unknown` fallback; `reason` is a closed enum (`projectMissing`,
   `harnessUnavailable`, `modelUnavailable`, `startFailed`).
 - Every wire enum (`missedRunPolicy`, `approvalMode`, failure `reason`, mark
-  `kind`) has an `unknownEnumValue` fallback, so a newer bridge never breaks an
-  older app's list or history.
+  `kind`, `ScheduledTaskErrorCode`) has an `unknownEnumValue` fallback, so a
+  newer bridge never breaks an older app's list, history or error handling.
 - Every instant the app shows (`nextRunAt`, run `scheduledFor`) travels as UTC
   plus the task zone's UTC offset at that instant, as one
   `ScheduledTaskInstant(at, offsetMinutes)` value so neither half can be
@@ -385,7 +385,7 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   first occurrence after now, so a week away yields one run or one missed
   row, never a pile-up. One-off tasks always run when back: the missed-run line
   is hidden for Once, because "wait for the next time" has no next time.
-- Overlap (D8): a run is skipped with `previousRunActive` when the session of
+- Overlap (D8): a run is recorded as `skipped` when the session of
   the latest **started** run (not the latest history row: `skipped`, `missed`
   and `failed` rows have no session and must not hide an earlier active one)
   is not `quiet` (busy or retry, a pending question, permission or
@@ -531,9 +531,10 @@ be its latest started run and S its session (not archived).
      plugin-interface query for a session's prompt-cache life (nullable =
      unknown). Each plugin derives it from what it already knows (evidence in
      P11): Claude reads the `promptCacheTtlSeconds` it already sets from the
-     init handshake's account since #2612 (1 hour on a subscription, 5 minutes
-     for an API provider without one, 1 hour when no route is known) and does
-     not recompute it, Codex 30 minutes, OpenCode by provider (Anthropic 5
+     init handshake's account since #2612 (a subscription wins over an API
+     provider and gives 1 hour; an API provider without a subscription gives 5
+     minutes; neither gives 1 hour) and does not recompute it, so that
+     precedence has one owner, Codex 30 minutes, OpenCode by provider (Anthropic 5
      minutes), Pi 5 minutes, Hermes 5 minutes, Cursor by model (Anthropic 5
      minutes), Oh My Pi per seat. Copilot, Antigravity (Gemini) and Grok report
      unknown. The margin and cap live only in `ScheduledTaskCompactionService`
@@ -552,7 +553,7 @@ be its latest started run and S its session (not archived).
 3. **Compaction still running when a run is due.** S busy with
    `R.compactRequestedAt` set: the run waits (stays due) up to 10 minutes
    after `compactRequestedAt`, then fires when idle, or records
-   `skipped(previousRunActive)` and advances if still busy. A run delayed past
+   `skipped` and advances if still busy. A run delayed past
    the grace by compaction is marked late; accepted.
 4. **Edits mid-window.** Auto-compact turned off, switched to new session,
    project/harness changed (target cleared), task paused or deleted: the next
