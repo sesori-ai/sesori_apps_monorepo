@@ -40,6 +40,7 @@ import "../../services/session_selection_calculator.dart";
 import "../session_detail/prompt_turn_shape.dart";
 import "../session_detail/prompt_turn_shape_calculator.dart";
 import "new_session_composer_presentation.dart";
+import "new_session_purpose.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit({
@@ -54,13 +55,14 @@ class NewSessionCubit({
   required final DedicatedWorktreePreferenceStore _dedicatedWorktreePreferenceStore,
   required final PluginManagementService _pluginManagementService,
 
-  /// The project the composer opens in; [selectProject] moves it.
-  required NewSessionProject project,
+  /// What the composer is for, and the project it opens in; [selectProject]
+  /// moves it.
+  required final NewSessionPurpose _purpose,
 }) extends Cubit<NewSessionState> {
   this
     : super(
         NewSessionState.composing(
-          project: project,
+          project: _purpose.project,
           config: NewSessionComposeConfig(
             availablePlugins: null,
             selectedPlugin: null,
@@ -83,11 +85,34 @@ class NewSessionCubit({
     unawaited(_loadProjectCapability());
   }
 
+  /// The draft identity of a task's composer, whose draft is never stored.
+  static const String taskDraftIdentity = "scheduled-task";
+
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
   static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
   static const PromptTurnShapeCalculator _promptTurnShapes = PromptTurnShapeCalculator();
 
-  ComposerDraft _composerDraft = _composerDraftRepository.readForNewSession();
+  /// Where the user's picks are remembered: the new-session screen's memory
+  /// when starting a session, and one of the task's own when editing a task.
+  late final NewSessionSelectionTracker _picks = switch (_purpose) {
+    NewSessionStartSession() => _selectionTracker,
+    NewSessionEditTask(initialSelection: TaskComposerSelection(harness: null)) => NewSessionSelectionTracker(),
+    NewSessionEditTask(initialSelection: TaskComposerSelection(harness: final harness?)) =>
+      NewSessionSelectionTracker.seeded(pluginId: harness.pluginId, selection: harness.picks),
+  };
+
+  /// A task's draft lives only here, so one task's unsaved text never shows
+  /// in another's composer or in the new-session one.
+  ComposerDraft _composerDraft = switch (_purpose) {
+    NewSessionStartSession() => _composerDraftRepository.readForNewSession(),
+    NewSessionEditTask(:final initialSelection) => ComposerDraft.typed(text: initialSelection.prompt),
+  };
+
+  /// A task's command, staged once the harness' commands first arrive.
+  String? _taskCommandToStage = switch (_purpose) {
+    NewSessionStartSession() => null,
+    NewSessionEditTask(:final initialSelection) => initialSelection.commandName,
+  };
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late final StreamSubscription<SseEvent> _pluginManagementSubscription;
   late final StreamSubscription<SessionLaunchOutcome> _launchOutcomeSubscription;
@@ -178,7 +203,7 @@ class NewSessionCubit({
       final response = await _newSessionPluginService.discover(
         // A composer opened for another project starts on the harness the user
         // picked in the previous one.
-        currentSelectedPluginId: beforeDiscovery?.plugin?.id ?? _selectionTracker.selectedPluginId,
+        currentSelectedPluginId: beforeDiscovery?.plugin?.id ?? _picks.selectedPluginId,
         currentSelectionBridgeId: beforeDiscovery?.backendScope.lastIdentifiedBridgeId,
       );
       if (!_canApplyLoad(generation: generation, pluginId: null)) return;
@@ -188,12 +213,17 @@ class NewSessionCubit({
           final scopeTransition =
               (beforeDiscovery?.backendScope ?? const NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null))
                   .transitionToDiscovered(bridgeId: data.bridgeId);
+          // Which computer answered is the app's to know, whichever composer
+          // asked; a task's own picks belong to its computer and stay put.
           _selectionTracker.applyBackendScopeTransition(transition: scopeTransition);
           final onScreenId = beforeDiscovery?.plugin?.id;
           final heldBackOnScreen = data.bridgeId == beforeDiscovery?.backendScope.lastIdentifiedBridgeId
               ? data.plugins.firstWhereOrNull((plugin) => plugin.id == onScreenId && plugin.failureBlock != null)
               : null;
-          final selectedPlugin = heldBackOnScreen ?? data.selected;
+          final selectedPlugin =
+              heldBackOnScreen ??
+              _taskHarnessOnFirstDiscovery(onScreen: beforeDiscovery?.plugin, plugins: data.plugins) ??
+              data.selected;
           final source = data.optionsSource;
           final retained =
               _canRetainOptions(
@@ -236,6 +266,23 @@ class NewSessionCubit({
       loge("New session: failed to discover plugins", error, stackTrace);
       _emitDiscoveryError(reason: RemoteFailureReason.unknown);
     }
+  }
+
+  /// The harness a task was saved with, for the discovery that opens its
+  /// editor. The remembered pick's computer says nothing of the task's, so it
+  /// is matched by id alone; held back, it stays so its notice shows instead
+  /// of the task quietly moving to another harness.
+  PluginMetadata? _taskHarnessOnFirstDiscovery({
+    required PluginMetadata? onScreen,
+    required List<PluginMetadata> plugins,
+  }) {
+    if (onScreen != null) return null;
+    return switch (_purpose) {
+      NewSessionEditTask(initialSelection: TaskComposerSelection(harness: final harness?)) => plugins.firstWhereOrNull(
+        (plugin) => plugin.id == harness.pluginId && plugin.isPickable,
+      ),
+      NewSessionEditTask() || NewSessionStartSession() => null,
+    };
   }
 
   /// Takes in a harness set up, enabled or turned off since discovery, in
@@ -322,7 +369,9 @@ class NewSessionCubit({
     final current = state;
     if (current is! NewSessionComposing) return;
     final phase = switch (current.phase) {
-      NewSessionPhaseIdle() || NewSessionPhaseDiscoveryError() => const NewSessionPhase.idle(),
+      NewSessionPhaseIdle() ||
+      NewSessionPhaseDiscoveryError() ||
+      NewSessionPhaseTaskSubmitted() => const NewSessionPhase.idle(),
       NewSessionPhaseRestoringSubmission() || NewSessionPhaseCreationError() => current.phase,
       NewSessionPhaseSending() => null,
     };
@@ -378,7 +427,9 @@ class NewSessionCubit({
     final current = state;
     if (current is! NewSessionComposing) return;
     final phase = switch (current.phase) {
-      NewSessionPhaseIdle() || NewSessionPhaseDiscoveryError() => NewSessionPhase.discoveryError(reason: reason),
+      NewSessionPhaseIdle() ||
+      NewSessionPhaseDiscoveryError() ||
+      NewSessionPhaseTaskSubmitted() => NewSessionPhase.discoveryError(reason: reason),
       NewSessionPhaseRestoringSubmission() || NewSessionPhaseCreationError() => current.phase,
       NewSessionPhaseSending() => null,
     };
@@ -544,7 +595,7 @@ class NewSessionCubit({
     final source = data.optionsState.source;
     if (selectedPlugin == null || !selectedPlugin.isPickable || source == null) return;
 
-    _selectionTracker.recordPlugin(pluginId: pluginId);
+    _picks.recordPlugin(pluginId: pluginId);
     final generation = ++_loadGeneration;
     // A harness held back after a refused request has no options to load: its
     // notice takes the composer's place until Check setup clears it.
@@ -707,7 +758,7 @@ class NewSessionCubit({
         pluginId: pluginId,
         source: source,
         mode: mode,
-        restoredSelection: _selectionTracker.read(pluginId: pluginId),
+        restoredSelection: _picks.read(pluginId: pluginId),
         previousOptions: previousOptions,
       );
     } on Object catch (error, stackTrace) {
@@ -788,7 +839,7 @@ class NewSessionCubit({
       NewSessionOptionsRefreshFailureUnavailable() => const NewSessionOptionsRefreshFailureUnavailableState(),
     };
     _emitStateUpdate(
-      options: options,
+      options: _withTaskCommandStaged(options: options),
       backendScope: null,
       isPluginDiscoveryInFlight: false,
       projectWorktreeCapability: null,
@@ -893,8 +944,19 @@ class NewSessionCubit({
   }
 
   /// Whether Send does anything now: it creates the session, or, while the
-  /// first message is sending, queues a follow-up.
-  bool get canSubmit => canCreateSession || state.phase is NewSessionPhaseSending;
+  /// first message is sending, queues a follow-up. A task's Save also waits
+  /// for the harness' options, so the choices it hands back are the task's
+  /// restored ones rather than defaults standing in for them.
+  bool get canSubmit => switch (_purpose) {
+    NewSessionStartSession() => canCreateSession || state.phase is NewSessionPhaseSending,
+    NewSessionEditTask() => canCreateSession && _optionsSettled,
+  };
+
+  /// The harness listed its options, or has none to list.
+  bool get _optionsSettled => switch (state.agentModelData?.optionsState) {
+    final options? => options.data != null || options is NewSessionOptionsUnsupportedState,
+    null => false,
+  };
 
   NewSessionComposerPresentation get composerPresentation {
     final data = state.agentModelData;
@@ -1074,7 +1136,7 @@ class NewSessionCubit({
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
     final pluginId = _selectedPluginId;
-    final selectionIntent = pluginId == null ? null : _selectionTracker.read(pluginId: pluginId);
+    final selectionIntent = pluginId == null ? null : _picks.read(pluginId: pluginId);
     final selected = _newSessionOptionsService.selectAgent(
       options: options,
       agent: agent,
@@ -1083,7 +1145,7 @@ class NewSessionCubit({
     if (selected == null) return;
     _replaceOptionsData(options: selected);
     if (pluginId != null) {
-      _selectionTracker.recordAgent(pluginId: pluginId, agentName: agent);
+      _picks.recordAgent(pluginId: pluginId, agentName: agent);
     }
   }
 
@@ -1095,7 +1157,7 @@ class NewSessionCubit({
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
     final pluginId = _selectedPluginId;
-    final variantIntent = pluginId == null ? null : _selectionTracker.read(pluginId: pluginId)?.variant;
+    final variantIntent = pluginId == null ? null : _picks.read(pluginId: pluginId)?.variant;
     final selected = _newSessionOptionsService.selectModel(
       options: options,
       providerId: providerID,
@@ -1106,9 +1168,9 @@ class NewSessionCubit({
     if (selected == null) return;
     _replaceOptionsData(options: selected);
     if (pluginId != null) {
-      _selectionTracker.recordModel(pluginId: pluginId, providerId: providerID, modelId: modelID);
+      _picks.recordModel(pluginId: pluginId, providerId: providerID, modelId: modelID);
       if (variant != null && selected.selectedAgentModel?.variant == variant.id) {
-        _selectionTracker.recordVariant(
+        _picks.recordVariant(
           pluginId: pluginId,
           variant: NewSessionVariantIntent(id: variant.id),
         );
@@ -1125,7 +1187,7 @@ class NewSessionCubit({
     _replaceOptionsData(options: selected);
     final pluginId = _selectedPluginId;
     if (pluginId != null) {
-      _selectionTracker.recordVariant(
+      _picks.recordVariant(
         pluginId: pluginId,
         variant: NewSessionVariantIntent(id: variant.id),
       );
@@ -1156,7 +1218,7 @@ class NewSessionCubit({
     );
     final pluginId = _selectedPluginId;
     if (pluginId != null) {
-      _selectionTracker.recordFastMode(pluginId: pluginId, fastMode: fastMode);
+      _picks.recordFastMode(pluginId: pluginId, fastMode: fastMode);
     }
   }
 
@@ -1180,8 +1242,24 @@ class NewSessionCubit({
     _replaceOptionsData(options: _newSessionOptionsService.clearStagedCommand(options: options));
   }
 
-  /// The "New worktree" choice the last session was started with.
-  Future<bool> readDedicatedWorktreePreference() => _dedicatedWorktreePreferenceStore.read();
+  /// The "New worktree" choice the last session was started with, or the
+  /// task's own.
+  Future<bool> readDedicatedWorktreePreference() => switch (_purpose) {
+    NewSessionStartSession() => _dedicatedWorktreePreferenceStore.read(),
+    NewSessionEditTask(:final initialSelection) => Future.value(initialSelection.dedicatedWorktree),
+  };
+
+  /// Whether the composer offers attachments; a task's prompt has none.
+  bool get offersAttachments => switch (_purpose) {
+    NewSessionStartSession() => true,
+    NewSessionEditTask() => false,
+  };
+
+  /// The identity the composer widget's draft goes by.
+  String get composerDraftIdentity => switch (_purpose) {
+    NewSessionStartSession() => ComposerDraftRepository.newSessionIdentity,
+    NewSessionEditTask() => taskDraftIdentity,
+  };
 
   /// Sends what the composer holds. The first Send creates the session with
   /// [dedicatedWorktree]; a Send while it is being created queues a follow-up
@@ -1196,11 +1274,52 @@ class NewSessionCubit({
       _queueFollowUp(phase: phase, draft: draft, command: command, attachments: attachments);
       return;
     }
+    if (_purpose is NewSessionEditTask) {
+      _submitTask(draft: draft, dedicatedWorktree: dedicatedWorktree, command: command);
+      return;
+    }
     await _createSession(
       draft: draft,
       dedicatedWorktree: dedicatedWorktree,
       command: command,
       attachments: attachments,
+    );
+  }
+
+  /// Hands a task's choices back for saving; nothing starts here.
+  void _submitTask({required ComposerDraft draft, required bool dedicatedWorktree, required CommandInfo? command}) {
+    final current = state;
+    if (!canSubmit || current is! NewSessionComposing) return;
+    final data = current.config.agentModelData;
+    final plugin = data.plugin;
+    if (plugin == null) return;
+    if (draft.text.trim() != draft.text) {
+      throw ArgumentError.value(draft, "draft", "must be trimmed");
+    }
+    final stagedCommand = switch (command) {
+      final command? when command.name.trim().isNotEmpty => command,
+      _ => null,
+    };
+    if (draft.text.isEmpty && stagedCommand == null) return;
+    final model = data.agentModel;
+    final variant = model?.variant;
+    emit(
+      current.copyWith(
+        phase: NewSessionPhase.taskSubmitted(
+          submission: TaskComposerSubmission(
+            project: current.project,
+            pluginId: plugin.id,
+            agent: data.agent,
+            model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
+            variant: variant == null ? null : SessionVariant(id: variant),
+            fastMode: data.runsFastMode,
+            dedicatedWorktree:
+                dedicatedWorktree && data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.supported,
+            prompt: draft.text,
+            command: stagedCommand,
+          ),
+        ),
+      ),
     );
   }
 
@@ -1498,6 +1617,15 @@ class NewSessionCubit({
     }
   }
 
+  /// [options] with a task's command staged, the first time they carry the
+  /// harness' commands.
+  NewSessionOptionsLoadState _withTaskCommandStaged({required NewSessionOptionsLoadState options}) {
+    final command = _taskCommandToStage;
+    if (command == null || options.data == null) return options;
+    _taskCommandToStage = null;
+    return _restoreStagedCommand(options: options, command: command);
+  }
+
   NewSessionOptionsLoadState _restoreStagedCommand({
     required NewSessionOptionsLoadState options,
     required String command,
@@ -1561,13 +1689,13 @@ class NewSessionCubit({
 
   void saveComposerDraft({required ComposerDraft draft}) {
     _composerDraft = draft;
-    _composerDraftRepository.saveForNewSession(draft: draft);
+    if (_purpose is NewSessionStartSession) _composerDraftRepository.saveForNewSession(draft: draft);
   }
 
   void clearComposerDraft() {
     _composerDraft = ComposerDraft.typed(text: "");
     _composerSelection = null;
-    _composerDraftRepository.clearForNewSession();
+    if (_purpose is NewSessionStartSession) _composerDraftRepository.clearForNewSession();
   }
 
   /// The images the composer has staged, which live only in the composer, so

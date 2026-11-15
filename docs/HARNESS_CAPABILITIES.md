@@ -177,7 +177,7 @@ context the full-history index sees. See `docs/regression/transcript-turn-naviga
 | Codex | `turn/start` steers the active turn | ✅ |
 | Pi | Sent with the `steer` streaming behavior | ✅ |
 | OpenCode | Sent at once into the running turn | ✅ |
-| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, as does the 18.19.0 source) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. |
+| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, as does the 18.19.0 source) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. While OMP runs a turn no Sesori prompt started (a background-job wake, which OMP before 18.20.1 starts after a prompt ends), it refuses steering and rejects `session/prompt` with `-32003`; the bridge resends the prompt every second until OMP takes it, for up to 30 minutes. Checked in the OMP 18.20.2 source on 2026-11-15. |
 | ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and none of these plugins implements the shared steering hook (checked in code on 2026-11-05). |
 
 ## Quota-reset auto continuation
@@ -306,6 +306,20 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
   only 2.1.322 was probed live.
 - `control_cancel_request` ends the ask with "Side question cancelled". Sesori
   sends it when its own 3-minute wait ends, below the CLI's 11-minute deadline.
+
+## Edit and fork
+
+Editing rewinds the conversation in place: the edited message and everything
+after it leave the session, then the edited message is sent. Files are never
+touched. The bridge refuses an edit of a session's first message for now,
+because no native point precedes it. Edits run only
+on a message that opens a turn; a follow-up sent while the agent was working is
+refused with a reason.
+
+| Harness | Edit and resend (rewind in place) | Fork from a message |
+|---|---|---|
+| Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ⬜ `thread/fork {lastTurnId}` |
+| Every other harness | ⬜ Not implemented yet; the bridge refuses the edit | ⬜ Not implemented yet |
 
 ## Explicit shell-command presentation
 
@@ -1117,6 +1131,7 @@ live one.
 | Harness | Sesori availability |
 |---|---|
 | Cursor | ✅ The account/plan gate ("Check your settings to continue"), live and after history load. |
+| Oh My Pi | ✅ An aborted reply that produced nothing, which OMP sends as its bare abort reason ("Interrupted by user" after a stop, "Request was aborted" otherwise): after history load, and live when a failed request never streamed. ⚠️ A live stop shows no notice, since OMP sends none then, so a reload can add one. Wording read in the OMP 18.20.2 source on 2026-11-15. |
 | Hermes | ✅ The English failure copy Hermes sends as its final response, live and after history load: retries exhausted (including the stream-lifetime cap), first-attempt rate limits, usage limits, rejected credentials, unknown models, content policy, data-policy refusals, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions, shutdown, the "No reply:" explanations for exits that fail the turn (a stop on a pending tool result, no answer after all retries, a local context window too small, an error near the iteration limit, repeated errors, and every session-storage failure), a scheduled-job chat, a missing working folder and a chat whose launch API key is gone (in other languages by its untranslated `Details: launch_credentials_unavailable (<field>: <detail>)` line after a one-line notice naming the same key; Hermes's other translated copy stays a plain reply). Hermes saves a different row for a failed turn ("Your request was not processed…", "This turn did not complete. Some actions may already have run…" after a tool ran, or "An automated delivery was interrupted…" for a lost cron or webhook turn, and "This message was refused by the model's safety filter…" for a refused turn); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows only Hermes's live reason, followed by the row's warning when actions may already have run. Wording read in the Hermes 0.21.5 source on 2026-11-09 and the 0.23.1 source on 2026-11-12. Hermes appends its generic "Your request was not processed…" row to a live reason; Sesori drops it so the notice reads the same live and after a reload. Hermes then fails the prompt with `admitted_turn_failed`, which adds no second notice; when the model streamed part of a reply first, Hermes sends no failure text, so that failed prompt shows as Hermes's own "Your request was not processed…" notice. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts, and so do the "No reply:" explanations for exits that do not fail the turn (no reply after retries, a partial stream recovered, prior context shown, restart limits, budget or iteration limit reached, an interrupted call). 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
 
 Claude Code does not need text matching: it tags a failed turn's assistant

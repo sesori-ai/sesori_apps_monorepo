@@ -838,6 +838,7 @@ Future<void> _pumpPointerComposer({
                 isBusy: false,
                 hasMessages: true,
                 canSend: canSend,
+                submitAction: null,
                 onSend: ({required draft, required command, required attachments}) => harness.sent.add(draft.text),
                 onVoiceTranscriptionFinished: ({required finish, required mode}) => harness.finishes.add(finish),
                 onDraftChanged: (_) {},

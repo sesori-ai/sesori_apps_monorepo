@@ -12,6 +12,7 @@ import "../api/models/codex_turn_dto.dart";
 import "../api/models/codex_turn_input_dto.dart";
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
+import "../models/codex_rewind_refusal.dart";
 import "mappers/codex_side_answer_mapper.dart";
 import "models/codex_model_provider_exception.dart";
 import "models/codex_resumed_thread.dart";
@@ -130,13 +131,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     required CodexCollaborationMode? collaborationMode,
     required bool? fastMode,
   }) async {
-    final input = <CodexTurnInputDto>[];
-    var remainingInlineBytes = maxInlineMessageAttachmentBytes;
-    for (final part in joinAdjacentPromptTextParts(parts: parts)) {
-      final mapped = _mapTurnInput(part: part, remainingInlineBytes: remainingInlineBytes);
-      input.add(mapped.input);
-      remainingInlineBytes -= mapped.inlineBytes;
-    }
+    final input = _turnInput(parts: parts);
     if (input.isEmpty) return null;
     if (skill != null) input.add(CodexTurnInputDto.skill(name: skill.name, path: skill.path));
     final response = await _request(
@@ -156,6 +151,49 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       throw StateError("turn/start response missing turn.id");
     }
     return turnId;
+  }
+
+  /// Throws what [startTurn] would throw for [parts]' attachments, without
+  /// sending anything.
+  void validateTurnInput({required List<PluginPromptPart> parts}) => _turnInput(parts: parts);
+
+  List<CodexTurnInputDto> _turnInput({required List<PluginPromptPart> parts}) {
+    final input = <CodexTurnInputDto>[];
+    var remainingInlineBytes = maxInlineMessageAttachmentBytes;
+    for (final part in joinAdjacentPromptTextParts(parts: parts)) {
+      final mapped = _mapTurnInput(part: part, remainingInlineBytes: remainingInlineBytes);
+      input.add(mapped.input);
+      remainingInlineBytes -= mapped.inlineBytes;
+    }
+    return input;
+  }
+
+  /// Removes [beforeTurnId] and every later turn from the loaded [threadId].
+  /// The refusals Codex answers before changing anything become
+  /// [PluginBranchPointUnavailableException]; a thread this app-server has
+  /// not loaded is [CodexThreadNotFoundException], as for `turn/start`.
+  Future<void> revertThread({required String threadId, required String beforeTurnId}) async {
+    const operation = "thread/revert";
+    try {
+      await _appServerApi.revertThread(threadId: threadId, beforeTurnId: beforeTurnId);
+    } on CodexRpcException catch (error, stackTrace) {
+      final refusal = _revertRefusal(error: error);
+      if (refusal != null) Error.throwWithStackTrace(refusal.toException(cause: error), stackTrace);
+      Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
+    }
+  }
+
+  /// The answers live-checked on the 0.139.0 and 0.167.2 app-servers.
+  CodexRewindRefusal? _revertRefusal({required CodexRpcException error}) {
+    final message = error.message;
+    // 0.139.0 answers -32600 "unknown variant `thread/revert`" rather than
+    // JSON-RPC's method-not-found.
+    if (error.code == -32601 || message.contains("unknown variant")) return CodexRewindRefusal.runtimeTooOld;
+    if (error.code != -32600) return null;
+    if (message.contains("only supports paginated threads")) return CodexRewindRefusal.legacySession;
+    if (message.contains("ephemeral threads")) return CodexRewindRefusal.temporarySession;
+    if (message.startsWith("turn not found")) return CodexRewindRefusal.unknownMessage;
+    return null;
   }
 
   /// The id of the thread's newest turn, running or finished, or null when

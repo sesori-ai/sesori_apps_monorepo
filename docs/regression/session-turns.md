@@ -197,7 +197,9 @@ defaults and queued client sends coherent.
   invalidation and prompt-defaults update apply. Its branch refusals answer
   `SessionBranchErrorResponse` instead of `SendPromptErrorResponse`; an
   archived session still answers the shared archived rejection
-  ([session edit and fork](session-edit-and-fork.md)).
+  ([session edit and fork](session-edit-and-fork.md)). Editing the first
+  message moves the same session onto a new harness session; clients see one
+  continuous session.
 - A client send that fails on the connection it started on (a non-stale error
   response or a thrown failure) is held under its message with "Couldn’t send",
   Retry and Remove; later local sends wait behind it. When the harness refused
@@ -683,7 +685,11 @@ defaults and queued client sends coherent.
   follow-up that changes the model, variant or agent, one behind another
   waiting prompt, and a failed or unrecognised steering reply (logged) keep
   stop-and-send. A follow-up OMP does not admit returns to Queued and
-  dispatches after the running turn without a cancel. A second follow-up sent
+  dispatches after the running turn without a cancel. A prompt OMP rejects
+  with `-32003` because it runs a turn of its own (a background-job wake)
+  keeps its sent row and a busy session, and is resent every second until OMP
+  takes it; Stop ends the wait with no error, and after 30 minutes the
+  rejection shows as the inline error below. A second follow-up sent
   while the first is still Sending waits for it and steers only once the first
   was injected, so it never overtakes it. An abort while a follow-up is Sending
   removes it, and a late reply never publishes it. The running turn's reply to

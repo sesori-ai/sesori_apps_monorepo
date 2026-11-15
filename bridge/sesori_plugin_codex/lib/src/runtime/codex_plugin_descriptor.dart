@@ -148,6 +148,9 @@ class const CodexPluginDescriptor({
   bool get namesCommandInvocations => true;
 
   @override
+  Set<PluginSessionBranching> get sessionBranching => const {PluginSessionBranching.rewind};
+
+  @override
   Set<PluginMcpCapability> get mcpCapabilities => const {
     PluginMcpCapability.management,
     PluginMcpCapability.authentication,

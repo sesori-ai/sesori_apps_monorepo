@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:math";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show buildWorktreeSystemContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, PluginBranchPointUnavailableException, PluginRefusalException, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
@@ -8,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/accepted_prompts_repository.dart";
 import "../repositories/models/deliverable_prompt_part.dart";
 import "../repositories/models/session_operation.dart";
+import "../repositories/models/stored_session.dart";
 import "../repositories/random_hex_id.dart";
 import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
@@ -314,12 +316,36 @@ class SessionPromptService({
       );
     }
     final removal = await _chatHistory.removalForRewind(sessionId: sessionId, messageId: beforeMessageId);
-    final removedMessageIds = switch (removal) {
-      RewindRemovalLaterTurn(:final removedMessageIds) => removedMessageIds,
-      // Nothing before the first turn is kept, so there is no native point to
-      // rewind to. Refused until a first-turn edit swaps in a fresh harness
-      // session.
-      RewindRemovalFirstTurn() || RewindRemovalNotTurnOpener() => throw const SessionBranchRefusedException(
+    final (:removedMessageIds, :edit) = switch (removal) {
+      RewindRemovalLaterTurn(:final removedMessageIds) => (
+        removedMessageIds: removedMessageIds,
+        edit: () => _nativeRewind(
+          sessionId: sessionId,
+          beforeMessageId: beforeMessageId,
+          removedMessageIds: removedMessageIds,
+          promptId: promptId,
+          parts: parts,
+          variant: variant,
+          fastMode: fastMode,
+          agent: agent,
+          model: model,
+        ),
+      ),
+      // Nothing before the first turn is kept, so the edited prompt starts a
+      // new harness session. Decided here, before any plugin rewind call, so
+      // it works on every harness.
+      RewindRemovalFirstTurn(:final removedMessageIds) => (
+        removedMessageIds: removedMessageIds,
+        edit: () => _replaceHarnessSession(
+          sessionId: sessionId,
+          parts: parts,
+          variant: variant,
+          fastMode: fastMode,
+          agent: agent,
+          model: model,
+        ),
+      ),
+      RewindRemovalNotTurnOpener() => throw const SessionBranchRefusedException(
         code: SessionBranchErrorCode.branchPointUnavailable,
         message: null,
         cause: null,
@@ -327,38 +353,128 @@ class SessionPromptService({
       ),
     };
     return () async {
-      try {
-        await _sessionRepository.rewindAndSendPrompt(
-          sessionId: sessionId,
-          beforeMessageId: beforeMessageId,
-          promptId: promptId,
-          parts: await _deliverableParts(sessionId: sessionId, parts: parts),
-          variant: variant,
-          fastMode: fastMode,
-          agent: agent,
-          model: model,
-        );
-      } on PluginBranchPointUnavailableException catch (error, stackTrace) {
-        throw SessionBranchRefusedException(
-          code: SessionBranchErrorCode.branchPointUnavailable,
-          message: error.userFacingReason,
-          cause: error,
-          causeStackTrace: stackTrace,
-        );
-      }
-      try {
-        final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
-        if (session == null) {
-          Log.w("Session $sessionId disappeared after its edit; its rewound messages stay stored");
-          return;
-        }
-        _mutations.messagesRewound(session: session, removedMessageIds: removedMessageIds);
-      } on Object catch (error, stackTrace) {
-        // The plugin already owns the edit; failing it would only make the
-        // client retry it. The next backfill drops the rewound messages.
-        Log.w("Could not publish the rewound messages of session $sessionId", error, stackTrace);
-      }
+      await edit();
+      await _publishRewound(sessionId: sessionId, removedMessageIds: removedMessageIds);
     };
+  }
+
+  /// Rewinds through the plugin. When the edit fails after the harness may
+  /// have rewound, the messages it no longer has are removed anyway.
+  Future<void> _nativeRewind({
+    required String sessionId,
+    required String beforeMessageId,
+    required List<String> removedMessageIds,
+    required String promptId,
+    required List<PromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    try {
+      await _sessionRepository.rewindAndSendPrompt(
+        sessionId: sessionId,
+        beforeMessageId: beforeMessageId,
+        promptId: promptId,
+        parts: await _deliverableParts(sessionId: sessionId, parts: parts),
+        variant: variant,
+        fastMode: fastMode,
+        agent: agent,
+        model: model,
+      );
+    } on PluginBranchPointUnavailableException catch (error, stackTrace) {
+      throw SessionBranchRefusedException(
+        code: SessionBranchErrorCode.branchPointUnavailable,
+        message: error.userFacingReason,
+        cause: error,
+        causeStackTrace: stackTrace,
+      );
+    } on PluginStaleOptionsException {
+      // Like the branch point, refused before the conversation changed.
+      rethrow;
+    } on PluginRefusalException {
+      rethrow;
+    } on Object {
+      await _reconcileFailedRewind(sessionId: sessionId, removedMessageIds: removedMessageIds);
+      rethrow;
+    }
+  }
+
+  /// Moves the session onto a new harness session whose first prompt is
+  /// [parts], then purges the history of the sub-agent sessions that went
+  /// with the old one.
+  Future<void> _replaceHarnessSession({
+    required String sessionId,
+    required List<PromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) async {
+    final userParts = await _deliverableParts(sessionId: sessionId, parts: parts);
+    final removedSessionIds = await _sessionRepository.replaceBackendSession(
+      sessionId: sessionId,
+      parts: [
+        ...await _worktreeContextParts(sessionId: sessionId),
+        ...userParts,
+      ],
+      userVisibleText: DeliverablePromptPart.userVisibleText(parts: userParts),
+      variant: variant,
+      fastMode: fastMode,
+      agent: agent,
+      model: model,
+    );
+    try {
+      await _chatHistory.purgeSessionsHistory(sessionIds: removedSessionIds, includeArchive: true);
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to purge the history of sessions $removedSessionIds removed by an edit", error, stackTrace);
+    }
+  }
+
+  /// The worktree context a new harness session's first prompt carries, as
+  /// at session creation, when the session runs in a dedicated worktree.
+  Future<List<DeliverablePromptPart>> _worktreeContextParts({required String sessionId}) async {
+    final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
+    if (session case StoredSession(isDedicated: true, :final worktreePath?, :final baseBranch?)) {
+      return [
+        DeliverablePromptPart.text(
+          text: buildWorktreeSystemContext(worktreePath: worktreePath, baseBranch: baseBranch),
+        ),
+      ];
+    }
+    return const [];
+  }
+
+  /// The harness may have rewound before the edit's resend failed (Codex
+  /// reverts, then starts the turn), so the messages it no longer has are
+  /// removed as a successful edit removes them. The edit still fails, and the
+  /// client keeps the edited text.
+  Future<void> _reconcileFailedRewind({required String sessionId, required List<String> removedMessageIds}) async {
+    final List<String> missing;
+    try {
+      missing = await _chatHistory.messagesMissingFromHarness(sessionId: sessionId, messageIds: removedMessageIds);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not read session $sessionId from its harness after its edit failed", error, stackTrace);
+      return;
+    }
+    await _publishRewound(sessionId: sessionId, removedMessageIds: missing);
+  }
+
+  /// Removes [removedMessageIds] from the store and every client. Never
+  /// fails: the edit's outcome is already decided, and a later backfill drops
+  /// what this could not.
+  Future<void> _publishRewound({required String sessionId, required List<String> removedMessageIds}) async {
+    if (removedMessageIds.isEmpty) return;
+    try {
+      final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+      if (session == null) {
+        Log.w("Session $sessionId disappeared after its edit; its rewound messages stay stored");
+        return;
+      }
+      _mutations.messagesRewound(session: session, removedMessageIds: removedMessageIds);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not publish the rewound messages of session $sessionId", error, stackTrace);
+    }
   }
 
   Future<void> _invalidateStaleOptionsCache({required String sessionId}) async {

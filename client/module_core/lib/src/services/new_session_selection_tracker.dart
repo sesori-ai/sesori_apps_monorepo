@@ -17,6 +17,13 @@ typedef _RevisionedSelection = ({NewSessionSelectionIntent selection, int revisi
 /// the user has picked another value for it in the meantime.
 @lazySingleton
 class NewSessionSelectionTracker() {
+  /// A memory of its own, starting on [pluginId] with [selection], for a
+  /// composer whose picks must never become the new-session screen's.
+  factory seeded({required String pluginId, required NewSessionSelectionIntent selection}) =>
+      NewSessionSelectionTracker()
+        ..recordPlugin(pluginId: pluginId)
+        .._write(pluginId: pluginId, selection: selection);
+
   final Map<String, _RevisionedSelection> _selections = {};
   int _nextRevision = 0;
   String? _selectedPluginId;
