@@ -98,6 +98,8 @@ final class ClaudeSessionProcessRepository({
   required final ClaudeProcessFactory _processFactory,
   required final bool _supportsMcpAuthentication,
   required final String _binaryPath,
+  required final String _transcriptsDirectory,
+  required final String _uploadsDirectory,
   required Map<String, String> environment,
 }) {
   /// The CLI's own side-question deadline is 11 minutes; nobody waits that
@@ -505,6 +507,8 @@ final class ClaudeSessionProcessRepository({
         effort: effort,
         permissionMode: permissionMode,
         allowedTools: allowedTools,
+        transcriptsDirectory: _transcriptsDirectory,
+        uploadsDirectory: _uploadsDirectory,
         environment: _environment,
       ),
       processFactory: _processFactory,

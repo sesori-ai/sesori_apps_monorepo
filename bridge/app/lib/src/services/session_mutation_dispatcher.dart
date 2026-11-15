@@ -26,6 +26,16 @@ final class const SessionPinnedUpdated({required super.session}) extends LocalSe
 
 final class const SessionArchived({required super.session}) extends LocalSessionMutation;
 
+/// An edit removed these messages from the session's conversation; each
+/// reaches the history store and every client as a removed message.
+final class const SessionMessagesRewound({
+  required super.session,
+
+  /// Exact ids, never a range: the edited prompt's own messages may already
+  /// be stored.
+  required final List<String> removedMessageIds,
+}) extends LocalSessionMutation;
+
 /// Owns bridge-persisted session mutations and their backend propagation.
 class SessionMutationDispatcher({
   required final SessionRepository _sessionRepository,
@@ -44,6 +54,9 @@ class SessionMutationDispatcher({
       _mutationsController.add(SessionContinuationUpdated(session: session));
 
   void sessionArchived({required Session session}) => _mutationsController.add(SessionArchived(session: session));
+
+  void messagesRewound({required Session session, required List<String> removedMessageIds}) =>
+      _mutationsController.add(SessionMessagesRewound(session: session, removedMessageIds: removedMessageIds));
 
   bool shouldSuppressEventsForSession({required String sessionId}) {
     return _sessionIdsSuppressedFromEvents.contains(sessionId);

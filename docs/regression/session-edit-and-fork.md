@@ -8,7 +8,16 @@ prompts and the pinned prompt. It holds what can be done with that message:
 today Copy and Select text. The menu is client-only; it sends nothing to the
 bridge.
 
+The bridge can edit a prompt that opens a turn: `POST /session/rewind` removes
+that prompt and every later message from the session's conversation and sends
+the edited prompt in its place. Conversation only: files are never restored.
+Each harness declares the branching operations it implements in
+`PluginMetadata.sessionBranching`; today none declares any, so the route
+refuses every edit and clients offer no Edit.
+
 ## Required Behavior
+
+### Message menu
 
 - Under a finger or stylus, a long-press of about 0.4 s on a user bubble, a
   command card, a queued prompt or an agent reply opens a flat menu anchored
@@ -53,13 +62,43 @@ bridge.
 - A screen reader offers the pinned prompt's menu as a long-press around the
   pin, which it can still activate to jump.
 
+### Bridge edit route
+
+- The edit runs on the session's lane, so it never interleaves with a send,
+  stop or archive of the same session.
+- An archived session answers the archived read-only rejection without
+  reaching the plugin.
+- The request carries a client-generated prompt id. A repeat of an accepted id
+  succeeds without reaching the plugin, even after the rewind removed the
+  edited message.
+- A running session is refused with `sessionBusy`. This and the turn checks
+  below run before anything changes, a pending quota auto-continuation
+  included.
+- The bridge reads the whole stored transcript, backfilling it first when the
+  store is behind the backend, and finds the message's turn by the shared
+  `splitPromptTurns` rule. A message that does not open a turn (a reply or a
+  follow-up) and the first turn are refused with `branchPointUnavailable`.
+  First-turn edits arrive with a later step that swaps in a fresh harness
+  session.
+- A harness that cannot rewind, or whose plugin cannot map the message to a
+  native boundary, is refused with `branchPointUnavailable`. The plugin's own
+  user-facing sentence travels as the message; transcript text never does.
+- Stale prompt options answer `staleSessionOptions` after the options cache is
+  invalidated; a plugin refusal answers `refused`.
+- Every branch refusal is a 409 `SessionBranchErrorResponse` and leaves the
+  transcript untouched; the archived rejection keeps its own shared shape.
+- After the plugin accepts, the bridge removes exactly the messages it read
+  before the call, by id, from the store and from clients
+  (`message.removed`). The edited prompt's echo, captured during the call, is
+  never among them.
+
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, a shift-click afterwards extends it, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. |
-| L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. |
+| L2 Routine | Message menu, automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, a shift-click afterwards extends it, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. Bridge edit route, automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, first-turn, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`. |
+| L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. The bridge edit route is not included until a harness declares rewind. |
 | L4 Extended | Long-press a message near the screen's edges and at the largest text size; open the menu during a pinch, a peek and a code-block scroll. |
 | L5 Full | No additional coverage. |
 
@@ -82,6 +121,11 @@ not loaded yet.
 - Select text leaves nothing selected, or the selection vanishes as the menu
   closes.
 - A tap, scroll, peek, pinch or code-block scroll opens the menu.
+- An edit removes the edited prompt's echo, or leaves a removed message on
+  screen until reload.
+- A retried edit rewinds twice.
+- A refusal changes the transcript, or its message carries transcript text.
+- An edit reaches the plugin while the session runs or after it was archived.
 
 ## Known Limitations
 
@@ -91,6 +135,10 @@ not loaded yet.
   known; a long-press on it reaches the message under the pin.
 - A long-press tooltip inside a message no longer shows, because the menu
   takes the long-press first.
+- No harness implements rewind yet, so every edit is refused.
+- The first turn cannot be edited yet.
+- An edit the plugin refuses keeps the attachment files the bridge saved for
+  it, as a refused send does.
 
 ## Sources
 
@@ -102,3 +150,8 @@ not loaded yet.
 - `client/module_app_ui/lib/src/features/session_detail/widgets/queued_message_bubble.dart`
 - `client/module_app_ui/lib/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart`
 - `client/module_app_ui/lib/src/features/session_list/session_tile.dart`
+- `bridge/sesori_plugin_interface/lib/src/session_rewind_plugin_api.dart`
+- `bridge/app/lib/src/routing/rewind_session_handler.dart`
+- `bridge/app/lib/src/services/session_prompt_service.dart`
+- `bridge/app/lib/src/services/chat_history_service.dart`
+- `shared/sesori_shared/lib/src/models/sesori/session_branch_error_response.dart`

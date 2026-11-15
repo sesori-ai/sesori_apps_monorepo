@@ -12,8 +12,11 @@ abstract interface class SessionRewindPluginApi() {
   /// session and only with a user message that opens a turn by its shared
   /// turn rule, which is presentation-level: when [beforeMessageId] cannot be
   /// mapped to a native boundary, or does not open the backend's own turn, the
-  /// implementation throws `PluginBranchPointUnavailableException` before
-  /// changing anything.
+  /// implementation throws `PluginBranchPointUnavailableException`.
+  ///
+  /// Every refusal the plugin can know before the edited prompt is accepted
+  /// (branch point, stale options, `PluginRefusalException`) is raised before
+  /// the conversation changes, so a refused edit leaves the session as it was.
   Future<void> rewindAndSendPrompt({
     required String sessionId,
     required String beforeMessageId,

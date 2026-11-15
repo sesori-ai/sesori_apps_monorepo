@@ -18,6 +18,7 @@ import "package:test/test.dart";
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_continuation_test_support.dart";
+import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -685,6 +686,7 @@ SessionPromptService _buildPromptService(SessionRepository repository) {
     archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
     sessionOptionsService: FakeSessionOptionsService(),
     promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+    chatHistory: createTestChatHistory().service,
   );
   addTearDown(dispatcher.dispose);
   addTearDown(service.dispose);
