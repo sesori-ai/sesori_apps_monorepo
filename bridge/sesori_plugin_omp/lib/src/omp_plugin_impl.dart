@@ -169,6 +169,15 @@ class OmpPlugin._({
     required List<Map<String, dynamic>> prompt,
   }) => _steeringService.steer(client: client, sessionId: sessionId, prompt: prompt);
 
+  /// OMP answers `-32003` ("Agent is already processing…") when its session
+  /// runs a turn no client prompt owns, such as a wake for a background job's
+  /// result (OMP before 18.20.1 starts one after a prompt ends). Steering is
+  /// refused then too, and OMP rejects the prompt before recording it.
+  @override
+  bool isBusyPromptRejection({required AcpRpcException error}) => error.code == _sessionBusyCode;
+
+  static const int _sessionBusyCode = -32003;
+
   @override
   void captureSessionConfig(
     AcpNewSessionResult result, {
