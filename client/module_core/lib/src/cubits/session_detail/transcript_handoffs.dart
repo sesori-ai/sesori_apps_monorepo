@@ -57,11 +57,12 @@ final class const TranscriptHandoffs({
 
   /// Cards by the id of the handoff prompt they replace.
   required final Map<String, TranscriptHandoffCard> cards,
-
+}) {
   /// Whether the newest turn is a summary still being written, which its
-  /// marker already shows, so no working row joins it.
-  required final bool writing,
-});
+  /// marker already shows, so no working row joins it. Only the newest turn
+  /// is ever writing.
+  bool get writing => markers.values.any((marker) => marker.status == TranscriptHandoffMarkerStatus.writing);
+}
 
 /// Folds handoff turns into markers and turns handoff prompts into cards.
 ///
@@ -81,7 +82,6 @@ class const TranscriptHandoffBuilder() {
     final byId = {for (final message in messages) message.info.id: message};
     final markers = <String, TranscriptHandoffMarker>{};
     final folded = <String>{};
-    var writing = false;
     for (final (turnIndex, turn) in turns.turns.indexed) {
       final turnMessages = [
         for (final id in turn.messageIds) ?byId[id],
@@ -117,7 +117,6 @@ class const TranscriptHandoffBuilder() {
       };
       if (marker == null) continue;
       markers[request.info.id] = marker;
-      if (newest && marker.status == TranscriptHandoffMarkerStatus.writing) writing = true;
     }
     final cards = <String, TranscriptHandoffCard>{
       for (final message in messages)
@@ -143,7 +142,6 @@ class const TranscriptHandoffBuilder() {
       markers: Map.unmodifiable(markers),
       foldedMessageIds: Set.unmodifiable(folded),
       cards: Map.unmodifiable(cards),
-      writing: writing,
     );
   }
 

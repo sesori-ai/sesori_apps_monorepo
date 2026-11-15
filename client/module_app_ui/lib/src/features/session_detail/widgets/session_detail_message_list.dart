@@ -311,7 +311,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   Map<String, MessageWithParts> _userMessagesById = const {};
 
   /// The handoffs among the rows, from the last build.
-  TranscriptHandoffs _handoffs = const TranscriptHandoffs(markers: {}, foldedMessageIds: {}, cards: {}, writing: false);
+  TranscriptHandoffs _handoffs = const TranscriptHandoffs(markers: {}, foldedMessageIds: {}, cards: {});
 
   /// The attached user message bubbles, by message id.
   final _promptSlots = TranscriptPromptSlots();
