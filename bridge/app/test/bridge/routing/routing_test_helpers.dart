@@ -15,6 +15,7 @@ import "package:sesori_bridge/src/repositories/models/session_abort_result.dart"
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_page_cursor.dart";
+import "package:sesori_bridge/src/repositories/models/side_question_ask_result.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -316,6 +317,13 @@ class FakeSessionRepository({
   @override
   Future<List<QueuedSessionPrompt>> getQueuedPrompts({required String sessionId}) async =>
       (await _plugin.getQueuedPrompts(sessionId: sessionId)).toSharedQueuedPrompts();
+
+  @override
+  Future<SideQuestionAskResult> askSideQuestion({
+    required String sessionId,
+    required String question,
+    required List<PluginSideExchange> history,
+  }) async => const SideQuestionRefused(reason: SideQuestionRefusal.harnessUnsupported);
 
   @override
   Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) =>
@@ -671,6 +679,9 @@ class FakeSessionRepository({
 
   @override
   Future<Session?> getCatalogSession({required String sessionId}) async => null;
+
+  @override
+  bool isPluginActive({required String pluginId}) => pluginId == _plugin.id;
 
   @override
   Future<SessionStatusResponse> getSessionStatuses() async {

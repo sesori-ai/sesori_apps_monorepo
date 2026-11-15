@@ -153,8 +153,9 @@ The bridge sends the source session a summarise prompt through the existing prom
   - `sourceBusy` covers busy and retrying. Step 3 reads no queue: a prompt queues only behind a running turn, so a
     queue implies busy;
   - `sourceAwaitingInput` covers a pending question or permission.
-  - A plugin listed in `unavailablePluginIds` (not running) has no turn, so it counts as idle. Any failure of the
-    summarise send itself, including a refusal, is `sourceUnavailable`.
+  - A plugin listed in `unavailablePluginIds` whose backend is not running has no turn, so it counts as idle. A
+    running backend listed there failed its status read, so readiness is unknown and the send is refused as
+    `sourceUnavailable`. Any failure of the summarise send itself, including a refusal, is also `sourceUnavailable`.
 - Readiness comes from sources that every plugin supplies:
   - `SessionRepository.getSessionStatuses()` decides idle, busy or retrying;
   - `PermissionRepository.getPendingPermissions` and `QuestionRepository.getPendingQuestions` decide awaiting input.
@@ -222,7 +223,9 @@ The bridge sends the source session a summarise prompt through the existing prom
 4. **Wait for the turn to end.** It records the user message whose live echo carries the prompt id. It then waits for
    an idle for the source after that echo. Step 3 found that harnesses report idle either as an idle
    `NormalizedStatusEvent` or as `BridgeSseSessionIdle` (Claude uses the latter), so both count. A terminal handoff
-   (the plugin stopping mid-turn) fails with `summaryFailed`.
+   (the plugin stopping mid-turn) fails with `summaryFailed`, and so does an error message for the source after the
+   echo (Codex ends a failed turn with an error message and a plain idle). Bridge shutdown ends an open wait as
+   `summaryStopped`, so the route does not hold shutdown for the rest of the 15 minutes.
    - A session error event for the source fails with `summaryFailed`.
    - A user stop of the source fails with `summaryStopped`. Stopping is the natural way to cancel a send, and a half
      summary must never reach the target.
@@ -232,6 +235,9 @@ The bridge sends the source session a summarise prompt through the existing prom
    - Step 3 divergence: it first calls `ChatHistoryService.backfillSession` for the source, as archive export does,
      because the live capture of the reply's parts can trail the idle event. A failed refresh is logged and the read
      uses the stored history.
+   - A refresh can replace the live echo with a replayed message under another id (ACP replays do), so the split
+     finds the request by its id or by its exact text, taking the last match. The summary stops at the next user
+     message, so a prompt queued behind the summary stays out of it.
    - The transcript is every message before the summarise user message.
    - The summary is the text parts of the assistant messages after it.
    - No text fails with `summaryMissing`.

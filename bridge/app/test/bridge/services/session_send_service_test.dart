@@ -224,6 +224,30 @@ void main() {
         SendToSessionErrorCode.summaryFailed,
         () => echoThen([const NormalizedTerminalHandoff(payload: idle)]),
       ),
+      "an error message": (
+        SendToSessionErrorCode.summaryFailed,
+        () => echoThen([
+          const NormalizedMessageEvent(
+            message: Message.error(
+              id: "turn-1",
+              sessionID: _source,
+              agent: null,
+              modelID: null,
+              providerID: null,
+              errorName: "FixtureError",
+              errorMessage: "fixture failure",
+              time: null,
+            ),
+          ),
+          idle,
+        ]),
+      ),
+      "bridge shutdown": (SendToSessionErrorCode.summaryStopped, () {
+        prompts.onSummaryAccepted = (promptId) {
+          events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
+          service.beginShutdown();
+        };
+      }),
       "a timeout": (SendToSessionErrorCode.summaryTimedOut, () {
         service = buildService(summaryTimeout: const Duration(milliseconds: 20));
         echoThen([]);
@@ -250,6 +274,15 @@ void main() {
         expect(history.notSentMessages, [_requestMessageId]);
       });
     }
+
+    test("after a refresh replays the request under another id, both ids", () async {
+      finishSummaryTurn();
+      history.replayRequestText = () => prompts.sends.first.text;
+      prompts.targetFailure = StateError("target down");
+
+      expect(await refusalOf(send()), SendToSessionErrorCode.targetRefused);
+      expect(history.notSentMessages, unorderedEquals(["replayed-user", _requestMessageId]));
+    });
 
     final beforeEcho = <String, (SendToSessionErrorCode, void Function())>{
       "a stop": (SendToSessionErrorCode.summaryStopped, () {
@@ -412,6 +445,81 @@ void main() {
     await send();
 
     expect(transcripts.saved, hasLength(1));
+  });
+
+  test("a running source whose status read failed is unavailable", () async {
+    sessions.unavailablePluginIds.add("claude");
+
+    expect(await refusalOf(send()), SendToSessionErrorCode.sourceUnavailable);
+    expect(prompts.sends, isEmpty);
+  });
+
+  test("a source whose backend is not running counts as idle", () async {
+    sessions.unavailablePluginIds.add("claude");
+    sessions.pluginsActive = false;
+    finishSummaryTurn();
+
+    await send();
+
+    expect(transcripts.saved, hasLength(1));
+  });
+
+  test("an error message in the summary turn fails the send", () async {
+    prompts.onSummaryAccepted = (promptId) {
+      events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
+      events.add(
+        const NormalizedMessageEvent(
+          message: Message.error(
+            id: "turn-1",
+            sessionID: _source,
+            agent: null,
+            modelID: null,
+            providerID: null,
+            errorName: "FixtureError",
+            errorMessage: "fixture failure",
+            time: null,
+          ),
+        ),
+      );
+      events.add(const NormalizedStatusEvent(sessionId: _source, status: SessionStatus.idle()));
+    };
+
+    expect(await refusalOf(send()), SendToSessionErrorCode.summaryFailed);
+    expect(transcripts.saved, isEmpty);
+  });
+
+  test("bridge shutdown ends a summary wait as stopped", () async {
+    prompts.onSummaryAccepted = (promptId) {
+      events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
+      service.beginShutdown();
+    };
+
+    expect(await refusalOf(send()), SendToSessionErrorCode.summaryStopped);
+    expect(transcripts.saved, isEmpty);
+  });
+
+  test("a replayed summary request is found by its text", () async {
+    finishSummaryTurn();
+    // A replay gives the request a new id, as ACP replays do.
+    history.replayRequestText = () => prompts.sends.first.text;
+
+    await send();
+
+    expect(utf8.decode(transcripts.saved.single.bytes), contains(_transcriptLine));
+    expect(prompts.sends.last.text, contains(_summary));
+  });
+
+  test("a reply to a prompt queued behind the summary stays out of it", () async {
+    finishSummaryTurn();
+    history.messages = [
+      ...history.messages,
+      _userMessage(id: "msg-5", text: "queued prompt"),
+      _assistantMessage(id: "msg-6", text: "Fixture queued reply."),
+    ];
+
+    await send();
+
+    expect(prompts.sends.last.text, isNot(contains("Fixture queued reply.")));
   });
 
   test("a session error during the summary fails the send", () async {
@@ -593,6 +701,8 @@ final class _Sessions() implements SessionRepository {
     _target: _session(id: _target, pluginId: "codex", title: "Target title", promptDefaults: null),
   };
   final Map<String, SessionStatus> statuses = {};
+  final List<String> unavailablePluginIds = [];
+  bool pluginsActive = true;
 
   /// Prompt ids whose handoff stamp was marked as not sent.
   final List<String> notSentPrompts = [];
@@ -616,7 +726,11 @@ final class _Sessions() implements SessionRepository {
   }
 
   @override
-  Future<SessionStatusResponse> getSessionStatuses() async => SessionStatusResponse(statuses: Map.of(statuses));
+  Future<SessionStatusResponse> getSessionStatuses() async =>
+      SessionStatusResponse(statuses: Map.of(statuses), unavailablePluginIds: List.of(unavailablePluginIds));
+
+  @override
+  bool isPluginActive({required String pluginId}) => pluginsActive;
 
   @override
   Future<SessionFamilyScope> resolveSessionFamily({
@@ -803,6 +917,10 @@ final class _History() implements ChatHistoryService {
   final List<String> backfilled = [];
   Object? backfillFailure;
 
+  /// When set, a backfill replaces the summary request with a replayed copy
+  /// under another id, carrying this text.
+  String Function()? replayRequestText;
+
   /// Message ids whose stored handoff was marked as not sent.
   final List<String> notSentMessages = [];
 
@@ -816,6 +934,12 @@ final class _History() implements ChatHistoryService {
   Future<void> backfillSession({required String sessionId}) async {
     if (backfillFailure case final failure?) throw failure;
     backfilled.add(sessionId);
+    if (replayRequestText case final text?) {
+      messages = [
+        for (final message in messages)
+          message.info.id == _requestMessageId ? _userMessage(id: "replayed-user", text: text()) : message,
+      ];
+    }
   }
 
   @override

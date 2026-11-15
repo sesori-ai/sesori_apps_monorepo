@@ -8,7 +8,7 @@ part "send_to_session_request.g.dart";
 /// The bridge asks the source session's agent for a handoff summary, saves the
 /// source's transcript for the target, then prompts the target with both. The
 /// response arrives once the target has accepted that prompt, or with a
-/// [SendToSessionErrorResponse].
+/// `SendToSessionErrorResponse`.
 @Freezed(fromJson: true, toJson: true)
 sealed class SendToSessionRequest with _$SendToSessionRequest {
   const factory({
