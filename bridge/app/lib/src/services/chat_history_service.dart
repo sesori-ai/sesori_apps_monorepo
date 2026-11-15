@@ -29,6 +29,27 @@ final class const SessionAttachmentUnsupported() extends SessionAttachmentResult
 
 final class const SessionAttachmentTooLarge() extends SessionAttachmentResult;
 
+/// What an edit of a stored user message removes from the session, by the
+/// shared prompt-turn rule.
+sealed class const RewindRemoval();
+
+/// The message opens the session's first turn, so the edit keeps no earlier
+/// turn.
+final class const RewindRemovalFirstTurn({
+  /// The edited message and every later stored message, oldest first.
+  required final List<String> removedMessageIds,
+}) extends RewindRemoval;
+
+/// The message opens a later turn, so the edit keeps every turn before it.
+final class const RewindRemovalLaterTurn({
+  /// The edited message and every later stored message, oldest first.
+  required final List<String> removedMessageIds,
+}) extends RewindRemoval;
+
+/// The message does not open a turn: it is a follow-up, not a user message,
+/// or not in the session's history.
+final class const RewindRemovalNotTurnOpener() extends RewindRemoval;
+
 /// The outcome of storing one finalized part whose delivery shape depends on
 /// that write having landed.
 sealed class const CapturedPartDelivery();
@@ -458,6 +479,36 @@ class ChatHistoryService({
     readArchive: (_) => _chatHistoryRepository.getArchivedPromptIndex(sessionId: sessionId),
     readStore: (_) => _chatHistoryRepository.getPromptIndex(sessionId: sessionId),
   );
+
+  /// What editing [messageId] removes from [sessionId]'s history.
+  ///
+  /// Reads the whole history the way a client open does, so a store that is
+  /// behind its harness is backfilled first and the turn rule never runs on a
+  /// partial transcript. Only a prompt that opens a turn can be edited; the
+  /// removal is that message and every later stored message by id, hidden
+  /// ones included.
+  Future<RewindRemoval> removalForRewind({required String sessionId, required String messageId}) async {
+    final page = await getSessionMessages(
+      sessionId: sessionId,
+      window: const HistoryWindowAll(),
+      attachmentDelivery: MessageAttachmentDelivery.storedReference,
+      toolOutputDelivery: ToolOutputDelivery.onExpand,
+      storedOnly: false,
+      backgroundRefresh: false,
+    );
+    final openers = [
+      for (final segment in splitPromptTurns(messages: page.messages))
+        if (segment case PromptSegment(:final opener)) opener.info.id,
+    ];
+    final turnIndex = openers.indexOf(messageId);
+    if (turnIndex == -1) return const RewindRemovalNotTurnOpener();
+    final removedMessageIds = List<String>.unmodifiable(
+      page.messages.map((message) => message.info.id).skipWhile((id) => id != messageId),
+    );
+    return turnIndex == 0
+        ? RewindRemovalFirstTurn(removedMessageIds: removedMessageIds)
+        : RewindRemovalLaterTurn(removedMessageIds: removedMessageIds);
+  }
 
   /// The prompts in the session's history whose whole text holds [query],
   /// ignoring case, oldest first, each with the words around its first match.
@@ -1096,6 +1147,17 @@ class ChatHistoryService({
   Future<void> backfillSession({required String sessionId}) async {
     await _backfillSessionForRead(sessionId: sessionId);
   }
+
+  /// Turns the stored `sent` handoff of the user message [messageId] into its
+  /// not-sent form, after the session's pending captures.
+  Future<void> markHandoffNotSent({required String sessionId, required String messageId}) => _enqueue(
+    sessionId: sessionId,
+    write: () => _chatHistoryRepository.markHandoffNotSent(
+      sessionId: sessionId,
+      messageId: messageId,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    ),
+  );
 
   Future<SessionPromptDefaults?> _backfillSessionForRead({required String sessionId}) {
     final inFlight = _inFlightBackfills[sessionId];

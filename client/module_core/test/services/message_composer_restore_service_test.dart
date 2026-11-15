@@ -36,6 +36,7 @@ MessageWithParts _message({required List<MessagePart> parts}) => MessageWithPart
     time: null,
     promptId: null,
     invocation: null,
+    handoff: null,
   ),
   parts: parts,
 );

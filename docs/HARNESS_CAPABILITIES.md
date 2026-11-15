@@ -678,8 +678,12 @@ first turn already runs fast.
 
 Claude Code reports fast-mode support per model as `supportsFastMode: true` in
 the stream-json `initialize` response (omitted for models without it; in CLI
-2.1.281 only some Opus models carry it), which sets `PluginModel.fastMode` with a
-60-minute prompt-cache lifetime. Fast mode is not a launch flag: a fresh process
+2.1.281 only some Opus models carry it), which sets `PluginModel.fastMode`. Its
+prompt-cache lifetime follows the handshake's `account`: 60 minutes when it
+reports a `subscriptionType` (which wins even beside `apiProvider`), 5 minutes
+when it reports `apiProvider` without `subscriptionType` (an API key, Bedrock,
+or Vertex), and 60 minutes when it reports neither. Account shapes verified
+against CLI 2.1.325 on 2026-11-15. Fast mode is not a launch flag: a fresh process
 starts with it off, and the plugin sends the `apply_flag_settings`
 control request (`{"subtype":"apply_flag_settings","settings":{"fastMode":…}}`, the shape the Agent SDK's `applyFlagSettings` sends) before a turn whenever the session's choice
 differs from what the resident process last applied. The CLI acknowledges the
@@ -1115,7 +1119,7 @@ on a bridge on the same computer:
 
 | Harness | Reads a saved file | Asks first |
 |---|---|---|
-| Claude Code 2.1.319 | ✅ Quoted it. | Yes: one permission request per read outside the working directory, since Sesori passes no `--add-dir`. |
+| Claude Code 2.1.325 | ✅ Quoted it. | No: every launch allows reading `~/.sesori/uploads` and `~/.sesori/transcripts` with read-only `Read(//<folder>/**)` rules. Rechecked on 2026-11-15. |
 | Codex 0.167.0 | ✅ Quoted it. | No. |
 | OpenCode 2.2.6 | ✅ Quoted it. | No, on a config whose `permission.read` is `"*": "allow"`. The default agent's `external_directory: * → ask` may still ask on other configs; that is unverified. |
 | Pi 1.5.0 | ✅ Quoted it. | No. |
@@ -1135,6 +1139,11 @@ on, so each request was approved automatically, and in Ask mode it would have
 been a prompt. Pi read it on DeepSeek V4.1 Flash, because the machine's OpenAI
 login for Pi had expired. Sesori's ACP client advertises
 `fs.readTextFile: false`, so ACP harnesses read through their own tools.
+Claude Code was rechecked on 2026-11-15 through the local debug server, on a
+session set to Ask: one prompt attached a `.txt` and named a file under
+`~/.sesori/transcripts`, Claude read and quoted both, and no permission request
+was raised. A read of a file outside both folders in the same session did raise
+one.
 
 ## Sub-agents
 

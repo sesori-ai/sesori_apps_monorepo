@@ -11,7 +11,13 @@ _ClaudeBackendCatalogDto _$ClaudeBackendCatalogDtoFromJson(Map json) =>
       commands: _commandsOrEmpty(json['commands']),
       models: _modelsOrEmpty(json['models']),
       fastModeDisabledReason: _stringOrNull(json['fast_mode_disabled_reason']),
+      account: _accountOrNull(json['account']),
     );
+
+_ClaudeAccountDto _$ClaudeAccountDtoFromJson(Map json) => _ClaudeAccountDto(
+  subscriptionType: _stringOrNull(json['subscriptionType']),
+  apiProvider: _stringOrNull(json['apiProvider']),
+);
 
 _ClaudeCommandDto _$ClaudeCommandDtoFromJson(Map json) => _ClaudeCommandDto(
   name: _stringOrNull(json['name']),

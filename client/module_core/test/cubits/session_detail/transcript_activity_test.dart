@@ -5,6 +5,7 @@ import "package:test/test.dart";
 MessageWithParts _prompt({required String id, required int? at, String? promptId}) => MessageWithParts(
   info: Message.user(
     invocation: null,
+    handoff: null,
     id: id,
     sessionID: "s",
     agent: null,
@@ -247,6 +248,7 @@ void main() {
           const MessageWithParts(
             info: Message.user(
               invocation: null,
+              handoff: null,
               id: "hidden",
               sessionID: "s",
               agent: null,

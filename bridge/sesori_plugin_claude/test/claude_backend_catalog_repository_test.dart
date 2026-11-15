@@ -132,6 +132,42 @@ void main() {
         }
       });
 
+      test("sets the prompt-cache lifetime from the account's billing route", () {
+        PluginFastModeSupport? fastModeFor({required Object? account}) => repository
+            .map(
+              skillNames: const {},
+              handshake: {
+                "models": [
+                  {"value": "opus", "supportsFastMode": true},
+                ],
+                "account": account,
+              },
+            )
+            .providers
+            .providers
+            .single
+            .models
+            .single
+            .fastMode;
+
+        // Account shapes captured from CLI 2.1.325, identity fields omitted.
+        const expected = <String, (Object?, int)>{
+          "subscription": ({"apiProvider": "firstParty", "subscriptionType": "max"}, 3600),
+          "API key": ({"apiKeySource": "ANTHROPIC_API_KEY", "apiProvider": "firstParty"}, 300),
+          "Bedrock": ({"apiProvider": "bedrock"}, 300),
+          "Vertex": ({"apiProvider": "vertex"}, 300),
+          "no account": (null, 3600),
+          "an account without a route": ({"email": "private@example.com"}, 3600),
+        };
+        for (final MapEntry(key: route, value: (account, ttl)) in expected.entries) {
+          expect(
+            fastModeFor(account: account),
+            PluginFastModeSupport.available(promptCacheTtlSeconds: ttl),
+            reason: route,
+          );
+        }
+      });
+
       test("asks for an opt-in only when the opt-in masks a fast-capable model", () {
         Map<String, Object?> handshake({required String? reason, required bool fastCapable}) => {
           "models": [

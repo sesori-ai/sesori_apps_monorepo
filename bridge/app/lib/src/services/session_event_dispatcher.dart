@@ -14,7 +14,9 @@ typedef NormalizedSourcedBridgeEvent = ({
   bool allowDuringStop,
   Completer<void>? terminalHandoffConsumed,
 });
-typedef LocalSessionEvent = ({String pluginId, BridgeSseEvent event});
+
+/// Events the bridge raises itself, already in Sesori ids, in delivery order.
+typedef LocalSessionEvent = ({String pluginId, List<BridgeSseEvent> events});
 typedef _DispatchEvent = ({
   int? generation,
   BridgeSseEvent event,
@@ -86,12 +88,13 @@ class SessionEventDispatcher({required final SessionEventService _sessionEventSe
     return _dispatch(
       pluginId: source.pluginId,
       operation: () async => [
-        (
-          generation: null,
-          event: source.event,
-          allowDuringStop: false,
-          terminalHandoffConsumed: null,
-        ),
+        for (final event in source.events)
+          (
+            generation: null,
+            event: event,
+            allowDuringStop: false,
+            terminalHandoffConsumed: null,
+          ),
       ],
     );
   }

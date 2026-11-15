@@ -239,7 +239,11 @@ The bridge sends the source session a summarise prompt through the existing prom
    - A refresh can replace the live echo with a replayed message under another id (ACP replays do), so the split
      finds the request by its echo id, or failing that by its exact text, taking the last match. The summary stops at the next user
      message, so a prompt queued behind the summary stays out of it.
-   - The transcript is every message before the summarise user message.
+   - The transcript is every message before the summarise user message, without the summary exchanges of earlier
+     sends. Step 4 divergence: each earlier prompt turn whose opening user message carries a source-side stamp
+     (`handoff.sent` or `handoff.notSent`, D11) is dropped, from that message up to the next user message, because
+     those exchanges stay hidden behind their marker in the source. A target-side `handoff.received` message stays:
+     it is real context. The split in `SessionSendService` does this; the builder stays a pure function of its list.
    - The summary is the text parts of the assistant messages after it.
    - No text fails with `summaryMissing`.
 6. **Render and store.** It renders the transcript with `SessionTranscriptMarkdownBuilder` (D6) and saves it for the
@@ -261,15 +265,14 @@ returns 404. The exception lives in `bridge/app/lib/src/services/`, next to `ses
 
 | Collaborator | Used for |
 |---|---|
-| `SessionRepository` | Existence, root and archived checks, statuses, and `forgetHandoff` on a failed send (D11) |
-| `ChatHistoryRepository` | `clearHandoff` on a failed send (D11) |
+| `SessionRepository` | Existence, root and archived checks, statuses, and `markHandoffNotSent` on a failed send (D11) |
 | `SessionViewService` | Session snapshots (title, directory, `pluginId`, created time) and prompt defaults, as continuation uses it |
 | `PermissionRepository`, `QuestionRepository` | Awaiting-input checks |
 | `SessionOperationDispatcher` | The source reservation in step 3 |
 | `SessionPromptService` | Both sends, each with its handoff stamp (D11) |
 | `SessionEventDispatcher` | Echo, idle and error events |
 | `SessionAbortService` | `abortStartedSessions` |
-| `ChatHistoryService` | The whole-history read |
+| `ChatHistoryService` | The whole-history read, and `markHandoffNotSent` on a failed send (D11) |
 | The transcripts `PromptUploadRepository` instance | Saving the file |
 | `SessionTranscriptMarkdownBuilder` | Rendering |
 | `PluginLifecycleService` | The harness display name, from the same metadata `GetPluginsHandler` returns |
@@ -320,8 +323,9 @@ the summary, the transcript or prompt text.
 - **Approval prompts.**
   - Claude Code asks today, so step 5 adds two read-only rules at every launch (S4 = B):
     `--allowedTools "Read(/<transcripts root>/**)" "Read(/<uploads root>/**)"`. With each root's leading `/`, that is
-    Claude's `//` absolute-path form. They go through the plugin's existing `allowedTools` path. Every Claude process
-    the bridge starts after an update carries them. The rules are read-only; nothing lets the agent write there.
+    Claude's `//` absolute-path form; a Windows drive path is written in the POSIX form Claude matches
+    (`C:\Users\a` as `/c/Users/a`). They go through the plugin's existing `allowedTools` path. Every Claude process
+    the bridge starts after an update carries them. The rules are read-only and grant no write access; only a write rule the user approves for the session could.
   - The uploads rule covers files the user attached to prompts (`~/.sesori/uploads`, written by
     `PromptUploadRepository`), so attachments stop asking on Claude Code too. That reverses the file-transfer plan's D1
     (`.plan/completed/file-transfer/PLAN.md`, kept as history). The live records that still say Claude asks are updated
@@ -448,6 +452,8 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
 - **Model** (`sesori_shared`): a sealed Freezed `MessageHandoff`, union key `kind`, `fallbackUnion: "unknown"` so an
   older client survives a later variant:
   - `sent({required String targetSessionId, required String? targetTitle})` on the summarise prompt in the source;
+  - `notSent({required String targetSessionId, required String? targetTitle})` on the summarise prompt of a send that
+    did not complete (step 4 divergence, see below);
   - `received({required String sourceSessionId, required String? sourceTitle, required String summary, required
     String transcriptPath})` on the handoff prompt in the target. The card needs the summary and path apart from the
     prompt's wording, so the bridge stores them rather than having the client parse the prompt text;
@@ -470,14 +476,23 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
     live stamping seam (`SessionEventService` is its only caller).
   - `_withStoredInvocation` becomes `_withStoredStamps` and keeps a stored `handoff` the same way it keeps an
     invocation. Archive's audit export carries the stored JSON, so archived sessions keep their markers.
-  - **A failed send clears the source stamp.** On any failure after the summarise send was accepted,
-    `SessionSendService` calls `SessionRepository.forgetHandoff({sessionId, promptId})`. If the echo has arrived, it also
-    calls a new `ChatHistoryRepository.clearHandoff({sessionId, messageId})`. The failed exchange then shows as an
-    ordinary turn on the next history load, and a late echo isn't stamped. A client that had the marker live keeps it
-    until then; the requesting client gets the failure alert.
+  - **A failed send keeps the summary exchange hidden** (step 4 divergence, user decision). Sesori's request to the
+    source agent is never shown as a plain message, so a failure does not clear the stamp: it turns `sent` into
+    `notSent`. On any failure after the source checks, `SessionSendService` calls
+    `SessionRepository.markHandoffNotSent({sessionId, promptId})`, which replaces a tracked `sent` stamp, so a late
+    echo or a later live update of the echo is stamped `notSent`. Once the echo has arrived it also calls
+    `ChatHistoryService.markHandoffNotSent({sessionId, messageId})`, which runs on the session's history write lane
+    and replaces the stored `sent` stamp; when the refresh before the split replaced the echo with a replayed message
+    under another id, that id is marked too. A definite 4xx refusal of the summarise prompt still forgets the
+    stamp in `sendPrompt`, because no turn happened, so the mark finds nothing. A client that had the marker live
+    keeps the `sent` state until its next history load; the requesting client gets the failure alert.
+  - The history store's replay matching ignores `handoff` as it ignores `invocation`, so a replay under another id
+    still pairs with the stamped live row and keeps its stamp. Marking a stored stamp `notSent` refreshes the row's
+    `updatedAt`, so the next replay still treats the row as current and pairs it.
 - **Logs** carry the ids and the handoff kind, never the summary.
-- A bridge restart during the summary loses the tracker entry, and with it the stamp. That send is already lost
-  (accepted risk), and the exchange simply stays visible.
+- A bridge restart during the summary loses the tracker entry. That send is already lost (accepted risk). An echo that
+  arrives after the restart is unstamped and shows as an ordinary exchange; one stored before it keeps `sent`, because
+  nothing is left to mark it `notSent`.
 
 ### D12. How the handoff renders (Q2)
 
@@ -489,6 +504,8 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
     agent's reply stay hidden.
   - The row arrives through the ordinary new-turn path and keeps one height in both states, so nothing jumps when
     the turn ends.
+  - A turn whose opener carries `handoff.notSent` folds the same way into "Couldn't send to <target>". Tapping it
+    shows the agent's reply in the same sheet when there is one. Sesori's request never shows as a plain message.
 - **Target chat: a card in place of the user bubble** for a message carrying `handoff.received`:
   - header "From <source>", linking to the source (archived sources open read-only, as today);
   - the first lines of the summary, faded at the bottom, with "Show all";
@@ -563,13 +580,13 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
 | Busy-source refusal | Ordinary flow: sending from a running session. On ACP it would otherwise kill the turn. |
 | Stop cancels the send | Ordinary flow. Without it, a half summary is delivered and can't be undone. |
 | 15-minute bound | Theoretical stuck session. It costs one timer and keeps the request from hanging forever. |
-| Failed send clears the source stamp | Ordinary flow (stop, error, target refusal). Otherwise the source says "Summary sent" for a send that never happened, permanently. |
+| Failed send marks the source stamp not sent | Ordinary flow (stop, error, target refusal). Otherwise the source says "Summary sent" for a send that never happened, permanently, or Sesori's request shows as a plain message. |
 | Archive only on `sent` | Ordinary flow. Archiving on failure would hide the only copy of the work from the list. |
 
 **Accepted risks:**
 
-- A bridge restart during the summary loses the send and its stamp. The source keeps its summary turn as an ordinary
-  exchange and the user sends again.
+- A bridge restart during the summary loses the send. An echo after the restart is unstamped and the source shows the
+  summary turn as an ordinary exchange; an echo stored before it keeps its `sent` marker (D11). The user sends again.
 - A client that disconnects gets no outcome and doesn't archive. The target transcript shows the result.
 - A failed folder deletion leaks a small local file. This is logged.
 - The summary costs one source turn of tokens.
@@ -686,11 +703,14 @@ generated.
     `sendPromptAlreadyReserved`, recorded before the plugin call and forgotten on a definite refusal; existing callers
     pass null;
   - renames `_withStoredInvocation` to `_withStoredStamps` and keeps a stored `handoff`;
-  - adds `SessionRepository.forgetHandoff` and `ChatHistoryRepository.clearHandoff`;
-  - `SessionSendService` passes both stamps with its sends and clears the source stamp on failure.
+  - adds the `notSent` variant, `SessionRepository.markHandoffNotSent` (tracker) and
+    `ChatHistoryService.markHandoffNotSent` (stored history);
+  - `SessionSendService` passes both stamps with its sends, marks the source stamp not sent on failure, and leaves
+    earlier stamped summary exchanges out of the transcript;
+  - shares the prompt-defaults mapping of both sends and continuation as `SessionPromptService.settingsFrom`.
 - **Tests:** stamping on the live echo; the stamp surviving a later update, a harness replay and archive export; the
-  clear on each failure after the echo; an older client's JSON parse ignoring the key; an unknown kind parsing to
-  `unknown`.
+  not-sent mark after each failure kind, before and after the echo; the transcript skipping stamped turns; an older
+  client's JSON parse ignoring the key; an unknown kind parsing to `unknown`.
 - **Why:** both chats need to know which messages are the handoff, on every harness (S3).
 - **Risk and test focus:** medium. The history merge runs on every message; check invocation stamping is unchanged.
 - **Expected result:** no user-visible change until step 8. Stored history JSON gains the key on handoff messages only.
@@ -769,7 +789,8 @@ docs.
 
 - **Complexity:** moderate. Turn folding in the transcript builder, two new transcript items and an in-place expansion.
 - **What:**
-  - the `module_core` transcript builder folds a turn whose opener carries `handoff.sent` into a marker item, and
+  - the `module_core` transcript builder folds a turn whose opener carries `handoff.sent` or `handoff.notSent` into
+    a marker item ("Couldn't send to <target>" for `notSent`, D12), and
     turns a `handoff.received` user message into a card item (D12);
   - adds the marker row, its summary sheet and the card with "Show all" in `module_app_ui`;
   - adds the strings.
@@ -879,7 +900,7 @@ archive and per-harness read variants.
 | Archive switch on: source archived after success, Undo restores it; switch off: kept; choice remembered | Client end to end, iOS simulator | Claude source |
 | Pinned source with the switch on: confirmation before sending; cancel keeps the sheet | Client end to end, iOS simulator | Any |
 | Busy source: alert with Stop, then send | Client end to end, iOS simulator | Claude |
-| Stop during the summary gives "summary was stopped", the target receives nothing, the source isn't archived, and the exchange shows as an ordinary turn after reload | Client end to end, iOS simulator | Claude |
+| Stop during the summary gives "summary was stopped", the target receives nothing, the source isn't archived, and the exchange shows as a "Couldn't send to …" marker after reload | Client end to end, iOS simulator | Claude |
 | Picker labels: "Running: sending stops its current turn" on a running ACP session, "Running" on a running Codex session | Client end to end, iOS simulator | One ACP harness, Codex |
 | Old bridge (a build before step 3): picking a target shows the update alert | Client end to end, iOS simulator | Any |
 | Target archived between the pick and the send, and session-error paths | Headless bridge with a fake plugin (automated) | None |
@@ -894,6 +915,9 @@ A reduction to this matrix needs the user's acceptance recorded here before reti
 
 - `CommandInvocationTracker`, `stampLiveInvocation` and `_withStoredInvocation` are generalised in place into one
   prompt-stamp record and seam rather than duplicated (step 4).
+- Step 3 left the prompt-defaults mapping (remembered defaults to a prompt's variant, fast mode, agent and model) in
+  `SessionSendService` and `SessionContinuationService`. Step 4 shares it as `SessionPromptService.settingsFrom`,
+  beside `generatePromptId`, which both already use.
 - No other relevant cleanup was found. Readiness reuses the status and pending-request reads every plugin already
   supplies, so nothing is renamed.
 

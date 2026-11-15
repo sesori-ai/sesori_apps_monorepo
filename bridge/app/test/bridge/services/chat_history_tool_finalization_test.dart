@@ -440,6 +440,7 @@ Future<Map<String, MessagePart>> _storedParts({
 
 Message _message({required String id}) => Message.user(
   invocation: null,
+  handoff: null,
   id: id,
   sessionID: "ses_a",
   agent: null,

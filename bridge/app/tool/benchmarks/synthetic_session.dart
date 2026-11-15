@@ -72,6 +72,7 @@ Future<void> timeRuns({required String label, required Future<void> Function() o
 MessageWithParts _prompt({required int index}) => MessageWithParts(
   info: Message.user(
     invocation: null,
+    handoff: null,
     id: "u$index",
     sessionID: syntheticSessionId,
     agent: null,

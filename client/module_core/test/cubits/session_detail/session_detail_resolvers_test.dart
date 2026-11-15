@@ -29,6 +29,7 @@ void main() {
           const MessageWithParts(
             info: Message.user(
               invocation: null,
+              handoff: null,
               id: "turn",
               sessionID: "session-1",
               agent: "general",

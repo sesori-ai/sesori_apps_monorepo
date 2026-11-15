@@ -146,6 +146,7 @@ void main() {
     test("round-trips when present and decodes old payloads to null", () {
       const message = Message.user(
         invocation: null,
+        handoff: null,
         id: "msg_1",
         sessionID: "ses_1",
         agent: null,
