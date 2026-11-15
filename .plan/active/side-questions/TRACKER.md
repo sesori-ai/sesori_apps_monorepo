@@ -11,12 +11,13 @@
 | 7 | Prego detent sheet | Not started | | 1 (parallel) |
 | 8 | Phone side chat | Not started | | 6, 7 |
 | 9 | Desktop side panel | Not started | | 8 |
-| 10 | Reconcile regression docs | Not started | | 3, 5, 8, 9 |
-| 11 | Verify and retire | Not started | | 10 |
+| 10 | `/btw` side-question mode | Not started | | 8, 9 |
+| 11 | Reconcile regression docs | Not started | | 3, 5, 8, 9, 10 |
+| 12 | Verify and retire | Not started | | 11 |
 
-## Open product question
+## Product questions
 
-Entry placement (A composer pill / B session menu / C `/btw` row / D A+C). Plan assumes A until answered.
+All answered: entry points D (button and `/btw`, round 2), `/btw` composer mode B (round 3).
 
 ## Verification results
 

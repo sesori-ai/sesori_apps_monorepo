@@ -29,6 +29,19 @@ other harness gets an honest reason when the user taps the entry.
 - Analytics: report the side question with the harness kind and the outcome
   only.
 - The user prefers simple, uniform behaviour on every harness.
+- Round 2, B1 (2026-11-15): **D**. Two entry points: a side-question button in
+  the composer's options pill, next to `+` and `/`, and a `/btw` command.
+- Round 3, Q1 (2026-11-15): **B**. Typing "/btw " (with the space) switches the
+  whole composer into "Side question" mode:
+  - the "/btw " text disappears and the rest of what was typed stays;
+  - a "Side question" label with a speech-bubble icon and ✕ appears above the
+    field, and the field's border darkens;
+  - ✕ returns to the normal composer, keeping the text;
+  - Send opens the side sheet (the panel on desktop) with the question and
+    its answer.
+- Round 3, Q3 (2026-11-15): sending from a side chat back to its session never
+  archives anything and shows no archive switch. That send is owned by the
+  session-send plan.
 
 The following are separate plans owned elsewhere. This plan only notes the
 seams:
@@ -37,6 +50,11 @@ seams:
   that plan's plugin fork operation.
 - **Merge plan.** It owns "Send to main session" from a side chat. The side chat
   view leaves a slot for that action in each answer's actions (see Client UX).
+  That send never archives the main session.
+- **Composer mode.** The edit-and-fork plan's edit mode also takes over the
+  composer header. Whichever plan lands first adds one sealed composer mode in
+  `SessionDetailCubit` (normal, editing, side question), so the two modes can't
+  overlap; entering one leaves the other.
 
 ## Verified facts (pinned versions, 2026-11-14)
 
@@ -460,10 +478,10 @@ The Codex adapter follows the plugin's own chain: API, then
 
 ### Client UX
 
-**Entry point.** This placement is a product question (see Open product
-question). The recommended default is a side-question button, icon
-`TablerRegular.message_question`, in the composer's options pill next to `+`
-and `/`.
+**Entry points (B1 = D).** There are two, and both open the same side chat.
+
+*The button.* A side-question button, icon `TablerRegular.message_question`,
+sits in the composer's options pill next to `+` and `/`.
 
 - It is the same on phone and desktop, and keeps the full top bar untouched.
 - On a phone it folds behind the chevron while typing, like its neighbours.
@@ -473,6 +491,40 @@ and `/`.
   Sesori on this computer to ask side questions." For `harnessUnsupported`:
   "<Harness> can't answer side questions in Sesori yet."
 - While `unresolved`, the button holds its place, disabled, like attach does.
+
+*The `/btw` command (Q1 = B).* Typing "/btw " at the start of the composer
+switches it into side-question mode.
+
+- **Where it lives.** The mode is the `sideQuestion` variant of the sealed
+  composer mode in `SessionDetailCubit` (see the composer-mode seam). The
+  cubit enters it when the composer text starts with "/btw " and the session is
+  `available`. Matching is on the exact prefix "/btw " (any letter case), at
+  the start of the text only.
+- **What changes on screen.** The "/btw " prefix is removed from the field and
+  the caret stays after the text that remains. The strip above the input,
+  which today shows a staged command's chip (`prompt_input.dart`, the
+  `stagedCommand` header), shows a "Side question" label with the speech-bubble
+  icon and ✕ instead. The field's border darkens. The label grows in and the
+  border colour eases, with the motion the staged-command chip already uses;
+  with reduced motion they appear without animation. The transcript above does
+  not move, because the strip's footprint is already reserved.
+- **Leaving it.** ✕, or Backspace in an empty field, returns to the normal
+  composer with the text kept. Picking a slash command or an attachment also
+  leaves it, since a side question takes neither.
+- **Sending.** Send in this mode does not send a prompt. It opens the side sheet
+  on a phone, or the panel on desktop, on a new side chat, asks the typed text
+  there, and clears the main composer. The sheet then shows the question and
+  "Thinking…" until the answer arrives in one piece (neither native seam
+  streams; see Behaviour).
+- **The `/` picker.** On `available` sessions, the command picker also lists a
+  Sesori row, "btw: ask a side question", above the harness's commands.
+  Picking it enters the same mode with an empty field.
+- **Unavailable sessions.** On a session that isn't `available`, "/btw " stays
+  plain text and goes to the harness like anything else typed, and the picker
+  has no btw row. The button still answers a tap with the reason, so the
+  limitation is never silent.
+- **Drafts.** The mode is not saved with the composer draft: a restored draft
+  comes back as plain text.
 
 **Phone sheet.** This is a new reusable Prego component, `showPregoDetentSheet`
 in `module_prego/lib/components/surfaces/`.
@@ -519,7 +571,8 @@ is used by both shells.
 - It slides in from the window's right edge by transform, like the sidebar's
   motion. The transcript column doesn't move or reflow.
 - Escape or its close button closes it. Switching sessions closes it.
-- It is opened by the same composer button.
+- It is opened by the same composer button, and by sending in side-question
+  mode.
 - It holds the same `SideChatView`. The page behind stays interactive, so the
   user can keep reading and scrolling the main chat.
 
@@ -558,15 +611,15 @@ Deliberately not added:
 
 ## Steps
 
-PR titles follow `<emoji> [side-questions] <description> [step x/11]`. The
+PR titles follow `<emoji> [side-questions] <description> [step x/12]`. The
 sizes are estimates of added plus deleted lines, with generated code counted
 separately.
 
-### Step 1: raise the plan, `🌱 [side-questions] Plan side questions [step 1/11]`
+### Step 1: raise the plan, `🌱 [side-questions] Plan side questions [step 1/12]`
 
 This branch. Plan files only.
 
-### Step 2: bridge contract, storage and routes, `🚧 … Store side chats and add the side-question routes on the bridge [step 2/11]`
+### Step 2: bridge contract, storage and routes, `🚧 … Store side chats and add the side-question routes on the bridge [step 2/12]`
 
 **Includes:**
 
@@ -596,7 +649,7 @@ only. Report the split in the PR.
 
 **Expected result:** no user-visible change, and one new table.
 
-### Step 3: Claude native side questions, `⚙️ … Answer side questions on Claude Code [step 3/11]`
+### Step 3: Claude native side questions, `⚙️ … Answer side questions on Claude Code [step 3/12]`
 
 **Includes:**
 
@@ -620,7 +673,7 @@ only. Report the split in the PR.
 
 **Size:** about 500 lines.
 
-### Step 4: Codex runtime target to at least 0.169, `⚙️ … Raise the Codex runtime target to <version> [step 4/11]`
+### Step 4: Codex runtime target to at least 0.169, `⚙️ … Raise the Codex runtime target to <version> [step 4/12]`
 
 **How:**
 
@@ -635,7 +688,7 @@ only. Report the split in the PR.
 **Risk:** a runtime bump touches every Codex session. The release audit and the
 existing Codex regression entries are the check.
 
-### Step 5: Codex native side questions, `⚙️ … Answer side questions on Codex [step 5/11]`
+### Step 5: Codex native side questions, `⚙️ … Answer side questions on Codex [step 5/12]`
 
 **Depends on:** steps 2 and 4.
 
@@ -657,7 +710,7 @@ existing Codex regression entries are the check.
 
 **Size:** about 500 lines.
 
-### Step 6: client core, `⚙️ … Load and ask side questions in the app core [step 6/11]`
+### Step 6: client core, `⚙️ … Load and ask side questions in the app core [step 6/12]`
 
 **Depends on:** step 2.
 
@@ -675,7 +728,7 @@ analytics outcome.
 
 **Size:** about 900 lines.
 
-### Step 7: Prego detent sheet, `⚙️ … Add a two-height drag sheet to Prego [step 7/11]`
+### Step 7: Prego detent sheet, `⚙️ … Add a two-height drag sheet to Prego [step 7/12]`
 
 **Includes:**
 
@@ -687,7 +740,7 @@ analytics outcome.
 
 **Size:** about 600 lines. It can run in parallel with steps 2 to 6.
 
-### Step 8: phone side chat, `🚧 … Ask side questions from the session on the phone [step 8/11]`
+### Step 8: phone side chat, `🚧 … Ask side questions from the session on the phone [step 8/12]`
 
 **Depends on:** steps 6 and 7.
 
@@ -711,7 +764,7 @@ analytics outcome.
 
 **Size:** about 1,200 lines.
 
-### Step 9: desktop side panel, `⚙️ … Show side chats in a panel on desktop [step 9/11]`
+### Step 9: desktop side panel, `⚙️ … Show side chats in a panel on desktop [step 9/12]`
 
 **Depends on:** step 8.
 
@@ -726,12 +779,45 @@ desktop-specific UI.
 
 **Size:** about 500 lines.
 
-### Step 10: reconcile regression docs, `🌱 … Document side questions for regression runs [step 10/11]`
+### Step 10: `/btw` side-question mode, `⚙️ … Ask side questions by typing /btw in the composer [step 10/12]`
+
+**Depends on:** steps 8 and 9.
+
+**Includes:**
+
+- The sealed composer mode in `SessionDetailCubit`, unless the edit-and-fork
+  plan has already added it; then only its `sideQuestion` variant.
+- Prefix detection, leaving the mode, and send-to-side-chat, as described in
+  Client UX.
+- The "Side question" strip and the darker border in `PromptInput`, through
+  the staged-command header slot.
+- The Sesori "btw" row in the command picker.
+- Strings.
+
+**Checks:**
+
+- Cubit tests for entering, leaving, keeping the text, unavailable sessions and
+  the draft rule.
+- Widget tests for the strip, the border and the picker row.
+- A headless iOS simulator recording against a fixture or dev account: type
+  "/btw ", see the mode, ✕ back, type again and send, and the sheet opening
+  with the question while the main transcript doesn't move. It goes in the PR,
+  on the `pr-media` branch, with before and after screenshots of the composer.
+
+**Size:** about 600 lines.
+
+**Complexity:** ⚙️, because composer state, gesture and motion meet here.
+
+**Expected result:** typing "/btw " on a Claude Code or Codex session switches
+the composer into side-question mode, and sending asks a side question. No
+database or wire change.
+
+### Step 11: reconcile regression docs, `🌱 … Document side questions for regression runs [step 11/12]`
 
 Covers the documents listed below, plus the final `HARNESS_CAPABILITIES.md`
 wording.
 
-### Step 11: verify and retire, `🌱 … Verify side questions and retire the plan [step 11/11]`
+### Step 12: verify and retire, `🌱 … Verify side questions and retire the plan [step 12/12]`
 
 1. Run the matrix below.
 2. Record the results in `TRACKER.md`.
@@ -753,7 +839,6 @@ wording.
   - Live sync of side chats across surfaces.
   - Cancel from the UI.
   - Voice dictation in the side composer.
-  - A `/btw` row in the command picker.
 
 ## Regression documents
 
@@ -765,7 +850,9 @@ wording.
   - a tool run,
   - a lost answer after closing the sheet,
   - transcript scroll jumps,
-  - a tap that does nothing.
+  - a tap that does nothing,
+  - "/btw " sent to the harness as a prompt on a session that supports side
+    questions, or the composer text lost when leaving the mode.
 - **`session-archiving-and-deletion.md`.** Side chats are deleted with their
   session, and are read-only when the session is archived.
 - **`desktop-cockpit-shell.md`.** The side panel's motion, and that it closes
@@ -798,7 +885,7 @@ included.
 | Bridge contract | Automated + headless bridge (debug server) | Routes, refusals, storage, cascade on delete, archived read-only, history order |
 | Claude Code | Live plugin | Mid-turn answer while the main turn keeps streaming. Follow-up uses history. Cold-resume answer. Session `.jsonl` unchanged |
 | Codex (new pin) | Live plugin | Same as Claude Code. Rollout unchanged. Over-budget history is trimmed |
-| iOS simulator, headless, Claude and Codex | Client end to end | Entry, sheet heights and drag, ask during streaming, follow-up, reopen earlier, close while waiting then reopen to see the answer, no main-transcript jump. Reason on tap for an unsupported harness and for an older bridge |
+| iOS simulator, headless, Claude and Codex | Client end to end | Both entries (button and "/btw " mode, including ✕ back with the text kept, and the picker's btw row), sheet heights and drag, ask during streaming, follow-up, reopen earlier, close while waiting then reopen to see the answer, no main-transcript jump. Reason on tap for an unsupported harness and for an older bridge |
 | macOS desktop (platform-specific panel) | Client end to end | Panel slides in without the transcript moving, ask and follow-up, Escape closes, session switch closes |
 | Analytics | Automated | One `side_question_asked` per ask, with bounded parameters |
 
@@ -834,23 +921,9 @@ names only collaboration mode. Step 5 updates it to mention `thread/sample`.
 - **Evidence level.** Every safeguard here addresses a verified behaviour or an
   ordinary flow. None defends a theoretical interleaving.
 
-## Open product question
+## Product questions
 
-The entry placement is the only placement choice the decisions don't settle.
-The options are:
-
-- **A, recommended.** A side-question button in the composer's options pill,
-  next to `+` and `/`. It's the same on phone and desktop, sits where the thumb
-  already is, and stays out of the full top bar. On a phone it hides behind the
-  chevron while typing.
-- **B.** An item in the session `⋯` menu. It costs no space but is less
-  discoverable.
-- **C.** A `/btw` row at the top of the slash-command list: typing
-  `/btw your question` and sending opens the side chat. This is familiar to
-  Claude Code users.
-- **D.** A together with C.
-
-The plan is written for A. B, C or D change only steps 8 and 9.
+All answered (round 2 B1 = D, round 3 Q1 = B; see Decisions). None is open.
 
 ## Review record
 
@@ -874,3 +947,7 @@ applied. They are:
 10. `SideQuestionAvailability` lives in `module_core` foundation models.
 
 Per the skill, the fixes were not reviewed again.
+
+2026-11-15: updated for round 2 (B1 = D) and round 3 (Q1 = B). The change is
+client-only (the `/btw` mode step) and adds no layer or contract, so it was not
+sent for another review.
