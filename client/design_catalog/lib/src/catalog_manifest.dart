@@ -1,8 +1,10 @@
 import "catalog_scenarios.dart";
+import "detent_sheet_scenario.dart";
 
 const catalogManifestPath = "web/catalog_manifest.json";
 const catalogScenarioSourcePath = "client/design_catalog/lib/src/catalog_scenarios.dart";
 const catalogComponentSourcePath = "client/module_prego/lib/components/buttons/prego_buttons_solid.dart";
+const catalogDetentSheetSourcePath = "client/module_prego/lib/components/surfaces/prego_detent_sheet.dart";
 
 /// Agent-readable design graph generated from the same registry as Widgetbook.
 Map<String, Object?> buildCatalogManifest() => {
@@ -23,6 +25,15 @@ Map<String, Object?> buildCatalogManifest() => {
       "source": catalogComponentSourcePath,
       "scenarioCount": catalogScenarios.length,
       "scenarios": catalogScenarios.map((scenario) => scenario.toJson()).toList(growable: false),
+    },
+    {
+      "id": "prego-detent-sheet",
+      "name": "showPregoDetentSheet",
+      "source": catalogDetentSheetSourcePath,
+      "scenarioCount": 1,
+      "scenarios": [
+        {"id": "detent-sheet-side-chat", "name": detentSheetUseCaseName, "description": detentSheetUseCaseDescription},
+      ],
     },
   ],
 };
