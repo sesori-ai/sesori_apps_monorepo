@@ -1,0 +1,876 @@
+# Side Questions ("by the way")
+
+## Goal
+
+While a session works, the user can ask a quick question on the side. The agent
+answers from what the session already knows, uses no tools, and doesn't
+interrupt or change the main session. The side chat opens in a half-height sheet
+over the session on a phone, or in a side panel on desktop. The main chat stays
+visible and keeps streaming behind it. Follow-ups are allowed. Side chats are
+stored by the bridge with their session, can be reopened later, and are never
+written to the main transcript.
+
+Phase 1 ships this for Claude Code and Codex, through their native seams. Every
+other harness gets an honest reason when the user taps the entry.
+
+## Decisions (final, from the session-branching round, 2026-11-14)
+
+- Q7: answer from what the session already knows, with no tools.
+- Q8: half-height sheet over the session on a phone, a side panel on desktop.
+  The main chat stays visible and keeps streaming. Follow-ups are allowed.
+- Q9: side chats are kept with the session, can be reopened, are stored on the
+  bridge, and are never written to the main transcript.
+- Decided without asking:
+  - Claude Code uses its native side question if the pinned CLI supports it
+    headlessly. It does (see Verified facts).
+  - Codex uses its one-shot ask, `thread/sample`.
+  - Every other harness uses a short-lived fork that is never listed. That is
+    phase 2, and it depends on the fork plan's plugin capability.
+- Analytics: report the side question with the harness kind and the outcome
+  only.
+- The user prefers simple, uniform behaviour on every harness.
+
+The following are separate plans owned elsewhere. This plan only notes the
+seams:
+
+- **Edit and fork plan.** The phase-2 fallback is an unlisted fork, so it needs
+  that plan's plugin fork operation.
+- **Merge plan.** It owns "Send to main session" from a side chat. The side chat
+  view leaves a slot for that action in each answer's actions (see Client UX).
+
+## Verified facts (pinned versions, 2026-11-14)
+
+### Claude Code (target 2.1.322, `claude_plugin_descriptor.dart:72`)
+
+These were checked in the 2.1.322 binary and with live probes using haiku, for
+a fraction of a cent.
+
+- **Supported in headless mode.** `claude -p` stream-json handles the control
+  request
+  `{type:"control_request", request_id, request:{subtype:"side_question", question, history?:[{question, response}]}}`.
+  The SDK's `askSideQuestion` and the TUI's `/btw` are other callers of the same
+  core code.
+- **Success response.** The CLI replies with `control_response` subtype
+  `success`, whose `response` is `{response: string|null, synthetic: bool, refusal_fallback?: {original_model, fallback_model, content}}`.
+  - `synthetic: true` means the model gave no usable text, and the CLI wrote a
+    stand-in. Examples are "(The model tried to call X instead of answering
+    directly…)" and "(API error: …)".
+  - `response: null` means there was nothing to answer.
+  - `refusal_fallback.content` is a notice that a fallback model answered after
+    a refusal.
+- **Runs alongside a running turn.** The live probe got an answer while the
+  main turn was still streaming. The injected prompt tells the model the main
+  agent isn't interrupted. An unfinished tool call shows up in its context as
+  "still in progress". `interrupt` does not cancel side questions.
+- **No busy refusal in the local CLI. The claim was false.**
+  `side_question_busy` exists only in the error-code enum and docs for
+  Anthropic's hosted server. The local CLI has no concurrency limit: the probe
+  ran three side questions at once. The local CLI refuses only when the session
+  is shutting down, or after an 11-minute deadline ("side_question timed out").
+- **No tools, no transcript.**
+  - `canUseTool` always denies, and the run is limited to one model turn
+    (`maxTurns:1`).
+  - Nothing is written to the session `.jsonl`; the probe checked this with
+    unique marker strings.
+  - The call reads the main session's prompt cache but never writes to it.
+- **No streaming.** Before the answer, the CLI sends
+  `system/control_request_progress` frames with status `started` or
+  `api_retry`. Then one `control_response` arrives.
+- **Cancel.** `{type:"control_cancel_request", request_id}` makes the CLI reply
+  with the error "Side question cancelled". This was verified live.
+- **Works on a freshly resumed process.** After `--resume <id>`, a side
+  question sent as the very first frame, with no prompt, answered from the
+  resumed conversation. So an idle session only needs to be made resident first.
+- **Older CLIs.** The plugin's minimum CLI is 2.1.221. A CLI without the handler
+  should reply `"Unsupported control request subtype: side_question"`, the
+  generic dispatcher error, which was verified on 2.1.322 with a made-up
+  subtype. The first CLI version with the handler is unknown; 2.1.321 to 2.1.325
+  all have it.
+- **How Sesori sends control requests today.**
+  - `ClaudeStreamClient.sendControlRequest`
+    (`bridge/sesori_plugin_claude/lib/src/api/claude_stream_client.dart:225-264`)
+    writes the frame. Request ids are `sesori-<n>`, and a `Completer` waits in
+    `_pending`.
+  - `_handleLine` matches the `control_response` back to that completer
+    (`:306-320`).
+  - The default timeout is 60 s (`:44`). It is too short for a side question,
+    and nothing sends `control_cancel_request` yet.
+  - `ClaudeSessionProcessRepository` calls it for `set_model` and
+    `set_permission_mode` (`:316`, `:323`), for `interrupt` (`:401-406`), and
+    through its generic `sendControlRequest` (`:385-393`).
+    `ensureResident` is at `:254`.
+
+### Codex (target `rust-v0.167.2`, `codex_runtime_manifest.dart:32`; PATH minimum 0.139.0)
+
+Checked in the upstream source at the tag, and in the local 0.169.0 schema.
+
+- **`thread/sample` exists and is experimental.** It is marked
+  `#[experimental("thread/sample")]` in `app-server-protocol/src/protocol/common.rs:573-585`.
+- **Sesori's existing opt-in covers it.** The server rejects experimental
+  methods unless `initialize` sent `capabilities.experimentalApi`. Sesori
+  already sends that (`bridge/sesori_plugin_codex/lib/src/codex_app_server_client.dart:162`).
+- **Params:** `threadId`, `expectedTurnId` and `prompt`, plus optional `effort`,
+  `disableMcp` and a few others.
+- **Response:** `{sourceTurnId, responseId, text: string|null, inputTokens?, cachedInputTokens?, outputTokens?}`.
+  `text` is null when the model tried a tool call or gave no text.
+- **No tools and no history writes.** A tool call is never run. The sample is
+  an ephemeral fork of the latest model context, with no rollout file, and is
+  removed afterwards. The upstream test asserts the parent rollout is
+  byte-identical afterwards.
+- **One result, bounded.** There is no streaming. The server stops at 30 s, and
+  caps the prompt at 4,000 bytes and the output at 64 KiB.
+- **Cancel exists but Sesori can't reach it yet.** `thread/sample/cancel {requestId}`
+  takes the JSON-RPC id of the pending sample, but Sesori's transport hides that
+  id.
+- **History.** There is no `history` parameter. Earlier side Q&A has to go
+  inside `prompt`, within the 4,000-byte cap.
+- **The pin can't ask mid-turn. The claim was false for the pin.**
+  `allowInProgressTurn` does not exist at 0.167.2 or 0.168.0.
+  - At the pin, a sample needs an idle thread, and `expectedTurnId` must be its
+    latest finished turn. Otherwise it fails with "sample source must be idle".
+  - `allowInProgressTurn` arrives in 0.169.0. With it, the latest turn may still
+    be running, and the server adds a note that the copy was taken mid-turn.
+  - So phase 1 raises the Codex target to at least 0.169.0.
+- **The thread must be loaded.** The source thread must be loaded in this
+  app-server process ("thread/sample requires a loaded source"). The plugin
+  already has `CodexSessionService.resumeThreadIfNeeded`
+  (`services/codex_session_service.dart:576`).
+- **Where Sesori sends requests.** `CodexAppServerTransport.request({method, params, timeout})`
+  sends them (`codex_app_server_client.dart:68`, WebSocket at `:221-249`). New
+  calls sit in `CodexAppServerApi` (`api/codex_app_server_api.dart`), next to
+  `startTurn`.
+
+### Sesori today
+
+- No harness integration calls any side-question operation.
+- **Optional plugin operations** are interfaces that a plugin implements and
+  that bridge repositories match with `if (plugin case final XPluginApi api)`.
+  Examples are `SessionExternalActionsPluginApi` and `McpManagementPluginApi`.
+- **Client-visible plugin capabilities** come from descriptor getters
+  (`supportsPromptAttachments`, `namesCommandInvocations`), passed through
+  `PluginLifecycleService` into `PluginMetadata`. Bridge-wide capabilities sit
+  on `PluginListResponse`, such as `supportsFileUploads`.
+  - Both kinds use `@Default(false)` with a dated compatibility comment.
+  - The client reads them once per session in
+    `SessionDetailLoadService._loadPluginCapabilities`.
+- **Routes.** Session reads are `POST` with a `SessionIdRequest` body, for
+  example `/session/questions`. Unknown routes return 404.
+- **Relay timeout.** It defaults to 30 s; individual calls pass longer ones, for
+  example 3 min 30 s for MCP (`client/module_core/lib/src/api/mcp_api.dart:16`).
+- **Bridge database.** It is at schema version 23
+  (`bridge/app/lib/src/api/database/database.dart:48`), with foreign keys on.
+  - Session-owned tables reference `SessionTable.sessionId` with
+    `onDelete: KeyAction.cascade`, for example `session_continuations`.
+  - Deleting a session deletes its row (`session_dao.dart:746`).
+- **Phone session screen.**
+  - The top bar is full.
+  - The overflow menu holds MCP and the session actions
+    (`client/app/lib/features/session_detail/session_detail_screen.dart:168`).
+  - The composer's options pill opens from a chevron and holds `+` (attach) and
+    `/` (commands) (`module_app_ui/.../composer_options_accordion.dart`).
+- **Sheets.** `showPregoBottomSheet` offers fixed natural, 70% and full sizes,
+  with no snap points. Nothing in the client uses `DraggableScrollableSheet`.
+- **Desktop session page.** It has a toolbar with Changes, Prompts and a menu,
+  and no side panel yet. The cockpit sidebar slides by transform so the page
+  doesn't jump (`client/desktop/lib/core/widgets/desktop_cockpit_shell.dart:339`).
+
+## Design
+
+### Behaviour, uniform across supporting harnesses
+
+1. The user opens the side chat from the session and types a question.
+2. The bridge asks the harness, passing this side chat's earlier exchanges as
+   history. The main session keeps running: Sesori neither queues the main turn
+   nor waits on it.
+3. The answer arrives in one piece. The sheet shows "Thinking…" while it waits.
+   There is no streaming, because neither native seam streams.
+4. On success, the bridge stores the exchange: question, answer and optional
+   notice. A refused or failed ask is not stored. The sheet shows why in place,
+   with Retry, and the question stays in the field.
+5. Closing the sheet while waiting doesn't cancel the ask. The answer is still
+   stored, and it shows the next time the chat is opened.
+6. Opening the entry starts a new side chat. The header lists this session's
+   earlier side chats, newest first, titled by their first question; any of them
+   can be reopened and continued.
+7. Archived sessions show their side chats read-only. Sub-agent (child)
+   sessions don't offer the entry.
+
+### Plugin contract (`sesori_plugin_interface`)
+
+- `BridgePluginDescriptor.supportsSideQuestions` is a `bool` that defaults to
+  `false`. It is the client-visible declaration and works before the plugin
+  starts, like `supportsPromptAttachments`. Claude and Codex return `true`.
+- `abstract interface class SideQuestionPluginApi` is the operation:
+
+  ```dart
+  /// Answers [question] from what the session already knows, without running
+  /// tools and without writing to the session's transcript, while any running
+  /// turn continues. [history] is this side chat's earlier exchanges, oldest
+  /// first. May make an idle session resident; never starts or queues a turn.
+  Future<PluginSideAnswer> askSideQuestion({
+    required String sessionId,
+    required String question,
+    required List<PluginSideExchange> history,
+  });
+  ```
+
+- `PluginSideExchange({required String question, required String answer})`.
+- `sealed PluginSideAnswer` has two variants:
+  - `PluginSideAnswered({required String text, required String? notice})`.
+    `notice` is, for example, Claude's fallback-model notice.
+  - `PluginSideRefused({required PluginSideRefusal reason})`.
+- `enum PluginSideRefusal` has these values:
+  - `harnessUpdateRequired`: the installed harness lacks the seam, or can't ask
+    mid-turn.
+  - `noTurnYet`: there is nothing to answer from.
+  - `tooLong`.
+  - `noAnswer`: the model tried a tool, gave no text, or gave a stand-in.
+- Transport errors and timeouts are thrown as usual, and the bridge returns
+  them as request failures.
+- Each implementing plugin gets a test that the descriptor flag and the
+  interface agree.
+
+The plugin owns how history reaches its harness. That is backend semantics,
+because Claude takes a list and Codex needs the history inside one prompt.
+
+### Bridge (`bridge/app`)
+
+- **Storage.** Schema v24 adds one table, `side_chat_exchanges`
+  (`SideChatExchangesTable`, `SideChatExchangeDto`) with these columns:
+  - `id` (text, primary key)
+  - `sessionId` (references `SessionTable.sessionId`, cascades on delete)
+  - `sideChatId` (text)
+  - `question`
+  - `answer`
+  - `answerNotice` (nullable: absence is meaningful)
+  - `askedAt`
+  - `answeredAt`
+
+  It has an index on `(sessionId, sideChatId, answeredAt)`. A side chat is the
+  group of rows sharing a `sideChatId`; there is no separate table. Only
+  successful exchanges are written, in one write after success, so there are no
+  pending rows, no startup repair, and nothing to reconcile. Rows go when the
+  session is deleted, and stay when it is archived. If another plan lands a v24
+  first, move this to the next version, following the Drift conflict rule in
+  `bridge/AGENTS.md`.
+- **Layers.**
+  - `SideChatDao` is a dumb insert plus a list for one session.
+  - `SideChatRepository` maps rows to wire models and groups them into chats.
+  - `SessionRepository.askSideQuestion` is a thin plugin-backed operation, under
+    the new `SessionOperation.askSideQuestion`. It is the one owner of "this
+    harness supports it":
+    1. Resolve the binding to the plugin id and backend session id.
+    2. Check `PluginRuntime.supportsSideQuestions({pluginId})`. This is new,
+       next to `supportsPromptAttachments`, and plumbed through
+       `bridge_runtime_runner.dart`. The check comes before `_runtime.use`, so
+       an unsupported harness is never started. If the check fails, return
+       `harnessUnsupported`.
+    3. Call `_runtime.use`, so an idle plugin starts the way it does for a
+       prompt.
+    4. Match on `SideQuestionPluginApi`. If it doesn't match, return
+       `harnessUnsupported`.
+    5. Map the `PluginSideAnswer` to a repository result, using a mapper in
+       `repositories/mappers/` (`PluginSideAnswerMapper`).
+  - `SideQuestionService` orchestrates one ask:
+    1. Call `ArchivedSessionValidator.requireNotArchived`. This is the single
+       archive rule. The existing handler path turns its exception into the
+       archived rejection, and an unknown session gives the existing 404.
+    2. The returned stored session must be a root session. A child session
+       throws a `PluginOperationException`, which is a 400; the client never
+       offers the entry there.
+    3. Read the side chat's history from `SideChatRepository`.
+    4. Call `SessionRepository.askSideQuestion`.
+    5. On an answer, write the exchange and return it. A refusal is returned
+       unchanged. The service does no mapping.
+- **Routes.** Both are `BodyRequestHandler`s with Freezed bodies from
+  `sesori_shared`:
+  - `POST /session/side-chats` takes a `SessionIdRequest` and returns
+    `SideChatListResponse`.
+  - `POST /session/side-question` takes an `AskSideQuestionRequest` and returns
+    `AskSideQuestionResponse`.
+
+  The names are kebab-case, like `/session/external-actions` and
+  `/session/tool-output`.
+
+  A request handler awaits only its own plugin call, so a side question never
+  blocks the prompt path or the main turn's events.
+- **Logs.** They keep the session id, the plugin id, the outcome, timings and
+  the original errors. They never include question or answer text: that is
+  prompt and transcript content with no debugging value.
+- Bridge SSE gets no new events in phase 1 (see Complexity budget).
+
+### Wire (`shared/sesori_shared/lib/src/models/sesori/side_chat.dart`)
+
+- **Exchange and chat models.**
+  - `SideChatExchange({id, question, answer, answerNotice?, askedAt, answeredAt})`
+    stores times the way the session models do.
+  - `SideChat({id, exchanges})` lists exchanges oldest first.
+  - `SideChatListResponse({sideChats})` lists chats newest first, by their last
+    answer.
+- **Ask request.** `AskSideQuestionRequest({sessionId, sideChatId?, question})`.
+  A null `sideChatId` starts a new chat, and the bridge mints its id.
+- **Ask response.** `AskSideQuestionResponse` is a sealed union declared with
+  `@Freezed(unionKey: "type", fallbackUnion: "unknown")`, like
+  `abort_session_request.dart` and `form_field.dart`:
+  - `answered({sideChatId, exchange})`.
+  - `refused({reason})`, with `enum SideQuestionRefusal` values
+    `harnessUnsupported`, `harnessUpdateRequired`, `noTurnYet`, `tooLong`,
+    `noAnswer` and `unknown` (`unknownEnumValue: unknown`).
+  - `unknown()`, which an older app shows with a generic reason.
+
+  Archived sessions use the existing archived rejection, so the enum has no
+  archived value.
+- **Capabilities.**
+  - `PluginMetadata.supportsSideQuestions` (`@Default(false)`) is per harness.
+  - `PluginListResponse.supportsSideQuestions` (`@Default(false)`) is per
+    bridge. It says this bridge has the routes.
+  - Both carry
+    `// COMPATIBILITY 2026-11-14 (v1.14.0): Older bridges omit this capability because they have no side-question routes. Remove @Default and require the field once all supported production bridges send it.`
+- **Compatibility.**
+  - A new app talking to an older bridge reads both flags as false and never
+    calls the routes.
+  - An old app talking to a new bridge ignores the new fields and routes.
+  - A newer bridge's unknown refusal reads as `unknown`, which shows a generic
+    reason.
+
+### Harness adapters
+
+**Claude Code (`sesori_plugin_claude`)**
+
+- **API: `ClaudeStreamClient.sendSideQuestion({question, history, timeout})`.**
+  It sits next to `reconnectMcpServer`.
+  - It writes the `side_question` control request, with `history` as
+    `[{question, response}]`, and waits through the existing `_pending`
+    completer.
+  - It parses the reply into a Freezed `ClaudeSideQuestionResponseDto` in
+    `api/models/`.
+  - It raises `Unsupported control request subtype…` as a typed
+    `ClaudeControlUnsupportedSubtypeException`.
+  - It has its own 3-minute timeout. On timeout it writes
+    `control_cancel_request` for that request id, so the CLI stops working on
+    an ask nobody waits for.
+- **Repository: `ClaudeSessionProcessRepository.sendSideQuestion({sessionId, ...})`.**
+  It sits next to `interrupt`.
+  - It calls `ensureResident` first; a fresh `--resume` answers correctly. Then
+    it sends.
+  - It maps the DTO, or the typed exception, to `PluginSideAnswer` through
+    `ClaudeSideAnswerMapper` in `repositories/mappers/`.
+- **Plugin impl.** It only delegates.
+- Mapping:
+  - A non-empty `response` with `synthetic: false` becomes `PluginSideAnswered`.
+    Its `notice` is `refusal_fallback?.content`.
+  - `synthetic: true` or a null response becomes `noAnswer`.
+  - The error `Unsupported control request subtype…` becomes
+    `harnessUpdateRequired`, which covers CLIs between 2.1.221 and the
+    unknown first version with the handler.
+  - "Session is shutting down" and other errors are thrown.
+- `control_request_progress` frames stay logged at debug level. Nothing models
+  them.
+- Descriptor: `supportsSideQuestions => true`.
+
+**Codex (`sesori_plugin_codex`)**
+
+- First, raise the runtime target to the newest stable release at or above
+  0.169.0, in its own step (see Steps). `minPathVersion` stays at 0.139.0, so a
+  PATH Codex below 0.169 still works for everything else.
+The Codex adapter follows the plugin's own chain: API, then
+`CodexThreadRepository`, then `CodexSessionService`, then the plugin impl.
+
+- **API: `CodexAppServerApi.sampleThread({threadId, expectedTurnId, prompt})`.**
+  - It sends `thread/sample` with `allowInProgressTurn: true` and the default
+    `disableMcp`, so the cached tool prefix is kept.
+  - It returns a Freezed `CodexThreadSampleDto` in `api/models/`.
+  - The client timeout is 40 s, so the server's own 30 s "timed out" error
+    arrives first.
+- **Repository: `CodexThreadRepository.sampleThread`.** It maps the DTO, and
+  maps the "method not found", "requires experimentalApi" and "sample source
+  must be idle" errors to a typed result.
+- **Service: `CodexSessionService.askSideQuestion`.**
+  1. `resumeThreadIfNeeded` (`codex_session_service.dart:576`) makes sure the
+     thread is loaded.
+  2. `expectedTurnId` is the running turn id that the plugin impl passes in,
+     from `_activeTurnByThread[threadId]`, if one runs.
+  3. Otherwise the service reads the thread with turns, through the existing
+     `CodexThreadRepository.readThread` (`thread/read`), and takes the last
+     turn. This is the one source for the idle case. No new state records
+     finished turns.
+  4. With no turn at all, it returns `noTurnYet`.
+- **Plugin impl.** It only passes in the active turn id and delegates.
+- **Prompt builder.** `CodexSideQuestionPromptBuilder` owns the template and
+  the byte budget.
+- History goes inside the prompt with one fixed template. The earlier exchanges
+  come oldest first, labelled as earlier side questions that are not part of
+  the main conversation. Then the new question, with a line asking for an
+  answer from what the session already knows, without tools.
+  - To fit the 4,000-byte cap, it drops the oldest exchanges first, then
+    shortens the oldest remaining answer.
+  - If the template plus the question alone are over the cap, it returns
+    `tooLong`.
+  - The template text is plugin-owned and covered by a unit test.
+- Mapping:
+  - `text` non-null becomes `PluginSideAnswered` with a null notice.
+  - `text` null becomes `noAnswer`.
+  - "method not found", "requires experimentalApi" and "sample source must be
+    idle" become `harnessUpdateRequired`. These come from PATH Codex 0.139 to
+    0.168, which can't sample mid-turn.
+  - Other errors are thrown.
+- `thread/sample/cancel` isn't used in phase 1. The 30 s server deadline bounds
+  an abandoned ask, and exposing request ids would mean changing the transport
+  interface.
+- Descriptor: `supportsSideQuestions => true`.
+
+### Client core (`client/module_core`)
+
+- `SideChatApi` sends `listSideChats` (30 s) and `askSideQuestion`
+  (3 min 30 s, above the bridge's longest plugin bound) through
+  `RelayHttpApiClient`. `SideChatRepository` sits over it and uses the shared
+  models directly; there is nothing to transform.
+- `SessionDetailLoadService._loadPluginCapabilities` adds `sideQuestions:
+  SideQuestionAvailability`. The enum is defined in
+  `client/module_core/lib/src/foundation/models/` and exported, because
+  `module_app_ui` reads it too. Its values are:
+  - `available`.
+  - `bridgeUpdateRequired`, when `PluginListResponse.supportsSideQuestions` is
+    false.
+  - `harnessUnsupported`, when the plugin flag is false.
+  - `unresolved`, when the plugin listing failed or the plugin is unknown.
+
+  The value is carried on `SessionDetailSnapshot` and `SessionDetailLoaded`.
+  `SessionDetailCubit` gains nothing else.
+- `SideChatCubit` lives in `cubits/side_chat/` and is created when the sheet or
+  panel opens. It gets the session id, plugin id, availability and archived
+  flag. It loads the chats on open, and never polls.
+  - Its state is sealed:
+    - `SideChatLoading`.
+    - `SideChatLoadFailed`, with Retry.
+    - `SideChatReady({earlierChats, thread, ask})`.
+  - `thread` is `SideChatThread`: `newChat`, or `existing(chat)`.
+  - `ask` is sealed: `idle`, `waiting(question)`, `refused(question, reason)`,
+    or `failed(question)`.
+  - Its intents are `ask(text)`, `retry()`, `openChat(id)`, `startNewChat()`
+    and `reload()`.
+  - Only one ask runs at a time; the send button is disabled while waiting.
+- Analytics: add `ProductAnalyticsEvent` `side_question_asked` with
+  `harness: AnalyticsHarness` and `outcome: answered | no_answer | unavailable | failed`.
+  - The cubit reports it on the authoritative result of each ask, through
+    `ProductAnalyticsService`.
+  - It sends no text, no ids and no counts.
+  - The `add-analytics` skill checklist applies, including the BigQuery and
+    reporting notes it asks for.
+
+### Client UX
+
+**Entry point.** This placement is a product question (see Open product
+question). The recommended default is a side-question button, icon
+`TablerRegular.message_question`, in the composer's options pill next to `+`
+and `/`.
+
+- It is the same on phone and desktop, and keeps the full top bar untouched.
+- On a phone it folds behind the chevron while typing, like its neighbours.
+- On sub-agent sessions it is hidden.
+- When the session isn't `available`, the button still shows and a tap answers
+  with the reason (never-ignore-taps rule). For `bridgeUpdateRequired`: "Update
+  Sesori on this computer to ask side questions." For `harnessUnsupported`:
+  "<Harness> can't answer side questions in Sesori yet."
+- While `unresolved`, the button holds its place, disabled, like attach does.
+
+**Phone sheet.** This is a new reusable Prego component, `showPregoDetentSheet`
+in `module_prego/lib/components/surfaces/`.
+
+- It is a modal route with two resting heights: half the screen, and full
+  (capped below the status bar).
+- The drag follows the finger continuously. On release it snaps by position and
+  velocity: up to full, down to half, and down from half closes it.
+- The scrim is light at half height, so the streaming chat behind stays
+  readable. It deepens toward full height, and a tap on it closes the sheet.
+- When the keyboard opens, it lifts the sheet's input. The sheet never covers
+  the status bar.
+- With reduced motion, it changes height without the spring.
+- The session page under it stays mounted, so the main transcript keeps
+  streaming and keeps its scroll position.
+
+**Shared content.** `SideChatView` in `module_app_ui/lib/src/features/side_chat/`
+is used by both shells.
+
+- **Header.** The title is "Side question", or the first question of a reopened
+  chat. "Earlier (n)" opens the list of earlier side chats in place, with a
+  cross-fade. "New" starts a new chat.
+- **Body.** Each question is a compact bubble, and each answer renders with the
+  transcript's Markdown renderer. A notice shows as a small caption.
+- **Answer actions.** Each answer has a Copy action and an actions slot. The
+  merge plan's "Send to main session" goes in that slot.
+- **New exchanges and scrolling.** A new exchange slides in at the bottom. The
+  list follows the bottom only while the user is already there, so nothing
+  under their eyes jumps.
+- **Waiting.** It shows a quiet "Thinking…" row with the activity glyph the
+  transcript uses. A refusal or failure replaces that row, in place, with its
+  reason and Retry.
+- **Input.** A single-line field that grows to a few lines, and Send. No voice,
+  attachments or commands in phase 1.
+- **Footnote.** "Answers from what this session already knows. No tools, and
+  nothing is added to the chat."
+- **Archived sessions.** Instead of the input it says: "This session is
+  archived. Its side chats are read-only."
+
+**Desktop panel.**
+
+- It is a trailing floating panel over the session page, about 380 pt wide and
+  full height under the toolbar.
+- It slides in from the window's right edge by transform, like the sidebar's
+  motion. The transcript column doesn't move or reflow.
+- Escape or its close button closes it. Switching sessions closes it.
+- It is opened by the same composer button.
+- It holds the same `SideChatView`. The page behind stays interactive, so the
+  user can keep reading and scrolling the main chat.
+
+## Complexity budget
+
+New persistent state:
+
+- **One table, `side_chat_exchanges`.** It is the only place a side chat
+  exists. It is written once per successful answer.
+
+New in-memory state:
+
+- **Claude: none.** Each ask is one entry in the existing `_pending` completer
+  map.
+- **Codex: none.** It uses the existing JSON-RPC pending map.
+- **Client: one `SideChatCubit` while the sheet or panel is open.** Its `ask`
+  state has four variants.
+
+Deliberately not added:
+
+- **No pending or in-flight rows, and no startup repair.** An abandoned answer
+  still lands as one row.
+- **No SSE event or live sync of side chats across surfaces.** Another device
+  sees new exchanges the next time it opens the sheet. The damage is a stale
+  list until reopen, which is low.
+- **No cancel route or cancel button.** The plugins bound every ask: 3 minutes
+  for Claude with a CLI cancel, and the 30 s server deadline for Codex.
+- **No streaming.** Neither seam streams.
+- **No client-sent history.** The bridge reads it from its database.
+- **No per-harness busy tracking or concurrency limit.** Claude has none
+  locally, and with `allowInProgressTurn` Codex samples mid-turn.
+- **No guard for two clients asking in the same chat at once.** Both rows are
+  stored, in time order.
+- **No first-version probing for old Claude CLIs.** The CLI's own
+  unsupported-subtype error maps to an honest reason.
+
+## Steps
+
+PR titles follow `<emoji> [side-questions] <description> [step x/11]`. The
+sizes are estimates of added plus deleted lines, with generated code counted
+separately.
+
+### Step 1: raise the plan, `🌱 [side-questions] Plan side questions [step 1/11]`
+
+This branch. Plan files only.
+
+### Step 2: bridge contract, storage and routes, `🚧 … Store side chats and add the side-question routes on the bridge [step 2/11]`
+
+**Includes:**
+
+- The plugin interface types, and the descriptor flag defaulting to false.
+- The `sesori_shared` wire models and the capability fields.
+- Schema v24, the DAO, `SideChatRepository`, `SessionRepository.askSideQuestion`,
+  `SideQuestionService`, the two handlers and the metadata plumbing.
+- `PluginListResponse.supportsSideQuestions = true` is sent from this step,
+  while no plugin flag is set yet. Clients then show `harnessUnsupported`,
+  which is true.
+
+**Tests:**
+
+- The DAO and repository grouping.
+- Cascade on session delete.
+- The archived rejection, through `ArchivedSessionValidator`.
+- The child-session 400.
+- `harnessUnsupported`, without starting the plugin.
+- Handler parse failures.
+- The wire round-trip with omitted fields.
+
+**Size:** about 900 authored lines, plus about 1,200 generated (Drift schema
+snapshot and steps, freezed). It goes over the soft cap through generated churn
+only. Report the split in the PR.
+
+**Complexity:** 🚧, because of persistence, a migration and a new wire contract.
+
+**Expected result:** no user-visible change, and one new table.
+
+### Step 3: Claude native side questions, `⚙️ … Answer side questions on Claude Code [step 3/11]`
+
+**Includes:**
+
+- The stream client method, with cancel on timeout.
+- The process repository method.
+- The plugin implementation, the mapping and the descriptor flag.
+- A `docs/HARNESS_CAPABILITIES.md` "Side questions" section, with every row.
+
+**Tests:**
+
+- Fake-process tests covering:
+  - The frame shape, including `history`.
+  - Success, synthetic, null and fallback-notice mapping.
+  - The unsupported-subtype mapping.
+  - Timeout writing `control_cancel_request`.
+  - `ensureResident` before send.
+- A live probe against the pinned CLI, recorded in the PR:
+  - Ask mid-turn.
+  - Ask after a cold resume.
+  - Check that the transcript is untouched.
+
+**Size:** about 500 lines.
+
+### Step 4: Codex runtime target to at least 0.169, `⚙️ … Raise the Codex runtime target to <version> [step 4/11]`
+
+**How:**
+
+- Follow the Codex section of the `update-backend-runtimes` skill for this one
+  harness: manifest version, asset digests, the release audit, and the focused
+  plugin tests.
+- Record any behaviour change the audit finds.
+- Ask before adopting any other new Codex feature.
+
+**Size:** about 150 lines. It can run in parallel with steps 2 and 3.
+
+**Risk:** a runtime bump touches every Codex session. The release audit and the
+existing Codex regression entries are the check.
+
+### Step 5: Codex native side questions, `⚙️ … Answer side questions on Codex [step 5/11]`
+
+**Depends on:** steps 2 and 4.
+
+**Includes:**
+
+- `sampleThread`, plus resolving the thread and turn.
+- The history-in-prompt template with its byte budget.
+- The mapping and the descriptor flag.
+- Updated Codex rows in `HARNESS_CAPABILITIES.md`.
+
+**Tests:**
+
+- The budget and trimming.
+- The `noTurnYet` path.
+- Error mapping for an old PATH Codex.
+- `text: null`.
+- A live probe on the new pin, recorded in the PR: ask mid-turn and idle,
+  ask a follow-up, and check the rollout is unchanged.
+
+**Size:** about 500 lines.
+
+### Step 6: client core, `⚙️ … Load and ask side questions in the app core [step 6/11]`
+
+**Depends on:** step 2.
+
+**Includes:**
+
+- `SideChatApi` and `SideChatRepository`.
+- Availability in the session-detail snapshot and state.
+- `SideChatCubit`.
+- The analytics event, with its reporting notes, per the `add-analytics` skill.
+- DI registration in `configureCoreDependencies`.
+
+**Tests:** pure Dart cubit tests for each `ask` variant, chat switching, the
+archived read-only state, availability mapping including older bridges, and the
+analytics outcome.
+
+**Size:** about 900 lines.
+
+### Step 7: Prego detent sheet, `⚙️ … Add a two-height drag sheet to Prego [step 7/11]`
+
+**Includes:**
+
+- `showPregoDetentSheet`.
+- The design-catalog entry.
+- Widget tests for snapping, closing, the keyboard and reduced motion.
+
+**Checks:** feel, using a headless iOS simulator recording (see Verification).
+
+**Size:** about 600 lines. It can run in parallel with steps 2 to 6.
+
+### Step 8: phone side chat, `🚧 … Ask side questions from the session on the phone [step 8/11]`
+
+**Depends on:** steps 6 and 7.
+
+**Includes:**
+
+- `SideChatView`.
+- The composer entry, with its reasons.
+- The sheet wiring in the mobile session screen.
+- Localised strings.
+
+**Checks:**
+
+- Widget tests.
+- A headless iOS simulator recording against a fixture or dev account. It
+  shows:
+  - asking while the main turn streams,
+  - a follow-up,
+  - reopening an earlier chat,
+  - the main transcript not jumping.
+- The recording goes in the PR, on the `pr-media` branch.
+
+**Size:** about 1,200 lines.
+
+### Step 9: desktop side panel, `⚙️ … Show side chats in a panel on desktop [step 9/11]`
+
+**Depends on:** step 8.
+
+**Includes:**
+
+- The trailing floating panel in `DesktopSessionDetailScreen`.
+- The composer entry on desktop.
+- Escape to close.
+
+**Checks:** widget tests, and a short macOS desktop recording, since this is
+desktop-specific UI.
+
+**Size:** about 500 lines.
+
+### Step 10: reconcile regression docs, `🌱 … Document side questions for regression runs [step 10/11]`
+
+Covers the documents listed below, plus the final `HARNESS_CAPABILITIES.md`
+wording.
+
+### Step 11: verify and retire, `🌱 … Verify side questions and retire the plan [step 11/11]`
+
+1. Run the matrix below.
+2. Record the results in `TRACKER.md`.
+3. Move the plan to `.plan/completed/side-questions/`.
+
+## Later phases (rough)
+
+- **Phase 2: fallback for every other harness.**
+  - It uses a short-lived fork that is never listed, taken with the fork plan's
+    plugin fork operation.
+  - The prompt carries the earlier side Q&A and asks for an answer without
+    tools. Any permission request is denied.
+  - The fork is deleted after the answer, and is never imported into the
+    catalog.
+  - The plugin declares `supportsSideQuestions`, so the client needs no change.
+- **Phase 3: "Send to main session".** This is owned by the merge plan, and
+  fills the answer-actions slot.
+- **Possible follow-ups.** Each needs its own case:
+  - Live sync of side chats across surfaces.
+  - Cancel from the UI.
+  - Voice dictation in the side composer.
+  - A `/btw` row in the command picker.
+
+## Regression documents
+
+- **New: `docs/regression/side-questions.md`.** Add it to the README index. It
+  covers the capability; the behaviour list above; levels L1 to L5; and failure
+  signals:
+  - main turn interrupted or delayed,
+  - side text in the main transcript,
+  - a tool run,
+  - a lost answer after closing the sheet,
+  - transcript scroll jumps,
+  - a tap that does nothing.
+- **`session-archiving-and-deletion.md`.** Side chats are deleted with their
+  session, and are read-only when the session is archived.
+- **`desktop-cockpit-shell.md`.** The side panel's motion, and that it closes
+  on Escape and on session switch.
+- **`analytics.md`.** The `side_question_asked` event and its bounded
+  parameters.
+- **`plugin-runtime-installation.md`.** The new Codex target, if the doc names
+  versions.
+- **`design-catalog.md`.** The detent sheet entry, if the catalog doc lists
+  components.
+
+## `docs/HARNESS_CAPABILITIES.md` rows (new "Side questions" section)
+
+| Harness | Native seam | Sesori availability |
+|---|---|---|
+| Claude Code | `side_question` control request in `-p` stream-json, with `history` (verified 2.1.322) | ✅ Native, mid-turn, no tools, no transcript write. CLIs without the handler get "update Claude Code" |
+| Codex | Experimental `thread/sample` (mid-turn from 0.169.0) | ✅ Native from step 5. History goes in the 4,000-byte prompt. PATH Codex 0.139–0.168 gets "update Codex" |
+| OpenCode | `/btw` only on its dev branch; session fork exists | ⬜ Phase-2 fork fallback |
+| Pi | No side question; RPC `fork`/`clone` | ⬜ Phase-2 fork fallback |
+| Oh My Pi | RPC-only `btw`, not over ACP; ACP `session/fork` | ⬜ Phase-2 fork fallback |
+| Hermes, Grok Build, Cursor, GitHub Copilot, Antigravity, DeepSeek | TUI-only; whole-session fork via the vendor or the ACP draft | ⬜ Phase-2 fork fallback where the fork plan provides a fork. Otherwise 🚫, with the verified version |
+
+## Verification
+
+The retirement level is L3 for `side-questions.md`, with the lower levels
+included.
+
+| Cell | Boundary | What passes |
+|---|---|---|
+| Bridge contract | Automated + headless bridge (debug server) | Routes, refusals, storage, cascade on delete, archived read-only, history order |
+| Claude Code | Live plugin | Mid-turn answer while the main turn keeps streaming. Follow-up uses history. Cold-resume answer. Session `.jsonl` unchanged |
+| Codex (new pin) | Live plugin | Same as Claude Code. Rollout unchanged. Over-budget history is trimmed |
+| iOS simulator, headless, Claude and Codex | Client end to end | Entry, sheet heights and drag, ask during streaming, follow-up, reopen earlier, close while waiting then reopen to see the answer, no main-transcript jump. Reason on tap for an unsupported harness and for an older bridge |
+| macOS desktop (platform-specific panel) | Client end to end | Panel slides in without the transcript moving, ask and follow-up, Escape closes, session switch closes |
+| Analytics | Automated | One `side_question_asked` per ask, with bounded parameters |
+
+- Device checks use a headless iOS simulator only (`xcrun simctl boot`,
+  Simulator.app never opened), on the device the `sesori-local-testing` skill
+  assigns.
+- Recordings and screenshots use fixture or dev-account data only.
+
+## Cleanup assessment
+
+No existing code becomes obsolete. The feature is additive. The one adjacent
+fix is the stale comment beside `experimentalApi` in the Codex client, which
+names only collaboration mode. Step 5 updates it to mention `thread/sample`.
+
+## Risks and accepted limitations
+
+- **Both native seams are unofficial.** Claude's control request is
+  undocumented, and Codex's method is experimental. Either can change with a
+  runtime refresh. Mitigation: steps 3 and 5 add a live side-question probe to
+  the Claude and Codex checks in the `update-backend-runtimes` skill's audit
+  list. That one-line skill edit goes in the same PRs.
+- **Claude's first supporting version is unknown.** Older CLIs get a correct
+  "update Claude Code" reason, based on the CLI's own generic error, which was
+  verified on 2.1.322.
+- **Codex follow-ups lose the oldest context.** The 4,000-byte cap means long
+  side chats keep only their newest exchanges. This is accepted, and the plugin
+  trims honestly.
+- **Cost.** Each ask is a model call that reads the session's prompt cache.
+  Claude never writes to the cache, and Codex shares its prefix. This is
+  accepted, and analytics shows usage.
+- **Other surfaces show a stale list.** It stays stale until reopened. This is
+  accepted, as described in the complexity budget.
+- **Evidence level.** Every safeguard here addresses a verified behaviour or an
+  ordinary flow. None defends a theoretical interleaving.
+
+## Open product question
+
+The entry placement is the only placement choice the decisions don't settle.
+The options are:
+
+- **A, recommended.** A side-question button in the composer's options pill,
+  next to `+` and `/`. It's the same on phone and desktop, sits where the thumb
+  already is, and stays out of the full top bar. On a phone it hides behind the
+  chevron while typing.
+- **B.** An item in the session `⋯` menu. It costs no space but is less
+  discoverable.
+- **C.** A `/btw` row at the top of the slash-command list: typing
+  `/btw your question` and sending opens the side chat. This is familiar to
+  Claude Code users.
+- **D.** A together with C.
+
+The plan is written for A. B, C or D change only steps 8 and 9.
+
+## Review record
+
+`architecture-plan-review`, first pass (2026-11-14): rejected with ten concrete
+findings, all fixes to the plan text rather than a redesign. All ten are now
+applied. They are:
+
+1. Answer mapping moves into the repository, with mappers.
+2. The archived check reuses `ArchivedSessionValidator`, so the wire enum drops
+   its archived value.
+3. A child session is a 400.
+4. The support check has one owner, `SessionRepository` through
+   `PluginRuntime.supportsSideQuestions`, and there is a
+   `SessionOperation.askSideQuestion`.
+5. Codex follows its API → repository → service chain, and has a prompt
+   builder.
+6. The idle Codex turn id comes from `thread/read`.
+7. Claude gets a typed DTO, a typed exception and a mapper.
+8. The response union has a `fallbackUnion`.
+9. The routes are kebab-case.
+10. `SideQuestionAvailability` lives in `module_core` foundation models.
+
+Per the skill, the fixes were not reviewed again.

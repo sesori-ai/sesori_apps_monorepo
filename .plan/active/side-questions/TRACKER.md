@@ -1,0 +1,30 @@
+# Side Questions Tracker
+
+| Step | Title | Status | PR | Depends on |
+| --- | --- | --- | --- | --- |
+| 1 | Plan side questions | In this branch | | |
+| 2 | Bridge contract, storage and routes | Not started | | 1 |
+| 3 | Claude Code native side questions | Not started | | 2 |
+| 4 | Codex runtime target to at least 0.169 | Not started | | 1 (parallel) |
+| 5 | Codex native side questions | Not started | | 2, 4 |
+| 6 | Client core | Not started | | 2 |
+| 7 | Prego detent sheet | Not started | | 1 (parallel) |
+| 8 | Phone side chat | Not started | | 6, 7 |
+| 9 | Desktop side panel | Not started | | 8 |
+| 10 | Reconcile regression docs | Not started | | 3, 5, 8, 9 |
+| 11 | Verify and retire | Not started | | 10 |
+
+## Open product question
+
+Entry placement (A composer pill / B session menu / C `/btw` row / D A+C). Plan assumes A until answered.
+
+## Verification results
+
+| Cell | Result | Date (UTC) |
+| --- | --- | --- |
+| Bridge contract | | |
+| Claude Code live | | |
+| Codex live | | |
+| iOS simulator, Claude and Codex | | |
+| macOS desktop panel | | |
+| Analytics | | |
