@@ -638,6 +638,7 @@ void main() {
           event: const SesoriSseEvent.messageUpdated(
             info: Message.user(
               invocation: null,
+              handoff: null,
               promptId: null,
               id: "m-1",
               sessionID: "session-a",

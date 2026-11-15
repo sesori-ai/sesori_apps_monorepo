@@ -118,6 +118,7 @@ _No messages._
             time: null,
             promptId: null,
             invocation: null,
+            handoff: null,
           ),
           parts: [],
         ),
@@ -411,6 +412,7 @@ MessageWithParts _user({required String text}) => MessageWithParts(
     time: MessageTime(created: 1794736800000, completed: null),
     promptId: null,
     invocation: null,
+    handoff: null,
   ),
   parts: [_text(text: text)],
 );

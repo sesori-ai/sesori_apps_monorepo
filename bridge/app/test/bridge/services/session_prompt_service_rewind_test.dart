@@ -142,6 +142,7 @@ void main() {
         agent: null,
         time: null,
         promptId: "edit-1",
+        handoff: null,
       ),
     );
 
@@ -183,7 +184,15 @@ void main() {
     // Only the first prompt was captured live; the store was never synced.
     await history.service.captureMessage(
       sessionId: "s1",
-      message: const Message.user(invocation: null, id: "u1", sessionID: "s1", agent: null, time: null, promptId: null),
+      message: const Message.user(
+        invocation: null,
+        id: "u1",
+        sessionID: "s1",
+        agent: null,
+        time: null,
+        promptId: null,
+        handoff: null,
+      ),
     );
 
     await rewind(messageId: "u2");

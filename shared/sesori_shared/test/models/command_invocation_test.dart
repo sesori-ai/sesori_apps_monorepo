@@ -10,6 +10,7 @@ void main() {
       time: null,
       promptId: "p1",
       invocation: CommandInvocation(name: "review", source: CommandSource.skill, arguments: "src"),
+      handoff: null,
     );
     final json = message.toJson();
 

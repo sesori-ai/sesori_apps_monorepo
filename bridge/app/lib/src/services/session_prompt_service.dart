@@ -27,10 +27,14 @@ class const SessionPromptDefaultsChange({
   required final SessionPromptDefaults promptDefaults,
 });
 
+/// The settings a prompt takes from a session's remembered prompt defaults.
+typedef PromptSettings = ({SessionVariant? variant, bool fastMode, String? agent, PromptModel? model});
+
 /// What a send asks its session's plugin to do with the prompt.
 sealed class const _PromptSend();
 
-final class const _PromptSendPrompt() extends _PromptSend;
+/// A prompt; [handoff] marks one Sesori wrote to send another session here.
+final class const _PromptSendPrompt({required final MessageHandoff? handoff}) extends _PromptSend;
 
 final class const _PromptSendCommand({
   required final String command,
@@ -67,10 +71,11 @@ class SessionPromptService({
     required PromptModel? model,
     required String? command,
     required CommandSource? commandSource,
+    required MessageHandoff? handoff,
   }) {
     final normalizedCommand = command?.trim();
     final send = normalizedCommand == null || normalizedCommand.isEmpty
-        ? const _PromptSendPrompt()
+        ? _PromptSendPrompt(handoff: handoff)
         : _PromptSendCommand(command: normalizedCommand, commandSource: commandSource);
     return _dispatcher.dispatch(
       sessionId: sessionId,
@@ -153,6 +158,7 @@ class SessionPromptService({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required MessageHandoff? handoff,
   }) => _sendPrompt(
     sessionId: sessionId,
     promptId: promptId,
@@ -161,7 +167,7 @@ class SessionPromptService({
     fastMode: fastMode,
     agent: agent,
     model: model,
-    send: const _PromptSendPrompt(),
+    send: _PromptSendPrompt(handoff: handoff),
   );
 
   Future<void> _sendPrompt({
@@ -188,7 +194,7 @@ class SessionPromptService({
     // Built before the quota cancellation below, so an edit its own checks
     // refuse leaves a pending continuation alone.
     final sendToPlugin = switch (send) {
-      _PromptSendPrompt() => () async => await _sessionRepository.sendPrompt(
+      _PromptSendPrompt(:final handoff) => () async => await _sessionRepository.sendPrompt(
         sessionId: sessionId,
         promptId: promptId,
         parts: await _deliverableParts(sessionId: sessionId, parts: parts),
@@ -196,6 +202,7 @@ class SessionPromptService({
         fastMode: fastMode,
         agent: agent,
         model: model,
+        handoff: handoff,
       ),
       _PromptSendCommand(:final command, :final commandSource) => () {
         final arguments = parts.whereType<PromptPartText>().firstOrNull?.text;
@@ -461,4 +468,17 @@ class SessionPromptService({
     prefix: "prm_",
     byteLength: 16,
   );
+
+  /// The settings a bridge-originated prompt to a session takes from its
+  /// remembered [defaults].
+  static PromptSettings settingsFrom({required SessionPromptDefaults? defaults}) {
+    final model = defaults?.model;
+    final variant = model?.variant;
+    return (
+      variant: variant == null ? null : SessionVariant(id: variant),
+      fastMode: defaults?.fastMode ?? false,
+      agent: defaults?.agent,
+      model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
+    );
+  }
 }
