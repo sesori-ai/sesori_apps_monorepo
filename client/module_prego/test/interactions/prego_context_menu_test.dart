@@ -1,4 +1,5 @@
 import "package:flutter/gestures.dart" show PointerDeviceKind, kPrimaryButton, kSecondaryButton;
+import "package:flutter/semantics.dart" show SemanticsAction;
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -39,6 +40,7 @@ void main() {
               child: PregoContextMenu(
                 menuWidth: 200,
                 spotlight: PregoMenuSpotlight.listRow,
+                onOpenChanged: null,
                 entriesBuilder: () {
                   selectionAtPress.add(area.currentState?.selectedText);
                   return [
@@ -101,6 +103,18 @@ void main() {
       },
       variant: const TargetPlatformVariant({TargetPlatform.iOS, TargetPlatform.android}),
     );
+
+    testWidgets("a screen reader's long-press opens the menu, and the item keeps its own nodes", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(harness(mode: PregoInteractionMode.touch));
+      expect(find.semantics.byLabel(_text), findsOne);
+
+      tester.semantics.longPress(find.semantics.byAction(SemanticsAction.longPress));
+      await tester.pumpAndSettle();
+
+      expect(panel, findsOneWidget);
+      semantics.dispose();
+    });
 
     testWidgets("a tap still reaches the item, and a drag opens nothing", (tester) async {
       await tester.pumpWidget(harness(mode: PregoInteractionMode.touch));

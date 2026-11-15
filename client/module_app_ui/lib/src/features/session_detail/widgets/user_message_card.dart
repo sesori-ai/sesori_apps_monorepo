@@ -73,7 +73,8 @@ class _UserMessageCardState() extends State<UserMessageCard> {
   Widget build(BuildContext context) {
     final message = widget.message;
     if (widget.shape case InvocationPromptTurnShape(:final name, :final source, :final arguments)) {
-      return _withMenu(
+      return TranscriptMessageMenu.wrap(
+        spotlight: PregoMenuSpotlight.listRow,
         text: arguments,
         builder: (selectionArea) => InvocationCard(
           name: name,
@@ -87,7 +88,8 @@ class _UserMessageCardState() extends State<UserMessageCard> {
       );
     }
     final markdown = UserMessageCard.markdownOf(message: message);
-    return _withMenu(
+    return TranscriptMessageMenu.wrap(
+      spotlight: PregoMenuSpotlight.listRow,
       text: markdown,
       builder: (selectionArea) => UserMessageBubble(
         markdown: markdown,
@@ -97,16 +99,6 @@ class _UserMessageCardState() extends State<UserMessageCard> {
         selectionArea: selectionArea,
       ),
     );
-  }
-
-  /// The message's menu, which it has only with [text]: the text is what Copy
-  /// copies and what Select text selects.
-  Widget _withMenu({
-    required String? text,
-    required Widget Function(GlobalKey<PregoReadableSelectionAreaState>? selectionArea) builder,
-  }) {
-    if (text == null) return builder(null);
-    return TranscriptMessageMenu(copyText: text, builder: (context, selectionArea) => builder(selectionArea));
   }
 }
 

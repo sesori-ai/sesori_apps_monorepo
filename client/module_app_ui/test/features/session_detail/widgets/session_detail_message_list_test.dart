@@ -5,6 +5,7 @@ import "dart:math" as math;
 import "package:clock/clock.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
@@ -4234,6 +4235,34 @@ void main() {
     });
   });
 
+  testWidgets("an open message menu holds a streaming reply still, and the list follows again once it closes", (
+    tester,
+  ) async {
+    final harness = await _pumpTurns(
+      tester,
+      messages: [
+        _message(messageId: "u", role: "user", text: "Ask", createdAtMs: 100),
+        _message(messageId: "a", role: "assistant", text: "Streaming answer", createdAtMs: 200),
+      ],
+    );
+    final reply = find.textContaining("Streaming answer", findRichText: true).first;
+    final more = find.textContaining("More arrives", findRichText: true);
+    await tester.longPress(reply);
+    await tester.pumpAndSettle();
+    expect(find.text("Copy"), findsOne);
+    final top = tester.getTopLeft(reply).dy;
+
+    harness.updateStreamingText(partId: "a-part", text: "Streaming answer\n\nMore arrives\n\nMore arrives");
+    await tester.pumpAndSettle();
+    expect(more, findsNothing, reason: "the spotlit reply must not grow past its cut-out");
+    expect(tester.getTopLeft(reply).dy, top);
+
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+    expect(more, findsWidgets);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+  });
+
   group("returning to latest from history glides there", () {
     Future<_SessionDetailMessageListHarnessState> scrollUp(WidgetTester tester) async {
       final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
@@ -4867,6 +4896,29 @@ void main() {
         }
       }
       expect(pinnedIds, containsAll(["u4", "u5", "u6"]), reason: "the sweep must pass short and long prompts");
+    });
+
+    testWidgets("a long-press on the pin opens its own prompt's menu, not the reply's under it", (tester) async {
+      final copied = <String?>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == "Clipboard.setData") {
+          copied.add((call.arguments as Map<Object?, Object?>)["text"] as String?);
+        }
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      await _pumpTurns(tester, messages: mixedTurns);
+      await _scrollRowTo(tester, rowId: "u5", top: pinTop - 200);
+      expect(pinOf(tester, "u5"), isNotNull);
+
+      await tester.longPressAt(pinnedBubble(tester, "u5").center);
+      await tester.pumpAndSettle();
+      expect(find.text("Select text"), findsNothing, reason: "the pin's copy is cut, so it selects nothing");
+      await tester.tap(find.text("Copy"));
+      await tester.pumpAndSettle();
+
+      expect(copied, [_multilineText(label: "Prompt 5", lines: 12)]);
+      await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
     });
 
     testWidgets("takes over from its bubble exactly where the two coincide", (tester) async {

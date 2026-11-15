@@ -329,6 +329,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   bool _pinchStartedFollowing = false;
   bool _pinchDetachSuppressed = false;
 
+  /// Whether an open message's menu, not the reader, detached the list: it
+  /// follows again once the menu closes, and offers no jump meanwhile.
+  bool _heldByMenu = false;
+
   /// The last prompt index the list was given, kept while a refresh fetches
   /// it again so the unloaded prompt's pin stays put meanwhile.
   List<SessionPromptIndexEntry>? _promptIndex;
@@ -1142,15 +1146,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
     return FollowDetachScrollable(
       tracker: _follow,
-      detachedOverlayBuilder: (ctx) => Builder(
-        builder: (context) => JumpToEdgePill(
-          tapTargetKey: _kJumpToLatestKey,
-          label: loc.sessionDetailJumpToLatest,
-          onTap: () => _follow.animateToEdge(),
-          // Lift the pill clear of the floating composer overlaid below.
-          bottomInset: TranscriptBottomInset.of(context),
-        ),
-      ),
+      detachedOverlayBuilder: _heldByMenu
+          ? null
+          : (ctx) => Builder(
+              builder: (context) => JumpToEdgePill(
+                tapTargetKey: _kJumpToLatestKey,
+                label: loc.sessionDetailJumpToLatest,
+                onTap: () => _follow.animateToEdge(),
+                // Lift the pill clear of the floating composer overlaid below.
+                bottomInset: TranscriptBottomInset.of(context),
+              ),
+            ),
       // Horizontal "peek" gesture: slide the transcript left to reveal each
       // message's timestamp on the right. This participates in the gesture
       // arena so a nested horizontal scrollable, such as a fenced code block,
@@ -1175,7 +1181,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           onGestureEnd: _onPinchGestureEnd,
         ),
         child: NotificationListener<Notification>(
-          onNotification: _onScrollNotification,
+          onNotification: (notification) => switch (notification) {
+            final TranscriptMessageMenuOpenChanged menu => _onMessageMenuOpenChanged(menu),
+            _ => _onScrollNotification(notification),
+          },
           child: PregoHorizontalDragGestureDetector(
             behavior: HitTestBehavior.translucent,
             supportedDevices: _kRevealPointerDevices,
@@ -1516,6 +1525,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required Map<String, String> streamingText,
     required int? createdAtMs,
   }) => TranscriptMessageMenu(
+    spotlight: PregoMenuSpotlight.listRow,
     copyText: AssistantMessageCard.markdownOf(blocks: blocks, streamingText: streamingText),
     builder: (context, selectionArea) => AssistantMessageCard(
       projectId: widget.projectId,
@@ -1650,6 +1660,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return;
     }
     _endReveal();
+  }
+
+  /// Holds the transcript while a message's menu is open, as a detached list
+  /// holds it: a reply streaming in at the newest edge would otherwise grow the
+  /// spotlit message past its cut-out and carry it out from under the menu.
+  bool _onMessageMenuOpenChanged(TranscriptMessageMenuOpenChanged notification) {
+    if (notification.open) {
+      _heldByMenu = _follow.following;
+      _follow.detach();
+    } else if (_heldByMenu) {
+      _heldByMenu = false;
+      _follow.reattach();
+    }
+    return true;
   }
 
   bool _onScrollNotification(Notification notification) {

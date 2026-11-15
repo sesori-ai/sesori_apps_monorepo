@@ -136,6 +136,7 @@ class const SessionTile({
             // Holds this row sharp while the rest of the list blurs back, so
             // which session the actions will hit is unambiguous.
             spotlight: PregoMenuSpotlight.listRow,
+            onOpenChanged: null,
             entriesBuilder: menuEntries,
             // Ink rather than a plain colour so the tap ripple stays visible
             // over the selected tint (a widget's own colour would cover it).

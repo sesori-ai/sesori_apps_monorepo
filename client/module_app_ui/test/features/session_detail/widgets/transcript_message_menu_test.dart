@@ -36,6 +36,7 @@ void main() {
               child: Align(
                 alignment: Alignment.topLeft,
                 child: TranscriptMessageMenu(
+                  spotlight: PregoMenuSpotlight.listRow,
                   copyText: _markdown,
                   builder: (context, selectionArea) =>
                       PregoReadableSelectionArea(key: selectionArea, child: const Text(_text)),

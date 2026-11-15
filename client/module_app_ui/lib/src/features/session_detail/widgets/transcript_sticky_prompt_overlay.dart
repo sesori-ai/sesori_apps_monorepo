@@ -13,6 +13,7 @@ import "../../../l10n/app_localizations.dart";
 import "../../../utils/markdown_plain_text.dart";
 import "../../../widgets/markdown_styles.dart";
 import "invocation_card.dart";
+import "transcript_message_menu.dart";
 import "transcript_motion.dart";
 import "transcript_sticky_layout.dart";
 import "user_message_card.dart";
@@ -277,7 +278,7 @@ class _TranscriptStickyPromptOverlayState()
     final text = TranscriptStickyPromptOverlay._textOf(message: opener, shape: shape);
     final key = ValueKey((pinnedPrompt: id));
     return switch (shape) {
-      InvocationPromptTurnShape(:final name, :final source) => _cardCopy(
+      InvocationPromptTurnShape(:final name, :final source, :final arguments) => _cardCopy(
         key: key,
         loc: loc,
         id: id,
@@ -285,6 +286,7 @@ class _TranscriptStickyPromptOverlayState()
         source: source,
         spoken: text?.head,
         arguments: text?.end,
+        copyText: arguments,
         attachments: UserMessageCard.cardAttachmentsOf(message: opener),
       ),
       BubblePromptTurnShape() => _pinnable(
@@ -292,6 +294,7 @@ class _TranscriptStickyPromptOverlayState()
         loc: loc,
         id: id,
         surface: _PinSurface.bubble,
+        copyText: UserMessageCard.markdownOf(message: opener),
         label: text == null
             // A prompt with no text is named by its first attachment.
             ? opener.promptText ?? loc.transcriptStickyPromptAttachment
@@ -323,6 +326,8 @@ class _TranscriptStickyPromptOverlayState()
         source: source,
         spoken: cut(budget: TranscriptStickyPromptOverlay._spokenCharacterBudget),
         arguments: cut(budget: TranscriptStickyPromptOverlay._copyCharacterBudget),
+        // Only the start of an unloaded prompt is known.
+        copyText: null,
         attachments: const [],
       );
     }
@@ -332,6 +337,7 @@ class _TranscriptStickyPromptOverlayState()
       loc: loc,
       id: entry.messageId,
       surface: _PinSurface.bubble,
+      copyText: null,
       label: preview == null
           ? loc.transcriptStickyPromptAttachment
           : TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: preview),
@@ -354,12 +360,14 @@ class _TranscriptStickyPromptOverlayState()
     required CommandSource source,
     required String? spoken,
     required String? arguments,
+    required String? copyText,
     required List<Widget> attachments,
   }) => _pinnable(
     key: key,
     loc: loc,
     id: id,
     surface: _PinSurface.card,
+    copyText: copyText,
     label: [
       loc.invocationCardSemantics(source.name, name),
       if (spoken != null) TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: spoken),
@@ -379,6 +387,10 @@ class _TranscriptStickyPromptOverlayState()
     required AppLocalizations loc,
     required String id,
     required _PinSurface surface,
+
+    /// The whole prompt's text, which its menu copies; null when the prompt
+    /// is not loaded, and its copy then has no menu.
+    required String? copyText,
     required String label,
     required Widget content,
   }) => _PinCopy(
@@ -392,9 +404,17 @@ class _TranscriptStickyPromptOverlayState()
         hint: loc.transcriptStickyPromptJumpHint,
         onTap: () => widget.onTap(openerMessageId: id),
         excludeSemantics: true,
-        // Hit tests never reach the copy and focus never enters it, so nothing
-        // in it can be pressed, selected or scrolled.
-        child: ExcludeFocus(child: content),
+        // Focus never enters the copy and presses reach only its prompt's
+        // menu, so nothing in it can be pressed, selected or scrolled.
+        child: ExcludeFocus(
+          child: TranscriptMessageMenu.wrap(
+            // The copy stands inside its surface, which the overlay draws, so
+            // the cut-out reaches out to the surface's edges.
+            spotlight: PregoMenuSpotlight(borderRadius: surface.radius, inset: EdgeInsets.all(-surface.inset)),
+            text: copyText,
+            builder: (_) => AbsorbPointer(child: content),
+          ),
+        ),
       ),
     ),
   );
@@ -770,6 +790,30 @@ class RenderTranscriptStickyPrompts({
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
     if (_pinAt(position: position, band: true) == null) return false;
+    // The pressed copy first, so its prompt's menu takes a long-press or a
+    // right-click before the message under the pin can. A press on the
+    // bubble's padding counts as one on its copy.
+    if (_pinAt(position: position, band: false) case final pin?) {
+      if (_childFor(openerId: pin.openerId) case final child? when child.hasSize) {
+        final content = _contentOf(
+          pin: pin,
+          child: child,
+          bubble: _bubbleOf(pin: pin, child: child),
+        );
+        final local = position - content;
+        result.addWithPaintOffset(
+          offset: content,
+          position:
+              content +
+              Offset(
+                clampDouble(local.dx, 0, max(0, child.size.width - 1)),
+                clampDouble(local.dy, 0, max(0, child.size.height - 1)),
+              ),
+          hitTest: (result, position) => child.hitTest(result, position: position),
+        );
+      }
+    }
+    // Still false, so the rows beneath scroll as the pin is dragged.
     result.add(BoxHitTestEntry(this, position));
     return false;
   }
