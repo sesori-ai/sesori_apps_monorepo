@@ -174,6 +174,150 @@ $CodexTurnDtoCopyWith<$Res>? get turn {
 
 
 /// @nodoc
+mixin _$CodexThreadTurnsPageDto {
+
+ List<CodexTurnDto>? get data;
+/// Create a copy of CodexThreadTurnsPageDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexThreadTurnsPageDtoCopyWith<CodexThreadTurnsPageDto> get copyWith => _$CodexThreadTurnsPageDtoCopyWithImpl<CodexThreadTurnsPageDto>(this as CodexThreadTurnsPageDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CodexThreadTurnsPageDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadTurnsPageDto&&const DeepCollectionEquality().equals(other.data, _this.data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CodexThreadTurnsPageDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data));
+}
+
+@override
+String toString() {
+  final _this = this as CodexThreadTurnsPageDto;
+  return 'CodexThreadTurnsPageDto(data: ${_this.data})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexThreadTurnsPageDtoCopyWith<$Res>  {
+  factory $CodexThreadTurnsPageDtoCopyWith(CodexThreadTurnsPageDto value, $Res Function(CodexThreadTurnsPageDto) _then) = _$CodexThreadTurnsPageDtoCopyWithImpl;
+@useResult
+$Res call({
+ List<CodexTurnDto>? data
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexThreadTurnsPageDtoCopyWithImpl<$Res>
+    implements $CodexThreadTurnsPageDtoCopyWith<$Res> {
+  _$CodexThreadTurnsPageDtoCopyWithImpl(this._self, this._then);
+
+  final CodexThreadTurnsPageDto _self;
+  final $Res Function(CodexThreadTurnsPageDto) _then;
+
+/// Create a copy of CodexThreadTurnsPageDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? data = freezed,}) {
+  return _then(CodexThreadTurnsPageDto(
+data: freezed == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
+as List<CodexTurnDto>?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CodexThreadTurnsPageDto implements CodexThreadTurnsPageDto {
+  const _CodexThreadTurnsPageDto({required  List<CodexTurnDto>? data}): _data = data;
+  factory _CodexThreadTurnsPageDto.fromJson(Map<String, dynamic> json) => _$CodexThreadTurnsPageDtoFromJson(json);
+
+ final  List<CodexTurnDto>? _data;
+@override List<CodexTurnDto>? get data {
+  final value = _data;
+  if (value == null) return null;
+  if (_data is EqualUnmodifiableListView) return _data;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
+
+/// Create a copy of CodexThreadTurnsPageDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CodexThreadTurnsPageDtoCopyWith<_CodexThreadTurnsPageDto> get copyWith => __$CodexThreadTurnsPageDtoCopyWithImpl<_CodexThreadTurnsPageDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadTurnsPageDto&&const DeepCollectionEquality().equals(other.data, _data));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+}
+
+@override
+String toString() {
+    return 'CodexThreadTurnsPageDto(data: $data)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CodexThreadTurnsPageDtoCopyWith<$Res> implements $CodexThreadTurnsPageDtoCopyWith<$Res> {
+  factory _$CodexThreadTurnsPageDtoCopyWith(_CodexThreadTurnsPageDto value, $Res Function(_CodexThreadTurnsPageDto) _then) = __$CodexThreadTurnsPageDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ List<CodexTurnDto>? data
+});
+
+
+
+
+}
+/// @nodoc
+class __$CodexThreadTurnsPageDtoCopyWithImpl<$Res>
+    implements _$CodexThreadTurnsPageDtoCopyWith<$Res> {
+  __$CodexThreadTurnsPageDtoCopyWithImpl(this._self, this._then);
+
+  final _CodexThreadTurnsPageDto _self;
+  final $Res Function(_CodexThreadTurnsPageDto) _then;
+
+/// Create a copy of CodexThreadTurnsPageDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? data = freezed,}) {
+  return _then(_CodexThreadTurnsPageDto(
+data: freezed == data ? _self._data : data // ignore: cast_nullable_to_non_nullable
+as List<CodexTurnDto>?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$CodexTurnDto {
 
  String? get id;@JsonKey(unknownEnumValue: CodexTurnStatus.unknown) CodexTurnStatus? get status;

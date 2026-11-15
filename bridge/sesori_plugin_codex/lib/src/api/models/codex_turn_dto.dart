@@ -12,6 +12,16 @@ sealed class CodexTurnStartResponseDto with _$CodexTurnStartResponseDto {
   factory fromJson(Map<String, dynamic> json) => _$CodexTurnStartResponseDtoFromJson(json);
 }
 
+/// One page of `thread/turns/list`.
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexThreadTurnsPageDto with _$CodexThreadTurnsPageDto {
+  const factory({
+    required List<CodexTurnDto>? data,
+  }) = _CodexThreadTurnsPageDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CodexThreadTurnsPageDtoFromJson(json);
+}
+
 /// A Codex app-server turn's lifecycle status.
 enum CodexTurnStatus() {
   completed,

@@ -53,6 +53,71 @@ void main() {
     expect(secondRepository.resumeCount, 1);
   });
 
+  group("askSideQuestion", () {
+    late CodexSessionService service;
+    late _StubThreadRepository threadRepository;
+
+    setUp(() {
+      service = _newService();
+      threadRepository = _StubThreadRepository();
+      service.attachAppServerRepositories(
+        threadRepository: threadRepository,
+        modelRepository: _StubModelRepository(),
+        skillRepository: _StubSkillRepository(),
+      );
+    });
+
+    test("samples the running turn without listing turns", () async {
+      final answer = await service.askSideQuestion(
+        threadId: "thread-id",
+        activeTurnId: "turn-running",
+        question: "Why?",
+        history: const [PluginSideExchange(question: "Before?", answer: "Earlier.")],
+      );
+
+      expect(answer, isA<PluginSideAnswered>());
+      expect(threadRepository.latestTurnReads, 0);
+      final sample = threadRepository.samples.single;
+      expect(sample.threadId, "thread-id");
+      expect(sample.expectedTurnId, "turn-running");
+      expect(sample.prompt, contains("Question: Before?\nAnswer: Earlier."));
+      expect(sample.prompt, contains("Side question: Why?"));
+    });
+
+    test("an idle thread is sampled after its latest turn", () async {
+      await service.askSideQuestion(threadId: "thread-id", activeTurnId: null, question: "Why?", history: const []);
+
+      expect(threadRepository.latestTurnReads, 1);
+      expect(threadRepository.samples.single.expectedTurnId, "turn-latest");
+    });
+
+    test("a thread with no turn refuses without sampling", () async {
+      threadRepository.latestTurn = null;
+
+      final answer = await service.askSideQuestion(
+        threadId: "thread-id",
+        activeTurnId: null,
+        question: "Why?",
+        history: const [],
+      );
+
+      expect(answer, isA<PluginSideRefused>().having((r) => r.reason, "reason", PluginSideRefusal.noTurnYet));
+      expect(threadRepository.samples, isEmpty);
+    });
+
+    test("a question too long for Codex refuses without sampling", () async {
+      final answer = await service.askSideQuestion(
+        threadId: "thread-id",
+        activeTurnId: "turn-running",
+        question: "x" * 4000,
+        history: const [],
+      );
+
+      expect(answer, isA<PluginSideRefused>().having((r) => r.reason, "reason", PluginSideRefusal.tooLong));
+      expect(threadRepository.samples, isEmpty);
+    });
+  });
+
   test("getCommands always includes compact without duplicating an advertised command", () async {
     final service = _newService();
     final threadRepository = _StubThreadRepository();
@@ -771,5 +836,25 @@ class _StubThreadRepository() extends CodexThreadRepository {
   @override
   Future<void> compactThread({required String threadId}) async {
     compactCount += 1;
+  }
+
+  String? latestTurn = "turn-latest";
+  int latestTurnReads = 0;
+  final samples = <({String threadId, String expectedTurnId, String prompt})>[];
+
+  @override
+  Future<String?> latestTurnId({required String threadId}) async {
+    latestTurnReads += 1;
+    return latestTurn;
+  }
+
+  @override
+  Future<PluginSideAnswer> sampleThread({
+    required String threadId,
+    required String expectedTurnId,
+    required String prompt,
+  }) async {
+    samples.add((threadId: threadId, expectedTurnId: expectedTurnId, prompt: prompt));
+    return const PluginSideAnswered(text: "Answer.", notice: null);
   }
 }
