@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "models/codex_desktop_state_dto.dart";
 import "models/codex_rollout_dto.dart";
+import "models/codex_rollout_file_name.dart";
 
 typedef CodexSessionIndexLine = ({CodexSessionIndexEntryDto? entry, String raw});
 
@@ -46,6 +47,19 @@ String? resolveCodexHome({required Map<String, String> environment}) {
   return p.join(home, ".codex");
 }
 
+/// The creation time a UUIDv7 id encodes in its leading 48 bits, or null for
+/// any other id. Codex thread and rollout ids are UUIDv7.
+DateTime? codexUuidV7Time({required String id}) {
+  final match = _uuidV7Pattern.firstMatch(id);
+  if (match == null) return null;
+  return DateTime.fromMillisecondsSinceEpoch(int.parse("${match[1]}${match[2]}", radix: 16));
+}
+
+final RegExp _uuidV7Pattern = RegExp(
+  r"^([0-9a-f]{8})-([0-9a-f]{4})-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+  caseSensitive: false,
+);
+
 /// Layer-1 filesystem boundary for Codex's on-disk local state and rollout history.
 class CodexRolloutApi({required final Map<String, String> _environment}) {
   String? get codexHome => resolveCodexHome(environment: _environment);
@@ -58,6 +72,11 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
   String? get sessionsDirectory {
     final home = codexHome;
     return home == null ? null : p.join(home, "sessions");
+  }
+
+  String? get archivedSessionsDirectory {
+    final home = codexHome;
+    return home == null ? null : p.join(home, "archived_sessions");
   }
 
   String? get desktopStatePath {
@@ -115,39 +134,86 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
   List<String> listRolloutPaths() {
     final root = sessionsDirectory;
     if (root == null) return const [];
-    final directory = Directory(root);
-    if (!directory.existsSync()) return const [];
-    return [
-      for (final entity in directory.listSync(recursive: true, followLinks: false))
-        if (entity is File &&
-            p.basename(entity.path).startsWith("rollout-") &&
-            p.basename(entity.path).endsWith(".jsonl"))
-          entity.path,
-    ];
+    return _listRolloutFiles(directory: root, recursive: true, test: (_) => true);
   }
 
-  /// [sessionId]'s rollout in the date directories around [around], or null.
-  /// Codex files a new rollout under `sessions/YYYY/MM/DD` for its creation
-  /// date; the neighbouring days cover midnight and a UTC date.
-  String? findRolloutPathAround({required String sessionId, required DateTime around}) {
+  /// [sessionId]'s newest rollout filed on or after [since], or null, without
+  /// listing every rollout. Codex files each rollout under `sessions/YYYY/MM/DD`
+  /// for its own creation date, so a revert's rollout sits on a later day than
+  /// the thread's first one. Days are searched newest first, one day past
+  /// each end to cover midnight and a UTC date.
+  String? findNewestRolloutPathSince({required String sessionId, required DateTime since}) {
     final root = sessionsDirectory;
     if (root == null) return null;
-    for (final day in [around, around.subtract(const Duration(days: 1)), around.add(const Duration(days: 1))]) {
-      final directory = Directory(
-        p.join(
-          root,
-          day.year.toString(),
-          day.month.toString().padLeft(2, "0"),
-          day.day.toString().padLeft(2, "0"),
-        ),
-      );
-      if (!directory.existsSync()) continue;
-      for (final entity in directory.listSync(followLinks: false)) {
-        final name = p.basename(entity.path);
-        if (entity is File && name.startsWith("rollout-") && name.endsWith("-$sessionId.jsonl")) return entity.path;
+    final first = DateTime(since.year, since.month, since.day - 1);
+    final now = DateTime.now();
+    for (
+      var day = DateTime(now.year, now.month, now.day + 1);
+      !day.isBefore(first);
+      day = DateTime(day.year, day.month, day.day - 1)
+    ) {
+      String? newestPath;
+      CodexRolloutFileName? newest;
+      for (final path in _listRolloutFiles(
+        directory: _dayDirectory(root: root, day: day),
+        recursive: false,
+        test: (name) => name.threadId == sessionId,
+      )) {
+        final name = CodexRolloutFileName.tryParse(fileName: p.basename(path));
+        if (name == null || (newest != null && !name.isNewerThan(other: newest))) continue;
+        newest = name;
+        newestPath = path;
       }
+      if (newestPath != null) return newestPath;
     }
     return null;
+  }
+
+  /// The rollout file named by [rolloutId], active or archived, or null.
+  /// Rollout ids are UUIDv7, so the file's creation-date directories are
+  /// searched first; a full listing covers an archived or older rollout.
+  String? findRolloutPathByRolloutId({required String rolloutId}) {
+    bool matches(CodexRolloutFileName name) => name.rolloutId == rolloutId;
+    final sessions = sessionsDirectory;
+    final createdAt = codexUuidV7Time(id: rolloutId);
+    if (sessions != null && createdAt != null) {
+      for (final day in [
+        createdAt,
+        createdAt.subtract(const Duration(days: 1)),
+        createdAt.add(const Duration(days: 1)),
+      ]) {
+        final directory = _dayDirectory(root: sessions, day: day);
+        if (_listRolloutFiles(directory: directory, recursive: false, test: matches).firstOrNull case final path?) {
+          return path;
+        }
+      }
+    }
+    for (final root in [archivedSessionsDirectory, sessions].nonNulls) {
+      if (_listRolloutFiles(directory: root, recursive: true, test: matches).firstOrNull case final path?) return path;
+    }
+    return null;
+  }
+
+  String _dayDirectory({required String root, required DateTime day}) => p.join(
+    root,
+    day.year.toString(),
+    day.month.toString().padLeft(2, "0"),
+    day.day.toString().padLeft(2, "0"),
+  );
+
+  List<String> _listRolloutFiles({
+    required String directory,
+    required bool recursive,
+    required bool Function(CodexRolloutFileName name) test,
+  }) {
+    final root = Directory(directory);
+    if (!root.existsSync()) return const [];
+    return [
+      for (final entity in root.listSync(recursive: recursive, followLinks: false))
+        if (entity is File)
+          if (CodexRolloutFileName.tryParse(fileName: p.basename(entity.path)) case final name? when test(name))
+            entity.path,
+    ];
   }
 
   CodexRolloutHeader readHeader({required String rolloutPath}) {
@@ -192,6 +258,22 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
       malformedWarning: "[codex] skipping malformed rollout transcript record",
       ignoreMalformedLastLine: true,
     );
+  }
+
+  /// The records in the first [endByteOffset] bytes of a rollout: the kept
+  /// prefix a later rollout's `history_base` names. Codex never rewrites
+  /// those bytes, so the prefix ends on a record boundary.
+  List<CodexRolloutLineDto> readTranscriptPrefix({required String rolloutPath, required int endByteOffset}) {
+    final handle = File(rolloutPath).openSync();
+    try {
+      final bytes = handle.readSync(endByteOffset);
+      return _decodeRolloutLines(
+        lines: const LineSplitter().convert(utf8.decode(bytes)),
+        malformedWarning: "[codex] skipping malformed rollout history base record",
+      );
+    } finally {
+      handle.closeSync();
+    }
   }
 
   CodexRolloutTailPosition rolloutTailPosition({

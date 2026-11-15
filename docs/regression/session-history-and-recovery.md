@@ -463,6 +463,21 @@ reconnect or restart.
   copied parent `session_meta`; root sessions, ordinary forks, malformed
   headers, and copies whose first child-turn boundary is unresolved remain
   untouched.
+- Codex history follows reverted and forked rollouts. From `0.167`,
+  `thread/revert` (also the Codex TUI's backtrack) writes the thread's next
+  rollout as `rollout-<ts>-<threadId>_<rolloutId>.jsonl` and keeps the old
+  file; a paginated `thread/fork` writes `rollout-<ts>-<forkId>.jsonl`. Either
+  starts with `session_meta.history_base = {thread_id: <a rollout id>,
+  end_byte_offset}` instead of copying the kept prefix. The catalog lists a
+  thread once, at its newest rollout (file-name timestamp, then rollout id),
+  with the thread's original creation time. Replay prepends each base's first
+  `end_byte_offset` bytes, following the chain (a fork of a reverted thread,
+  a revert of a fork), and finds a base by rollout id under `sessions/` or
+  `archived_sessions/`. A missing base leaves only the later history, with a
+  warning in the bridge log. A fork keeps the source's turn and item ids for
+  the inherited turns. Deleting a reverted thread removes every rollout it
+  owns. Legacy rollouts keep their single-file layout and `thread_rolled_back`
+  replay.
 - Codex replay keys a user prompt by the `item_completed/UserMessage` item
   written after its response item, with that item's start time, which is the
   id and time the live `userMessage` row carries. A re-import therefore
@@ -648,6 +663,10 @@ rules where supported.
   rolled-back history. A Codex child transcript repeats copied parent turns, or
   a root, ordinary fork, or malformed rollout loses its own first turn because
   it resembled a copied sub-agent prefix.
+- After a Codex revert, Sesori still shows the reverted turns, misses turns sent
+  after the revert, or lists the thread twice; a Codex fork shows only its own
+  turns, or repeats or loses inherited ones; a deleted reverted thread comes
+  back with its pre-revert history.
 - A Codex prompt sent from Sesori appears twice after a reload or reconnect.
 - A live Codex sub-agent message shows the config default model or no effort
   while its reloaded copy shows the child's own model and effort.
@@ -703,6 +722,11 @@ rules where supported.
   The re-read moves the watermark to that time, so it converges. Measured live
   on 2026-11-12 with Pi `1.5.2` and Codex `0.167.2`: no extra re-read after a
   Sesori-run turn; Claude Code and OpenCode are not measured for that case.
+- Deleting a Codex thread from Sesori removes its rollouts even when a fork
+  reads its prefix through `history_base` (Codex's own delete refuses that);
+  the fork then shows only its own turns.
+- A Codex revert made outside Sesori is picked up at the next catalog scan;
+  until then the catalog reads the thread's previous rollout.
 - A session already open on screen picks up an outside turn on the next app
   resume or reopen, not while it sits open.
 - Client session-detail refresh triggers are still under diagnosis; only the
