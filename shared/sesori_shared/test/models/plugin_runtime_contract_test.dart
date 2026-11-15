@@ -173,6 +173,34 @@ void main() {
     expect(metadata.failureBlock, PluginFailureBlock.unknown);
   });
 
+  test("plugin metadata round-trips busy-prompt handling and decodes omitted or future values as unknown", () {
+    const declared = PluginMetadata(
+      id: "cursor",
+      displayName: "Cursor",
+      isDefault: false,
+      state: PluginLifecycleState.ready,
+      actionHint: null,
+      failureBlock: null,
+      mcpScopes: null,
+      failureReason: null,
+      busyPromptHandling: BusyPromptHandling.stopTurn,
+    );
+    const base = {
+      "id": "cursor",
+      "displayName": "Cursor",
+      "isDefault": false,
+      "state": "ready",
+    };
+
+    expect(declared.toJson()["busyPromptHandling"], "stopTurn");
+    expect(PluginMetadata.fromJson(declared.toJson()), declared);
+    expect(PluginMetadata.fromJson(base).busyPromptHandling, BusyPromptHandling.unknown);
+    expect(
+      PluginMetadata.fromJson(const {...base, "busyPromptHandling": "interrupt"}).busyPromptHandling,
+      BusyPromptHandling.unknown,
+    );
+  });
+
   test("plugin discovery maps a future lifecycle state to unavailable", () {
     final metadata = PluginMetadata.fromJson(const {
       "id": "future-plugin",

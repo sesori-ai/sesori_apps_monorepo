@@ -266,6 +266,9 @@ class const _FakeDescriptor({@override required final String id, required final 
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
   @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
+  @override
   List<PluginOption> get options => const [];
 
   @override

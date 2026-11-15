@@ -127,6 +127,33 @@ void main() {
     expect(plugin.asks, isEmpty);
   });
 
+  test("a harness that declares side questions but lacks the API fails loudly", () async {
+    final plainPlugin = FakeBridgePlugin();
+    addTearDown(plainPlugin.close);
+    final plainRuntime = createTestPluginRuntime(plugins: [plainPlugin])..sideQuestionPluginIds.add(plainPlugin.id);
+    final repository = singlePluginSessionRepository(
+      plugin: plainPlugin,
+      sessionDao: db.sessionDao,
+      projectsDao: db.projectsDao,
+      unseenCalculator: const SessionUnseenCalculator(),
+      runtime: plainRuntime,
+    );
+    final handler = AskSideQuestionHandler(
+      sideQuestionService: SideQuestionService(
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
+        sessionRepository: repository,
+        sideChatRepository: SideChatRepository(dao: SideChatDao(database: db)),
+      ),
+    );
+    const body = AskSideQuestionRequest(sessionId: "s-1", sideChatId: null, question: "q");
+
+    final response = await handler.routeForTest(
+      makeRequest("POST", "/session/side-question", body: jsonEncode(body.toJson())),
+    );
+
+    expect(response.status, 500);
+  });
+
   test("an archived session answers with the archived rejection", () async {
     await db.sessionDao.setArchived(sessionId: "s-1", archivedAt: 10, updatedAt: 10, projectionUpdatedAt: 10);
 

@@ -171,6 +171,18 @@ void main() {
     });
   });
 
+  group("PluginBusyPromptHandlingMapping.toShared()", () {
+    test("maps every plugin value to the matching shared value", () {
+      expect(
+        {for (final handling in PluginBusyPromptHandling.values) handling: handling.toShared()},
+        equals({
+          PluginBusyPromptHandling.steer: BusyPromptHandling.steer,
+          PluginBusyPromptHandling.stopTurn: BusyPromptHandling.stopTurn,
+        }),
+      );
+    });
+  });
+
   group("PluginMessagePartSubtask.toShared()", () {
     test("carries the subtask lifecycle and its child reference for translation", () {
       const part = PluginMessagePart.subtask(

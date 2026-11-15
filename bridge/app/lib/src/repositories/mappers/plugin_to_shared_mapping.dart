@@ -24,6 +24,13 @@ extension PluginToolStatusMapping on PluginToolStatus {
   };
 }
 
+extension PluginBusyPromptHandlingMapping on PluginBusyPromptHandling {
+  BusyPromptHandling toShared() => switch (this) {
+    PluginBusyPromptHandling.steer => BusyPromptHandling.steer,
+    PluginBusyPromptHandling.stopTurn => BusyPromptHandling.stopTurn,
+  };
+}
+
 extension SessionAbortSubAgentPolicyMapping on SessionAbortSubAgentPolicy {
   PluginAbortSubAgentPolicy toPlugin() => switch (this) {
     SessionAbortSubAgentPolicy.confirm => PluginAbortSubAgentPolicy.confirm,
