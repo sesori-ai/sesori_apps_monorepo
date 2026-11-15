@@ -66,7 +66,9 @@ class SessionCreationService({
             ),
       fastMode: request.fastMode,
     );
-    final firstText = _extractTexts(parts: request.parts).firstOrNull;
+    final firstText = _nonBlankTexts(
+      texts: request.parts.whereType<PromptPartText>().map((part) => part.text),
+    ).firstOrNull;
     await _sessionRepository.ensurePluginRoutable(
       pluginId: request.pluginId,
       operation: SessionOperation.createSession,
@@ -85,11 +87,9 @@ class SessionCreationService({
         : const <DeliverablePromptPart>[];
     // From the delivered parts, so each saved file's note shows in place and
     // the live user message matches the reloaded one.
-    final userTexts = userParts
-        .whereType<DeliverablePromptPartText>()
-        .map((part) => part.text)
-        .where((text) => text.trim().isNotEmpty)
-        .toList(growable: false);
+    final userTexts = _nonBlankTexts(
+      texts: userParts.whereType<DeliverablePromptPartText>().map((part) => part.text),
+    );
     final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
     final WorktreeResult? worktreeResult;
     final _SessionCreationWorktreeState worktreeState;
@@ -165,13 +165,8 @@ class SessionCreationService({
 
   Future<void> drain() => _drainFuture ??= _drain();
 
-  List<String> _extractTexts({required List<PromptPart> parts}) {
-    return parts
-        .whereType<PromptPartText>()
-        .map((part) => part.text)
-        .where((text) => text.trim().isNotEmpty)
-        .toList(growable: false);
-  }
+  List<String> _nonBlankTexts({required Iterable<String> texts}) =>
+      texts.where((text) => text.trim().isNotEmpty).toList(growable: false);
 
   Future<WorktreeResult?> _prepareWorktree({
     required CreateSessionRequest request,
