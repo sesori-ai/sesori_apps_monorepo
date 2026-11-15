@@ -526,8 +526,9 @@ final class ClaudeSessionService({
   /// selection, which answers from the resumed conversation (verified on CLI
   /// 2.1.322). That resume runs in the dispatch chain, so a prompt sent
   /// meanwhile still applies its own selection afterwards; if that restarts
-  /// the process, this ask fails and the user can retry. A process resumed
-  /// for the ask is reaped like one left by a finished turn.
+  /// the process, this ask fails and the user can retry. A pending idle reap
+  /// waits until the ask ends and is then rearmed, so it neither ends the
+  /// process under the ask nor leaves a process resumed for it running.
   Future<PluginSideAnswer> askSideQuestion({
     required String sessionId,
     required String directory,
@@ -535,10 +536,25 @@ final class ClaudeSessionService({
     required List<PluginSideExchange> history,
   }) async {
     if (_disposed) throw StateError("Claude session service is disposed");
-    if (_processes.isResident(sessionId: sessionId)) {
-      return await _processes.sendSideQuestion(sessionId: sessionId, question: question, history: history);
-    }
     final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
+    state.idleGeneration++;
+    try {
+      if (!_processes.isResident(sessionId: sessionId)) {
+        await _resumeForSideQuestion(sessionId: sessionId, directory: directory, state: state);
+      }
+      return await _processes.sendSideQuestion(sessionId: sessionId, question: question, history: history);
+    } finally {
+      if (identical(_turns[sessionId], state) && !state.hasWork && _processes.isResident(sessionId: sessionId)) {
+        _scheduleIdleReap(sessionId: sessionId, state: state);
+      }
+    }
+  }
+
+  Future<void> _resumeForSideQuestion({
+    required String sessionId,
+    required String directory,
+    required _SessionTurnState state,
+  }) async {
     final residency = state.dispatchTail.then((_) async {
       // Like a turn, the resume waits out an abort's teardown, and a session
       // deleted or disposed meanwhile is not brought back.
@@ -563,14 +579,7 @@ final class ClaudeSessionService({
     // The asker awaits [residency] and receives its failure; the chain only
     // needs to continue past it.
     state.dispatchTail = residency.catchError((Object _) {});
-    try {
-      await residency;
-      return await _processes.sendSideQuestion(sessionId: sessionId, question: question, history: history);
-    } finally {
-      if (identical(_turns[sessionId], state) && !state.hasWork && _processes.isResident(sessionId: sessionId)) {
-        _scheduleIdleReap(sessionId: sessionId, state: state);
-      }
-    }
+    await residency;
   }
 
   /// Stops the session's work with the given sub-agent scope.

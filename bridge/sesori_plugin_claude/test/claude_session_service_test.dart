@@ -1272,6 +1272,29 @@ void main() {
         expect(harness.processes, hasLength(1));
       });
 
+      test("an idle reap waits for an ask on the resident process, then rearms", () async {
+        unawaited(harness.enqueue("first"));
+        final process = await harness.firstProcess;
+        await waitForFrame(process, "user");
+        process.emit(_result());
+        await harness.waitForIdle();
+
+        final answer = harness.ask();
+        final request = await _waitForControlSubtype(process, "side_question");
+        harness.clock.elapse();
+        await pump();
+        expect(process.stdinClosed, isFalse);
+
+        process.emitControlResponse(
+          requestId: request.field<String>("request_id"),
+          payload: {"response": "Still here.", "synthetic": false},
+        );
+        expect(await answer, isA<PluginSideAnswered>());
+        expect(harness.clock.delays, [const Duration(minutes: 5), const Duration(minutes: 5)]);
+        harness.clock.elapse();
+        await _waitForStdinClose(process);
+      });
+
       test("an ask during an abort's teardown resumes only after it", () async {
         await harness.dispose();
         harness = _ServiceHarness(stdinCloseCompletes: false);
