@@ -12,4 +12,14 @@ sealed class DeliverablePromptPart with _$DeliverablePromptPart {
       DeliverablePromptPartFileUrl;
   const factory fileData({required String mime, required String base64, required String? filename}) =
       DeliverablePromptPartFileData;
+
+  /// What the user sees of a prompt sent as [parts]: its non-blank texts, a
+  /// blank line apart, so the live message matches the reloaded one.
+  static String? userVisibleText({required List<DeliverablePromptPart> parts}) {
+    final texts = [
+      for (final part in parts)
+        if (part case DeliverablePromptPartText(:final text) when text.trim().isNotEmpty) text,
+    ];
+    return texts.isEmpty ? null : texts.join("\n\n");
+  }
 }

@@ -411,17 +411,13 @@ class SessionPromptService({
     required PromptModel? model,
   }) async {
     final userParts = await _deliverableParts(sessionId: sessionId, parts: parts);
-    final userTexts = [
-      for (final part in userParts)
-        if (part case DeliverablePromptPartText(:final text) when text.trim().isNotEmpty) text,
-    ];
     final removedSessionIds = await _sessionRepository.replaceBackendSession(
       sessionId: sessionId,
       parts: [
         ...await _worktreeContextParts(sessionId: sessionId),
         ...userParts,
       ],
-      userVisibleText: userTexts.isEmpty ? null : userTexts.join("\n\n"),
+      userVisibleText: DeliverablePromptPart.userVisibleText(parts: userParts),
       variant: variant,
       fastMode: fastMode,
       agent: agent,
