@@ -37,18 +37,16 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
     preserveEmptyLines: widget.preserveEmptyLines,
   );
   final _selectionArea = GlobalKey<SelectionAreaState>();
-  final _focusNode = FocusNode(debugLabel: "PregoReadableSelectionArea");
+  final _focusNode = _KeepingFocusNode(debugLabel: "PregoReadableSelectionArea");
 
   /// The selected text, as copying it gives it, or null when none is selected.
   String? get selectedText => _selectionDelegate.getSelectedContent()?.plainText;
 
   /// Keeps the selection while [keep] is on, though the area loses the focus,
   /// as it does to a menu opened on its text. Losing the focus otherwise
-  /// clears it.
-  // ponytail: the region still thinks it has no selection while one is kept,
-  // so a shift-click right after the menu starts a new one instead of
-  // extending it.
-  void keepSelection({required bool keep}) => _selectionDelegate.keepsSelection = keep;
+  /// clears it. The region never sees the loss, so its selection stays whole
+  /// and a shift-click afterwards extends it.
+  void keepSelection({required bool keep}) => _focusNode.keeps = keep;
 
   /// Selects all of the area's text and shows the selection's handles and
   /// toolbar, taking the focus as a long-press selection does, so tapping
@@ -86,16 +84,18 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
   }
 }
 
+/// Reports the focus while [keeps] is on, so the selection region does not
+/// clear its selection when a menu takes the focus.
+class _KeepingFocusNode({super.debugLabel}) extends FocusNode {
+  bool keeps = false;
+
+  @override
+  bool get hasFocus => keeps || super.hasFocus;
+}
+
 class _ReadableSelectionContainerDelegate({required bool preserveEmptyLines}) extends StaticSelectionContainerDelegate {
   static const _sameLineTolerance = 3.0;
   bool _preserveEmptyLines = preserveEmptyLines;
-
-  /// Ignores clears while on; see [PregoReadableSelectionAreaState.keepSelection].
-  bool keepsSelection = false;
-
-  @override
-  SelectionResult handleClearSelection(ClearSelectionEvent event) =>
-      keepsSelection ? SelectionResult.none : super.handleClearSelection(event);
 
   void update({required bool preserveEmptyLines}) {
     if (_preserveEmptyLines == preserveEmptyLines) return;

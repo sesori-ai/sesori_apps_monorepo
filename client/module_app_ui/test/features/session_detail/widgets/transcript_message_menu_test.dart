@@ -141,6 +141,27 @@ void main() {
     variant: const TargetPlatformVariant({TargetPlatform.macOS}),
   );
 
+  testWidgets(
+    "a shift-click after the menu closes extends the kept selection",
+    (tester) async {
+      await pumpMessage(tester, mode: PregoInteractionMode.pointer);
+      final selected = await selectPart(tester);
+
+      await rightClick(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.tapAt(tester.getTopRight(find.text(_text)) + const Offset(-2, 5), kind: PointerDeviceKind.mouse);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await tester.pumpAndSettle();
+
+      final extended = area(tester).selectedText;
+      expect(extended, startsWith(selected));
+      expect(extended?.length, greaterThan(selected.length));
+    },
+    variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+  );
+
   testWidgets("a right-click with nothing selected offers Copy, which copies the whole message", (tester) async {
     await pumpMessage(tester, mode: PregoInteractionMode.pointer);
 

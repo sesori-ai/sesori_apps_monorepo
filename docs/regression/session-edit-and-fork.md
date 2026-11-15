@@ -26,8 +26,8 @@ bridge.
 - The pinned prompt's cut-out matches its bubble or card.
 - While some of the message's text is selected, the copy item reads "Copy
   selected text" and copies only the selection. Opening the menu, closing it
-  and copying all leave that selection highlighted exactly as it was; a click
-  elsewhere still clears it. With nothing selected the item reads "Copy" and
+  and copying all leave that selection highlighted exactly as it was: a
+  shift-click afterwards extends it, and a click elsewhere still clears it. With nothing selected the item reads "Copy" and
   copies the message's Markdown: a user prompt's text or a
   command's arguments, or the reply's text parts joined by blank lines, with
   streamed text as shown. A "Copied to clipboard" alert confirms it. A reply
@@ -58,7 +58,7 @@ bridge.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. |
+| L2 Routine | Automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, a shift-click afterwards extends it, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. |
 | L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. |
 | L4 Extended | Long-press a message near the screen's edges and at the largest text size; open the menu during a pinch, a peek and a code-block scroll. |
 | L5 Full | No additional coverage. |
@@ -89,8 +89,6 @@ not loaded yet.
   Flutter has no public API to select a word at a point.
 - A pinned prompt that is not loaded yet has no menu, since only its start is
   known; a long-press on it reaches the message under the pin.
-- Opening the menu clears an on-screen selection's highlight, because the menu
-  takes the focus. Copy still copies what was selected.
 - A long-press tooltip inside a message no longer shows, because the menu
   takes the long-press first.
 
