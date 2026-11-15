@@ -873,6 +873,7 @@ class CodexEventMapper({
       time: _threadTime(thread: thread),
       promptDefaults: null,
       lastUserActivityAt: null,
+      scheduledTask: null,
     );
   }
 
@@ -923,6 +924,7 @@ class CodexEventMapper({
       time: time,
       promptDefaults: null,
       lastUserActivityAt: null,
+      scheduledTask: null,
     );
   }
 

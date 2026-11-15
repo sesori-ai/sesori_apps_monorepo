@@ -101,6 +101,10 @@ final class const ClaudePluginDescriptor({
   @override
   PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
 
+  /// Claude runs `/compact` on request.
+  @override
+  bool get supportsCompactionOnRequest => true;
+
   @override
   bool get supportsPromptAttachments => true;
 
@@ -307,6 +311,8 @@ final class const ClaudePluginDescriptor({
       supportsMcpAuthentication: processFactory.supportsTerminal,
       processFactory: (spec) => processFactory.spawn(spec.processLaunch),
       binaryPath: binaryPath,
+      transcriptsDirectory: sesoriTranscriptsDirectory(),
+      uploadsDirectory: sesoriUploadsDirectory(),
       // The host factory already inherits this environment. Launch specs carry
       // only explicit overrides so they never shadow HOME and break keychain auth.
       environment: const {},

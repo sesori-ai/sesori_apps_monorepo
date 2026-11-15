@@ -208,6 +208,16 @@ class OpenCodeV2Service({
       id: _tracker.status(sessionId: id) ?? const PluginSessionStatus.busy(),
   };
 
+  /// Starts a native compaction of [sessionId] unless it runs or waits for an
+  /// answer, and returns whether it started. The check runs directly before
+  /// the request, with no catalog or selection read between them.
+  Future<bool> compactIfQuiet({required String sessionId, required String promptId}) async {
+    final active = await _repository.getActiveSessionIds();
+    if (active.contains(sessionId) || _tracker.workingSessionIds.contains(sessionId)) return false;
+    await _repository.compact(sessionId: sessionId, promptId: promptId);
+    return true;
+  }
+
   Future<Set<String>> interruptActiveWork() async {
     final ids = _tracker.workingSessionIds;
     await Future.wait([for (final id in ids) _repository.interrupt(sessionId: id, resume: false)]);

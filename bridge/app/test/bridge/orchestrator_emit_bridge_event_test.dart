@@ -354,7 +354,7 @@ void main() {
     });
     final pluginRuntime = runtimeForLifecycleService(service: harness.lifecycleService) as TestPluginRuntime;
     pluginRuntime.quotaReportingSupportByPlugin["one"] = PluginQuotaReportingSupport.conditional;
-    final plugin = harness.plugins.single..quotaReadiness = PluginQuotaContinuationReadiness.idle;
+    final plugin = harness.plugins.single..quotaReadiness = PluginSessionReadiness.idle;
     final running = await startTestOrchestratorSession(session: harness.composition.session);
     final socket = await relayServer.nextClient();
     final messages = StreamIterator<dynamic>(socket);
@@ -535,7 +535,7 @@ void main() {
       final runtime = runtimeForLifecycleService(service: harness.lifecycleService) as TestPluginRuntime;
       runtime.quotaReportingSupportByPlugin["one"] = PluginQuotaReportingSupport.conditional;
       harness.plugins.single
-        ..quotaReadiness = PluginQuotaContinuationReadiness.idle
+        ..quotaReadiness = PluginSessionReadiness.idle
         ..messagesResult = [
           const PluginMessageWithParts(
             info: PluginMessage.error(
@@ -1328,6 +1328,7 @@ BridgeSseSessionUpdated _lateSessionUpdate({required String pluginId}) {
       promptDefaults: null,
       lastUserActivityAt: null,
       branchName: null,
+      scheduledTask: null,
     ).toJson(),
     titleChanged: true,
   );
@@ -1601,15 +1602,14 @@ class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
   Completer<void>? deleteSessionStarted;
   Completer<void>? deleteSessionGate;
   List<PluginProjectActivitySummary> activitySummaries = const [];
-  PluginQuotaContinuationReadiness quotaReadiness = PluginQuotaContinuationReadiness.unavailable;
+  PluginSessionReadiness quotaReadiness = PluginSessionReadiness.unavailable;
   final List<String> sentPromptIds = [];
 
   @override
   String get id => pluginId;
 
   @override
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      quotaReadiness;
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async => quotaReadiness;
 
   @override
   Future<void> sendPrompt({

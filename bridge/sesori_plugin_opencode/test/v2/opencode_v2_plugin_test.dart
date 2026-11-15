@@ -216,6 +216,32 @@ void main() {
     );
   });
 
+  test("compactSession compacts a quiet session natively and refuses a running one", () async {
+    await plugin.initialize();
+    expect(
+      await plugin.compactSession(sessionId: _sessionId, promptId: "compact-1"),
+      PluginCompactionResult.accepted,
+    );
+    expect(server.compactBody, isNotNull);
+    server.compactBody = null;
+    server.active = {_sessionId};
+    expect(
+      await plugin.compactSession(sessionId: _sessionId, promptId: "compact-busy"),
+      PluginCompactionResult.sessionBusy,
+    );
+    expect(server.compactBody, isNull);
+  });
+
+  test("compactSession refuses a session waiting for an answer", () async {
+    server.forms = [_form];
+    await plugin.initialize();
+    expect(
+      await plugin.compactSession(sessionId: _sessionId, promptId: "compact-1"),
+      PluginCompactionResult.sessionBusy,
+    );
+    expect(server.compactBody, isNull);
+  });
+
   test("successful input replies update work state; a rejected write retains constraints", () async {
     server.forms = [_form];
     server.permissions = [_permission];
@@ -354,6 +380,7 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
   Map<String, dynamic>? promptBody;
   Map<String, dynamic>? replyBody;
   Map<String, dynamic>? createBody;
+  Map<String, dynamic>? compactBody;
 
   this {
     _subscription = server.listen(_handle);
@@ -444,6 +471,20 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
               "time": {"created": 1},
               "delivery": "queue",
               "payload": {"text": body["text"]},
+            },
+          }),
+        );
+      } else if (path.endsWith("/compact")) {
+        final body = jsonDecodeMap(await utf8.decoder.bind(request).join());
+        compactBody = body;
+        request.response.write(
+          jsonEncode({
+            "data": {
+              "id": body["id"],
+              "sessionID": _sessionId,
+              "time": {"created": 1},
+              "delivery": "queue",
+              "payload": <String, Object?>{},
             },
           }),
         );

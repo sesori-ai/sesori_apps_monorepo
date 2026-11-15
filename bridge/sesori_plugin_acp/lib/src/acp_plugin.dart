@@ -94,8 +94,8 @@ abstract class AcpPlugin({
   required final AcpProcessFactory _processFactory,
 }) extends BridgeDerivedProjectsPluginApi {
   @override
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      PluginQuotaContinuationReadiness.unavailable;
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
+      PluginSessionReadiness.unavailable;
 
   this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
     _childSessionChanges = childSessionTracker.changes.listen(_onChildSessionsChanged);
@@ -1224,6 +1224,73 @@ abstract class AcpPlugin({
   }) async {
     await _connectedClient();
     await validateTurnSelection(operation: "sendCommand", model: model, variant: variant, agent: agent);
+    _enqueueCommand(
+      sessionId: sessionId,
+      promptId: promptId,
+      command: command,
+      arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
+      variant: variant,
+      agent: agent,
+      model: model,
+    );
+    _cancelActiveTurnForQueuedInput(sessionId: sessionId);
+  }
+
+  /// The native command this harness compacts a session with. [compactSession]
+  /// sends it only while the live command list advertises it.
+  String get compactionCommandName => "compact";
+
+  /// Sends [compactionCommandName] as a command turn with the session's current
+  /// selection, but only to a quiet session: unlike [sendCommand], it never
+  /// cancels a running turn.
+  @override
+  Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    final client = await _connectedClient();
+    if (!_commandTracker.hasSnapshot && !_isSessionWorking(sessionId: sessionId)) {
+      // A fresh agent process advertises its commands only once a session
+      // loads, so load this one before reading them. Chained like a turn's
+      // own load, so a turn sent meanwhile waits for it.
+      final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
+      final load = state.tail.then((_) => _ensureResident(client: client, sessionId: sessionId));
+      state.tail = load;
+      await load;
+    }
+    final commands = await getCommands(projectId: directoryForSession(sessionId: sessionId));
+    if (!commands.any((command) => command.name == compactionCommandName)) return PluginCompactionResult.unsupported;
+    // Checked after the last await, so the enqueue below sees the same state.
+    if (_isSessionWorking(sessionId: sessionId)) return PluginCompactionResult.sessionBusy;
+    _enqueueCommand(
+      sessionId: sessionId,
+      promptId: promptId,
+      command: compactionCommandName,
+      arguments: "",
+      userVisibleArguments: null,
+      variant: null,
+      agent: null,
+      model: null,
+    );
+    return PluginCompactionResult.accepted;
+  }
+
+  /// Whether [sessionId] runs or holds a turn, runs an autonomous turn, or
+  /// waits for an answer.
+  bool _isSessionWorking({required String sessionId}) =>
+      _inFlightTurnSessions.contains(sessionId) ||
+      hasPendingTurn(sessionId: sessionId) ||
+      childSessionTracker.hasRootHold(sessionId: sessionId) ||
+      (_approvalRegistry?.hasPendingInput(sessionId: sessionId) ?? false);
+
+  void _enqueueCommand({
+    required String sessionId,
+    required String promptId,
+    required String command,
+    required String arguments,
+    required String? userVisibleArguments,
+    required PluginSessionVariant? variant,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) {
     final backendCommand = commandForDispatch(command: command);
     final body = arguments.isEmpty ? "/$backendCommand" : "/$backendCommand $arguments";
     final visibleArguments = userVisibleArguments?.trim();
@@ -1254,7 +1321,6 @@ abstract class AcpPlugin({
         ),
       ),
     );
-    _cancelActiveTurnForQueuedInput(sessionId: sessionId);
   }
 
   @override

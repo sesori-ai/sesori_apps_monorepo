@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dar
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/repositories/models/session_readiness.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/routing/set_session_auto_continuation_handler.dart";
@@ -195,7 +196,7 @@ void main() {
   test("paused deadline survives repository recreation and suppresses premature reads", () async {
     await arm();
     now = reset.add(const Duration(minutes: 2));
-    sessions.readiness = SessionContinuationReadiness.awaitingInput;
+    sessions.readiness = SessionReadiness.awaitingInput;
     await service.runDue();
     expect(sessions.historyCalls, 0);
     final reloaded = SessionContinuationRepository(
@@ -223,7 +224,7 @@ void main() {
     await arm();
     now = reset.add(const Duration(minutes: 2));
     sessions.onHistory = () {
-      sessions.readiness = SessionContinuationReadiness.busy;
+      sessions.readiness = SessionReadiness.busy;
     };
     await service.runDue();
     expect(prompts.sent, isEmpty);
@@ -360,7 +361,7 @@ class _OutcomeRepository({required super.dao, required super.runtime}) extends S
 
 class _Sessions() implements SessionRepository {
   AutoContinuationAvailability availability = AutoContinuationAvailability.conditional;
-  SessionContinuationReadiness readiness = SessionContinuationReadiness.idle;
+  SessionReadiness readiness = SessionReadiness.idle;
   int readinessCalls = 0;
   int historyCalls = 0;
   String errorId = "quota-error";
@@ -369,7 +370,7 @@ class _Sessions() implements SessionRepository {
   @override
   AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) => availability;
   @override
-  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async {
+  Future<SessionReadiness> getSessionReadiness({required String sessionId}) async {
     readinessCalls++;
     return readiness;
   }
@@ -395,6 +396,7 @@ class _Sessions() implements SessionRepository {
     unseen: false,
     lastUserActivityAt: null,
     autoContinuation: null,
+    scheduledTask: null,
   );
   @override
   Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {
