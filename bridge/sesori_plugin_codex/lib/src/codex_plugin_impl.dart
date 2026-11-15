@@ -97,8 +97,8 @@ class CodexPlugin._({
     SessionExternalActionsPluginApi,
     SideQuestionPluginApi {
   @override
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      PluginQuotaContinuationReadiness.unavailable;
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
+      PluginSessionReadiness.unavailable;
 
   static final String pluginId = Harness.codex.name;
   static const Duration _renameRetryDelay = Duration(milliseconds: 100);
@@ -1188,6 +1188,29 @@ class CodexPlugin._({
       _rolloutTailer.stop(sessionId: sessionId);
       rethrow;
     }
+  }
+
+  /// Starts Codex's `thread/compact/start` through the compaction command.
+  @override
+  Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    // Connect first, so the busy check is the last read before dispatch.
+    await _connectedClient();
+    if (_hasTurnOrAdmissionEvidence(sessionId: sessionId) ||
+        (_approvalRegistry?.pendingSessionIds.contains(sessionId) ?? false)) {
+      return PluginCompactionResult.sessionBusy;
+    }
+    await sendCommand(
+      sessionId: sessionId,
+      promptId: promptId,
+      command: CodexSessionService.compactionCommandName,
+      arguments: "",
+      userVisibleArguments: null,
+      variant: null,
+      fastMode: false,
+      agent: null,
+      model: null,
+    );
+    return PluginCompactionResult.accepted;
   }
 
   @override

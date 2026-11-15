@@ -84,6 +84,10 @@ class HermesPlugin({
   @override
   void onConnectionReset() => _hermesSessionOptionsService.resetConnection();
 
+  /// Hermes advertises its compaction as `/compress` (verified v0.21.5).
+  @override
+  String get compactionCommandName => "compress";
+
   @override
   Future<void> dispose() async {
     try {

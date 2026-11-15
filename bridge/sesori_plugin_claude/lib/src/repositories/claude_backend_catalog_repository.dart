@@ -54,6 +54,9 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
   /// selection owns that setting, and the process state it tracks would drift.
   static const String fastModeCommand = "fast";
 
+  /// Claude's native command that compacts the conversation.
+  static const String compactionCommand = "compact";
+
   /// Claude Code asks for a 60-minute prompt cache on subscription logins and
   /// gets the API's default 5 minutes on API-key, Bedrock and Vertex routes.
   static const int _subscriptionPromptCacheTtlSeconds = 60 * 60;

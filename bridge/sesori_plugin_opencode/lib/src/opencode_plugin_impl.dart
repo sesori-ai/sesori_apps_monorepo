@@ -66,8 +66,8 @@ class OpenCodePlugin._({
   }) => _service.executeMcpServerAction(target: target, action: action);
 
   @override
-  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
-      PluginQuotaContinuationReadiness.unavailable;
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
+      PluginSessionReadiness.unavailable;
 
   static const String _sendPromptOperation = "sendPrompt";
   static const String _sendCommandOperation = "sendCommand";
@@ -602,6 +602,12 @@ class OpenCodePlugin._({
 
   @override
   Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
+
+  /// OpenCode v1 compaction needs the session's model, which only the client
+  /// sends; v1 is being retired, so it does not compact on request.
+  @override
+  Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId}) async =>
+      PluginCompactionResult.unsupported;
 
   @override
   Future<void> sendCommand({

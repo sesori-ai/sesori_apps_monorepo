@@ -35,6 +35,8 @@ _PluginMetadata _$PluginMetadataFromJson(Map json) => _PluginMetadata(
   failureReason: json['failureReason'] as String?,
   namesCommandInvocations: json['namesCommandInvocations'] as bool? ?? false,
   supportsSideQuestions: json['supportsSideQuestions'] as bool? ?? false,
+  supportsCompactionOnRequest:
+      json['supportsCompactionOnRequest'] as bool? ?? false,
   busyPromptHandling:
       $enumDecodeNullable(
         _$BusyPromptHandlingEnumMap,
@@ -70,6 +72,7 @@ Map<String, dynamic> _$PluginMetadataToJson(_PluginMetadata instance) =>
       'failureReason': ?instance.failureReason,
       'namesCommandInvocations': instance.namesCommandInvocations,
       'supportsSideQuestions': instance.supportsSideQuestions,
+      'supportsCompactionOnRequest': instance.supportsCompactionOnRequest,
       'busyPromptHandling':
           _$BusyPromptHandlingEnumMap[instance.busyPromptHandling]!,
       'sessionBranching': instance.sessionBranching
