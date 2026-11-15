@@ -18,6 +18,8 @@ void main() {
         supportsMcpAuthentication: true,
         processFactory: harness.spawn,
         binaryPath: "claude",
+        transcriptsDirectory: "/tmp/sesori/transcripts",
+        uploadsDirectory: "/tmp/sesori/uploads",
         environment: const {},
       );
     });

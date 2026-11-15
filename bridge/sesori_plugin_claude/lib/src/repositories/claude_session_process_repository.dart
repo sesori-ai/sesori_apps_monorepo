@@ -97,6 +97,8 @@ final class ClaudeSessionProcessRepository({
   required final ClaudeProcessFactory _processFactory,
   required final bool _supportsMcpAuthentication,
   required final String _binaryPath,
+  required final String _transcriptsDirectory,
+  required final String _uploadsDirectory,
   required Map<String, String> environment,
 }) {
   final Map<String, String> _environment = Map.unmodifiable(environment);
@@ -478,6 +480,8 @@ final class ClaudeSessionProcessRepository({
         effort: effort,
         permissionMode: permissionMode,
         allowedTools: allowedTools,
+        transcriptsDirectory: _transcriptsDirectory,
+        uploadsDirectory: _uploadsDirectory,
         environment: _environment,
       ),
       processFactory: _processFactory,

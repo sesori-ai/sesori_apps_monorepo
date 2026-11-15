@@ -1218,6 +1218,8 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
       supportsMcpAuthentication: true,
       processFactory: _spawn,
       binaryPath: "claude",
+      transcriptsDirectory: "/tmp/sesori/transcripts",
+      uploadsDirectory: "/tmp/sesori/uploads",
       environment: const {},
     );
     approvals = ClaudeApprovalRegistry(

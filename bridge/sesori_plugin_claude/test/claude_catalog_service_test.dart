@@ -83,6 +83,8 @@ void main() {
           return process;
         },
         binaryPath: "claude",
+        transcriptsDirectory: "/tmp/sesori/transcripts",
+        uploadsDirectory: "/tmp/sesori/uploads",
         environment: const {},
       );
       var probeCount = 0;
@@ -221,6 +223,8 @@ void main() {
           return process;
         },
         binaryPath: "claude",
+        transcriptsDirectory: "/tmp/sesori/transcripts",
+        uploadsDirectory: "/tmp/sesori/uploads",
         environment: const {},
       );
       return ClaudeCatalogService(

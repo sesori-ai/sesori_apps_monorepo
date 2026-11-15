@@ -1709,6 +1709,8 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
         return process;
       },
       binaryPath: "claude",
+      transcriptsDirectory: "/tmp/sesori/transcripts",
+      uploadsDirectory: "/tmp/sesori/uploads",
       environment: const {},
     );
     approvals = ClaudeApprovalRegistry(
