@@ -48,6 +48,7 @@ void main() {
       supportsPromptAttachments: true,
       supportsFileUploads: false,
       offersSessionMcp: true,
+      sideQuestions: SideQuestionAvailability.unresolved,
       assistantAgentModel: null,
       children: const [],
       childStatuses: const {},
