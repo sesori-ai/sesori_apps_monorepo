@@ -857,6 +857,7 @@ class Orchestrator({
       sessionOperationDispatcher: sessionOperationDispatcher,
       sessionMutationDispatcher: sessionMutationDispatcher,
       sessionCreationService: sessionCreationService,
+      sessionSendService: sessionSendService,
       statusNotifier: _statusNotifier,
       reconnectBackoff: _reconnectBackoff,
       startupRetryService: _startupRetryService,
@@ -975,6 +976,7 @@ class OrchestratorSession._({
   required final SessionOperationDispatcher _sessionOperationDispatcher,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
   required final SessionCreationService _sessionCreationService,
+  required final SessionSendService _sessionSendService,
   required final ControlStatusNotifier? _statusNotifier,
   required final ReconnectBackoffPolicy _reconnectBackoff,
   required final BridgeStartupRetryService _startupRetryService,
@@ -1284,6 +1286,7 @@ class OrchestratorSession._({
   Future<void> _teardown() async {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _sessionSendService.beginShutdown();
     _projectGlossaryPopulationService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     (Object, StackTrace)? firstTeardownFailure;
@@ -1506,6 +1509,7 @@ class OrchestratorSession._({
     _startupRetryService.cancel();
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _sessionSendService.beginShutdown();
     _projectGlossaryPopulationService.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = clock.now();

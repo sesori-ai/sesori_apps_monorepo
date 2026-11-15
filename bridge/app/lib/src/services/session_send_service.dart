@@ -49,6 +49,19 @@ class SessionSendService({
   /// How long the source may take to write the summary.
   required final Duration _summaryTimeout,
 }) {
+  /// Fails every summary wait still open, so bridge shutdown does not wait
+  /// out the summary timeout.
+  final Set<void Function()> _shutdownHooks = {};
+
+  /// Ends every send still waiting for its summary as `summaryStopped`. The
+  /// orchestrator calls this before it removes event producers and drains
+  /// routes.
+  void beginShutdown() {
+    for (final hook in _shutdownHooks.toList(growable: false)) {
+      hook();
+    }
+  }
+
   /// Completes once the target has accepted the handoff prompt.
   Future<void> send({required String sourceSessionId, required String targetSessionId}) async {
     if (sourceSessionId == targetSessionId) throw _rejected(code: SendToSessionErrorCode.sameSession);
@@ -62,10 +75,11 @@ class SessionSendService({
     final promptId = SessionPromptService.generatePromptId();
     Log.i("Sending session ${source.id} to ${target.id}; requesting the summary as prompt $promptId");
     // Watching starts before the send, so the echo cannot be missed.
+    final requestText = _summaryRequestText(targetTitle: target.title);
     final turn = _watchSummaryTurn(sessionId: source.id, promptId: promptId);
     try {
-      await _requestSummary(source: source, target: target, promptId: promptId);
-      await _finishAfterSummaryRequest(source: source, target: target, turn: turn);
+      await _requestSummary(source: source, promptId: promptId, requestText: requestText);
+      await _finishAfterSummaryRequest(source: source, target: target, turn: turn, requestText: requestText);
     } finally {
       await turn.stop();
     }
@@ -78,6 +92,7 @@ class SessionSendService({
     required Session source,
     required Session target,
     required _SummaryTurn turn,
+    required String requestText,
   }) async {
     final String summaryRequestMessageId;
     try {
@@ -89,6 +104,7 @@ class SessionSendService({
     final (:transcript, :summary) = await _readSummary(
       sessionId: source.id,
       summaryRequestMessageId: summaryRequestMessageId,
+      requestText: requestText,
     );
     await _deliverHandoff(source: source, target: target, transcript: transcript, summary: summary);
   }
@@ -109,7 +125,7 @@ class SessionSendService({
   /// reservation of the source, so no other prompt can start in between. The
   /// reservation ends with the send, so the user can still stop the turn or
   /// answer its questions while the summary is written.
-  Future<void> _requestSummary({required Session source, required Session target, required String promptId}) =>
+  Future<void> _requestSummary({required Session source, required String promptId, required String requestText}) =>
       _operations.dispatch(
         sessionId: source.id,
         operation: SessionOperation.sendToSession,
@@ -122,7 +138,7 @@ class SessionSendService({
             await _prompts.sendPromptAlreadyReserved(
               sessionId: source.id,
               promptId: promptId,
-              parts: [PromptPart.text(text: _summaryRequestText(targetTitle: target.title))],
+              parts: [PromptPart.text(text: requestText)],
               variant: defaults.variant,
               fastMode: defaults.fastMode,
               agent: defaults.agent,
@@ -142,12 +158,16 @@ class SessionSendService({
   /// Why the source cannot write a summary now, or null when it is ready.
   ///
   /// A plugin whose backend is not running reports no statuses, and a stopped
-  /// backend runs no turn, so its sessions count as idle.
+  /// backend runs no turn, so its sessions count as idle. A running backend
+  /// that could not report statuses leaves readiness unknown, so the send is
+  /// refused.
   Future<SendToSessionErrorCode?> _sourceRefusal({required String sessionId, required String pluginId}) async {
     final statuses = await _sessions.getSessionStatuses();
     switch (statuses.statuses[sessionId]) {
       case SessionStatusBusy() || SessionStatusRetry():
         return SendToSessionErrorCode.sourceBusy;
+      case null when statuses.unavailablePluginIds.contains(pluginId) && _sessions.isPluginActive(pluginId: pluginId):
+        return SendToSessionErrorCode.sourceUnavailable;
       case SessionStatusIdle() || null:
         break;
     }
@@ -193,6 +213,10 @@ class SessionSendService({
           }
         case NormalizedOtherEvent(event: BridgeSseSessionError(:final sessionID)) when sessionID == sessionId:
           fail(code: SendToSessionErrorCode.summaryFailed);
+        // Some harnesses end a failed turn with an error message and a plain idle.
+        case NormalizedMessageEvent(message: MessageError(:final sessionID))
+            when sessionID == sessionId && summaryRequestMessageId != null:
+          fail(code: SendToSessionErrorCode.summaryFailed);
         case NormalizedMessageEvent() ||
             NormalizedStatusEvent() ||
             NormalizedQueuedPromptsEvent() ||
@@ -213,9 +237,12 @@ class SessionSendService({
     final abortSubscription = _aborts.abortStartedSessions.listen((stopped) {
       if (stopped == sessionId) fail(code: SendToSessionErrorCode.summaryStopped);
     });
+    void onShutdown() => fail(code: SendToSessionErrorCode.summaryStopped);
+    _shutdownHooks.add(onShutdown);
     return (
       ended: ended.future,
       stop: () async {
+        _shutdownHooks.remove(onShutdown);
         await eventSubscription.cancel();
         await abortSubscription.cancel();
       },
@@ -224,10 +251,14 @@ class SessionSendService({
 
   /// Reads the source's whole history and splits it at the summary request:
   /// the transcript is every message before it, and the summary is the text
-  /// of the agent's replies after it.
+  /// of the agent's replies after it, up to the next user message.
+  ///
+  /// A history refresh can replace the live echo with a replayed message under
+  /// another id, so the request is also found by its exact text.
   Future<({List<MessageWithParts> transcript, String summary})> _readSummary({
     required String sessionId,
     required String summaryRequestMessageId,
+    required String requestText,
   }) async {
     // The live capture of the reply's parts can trail the idle event, so the
     // store is brought current first, as archive export does. A backend that
@@ -259,7 +290,11 @@ class SessionSendService({
         causeStackTrace: stackTrace,
       );
     }
-    final requestIndex = messages.indexWhere((message) => message.info.id == summaryRequestMessageId);
+    final requestIndex = messages.lastIndexWhere(
+      (message) =>
+          message.info.id == summaryRequestMessageId ||
+          (message.info is MessageUser && _textOf(message: message) == requestText),
+    );
     if (requestIndex < 0) {
       Log.w(
         "Session $sessionId history (${messages.length} messages) lacks summary request message "
@@ -268,7 +303,8 @@ class SessionSendService({
       throw _rejected(code: SendToSessionErrorCode.summaryMissing);
     }
     final summary = [
-      for (final message in messages.skip(requestIndex + 1))
+      // A prompt queued behind the summary starts the next turn.
+      for (final message in messages.skip(requestIndex + 1).takeWhile((message) => message.info is! MessageUser))
         if (message.info case MessageAssistant(sender: MessageSender.agent))
           for (final part in message.parts)
             if (part case MessagePartText(:final text) when text.trim().isNotEmpty) text.trim(),
@@ -384,6 +420,11 @@ class SessionSendService({
       model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
     );
   }
+
+  static String _textOf({required MessageWithParts message}) => [
+    for (final part in message.parts)
+      if (part case MessagePartText(:final text)) text,
+  ].join();
 
   static String? _nonBlank({required String? text}) {
     final trimmed = text?.trim();

@@ -1332,6 +1332,10 @@ class SessionRepository({
     },
   );
 
+  /// Whether [pluginId]'s backend is running, so a missing status from it
+  /// means its status read failed rather than that it has no turn.
+  bool isPluginActive({required String pluginId}) => _runtime.activePluginIds.contains(pluginId);
+
   Future<SessionStatusResponse> getSessionStatuses() async {
     final results = await Future.wait(
       _runtime.eligiblePluginIds.map((pluginId) async {
