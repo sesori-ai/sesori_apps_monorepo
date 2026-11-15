@@ -1398,29 +1398,55 @@ void main() {
         expect(harness.processes, hasLength(2));
       });
 
-      test("holds the session busy while it respawns, so a second edit is refused", () async {
-        unawaited(harness.enqueue("first"));
-        final first = await harness.firstProcess;
-        await waitForFrame(first, "user");
-        first.emit(_result());
-        await harness.waitForIdle();
+      test(
+        "holds the session while it respawns: a second edit is refused, and a new send goes after the edit",
+        () async {
+          unawaited(harness.enqueue("first"));
+          final first = await harness.firstProcess;
+          await waitForFrame(first, "user");
+          first.emit(_result());
+          await harness.waitForIdle();
 
-        final hold = harness.holdRewind = Completer<void>();
-        final rewind = harness.rewind("edited");
-        while (harness.processes.length < 2) {
-          await Future<void>.delayed(const Duration(milliseconds: 5));
-        }
+          final hold = harness.holdRewind = Completer<void>();
+          final rewind = harness.rewind("edited");
+          while (harness.processes.length < 2) {
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+          }
 
-        await expectLater(
-          harness.rewind("again"),
-          throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 409)),
-        );
-        hold.complete();
-        await rewind;
-        await waitForFrame(harness.processes[1], "user");
-        expect(harness.processes, hasLength(2));
-        expect(harness.service.queuedPrompts(sessionId: testSessionId).single.id, "prompt-edited");
-      });
+          await expectLater(
+            harness.rewind("again"),
+            throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 409)),
+          );
+          unawaited(harness.enqueue("other", permissionMode: ClaudePermissionMode.plan));
+          await pump();
+          hold.complete();
+          await rewind;
+          final second = harness.processes[1];
+          List<Object?> prompts() => [
+            for (final frame in second.written)
+              if (frame["type"] == "user") frame.field<Map<String, Object?>>("message")["content"],
+          ];
+          await waitForFrame(second, "user");
+          expect(harness.service.queuedPrompts(sessionId: testSessionId).map((prompt) => prompt.id), [
+            "prompt-edited",
+            "prompt-other",
+          ]);
+          second.emit(_result());
+          for (var attempt = 0; attempt < 50 && prompts().length < 2; attempt++) {
+            await pump();
+          }
+
+          expect(prompts(), [
+            [
+              {"type": "text", "text": "edited"},
+            ],
+            [
+              {"type": "text", "text": "other"},
+            ],
+          ]);
+          expect(harness.processes, hasLength(2));
+        },
+      );
 
       test("refuses a prompt with no resumable entry before touching the process", () async {
         unawaited(harness.enqueue("first"));

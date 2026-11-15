@@ -350,8 +350,8 @@ final class ClaudeSessionService({
   }) async {
     const operation = "rewindAndSendPrompt";
     if (_disposed) throw StateError("Claude session service is disposed");
-    // Taken before the transcript read, so a deletion meanwhile is noticed.
-    final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
+    // Read before the transcript lookup, so a deletion meanwhile is noticed.
+    final existing = _turns[sessionId];
     final entryUuid = switch (await _transcripts.rewindPointBefore(sessionId: sessionId, messageId: beforeMessageId)) {
       ClaudeRewindEntry(:final entryUuid) => entryUuid,
       ClaudeRewindUnavailable(:final reason) => throw PluginBranchPointUnavailableException(
@@ -365,17 +365,26 @@ final class ClaudeSessionService({
         cause: null,
       ),
     };
-    if (_disposed || !identical(_turns[sessionId], state)) {
+    if (_disposed || (existing != null && !identical(_turns[sessionId], existing))) {
       throw StateError("Claude session $sessionId closed before it could be rewound");
     }
+    final state = _turns.putIfAbsent(sessionId, _SessionTurnState.new);
     // The bridge rewinds only idle sessions; a wakeup or task that started
     // since must not be torn down under the user.
     if (state.hasWork || state.aborting != null) {
       throw const PluginOperationException(operation: operation, statusCode: 409, message: "session is busy");
     }
-    // Holds the session busy until the prompt is queued: a second rewind is
-    // refused, and an armed idle reap cannot end the respawned process.
+    // The edited prompt's turn starts now: the session is busy, so a second
+    // rewind is refused and an armed idle reap cannot end the respawned process.
     _beginTurnAccounting(sessionId: sessionId, state: state);
+    final generation = state.generation;
+    final entry = _QueuedPrompt(
+      id: promptId,
+      displayText: displayText,
+      command: null,
+      attachmentCount: attachmentCount,
+      createdAt: _clock.now().millisecondsSinceEpoch,
+    );
     final respawn = state.dispatchTail.then((_) async {
       final reaping = _teardownsBySession[sessionId];
       if (reaping != null) await reaping;
@@ -393,9 +402,30 @@ final class ClaudeSessionService({
         allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
       );
     });
-    // The caller awaits [respawn] and receives its failure; the chain only
-    // needs to continue past it.
-    state.dispatchTail = respawn.catchError((Object _) {});
+    // The edited prompt takes the chain slot right after the respawn, so a
+    // send that arrives meanwhile cannot reach the process first. It is
+    // queued at the front: anything already queued arrived after it.
+    state.dispatchTail = respawn.then(
+      (_) {
+        state.queue.insert(0, entry);
+        _emitQueueUpdate(sessionId: sessionId, state: state);
+        return _dispatchTurn(
+          sessionId: sessionId,
+          directory: directory,
+          createNew: false,
+          parts: parts,
+          model: model,
+          effort: effort,
+          permissionMode: permissionMode,
+          fastMode: fastMode,
+          state: state,
+          generation: generation,
+          mode: _QueuedTurnMode(entry: entry),
+        );
+      },
+      // The caller receives the respawn's failure below.
+      onError: (Object _) {},
+    );
     try {
       await respawn;
     } on Object catch (error) {
@@ -409,22 +439,6 @@ final class ClaudeSessionService({
       }
       rethrow;
     }
-    await enqueueTurn(
-      sessionId: sessionId,
-      directory: directory,
-      createNew: false,
-      parts: parts,
-      model: model,
-      effort: effort,
-      permissionMode: permissionMode,
-      fastMode: fastMode,
-      promptId: promptId,
-      displayText: displayText,
-      command: null,
-      attachmentCount: attachmentCount,
-    );
-    // The queued turn now holds the session.
-    state.pending--;
   }
 
   void _beginTurnAccounting({required String sessionId, required _SessionTurnState state}) {
