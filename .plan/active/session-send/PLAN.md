@@ -4,11 +4,29 @@
 
 From any session's menu, the user picks another session on the same computer. Sesori then sends the target a summary
 written by the source session's agent, plus the absolute path of a Markdown file with the source's full transcript.
-The target receives this at once as a normal prompt, with no preview.
+The target receives this at once as a normal prompt, with no preview. Both chats show the handoff as its own compact
+item, and the source can be archived once the summary has landed.
 
 Product decisions are final (user answers, 2026-11-14, `/tmp/rp/branching-brief.md`, Q10, Q11 and "Decided without
-asking"). Edit and fork, and side questions, have their own plans. This plan only names their seams (see "Seams with
-the sibling plans").
+asking"; round 2 and round 3, 2026-11-15, listed below). Edit and fork, and side questions, have their own plans. This
+plan only names their seams (see "Seams with the sibling plans").
+
+Round 2 and 3 answers (final):
+
+- **S1 = A.** You stay in the source: "Sending…", then "Sent to X · Open".
+- **S2 = A.** Running ACP targets are allowed; the picker labels them "Running: sending stops its current turn".
+- **S3 / Q2.** The summary request and reply get their own UI, different on each side:
+  - source chat: a one-line centred marker, "Summary sent to <target> · Open". Tapping it shows the summary in a
+    sheet. Sesori's request and the agent's reply are hidden behind it;
+  - target chat: a card with the first few lines of the summary and "Show all". Its header reads "From <source>" and
+    links to the source; the transcript file path sits below the summary. It never says "Archived after sending".
+    Expanding grows the card in place, and nothing above it moves.
+  - The bridge marks which messages are the handoff exchange, on every harness, so the client can render them.
+- **S4 = B.** Claude Code's read-only rule covers Sesori's transcripts folder and the attachment uploads folder. This
+  reverses the file-transfer plan's D1 ("Claude may ask once per read location … revisit only if annoying").
+- **Q3 = A.** The send sheet has a switch, "Archive this session after sending", on by default, which remembers the
+  last choice. The archive happens only after the summary has landed in the target, and a pinned source asks first as
+  usual. Sending from a side chat back to its session has no switch and never archives.
 
 ## Scope
 
@@ -17,8 +35,12 @@ Phase 1, this plan's steps:
 - A bridge route that runs the whole send: it asks the source for a summary, writes the transcript file and prompts the
   target.
 - A transcript-to-Markdown builder and the file store, with deletion tied to the session.
-- A Claude Code read rule, so the target agent can read the file without an approval prompt.
-- The client side: the "Send to another session…" menu entry, a session picker, and feedback after sending.
+- A Claude Code read rule for the transcripts and uploads folders, so the agent reads either without an approval
+  prompt.
+- A bridge-side handoff marker on the exchange's user messages, and its two chat renderings.
+- A per-harness declaration of what a prompt to a busy session does, for the picker's Running label.
+- The client side: the "Send to another session…" menu entry, the send sheet with its target picker and archive
+  switch, feedback after sending, and archiving the source after a successful send.
 - One analytics event.
 - Regression docs and `docs/HARNESS_CAPABILITIES.md` rows.
 
@@ -103,12 +125,13 @@ Out of scope for phase 1: see "Later phases".
 
 The bridge sends the source session a summarise prompt through the existing prompt path and captures the agent's reply.
 
-- **It shows in the source transcript.** No harness can run a hidden turn through the normal prompt path. Hiding it
-  would mean per-harness filtering of transcripts the harness owns (Claude's JSONL keeps it). A visible turn is honest
-  and the same everywhere, and it leaves a record in the source of what was handed off. The user prefers uniform
-  behaviour.
+- **It is a real turn in the source, which Sesori renders as a handoff marker (S3).** No harness can run a hidden turn
+  through the normal prompt path, and filtering transcripts the harness owns (Claude's JSONL keeps it) would differ per
+  harness. So the turn stays in the harness's history, the bridge marks it (D11), and the client folds it into the
+  one-line marker (D12). The same rule holds on every harness.
 - **It uses the source's prompt defaults** (agent, model, variant, fast mode), like continuation does.
-- **Draft wording**, kept short because the user sees it:
+- **Draft wording**, kept short. Sesori hides it behind the marker, but the harness's own transcript and terminal UI
+  still show it:
 
   > Sesori is sending this conversation to another session, "<target title>". Write a handoff summary for the agent
   > there: the goal, what was done and decided, the current state, open questions and next steps, and the files that
@@ -142,8 +165,17 @@ The bridge sends the source session a summarise prompt through the existing prom
 
 - The decision says the target receives the send "as a normal prompt", so it follows each harness's normal rule.
   Claude queues it, Codex, Pi, OpenCode and OMP steer it in, and ACP harnesses stop the running turn first.
-- The picker labels running sessions, so the user sees this before choosing.
-- Whether a running ACP target should be refused instead is open question Q2.
+- Running targets are allowed on every harness (S2). The picker labels them before the user chooses:
+  - "Running: sending stops its current turn" where a prompt to a busy session stops its turn (the ACP family);
+  - "Running" where it queues or steers (Claude, Codex, OpenCode, Pi, OMP).
+- The client can't tell those apart today: no `PluginMetadata` field says it, and naming harnesses in the client would
+  leak backend behaviour out of the plugins. So each plugin declares it:
+  `BridgePluginDescriptor.busyPromptHandling`, a closed enum `{queue, steer, stopTurn}` with no default (every
+  plugin states it), mirrored as `PluginMetadata.busyPromptHandling` with `@JsonKey(unknownEnumValue:
+  BusyPromptHandling.unknown)` and an honest `@Default(BusyPromptHandling.unknown)`:
+  `// COMPATIBILITY 2026-11-15 (v1.14.0): Bridges before session sending omit busyPromptHandling; the picker shows a
+  plain "Running" for them. Remove @Default once the minimum supported bridge sends it.` The values follow
+  `docs/HARNESS_CAPABILITIES.md` "Transcript turn boundaries".
 
 ### D4. One bridge-owned operation: a long request, no new event
 
@@ -258,14 +290,21 @@ the summary, the transcript or prompt text.
   transcript folders as best effort, next to `_deletePromptUploads`. Deleting the source leaves the target's copy.
   Archiving keeps the file, because an archived session can be unarchived.
 - **Approval prompts.**
-  - Claude Code asks today, so step 4 adds a read-only rule at every launch:
-    `--allowedTools "Read(/<transcripts root>/**)"`. With the root's leading `/`, that is Claude's `//` absolute-path
-    form. It goes through the plugin's existing `allowedTools` path. Every Claude process the bridge starts after an
-    update carries it.
-  - The Claude plugin's composer resolves `sesoriTranscriptsDirectory()` once and passes the root into
-    `ClaudeLaunchSpec` as a value. The spec stays a pure argument builder, and the folder has one owner.
+  - Claude Code asks today, so step 5 adds two read-only rules at every launch (S4 = B):
+    `--allowedTools "Read(/<transcripts root>/**)" "Read(/<uploads root>/**)"`. With each root's leading `/`, that is
+    Claude's `//` absolute-path form. They go through the plugin's existing `allowedTools` path. Every Claude process
+    the bridge starts after an update carries them. The rules are read-only; nothing lets the agent write there.
+  - The uploads rule covers files the user attached to prompts (`~/.sesori/uploads`, written by
+    `PromptUploadRepository`), so attachments stop asking on Claude Code too. That reverses the file-transfer plan's D1
+    (`.plan/completed/file-transfer/PLAN.md`, kept as history). The live records that still say Claude asks are updated
+    in the same step: the Claude Code row of `docs/HARNESS_CAPABILITIES.md` "Saved prompt files" ("Yes: one permission
+    request per read outside the working directory, since Sesori passes no `--add-dir`") and, if its wording then
+    names Claude, the "some harnesses ask before reading them" line in `docs/regression/attachments-and-images.md`.
+  - The Claude plugin's composer resolves `sesoriTranscriptsDirectory()` and `sesoriUploadsDirectory()` once and passes
+    both roots into `ClaudeLaunchSpec` as values. The spec stays a pure argument builder, and each folder has one
+    owner.
   - Codex, Pi, OMP, DeepSeek and Grok need nothing.
-  - OpenCode and the four unverified ACP harnesses are checked live in step 7. Any that ask are recorded, and fixing
+  - OpenCode and the four unverified ACP harnesses are checked live in step 11. Any that ask are recorded, and fixing
     them is a later-phase item. Most targets won't read the file at all, because the summary comes first.
 
 ### D8. Client UX
@@ -278,33 +317,44 @@ the summary, the transcript or prompt text.
     this computer to send sessions."
   - This costs one wasted pick, only for a new app on an old bridge. Bridges update themselves in place. That is cheaper
     than a new flag plus a discovery cache that no list surface holds today.
+- **Send sheet (Q3).** The entry opens a small "Send to another session" sheet (a popover under a pointer) with three
+  rows: "To", showing the chosen target or "Choose a session" with a chevron; the switch "Archive this session after
+  sending"; and Send, disabled until a target is chosen.
+  - The switch is on by default and remembers the last choice on this device, through the client's existing
+    preference storage, as one boolean. It is not shown when the source is a side chat (a later phase), which never
+    archives.
+  - Tapping "To" opens the picker. Picking a row returns to the sheet with the target filled in, using the sheet's
+    normal push and pop transition.
 - **Picker.** `SessionPicker` is new in `module_app_ui/lib/src/features/session_picker/` and is modelled on
   `ProjectPicker`.
-  - It opens a bottom sheet under touch and a popover under a pointer, with `PregoPickerSearchList` in both.
+  - It opens as the send sheet's second page under touch and a popover under a pointer, with
+    `PregoPickerSearchList` in both.
   - It is backed by `SessionSearchCubit`. Its search field searches across projects, and the blank state lists the
     newest sessions.
-  - Picking a row closes the sheet with its normal transition.
+  - Running rows carry the D3 label: "Running: sending stops its current turn" for `stopTurn` harnesses, "Running"
+    otherwise.
 - **Picker wiring in `module_core`.**
   - `SessionSearchCubit` gains a constructor `excludedSessionId`, so the source never shows. The desktop palette passes
     null.
-  - `SessionSearchMatch` gains `isRunning`, computed in `module_core` from the rule behind
-    `SessionWindowService._isRunning`. The widget shows a "Running" label from it and never rebuilds the rule.
+  - `SessionSearchMatch` gains `running: RunningTarget?` (null when idle), computed in `module_core` from the rule
+    behind `SessionWindowService._isRunning` and the target plugin's `busyPromptHandling`. `RunningTarget` is an enum,
+    `stopsTurn` or `keepsTurn`. The widget picks its label from it and never rebuilds the rule.
   - `module_app_ui` has no `getIt`. Each shell gives `SessionListActionDispatcher` a session-search cubit factory,
     alongside the new `openSession` callback, as the desktop palette's shell wiring does today.
 - **Stop from any surface.**
   - The list and sidebar only have `SessionActionsCubit`.
   - It gains `stopSession`, which delegates to `module_core`'s `SessionAbortService.abortSession` for the busy alert's
     Stop action.
-- **What you see after sending.**
-  - You stay where you are.
+- **What you see after sending (S1 = A).**
+  - You stay where you are. The sheet closes with its normal transition.
   - A popup alert says "Sending to <target>. <Source> is writing a summary first."
-  - On the source page, the summarise prompt and its streaming reply appear as a normal turn. Nothing jumps, because
-    it is the ordinary new-turn path.
+  - On the source page, the marker of D12 appears where the turn would, in its "Writing a summary…" state, through the
+    ordinary new-turn arrival. Nothing jumps.
   - When the bridge answers, a success alert says "Sent to <target>" with an **Open** action that opens the target. A
     failure alert gives the reason in plain words, for example "Couldn't send: the summary was stopped."
   - Alerts use the existing `PregoPopupAlertPresenter`. The presenter is captured before the request, so the alert
     still shows after the user leaves the page.
-  - Whether to stay on the source or open the target at once is open question Q1.
+  - With the archive switch on, a success then archives the source (D13).
 - **Same computer.** This needs no filter, because the picker can only list the connected bridge's sessions. A
   computer switch during a send drops the response, and the client shows nothing more. The bridge still finishes.
 
@@ -327,9 +377,17 @@ How each pairing behaves:
 | Pairing | Behaviour |
 |---|---|
 | New app, old bridge | The route is missing. The repository maps the 404 to `SendToSessionResult.unsupported`, with a `// COMPATIBILITY 2026-11-14 (v1.14.0): Bridges before session sending have no /session/send-to-session route. Remove the unsupported result once the minimum supported bridge has it.` comment, and the user sees the update alert. Nothing else breaks. |
-| Old app, new bridge | The app never calls the route. A send started from another client looks like ordinary turns: a user prompt and reply in the source, and a user prompt in the target. |
+| Old app, new bridge | The app never calls the route and ignores the unknown `handoff` key. A send started from another client looks like ordinary turns: a user prompt and reply in the source, and a user prompt in the target. |
+| New app, bridge with the route | Markers render as D12. |
 
-No database or persisted-shape change.
+Two more additive fields:
+
+- `Message.user` gains a nullable `handoff: MessageHandoff?` (D11). Null is the honest meaning for every other
+  message, so it needs no `@Default` or compatibility comment.
+- `PluginMetadata.busyPromptHandling` (D3).
+
+No `sesori.db` schema change. The history store's stored message JSON gains the optional `handoff` key; its schema
+does not change.
 
 ### D10. Analytics
 
@@ -341,6 +399,73 @@ No database or persisted-shape change.
   becomes a new dependency of that service.
 - Follow the `add-analytics` skill checklist.
 
+### D11. The handoff marker, stamped by the bridge on every harness
+
+The bridge marks the two user messages of a send, so every client can render them (S3). It follows the command
+invocation precedent exactly: `CommandInvocationTracker` records an invocation by `(sessionId, promptId)`,
+`SessionRepository.stampLiveInvocation` stamps it on the live echo, and the history store keeps it across later updates
+and replays (`ChatHistoryRepository._withStoredInvocation`).
+
+- **Model** (`sesori_shared`): a sealed Freezed `MessageHandoff`, union key `kind`, `fallbackUnion: "unknown"` so an
+  older client survives a later variant:
+  - `sent({required String targetSessionId, required String? targetTitle})` on the summarise prompt in the source;
+  - `received({required String sourceSessionId, required String? sourceTitle, required String summary, required
+    String transcriptPath})` on the handoff prompt in the target. The card needs the summary and path apart from the
+    prompt's wording, so the bridge stores them rather than having the client parse the prompt text;
+  - `unknown()`.
+  - Titles are snapshots taken at send time, null when the session had none. Ids are kept as they are. Opening a
+    deleted session through the marker gets the existing "session not found" answer; nothing nulls them on delete.
+- **Bridge.**
+  - `HandoffTracker` sits beside `CommandInvocationTracker` in `SessionRepository`, with the same bounded,
+    in-process shape. `SessionSendService` records `sent` before the summarise send and `received` before the target
+    send, under each prompt's id.
+  - `SessionRepository.stampLiveInvocation` becomes `stampLiveMessage` and stamps both fields, so there is one live
+    stamping seam.
+  - `_withStoredInvocation` becomes `_withStoredStamps` and keeps a stored `handoff` the same way it keeps an
+    invocation. Archive's audit export carries the stored JSON, so archived sessions keep their markers.
+  - **A failed send clears the source stamp.** On any failure after the summarise echo, `SessionSendService` removes
+    the tracker entry and calls a new `ChatHistoryRepository.clearHandoff({sessionId, messageId})`, so the failed
+    exchange shows as an ordinary turn on the next history load. A client that had the marker live keeps it until then;
+    the requesting client gets the failure alert.
+- **Logs** carry the ids and the handoff kind, never the summary.
+- A bridge restart during the summary loses the tracker entry, and with it the stamp. That send is already lost
+  (accepted risk), and the exchange simply stays visible.
+
+### D12. How the handoff renders (Q2)
+
+- **Source chat: a one-line centred marker.** The client folds the whole prompt turn whose opener carries
+  `handoff.sent` (`TranscriptPromptTurn` in `module_core`'s `transcript_turns.dart`) into one row:
+  - while the turn runs: "Writing a summary for <target>…";
+  - once it ends: "Summary sent to <target> · Open". **Open** opens the target.
+  - Tapping the line opens a sheet with the summary, which is the turn's assistant text. Sesori's request and the
+    agent's reply stay hidden.
+  - The row arrives through the ordinary new-turn path and keeps one height in both states, so nothing jumps when
+    the turn ends.
+- **Target chat: a card in place of the user bubble** for a message carrying `handoff.received`:
+  - header "From <source>", linking to the source (archived sources open read-only, as today);
+  - the first lines of the summary, faded at the bottom, with "Show all";
+  - the transcript path below the summary, in monospace, selectable;
+  - it never says "Archived after sending".
+  - "Show all" grows the card downward in place. The card's top edge and everything above it stay where they are,
+    whichever way the list is anchored. "Show less" collapses it the same way.
+- **Both renderings live in `module_app_ui`**, from view models the `module_core` transcript builder produces, so the
+  widgets hold no folding rules.
+
+### D13. Archive the source after sending (Q3)
+
+- **Client-owned.** After a `sent` result with the switch on, the client runs the ordinary archive of the source through
+  the existing archive flow, so its refusal modal and Undo window apply unchanged. The bridge route stays
+  archive-free, and automation decides for itself.
+- **Pinned sources ask first.** When the source is pinned and the switch is on, tapping Send shows the usual pinned
+  archive confirmation before anything is sent. Cancelling it keeps the sheet open. Confirming sends, and the later
+  archive doesn't ask again. This keeps the question next to the tap rather than a minute later.
+- **Only after the summary landed.** `refused`, `failed`, `unsupported` and `unconfirmed` results never archive. An
+  unconfirmed send leaves the source in place even if the bridge finished; the user can archive it by hand.
+- **Feedback.** With archiving, the success alert reads "Sent to <target>. Archived <source>." with **Open** and
+  **Undo**; Undo is the archive flow's own. When the user is on the source page, the page does what archiving from it
+  does today.
+- **Side-chat sends** have no switch and never archive (sibling plan).
+
 ## Seams with the sibling plans
 
 - **Side chat "Send to main session".**
@@ -349,19 +474,23 @@ No database or persisted-shape change.
     plan owns how its summary and transcript are produced.
   - Steps 5–7 of D5 (render, store, prompt the target) are the reusable half. Keep them as a cohesive private method of
     `SessionSendService` now. Expose them when the side-chat plan needs them, not before.
+  - Its send sheet has no archive switch and never archives (D13).
+  - The target card of D12 applies unchanged; the source marker does not, because the side chat has its own UI.
 - **Fork fallback.** It seeds a new session with earlier conversation text. `SessionTranscriptMarkdownBuilder` takes a
   plain message list, so the fork plan can pass the slice before the fork point. Any truncation option is added by
   that plan when it needs one.
+- **Edit and fork.** A fork that copies a marked turn keeps its stored stamps only where the fork plan copies stored
+  history; no handling is owed here.
 
 ## Complexity budget
 
-- **New persistent state:** only the transcript files. There are no tables, columns or settings.
-- **New in-memory parts, each living for one send:**
-  - one event subscription (needed to see the echo and idle);
-  - one subscription to the existing `abortStartedSessions` (stop means cancel);
-  - one timeout timer (bounds a session that never goes idle);
-  - local variables for the prompt id and user message id.
-- **Client:** none. The menu awaits one request future.
+- **New persistent state:** the transcript files, and the optional `handoff` key inside stored message JSON. No tables
+  or columns.
+- **New in-memory parts:**
+  - per send: one event subscription, one subscription to the existing `abortStartedSessions`, one timeout timer, and
+    local variables for the prompt id and user message id;
+  - `HandoffTracker`, bounded like `CommandInvocationTracker`.
+- **Client:** one remembered boolean for the archive switch. The sheet awaits one request future.
 - **Deliberately not added:**
   - an SSE outcome event, an in-flight send registry or a dedupe set (a double tap's second request hits the busy
     refusal, because step 3 checks and sends inside one source reservation);
@@ -370,7 +499,8 @@ No database or persisted-shape change.
   - queueing until the source is idle;
   - an orphan-file sweep or a preview;
   - a capability flag on `GET /plugin` plus a client discovery cache (the missing-route 404 answers the tap instead);
-  - a new abort stream (`abortStartedSessions` already exists).
+  - a new abort stream (`abortStartedSessions` already exists);
+  - a handoff table, delete cascades for marker ids, or a bridge-side archive step.
 
 ### Safeguards and evidence
 
@@ -379,13 +509,18 @@ No database or persisted-shape change.
 | Busy-source refusal | Ordinary flow: sending from a running session. On ACP it would otherwise kill the turn. |
 | Stop cancels the send | Ordinary flow. Without it, a half summary is delivered and can't be undone. |
 | 15-minute bound | Theoretical stuck session. It costs one timer and keeps the request from hanging forever. |
+| Failed send clears the source stamp | Ordinary flow (stop, error, target refusal). Otherwise the source says "Summary sent" for a send that never happened, permanently. |
+| Archive only on `sent` | Ordinary flow. Archiving on failure would hide the only copy of the work from the list. |
 
 **Accepted risks:**
 
-- A bridge restart during the summary loses the send. The source keeps its summary turn and the user sends again.
-- A client that disconnects gets no outcome. The target transcript shows the result.
+- A bridge restart during the summary loses the send and its stamp. The source keeps its summary turn as an ordinary
+  exchange and the user sends again.
+- A client that disconnects gets no outcome and doesn't archive. The target transcript shows the result.
 - A failed folder deletion leaks a small local file. This is logged.
 - The summary costs one source turn of tokens.
+- On a steering harness (Codex, Pi, OpenCode, OMP), a follow-up the user types during the summary joins that turn and
+  is folded into the marker. The marker's sheet doesn't show it. Rare, since the user just asked to hand off.
 
 ## Steps
 
@@ -412,20 +547,24 @@ Dart rules:
 - Named `required` parameters.
 - Sealed Freezed classes.
 - No null assertions.
-- No prompt or transcript text in logs.
+- No prompt, summary or transcript text in logs.
 
 ```
-1 ── 2 ── 3 ─┬─ 5 ── 6 ─┐
-             └─ 4 ──────┴─ 7 ── 8
+1 ── 2 ── 3 ─┬─ 4 ─────────── 8 ─┐
+     │       ├─ 5                ├─ 11 ── 12
+     │       └──────── 7 ─┬─ 9 ──┤
+     └─ 6 ─────────────┘  └─ 10 ─┘
 ```
 
-Step 4 needs only step 2's folder helper, but it ships after step 3 so the rule never lands without its feature. Steps
-4 and 5 run in parallel. Steps 1 and 8 follow the docs-only PR rule. Step 7 also carries live checks, so it waits for
-its normal review.
+- Step 5 needs only step 2's folder helper, but it ships after step 3 so the rule never lands without its feature.
+- Step 6 is independent of the send flow and can start right after step 1.
+- Step 7 needs 3 and 6. Step 8 needs 4, and is built against fixture messages, so it runs in parallel with 7.
+- Steps 9 and 10 need 7.
+- Steps 1 and 12 follow the docs-only PR rule. Step 11 also carries live checks, so it waits for its normal review.
 
 ### Step 1: raise the plan
 
-`🌱 [session-send] Raise the session sending plan [step 1/8]`
+`🌱 [session-send] Raise the session sending plan [step 1/12]`
 
 - **Complexity:** trivial. Documents only.
 - **What:** adds `.plan/active/session-send/PLAN.md` and `TRACKER.md`.
@@ -435,7 +574,7 @@ its normal review.
 
 ### Step 2: transcript Markdown and its file store
 
-`⚙️ [session-send] Render a session transcript as Markdown and store it with the receiving session [step 2/8]`. About
+`⚙️ [session-send] Render a session transcript as Markdown and store it with the receiving session [step 2/12]`. About
 650 lines.
 
 - **Complexity:** moderate. A pure builder with many part kinds, plus file lifetime wired into deletion.
@@ -452,7 +591,7 @@ its normal review.
 
 ### Step 3: the bridge send flow
 
-`🚧 [session-send] Send one session into another from the bridge [step 3/8]`. About 1,450 lines, about 370 of them
+`🚧 [session-send] Send one session into another from the bridge [step 3/12]`. About 1,450 lines, about 370 of them
 generated.
 
 - **Complexity:** complex. A cross-layer flow with an event-driven wait, cancellation and new wire contracts.
@@ -476,54 +615,129 @@ generated.
 - **Why:** this is the feature's core. The client can't ship without it.
 - **Risk and test focus:** medium. Watch the source lane (the user's own prompts and stop must keep working during the
   wait), and the busy and stop paths.
-- **Expected result:** with a new client, a send produces a summary turn in the source and a handoff prompt in the
-  target, and writes a file under `~/.sesori/transcripts/`. Old clients see nothing new. No database change.
+- **Expected result:** a send produces a summary turn in the source and a handoff prompt in the target, and writes a
+  file under `~/.sesori/transcripts/`. No client calls it yet. No database change.
 
-### Step 4: Claude reads the transcripts folder without asking
+### Step 4: the handoff marker in the bridge
 
-`🌿 [session-send] Let Claude Code read Sesori transcripts without a prompt [step 4/8]`. About 80 lines.
+`🚧 [session-send] Mark handoff messages in the bridge [step 4/12]`. About 650 lines, about 350 of them generated.
 
-- **Complexity:** straightforward. One launch argument and its test.
+- **Complexity:** complex. A new field on the core message model, stamped live and kept through the history store's
+  merge and replay paths.
 - **What:**
-  - the Claude plugin's composer resolves `sesoriTranscriptsDirectory()` once and passes the root into
-    `ClaudeLaunchSpec` as a value;
-  - the spec always adds the read rule for that root to `--allowedTools` (D7).
+  - adds `MessageHandoff` and `Message.user.handoff` in `sesori_shared` (D11);
+  - adds `HandoffTracker`, renames `stampLiveInvocation` to `stampLiveMessage` and stamps both fields;
+  - renames `_withStoredInvocation` to `_withStoredStamps` and keeps a stored `handoff`;
+  - adds `ChatHistoryRepository.clearHandoff`;
+  - `SessionSendService` records both stamps and clears the source stamp on failure.
+- **Tests:** stamping on the live echo; the stamp surviving a later update, a harness replay and archive export; the
+  clear on each failure after the echo; an older client's JSON parse ignoring the key; an unknown kind parsing to
+  `unknown`.
+- **Why:** both chats need to know which messages are the handoff, on every harness (S3).
+- **Risk and test focus:** medium. The history merge runs on every message; check invocation stamping is unchanged.
+- **Expected result:** no user-visible change until step 8. Stored history JSON gains the key on handoff messages only.
+  No schema change.
+
+### Step 5: Claude reads the transcripts and uploads folders without asking
+
+`🌿 [session-send] Let Claude Code read Sesori transcripts and uploads without a prompt [step 5/12]`. About 120 lines plus
+docs.
+
+- **Complexity:** straightforward. Two launch arguments, their test and two doc lines.
+- **What:**
+  - the Claude plugin's composer resolves `sesoriTranscriptsDirectory()` and `sesoriUploadsDirectory()` once and
+    passes both roots into `ClaudeLaunchSpec` as values;
+  - the spec always adds both read rules to `--allowedTools` (D7);
+  - updates the Claude Code row of `docs/HARNESS_CAPABILITIES.md` "Saved prompt files" and, if needed, the line in
+    `docs/regression/attachments-and-images.md` (D7).
 - **Why:** Claude asks before every read outside the working directory (verified on 2.1.319), and Claude is a primary
-  target.
-- **Risk and test focus:** low. Check that the existing granted rules are still passed, that the rule is read-only, and
-  that a live Claude session reads a file there with no `can_use_tool` request.
-- **Expected result:** a Claude target reads the transcript without an approval card. No database change.
+  target. S4 = B extends the rule to uploads.
+- **Risk and test focus:** low. Check that the existing granted rules are still passed, that the rules are read-only,
+  and that a live Claude session reads a transcript and an attached upload with no `can_use_tool` request.
+- **Expected result:** a Claude target reads the transcript, and a Claude session reads an attached file, without an
+  approval card. No database change.
 
-### Step 5: the client send flow
+### Step 6: declare what a prompt to a busy session does
 
-`⚙️ [session-send] Send a session into another from its menu [step 5/8]`. About 1,250 lines including l10n output.
+`🌿 [session-send] Declare each harness's busy-prompt behaviour [step 6/12]`. About 300 lines, mostly generated.
 
-- **Complexity:** moderate. A new picker, menu wiring on four surfaces, and an async outcome.
+- **Complexity:** straightforward. One required descriptor field per plugin and one wire field.
+- **What:**
+  - adds `BusyPromptHandling {queue, steer, stopTurn}` and the required `BridgePluginDescriptor.busyPromptHandling`;
+  - sets it in every plugin from "Transcript turn boundaries";
+  - mirrors it as `PluginMetadata.busyPromptHandling` with its `unknown` value and compatibility comment (D3).
+- **Why:** the picker's Running label (S2) must come from the plugin, not from harness names in the client.
+- **Risk and test focus:** low. Check each plugin's value against the doc.
+- **Expected result:** no user-visible or database change.
+
+### Step 7: the client send flow
+
+`⚙️ [session-send] Send a session into another from its menu [step 7/12]`. About 1,350 lines including l10n output.
+
+- **Complexity:** moderate. A new sheet and picker, menu wiring on four surfaces, and an async outcome.
 - **What:**
   - adds `SessionApi.sendToSession` (16-minute timeout);
   - adds `SessionRepository.sendToSession`, which returns a sealed `SendToSessionResult`: sent, refused(code),
     failed(error), unsupported (missing route), or unconfirmed (timeout or lost connection);
   - adds `SessionActionService.sendToSession` and `SessionActionsCubit.sendToSession`;
   - adds `SessionActionsCubit.stopSession`, which delegates to `SessionAbortService.abortSession`;
-  - gives `SessionSearchCubit` an `excludedSessionId`, and `SessionSearchMatch` an `isRunning` computed in
+  - gives `SessionSearchCubit` an `excludedSessionId`, and `SessionSearchMatch` its `running` value computed in
     `module_core` (D8);
-  - adds the `SessionPicker`, the menu entry and the busy alert with Stop (D2);
+  - adds the send sheet (target row, archive switch shown but not yet acted on, Send), the `SessionPicker`, the menu
+    entry and the busy alert with Stop (D2);
   - adds the sending, success-with-Open, update-the-bridge and failure alerts (D8);
   - adds the `openSession` callback and the session-search cubit factory that both shells give
     `SessionListActionDispatcher`;
   - adds the strings.
-- **Tests:** cubit and service tests for each result, and widget tests for the picker's exclusion and Running labels.
+- **Tests:** cubit and service tests for each result, and widget tests for the picker's exclusion and both Running
+  labels.
 - **Visuals:** before-and-after screenshots of the menu and a short recording of a send, using fixture data only,
   hosted on `pr-media`.
-- **Why:** this is the user-facing half.
-- **Risk and test focus:** medium. Watch the menu on all four surfaces, sheet and popover transitions, alerts that show
-  after leaving the page, and the desktop palette's search staying unchanged.
-- **Expected result:** users see the entry and the picker, and get the agreed feedback. No database change.
-- If the diff passes about 1,500 lines, split the picker into its own PR as step 5.a and update the series total.
+- **Why:** this is the user-facing entry.
+- **Risk and test focus:** medium. Watch the menu on all four surfaces, sheet-to-picker and popover transitions, alerts
+  that show after leaving the page, and the desktop palette's search staying unchanged.
+- **Expected result:** users see the entry, the sheet and the picker, and get the agreed feedback. No database change.
+- If the diff passes about 1,500 lines, split the sheet and picker into their own PR as step 7.a and update the series
+  total.
+- The switch is hidden until step 9 if step 9 won't land in the same release.
 
-### Step 6: analytics
+### Step 8: the handoff marker and card in the chats
 
-`🌿 [session-send] Report sessions sent into another session [step 6/8]`. About 250 lines.
+`⚙️ [session-send] Show handoffs as a marker in the source and a card in the target [step 8/12]`. About 900 lines.
+
+- **Complexity:** moderate. Turn folding in the transcript builder, two new transcript items and an in-place expansion.
+- **What:**
+  - the `module_core` transcript builder folds a turn whose opener carries `handoff.sent` into a marker item, and
+    turns a `handoff.received` user message into a card item (D12);
+  - adds the marker row, its summary sheet and the card with "Show all" in `module_app_ui`;
+  - adds the strings.
+- **Tests:** builder tests for folding (running and ended, with steered follow-ups inside the turn) and for the card;
+  widget tests for the marker states and the card's expansion keeping its top edge fixed.
+- **Visuals:** screenshots of both chats and a short recording of "Show all", fixture data only, on `pr-media`.
+- **Why:** this is the Q2 rendering.
+- **Risk and test focus:** medium. Watch for jumps when the summary turn ends, when the card expands near the bottom
+  of the list, and when older pages load above a marker.
+- **Expected result:** handoffs read as a marker in the source and a card in the target. No database change.
+
+### Step 9: archive the source after sending
+
+`🌿 [session-send] Archive the source after a send when asked [step 9/12]`. About 350 lines.
+
+- **Complexity:** straightforward. Reuses the archive flow behind a remembered switch.
+- **What:**
+  - stores the switch's last choice in the client's preference storage (default on);
+  - asks the pinned confirmation before sending a pinned source with the switch on;
+  - runs the existing archive after a `sent` result, with the combined success alert and Undo (D13).
+- **Tests:** service and cubit tests for each result (only `sent` archives), the remembered value, and the pinned
+  confirmation order.
+- **Why:** Q3 treats sending as a move.
+- **Risk and test focus:** low to medium. Check the refusal modal and Undo behave as in a plain archive, and that
+  leaving the source page during the send still archives it.
+- **Expected result:** with the switch on, the source is archived after the summary lands. No database change.
+
+### Step 10: analytics
+
+`🌿 [session-send] Report sessions sent into another session [step 10/12]`. About 250 lines.
 
 - **Complexity:** straightforward. A closed event that follows the existing pattern.
 - **What:**
@@ -537,87 +751,100 @@ generated.
   failure doesn't change the product's behaviour.
 - **Expected result:** no user-visible or database change. Accounts that opted in report one event per send.
 
-### Step 7: reconcile docs and harness rows
+### Step 11: reconcile docs and harness rows
 
-`🌿 [session-send] Document session sending and its harness differences [step 7/8]`
+`🌿 [session-send] Document session sending and its harness differences [step 11/12]`
 
 - **Complexity:** straightforward. Docs, plus live read checks.
 - **What:**
-  - adds `docs/regression/session-sending.md` and lists it in the README's Feature Index;
+  - adds `docs/regression/session-sending.md` (send sheet, picker labels, marker, card, archive switch) and lists it
+    in the README's Feature Index;
   - updates `docs/regression/session-archiving-and-deletion.md`: the transcript file is deleted with the target
-    session and kept on archive;
+    session and kept on archive, and a send can archive its source;
   - adds a line to `docs/regression/projects-and-sessions.md` for the menu entry;
   - adds a "Sending a session into another" section to `docs/HARNESS_CAPABILITIES.md` (below).
 - **Live check:** with the debug server, for every installed harness, check whether the target agent reads the file
-  and whether it asks first. Mark runtimes that aren't installed as unverified.
+  and whether it asks first, and that the marker and card appear. Mark runtimes that aren't installed as unverified.
 - **Why:** these are the required feature and harness records.
 - **Risk and test focus:** none in code. Check the docs against the live results.
 - **Expected result:** no user-visible or database change.
 
-### Step 8: verify and retire
+### Step 12: verify and retire
 
-`🌱 [session-send] Verify session sending and retire its plan [step 8/8]`
+`🌱 [session-send] Verify session sending and retire its plan [step 12/12]`
 
 Run the matrix under Verification, record results in `TRACKER.md`, then move the plan to
 `.plan/completed/session-send/`.
 
-## Harness capability rows (step 7)
+## Harness capability rows (step 11)
 
-New section: "Sending a session into another", with the columns `Harness | Summary turn | Reads the transcript file |
-Asks first`.
+New section: "Sending a session into another", with the columns `Harness | Summary turn | Handoff marker | Reads the
+transcript file | Asks first | Running target`.
 
-- **Summary turn: ✅ on every harness.** It goes through the normal prompt path. No harness offers a native merge, so
-  Sesori builds it the same way everywhere.
+- **Summary turn and handoff marker: ✅ on every harness.** Both go through the normal prompt path and the bridge's live
+  echo. No harness offers a native merge, so Sesori builds it the same way everywhere.
 - **Asks first:**
 
 | Harness | Asks first |
 |---|---|
-| Claude | No, with step 4's rule |
+| Claude | No, with step 5's rule |
 | Codex, Pi, OMP, DeepSeek, Grok | No (expected from "Saved prompt files") |
 | OpenCode | To check live; a stock config may ask through `external_directory` |
 | Hermes, Cursor, Copilot, Antigravity | Unverified until checked live |
 
+- **Running target:** queued (Claude), steered in (Codex, Pi, OpenCode, OMP), or stops the running turn (the ACP
+  family), from each plugin's `busyPromptHandling`.
 - **Notes:**
   - A busy source is refused in the bridge core for every harness. Readiness comes from session statuses and pending
     permissions and questions, which every plugin supplies.
-  - A busy target follows "Transcript turn boundaries": ACP harnesses stop the running turn.
+  - The summarise prompt stays in the harness's own transcript; only Sesori folds it.
 
 ## Verification
 
-Highest level: **L4.** L2 covers the main send, L3 a send across harnesses, and L4 the refusal, stop, failure and
-per-harness read variants.
+Highest level: **L4.** L2 covers the main send, L3 a send across harnesses, and L4 the refusal, stop, failure,
+archive and per-harness read variants.
 
 | Cell | Boundary | Plugins |
 |---|---|---|
 | Send from the session menu and from a list row, picker search, success alert, Open | Client end to end, iOS simulator | Claude source, Codex target |
+| Source marker: "Writing a summary…" then "Summary sent to … · Open", summary sheet, no jump when the turn ends | Client end to end, iOS simulator | Claude source |
+| Target card: "From <source>" link, path, "Show all" grows in place | Client end to end, iOS simulator | Codex target |
 | Send across harnesses, reversed | Client end to end, iOS simulator | Codex source, Claude target |
+| Archive switch on: source archived after success, Undo restores it; switch off: kept; choice remembered | Client end to end, iOS simulator | Claude source |
+| Pinned source with the switch on: confirmation before sending; cancel keeps the sheet | Client end to end, iOS simulator | Any |
 | Busy source: alert with Stop, then send | Client end to end, iOS simulator | Claude |
-| Stop during the summary gives "summary was stopped", and the target receives nothing | Client end to end, iOS simulator | Claude |
+| Stop during the summary gives "summary was stopped", the target receives nothing, the source isn't archived, and the exchange shows as an ordinary turn after reload | Client end to end, iOS simulator | Claude |
+| Picker labels: "Running: sending stops its current turn" on a running ACP session, "Running" on a running Codex session | Client end to end, iOS simulator | One ACP harness, Codex |
 | Old bridge (a build before step 3): picking a target shows the update alert | Client end to end, iOS simulator | Any |
 | Target archived between the pick and the send, and session-error paths | Headless bridge with a fake plugin (automated) | None |
 | Transcript file written, owner-only, deleted with the target, kept on archive | Headless bridge | Representative |
+| Markers survive a history replay and an archived read | Headless bridge | Claude, Codex |
+| Claude reads a transcript and an attached upload without an approval card | Live plugin | Claude |
 | The target reads the transcript file, and whether it asks | Live plugin | Every supporting production plugin; runtimes not installed are Blocked |
 
 A reduction to this matrix needs the user's acceptance recorded here before retirement.
 
 ## Cleanup assessment
 
-- No relevant cleanup was found. The feature adds a flow, and nothing it supersedes exists today.
-- Readiness reuses the status and pending-request reads every plugin already supplies, so nothing is renamed.
+- `stampLiveInvocation` and `_withStoredInvocation` are generalised in place rather than duplicated (step 4).
+- No other relevant cleanup was found. Readiness reuses the status and pending-request reads every plugin already
+  supplies, so nothing is renamed.
 
 ## Risks
 
 - **The relay may not hold a request for many minutes.** Step 3 checks this. The fallback is accept-then-SSE (D4).
-- **The summarise prompt is visible** and costs a turn. Users may find it noisy. The later side-question path would
-  address that.
-- **A running ACP target has its turn stopped** (D3, Q2).
+- **The summary costs a turn**, and the request stays visible in the harness's own UI.
+- **A running ACP target has its turn stopped** (D3, S2). The picker says so first.
 - **OpenCode and the unverified ACP harnesses may show one approval prompt** when the target reads the file.
+- **The card's in-place expansion** may fight the chat list's anchoring near the bottom. Step 8 tests it on the
+  simulator before review.
+- **Claude Code prunes its transcripts after 30 days** by default; Sesori's own Markdown copy is unaffected.
 
 ## Later phases (rough)
 
 - **Send without a summary**, for archived or unrestorable sources, a source whose plugin is down, and as a retry after
   a failed summary.
-- **Remove the remaining read prompts** on any harness step 7 finds asking, starting with OpenCode, inside its plugin.
+- **Remove the remaining read prompts** on any harness step 11 finds asking, starting with OpenCode, inside its plugin.
 - **The side chat's "Send to main session"** (side-question plan) reuses the delivery half of `SessionSendService`.
 - **The fork fallback** reuses `SessionTranscriptMarkdownBuilder` for its seed text.
 - **A summary from the side-question primitives** (Claude `side_question`, Codex `thread/sample`), so the summary leaves
@@ -626,22 +853,11 @@ A reduction to this matrix needs the user's acceptance recorded here before reti
 - **Sub-agent transcripts** inlined or linked in the Markdown file.
 - **Warehouse reporting** for the send event.
 
-## Open product questions
+## Product questions
 
-- **Q1. After sending, stay or jump?**
-  - Default in this plan: stay on the source and show alerts, with Open on success.
-  - Alternative: open the target at once and show a "receiving a summary" state there until it lands. That needs a new
-    pending state in the target, and the target sits idle for the length of the summary.
-- **Q2. Running ACP targets.**
-  - Sending into a running Antigravity, Copilot, Cursor, DeepSeek, Grok or Hermes session stops its current turn, the
-    same as typing a prompt there.
-  - Default: allow it, with "Running" shown in the picker.
-  - Alternative: refuse running ACP targets.
-- **Q3. Claude's read rule for uploads.**
-  - Step 4's rule could also cover `~/.sesori/uploads`, so files attached to prompts stop asking on Claude as well.
-  - The earlier file-transfer decision (D1 there) left uploads asking unless the prompts proved annoying.
-  - Default: transcripts only.
+All answered (rounds 1–3). S1, S2, S4 and Q1–Q3 of the earlier draft are folded into the decisions above.
 
 ## Review record
 
-Architecture plan review: see TRACKER.md.
+Architecture plan review: see TRACKER.md. The round 2 and 3 changes (D11–D13, the busy-prompt declaration, the new wire
+field on `Message.user`) are considerable, so a fresh architecture plan review is due before step 3 starts.
