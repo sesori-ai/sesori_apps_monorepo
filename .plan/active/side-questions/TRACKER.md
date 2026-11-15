@@ -9,7 +9,7 @@
 | 5 | Codex native side questions | Merged | #2605 | 2, 4 |
 | 6 | Client core | Merged | #2598 | 2 |
 | 7 | Prego detent sheet | Merged | #2593 | 1 (parallel) |
-| 8 | Phone side chat, with the archived entry | In progress | | 6, 7 |
+| 8 | Phone side chat, with the archived entry | In this branch | | 6, 7 |
 | 9 | Desktop side panel | Not started | | 8 |
 | 10 | `/btw` side-question mode | Not started | | 8, 9 |
 | 11 | Reconcile regression docs | Not started | | 3, 5, 8, 9, 10 |
