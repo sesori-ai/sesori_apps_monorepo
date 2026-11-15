@@ -459,6 +459,18 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
+  /// Marks [sessionId] as started by [scheduledTaskId]'s run, with the task's
+  /// approval mode as its override.
+  Future<void> setScheduledRun({
+    required String sessionId,
+    required String scheduledTaskId,
+    required SessionApprovalMode approvalOverride,
+  }) async {
+    await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(scheduledTaskId: Value(scheduledTaskId), approvalOverride: Value(approvalOverride)),
+    );
+  }
+
   Future<void> setParentSessionId({required String sessionId, required String parentSessionId}) async {
     await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
       SessionTableCompanion(parentSessionId: Value(parentSessionId)),

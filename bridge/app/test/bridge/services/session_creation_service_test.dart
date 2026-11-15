@@ -5,12 +5,14 @@ import "dart:io";
 import "package:clock/clock.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/new_session_defaults_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
@@ -429,6 +431,51 @@ void main() {
       expect(plugin.lastCreateUserVisibleText, "Build it");
       expect(plugin.lastCreateParts, hasLength(2));
       expect(plugin.lastCreateParts?.last, const PluginPromptPart.text(text: "Build it"));
+    });
+
+    test("a scheduled run links its task and approval mode and remembers no picks", () async {
+      final task = await ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)).create(
+        definition: const ScheduledTaskDefinition(
+          name: "Nightly",
+          prompt: ScheduledTaskPrompt.text(text: "Build it"),
+          projectId: "/repo",
+          pluginId: "fake",
+          agent: "build",
+          model: null,
+          variant: null,
+          fastMode: false,
+          dedicatedWorktree: false,
+          schedule: TaskSchedule.daily(time: TaskTimeOfDay(hour: 9, minute: 0)),
+          timeZone: "UTC",
+          missedRunPolicy: TaskMissedRunPolicy.runWhenBack,
+          runMode: TaskRunMode.newSession(),
+          approvalMode: TaskApprovalMode.approveAll,
+        ),
+        nextDueAt: null,
+        now: DateTime.utc(2026, 11, 15),
+      );
+
+      final created = await service.createScheduledRunSession(
+        request: const CreateSessionRequest(
+          commandSource: null,
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: "build",
+          model: null,
+          command: null,
+        ),
+        scheduledRun: (taskId: task.id, approvalOverride: SessionApprovalMode.yolo),
+      );
+      await pumpEventQueue();
+
+      final stored = await db.sessionDao.getSession(sessionId: created.id) ?? fail("missing stored session");
+      expect(stored.scheduledTaskId, task.id);
+      expect(stored.approvalOverride, SessionApprovalMode.yolo);
+      expect(await defaultsRepository.read(pluginId: "fake"), isNull);
+      expect(plugin.lastCreateUserVisibleText, "Build it");
     });
 
     test("returns without waiting for defaults persistence", () async {

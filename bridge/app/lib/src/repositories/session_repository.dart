@@ -85,6 +85,7 @@ import "models/session_abort_result.dart";
 import "models/session_compaction_result.dart";
 import "models/session_operation.dart";
 import "models/session_page_cursor.dart";
+import "models/session_quietness.dart";
 import "models/session_readiness.dart";
 import "models/side_question_ask_result.dart";
 import "models/stored_session.dart";
@@ -112,6 +113,9 @@ typedef SessionBindingsCommitted = ({
 });
 
 typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
+
+/// What a scheduled task's run writes on the session it starts.
+typedef ScheduledRunSessionLink = ({String taskId, SessionApprovalMode approvalOverride});
 
 /// The deleted root as clients see it, plus every session id removed with it.
 typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
@@ -302,6 +306,10 @@ class SessionRepository({
     required String? lastAgent,
     required AgentModel? lastAgentModel,
     required bool fastMode,
+
+    /// Written in the insert transaction, so a permission the first prompt
+    /// asks is held until the binding commits and then sees the override.
+    required ScheduledRunSessionLink? scheduledRun,
   }) async {
     final parentBinding = parentSessionId == null
         ? null
@@ -366,6 +374,13 @@ class SessionRepository({
             fastMode: fastMode,
             pluginId: pluginId,
           );
+          if (scheduledRun != null) {
+            await _sessionDao.setScheduledRun(
+              sessionId: sessionId,
+              scheduledTaskId: scheduledRun.taskId,
+              approvalOverride: scheduledRun.approvalOverride,
+            );
+          }
           if (parentBinding != null) {
             await _sessionDao.setParentSessionId(
               sessionId: sessionId,
@@ -864,6 +879,48 @@ class SessionRepository({
               PluginCompactionResult.unsupported => SessionCompactionResult.unsupported,
             },
       );
+
+  /// Whether [sessionId] is between turns with nothing waiting on the user.
+  /// The one owner of that question for scheduled runs.
+  ///
+  /// The plugin's active-session summary already folds the session's status,
+  /// pending questions, permissions and forms, and busy sub-agents together,
+  /// as the Running filter uses them. Readiness adds what a harness reports
+  /// beyond that, such as a queued prompt or a pending wake-up.
+  Future<SessionQuietness> getSessionQuietness({required String sessionId}) async {
+    final binding = await _sessionDao.getSession(sessionId: sessionId);
+    if (binding == null) return SessionQuietness.unknown;
+    try {
+      return await _runtime.useIfActive(
+            pluginId: binding.pluginId,
+            operation: SessionOperation.getSessionQuietness,
+            body: (plugin, _) => _readQuietness(plugin: plugin, backendSessionId: binding.backendSessionId),
+          ) ??
+          // A backend that is not running runs no turn and holds no pending input.
+          SessionQuietness.quiet;
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not read whether session $sessionId is quiet", error, stackTrace);
+      return SessionQuietness.unknown;
+    }
+  }
+
+  Future<SessionQuietness> _readQuietness({required BridgePluginApi plugin, required String backendSessionId}) async {
+    for (final summary in plugin.getActiveSessionsSummary()) {
+      for (final active in summary.activeSessions) {
+        if (active.id == backendSessionId) {
+          return active.awaitingInput ? SessionQuietness.awaitingUser : SessionQuietness.working;
+        }
+      }
+    }
+    return switch (await plugin.getSessionReadiness(sessionId: backendSessionId)) {
+      PluginSessionReadiness.idle || PluginSessionReadiness.unavailable => SessionQuietness.quiet,
+      PluginSessionReadiness.busy ||
+      PluginSessionReadiness.retrying ||
+      PluginSessionReadiness.queued => SessionQuietness.working,
+      PluginSessionReadiness.awaitingInput => SessionQuietness.awaitingUser,
+      PluginSessionReadiness.unknown => SessionQuietness.unknown,
+    };
+  }
 
   /// Translates the backend child references a plugin puts on subtask parts
   /// into bridge session ids.
