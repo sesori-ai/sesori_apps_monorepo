@@ -15,6 +15,7 @@ class _MockAbortService() extends Mock implements SessionAbortService;
 void main() {
   late _MockActionService actionService;
   late _MockAbortService abortService;
+  late FakeFeedbackPromptService feedback;
   late SessionActionsCubit cubit;
 
   setUpAll(registerAllFallbackValues);
@@ -22,7 +23,13 @@ void main() {
   setUp(() {
     actionService = _MockActionService();
     abortService = _MockAbortService();
-    cubit = SessionActionsCubit(window: _MockWindow(), actionService: actionService, abortService: abortService);
+    feedback = FakeFeedbackPromptService();
+    cubit = SessionActionsCubit(
+      window: _MockWindow(),
+      actionService: actionService,
+      abortService: abortService,
+      feedbackPromptService: feedback,
+    );
   });
 
   tearDown(() => cubit.close());
@@ -57,12 +64,36 @@ void main() {
       expect(await cubit.stopSession(sessionId: "source"), isTrue);
       verify(() => abortService.abortSession(sessionId: "source", subAgents: SessionAbortSubAgentPolicy.stop))
           .called(1);
+      expect(feedback.stoppedSessions, ["source"]);
+      expect(feedback.refusedStops, isEmpty);
+    });
+
+    test("is true when only a sub-agent did not stop", () async {
+      stubStop(
+        () async =>
+            throw SessionAbortDescendantFailureException(cause: StateError("child"), causeStackTrace: StackTrace.empty),
+      );
+
+      expect(await cubit.stopSession(sessionId: "source"), isTrue);
     });
 
     test("is false when the bridge did not stop it", () async {
       stubStop(() async => throw ApiError.generic());
 
       expect(await cubit.stopSession(sessionId: "source"), isFalse);
+      expect(feedback.refusedStops, isEmpty);
+    });
+
+    test("gives the turn back its feedback point when the bridge refuses the stop", () async {
+      stubStop(
+        () async => throw SessionAbortNotAcceptedException(
+          refusal: const SessionAbortNotPerformedRefusal(reason: SessionAbortRefusalReason.subAgentStopUnsupported),
+          innerError: StateError("refused"),
+        ),
+      );
+
+      expect(await cubit.stopSession(sessionId: "source"), isFalse);
+      expect(feedback.refusedStops, ["source"]);
     });
   });
 }

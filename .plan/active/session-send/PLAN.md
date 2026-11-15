@@ -621,16 +621,16 @@ Dart rules:
 - No prompt, summary or transcript text in logs.
 
 ```
-1 ── 2 ── 3 ─┬─ 4 ─────────── 8 ─┐
-     │       ├─ 5                ├─ 11 ── 12
-     │       └──────── 7 ─┬─ 9 ──┤
-     └─ 6 ─────────────┘  └─ 10 ─┘
+1 ── 2 ── 3 ─┬─ 4 ──────────────────── 8 ─┐
+     │       ├─ 5                         ├─ 11 ── 12
+     │       └──────── 7 ─┬─ 7.a ── 9 ────┤
+     └─ 6 ─────────────┘  └─ 10 ──────────┘
 ```
 
 - Step 5 needs only step 2's folder helper, but it ships after step 3 so the rule never lands without its feature.
 - Step 6 is independent of the send flow and can start right after step 1.
 - Step 7 needs 3 and 6. Step 8 needs 4, and is built against fixture messages, so it runs in parallel with 7.
-- Steps 9 and 10 need 7.
+- Step 7.a needs 7. Step 9 needs 7.a, whose send flow it extends with the archive. Step 10 needs only 7.
 - Steps 1 and 12 follow the docs-only PR rule. Step 11 also carries live checks, so it waits for its normal review.
 
 ### Step 1: raise the plan
@@ -751,46 +751,55 @@ docs.
 - **Risk and test focus:** low. Check each plugin's value against the doc.
 - **Expected result:** no user-visible or database change.
 
-### Step 7: the client send flow
+### Step 7: the client send and stop pipeline
 
-`⚙️ [session-send] Send a session into another from its menu [step 7/13]`. About 1,350 lines including l10n output.
+`⚙️ [session-send] Add the client send and stop pipeline [step 7/13]`. About 600 lines.
 
-- **Complexity:** moderate. A new sheet and picker, menu wiring on four surfaces, and an async outcome.
-- **What:**
+- **Complexity:** moderate. A sealed result over a long request, new cubit dependencies with a live subscription, and
+  the desktop palette moving to a factory.
+- **What:** everything in `module_core`:
   - adds `SessionApi.sendToSession` (16-minute timeout);
   - adds `SessionRepository.sendToSession`, which returns a sealed `SendToSessionResult`: sent, refused(code),
     failed(error), unsupported (missing route), or unconfirmed (timeout or lost connection);
-  - adds `SessionActionService.sendToSession` and `SessionActionsCubit.sendToSession`;
-  - adds `SessionActionsCubit.stopSession`, which delegates to `SessionAbortService.abortSession`;
+  - adds `SessionActionService.sendToSession`, which also turns an answer that arrives after a computer switch into
+    `computerSwitched`, because its ids belong to the computer left, and `SessionActionsCubit.sendToSession`;
+  - adds `SessionActionsCubit.stopSession`, which delegates to `SessionAbortService.abortSession` and records the stop
+    for the feedback prompt as the session page does;
   - gives `SessionSearchCubit` an `excludedSessionId` and the `SseEventTracker` and `PluginRepository` dependencies
     behind `SessionSearchMatch.running`, and adds `createSessionSearchCubit` to `cubit_composition.dart` for the
-    palette and both shells (D8);
+    palette and both shells (D8).
+- **Tests:** repository, service and cubit tests for each result and stop outcome, and search-cubit tests for the
+  exclusion and the running labels.
+- **Why:** the pipeline step 7.a puts behind the menu.
+- **Risk and test focus:** result mapping, unconfirmed versus failed, and the desktop palette's search staying
+  unchanged.
+- **Expected result:** no user-visible or database change.
+- **As built (2026-11-15):** the original step 7 came to about 1,680 lines (about 1,330 authored, 350 generated l10n),
+  so it split into this step and 7.a, and the series total is now 13. The sheet and picker cannot land without the
+  menu entry that opens them, so the split runs along the layer boundary instead of the planned sheet-and-picker cut.
+
+### Step 7.a: send from the session menu
+
+`⚙️ [session-send] Send a session into another from its menu [step 7.a/13]`, stacked on step 7. About 1,150 lines
+including l10n output.
+
+- **Complexity:** moderate. A new sheet and picker, menu wiring on four surfaces, and an async outcome.
+- **What:**
   - adds the send sheet (target row, archive switch shown but not yet acted on, Send), the `SessionPicker`, the menu
     entry and the busy alert with Stop (D2);
   - adds the sending, success-with-Open, update-the-bridge and failure alerts (D8);
   - adds the `openSession` callback and the session-search cubit factory that both shells give
     `SessionListActionDispatcher`;
   - adds the strings.
-- **Tests:** cubit and service tests for each result, and widget tests for the picker's exclusion and both Running
-  labels.
+- **Tests:** widget tests for the picker's exclusion and both Running labels, and the menu entry's gating.
 - **Visuals:** before-and-after screenshots of the menu and a short recording of a send, using fixture data only,
   hosted on `pr-media`.
 - **Why:** this is the user-facing entry.
-- **Risk and test focus:** medium. Watch the menu on all four surfaces, sheet-to-picker and popover transitions, alerts
-  that show after leaving the page, and the desktop palette's search staying unchanged.
+- **Risk and test focus:** medium. Watch the menu on all four surfaces, sheet-to-picker and popover transitions, and
+  alerts that show after leaving the page.
 - **Expected result:** users see the entry, the sheet and the picker, and get the agreed feedback. No database change.
-- If the diff passes about 1,500 lines, split the sheet and picker into their own PR as step 7.a and update the series
-  total.
 - The switch is hidden until step 9 if step 9 won't land in the same release.
-- **As built (2026-11-15):** the full step came to about 1,680 lines (about 1,330 authored, 350 generated l10n), so it
-  split into two PRs, and the series total is now 13. The sheet and picker cannot land without the menu entry that
-  opens them, so the split runs along the layer boundary instead:
-  - step 7, `⚙️ [session-send] Add the client send and stop pipeline [step 7/13]`: everything in `module_core` (API,
-    `SendToSessionResult`, repository, service, `SessionActionsCubit.sendToSession` and `stopSession`, the
-    `SessionSearchCubit` changes and `createSessionSearchCubit`), plus the desktop palette moving to the factory. No
-    user-visible change;
-  - step 7.a, `⚙️ [session-send] Send a session into another from its menu [step 7.a/13]`, stacked on step 7: the
-    sheet, `SessionPicker`, the menu entry, the busy alert, the outcome alerts, the strings and the shell wiring.
+- **As built (2026-11-15):**
   - `openSession` is context-free (`{projectId, projectName, session}`): the shells open the target through their
     global router, because the Open action can fire after the sending page is gone.
   - The picker under touch is a second bottom sheet stacked over the send sheet, as `ProjectPicker` opens, rather than

@@ -82,6 +82,7 @@ SessionActionsCubit createSessionActionsCubit({required GetIt locator, required 
     window: window,
     actionService: locator<SessionActionService>(),
     abortService: locator<SessionAbortService>(),
+    feedbackPromptService: locator<FeedbackPromptService>(),
   );
 }
 
