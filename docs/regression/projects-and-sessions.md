@@ -523,7 +523,8 @@ state.
 - `PATCH /session/pinned` pins an unarchived root session or unpins any session.
   The bridge alone stores the pin, so every harness supports it. It answers the
   updated session and announces it through `session.updated` without moving its
-  updated time; catalog imports and backend session updates keep the pin. Pinning
+  updated time; catalog imports and backend session updates keep the pin, except
+  an import that stores the session under a parent, which drops it. Pinning
   a missing, child or archived session is the route's own 404, never the router's.
 - The phone's project picker and Settings › Projects show a project's path cut
   to the last two folders, growing one folder at a time while a same-named

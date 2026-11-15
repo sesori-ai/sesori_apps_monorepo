@@ -6,7 +6,8 @@ import "../services/session_view_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /sessions/page` — one page of root sessions across the
-/// visible projects, newest first, with the counts behind each chip.
+/// visible projects, newest first (pinned sessions first when the request
+/// asks for it), with the counts behind each chip.
 ///
 /// An unknown or hidden project lists nothing rather than answering 404, so a
 /// 404 from this route always means a bridge that predates it.
