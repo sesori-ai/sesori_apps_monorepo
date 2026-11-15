@@ -2,7 +2,7 @@ import "package:flutter/services.dart" show LogicalKeyboardKey, SystemChannels;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/medallion_chip.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/model_effort_chip.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/orbit_geometry.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/model_effort/orbits_picker.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show EffortLevel, FastModeControl, ModelOrbits, OrbitRing;
@@ -47,6 +47,7 @@ Future<List<_Pick>> _pump(
   required ModelOrbits? orbits,
   PregoInteractionMode mode = PregoInteractionMode.touch,
   bool readOnly = false,
+  FastModeControl fastModeControl = FastModeControl.off,
   bool settle = true,
   double textScale = 1,
   List<AgentInfo> agents = const [],
@@ -86,7 +87,7 @@ Future<List<_Pick>> _pump(
                     ],
                     onVariantSelected: (_) {},
                     modelOrbits: orbits,
-                    fastModeControl: FastModeControl.off,
+                    fastModeControl: fastModeControl,
                     decideFastModeToggle: () => null,
                     onFastModeChanged: (_) {},
                     compact: mode == PregoInteractionMode.pointer,
@@ -122,7 +123,7 @@ const _slideHaptic = "HapticFeedbackType.selectionClick";
 
 /// The geometry the picker lays out over the whole screen from the chip.
 OrbitGeometry _geometry(WidgetTester tester, {required ModelOrbits orbits}) {
-  final chip = tester.getRect(find.byType(MedallionChip));
+  final chip = tester.getRect(find.byType(ModelEffortChip));
   return OrbitGeometry(
     orbits: orbits,
     origin: Offset(chip.left + chip.height / 2, chip.center.dy),
@@ -133,7 +134,7 @@ OrbitGeometry _geometry(WidgetTester tester, {required ModelOrbits orbits}) {
 
 void main() {
   final orbits = claudeOrbits(totalModels: 6, current: opus, currentLevel: EffortLevel.high);
-  final chip = find.byType(MedallionChip);
+  final chip = find.byType(ModelEffortChip);
   final picker = find.byType(OrbitsPicker);
 
   testWidgets("an orbit catalog on touch shows the chip in place of the model, effort and fast pills", (tester) async {
@@ -149,7 +150,8 @@ void main() {
     const status = Key("status");
     await _pump(
       tester,
-      orbits: orbits,
+      // A short label: the test font draws every glyph a full em wide.
+      orbits: orbits.copyWith(current: haiku, currentLevel: null),
       agents: const [
         AgentInfo(name: "build", description: null, model: null, mode: AgentMode.all),
         AgentInfo(name: "plan", description: null, model: null, mode: AgentMode.all),
@@ -325,19 +327,48 @@ void main() {
     expect(find.descendant(of: find.byType(ModelPicker), matching: find.text("Opus 4.1")), findsNothing);
   });
 
-  testWidgets("larger reader text grows the chip's text, up to what fits the pill height", (tester) async {
+  testWidgets("the chip reads the model and level, with a bolt only while fast", (tester) async {
+    final bolt = find.descendant(of: chip, matching: find.byIcon(TablerRegular.bolt));
+    final caret = find.descendant(of: chip, matching: find.byIcon(TablerRegular.selector));
+    await _pump(tester, orbits: orbits);
+
+    expect(find.descendant(of: chip, matching: find.text("Opus 5.5")), findsOneWidget);
+    expect(find.descendant(of: chip, matching: find.text(" · High")), findsOneWidget);
+    expect(bolt, findsNothing);
+    expect(caret, findsOneWidget);
+
+    await _pump(tester, orbits: orbits, fastModeControl: FastModeControl.on);
+    expect(bolt, findsOneWidget);
+
+    await _pump(tester, orbits: orbits.copyWith(current: haiku, currentLevel: null));
+    expect(find.descendant(of: chip, matching: find.text("Haiku 4.5")), findsOneWidget);
+    expect(find.descendant(of: chip, matching: find.textContaining("·")), findsNothing);
+
+    await _pump(tester, orbits: orbits.copyWith(currentLevel: EffortLevel.off));
+    expect(find.descendant(of: chip, matching: find.text(" · Off")), findsOneWidget);
+  });
+
+  testWidgets("read-only hides the caret in place", (tester) async {
+    double caretOpacity() =>
+        tester.widget<AnimatedOpacity>(find.descendant(of: chip, matching: find.byType(AnimatedOpacity))).opacity;
+    await _pump(tester, orbits: orbits);
+    expect(caretOpacity(), 1);
+
+    await _pump(tester, orbits: orbits, readOnly: true);
+    expect(caretOpacity(), 0);
+  });
+
+  testWidgets("larger reader text grows the chip, at the pills' height", (tester) async {
     await _pump(tester, orbits: orbits);
     final standard = tester.getSize(chip).width;
 
     await _pump(tester, orbits: orbits, textScale: 1.3);
-    final larger = tester.getSize(chip).width;
-    await _pump(tester, orbits: orbits, textScale: 2);
 
-    expect(larger, greaterThan(standard));
-    expect(tester.getSize(chip), Size(larger, 36));
+    expect(tester.getSize(chip).width, greaterThan(standard));
+    expect(tester.getSize(chip).height, 36);
   });
 
-  testWidgets("a new model eases the plate to its width rather than snapping", (tester) async {
+  testWidgets("a new model eases the pill to its width rather than snapping", (tester) async {
     await _pump(tester, orbits: orbits);
     final before = tester.getSize(chip).width;
 

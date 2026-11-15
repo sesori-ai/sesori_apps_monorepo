@@ -14,7 +14,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "orbits_fixture.dart";
 
-/// The chip sits where the mock puts it: 14 pt in, its medallion at y = 610.
+/// The chip sits where the mock puts it: 14 pt in, the rings' centre at y = 610.
 const _anchor = Rect.fromLTWH(14, 591, 150, 39);
 
 typedef _Pick = ({String providerID, String modelID, SessionVariant? variant});

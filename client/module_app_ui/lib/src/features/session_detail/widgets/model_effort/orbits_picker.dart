@@ -11,12 +11,11 @@ import "package:theme_prego/module_prego.dart";
 import "../../../../extensions/build_context_x.dart";
 import "../fast_mode_toggle.dart";
 import "orbit_geometry.dart";
-import "orbit_metal.dart";
 import "orbits_painter.dart";
 
-/// Opens the orbits picker over the screen, its rings centred on the
-/// medallion of the chip at [anchorRect] (global coordinates; the medallion
-/// sits at the chip's leading end, as wide as the chip is tall).
+/// Opens the orbits picker over the screen, its rings centred on the leading
+/// end of the chip at [anchorRect] (global coordinates), half the chip's
+/// height in from its start.
 ///
 /// One press, slide and release picks a model and its effort together, and so
 /// does one tap. Releasing anywhere else closes the picker without a change.
@@ -58,7 +57,7 @@ Future<void> showOrbitsPicker({
   );
 }
 
-/// Plays [play], one of [HapticFeedback]'s patterns, for the medallion chip
+/// Plays [play], one of [HapticFeedback]'s patterns, for the model and effort chip
 /// and the orbits picker. A platform failure is logged, never thrown at the
 /// gesture.
 Future<void> playOrbitsHaptic({required Future<void> Function() play}) async {
@@ -434,7 +433,6 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
     final labels = _labels;
     final palette = _palette;
     if (labels == null || palette == null) return const SizedBox.shrink();
-    final metal = _fastMode == FastModeControl.on ? OrbitMetal.gold : OrbitMetal.silver;
     return LayoutBuilder(
       builder: (context, constraints) {
         final geometry = _geometry(constraints.biggest);
@@ -453,7 +451,6 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
                     geometry: geometry,
                     labels: labels,
                     palette: palette,
-                    metal: metal,
                     anchorRect: widget.anchorRect,
                     entry: widget.animation,
                     reducedMotion: context.isReducedMotion,
@@ -550,8 +547,8 @@ class _OrbitsPickerState() extends State<OrbitsPicker> with SingleTickerProvider
   }
 }
 
-/// The fast-mode toggle's look: a plain pill at standard speed, dark enamel
-/// with a gold bolt while fast, dimmed when the model cannot use it.
+/// The fast-mode toggle's look: a plain pill at standard speed, filled with
+/// ink while fast, dimmed when the model cannot use it.
 class const _FastToggleFace({required final FastModeControl control, required final OrbitPalette palette})
     extends StatelessWidget {
   @override
@@ -559,25 +556,15 @@ class const _FastToggleFace({required final FastModeControl control, required fi
     final prego = context.prego;
     final on = control == FastModeControl.on;
     final usable = control == FastModeControl.on || control == FastModeControl.off;
-    final foreground = on ? OrbitMetal.gold.m1 : palette.text;
+    final foreground = on ? palette.background : palette.text;
     return IgnorePointer(
       child: ExcludeSemantics(
         child: Opacity(
           opacity: usable ? 1 : .55,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: on
-                  ? const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [OrbitMetal.enamelTop, OrbitMetal.enamelBottom],
-                    )
-                  : null,
-              color: on ? null : palette.surface,
-              border: Border.all(
-                color: on ? OrbitMetal.gold.m2 : prego.colors.borderPrimary,
-                width: on ? 1.6 : 1,
-              ),
+              color: on ? palette.text : palette.surface,
+              border: Border.all(color: on ? palette.text : prego.colors.borderPrimary),
               borderRadius: BorderRadius.circular(PregoRadius.full),
             ),
             child: Row(

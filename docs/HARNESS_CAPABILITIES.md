@@ -658,7 +658,7 @@ keep it offered, with a log. Per-turn reasons from result messages are not track
 ## Model and effort orbits (touch composer)
 
 The touch composer (phone and touch iPad) replaces the model, effort and ⚡
-pills with the medallion chip and its orbits picker when the catalog fits, and
+pills with the model and effort chip and its orbits picker when the catalog fits, and
 keeps the pills otherwise. The client decides from the catalog alone, never the
 harness name: exactly one provider has available models, every effort it
 reports (`none` ignored) is an exact level of `off, minimal, low, medium,

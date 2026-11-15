@@ -58,7 +58,7 @@ final class const OrbitSector({
 /// Where everything of the orbits picker sits, shared by its painter and its
 /// gestures so what is drawn and what is touched cannot drift apart.
 ///
-/// The rings are quarter arcs centred on [origin], the chip's medallion near
+/// The rings are quarter arcs centred on [origin], the chip's leading end near
 /// the bottom-left of the screen. A level is an angle: the weakest level sits
 /// near the vertical, the strongest near the horizontal. Each dot owns a
 /// patch of its ring that reaches halfway to its neighbours, so a finger never
@@ -67,7 +67,7 @@ final class const OrbitSector({
 final class OrbitGeometry({
   required final ModelOrbits orbits,
 
-  /// The centre of the rings: the chip's medallion.
+  /// The centre of the rings: the chip's leading end.
   required final Offset origin,
 
   /// The size of the overlay the picker fills.

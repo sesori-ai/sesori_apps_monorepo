@@ -6,7 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart" show EffortLevel, ModelO
 
 import "orbits_fixture.dart";
 
-/// The agreed mock's phone: a 393 x 700 screen with the medallion at
+/// The agreed mock's phone: a 393 x 700 screen with the rings' centre at
 /// (33.5, 610) and the fast toggle 14 pt from the right edge.
 OrbitGeometry _geometry({required ModelOrbits orbits, Size size = const Size(393, 700)}) => OrbitGeometry(
   orbits: orbits,
