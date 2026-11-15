@@ -99,6 +99,9 @@ final class const OmpPluginDescriptor({
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
   @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
+  @override
   bool get supportsPromptAttachments => true;
 
   @override

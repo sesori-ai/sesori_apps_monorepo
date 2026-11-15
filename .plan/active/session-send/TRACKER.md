@@ -7,7 +7,7 @@
 | 3 Bridge send flow | Not started | |
 | 4 Handoff marker in the bridge | Not started | |
 | 5 Claude read rules (transcripts and uploads) | Not started | |
-| 6 Busy-prompt declaration | Not started | |
+| 6 Busy-prompt declaration | In PR | |
 | 7 Client send flow | Not started | |
 | 8 Handoff marker and card in the chats | Not started | |
 | 9 Archive the source after sending | Not started | |

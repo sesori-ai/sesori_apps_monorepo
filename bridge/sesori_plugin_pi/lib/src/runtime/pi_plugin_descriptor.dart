@@ -95,6 +95,9 @@ final class const PiPluginDescriptor({
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
 
   @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
+  @override
   bool get supportsPromptAttachments => true;
 
   /// Pi's echo of a sent command, expanded template or skill included, carries

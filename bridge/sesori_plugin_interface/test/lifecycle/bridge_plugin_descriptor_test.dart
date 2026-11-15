@@ -249,6 +249,9 @@ class const _MinimalDescriptor() extends BridgePluginDescriptor {
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
 
   @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
+
+  @override
   List<PluginOption> get options => const [];
 
   @override
@@ -293,6 +296,9 @@ class const _ValidatingDescriptor() extends BridgePluginDescriptor {
 
   @override
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
+
+  @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.steer;
 
   @override
   List<PluginOption> get options => const [
