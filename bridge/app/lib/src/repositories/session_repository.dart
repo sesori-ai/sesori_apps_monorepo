@@ -663,13 +663,16 @@ class SessionRepository({
               pluginId: binding.pluginId,
               backendSessionId: created.id,
             );
+            final straySubtree = stray == null ? const <SessionDto>[] : await _getSessionSubtree(root: stray);
             if (stray != null) await _sessionDao.deleteSession(sessionId: stray.sessionId);
             await _sessionDao.rebindBackendSession(sessionId: sessionId, backendSessionId: created.id);
             final children = subtree.skip(1).toList(growable: false);
             for (final child in children) {
               if (child.parentSessionId == sessionId) await _sessionDao.deleteSession(sessionId: child.sessionId);
             }
-            return [?stray?.sessionId, for (final child in children) child.sessionId];
+            return [
+              for (final row in [...straySubtree, ...children]) row.sessionId,
+            ];
           },
         );
         return (backendSessionId: created.id, generation: generation, removedSessionIds: removedSessionIds);
