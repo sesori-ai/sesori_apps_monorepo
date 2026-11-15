@@ -304,6 +304,7 @@ Future<void> _pumpComposer({
                 onDraftCleared: () {},
                 onAbort: () {},
                 surfaceStyleController: surfaceStyle,
+                sideQuestion: null,
                 composerHeader: null,
                 composerTrailing: null,
                 availableCommands: const [],

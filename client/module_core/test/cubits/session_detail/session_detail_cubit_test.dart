@@ -104,6 +104,7 @@ void main() {
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
         pluginRepository: mockPluginRepository,
+        sideChatRepository: MockSideChatRepository(),
         connectionService: mockConnectionService,
       );
       promptDispatcher = mockSessionRepository;

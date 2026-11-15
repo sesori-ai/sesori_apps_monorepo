@@ -20,6 +20,7 @@ Widget _presentationScope({required BuildContext context, required Widget child}
   return SessionDetailPresentationScope(
     openHarnessSettings: () {},
     openBridgeSettings: () {},
+    openSideChat: null,
     messageImageRepository: _MockMessageImageRepository.new,
     imageSaver: _MockImageSaver.new,
     imageClipboard: _MockImageClipboard.new,

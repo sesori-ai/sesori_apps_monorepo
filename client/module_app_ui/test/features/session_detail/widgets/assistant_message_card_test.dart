@@ -62,6 +62,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
       home: SessionDetailPresentationScope(
         openHarnessSettings: () {},
         openBridgeSettings: () {},
+        openSideChat: null,
         messageImageRepository: () => _messageImageRepository,
         imageSaver: _MockImageSaver.new,
         imageClipboard: _MockImageClipboard.new,

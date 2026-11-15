@@ -105,10 +105,42 @@ class const SessionDetailNeedsYouCard({
 
 /// Explains why an archived session shows no composer: archiving is permanent,
 /// so the session is readable but can never be prompted or reopened again.
-class const SessionDetailArchivedNotice({super.key}) extends StatelessWidget {
+/// Says the session is archived, with a link to its side chats once they are
+/// counted. The link fades in on a row of its own, so the notice's words stay
+/// where they are.
+class const SessionDetailArchivedNotice({
+  super.key,
+  required final int sideChatCount,
+
+  /// Null where the shell has no side chat to open.
+  required final VoidCallback? onOpenSideChats,
+}) extends StatelessWidget {
+  /// Finds the side-chats link in widget and integration tests.
+  static const sideChatsLinkKey = ValueKey("archivedNotice.sideChats");
+
+  /// Where the tile's title starts: its inset, the leading icon slot and gap.
+  static const double _titleInset = 16 + 28 + 12;
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final onOpenSideChats = this.onOpenSideChats;
+    final link = onOpenSideChats == null || sideChatCount == 0
+        ? const SizedBox(width: double.infinity)
+        : Padding(
+            key: sideChatsLinkKey,
+            padding: const EdgeInsetsDirectional.fromSTEB(_titleInset, 0, 16, 12),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: PregoButtonsSolid(
+                label: context.loc.sessionDetailArchivedSideChats(sideChatCount),
+                hierarchy: PregoButtonsSolidHierarchy.link,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: onOpenSideChats,
+              ),
+            ),
+          );
+    final reducedMotion = context.isReducedMotion;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
       child: GlassContainer(
@@ -117,10 +149,25 @@ class const SessionDetailArchivedNotice({super.key}) extends StatelessWidget {
         padding: EdgeInsets.zero,
         shape: const LiquidRoundedSuperellipse(borderRadius: 20),
         settings: LiquidGlassSettings(glassColor: prego.colors.bgSecondary.withValues(alpha: 0.6)),
-        child: GlassListTile(
-          leading: Icon(TablerRegular.archive, size: PregoIconSize.md, color: prego.colors.textSecondary),
-          title: Text(context.loc.sessionDetailArchivedNotice),
-          titleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GlassListTile(
+              leading: Icon(TablerRegular.archive, size: PregoIconSize.md, color: prego.colors.textSecondary),
+              title: Text(context.loc.sessionDetailArchivedNotice),
+              titleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+            ),
+            // A zero-duration AnimatedSize would re-dirty itself mid-layout.
+            if (reducedMotion)
+              link
+            else
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                alignment: AlignmentDirectional.topStart,
+                child: AnimatedSwitcher(duration: const Duration(milliseconds: 200), child: link),
+              ),
+          ],
         ),
       ),
     );

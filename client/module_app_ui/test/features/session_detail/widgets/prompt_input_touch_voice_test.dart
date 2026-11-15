@@ -3503,6 +3503,7 @@ Future<_Composer> _pumpComposer({
                     onDraftCleared: () {},
                     onAbort: () => composer.aborts++,
                     surfaceStyleController: surfaceStyle,
+                    sideQuestion: null,
                     composerHeader: composerHeader,
                     composerTrailing: composerTrailing,
                     availableCommands: const [],

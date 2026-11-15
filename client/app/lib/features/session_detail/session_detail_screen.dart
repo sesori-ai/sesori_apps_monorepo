@@ -76,6 +76,26 @@ const _sessionActions = SessionListActionDispatcher(
   onSessionMarkedUnread: _leaveMarkedUnreadSession,
 );
 
+void _openSideChat({
+  required BuildContext context,
+  required String sessionId,
+  required String pluginId,
+  required SideQuestionAvailability availability,
+  required bool isArchived,
+}) => showSideChatSheet(
+  context: context,
+  pluginId: pluginId,
+  createCubit: () => SideChatCubit(
+    repository: getIt<SideChatRepository>(),
+    productAnalyticsService: getIt<ProductAnalyticsService>(),
+    sessionId: sessionId,
+    pluginId: pluginId,
+    availability: availability,
+    isArchived: isArchived,
+    initialQuestion: null,
+  ),
+);
+
 void _leaveMarkedUnreadSession({required BuildContext context, required Session session}) =>
     closeDeletedSessionRoute(context: context, sessionId: session.id);
 
@@ -119,6 +139,7 @@ class const _MobileSessionDetailBody({
       canShareImages: true,
       openExternalLink: openExternalLink,
       openBridgeSettings: () => context.pushRoute(const AppRoute.settings()),
+      openSideChat: _openSideChat,
       openHarnessSettings: () => context.pushRoute(
         const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
       ),

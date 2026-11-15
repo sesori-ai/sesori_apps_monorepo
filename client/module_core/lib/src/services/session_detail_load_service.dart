@@ -14,11 +14,13 @@ import "../repositories/models/session_prompt_index_result.dart";
 import "../repositories/models/tool_output_result.dart";
 import "../repositories/plugin_repository.dart";
 import "../repositories/session_repository.dart";
+import "../repositories/side_chat_repository.dart";
 
 @lazySingleton
 class SessionDetailLoadService({
   required final SessionRepository _repository,
   required final PluginRepository _pluginRepository,
+  required final SideChatRepository _sideChatRepository,
   required final ConnectionService _connectionService,
 }) {
   /// Messages fetched when a session opens. Large enough that most sessions
@@ -137,6 +139,19 @@ class SessionDetailLoadService({
       logw("Failed to load the prompt index", error);
     }
     return result;
+  }
+
+  /// How many side chats the session has, for an archived session's notice to
+  /// offer them read-only. A failed listing counts none, so the notice offers
+  /// nothing to tap.
+  Future<int> countSideChats({required String sessionId}) async {
+    switch (await _sideChatRepository.listSideChats(sessionId: sessionId)) {
+      case SuccessResponse(:final data):
+        return data.sideChats.length;
+      case ErrorResponse(:final error):
+        logw("Failed to count the side chats of session $sessionId", error);
+        return 0;
+    }
   }
 
   Future<ToolOutputResult> loadToolOutput({

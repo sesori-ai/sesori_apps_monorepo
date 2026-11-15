@@ -138,6 +138,7 @@ Widget _app({
   home: SessionDetailPresentationScope(
     openHarnessSettings: () {},
     openBridgeSettings: () {},
+    openSideChat: null,
     messageImageRepository: () => throw UnimplementedError(),
     imageSaver: _MockImageSaver.new,
     imageClipboard: _MockImageClipboard.new,
