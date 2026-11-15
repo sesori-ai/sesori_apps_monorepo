@@ -26,6 +26,14 @@ final class const ClaudeControlUnsupportedSubtypeException({
   String toString() => "ClaudeControlUnsupportedSubtypeException($subtype)";
 }
 
+/// The CLI exited at startup because it does not know the command-line
+/// [option]: this version predates or dropped it.
+final class const ClaudeUnknownOptionException({required final String option, required final Object innerError})
+    implements Exception {
+  @override
+  String toString() => "ClaudeUnknownOptionException($option)";
+}
+
 /// Native status decoding failed; presentation excludes the native payload.
 sealed class const ClaudeMcpStatusDecodeException() implements Exception {
   @override
@@ -130,6 +138,8 @@ class ClaudeStreamClient({
           cancelOnError: false,
         );
 
+    String? unknownOption;
+    final stderrDone = Completer<void>();
     _stderrSubscription = process.stderr
         // A crashing child can emit non-UTF-8 bytes on stderr, and a decoder
         // that throws there would take out the diagnostic stream exactly when
@@ -137,8 +147,12 @@ class ClaudeStreamClient({
         .transform(const Utf8Decoder(allowMalformed: true))
         .transform(const LineSplitter())
         .listen(
-          (line) => Log.d("[$_logTag][stderr] ${_redactForLog(line)}"),
+          (line) {
+            unknownOption ??= _unknownOptionPattern.firstMatch(line)?.group(1);
+            Log.d("[$_logTag][stderr] ${_redactForLog(line)}");
+          },
           onError: (Object error, StackTrace stack) => Log.w("[$_logTag] stderr stream error", error, stack),
+          onDone: stderrDone.complete,
           cancelOnError: false,
         );
 
@@ -161,13 +175,20 @@ class ClaudeStreamClient({
       );
     } on Object catch (error, stack) {
       if (!_disposed) Log.e("[$_logTag] initialize handshake failed", error, stack);
+      // The CLI names an option it does not know on stderr and exits, and the
+      // exit can be observed before that line arrives, so drain stderr first.
+      if (exited.isCompleted) await stderrDone.future.timeout(const Duration(seconds: 1), onTimeout: () {});
       await _teardownConnection(
         gracefulTimeout: const Duration(seconds: 5),
         pendingError: StateError("ClaudeStreamClient handshake failed"),
       );
+      if (unknownOption case final option?) throw ClaudeUnknownOptionException(option: option, innerError: error);
       rethrow;
     }
   }
+
+  /// Commander's startup refusal, `error: unknown option '--flag=value'`.
+  static final RegExp _unknownOptionPattern = RegExp(r"unknown option '(--[^'=\s]+)");
 
   /// Sends a user turn. Content blocks are built by the caller.
   ///

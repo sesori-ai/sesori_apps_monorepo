@@ -115,6 +115,9 @@ final class const ClaudePluginDescriptor({
   bool get supportsSideQuestions => true;
 
   @override
+  Set<PluginSessionBranching> get sessionBranching => const {PluginSessionBranching.rewind};
+
+  @override
   Set<PluginMcpCapability> get mcpCapabilities => const {
     PluginMcpCapability.management,
     PluginMcpCapability.authentication,
@@ -322,8 +325,12 @@ final class const ClaudePluginDescriptor({
       emit: eventBuffer.add,
       respond: processes.answerControlRequest,
     );
+    final transcripts = ClaudeTranscriptCatalogRepository(
+      transcriptApi: ClaudeTranscriptApi(environment: host.environment),
+    );
     final sessions = ClaudeSessionService(
       processes: processes,
+      transcripts: transcripts,
       approvals: approvals,
       quotaMapper: ClaudeQuotaInterruptionMapper(contentMapper: const ClaudeContentMapper()),
       clock: host.clock,
@@ -369,9 +376,7 @@ final class const ClaudePluginDescriptor({
         settings: ClaudeSettingsApi(environment: host.environment),
         environment: host.environment,
       ).usesCustomBaseUrl,
-      transcripts: ClaudeTranscriptCatalogRepository(
-        transcriptApi: ClaudeTranscriptApi(environment: host.environment),
-      ),
+      transcripts: transcripts,
       sessions: sessions,
       catalogService: catalogService,
       approvals: approvals,

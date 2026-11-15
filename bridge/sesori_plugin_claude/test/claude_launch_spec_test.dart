@@ -89,6 +89,18 @@ void main() {
       expect(arguments.where((argument) => argument.startsWith("--session-id")), isEmpty);
     });
 
+    test("resumes an existing session at a chain entry", () {
+      final arguments = specFor(ClaudeRewoundSession(sessionId: _oldSessionId, entryUuid: _newSessionId)).arguments;
+
+      expect(arguments, containsAllInOrder(["--resume=$_oldSessionId", "--resume-session-at=$_newSessionId"]));
+      expect(arguments, contains("--permission-prompt-tool"));
+      expect(arguments.where((argument) => argument.startsWith("--session-id")), isEmpty);
+      expect(
+        () => ClaudeRewoundSession(sessionId: _oldSessionId, entryUuid: "not-a-uuid"),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
     test("never splits an id flag into two tokens", () {
       // The SDK writes `--session-id=<id>` and `--resume=<id>`. The CLI accepts
       // the split form too, so only an explicit assertion keeps them in parity.
