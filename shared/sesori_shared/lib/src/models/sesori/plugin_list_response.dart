@@ -27,6 +27,19 @@ enum PluginFailureBlock() {
   unknown,
 }
 
+/// What a harness does with a prompt sent while one of its sessions is
+/// running a turn.
+enum BusyPromptHandling() {
+  /// The prompt joins the running turn, which takes it at its next boundary.
+  steer,
+
+  /// The running turn is stopped first, and the prompt then starts a new turn.
+  stopTurn,
+
+  /// The bridge did not say, or sent a value this app does not know yet.
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginMetadata with _$PluginMetadata {
   const factory({
@@ -71,6 +84,14 @@ sealed class PluginMetadata with _$PluginMetadata {
     // COMPATIBILITY 2026-11-12 (v1.13.0): Older bridges omit this capability because they never name invocations.
     // Remove @Default and require the field once all supported production bridges send it.
     @Default(false) bool namesCommandInvocations,
+
+    /// What this harness does with a prompt sent while a session runs a turn,
+    /// so a client can warn before a send stops that turn.
+    // COMPATIBILITY 2026-11-15 (v1.14.0): Bridges before session sending omit busyPromptHandling; the picker
+    // shows a plain "Running" for them. Remove @Default once the minimum supported bridge sends it.
+    @JsonKey(unknownEnumValue: BusyPromptHandling.unknown)
+    @Default(BusyPromptHandling.unknown)
+    BusyPromptHandling busyPromptHandling,
   }) = _PluginMetadata;
 
   factory fromJson(Map<String, dynamic> json) => _$PluginMetadataFromJson(json);

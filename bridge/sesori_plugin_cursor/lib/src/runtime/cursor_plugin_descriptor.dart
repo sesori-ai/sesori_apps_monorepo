@@ -118,6 +118,9 @@ class const CursorPluginDescriptor({
   PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.plugin;
 
   @override
+  PluginBusyPromptHandling get busyPromptHandling => PluginBusyPromptHandling.stopTurn;
+
+  @override
   bool get supportsPromptAttachments => true;
 
   @override
