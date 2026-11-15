@@ -16,8 +16,8 @@ a static Flutter Web application.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, and rendering of every curated state. |
-| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, iOS/Android viewports, enabled clicks, disabled/loading states, and the all-states matrix in a browser. |
+| L1 Smoke | Automated: validate unique scenario identifiers, production-valid button combinations, manifest parity, navigation coverage, rendering of every curated state, and the detent sheet use case opening its sheet. |
+| L2 Routine | Client end to end: build the release web catalog and interact with the solid-button playground, light/dark themes, iOS/Android viewports, enabled clicks, disabled/loading states, and the all-states matrix in a browser. On a headless iOS simulator, drag the detent sheet between half and full height, scroll its list, raise the keyboard, and close it by dragging down and by tapping the scrim. |
 | L3 Release | Packaged or external: once private PR previews are enabled, verify a trusted same-repository PR receives an Access-protected interactive preview without production credentials, services, data, or analytics. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -32,6 +32,13 @@ a static Flutter Web application.
   the 30 px `xs` (an icon-only `xs` button is a 30 px square).
 - Resize freely and use at least one iOS and one Android viewport.
 - Compare an individual scenario with the same card in the all-states matrix.
+- In **Prego → Detent sheet → Side chat**, the sheet's height must follow the
+  finger without a jump at the start of a drag, and spring (or, with reduced
+  motion, move at once) to half or full height on release. A drag down on the
+  list at its top moves the sheet; a drag up at half height grows it before
+  the list scrolls. The scrim is light at half height and deeper at full, the
+  page behind keeps adding lines, and the keyboard lifts the input without the
+  sheet covering the status bar.
 - Confirm `web/catalog_manifest.json` changes only after the typed registry is
   intentionally changed and regenerated.
 
@@ -40,4 +47,6 @@ a static Flutter Web application.
 - `client/design_catalog/lib/src/catalog_scenarios.dart`
 - `client/design_catalog/lib/src/prego_button_catalog.dart`
 - `client/design_catalog/test/`
+- `client/design_catalog/lib/src/prego_detent_sheet_catalog.dart`
 - `client/module_prego/lib/components/buttons/prego_buttons_solid.dart`
+- `client/module_prego/lib/components/surfaces/prego_detent_sheet.dart`
