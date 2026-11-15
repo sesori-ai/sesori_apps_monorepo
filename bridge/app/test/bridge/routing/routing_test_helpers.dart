@@ -681,6 +681,9 @@ class FakeSessionRepository({
   Future<Session?> getCatalogSession({required String sessionId}) async => null;
 
   @override
+  bool isPluginActive({required String pluginId}) => pluginId == _plugin.id;
+
+  @override
   Future<SessionStatusResponse> getSessionStatuses() async {
     final statuses = await _plugin.getSessionStatuses();
     return SessionStatusResponse(
