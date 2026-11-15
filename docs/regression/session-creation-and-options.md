@@ -681,7 +681,8 @@ variant, and worktree mode, and creating the session with its first input.
   or the name alone for a model without levels. Fast mode adds a small bolt
   after the level, or after the name when the model has no levels. When large
   text leaves too little room, the level takes at most half the space and the
-  name the rest, each cut with an ellipsis; nothing overflows. A
+  name the rest; the name keeps its end behind a leading ellipsis like the
+  pills' labels, the level is cut at its end, and nothing overflows. A
   model, level or speed change cross-fades the text and eases the pill to its
   new width; nothing snaps. Its text follows the system text size settings.
 - The chip is one control: a keyboard focuses it with Tab and shows the focus

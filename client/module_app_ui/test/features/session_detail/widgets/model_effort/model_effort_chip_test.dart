@@ -384,6 +384,39 @@ void main() {
     expect(tester.getRect(chip).right, lessThanOrEqualTo(tester.getRect(find.byType(PregoPickerButton)).left));
   });
 
+  testWidgets("a cut label stays inside the chip while a change cross-fades", (tester) async {
+    Future<void> pumpChip(EffortLevel level) => tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: Align(
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 150),
+            child: ModelEffortChip(
+              orbits: orbits.copyWith(currentLevel: level),
+              fast: false,
+              showsCaret: true,
+              surfaceStyle: PregoComposerSurfaceStyle.subtle,
+            ),
+          ),
+        ),
+      ),
+    );
+    await pumpChip(EffortLevel.medium);
+    await pumpChip(EffortLevel.low);
+    await tester.pump(const Duration(milliseconds: 110));
+
+    final caret = tester.getRect(find.descendant(of: chip, matching: find.byIcon(TablerRegular.selector)));
+    final labels = find.descendant(of: chip, matching: find.byWidgetPredicate((widget) => widget is Text));
+    // The outgoing and the incoming face are both on screen.
+    expect(labels, findsNWidgets(4));
+    for (final label in labels.evaluate()) {
+      final rect = tester.getRect(find.byWidget(label.widget));
+      expect(rect.left, greaterThanOrEqualTo(tester.getRect(chip).left));
+      expect(rect.right, lessThanOrEqualTo(caret.left));
+    }
+  });
+
   testWidgets("larger reader text grows the chip, at the pills' height", (tester) async {
     await _pump(tester, orbits: orbits);
     final standard = tester.getSize(chip).width;

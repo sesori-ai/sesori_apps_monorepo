@@ -57,16 +57,21 @@ class const ModelEffortChip({
                     // Text sized to its content, so the chip hugs it. When
                     // large text leaves too little room, the level takes at
                     // most half of what the bolt leaves and the name the rest,
-                    // each cut with an ellipsis, so neither hides the other.
+                    // so neither hides the other. The name keeps its end, which
+                    // tells models apart, behind a leading ellipsis, as the
+                    // pills' labels do.
                     child: LayoutBuilder(
                       key: ValueKey((name, level, fast)),
                       builder: (context, constraints) => Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Flexible(
-                            child: _oneLine(
-                              text: name,
-                              style: style.copyWith(color: colors.textPrimary),
+                            child: IntrinsicWidth(
+                              child: PregoEllipsisText(
+                                text: name,
+                                ellipsis: PregoEllipsis.start,
+                                style: style.copyWith(color: colors.textPrimary),
+                              ),
                             ),
                           ),
                           if (level != null)
@@ -74,8 +79,11 @@ class const ModelEffortChip({
                               constraints: BoxConstraints(
                                 maxWidth: math.max(0, constraints.maxWidth - (fast ? _boltWidth : 0)) / 2,
                               ),
-                              child: _oneLine(
-                                text: " · ${_levelWord(level: level)}",
+                              child: Text(
+                                " · ${_levelWord(level: level)}",
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
                                 style: style.copyWith(color: colors.textTertiary),
                               ),
                             ),
@@ -103,13 +111,13 @@ class const ModelEffortChip({
   }
 
   /// Sizes the switcher to the incoming face only, so the pill eases straight
-  /// to its new width while the outgoing face fades out at its own width.
+  /// to its new width.
   static Widget _layOutFaces(Widget? current, List<Widget> previous) => Stack(
     alignment: AlignmentDirectional.centerStart,
-    // The outgoing face may be wider; the pill's easing edge clips it.
-    clipBehavior: Clip.none,
     children: [
-      for (final face in previous) PositionedDirectional(start: 0, top: 0, bottom: 0, child: face),
+      // The outgoing face fades out within the incoming one's width, cutting
+      // its text again, so it never paints over the caret or the next pill.
+      for (final face in previous) PositionedDirectional(start: 0, end: 0, top: 0, bottom: 0, child: face),
       ?current,
     ],
   );
@@ -120,6 +128,3 @@ String _levelWord({required EffortLevel level}) {
   final word = level.wireId;
   return word.substring(0, 1).toUpperCase() + word.substring(1);
 }
-
-Widget _oneLine({required String text, required TextStyle style}) =>
-    Text(text, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: style);
