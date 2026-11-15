@@ -395,6 +395,7 @@ class _Sessions() implements SessionRepository {
     unseen: false,
     lastUserActivityAt: null,
     autoContinuation: null,
+    scheduledTask: null,
   );
   @override
   Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {

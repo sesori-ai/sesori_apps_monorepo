@@ -286,5 +286,6 @@ Session _session({
     time: null,
     promptDefaults: null,
     lastUserActivityAt: null,
+    scheduledTask: null,
   );
 }

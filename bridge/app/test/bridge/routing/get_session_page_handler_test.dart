@@ -140,6 +140,7 @@ Session _session({required String id}) => Session(
   lastUserActivityAt: null,
   autoContinuation: null,
   approvalOverride: null,
+  scheduledTask: null,
 );
 
 final class const _TitlingSessionViews() implements SessionViewService {

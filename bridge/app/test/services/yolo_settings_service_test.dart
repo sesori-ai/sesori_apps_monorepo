@@ -125,6 +125,7 @@ class _FakeSessionMutationDispatcher() implements SessionMutationDispatcher {
       lastUserActivityAt: null,
       autoContinuation: null,
       approvalOverride: approvalOverride,
+      scheduledTask: null,
     );
   }
 

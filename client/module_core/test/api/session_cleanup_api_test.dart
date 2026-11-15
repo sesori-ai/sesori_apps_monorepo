@@ -32,6 +32,7 @@ void main() {
         time: SessionTime(created: 1, updated: 1, archived: null),
         promptDefaults: null,
         lastUserActivityAt: null,
+        scheduledTask: null,
       );
 
       when(
