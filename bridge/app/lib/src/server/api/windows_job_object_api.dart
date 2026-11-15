@@ -381,7 +381,10 @@ final class _PipeReader({required final HANDLE _pipe}) {
   }
 
   // ignore: no_slop_linter/prefer_required_named_parameters, native LPOVERLAPPED_COMPLETION_ROUTINE signature
-  void _onRead(int error, int bytes, Pointer<OVERLAPPED> _) {
+  void _onRead(int status, int bytes, Pointer<OVERLAPPED> _) {
+    // A late completion after the end (see _end) has nothing left to read.
+    if (_controller.isClosed) return;
+    final error = _ntStatusToWin32Error(status);
     if (error != ERROR_SUCCESS || bytes == 0) {
       _end(error: error);
       return;
@@ -390,13 +393,15 @@ final class _PipeReader({required final HANDLE _pipe}) {
     _read();
   }
 
-  // Only called with no read in flight, so no completion can follow.
+  // Only called with no read in flight. The callable stays open: a read that
+  // fails here as the child closes its end can still post a completion, and
+  // the thread pool calling a closed callable aborts the whole VM.
   void _end({required int error}) {
     if (error != ERROR_SUCCESS && error != ERROR_BROKEN_PIPE && error != ERROR_HANDLE_EOF) {
       Log.w("Reading a process's output pipe failed (Win32 error $error)");
     }
     CloseHandle(_pipe);
-    _completion.close();
+    _completion.keepIsolateAlive = false;
     calloc
       ..free(_buffer)
       ..free(_overlapped);
@@ -409,10 +414,9 @@ final class _PipeReader({required final HANDLE _pipe}) {
 /// `io.Process`.
 final class _PipeWriter({required final HANDLE _pipe}) implements StreamConsumer<List<int>> {
   final Pointer<OVERLAPPED> _overlapped = calloc<OVERLAPPED>();
-  late final NativeCallable<_IoCompletionNative> _completion = NativeCallable.listener(_onWritten);
-  late final int _bindError = _bindIoCompletionCallback(_pipe, _completion.nativeFunction, 0) == FALSE
-      ? GetLastError()
-      : ERROR_SUCCESS;
+  // Set by the first write; stdin that is never written has no callable.
+  NativeCallable<_IoCompletionNative>? _completion;
+  late final int _bindError = _bind();
   Completer<void>? _pending;
   bool _releaseWhenIdle = false;
   bool _released = false;
@@ -456,10 +460,18 @@ final class _PipeWriter({required final HANDLE _pipe}) implements StreamConsumer
     }
   }
 
+  int _bind() {
+    final completion = NativeCallable<_IoCompletionNative>.listener(_onWritten);
+    _completion = completion;
+    return _bindIoCompletionCallback(_pipe, completion.nativeFunction, 0) == FALSE ? GetLastError() : ERROR_SUCCESS;
+  }
+
   // ignore: no_slop_linter/prefer_required_named_parameters, native LPOVERLAPPED_COMPLETION_ROUTINE signature
-  void _onWritten(int error, int bytes, Pointer<OVERLAPPED> _) {
+  void _onWritten(int status, int bytes, Pointer<OVERLAPPED> _) {
+    // Also drops a late completion after the release.
     final pending = _pending;
     if (pending == null) return;
+    final error = _ntStatusToWin32Error(status);
     if (error == ERROR_SUCCESS) {
       pending.complete();
     } else {
@@ -467,19 +479,20 @@ final class _PipeWriter({required final HANDLE _pipe}) implements StreamConsumer
     }
   }
 
-  // Only called with no write in flight, so no completion can follow.
+  // Only called with no write in flight. The callable stays open, as in
+  // _PipeReader._end: a write that failed here can still post a completion.
   void _release() {
     if (_released) return;
     _released = true;
     CloseHandle(_pipe);
-    _completion.close();
+    _completion?.keepIsolateAlive = false;
     calloc.free(_overlapped);
   }
 }
 
 // win32 6.4.0 ships neither the job limit flags nor the limit structs, the
-// two process attributes, the wait flag or the three thread-pool calls below;
-// these mirror winnt.h, winbase.h and processthreadsapi.h.
+// two process attributes, the wait flag or the four native calls below; these
+// mirror winnt.h, winbase.h, processthreadsapi.h and winternl.h.
 const int _jobObjectLimitBreakawayOk = 0x00000800;
 const int _jobObjectLimitKillOnJobClose = 0x00002000;
 const int _procThreadAttributeHandleList = 0x00020002;
@@ -509,6 +522,12 @@ _registerWaitForSingleObject = _kernel32
 final int Function(Pointer) _unregisterWait = _kernel32.lookupFunction<Int32 Function(Pointer), int Function(Pointer)>(
   "UnregisterWait",
 );
+
+// BindIoCompletionCallback passes its callback the NTSTATUS (a broken pipe is
+// 0xC000014B), not the Win32 error its documentation names.
+final int Function(int) _ntStatusToWin32Error = DynamicLibrary.open(
+  "ntdll.dll",
+).lookupFunction<Uint32 Function(Int32), int Function(int)>("RtlNtStatusToDosError");
 
 final class _JobObjectBasicLimitInformation() extends Struct {
   @Int64()
