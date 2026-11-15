@@ -5,8 +5,9 @@ part "claude_backend_catalog_dto.g.dart";
 
 /// The catalog-bearing subset of Claude's `initialize` response.
 ///
-/// Account and agent fields are deliberately absent: account data contains PII,
-/// and Claude's first-party agents are outside this plugin's product contract.
+/// Agent fields and the account's identity are deliberately absent: account
+/// data contains PII, and Claude's first-party agents are outside this
+/// plugin's product contract. Only the account's billing route is read.
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeBackendCatalogDto with _$ClaudeBackendCatalogDto {
   const factory({
@@ -16,9 +17,24 @@ sealed class ClaudeBackendCatalogDto with _$ClaudeBackendCatalogDto {
     /// Why the account cannot use fast mode right now; absent when nothing
     /// blocks it (verified against CLI 2.1.281).
     @JsonKey(name: "fast_mode_disabled_reason", fromJson: _stringOrNull) required String? fastModeDisabledReason,
+    @JsonKey(fromJson: _accountOrNull) required ClaudeAccountDto? account,
   }) = _ClaudeBackendCatalogDto;
 
   factory fromJson(Map<String, dynamic> json) => _$ClaudeBackendCatalogDtoFromJson(json);
+}
+
+/// PII-free subset of the handshake's `account`, which also carries the
+/// account's email and organization. Verified against CLI 2.1.325: a
+/// subscription login reports `subscriptionType`; an API key reports
+/// `apiKeySource` instead; Bedrock and Vertex report only `apiProvider`.
+@Freezed(fromJson: true, toJson: false, toStringOverride: false)
+sealed class ClaudeAccountDto with _$ClaudeAccountDto {
+  const factory({
+    @JsonKey(fromJson: _stringOrNull) required String? subscriptionType,
+    @JsonKey(fromJson: _stringOrNull) required String? apiProvider,
+  }) = _ClaudeAccountDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$ClaudeAccountDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
@@ -62,6 +78,9 @@ List<ClaudeModelDto> _modelsOrEmpty(Object? value) => value is List
           if (item is Map) ClaudeModelDto.fromJson(item.cast<String, dynamic>()),
       ]
     : const [];
+
+ClaudeAccountDto? _accountOrNull(Object? value) =>
+    value is Map ? ClaudeAccountDto.fromJson(value.cast<String, dynamic>()) : null;
 
 List<String> _stringsOrEmpty(Object? value) => value is List ? value.whereType<String>().toList() : const [];
 
