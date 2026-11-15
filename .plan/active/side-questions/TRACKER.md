@@ -7,7 +7,7 @@
 | 3 | Claude Code native side questions | In review | #2597 | 2 |
 | 4 | Codex runtime target to at least 0.169 | Merged (0.169.0) | #2590 | 1 (parallel) |
 | 5 | Codex native side questions | In progress | | 2, 4 |
-| 6 | Client core | In review | #2598 | 2 |
+| 6 | Client core | Merged | #2598 | 2 |
 | 7 | Prego detent sheet | In review | #2593 | 1 (parallel) |
 | 8 | Phone side chat, with the archived entry | In this branch | | 6, 7 |
 | 9 | Desktop side panel | Not started | | 8 |
