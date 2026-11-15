@@ -1,7 +1,8 @@
 # Scheduled Tasks — Tracker
 
-This tracker holds the fixed PR titles, branches, size targets and
-dependencies only. It does not mirror PR state; live status is on GitHub:
+This tracker records fixed planning metadata (PR titles, branches, size
+targets, dependencies) and the guardrails every step must keep. It does not
+mirror PR state; live status is on GitHub:
 `gh pr list --state all --search "[scheduled-tasks]"`.
 
 ## Decisions In Force
@@ -14,8 +15,9 @@ dependencies only. It does not mirror PR state; live status is on GitHub:
 ## Guardrails
 
 - Tasks belong to one bridge; no cross-computer list.
-- No in-memory compaction timer: the quiet window reads persisted
-  `lastActivityAt` and run columns every tick (P10).
+- No compaction timer: each tick compares `ScheduledTaskActivityTracker`'s
+  last-activity instant and the run columns (P10). Never use
+  `sessions.lastActivityAt` for this; it coalesces unattended activity.
 - One owner each: `ScheduledTaskRunService.runDue()` (firing and compaction,
   under one lock) and `SessionRepository.getSessionQuietness` (quiet checks).
 - `push/` never reads core repositories; pushes go through listeners.

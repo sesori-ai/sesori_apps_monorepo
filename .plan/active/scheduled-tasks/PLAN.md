@@ -107,7 +107,8 @@ it needs them or can't start.
   `bridge/app/test/drift/default/`. `sessions_table` has `pinned`,
   `archivedAt`, `approvalOverride` (`ask`/`yolo`/null = follow global),
   `lastActivityAt` (written on message updates and question/permission events,
-  not on status changes or deltas), `lastUserMessageAt`, worktree columns.
+  not on status changes or deltas, and coalesced away for repeated assistant
+  activity on an unseen, unviewed session), `lastUserMessageAt`, worktree columns.
 - **Approvals.** Global `BridgeSettings.yolo` (JSON config). Per session
   `approvalOverride` via `YoloSettingsService.setSessionOverride`;
   `PermissionAutoApprovalService.isYolo/approvePending`; the orchestrator
@@ -193,8 +194,7 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
 - `ScheduledTaskRunService` dependencies, all constructor-injected:
   `ScheduledTaskRepository`, `SessionCreationService`, `SessionPromptService`,
   `SessionOperationDispatcher`, `SessionRepository` (quietness, P6),
-  `SessionLifecycleService` (archiving; each archived session's lane is
-  reserved before `cleanupAlreadyReserved`), `YoloSettingsService` /
+  `SessionLifecycleService` (archiving through `updateArchiveStatus`, P8), `YoloSettingsService` /
   `PermissionAutoApprovalService`, `SessionOptionsService` (model check, not
   plugin calls), `ScheduledTaskOccurrenceCalculator`, `ScheduledTaskCompactionService`
   (step 11) and a `Clock`.
@@ -289,20 +289,27 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
     sessions, set null on delete), `completedAt` (one-off done), createdAt,
     updatedAt.
   - `scheduled_task_runs`: id (PK), taskId (FK, cascade delete), sessionId
-    (nullable FK, set null on delete), scheduledFor, firedAt, outcome, reason,
-    late, `userPromptedAt` (nullable), `compactRequestedAt` (nullable); index on
-    (taskId, firedAt) and on sessionId.
+    (nullable FK, set null on delete), scheduledFor,
+    `scheduledForOffsetMinutes` (the task zone's offset at that instant,
+    frozen at write so a later zone edit cannot change past rows), firedAt,
+    outcome, reason, late, `userPromptedAt` (nullable), `compactRequestedAt`
+    (nullable); index on (taskId, firedAt) and on sessionId.
 - Run rows are trimmed to the newest 20 per task when a new one is written.
-  This bounds history only; marks and archiving read `sessions.scheduledTaskId`.
+  They are the outcome history (ran, ran late, skipped, missed, couldn't
+  start), not the "last 5 finished runs" of D10, which counts run *sessions*
+  left unarchived. A `started` row whose session was archived links to it in
+  Archived. Marks and archiving read `sessions.scheduledTaskId`.
 - Deleting a task cascades its runs and nulls `sessions.scheduledTaskId`; its
   sessions remain as ordinary sessions without the mark (D15). A one-off task
   is never deleted by running: it gets `completedAt`, leaves the list and keeps
   its session's clock mark (D2).
-- Task writes that race a fire: the run service's write of `targetSessionId`
-  after a same-session creation is conditional on the task's `updatedAt` seen
-  at fire start, so an edit that cleared the target in the meantime wins. A
-  task deleted during a fire makes the run-row write a logged no-op. No lock
-  is added for this.
+- Task writes that race a fire: every task field a fire writes is guarded by
+  the task's `updatedAt` seen at fire start. The reservation transaction (run
+  row plus advanced `nextDueAt`) is conditional on it; if it fails, the fire
+  reloads the task and does not fire on this pass. The later
+  `targetSessionId` write after a same-session creation has the same
+  condition, so an edit made in the meantime wins. A task deleted during a
+  fire makes the run-row write a logged no-op. No lock is added for this.
 
 ### P5. Schedule times, zones and DST
 
@@ -321,9 +328,13 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
 - Every few hours: a fixed real-time interval from the chosen start, so it
   stays every N real hours across DST. When 24 is not a multiple of N the
   times drift across days; that is honest for an interval.
-- `nextDueAt` is recomputed on create, edit, resume and after every fire,
-  always as the first occurrence strictly after "now" (edits change future
-  runs only; resuming does not replay the paused period).
+- For recurring schedules `nextDueAt` is recomputed on create, edit, resume
+  and after every fire, always as the first occurrence strictly after "now"
+  (edits change future runs only; resuming does not replay the paused period).
+- A Once task's `nextDueAt` is its own instant and is never recomputed, so if
+  the bridge was off at that time it is still due when it comes back and runs
+  late (P6). Saving a Once time already in the past is rejected with a typed
+  error; the editor prevents picking one.
 - The task list and detail render times from the UTC-plus-offset pairs (P2),
   so they show the task zone's wall clock, and add the zone name when the
   offset differs from the viewing device's.
@@ -353,8 +364,10 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   first occurrence after now, so a week away yields one run or one missed
   row, never a pile-up. One-off tasks always run when back: the missed-run line
   is hidden for Once, because "wait for the next time" has no next time.
-- Overlap (D8): a run is skipped with `previousRunActive` when the latest run's
-  session is not `quiet` (busy or retry, a pending question, permission or
+- Overlap (D8): a run is skipped with `previousRunActive` when the session of
+  the latest **started** run (not the latest history row: `skipped`, `missed`
+  and `failed` rows have no session and must not hide an earlier active one)
+  is not `quiet` (busy or retry, a pending question, permission or
   form, or non-idle readiness on Claude and Pi, where `queued` covers a pending
   `ScheduleWakeup` and user-queued prompts). Exception: busy because of this
   task's own pending compaction (P10).
@@ -402,10 +415,12 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   the mark.
 - Auto-archive (D10): when a new-session task fires, its sessions (by
   `scheduledTaskId`) older than the newest 5 finished ones are archived
-  through `SessionLifecycleService.cleanupAlreadyReserved` without `force`,
-  each on its reserved lane. "Finished" means `getSessionQuietness == quiet`.
-  Pinned, active and refused (uncommitted work) runs stay; a refusal is
-  logged, not pushed. Same-session tasks have one session and archive nothing.
+  through the real archive workflow, `SessionLifecycleService.updateArchiveStatus`
+  (which reaches `_doArchive`, exporting the transcript before any worktree
+  removal), with the non-forced cleanup checks kept. `cleanupAlreadyReserved`
+  alone only removes a worktree and does not archive. "Finished" means
+  `getSessionQuietness == quiet`. Pinned, active and refused (uncommitted
+  work) runs stay; a refusal is logged, not pushed. Same-session tasks have one session and archive nothing.
 - Completion push (D11): the Orchestrator injects a resolver
   `Future<bool> Function({required String sessionId}) isUnattendedTaskRun`
   into `CompletionPushListener`, composed from `ScheduledTaskRepository` (same
@@ -458,8 +473,16 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
 
 ### P10. Auto-compact policy (step 11)
 
-All inputs are persisted or read live; there is **no in-memory compaction
-timer**, so a bridge restart loses nothing. `ScheduledTaskRunService.runDue()`
+There is **no compaction timer**. The window's activity clock is a
+`ScheduledTaskActivityTracker` (bridge `Tracker`), not `sessions.lastActivityAt`:
+`SessionUnseenService.recordActivity` deliberately coalesces repeated assistant
+activity once a session is unseen and unviewed, which is exactly an unattended
+run, so that column stops moving. The Orchestrator feeds the tracker every
+plugin event for a session (and its children) that has `scheduledTaskId`; it
+holds one "last activity" instant per such session in memory. After a bridge
+restart the tracker starts every session at the bridge's start time, so the
+window restarts and can only compact later, never early; the pre-run fallback
+(case 2) still covers the next run. `ScheduledTaskRunService.runDue()`
 runs, under its lock, the post-run compaction pass (case 1) and the pre-run
 gate (cases 2–3), both through the injected `ScheduledTaskCompactionService`.
 That service re-reads `R.compactRequestedAt` inside S's lane before sending,
@@ -473,10 +496,10 @@ be its latest started run and S its session (not archived).
    - `getSessionQuietness(S) == quiet` (status idle; no pending question,
      permission or form; readiness idle where reported; on Claude, background
      tasks read busy and a pending wake-up reads `queued`);
-   - `now − max(S.lastActivityAt, R.firedAt) ≥ W`, where W is the quiet window
-     (provisional 25 minutes, Q1). Any message activity, including every
-     PR-monitor or background wake, moves `lastActivityAt` and so pushes the
-     compaction back.
+   - `now − max(tracker.lastActivity(S), R.firedAt) ≥ W`, where W is the quiet
+     window (provisional 25 minutes, Q1). Any plugin event, including every
+     PR-monitor or background wake, moves the tracker's instant and so pushes
+     the compaction back.
    The compaction runs on S's lane, re-checks quietness and
    `R.compactRequestedAt` inside the lane, calls
    `SessionRepository.compactSession`, and sets `R.compactRequestedAt` on
@@ -620,14 +643,17 @@ New persistent parts: two tables (`scheduled_tasks`, `scheduled_task_runs`)
 including the `userPromptedAt` and `compactRequestedAt` run columns, one
 `sessions.scheduledTaskId` column, one nullable `Session` wire field, one
 `PluginMetadata` flag, one notification event type and `taskId` payload
-field, one SSE event. In-memory: one 30 s timer, one scheduler lock, and two
+field, one SSE event. In-memory: one 30 s timer, one scheduler lock, one
+per-session activity instant for task-run sessions only
+(`ScheduledTaskActivityTracker`, needed because `lastActivityAt` coalesces
+unattended activity), and two
 change/failure streams consumed by the Orchestrator (one feeding the new
 `ScheduledTaskFailurePushListener`). Each is justified by a decided behavior
 (D7–D13) or by an ownership rule (pushes through a listener, SSE decisions in
 the Orchestrator).
 
-Deliberately not added: in-memory quiet timers or per-session activity maps
-(the window reads `lastActivityAt`), a generic scheduler shared with quota
+Deliberately not added: quiet timers (the tick compares the tracker's instant),
+a persisted activity column (a restart conservatively restarts the window), a generic scheduler shared with quota
 continuation, detection of harness-native compaction, optimistic concurrency
 for two devices editing one task at the same moment (last write wins), a
 consecutive-failure auto-pause, a new push category.
@@ -756,7 +782,7 @@ parallel with the bridge chain.
     `SessionRepository.compactSession`, live ACP probes, the readiness rename,
     a "Compaction on request" table in `docs/HARNESS_CAPABILITIES.md`. [1]
 11. 🚧 **Auto-compact same-session tasks.** `ScheduledTaskCompactionService`
-    in the tick (P10 cases 1–4), the auto-compact switch and its
+    and `ScheduledTaskActivityTracker` in the tick (P10 cases 1–4), the auto-compact switch and its
     unsupported-harness tap on the Each run sheet. Uses Q1's answer, else the
     provisional 25 minutes. [5, 9, 10]
 12. 🌱 **Regression docs.** Write `scheduled-tasks.md`, update the documents
