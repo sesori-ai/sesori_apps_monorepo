@@ -10,12 +10,13 @@
 | 6 Busy-prompt declaration | In PR | #2589 |
 | 7 Client send flow | Not started | |
 | 8 Handoff marker and card in the chats | In PR | #2629 |
+| 8.a Queued handoff prompts stay hidden; a failed send updates live | Not started | |
 | 9 Archive the source after sending | Not started | |
 | 10 Analytics | Not started | |
 | 11 Reconcile docs and harness rows | Not started | |
 | 12 Verify and retire | Not started | |
 
-Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 8←4; 9←7; 10←7; 11←5,8,9,10; 12←11.
+Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 8←4; 8.a←8; 9←7; 10←7; 11←5,8,9,10; 12←11.
 
 ## Product questions
 

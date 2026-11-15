@@ -31,6 +31,7 @@ import "transcript_live_row.dart";
 import "transcript_motion.dart";
 import "transcript_pinch_detector.dart";
 import "transcript_prompt_slot.dart";
+import "transcript_row_hold.dart";
 import "transcript_row_reporter.dart";
 import "transcript_sticky_layout.dart";
 import "transcript_sticky_prompt_overlay.dart";
@@ -310,6 +311,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// order: the messages that can pin.
   Map<String, MessageWithParts> _userMessagesById = const {};
 
+  /// Room above the oldest row a short transcript keeps while a row grows
+  /// with its top held.
+  final ValueNotifier<double> _topReserve = ValueNotifier(0);
+
   /// The handoffs among the rows, from the last build.
   TranscriptHandoffs _handoffs = const TranscriptHandoffs(markers: {}, foldedMessageIds: {}, cards: {});
 
@@ -361,6 +366,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   @override
   void initState() {
     super.initState();
+    _topReserve.addListener(_onTopReserveChanged);
     // The pin is in place on the first frame anyone reads, not on whichever later
     // layout happens to come along, which would pop it in over the text.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -377,6 +383,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   @override
   void dispose() {
+    _topReserve.dispose();
     _follow.removeListener(_onFollowChanged);
     _follow.dispose();
     widget.jumpNotifier.removeListener(_onJumpRequested);
@@ -1157,160 +1164,167 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // when `position.pixels` is already at the edge.
     _follow.scheduleJumpToEdge();
 
-    return FollowDetachScrollable(
-      tracker: _follow,
-      detachedOverlayBuilder: (ctx) => Builder(
-        builder: (context) => JumpToEdgePill(
-          tapTargetKey: _kJumpToLatestKey,
-          label: loc.sessionDetailJumpToLatest,
-          onTap: () => _follow.animateToEdge(),
-          // Lift the pill clear of the floating composer overlaid below.
-          bottomInset: TranscriptBottomInset.of(context),
+    return TranscriptTopReserve(
+      extent: _topReserve,
+      child: FollowDetachScrollable(
+        tracker: _follow,
+        detachedOverlayBuilder: (ctx) => Builder(
+          builder: (context) => JumpToEdgePill(
+            tapTargetKey: _kJumpToLatestKey,
+            label: loc.sessionDetailJumpToLatest,
+            onTap: () => _follow.animateToEdge(),
+            // Lift the pill clear of the floating composer overlaid below.
+            bottomInset: TranscriptBottomInset.of(context),
+          ),
         ),
-      ),
-      // Horizontal "peek" gesture: slide the transcript left to reveal each
-      // message's timestamp on the right. This participates in the gesture
-      // arena so a nested horizontal scrollable, such as a fenced code block,
-      // wins exclusively. Early cross-axis rejection preserves the list's
-      // eager small-vertical-drag detach behavior.
-      //
-      // Input source is chosen by the pointer's *device kind*, not the
-      // OS — so a desktop touchscreen still peeks by finger and an
-      // attached mouse on mobile still selects text:
-      //
-      // - Touch / stylus: a finger drag — pointer down/move/up.
-      // - Trackpad: a horizontal two-finger swipe — pointer pan-zoom.
-      // - Mouse: a button press-and-drag is left untouched (the pointer
-      //   path ignores the mouse kind) so it keeps selecting message
-      //   text; hijacking it for the peek would make selection impossible.
-      //
-      child: TranscriptPinchDetector(
-        pinch: TranscriptPinchIn(
-          onPointerDown: _onPinchPointerDown,
-          onPinchStart: _onPinchStart,
-          onPinchIn: widget.onPinchIn,
-          onGestureEnd: _onPinchGestureEnd,
-        ),
-        child: NotificationListener<Notification>(
-          onNotification: _onScrollNotification,
-          child: PregoHorizontalDragGestureDetector(
-            behavior: HitTestBehavior.translucent,
-            supportedDevices: _kRevealPointerDevices,
-            onHorizontalDragDown: _onRevealDragDown,
-            onHorizontalDragStart: _onRevealDragStart,
-            onHorizontalDragUpdate: _onRevealDragUpdate,
-            onHorizontalDragEnd: _onRevealDragEnd,
-            onHorizontalDragCancel: _onRevealDragCancel,
-            pendingRejectionSlop: _kRevealPendingRejectionSlop,
-            direction: PregoHorizontalDragDirection.left,
-            dragStartBehavior: DragStartBehavior.down,
-            child: Stack(
-              children: [
-                TranscriptLaidOutListView(
-                  key: _kListViewKey,
-                  onLaidOut: _layOutSticky,
-                  detached: () => !_follow.following,
-                  onCarriedToNewestEnd: _follow.reattach,
-                  reverse: true,
-                  controller: _follow.scrollController,
-                  padding: EdgeInsetsDirectional.only(
-                    start: widget.horizontalInset,
-                    end: widget.horizontalInset,
-                    top: 8 + widget.topInset,
-                    // The list view adds the floating controls' height itself.
-                    bottom: 8,
+        // Horizontal "peek" gesture: slide the transcript left to reveal each
+        // message's timestamp on the right. This participates in the gesture
+        // arena so a nested horizontal scrollable, such as a fenced code block,
+        // wins exclusively. Early cross-axis rejection preserves the list's
+        // eager small-vertical-drag detach behavior.
+        //
+        // Input source is chosen by the pointer's *device kind*, not the
+        // OS — so a desktop touchscreen still peeks by finger and an
+        // attached mouse on mobile still selects text:
+        //
+        // - Touch / stylus: a finger drag — pointer down/move/up.
+        // - Trackpad: a horizontal two-finger swipe — pointer pan-zoom.
+        // - Mouse: a button press-and-drag is left untouched (the pointer
+        //   path ignores the mouse kind) so it keeps selecting message
+        //   text; hijacking it for the peek would make selection impossible.
+        //
+        child: TranscriptPinchDetector(
+          pinch: TranscriptPinchIn(
+            onPointerDown: _onPinchPointerDown,
+            onPinchStart: _onPinchStart,
+            onPinchIn: widget.onPinchIn,
+            onGestureEnd: _onPinchGestureEnd,
+          ),
+          child: NotificationListener<Notification>(
+            onNotification: _onScrollNotification,
+            child: PregoHorizontalDragGestureDetector(
+              behavior: HitTestBehavior.translucent,
+              supportedDevices: _kRevealPointerDevices,
+              onHorizontalDragDown: _onRevealDragDown,
+              onHorizontalDragStart: _onRevealDragStart,
+              onHorizontalDragUpdate: _onRevealDragUpdate,
+              onHorizontalDragEnd: _onRevealDragEnd,
+              onHorizontalDragCancel: _onRevealDragCancel,
+              pendingRejectionSlop: _kRevealPendingRejectionSlop,
+              direction: PregoHorizontalDragDirection.left,
+              dragStartBehavior: DragStartBehavior.down,
+              child: Stack(
+                children: [
+                  TranscriptLaidOutListView(
+                    key: _kListViewKey,
+                    onLaidOut: _layOutSticky,
+                    detached: () => !_follow.following,
+                    onCarriedToNewestEnd: _follow.reattach,
+                    reverse: true,
+                    controller: _follow.scrollController,
+                    padding: EdgeInsetsDirectional.only(
+                      start: widget.horizontalInset,
+                      end: widget.horizontalInset,
+                      top: 8 + widget.topInset + _topReserve.value,
+                      // The list view adds the floating controls' height itself.
+                      bottom: 8,
+                    ),
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: rowIds.length,
+                    findChildIndexCallback: (key) {
+                      if (key case ValueKey<String>(value: final keyValue)) {
+                        final rowId = keyValue == _kLaunchRowId ? _launchSlotRowId ?? keyValue : keyValue;
+                        final domainIndex = rowIds.indexOf(rowId);
+                        return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
+                      }
+                      return null;
+                    },
+                    itemBuilder: (context, index) {
+                      final entryId = rowIds[rowIds.length - index - 1];
+                      return TranscriptRowReporter(
+                        key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
+                        rowId: entryId,
+                        onMount: _onRowMount,
+                        onUnmount: _onRowUnmount,
+                        child: SentBubbleArrival(
+                          // Not the old rows a glide back to the latest edge builds on its way.
+                          arriving: !previousRowIndexById.containsKey(entryId),
+                          child: TranscriptPresence(
+                            entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
+                            exiting: false,
+                            onEntered: () => _easedInRowIds.add(entryId),
+                            onExited: null,
+                            child: _buildRow(
+                              entryId: entryId,
+                              messages: messages,
+                              indexById: indexById,
+                              transientSubmissions: transientSubmissions,
+                              transcript: transcript,
+                              streamingText: streamingText,
+                              retryErrorMessage: retryErrorMessage,
+                              activity: activity,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  itemCount: rowIds.length,
-                  findChildIndexCallback: (key) {
-                    if (key case ValueKey<String>(value: final keyValue)) {
-                      final rowId = keyValue == _kLaunchRowId ? _launchSlotRowId ?? keyValue : keyValue;
-                      final domainIndex = rowIds.indexOf(rowId);
-                      return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
-                    }
-                    return null;
-                  },
-                  itemBuilder: (context, index) {
-                    final entryId = rowIds[rowIds.length - index - 1];
-                    return TranscriptRowReporter(
-                      key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
-                      rowId: entryId,
-                      onMount: _onRowMount,
-                      onUnmount: _onRowUnmount,
-                      child: SentBubbleArrival(
-                        // Not the old rows a glide back to the latest edge builds on its way.
-                        arriving: !previousRowIndexById.containsKey(entryId),
-                        child: TranscriptPresence(
-                          entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
-                          exiting: false,
-                          onEntered: () => _easedInRowIds.add(entryId),
-                          onExited: null,
-                          child: _buildRow(
-                            entryId: entryId,
-                            messages: messages,
-                            indexById: indexById,
-                            transientSubmissions: transientSubmissions,
-                            transcript: transcript,
-                            streamingText: streamingText,
-                            retryErrorMessage: retryErrorMessage,
-                            activity: activity,
+                  Positioned.fill(
+                    // The copies' code blocks scroll sideways; the list must not
+                    // read their scrolls as its own.
+                    child: NotificationListener<Notification>(
+                      onNotification: (notification) =>
+                          notification is ScrollNotification || notification is ScrollMetricsNotification,
+                      child: ValueListenableBuilder(
+                        valueListenable: _stickyOpenerIds,
+                        builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
+                          key: _stickyKey,
+                          messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
+                          // The rows' own shapes, frozen with them while detached, so a pin never disagrees with its row.
+                          promptTurnShapes: switch (snap) {
+                            final frozen? => widget.promptTurnShapes.copyWith(messages: frozen.messageShapes),
+                            null => widget.promptTurnShapes,
+                          },
+                          unloaded: unloadedPin,
+                          horizontalInset: widget.horizontalInset,
+                          onLayout: _layOutSticky,
+                          onTap: _onPinTap,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Beside the pin, clear of its bubble, which keeps to the right, or
+                  // of its card, which keeps to the left.
+                  if (_pinLoad case final pinLoad?)
+                    Positioned(
+                      left: pinLoad.invocation == null ? widget.horizontalInset + UserMessageBubble.margin.left : null,
+                      right: pinLoad.invocation == null
+                          ? null
+                          : widget.horizontalInset + UserMessageBubble.margin.right,
+                      top: widget.topInset + _kPinGap + UserMessageBubble.padding,
+                      child: IgnorePointer(
+                        child: AnimatedOpacity(
+                          opacity: _showsPinLoadSpinner ? 1 : 0,
+                          duration: transcriptMotionDuration,
+                          child: Semantics(
+                            liveRegion: _showsPinLoadSpinner,
+                            label: _showsPinLoadSpinner ? loc.transcriptPromptsLoading : null,
+                            child: const SizedBox.square(dimension: 16, child: PregoActivityIndicator(color: null)),
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
-                Positioned.fill(
-                  // The copies' code blocks scroll sideways; the list must not
-                  // read their scrolls as its own.
-                  child: NotificationListener<Notification>(
-                    onNotification: (notification) =>
-                        notification is ScrollNotification || notification is ScrollMetricsNotification,
-                    child: ValueListenableBuilder(
-                      valueListenable: _stickyOpenerIds,
-                      builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
-                        key: _stickyKey,
-                        messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
-                        // The rows' own shapes, frozen with them while detached, so a pin never disagrees with its row.
-                        promptTurnShapes: switch (snap) {
-                          final frozen? => widget.promptTurnShapes.copyWith(messages: frozen.messageShapes),
-                          null => widget.promptTurnShapes,
-                        },
-                        unloaded: unloadedPin,
-                        horizontalInset: widget.horizontalInset,
-                        onLayout: _layOutSticky,
-                        onTap: _onPinTap,
-                      ),
                     ),
-                  ),
-                ),
-                // Beside the pin, clear of its bubble, which keeps to the right, or
-                // of its card, which keeps to the left.
-                if (_pinLoad case final pinLoad?)
-                  Positioned(
-                    left: pinLoad.invocation == null ? widget.horizontalInset + UserMessageBubble.margin.left : null,
-                    right: pinLoad.invocation == null ? null : widget.horizontalInset + UserMessageBubble.margin.right,
-                    top: widget.topInset + _kPinGap + UserMessageBubble.padding,
-                    child: IgnorePointer(
-                      child: AnimatedOpacity(
-                        opacity: _showsPinLoadSpinner ? 1 : 0,
-                        duration: transcriptMotionDuration,
-                        child: Semantics(
-                          liveRegion: _showsPinLoadSpinner,
-                          label: _showsPinLoadSpinner ? loc.transcriptPromptsLoading : null,
-                          child: const SizedBox.square(dimension: 16, child: PregoActivityIndicator(color: null)),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
+  void _onTopReserveChanged() => setState(() {});
 
   Widget _buildRow({
     required String entryId,

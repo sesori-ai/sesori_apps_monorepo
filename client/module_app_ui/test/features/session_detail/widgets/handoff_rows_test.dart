@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/handoff_card.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/handoff_marker_row.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_row_hold.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -160,6 +161,36 @@ void main() {
     await toggleHolding(tester: tester, edge: () => tester.getBottomLeft(card));
     expect(tester.getSize(card).height, moreOrLessEquals(collapsed, epsilon: 0.5));
     expect(tester.getTopLeft(card).dy, greaterThan(0));
+  });
+
+  testWidgets("a transcript shorter than the screen still holds the card's top as it grows", (tester) async {
+    final reserve = ValueNotifier<double>(0);
+    addTearDown(reserve.dispose);
+    await tester.pumpWidget(
+      _app(
+        child: TranscriptTopReserve(
+          extent: reserve,
+          child: ValueListenableBuilder(
+            valueListenable: reserve,
+            builder: (context, room, _) => ListView(
+              reverse: true,
+              padding: EdgeInsets.only(top: room),
+              children: [
+                const SizedBox(height: 60, child: Text("reply")),
+                HandoffCard(messageId: "card", card: _card),
+                const SizedBox(height: 60, child: Text("prompt")),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final prompt = tester.getTopLeft(find.text("prompt")).dy;
+    expect(prompt, greaterThan(0));
+
+    await toggleHolding(tester: tester, edge: () => tester.getTopLeft(card));
+    expect(tester.getTopLeft(find.text("prompt")).dy, prompt);
+    expect(tester.getSize(card).height, greaterThan(600));
   });
 
   testWidgets("a summary that fits shows whole, without Show all", (tester) async {

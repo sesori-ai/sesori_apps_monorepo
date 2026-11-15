@@ -62,6 +62,9 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
     super.initState();
     if (PageStorage.maybeOf(context)?.readState(context, identifier: _storageId) == true) _expansion.value = 1;
     _eased.addListener(_keepTopInPlace);
+    _expansion.addStatusListener((status) {
+      if (status.isDismissed) releaseTranscriptSpaceAbove(context: context);
+    });
   }
 
   @override
@@ -74,6 +77,7 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
   void _toggle() {
     final expanding = !_expanded;
     _holdsTop = expanding || _topOnScreen();
+    if (expanding) reserveTranscriptSpaceAbove(context: context);
     PageStorage.maybeOf(context)?.writeState(context, expanding, identifier: _storageId);
     if (context.isReducedMotion || pregoActivatedByKeyboard) {
       _expansion.value = expanding ? 1 : 0;

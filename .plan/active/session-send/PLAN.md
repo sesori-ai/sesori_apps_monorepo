@@ -809,7 +809,7 @@ docs.
   - "Show less" tapped while the card's top is scrolled off screen keeps the toggle under the finger, and the top
     comes down to it. Holding the top there would throw the card off the screen. Otherwise the top stays put, as
     planned.
-  - A transcript shorter than the screen can't scroll, so there the card grows upward into the empty space.
+  - A transcript shorter than the screen can't scroll, so before the card grows the list keeps the empty space above its oldest row as top padding (`TranscriptTopReserve`); the card then holds its top there too, and gives the space back once it has collapsed.
 
 ### Step 9: archive the source after sending
 
