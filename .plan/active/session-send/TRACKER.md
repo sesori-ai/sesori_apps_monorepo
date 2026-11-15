@@ -44,5 +44,15 @@ All answered (rounds 1–3, 2026-11-14 and 2026-11-15).
   - the capability flag dropped in favour of the missing-route 404 (no list surface holds discovery);
   - picker exclusion, `isRunning` and cubit wiring in `module_core`;
   - `stopSession` and the analytics dependency.
-- The round 2 and 3 revision adds D11–D13 and a new `Message.user` field. A fresh architecture plan review is due
-  before step 3. The D4 SSE fallback needs its own review if it is triggered.
+- 2026-11-15 architecture plan review of the round 2 and 3 revision (D11–D13, busy-prompt declaration): rejected with
+  five findings. All were applied directly without re-review:
+  - the handoff stamp reuses the command-invocation record (`PromptStampTracker` with a sealed `PromptStamp`). It is
+    recorded inside `SessionRepository.sendPrompt(handoff:)` instead of a second tracker that the service writes into;
+  - `ChatHistoryRepository` and `forgetHandoff` added to `SessionSendService`'s collaborators. The stamp is cleared on
+    any failure after the send was accepted;
+  - separate `PluginBusyPromptHandling` (interface) and `BusyPromptHandling` (shared) enums, with a named mapper;
+  - `SessionSearchCubit`'s running sources named (`SseEventTracker`, `PluginRepository`), plus
+    `createSessionSearchCubit` in `cubit_composition.dart`;
+  - the archive-switch storage named (`ArchiveAfterSendPreferenceStorage` through `SessionActionsCubit`), and
+    `SessionListActionDispatcher` named as the owner of archive-after-send.
+- The D4 SSE fallback needs its own review if it is triggered.

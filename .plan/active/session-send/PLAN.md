@@ -169,13 +169,18 @@ The bridge sends the source session a summarise prompt through the existing prom
   - "Running: sending stops its current turn" where a prompt to a busy session stops its turn (the ACP family);
   - "Running" where it queues or steers (Claude, Codex, OpenCode, Pi, OMP).
 - The client can't tell those apart today: no `PluginMetadata` field says it, and naming harnesses in the client would
-  leak backend behaviour out of the plugins. So each plugin declares it:
-  `BridgePluginDescriptor.busyPromptHandling`, a closed enum `{queue, steer, stopTurn}` with no default (every
-  plugin states it), mirrored as `PluginMetadata.busyPromptHandling` with `@JsonKey(unknownEnumValue:
-  BusyPromptHandling.unknown)` and an honest `@Default(BusyPromptHandling.unknown)`:
-  `// COMPATIBILITY 2026-11-15 (v1.14.0): Bridges before session sending omit busyPromptHandling; the picker shows a
-  plain "Running" for them. Remove @Default once the minimum supported bridge sends it.` The values follow
-  `docs/HARNESS_CAPABILITIES.md` "Transcript turn boundaries".
+  leak backend behaviour out of the plugins. So each plugin declares it. There are two enums, because
+  `sesori_plugin_interface` doesn't depend on `sesori_shared`:
+  - `PluginBusyPromptHandling {queue, steer, stopTurn}` in `sesori_plugin_interface`, read through the abstract
+    `BridgePluginDescriptor.busyPromptHandling` getter with no default (every plugin states it);
+  - `BusyPromptHandling {queue, steer, stopTurn, unknown}` in `sesori_shared`, on `PluginMetadata.busyPromptHandling`
+    with `@JsonKey(unknownEnumValue: BusyPromptHandling.unknown)` and an honest `@Default(BusyPromptHandling.unknown)`:
+    `// COMPATIBILITY 2026-11-15 (v1.14.0): Bridges before session sending omit busyPromptHandling; the picker shows
+    a plain "Running" for them. Remove @Default once the minimum supported bridge sends it.`
+  - The bridge maps one to the other with a `toShared()` extension in
+    `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`. `PluginLifecycleService._rebuildMetadata`
+    sets the field next to `namesCommandInvocations`.
+  - The values follow `docs/HARNESS_CAPABILITIES.md` "Transcript turn boundaries".
 
 ### D4. One bridge-owned operation: a long request, no new event
 
@@ -235,11 +240,12 @@ returns 404. The exception lives in `bridge/app/lib/src/services/`, next to `ses
 
 | Collaborator | Used for |
 |---|---|
-| `SessionRepository` | Existence, root and archived checks, and statuses |
+| `SessionRepository` | Existence, root and archived checks, statuses, and `forgetHandoff` on a failed send (D11) |
+| `ChatHistoryRepository` | `clearHandoff` on a failed send (D11) |
 | `SessionViewService` | Session snapshots (title, directory, `pluginId`, created time) and prompt defaults, as continuation uses it |
 | `PermissionRepository`, `QuestionRepository` | Awaiting-input checks |
 | `SessionOperationDispatcher` | The source reservation in step 3 |
-| `SessionPromptService` | Both sends |
+| `SessionPromptService` | Both sends, each with its handoff stamp (D11) |
 | `SessionEventDispatcher` | Echo, idle and error events |
 | `SessionAbortService` | `abortStartedSessions` |
 | `ChatHistoryService` | The whole-history read |
@@ -320,9 +326,14 @@ the summary, the transcript or prompt text.
 - **Send sheet (Q3).** The entry opens a small "Send to another session" sheet (a popover under a pointer) with three
   rows: "To", showing the chosen target or "Choose a session" with a chevron; the switch "Archive this session after
   sending"; and Send, disabled until a target is chosen.
-  - The switch is on by default and remembers the last choice on this device, through the client's existing
-    preference storage, as one boolean. It is not shown when the source is a side chat (a later phase), which never
-    archives.
+  - The switch is on by default and remembers the last choice on this device, as one boolean. It is not shown when
+    the source is a side chat (a later phase), which never archives.
+  - The boolean lives in a new `ArchiveAfterSendPreferenceStorage` (`module_core/lib/src/repositories/`), modelled on
+    `DedicatedWorktreePreferenceStore`: `read()` defaults to true, `write({value})` logs a failed write. It sits on
+    `PersisterRepository` with a new `BoolPreferenceKey.archiveAfterSend`.
+  - `SessionActionsCubit` takes the storage directly, as `NewSessionCubit` takes its preference store, and exposes
+    `archiveAfterSend()` and `setArchiveAfterSend({value})` as futures, keeping the cubit stateless. The sheet keeps
+    the switch's current value as widget state.
   - Tapping "To" opens the picker. Picking a row returns to the sheet with the target filled in, using the sheet's
     normal push and pop transition.
 - **Picker.** `SessionPicker` is new in `module_app_ui/lib/src/features/session_picker/` and is modelled on
@@ -336,11 +347,17 @@ the summary, the transcript or prompt text.
 - **Picker wiring in `module_core`.**
   - `SessionSearchCubit` gains a constructor `excludedSessionId`, so the source never shows. The desktop palette passes
     null.
-  - `SessionSearchMatch` gains `running: RunningTarget?` (null when idle), computed in `module_core` from the rule
-    behind `SessionWindowService._isRunning` and the target plugin's `busyPromptHandling`. `RunningTarget` is an enum,
-    `stopsTurn` or `keepsTurn`. The widget picks its label from it and never rebuilds the rule.
-  - `module_app_ui` has no `getIt`. Each shell gives `SessionListActionDispatcher` a session-search cubit factory,
-    alongside the new `openSession` callback, as the desktop palette's shell wiring does today.
+  - `SessionSearchMatch` gains `running: RunningTarget?` (null when idle). `RunningTarget` is an enum, `stopsTurn` or
+    `keepsTurn`. `SessionSearchCubit` computes it, and the widget only picks its label from it.
+    - Running comes from a new `SseEventTracker` dependency: the cubit subscribes to `sessionActivity` and reads
+      `isRunning` per row, the same signal `SessionWindowService._isRunning` reads.
+    - The harness behaviour comes from a new `PluginRepository` dependency: one `listPlugins()` when the cubit opens,
+      kept as a `pluginId → busyPromptHandling` map and matched on `Session.pluginId`. `stopTurn` gives `stopsTurn`;
+      every other value, an unknown plugin and a failed listing give `keepsTurn`, whose label is the plain "Running".
+  - A new `createSessionSearchCubit({locator, window})` in `module_core/lib/src/di/cubit_composition.dart` holds the
+    collaborator list, next to `createSessionActionsCubit`. The desktop palette and both shells use it.
+  - `module_app_ui` has no `getIt`. Each shell gives `SessionListActionDispatcher` a session-search cubit factory built
+    on `createSessionSearchCubit`, alongside the new `openSession` callback.
 - **Stop from any surface.**
   - The list and sidebar only have `SessionActionsCubit`.
   - It gains `stopSession`, which delegates to `module_core`'s `SessionAbortService.abortSession` for the busy alert's
@@ -416,17 +433,26 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
   - Titles are snapshots taken at send time, null when the session had none. Ids are kept as they are. Opening a
     deleted session through the marker gets the existing "session not found" answer; nothing nulls them on delete.
 - **Bridge.**
-  - `HandoffTracker` sits beside `CommandInvocationTracker` in `SessionRepository`, with the same bounded,
-    in-process shape. `SessionSendService` records `sent` before the summarise send and `received` before the target
-    send, under each prompt's id.
-  - `SessionRepository.stampLiveInvocation` becomes `stampLiveMessage` and stamps both fields, so there is one live
-    stamping seam.
+  - **One prompt-stamp record, not a second tracker.** `CommandInvocationTracker`
+    (`repositories/trackers/command_invocation_tracker.dart`) becomes `PromptStampTracker`. It keeps its key, capacity
+    and eviction, and stores a sealed `PromptStamp` (bridge-internal, beside the tracker):
+    `PromptStampCommand(invocation)` or `PromptStampHandoff(handoff)`. A prompt is either a command or a handoff, never
+    both. `stampQueuedCommandSources` reads only command stamps.
+  - **Recorded inside the send, as commands are.** `SessionRepository.sendPrompt` gains
+    `required MessageHandoff? handoff`. When it is set, the repository records it under the prompt id before the plugin
+    call, because the echo can arrive before the call returns. It forgets it again on a definite 4xx refusal, exactly as
+    `sendCommand` does. `SessionPromptService.sendPrompt` and `sendPromptAlreadyReserved` gain the same parameter and
+    pass it through. The prompt route and continuation pass null. `SessionSendService` passes `sent` with the summarise
+    send and `received` with the target send, and never touches the tracker.
+  - `SessionRepository.stampLiveInvocation` becomes `stampLiveMessage` and applies either stamp kind, so there is one
+    live stamping seam (`SessionEventService` is its only caller).
   - `_withStoredInvocation` becomes `_withStoredStamps` and keeps a stored `handoff` the same way it keeps an
     invocation. Archive's audit export carries the stored JSON, so archived sessions keep their markers.
-  - **A failed send clears the source stamp.** On any failure after the summarise echo, `SessionSendService` removes
-    the tracker entry and calls a new `ChatHistoryRepository.clearHandoff({sessionId, messageId})`, so the failed
-    exchange shows as an ordinary turn on the next history load. A client that had the marker live keeps it until then;
-    the requesting client gets the failure alert.
+  - **A failed send clears the source stamp.** On any failure after the summarise send was accepted,
+    `SessionSendService` calls `SessionRepository.forgetHandoff({sessionId, promptId})`. If the echo has arrived, it also
+    calls a new `ChatHistoryRepository.clearHandoff({sessionId, messageId})`. The failed exchange then shows as an
+    ordinary turn on the next history load, and a late echo isn't stamped. A client that had the marker live keeps it
+    until then; the requesting client gets the failure alert.
 - **Logs** carry the ids and the handoff kind, never the summary.
 - A bridge restart during the summary loses the tracker entry, and with it the stamp. That send is already lost
   (accepted risk), and the exchange simply stays visible.
@@ -456,6 +482,12 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
 - **Client-owned.** After a `sent` result with the switch on, the client runs the ordinary archive of the source through
   the existing archive flow, so its refusal modal and Undo window apply unchanged. The bridge route stays
   archive-free, and automation decides for itself.
+- **Owner: `SessionListActionDispatcher`'s send flow** (`module_app_ui`), which already composes the archive gesture
+  (`_archive`). Before the request, it captures the `PendingSessionArchiveCubit` from the stable list or page
+  context, together with the alert presenter. On `SendToSessionSent` with the switch on, it calls
+  `PendingSessionArchiveCubit.archive(session:, deleteWorktree: session.hasWorktree)`, the same call `_archive`
+  makes, and then calls `onSessionArchived` if the context is still mounted. The confirmation was already asked
+  before the send, so it doesn't ask again. No `module_core` class learns about archiving after a send.
 - **Pinned sources ask first.** When the source is pinned and the switch is on, tapping Send shows the usual pinned
   archive confirmation before anything is sent. Cancelling it keeps the sheet open. Confirming sends, and the later
   archive doesn't ask again. This keeps the question next to the tap rather than a minute later.
@@ -489,7 +521,7 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
 - **New in-memory parts:**
   - per send: one event subscription, one subscription to the existing `abortStartedSessions`, one timeout timer, and
     local variables for the prompt id and user message id;
-  - `HandoffTracker`, bounded like `CommandInvocationTracker`.
+  - no new tracker: handoff stamps share the existing bounded prompt-stamp record (D11).
 - **Client:** one remembered boolean for the archive switch. The sheet awaits one request future.
 - **Deliberately not added:**
   - an SSE outcome event, an in-flight send registry or a dedupe set (a double tap's second request hits the busy
@@ -626,10 +658,14 @@ generated.
   merge and replay paths.
 - **What:**
   - adds `MessageHandoff` and `Message.user.handoff` in `sesori_shared` (D11);
-  - adds `HandoffTracker`, renames `stampLiveInvocation` to `stampLiveMessage` and stamps both fields;
+  - turns `CommandInvocationTracker` into `PromptStampTracker` with the sealed `PromptStamp`, renames
+    `stampLiveInvocation` to `stampLiveMessage` and applies either stamp kind;
+  - adds `required MessageHandoff? handoff` to `SessionRepository.sendPrompt`, `SessionPromptService.sendPrompt` and
+    `sendPromptAlreadyReserved`, recorded before the plugin call and forgotten on a definite refusal; existing callers
+    pass null;
   - renames `_withStoredInvocation` to `_withStoredStamps` and keeps a stored `handoff`;
-  - adds `ChatHistoryRepository.clearHandoff`;
-  - `SessionSendService` records both stamps and clears the source stamp on failure.
+  - adds `SessionRepository.forgetHandoff` and `ChatHistoryRepository.clearHandoff`;
+  - `SessionSendService` passes both stamps with its sends and clears the source stamp on failure.
 - **Tests:** stamping on the live echo; the stamp surviving a later update, a harness replay and archive export; the
   clear on each failure after the echo; an older client's JSON parse ignoring the key; an unknown kind parsing to
   `unknown`.
@@ -663,9 +699,12 @@ docs.
 
 - **Complexity:** straightforward. One required descriptor field per plugin and one wire field.
 - **What:**
-  - adds `BusyPromptHandling {queue, steer, stopTurn}` and the required `BridgePluginDescriptor.busyPromptHandling`;
+  - adds `PluginBusyPromptHandling {queue, steer, stopTurn}` and the abstract
+    `BridgePluginDescriptor.busyPromptHandling` in `sesori_plugin_interface`;
   - sets it in every plugin from "Transcript turn boundaries";
-  - mirrors it as `PluginMetadata.busyPromptHandling` with its `unknown` value and compatibility comment (D3).
+  - adds the shared `BusyPromptHandling` with `unknown` on `PluginMetadata.busyPromptHandling` with its compatibility
+    comment, the `toShared()` mapping in `plugin_to_shared_mapping.dart`, and the field in
+    `PluginLifecycleService._rebuildMetadata` (D3).
 - **Why:** the picker's Running label (S2) must come from the plugin, not from harness names in the client.
 - **Risk and test focus:** low. Check each plugin's value against the doc.
 - **Expected result:** no user-visible or database change.
@@ -681,8 +720,9 @@ docs.
     failed(error), unsupported (missing route), or unconfirmed (timeout or lost connection);
   - adds `SessionActionService.sendToSession` and `SessionActionsCubit.sendToSession`;
   - adds `SessionActionsCubit.stopSession`, which delegates to `SessionAbortService.abortSession`;
-  - gives `SessionSearchCubit` an `excludedSessionId`, and `SessionSearchMatch` its `running` value computed in
-    `module_core` (D8);
+  - gives `SessionSearchCubit` an `excludedSessionId` and the `SseEventTracker` and `PluginRepository` dependencies
+    behind `SessionSearchMatch.running`, and adds `createSessionSearchCubit` to `cubit_composition.dart` for the
+    palette and both shells (D8);
   - adds the send sheet (target row, archive switch shown but not yet acted on, Send), the `SessionPicker`, the menu
     entry and the busy alert with Stop (D2);
   - adds the sending, success-with-Open, update-the-bridge and failure alerts (D8);
@@ -725,9 +765,11 @@ docs.
 
 - **Complexity:** straightforward. Reuses the archive flow behind a remembered switch.
 - **What:**
-  - stores the switch's last choice in the client's preference storage (default on);
+  - adds `ArchiveAfterSendPreferenceStorage` and `BoolPreferenceKey.archiveAfterSend` (default on), read and written
+    through `SessionActionsCubit` (D8);
   - asks the pinned confirmation before sending a pinned source with the switch on;
-  - runs the existing archive after a `sent` result, with the combined success alert and Undo (D13).
+  - in `SessionListActionDispatcher`'s send flow, runs `PendingSessionArchiveCubit.archive` after a `sent` result, with
+    the combined success alert and Undo (D13).
 - **Tests:** service and cubit tests for each result (only `sent` archives), the remembered value, and the pinned
   confirmation order.
 - **Why:** Q3 treats sending as a move.
@@ -826,7 +868,8 @@ A reduction to this matrix needs the user's acceptance recorded here before reti
 
 ## Cleanup assessment
 
-- `stampLiveInvocation` and `_withStoredInvocation` are generalised in place rather than duplicated (step 4).
+- `CommandInvocationTracker`, `stampLiveInvocation` and `_withStoredInvocation` are generalised in place into one
+  prompt-stamp record and seam rather than duplicated (step 4).
 - No other relevant cleanup was found. Readiness reuses the status and pending-request reads every plugin already
   supplies, so nothing is renamed.
 
@@ -859,5 +902,5 @@ All answered (rounds 1–3). S1, S2, S4 and Q1–Q3 of the earlier draft are fol
 
 ## Review record
 
-Architecture plan review: see TRACKER.md. The round 2 and 3 changes (D11–D13, the busy-prompt declaration, the new wire
-field on `Message.user`) are considerable, so a fresh architecture plan review is due before step 3 starts.
+Architecture plan review: see TRACKER.md. The round 2 and 3 changes were reviewed on 2026-11-15, and the findings are
+applied above.
