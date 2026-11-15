@@ -190,10 +190,9 @@ class const SessionListActionDispatcher({
   /// question; a full swipe's row springs back while it is open.
   void _archive({required BuildContext context, required Session session, required bool isRunning}) {
     unawaited(() async {
-      if (session.pinned) {
-        if (!await _confirmArchivePinned(context: context, session: session, isRunning: isRunning)) return;
-      } else if (isRunning) {
-        if (!await _confirmArchiveRunning(context: context, session: session)) return;
+      if ((session.pinned || isRunning) &&
+          !await _confirmArchive(context: context, session: session, isRunning: isRunning)) {
+        return;
       }
       if (!context.mounted) return;
       context.read<PendingSessionArchiveCubit>().archive(session: session, deleteWorktree: session.hasWorktree);

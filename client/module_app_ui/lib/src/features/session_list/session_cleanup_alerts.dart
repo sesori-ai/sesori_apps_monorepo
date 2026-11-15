@@ -3,56 +3,20 @@ part of "session_list_action_dispatcher.dart";
 String _sessionName({required AppLocalizations loc, required Session session}) =>
     session.title ?? loc.sessionDetailTitle;
 
-Future<bool> _confirmArchiveRunning({required BuildContext context, required Session session}) async {
-  final loc = context.loc;
-  final confirmed = await showPregoModal<bool>(
-    context: context,
-    title: loc.sessionListArchiveRunningTitle,
-    builder: (sheetContext) => Padding(
-      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            loc.sessionListArchiveRunningMessage(_sessionName(loc: loc, session: session)),
-            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-          ),
-          const SizedBox(height: PregoSpacing.x2l),
-          PregoSheetActions(
-            secondary: PregoButtonsSolid(
-              label: loc.sessionListDeleteConfirmCancel,
-              hierarchy: PregoButtonsSolidHierarchy.secondary,
-              size: PregoButtonsSolidSize.lg,
-              fullWidth: true,
-              onPressed: () => sheetContext.pop(false),
-            ),
-            primary: PregoButtonsSolid(
-              label: loc.sessionListArchiveConfirmAction,
-              hierarchy: PregoButtonsSolidHierarchy.primary,
-              size: PregoButtonsSolidSize.lg,
-              fullWidth: true,
-              onPressed: () => sheetContext.pop(true),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-  return confirmed ?? false;
-}
-
-/// Whether the user confirmed archiving pinned [session]. One question covers
-/// a session that is also running.
-Future<bool> _confirmArchivePinned({
+/// Whether the user confirmed archiving [session], which is running or
+/// pinned. One question covers a pinned session that is also running; only a
+/// pinned session's question marks Archive destructive, since it drops the pin.
+Future<bool> _confirmArchive({
   required BuildContext context,
   required Session session,
   required bool isRunning,
 }) async {
   final loc = context.loc;
+  final name = _sessionName(loc: loc, session: session);
+  final pinned = session.pinned;
   final confirmed = await showPregoModal<bool>(
     context: context,
-    title: loc.sessionListArchivePinnedTitle,
+    title: pinned ? loc.sessionListArchivePinnedTitle : loc.sessionListArchiveRunningTitle,
     builder: (sheetContext) {
       final bodyStyle = context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary);
       return Padding(
@@ -62,10 +26,10 @@ Future<bool> _confirmArchivePinned({
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              loc.sessionListArchivePinnedMessage(_sessionName(loc: loc, session: session)),
+              pinned ? loc.sessionListArchivePinnedMessage(name) : loc.sessionListArchiveRunningMessage(name),
               style: bodyStyle,
             ),
-            if (isRunning) ...[
+            if (pinned && isRunning) ...[
               const SizedBox(height: PregoSpacing.md),
               Text(loc.sessionListArchivePinnedRunningNotice, style: bodyStyle),
             ],
@@ -81,7 +45,7 @@ Future<bool> _confirmArchivePinned({
               primary: PregoButtonsSolid(
                 label: loc.sessionListArchiveConfirmAction,
                 hierarchy: PregoButtonsSolidHierarchy.primary,
-                type: PregoButtonsSolidType.destructive,
+                type: pinned ? PregoButtonsSolidType.destructive : PregoButtonsSolidType.regular,
                 size: PregoButtonsSolidSize.lg,
                 fullWidth: true,
                 onPressed: () => sheetContext.pop(true),

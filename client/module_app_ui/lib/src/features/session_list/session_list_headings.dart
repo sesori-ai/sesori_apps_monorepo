@@ -10,8 +10,8 @@ import "session_date_label.dart";
 /// session sits under Pinned, which the list orders before every date. Below
 /// it, [timestamp] must be the time the list sorts by (an archive list's
 /// archive time, otherwise the last update), or headings would repeat out of
-/// order. A running session is a row of Today, whatever its stored time, and
-/// the row itself says it is running.
+/// order. An unpinned running session is a row of Today, whatever its stored
+/// time, and the row itself says it is running.
 String sessionListHeading({
   required int? timestamp,
   required bool isRunning,
