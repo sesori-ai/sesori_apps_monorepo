@@ -294,14 +294,26 @@ void main() {
       });
     }
 
-    test("after a refresh replays the request under another id, both ids", () async {
-      finishSummaryTurn();
-      history.replayRequestText = () => prompts.sends.first.text;
-      prompts.targetFailure = StateError("target down");
+    final afterReplay = <String, (SendToSessionErrorCode, void Function())>{
+      "a target refusal": (
+        SendToSessionErrorCode.targetRefused,
+        () => prompts.targetFailure = StateError("target down"),
+      ),
+      "a missing summary": (
+        SendToSessionErrorCode.summaryMissing,
+        () => history.messages = history.messages.take(3).toList(),
+      ),
+    };
+    for (final MapEntry(key: name, value: (code, arrange)) in afterReplay.entries) {
+      test("after a refresh replays the request under another id, $name marks both ids", () async {
+        finishSummaryTurn();
+        history.replayRequestText = () => prompts.sends.first.text;
+        arrange();
 
-      expect(await refusalOf(send()), SendToSessionErrorCode.targetRefused);
-      expect(history.notSentMessages, unorderedEquals(["replayed-user", _requestMessageId]));
-    });
+        expect(await refusalOf(send()), code);
+        expect(history.notSentMessages, unorderedEquals(["replayed-user", _requestMessageId]));
+      });
+    }
 
     final beforeEcho = <String, (SendToSessionErrorCode, void Function())>{
       "a stop": (

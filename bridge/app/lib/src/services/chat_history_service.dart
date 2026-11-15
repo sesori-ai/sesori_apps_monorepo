@@ -1101,7 +1101,11 @@ class ChatHistoryService({
   /// not-sent form, after the session's pending captures.
   Future<void> markHandoffNotSent({required String sessionId, required String messageId}) => _enqueue(
     sessionId: sessionId,
-    write: () => _chatHistoryRepository.markHandoffNotSent(sessionId: sessionId, messageId: messageId),
+    write: () => _chatHistoryRepository.markHandoffNotSent(
+      sessionId: sessionId,
+      messageId: messageId,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    ),
   );
 
   Future<SessionPromptDefaults?> _backfillSessionForRead({required String sessionId}) {

@@ -112,6 +112,7 @@ class SessionSendService({
       requestText: requestText,
     );
     try {
+      if (summary == null) throw _rejected(code: SendToSessionErrorCode.summaryMissing);
       await _deliverHandoff(source: source, target: target, transcript: transcript, summary: summary);
     } on Object {
       // The refresh can have replaced the live echo with a replayed message
@@ -297,11 +298,12 @@ class SessionSendService({
 
   /// Reads the source's whole history and splits it at the summary request:
   /// the transcript is every message before it, and the summary is the text
-  /// of the agent's replies after it, up to the next user message.
+  /// of the agent's replies after it, up to the next user message, or null
+  /// when the agent wrote none.
   ///
   /// A history refresh can replace the live echo with a replayed message under
   /// another id, so a request missing under its echo id is found by its exact text.
-  Future<({List<MessageWithParts> transcript, String summary, String storedRequestMessageId})> _readSummary({
+  Future<({List<MessageWithParts> transcript, String? summary, String storedRequestMessageId})> _readSummary({
     required String sessionId,
     required String summaryRequestMessageId,
     required String requestText,
@@ -349,20 +351,19 @@ class SessionSendService({
       );
       throw _rejected(code: SendToSessionErrorCode.summaryMissing);
     }
-    final summary = [
+    final text = [
       // A prompt queued behind the summary starts the next turn.
       for (final message in messages.skip(requestIndex + 1).takeWhile((message) => message.info is! MessageUser))
         if (message.info case MessageAssistant(sender: MessageSender.agent))
           for (final part in message.parts)
             if (part case MessagePartText(:final text) when text.trim().isNotEmpty) text.trim(),
     ].join("\n\n");
-    if (summary.isEmpty) throw _rejected(code: SendToSessionErrorCode.summaryMissing);
     Log.i(
-      "Session $sessionId summary has ${summary.length} characters after $requestIndex transcript messages",
+      "Session $sessionId summary has ${text.length} characters after $requestIndex transcript messages",
     );
     return (
       transcript: _withoutSummaryExchanges(messages: messages.sublist(0, requestIndex)),
-      summary: summary,
+      summary: text.isEmpty ? null : text,
       storedRequestMessageId: messages[requestIndex].info.id,
     );
   }

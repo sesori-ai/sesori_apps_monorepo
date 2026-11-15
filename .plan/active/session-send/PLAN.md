@@ -486,7 +486,8 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
     stamp in `sendPrompt`, because no turn happened, so the mark finds nothing. A client that had the marker live
     keeps the `sent` state until its next history load; the requesting client gets the failure alert.
   - The history store's replay matching ignores `handoff` as it ignores `invocation`, so a replay under another id
-    still pairs with the stamped live row and keeps its stamp.
+    still pairs with the stamped live row and keeps its stamp. Marking a stored stamp `notSent` refreshes the row's
+    `updatedAt`, so the next replay still treats the row as current and pairs it.
 - **Logs** carry the ids and the handoff kind, never the summary.
 - A bridge restart during the summary loses the tracker entry. That send is already lost (accepted risk). An echo that
   arrives after the restart is unstamped and shows as an ordinary exchange; one stored before it keeps `sent`, because
