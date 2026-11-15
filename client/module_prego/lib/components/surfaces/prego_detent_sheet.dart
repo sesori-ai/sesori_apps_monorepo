@@ -297,11 +297,15 @@ class _PregoDetentSheetState() extends State<_PregoDetentSheet> with SingleTicke
       namesRoute: true,
       explicitChildNodes: true,
       label: localizations.bottomSheetLabel,
-      customSemanticsActions: switch (detent) {
-        .half => {CustomSemanticsAction(label: localizations.collapsedIconTapHint): () => _moveTo(.full)},
-        .full => {CustomSemanticsAction(label: localizations.expandedIconTapHint): () => _moveTo(.half)},
-        null => null,
-      },
+      // A tall keyboard can make both heights the same; then neither action
+      // would move the sheet.
+      customSemanticsActions: geometry.fullHeight - geometry.halfHeight <= _tolerance
+          ? null
+          : switch (detent) {
+              .half => {CustomSemanticsAction(label: localizations.collapsedIconTapHint): () => _moveTo(.full)},
+              .full => {CustomSemanticsAction(label: localizations.expandedIconTapHint): () => _moveTo(.half)},
+              null => null,
+            },
       child: GestureDetector(
         // Drags anywhere a scroll view doesn't claim move the sheet, and taps
         // on its background don't reach the barrier behind it.
@@ -383,9 +387,13 @@ class _SheetScrollPosition({
   required super.oldPosition,
   required final _PregoDetentSheetState sheet,
 }) extends ScrollPositionWithSingleContext {
-  /// Whether the current drag has moved the sheet, so its release settles the
-  /// sheet instead of flinging the list.
+  /// Whether the current drag has moved the sheet, so its release must settle
+  /// the sheet.
   bool _movedSheet = false;
+
+  /// Whether the drag's last movement scrolled the list, so the list keeps the
+  /// release's fling.
+  bool _listOwnsRelease = false;
 
   bool get _reversed => axisDirectionIsReversed(axisDirection);
 
@@ -396,9 +404,11 @@ class _SheetScrollPosition({
     final fingerDy = _reversed ? -delta : delta;
     if ((fingerDy < 0 && sheet.canGrow) || (fingerDy > 0 && _atTop)) {
       _movedSheet = true;
+      _listOwnsRelease = false;
       sheet.dragBy(fingerDy);
       return;
     }
+    _listOwnsRelease = true;
     super.applyUserOffset(delta);
   }
 
@@ -409,11 +419,14 @@ class _SheetScrollPosition({
       return;
     }
     _movedSheet = false;
-    final fingerVelocity = _reversed ? velocity : -velocity;
-    // A drag that grew the sheet to full height and went on scrolling the list
-    // keeps its fling in the list.
-    final listKeepsFling = !sheet.canGrow && fingerVelocity < 0;
-    sheet.release(fingerVelocity: fingerVelocity);
-    super.goBallistic(listKeepsFling ? velocity : 0);
+    // A drag that moved the sheet and then went on scrolling the list (in
+    // either direction) flings the list; the sheet settles where it is.
+    if (_listOwnsRelease) {
+      sheet.release(fingerVelocity: 0);
+      super.goBallistic(velocity);
+      return;
+    }
+    sheet.release(fingerVelocity: _reversed ? velocity : -velocity);
+    super.goBallistic(0);
   }
 }

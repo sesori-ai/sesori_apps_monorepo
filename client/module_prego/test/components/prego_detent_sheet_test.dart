@@ -206,6 +206,26 @@ void main() {
       expect(_listPosition(tester).pixels, lessThan(400));
     });
 
+    testWidgets("a drag that grows the sheet, scrolls the list and flicks back down scrolls the list", (tester) async {
+      await _open(tester);
+      final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listKey)));
+      // Up 560 over a second: 360 grow the sheet to full, 200 scroll the list.
+      for (var step = 1; step <= 20; step++) {
+        await gesture.moveBy(const Offset(0, -28), timeStamp: Duration(milliseconds: 50 * step));
+      }
+      // Then a quick flick down while the list is still scrolled.
+      for (var step = 1; step <= 3; step++) {
+        await gesture.moveBy(const Offset(0, 20), timeStamp: Duration(milliseconds: 1000 + 10 * step));
+      }
+      await tester.pump();
+      expect(_listPosition(tester).pixels, greaterThan(0));
+      await gesture.up(timeStamp: const Duration(milliseconds: 1030));
+      await tester.pumpAndSettle();
+
+      expect(_sheetTop(tester), _fullTop);
+      expect(_listPosition(tester).pixels, 0);
+    });
+
     testWidgets("the keyboard lifts the content and never pushes the sheet over the status bar", (tester) async {
       await _open(tester);
 
@@ -261,6 +281,19 @@ void main() {
       tester.semantics.customAction(sheet, const CustomSemanticsAction(label: "Collapse"));
       await tester.pumpAndSettle();
       expect(_sheetTop(tester), _halfTop);
+      semantics.dispose();
+    });
+
+    testWidgets("a screen reader gets no height action while the keyboard leaves one height", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _open(tester);
+      final sheet = find.semantics.byLabel("Bottom Sheet");
+      expect(sheet.evaluate().single.getSemanticsData().customSemanticsActionIds, isNotEmpty);
+
+      tester.view.viewInsets = const FakeViewPadding(bottom: 500);
+      await tester.pumpAndSettle();
+
+      expect(sheet.evaluate().single.getSemanticsData().customSemanticsActionIds, isEmpty);
       semantics.dispose();
     });
 
