@@ -109,8 +109,8 @@ void main() {
           fail("no image picked");
 
       final attachment = outcome.attachments.single;
-      expect(attachment.mime, "image/jpeg");
-      expect(attachment.bytes, same(bytes));
+      expect(_mimeOf(attachment), "image/jpeg");
+      expect(_bytesOf(attachment), same(bytes));
       expect(attachment.filename, "photo.jpg");
       expect(outcome.insertedText, isNull);
       expect(outcome.rejections, isEmpty);
@@ -135,7 +135,7 @@ void main() {
           fileUploadsSupported: false,
           stagedAttachmentBytes: 0,
         );
-        expect(outcome.attachments.single.mime, mime);
+        expect(_mimeOf(outcome.attachments.single), mime);
         expect(outcome.attachments.single, isA<ComposerImageAttachment>());
       }
     });
@@ -208,9 +208,9 @@ void main() {
           fail("no image picked");
 
       final attachment = outcome.attachments.single;
-      expect(attachment.mime, "image/jpeg");
+      expect(_mimeOf(attachment), "image/jpeg");
       expect(attachment.filename, "screenshot.jpg");
-      expect(attachment.bytes.length, lessThan(png.length));
+      expect(_bytesOf(attachment).length, lessThan(png.length));
     });
   });
 
@@ -242,7 +242,7 @@ void main() {
         stagedAttachmentBytes: 0,
       );
 
-      expect(outcome.attachments.single.mime, "image/png");
+      expect(_mimeOf(outcome.attachments.single), "image/png");
       expect(outcome.attachments.single.filename, "shot.png");
       expect(outcome.insertedText, isNull);
       expect(outcome.rejections, isEmpty);
@@ -538,9 +538,9 @@ void main() {
         expect(outcome.rejections, isEmpty);
         expect(outcome.insertedText, isNull);
         expect(outcome.attachments, everyElement(isA<ComposerFileAttachment>()));
-        expect([for (final file in outcome.attachments) file.mime], everyElement("application/octet-stream"));
+        expect([for (final file in outcome.attachments) _mimeOf(file)], everyElement("application/octet-stream"));
         expect([for (final file in outcome.attachments) file.filename], ["notes.dart", "my report.pdf"]);
-        expect(outcome.attachments.first.bytes, File(notesPath).readAsBytesSync());
+        expect(_bytesOf(outcome.attachments.first), File(notesPath).readAsBytesSync());
       });
 
       test("keeps staging an image the harness takes as an image", () async {
@@ -553,7 +553,7 @@ void main() {
         );
 
         expect(outcome.attachments.single, isA<ComposerImageAttachment>());
-        expect(outcome.attachments.single.mime, "image/png");
+        expect(_mimeOf(outcome.attachments.single), "image/png");
       });
 
       test("stages an image the harness can't take as a file", () async {
@@ -568,7 +568,7 @@ void main() {
         final file = outcome.attachments.single;
         expect(file, isA<ComposerFileAttachment>());
         expect(file.filename, "shot.png");
-        expect(file.bytes, File(imagePath).readAsBytesSync());
+        expect(_bytesOf(file), File(imagePath).readAsBytesSync());
       });
 
       test("turns a folder away with its own reason", () async {
@@ -804,3 +804,13 @@ void main() {
     });
   });
 }
+
+String _mimeOf(ComposerAttachment attachment) => switch (attachment) {
+  ComposerImageAttachment(:final mime) || ComposerFileAttachment(:final mime) => mime,
+  ComposerHostFileAttachment() => fail("a file the bridge holds has no mime"),
+};
+
+Uint8List _bytesOf(ComposerAttachment attachment) => switch (attachment) {
+  ComposerImageAttachment(:final bytes) || ComposerFileAttachment(:final bytes) => bytes,
+  ComposerHostFileAttachment() => fail("a file the bridge holds has no bytes"),
+};

@@ -2308,7 +2308,9 @@ as String,
 /// @nodoc
 mixin _$CodexRolloutSessionMetadataPayloadDto {
 
- String? get id; String? get cwd; String? get timestamp;@JsonKey(name: "model_provider") String? get modelProvider;@JsonKey(name: "parent_thread_id") String? get parentThreadId;@JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown) CodexRolloutThreadSource? get threadSource;@JsonKey(name: "agent_nickname") String? get agentNickname;@JsonKey(name: "agent_path") String? get agentPath;/// A fork Codex keeps attached to `forked_from_id`, such as a side chat
+ String? get id; String? get cwd; String? get timestamp;@JsonKey(name: "model_provider") String? get modelProvider;@JsonKey(name: "parent_thread_id") String? get parentThreadId;@JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown) CodexRolloutThreadSource? get threadSource;@JsonKey(name: "agent_nickname") String? get agentNickname;@JsonKey(name: "agent_path") String? get agentPath;/// Set on a rollout written by `thread/revert` or a paginated
+/// `thread/fork`: its history starts with another rollout's prefix.
+@JsonKey(name: "history_base") CodexRolloutHistoryBaseDto? get historyBase;/// A fork Codex keeps attached to `forked_from_id`, such as a side chat
 /// from its terminal workspace. Codex writes the key only when true.
 @JsonKey(name: "attached_thread") bool get attachedThread;
 /// Create a copy of CodexRolloutSessionMetadataPayloadDto
@@ -2322,20 +2324,20 @@ $CodexRolloutSessionMetadataPayloadDtoCopyWith<CodexRolloutSessionMetadataPayloa
 @override
 bool operator ==(Object other) {
   final _this = this as CodexRolloutSessionMetadataPayloadDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutSessionMetadataPayloadDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.cwd, _this.cwd) || other.cwd == _this.cwd)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp)&&(identical(other.modelProvider, _this.modelProvider) || other.modelProvider == _this.modelProvider)&&(identical(other.parentThreadId, _this.parentThreadId) || other.parentThreadId == _this.parentThreadId)&&(identical(other.threadSource, _this.threadSource) || other.threadSource == _this.threadSource)&&(identical(other.agentNickname, _this.agentNickname) || other.agentNickname == _this.agentNickname)&&(identical(other.agentPath, _this.agentPath) || other.agentPath == _this.agentPath)&&(identical(other.attachedThread, _this.attachedThread) || other.attachedThread == _this.attachedThread));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutSessionMetadataPayloadDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.cwd, _this.cwd) || other.cwd == _this.cwd)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp)&&(identical(other.modelProvider, _this.modelProvider) || other.modelProvider == _this.modelProvider)&&(identical(other.parentThreadId, _this.parentThreadId) || other.parentThreadId == _this.parentThreadId)&&(identical(other.threadSource, _this.threadSource) || other.threadSource == _this.threadSource)&&(identical(other.agentNickname, _this.agentNickname) || other.agentNickname == _this.agentNickname)&&(identical(other.agentPath, _this.agentPath) || other.agentPath == _this.agentPath)&&(identical(other.historyBase, _this.historyBase) || other.historyBase == _this.historyBase)&&(identical(other.attachedThread, _this.attachedThread) || other.attachedThread == _this.attachedThread));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CodexRolloutSessionMetadataPayloadDto;
-  return Object.hash(runtimeType,_this.id,_this.cwd,_this.timestamp,_this.modelProvider,_this.parentThreadId,_this.threadSource,_this.agentNickname,_this.agentPath,_this.attachedThread);
+  return Object.hash(runtimeType,_this.id,_this.cwd,_this.timestamp,_this.modelProvider,_this.parentThreadId,_this.threadSource,_this.agentNickname,_this.agentPath,_this.historyBase,_this.attachedThread);
 }
 
 @override
 String toString() {
   final _this = this as CodexRolloutSessionMetadataPayloadDto;
-  return 'CodexRolloutSessionMetadataPayloadDto(id: ${_this.id}, cwd: ${_this.cwd}, timestamp: ${_this.timestamp}, modelProvider: ${_this.modelProvider}, parentThreadId: ${_this.parentThreadId}, threadSource: ${_this.threadSource}, agentNickname: ${_this.agentNickname}, agentPath: ${_this.agentPath}, attachedThread: ${_this.attachedThread})';
+  return 'CodexRolloutSessionMetadataPayloadDto(id: ${_this.id}, cwd: ${_this.cwd}, timestamp: ${_this.timestamp}, modelProvider: ${_this.modelProvider}, parentThreadId: ${_this.parentThreadId}, threadSource: ${_this.threadSource}, agentNickname: ${_this.agentNickname}, agentPath: ${_this.agentPath}, historyBase: ${_this.historyBase}, attachedThread: ${_this.attachedThread})';
 }
 
 
@@ -2346,11 +2348,11 @@ abstract mixin class $CodexRolloutSessionMetadataPayloadDtoCopyWith<$Res>  {
   factory $CodexRolloutSessionMetadataPayloadDtoCopyWith(CodexRolloutSessionMetadataPayloadDto value, $Res Function(CodexRolloutSessionMetadataPayloadDto) _then) = _$CodexRolloutSessionMetadataPayloadDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "parent_thread_id") String? parentThreadId,@JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown) CodexRolloutThreadSource? threadSource,@JsonKey(name: "agent_nickname") String? agentNickname,@JsonKey(name: "agent_path") String? agentPath,@JsonKey(name: "attached_thread") bool attachedThread
+ String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "parent_thread_id") String? parentThreadId,@JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown) CodexRolloutThreadSource? threadSource,@JsonKey(name: "agent_nickname") String? agentNickname,@JsonKey(name: "agent_path") String? agentPath,@JsonKey(name: "history_base") CodexRolloutHistoryBaseDto? historyBase,@JsonKey(name: "attached_thread") bool attachedThread
 });
 
 
-
+$CodexRolloutHistoryBaseDtoCopyWith<$Res>? get historyBase;
 
 }
 /// @nodoc
@@ -2363,7 +2365,7 @@ class _$CodexRolloutSessionMetadataPayloadDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutSessionMetadataPayloadDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? modelProvider = freezed,Object? parentThreadId = freezed,Object? threadSource = freezed,Object? agentNickname = freezed,Object? agentPath = freezed,Object? attachedThread = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? modelProvider = freezed,Object? parentThreadId = freezed,Object? threadSource = freezed,Object? agentNickname = freezed,Object? agentPath = freezed,Object? historyBase = freezed,Object? attachedThread = null,}) {
   return _then(CodexRolloutSessionMetadataPayloadDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
@@ -2373,11 +2375,24 @@ as String?,parentThreadId: freezed == parentThreadId ? _self.parentThreadId : pa
 as String?,threadSource: freezed == threadSource ? _self.threadSource : threadSource // ignore: cast_nullable_to_non_nullable
 as CodexRolloutThreadSource?,agentNickname: freezed == agentNickname ? _self.agentNickname : agentNickname // ignore: cast_nullable_to_non_nullable
 as String?,agentPath: freezed == agentPath ? _self.agentPath : agentPath // ignore: cast_nullable_to_non_nullable
-as String?,attachedThread: null == attachedThread ? _self.attachedThread : attachedThread // ignore: cast_nullable_to_non_nullable
+as String?,historyBase: freezed == historyBase ? _self.historyBase : historyBase // ignore: cast_nullable_to_non_nullable
+as CodexRolloutHistoryBaseDto?,attachedThread: null == attachedThread ? _self.attachedThread : attachedThread // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
+/// Create a copy of CodexRolloutSessionMetadataPayloadDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexRolloutHistoryBaseDtoCopyWith<$Res>? get historyBase {
+    if (_self.historyBase == null) {
+    return null;
+  }
 
+  return $CodexRolloutHistoryBaseDtoCopyWith<$Res>(_self.historyBase!, (value) {
+    return _then(_self.copyWith(historyBase: value));
+  });
+}
 }
 
 
@@ -2386,7 +2401,7 @@ as bool,
 @JsonSerializable(createToJson: false)
 
 class _CodexRolloutSessionMetadataPayloadDto implements CodexRolloutSessionMetadataPayloadDto {
-  const _CodexRolloutSessionMetadataPayloadDto({required this.id, required this.cwd, required this.timestamp, @JsonKey(name: "model_provider") required this.modelProvider, @JsonKey(name: "parent_thread_id") required this.parentThreadId, @JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown) required this.threadSource, @JsonKey(name: "agent_nickname") required this.agentNickname, @JsonKey(name: "agent_path") required this.agentPath, @JsonKey(name: "attached_thread") this.attachedThread = false});
+  const _CodexRolloutSessionMetadataPayloadDto({required this.id, required this.cwd, required this.timestamp, @JsonKey(name: "model_provider") required this.modelProvider, @JsonKey(name: "parent_thread_id") required this.parentThreadId, @JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown) required this.threadSource, @JsonKey(name: "agent_nickname") required this.agentNickname, @JsonKey(name: "agent_path") required this.agentPath, @JsonKey(name: "history_base") required this.historyBase, @JsonKey(name: "attached_thread") this.attachedThread = false});
   factory _CodexRolloutSessionMetadataPayloadDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutSessionMetadataPayloadDtoFromJson(json);
 
 @override final  String? id;
@@ -2397,6 +2412,9 @@ class _CodexRolloutSessionMetadataPayloadDto implements CodexRolloutSessionMetad
 @override@JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown) final  CodexRolloutThreadSource? threadSource;
 @override@JsonKey(name: "agent_nickname") final  String? agentNickname;
 @override@JsonKey(name: "agent_path") final  String? agentPath;
+/// Set on a rollout written by `thread/revert` or a paginated
+/// `thread/fork`: its history starts with another rollout's prefix.
+@override@JsonKey(name: "history_base") final  CodexRolloutHistoryBaseDto? historyBase;
 /// A fork Codex keeps attached to `forked_from_id`, such as a side chat
 /// from its terminal workspace. Codex writes the key only when true.
 @override@JsonKey(name: "attached_thread") final  bool attachedThread;
@@ -2411,18 +2429,18 @@ _$CodexRolloutSessionMetadataPayloadDtoCopyWith<_CodexRolloutSessionMetadataPayl
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutSessionMetadataPayloadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.parentThreadId, parentThreadId) || other.parentThreadId == parentThreadId)&&(identical(other.threadSource, threadSource) || other.threadSource == threadSource)&&(identical(other.agentNickname, agentNickname) || other.agentNickname == agentNickname)&&(identical(other.agentPath, agentPath) || other.agentPath == agentPath)&&(identical(other.attachedThread, attachedThread) || other.attachedThread == attachedThread));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutSessionMetadataPayloadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.parentThreadId, parentThreadId) || other.parentThreadId == parentThreadId)&&(identical(other.threadSource, threadSource) || other.threadSource == threadSource)&&(identical(other.agentNickname, agentNickname) || other.agentNickname == agentNickname)&&(identical(other.agentPath, agentPath) || other.agentPath == agentPath)&&(identical(other.historyBase, historyBase) || other.historyBase == historyBase)&&(identical(other.attachedThread, attachedThread) || other.attachedThread == attachedThread));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,cwd,timestamp,modelProvider,parentThreadId,threadSource,agentNickname,agentPath,attachedThread);
+    return Object.hash(runtimeType,id,cwd,timestamp,modelProvider,parentThreadId,threadSource,agentNickname,agentPath,historyBase,attachedThread);
 }
 
 @override
 String toString() {
-    return 'CodexRolloutSessionMetadataPayloadDto(id: $id, cwd: $cwd, timestamp: $timestamp, modelProvider: $modelProvider, parentThreadId: $parentThreadId, threadSource: $threadSource, agentNickname: $agentNickname, agentPath: $agentPath, attachedThread: $attachedThread)';
+    return 'CodexRolloutSessionMetadataPayloadDto(id: $id, cwd: $cwd, timestamp: $timestamp, modelProvider: $modelProvider, parentThreadId: $parentThreadId, threadSource: $threadSource, agentNickname: $agentNickname, agentPath: $agentPath, historyBase: $historyBase, attachedThread: $attachedThread)';
 }
 
 
@@ -2433,11 +2451,11 @@ abstract mixin class _$CodexRolloutSessionMetadataPayloadDtoCopyWith<$Res> imple
   factory _$CodexRolloutSessionMetadataPayloadDtoCopyWith(_CodexRolloutSessionMetadataPayloadDto value, $Res Function(_CodexRolloutSessionMetadataPayloadDto) _then) = __$CodexRolloutSessionMetadataPayloadDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "parent_thread_id") String? parentThreadId,@JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown) CodexRolloutThreadSource? threadSource,@JsonKey(name: "agent_nickname") String? agentNickname,@JsonKey(name: "agent_path") String? agentPath,@JsonKey(name: "attached_thread") bool attachedThread
+ String? id, String? cwd, String? timestamp,@JsonKey(name: "model_provider") String? modelProvider,@JsonKey(name: "parent_thread_id") String? parentThreadId,@JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown) CodexRolloutThreadSource? threadSource,@JsonKey(name: "agent_nickname") String? agentNickname,@JsonKey(name: "agent_path") String? agentPath,@JsonKey(name: "history_base") CodexRolloutHistoryBaseDto? historyBase,@JsonKey(name: "attached_thread") bool attachedThread
 });
 
 
-
+@override $CodexRolloutHistoryBaseDtoCopyWith<$Res>? get historyBase;
 
 }
 /// @nodoc
@@ -2450,7 +2468,7 @@ class __$CodexRolloutSessionMetadataPayloadDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutSessionMetadataPayloadDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? modelProvider = freezed,Object? parentThreadId = freezed,Object? threadSource = freezed,Object? agentNickname = freezed,Object? agentPath = freezed,Object? attachedThread = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? modelProvider = freezed,Object? parentThreadId = freezed,Object? threadSource = freezed,Object? agentNickname = freezed,Object? agentPath = freezed,Object? historyBase = freezed,Object? attachedThread = null,}) {
   return _then(_CodexRolloutSessionMetadataPayloadDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non_nullable
@@ -2460,8 +2478,166 @@ as String?,parentThreadId: freezed == parentThreadId ? _self.parentThreadId : pa
 as String?,threadSource: freezed == threadSource ? _self.threadSource : threadSource // ignore: cast_nullable_to_non_nullable
 as CodexRolloutThreadSource?,agentNickname: freezed == agentNickname ? _self.agentNickname : agentNickname // ignore: cast_nullable_to_non_nullable
 as String?,agentPath: freezed == agentPath ? _self.agentPath : agentPath // ignore: cast_nullable_to_non_nullable
-as String?,attachedThread: null == attachedThread ? _self.attachedThread : attachedThread // ignore: cast_nullable_to_non_nullable
+as String?,historyBase: freezed == historyBase ? _self.historyBase : historyBase // ignore: cast_nullable_to_non_nullable
+as CodexRolloutHistoryBaseDto?,attachedThread: null == attachedThread ? _self.attachedThread : attachedThread // ignore: cast_nullable_to_non_nullable
 as bool,
+  ));
+}
+
+/// Create a copy of CodexRolloutSessionMetadataPayloadDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexRolloutHistoryBaseDtoCopyWith<$Res>? get historyBase {
+    if (_self.historyBase == null) {
+    return null;
+  }
+
+  return $CodexRolloutHistoryBaseDtoCopyWith<$Res>(_self.historyBase!, (value) {
+    return _then(_self.copyWith(historyBase: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$CodexRolloutHistoryBaseDto {
+
+/// Codex names this field `thread_id`, but it holds a rollout id: a
+/// reverted thread's base can be its own earlier rollout.
+@JsonKey(name: "thread_id") String get rolloutId;/// The byte offset just past the prefix's last JSONL record.
+@JsonKey(name: "end_byte_offset") int get endByteOffset;
+/// Create a copy of CodexRolloutHistoryBaseDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutHistoryBaseDtoCopyWith<CodexRolloutHistoryBaseDto> get copyWith => _$CodexRolloutHistoryBaseDtoCopyWithImpl<CodexRolloutHistoryBaseDto>(this as CodexRolloutHistoryBaseDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CodexRolloutHistoryBaseDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutHistoryBaseDto&&(identical(other.rolloutId, _this.rolloutId) || other.rolloutId == _this.rolloutId)&&(identical(other.endByteOffset, _this.endByteOffset) || other.endByteOffset == _this.endByteOffset));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CodexRolloutHistoryBaseDto;
+  return Object.hash(runtimeType,_this.rolloutId,_this.endByteOffset);
+}
+
+@override
+String toString() {
+  final _this = this as CodexRolloutHistoryBaseDto;
+  return 'CodexRolloutHistoryBaseDto(rolloutId: ${_this.rolloutId}, endByteOffset: ${_this.endByteOffset})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutHistoryBaseDtoCopyWith<$Res>  {
+  factory $CodexRolloutHistoryBaseDtoCopyWith(CodexRolloutHistoryBaseDto value, $Res Function(CodexRolloutHistoryBaseDto) _then) = _$CodexRolloutHistoryBaseDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "thread_id") String rolloutId,@JsonKey(name: "end_byte_offset") int endByteOffset
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutHistoryBaseDtoCopyWithImpl<$Res>
+    implements $CodexRolloutHistoryBaseDtoCopyWith<$Res> {
+  _$CodexRolloutHistoryBaseDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutHistoryBaseDto _self;
+  final $Res Function(CodexRolloutHistoryBaseDto) _then;
+
+/// Create a copy of CodexRolloutHistoryBaseDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? rolloutId = null,Object? endByteOffset = null,}) {
+  return _then(CodexRolloutHistoryBaseDto(
+rolloutId: null == rolloutId ? _self.rolloutId : rolloutId // ignore: cast_nullable_to_non_nullable
+as String,endByteOffset: null == endByteOffset ? _self.endByteOffset : endByteOffset // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CodexRolloutHistoryBaseDto implements CodexRolloutHistoryBaseDto {
+  const _CodexRolloutHistoryBaseDto({@JsonKey(name: "thread_id") required this.rolloutId, @JsonKey(name: "end_byte_offset") required this.endByteOffset});
+  factory _CodexRolloutHistoryBaseDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutHistoryBaseDtoFromJson(json);
+
+/// Codex names this field `thread_id`, but it holds a rollout id: a
+/// reverted thread's base can be its own earlier rollout.
+@override@JsonKey(name: "thread_id") final  String rolloutId;
+/// The byte offset just past the prefix's last JSONL record.
+@override@JsonKey(name: "end_byte_offset") final  int endByteOffset;
+
+/// Create a copy of CodexRolloutHistoryBaseDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CodexRolloutHistoryBaseDtoCopyWith<_CodexRolloutHistoryBaseDto> get copyWith => __$CodexRolloutHistoryBaseDtoCopyWithImpl<_CodexRolloutHistoryBaseDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutHistoryBaseDto&&(identical(other.rolloutId, rolloutId) || other.rolloutId == rolloutId)&&(identical(other.endByteOffset, endByteOffset) || other.endByteOffset == endByteOffset));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,rolloutId,endByteOffset);
+}
+
+@override
+String toString() {
+    return 'CodexRolloutHistoryBaseDto(rolloutId: $rolloutId, endByteOffset: $endByteOffset)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CodexRolloutHistoryBaseDtoCopyWith<$Res> implements $CodexRolloutHistoryBaseDtoCopyWith<$Res> {
+  factory _$CodexRolloutHistoryBaseDtoCopyWith(_CodexRolloutHistoryBaseDto value, $Res Function(_CodexRolloutHistoryBaseDto) _then) = __$CodexRolloutHistoryBaseDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: "thread_id") String rolloutId,@JsonKey(name: "end_byte_offset") int endByteOffset
+});
+
+
+
+
+}
+/// @nodoc
+class __$CodexRolloutHistoryBaseDtoCopyWithImpl<$Res>
+    implements _$CodexRolloutHistoryBaseDtoCopyWith<$Res> {
+  __$CodexRolloutHistoryBaseDtoCopyWithImpl(this._self, this._then);
+
+  final _CodexRolloutHistoryBaseDto _self;
+  final $Res Function(_CodexRolloutHistoryBaseDto) _then;
+
+/// Create a copy of CodexRolloutHistoryBaseDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? rolloutId = null,Object? endByteOffset = null,}) {
+  return _then(_CodexRolloutHistoryBaseDto(
+rolloutId: null == rolloutId ? _self.rolloutId : rolloutId // ignore: cast_nullable_to_non_nullable
+as String,endByteOffset: null == endByteOffset ? _self.endByteOffset : endByteOffset // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

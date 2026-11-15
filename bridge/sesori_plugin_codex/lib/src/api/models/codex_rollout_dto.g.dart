@@ -247,6 +247,11 @@ _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
       ),
       agentNickname: json['agent_nickname'] as String?,
       agentPath: json['agent_path'] as String?,
+      historyBase: json['history_base'] == null
+          ? null
+          : CodexRolloutHistoryBaseDto.fromJson(
+              Map<String, dynamic>.from(json['history_base'] as Map),
+            ),
       attachedThread: json['attached_thread'] as bool? ?? false,
     );
 
@@ -254,6 +259,12 @@ const _$CodexRolloutThreadSourceEnumMap = {
   CodexRolloutThreadSource.subagent: 'subagent',
   CodexRolloutThreadSource.unknown: 'unknown',
 };
+
+_CodexRolloutHistoryBaseDto _$CodexRolloutHistoryBaseDtoFromJson(Map json) =>
+    _CodexRolloutHistoryBaseDto(
+      rolloutId: json['thread_id'] as String,
+      endByteOffset: (json['end_byte_offset'] as num).toInt(),
+    );
 
 _CodexRolloutTurnContextPayloadDto _$CodexRolloutTurnContextPayloadDtoFromJson(
   Map json,
