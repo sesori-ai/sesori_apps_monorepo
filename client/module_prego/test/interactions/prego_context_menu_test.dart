@@ -174,6 +174,40 @@ void main() {
       variant: const TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.windows}),
     );
 
+    testWidgets("a secondary click on an item over another item opens only the top one's menu", (tester) async {
+      Widget menu({required String title, required Widget child}) => PregoContextMenu(
+        menuWidth: 200,
+        spotlight: PregoMenuSpotlight.listRow,
+        onOpenChanged: null,
+        entriesBuilder: () => [
+          PregoMenuItem(title: title, subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
+        ],
+        builder: (context, menuOpen) => child,
+      );
+      await tester.pumpWidget(
+        PregoInteractionScope(
+          mode: PregoInteractionMode.pointer,
+          child: MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            home: Scaffold(
+              body: Center(
+                child: menu(
+                  title: "Under",
+                  child: menu(title: "Over", child: const Text(_text)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tapAt(tester.getCenter(find.text(_text)), buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
+      await tester.pumpAndSettle();
+
+      expect(find.text("Over"), findsOneWidget);
+      expect(find.text("Under"), findsNothing);
+    });
+
     testWidgets("a held mouse button selects rather than opening the menu", (tester) async {
       await tester.pumpWidget(harness(mode: PregoInteractionMode.pointer));
 

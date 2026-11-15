@@ -111,7 +111,7 @@ class _PregoContextMenuState() extends State<PregoContextMenu> {
 }
 
 /// Claims a secondary click as its button goes down, so nothing inside the
-/// item answers it, and reports it as the button comes up.
+/// item answers it, and reports it as the button comes up if it won.
 class _SecondaryClickGestureRecognizer({super.debugOwner}) extends OneSequenceGestureRecognizer {
   this : super(allowedButtonsFilter: _isSecondary);
 
@@ -130,6 +130,10 @@ class _SecondaryClickGestureRecognizer({super.debugOwner}) extends OneSequenceGe
     if (event is PointerUpEvent) onSecondaryClick?.call();
     if (event is PointerUpEvent || event is PointerCancelEvent) stopTrackingPointer(event.pointer);
   }
+
+  /// A menu under this one that also took the click lost it: it opens nothing.
+  @override
+  void rejectGesture(int pointer) => stopTrackingPointer(pointer);
 
   @override
   void didStopTrackingLastPointer(int pointer) {}
