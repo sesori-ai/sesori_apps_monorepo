@@ -8,8 +8,8 @@ import "client/relay_http_client.dart";
 /// responses out of error reports.
 @lazySingleton
 class SideChatApi({required final RelayHttpApiClient _client}) {
-  /// Above the bridge's longest plugin bound for one side question (3 minutes
-  /// for Claude Code), so the bridge's own answer or refusal arrives first.
+  /// Above the bridge's longest per-plugin bound for one side question, so
+  /// the bridge's own answer or refusal arrives first.
   static const _askTimeout = Duration(minutes: 3, seconds: 30);
 
   Future<ApiResponse<SideChatListResponse>> listSideChats({required String sessionId}) => _client.postWithTimeout(
