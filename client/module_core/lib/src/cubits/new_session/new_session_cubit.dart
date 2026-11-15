@@ -213,6 +213,8 @@ class NewSessionCubit({
           final scopeTransition =
               (beforeDiscovery?.backendScope ?? const NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null))
                   .transitionToDiscovered(bridgeId: data.bridgeId);
+          // Which computer answered is the app's to know, whichever composer
+          // asked; a task's own picks belong to its computer and stay put.
           _selectionTracker.applyBackendScopeTransition(transition: scopeTransition);
           final onScreenId = beforeDiscovery?.plugin?.id;
           final heldBackOnScreen = data.bridgeId == beforeDiscovery?.backendScope.lastIdentifiedBridgeId

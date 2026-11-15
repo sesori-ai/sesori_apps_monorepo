@@ -9,9 +9,10 @@ sealed class const NewSessionPurpose() {
   const factory startSession({required NewSessionProject project}) = NewSessionStartSession;
 
   /// Chooses what a scheduled task runs, starting from [initialSelection]. The
-  /// composer never touches the new-session screen's draft or remembered picks,
-  /// offers no attachments, and Save hands back a [TaskComposerSubmission]
-  /// instead of starting a session.
+  /// composer never writes the new-session screen's draft or picks (it still
+  /// reports the computer it reaches, as every composer does), offers no
+  /// attachments, and Save hands back a [TaskComposerSubmission] instead of
+  /// starting a session.
   const factory editTask({required TaskComposerSelection initialSelection}) = NewSessionEditTask;
 
   /// The project the composer opens in.
