@@ -296,6 +296,7 @@ class _Fixture() {
       chatHistoryService: chatHistory.service,
       scratchRepository: _UnusedScratchRepository(),
       promptUploadRepository: _NoPromptUploadRepository(),
+      transcriptRepository: _NoPromptUploadRepository(),
     );
   }
 
