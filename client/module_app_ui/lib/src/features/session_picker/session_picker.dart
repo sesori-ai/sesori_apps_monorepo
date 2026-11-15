@@ -3,6 +3,7 @@ import "dart:async";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show ProjectSummary;
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
@@ -37,6 +38,8 @@ class const SessionPicker({
       value: cubit,
       child: _SessionPickerList(selectedSessionId: selectedSessionId, onSelected: onSelected, onClose: close),
     );
+    // Each opening starts from a blank search, as its field does.
+    void clearSearch() => cubit.setQuery(query: "");
     if (pointer || MediaQuery.sizeOf(context).width >= wideLayoutBreakpoint) {
       return PregoPopover(
         popoverWidth: _popoverWidth,
@@ -45,13 +48,16 @@ class const SessionPicker({
         popoverBorderRadius: pointer ? PregoRadius.xl : PregoRadius.x4l,
         placement: pointer ? AnchoredPanelPlacement.atCorner : AnchoredPanelPlacement.besideTrigger,
         onClosed: null,
-        triggerBuilder: triggerBuilder,
+        triggerBuilder: (context, toggle) => triggerBuilder(context, () {
+          clearSearch();
+          toggle();
+        }),
         contentBuilder: (_, close) => list(close: close),
       );
     }
-    return triggerBuilder(
-      context,
-      () => unawaited(
+    return triggerBuilder(context, () {
+      clearSearch();
+      unawaited(
         showPregoBottomSheet<void>(
           context: context,
           title: context.loc.sessionPickerTitle,
@@ -63,8 +69,8 @@ class const SessionPicker({
             close: () => Navigator.of(sheetContext).pop(),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 
@@ -78,6 +84,16 @@ class const _SessionPickerList({
     final loc = context.loc;
     final state = context.watch<SessionSearchCubit>().state;
     final searching = state.isSearching && state.matches.isEmpty;
+    String nameOf(ProjectSummary project) => projectDisplayName(loc: loc, project: project);
+    final projects = {for (final match in state.matches) match.project.id: match.project}.values.toList();
+    final nameCounts = <String, int>{};
+    for (final project in projects) {
+      nameCounts.update(nameOf(project), (count) => count + 1, ifAbsent: () => 1);
+    }
+    final pathLabels = projectPathLabels(projects: projects, nameOf: nameOf);
+    // Only a shared name needs its path to be told apart.
+    String projectLabel(ProjectSummary project) =>
+        (nameCounts[nameOf(project)] ?? 0) > 1 ? pathLabels[project.id] ?? project.path : nameOf(project);
     return PregoPickerSearchList(
       searchHint: loc.sessionPickerSearchHint,
       onQueryChanged: (query) => context.read<SessionSearchCubit>().setQuery(query: query),
@@ -92,7 +108,7 @@ class const _SessionPickerList({
                     onClose();
                     onSelected(target: match);
                   },
-                  child: _SessionPickerRow(match: match),
+                  child: _SessionPickerRow(match: match, projectLabel: projectLabel(match.project)),
                 ),
             ],
       emptyText: searching ? null : loc.sessionPickerNoMatches,
@@ -101,15 +117,16 @@ class const _SessionPickerList({
   }
 }
 
-/// A session's title, over its project and, while it runs, what sending does
+/// A session's title, over its project ([projectLabel]) and, while it runs, what sending does
 /// to it.
-class const _SessionPickerRow({required final SessionSearchMatch match}) extends StatelessWidget {
+class const _SessionPickerRow({required final SessionSearchMatch match, required final String projectLabel})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
     final details = [
-      projectDisplayName(loc: loc, project: match.project),
+      projectLabel,
       ?switch (match.running) {
         null => null,
         RunningTarget.stopsTurn => loc.sessionPickerRunningStopsTurn,

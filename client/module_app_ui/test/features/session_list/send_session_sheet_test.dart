@@ -33,12 +33,12 @@ void main() {
     choices = [];
   });
 
-  Future<void> pumpSheet(WidgetTester tester) async {
+  Future<_MockSearchCubit> pumpSheet(WidgetTester tester, {List<SessionSearchMatch>? shown}) async {
     final search = _MockSearchCubit();
     whenListen(
       search,
       const Stream<SessionSearchState>.empty(),
-      initialState: SessionSearchState(matches: matches, isSearching: false),
+      initialState: SessionSearchState(matches: shown ?? matches, isSearching: false),
     );
     when(() => search.setQuery(query: any(named: "query"))).thenReturn(null);
     tester.view.physicalSize = const Size(400, 800);
@@ -84,6 +84,7 @@ void main() {
     );
     await tester.tap(find.text("Send"));
     await tester.pumpAndSettle();
+    return search;
   }
 
   testWidgets("searches every session but the one being sent", (tester) async {
@@ -93,9 +94,12 @@ void main() {
   });
 
   testWidgets("the picker says what sending does to each running session", (tester) async {
-    await pumpSheet(tester);
+    final search = await pumpSheet(tester);
     await tester.tap(find.byKey(const Key("send_session_target")));
     await tester.pumpAndSettle();
+
+    // Each opening starts from a blank search, as its empty field shows.
+    verify(() => search.setQuery(query: "")).called(1);
 
     expect(find.text("demo-app · Running: sending stops its current turn"), findsOneWidget);
     expect(find.text("demo-app · Running"), findsOneWidget);
@@ -121,5 +125,21 @@ void main() {
 
     expect(choices.single?.target.session.id, "idle");
     expect(choices.single?.archiveAfterSending, isTrue);
+  });
+
+  testWidgets("the picker tells same-named projects apart by their paths", (tester) async {
+    final other = testProjectSummary(id: "p2", name: "demo-app", path: "/forks/demo-app");
+    await pumpSheet(
+      tester,
+      shown: [
+        (session: testSession(id: "a", title: "First"), project: project, running: null),
+        (session: testSession(id: "b", title: "Second"), project: other, running: null),
+      ],
+    );
+    await tester.tap(find.byKey(const Key("send_session_target")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("/work/demo-app"), findsOneWidget);
+    expect(find.text("/forks/demo-app"), findsOneWidget);
   });
 }

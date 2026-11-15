@@ -8,7 +8,7 @@ typedef SentSessionOpener = void Function({
   required Session session,
 });
 
-/// Long enough to reach an alert's Open action.
+/// Long enough to reach an alert's action: Stop or Open.
 const Duration _sendOutcomeAlertDuration = Duration(seconds: 8);
 
 /// Sends [source] into the session the user picks. A running source cannot
@@ -45,6 +45,7 @@ void _sendToAnother({
           },
         ),
       ),
+      duration: _sendOutcomeAlertDuration,
     );
     return;
   }
@@ -108,6 +109,9 @@ void _sendToAnother({
           title: loc.sendSessionFailed(sourceName),
           variant: PregoPopupAlertsNotificationsVariant.error,
         );
+      case SendToSessionComputerSwitched():
+        // The user moved to another computer; this outcome is not about it.
+        break;
     }
   }());
 }

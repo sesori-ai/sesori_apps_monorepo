@@ -51,7 +51,7 @@ class _SendSessionSheetState() extends State<_SendSessionSheet> {
 
   SessionSearchMatch? _target;
 
-  // ponytail: on each time; step 9 archives with it and keeps the last choice.
+  // ponytail: resets to on each time the sheet opens; step 9 archives with it and keeps the last choice.
   bool _archiveAfterSending = true;
 
   @override
