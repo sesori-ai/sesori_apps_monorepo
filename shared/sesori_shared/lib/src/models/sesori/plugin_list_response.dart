@@ -46,7 +46,8 @@ enum SessionBranchingOperation() {
   /// the conversation, then sends the edited prompt.
   rewind,
 
-  /// The harness forks a session from a message into a new session.
+  /// The harness forks a session from a message into a new session in the
+  /// same directory.
   fork,
 
   /// An operation this app does not know yet.
