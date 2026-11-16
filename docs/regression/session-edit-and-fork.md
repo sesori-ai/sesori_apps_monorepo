@@ -208,7 +208,12 @@ harness declares `fork`.
   directory with the edited prompt as its first prompt (with the worktree
   context, for a dedicated worktree) and moves the same Sesori session onto
   it in one transaction. The new harness session's events reach clients under
-  the unchanged session id, with no `session.created`.
+  the unchanged session id, with no `session.created`. On Claude Code and
+  Codex the edited prompt reaches clients no later than the removal of the old
+  rows, so the transcript never shows only Working between them: Codex's
+  running app-server echoes it at once, and Claude Code shows a new session's
+  first prompt as soon as it is written, without waiting the seconds a new
+  CLI process takes to echo it.
 - The old harness session is deleted the way a session delete does it: it and
   its sub-agent sessions are tombstoned in that same transaction, so catalog
   import and startup cleanup never bring them back, and their sub-agent rows
@@ -392,6 +397,9 @@ not loaded yet.
 - After a first-message edit the session shows twice, the old conversation
   comes back after a catalog refresh or restart, or the new prompt's replies
   never arrive.
+- After a first-message edit the old rows go before the edited prompt shows,
+  leaving only Working, or a new Claude Code session shows its first prompt
+  twice.
 - A Codex edit whose resend failed leaves the reverted messages on screen.
 - A Claude Code edit continues from the old branch, or a later prompt lands on
   a rewound branch the edit never used.

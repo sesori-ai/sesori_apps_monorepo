@@ -555,6 +555,7 @@ final class ClaudeSessionService({
         sessionId: sessionId,
         parts: parts,
         promptId: mode.replayPromptId,
+        echoAtOnce: mode.echoesAtOnce,
       );
       final isSteering = state.selfStartedTurn != null || state.settlements.isNotEmpty;
       switch (mode) {
@@ -1229,6 +1230,10 @@ final class ClaudeSessionService({
 sealed class const _TurnMode() {
   String? get replayPromptId;
 
+  /// Whether the prompt is echoed as soon as it is written. Only a turn with
+  /// no queued entry needs it: nothing else shows the prompt meanwhile.
+  bool get echoesAtOnce;
+
   /// Settles a turn that was dropped before dispatch (stale generation or a
   /// cancelled queued entry).
   void settleUnaccepted();
@@ -1242,6 +1247,10 @@ final class const _QueuedTurnMode({required final _QueuedPrompt entry}) extends 
   @override
   String? get replayPromptId => entry.command == null ? entry.id : null;
 
+  /// The queued entry shows the prompt until the CLI echoes it.
+  @override
+  bool get echoesAtOnce => false;
+
   @override
   void settleUnaccepted() {}
 
@@ -1253,6 +1262,10 @@ final class const _QueuedTurnMode({required final _QueuedPrompt entry}) extends 
 final class const _BlockingTurnMode({required final Completer<void> acceptance}) extends _TurnMode {
   @override
   String? get replayPromptId => null;
+
+  /// The opening prompt of a new process, which echoes it only once started.
+  @override
+  bool get echoesAtOnce => true;
 
   @override
   void settleUnaccepted() {
