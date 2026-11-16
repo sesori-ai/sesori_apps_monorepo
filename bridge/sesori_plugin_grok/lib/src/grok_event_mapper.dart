@@ -3,14 +3,17 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/grok_session_notification_dto.dart";
 import "repositories/mappers/grok_subagent_status_mapping.dart";
+import "trackers/grok_compaction_tracker.dart";
 
 /// Grok Build's ACP mapper: the base session/update handling plus the Grok
-/// extension sub-agent lifecycle, pushed into the shared child-session tracker.
+/// extension sub-agent lifecycle, pushed into the shared child-session tracker,
+/// and the live compaction row.
 class GrokEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
   required super.childSessions,
+  required final GrokCompactionTracker compactionTracker,
 }) extends AcpEventMapper {
   /// The `spawn_subagent` call and the `subagent_spawned` notification share
   /// no id, so the call renders nothing and the notification owns the tile.
@@ -33,8 +36,34 @@ class GrokEventMapper({
     }
   }
 
+  /// Grok answers a turn's prompt only after its compaction ends, so a
+  /// compaction still recorded here lost its end, and the bridge's idle sweep
+  /// settles its row. A stopped compaction sends no end of its own.
+  @override
+  List<BridgeSseEvent> finalizeTurn({required String sessionId}) {
+    compactionTracker.forgetSession(sessionId: sessionId);
+    return super.finalizeTurn(sessionId: sessionId);
+  }
+
+  @override
+  void forgetSession(String sessionId) {
+    compactionTracker.forgetSession(sessionId: sessionId);
+    super.forgetSession(sessionId);
+  }
+
+  @override
+  bool shouldBufferDuringPromptWrite({required AcpNotification notification}) =>
+      // A compaction at the start of a prompt must not reach the client before
+      // the accepted user message.
+      notification.method == GrokSessionProtocol.notificationMethod ||
+      notification.method == GrokSessionProtocol.queueChangedMethod ||
+      super.shouldBufferDuringPromptWrite(notification: notification);
+
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
+    if (notification.method == GrokSessionProtocol.queueChangedMethod) {
+      return _mapQueueChanged(notification: notification);
+    }
     if (notification.method != GrokSessionProtocol.notificationMethod &&
         notification.method != GrokSessionProtocol.updateMethod) {
       return super.mapExtension(notification);
@@ -87,10 +116,102 @@ class GrokEventMapper({
         rootSessionId: dto.sessionId,
         promptId: promptId,
       ),
+      GrokAutoCompactStarted() => _compactionRow(
+        sessionId: dto.sessionId,
+        compaction: compactionTracker.start(sessionId: dto.sessionId, trigger: .auto),
+        state: const .running(summary: null),
+      ),
+      GrokAutoCompactCompleted(:final tokensBefore, :final tokensAfter) => _mapCompactionCompleted(
+        sessionId: dto.sessionId,
+        tokensBefore: tokensBefore,
+        tokensAfter: tokensAfter,
+      ),
+      GrokAutoCompactFailed(:final error) => _mapCompactionFailed(sessionId: dto.sessionId, error: error),
       // One child is one tile; progress never redraws it.
       GrokSubagentProgress() || GrokSubagentUpdateUnknown() => const [],
     };
   }
+
+  /// A manual `/compact` starts when Grok runs it from its queue.
+  List<BridgeSseEvent> _mapQueueChanged({required AcpNotification notification}) {
+    final GrokQueueChangedDto queue;
+    try {
+      queue = GrokQueueChangedDto.fromJson(notification.params);
+    } on Object catch (error, stackTrace) {
+      Log.w("[grok] ignored malformed queue notification", error, stackTrace);
+      return const [];
+    }
+    if (!GrokSessionProtocol.isCompactCommand(text: queue.runningText)) return const [];
+    return _compactionRow(
+      sessionId: queue.sessionId,
+      compaction: compactionTracker.start(sessionId: queue.sessionId, trigger: .manual),
+      state: const .running(summary: null),
+    );
+  }
+
+  /// A completion with no recorded start keeps only the session event.
+  List<BridgeSseEvent> _mapCompactionCompleted({
+    required String sessionId,
+    required int? tokensBefore,
+    required int? tokensAfter,
+  }) {
+    final compaction = compactionTracker.finish(sessionId: sessionId);
+    return [
+      if (compaction != null)
+        ..._compactionRow(
+          sessionId: sessionId,
+          compaction: compaction,
+          // Grok reports no summary over ACP. A compaction that freed nothing
+          // (an empty session reports equal counts) shows no count.
+          state: .completed(
+            summary: null,
+            freedTokens: tokensBefore != null && tokensAfter != null && tokensBefore > tokensAfter
+                ? tokensBefore - tokensAfter
+                : null,
+            trigger: compaction.trigger,
+          ),
+        ),
+      BridgeSseSessionCompacted(sessionID: sessionId),
+    ];
+  }
+
+  List<BridgeSseEvent> _mapCompactionFailed({required String sessionId, required String? error}) {
+    Log.w("[grok] automatic compaction in $sessionId failed: $error");
+    final compaction = compactionTracker.finish(sessionId: sessionId);
+    if (compaction == null) return const [];
+    // Grok's error is free-form API text, so the note names no reason.
+    return _compactionRow(sessionId: sessionId, compaction: compaction, state: const .failed(reason: null));
+  }
+
+  /// The live compaction row: one agent message stamped at the start, with
+  /// one part that settles in place.
+  List<BridgeSseEvent> _compactionRow({
+    required String sessionId,
+    required GrokRunningCompaction compaction,
+    required PluginCompactionState state,
+  }) => [
+    BridgeSseMessageUpdated(
+      info: PluginMessage.assistant(
+        id: compaction.messageId,
+        sessionID: sessionId,
+        agent: pluginId,
+        modelID: null,
+        providerID: null,
+        variant: null,
+        // The agent's own work, so the row shows as it does on every harness.
+        sender: PluginMessageSender.agent,
+        time: PluginMessageTime(created: compaction.startedAtMs, completed: null),
+      ),
+    ),
+    BridgeSseMessagePartUpdated(
+      part: PluginMessagePart.compaction(
+        id: "${compaction.messageId}-part",
+        sessionID: sessionId,
+        messageID: compaction.messageId,
+        compactionState: state,
+      ),
+    ),
+  ];
 
   List<BridgeSseEvent> _releaseAutonomousRootTurn({
     required String rootSessionId,

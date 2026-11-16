@@ -214,6 +214,7 @@ void _registerDependencies({
       sessionCleanupService: SessionCleanupService(repository: promptDispatcher),
       sessionUnseenTracker: FakeSessionUnseenTracker(),
       failureReporter: failureReporter,
+      selectedComputerService: FakeSelectedComputerService(),
     ),
   );
 }

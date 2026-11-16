@@ -2,20 +2,29 @@ import "dart:convert";
 
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/routing/create_scheduled_task_handler.dart";
 import "package:sesori_bridge/src/routing/delete_scheduled_task_handler.dart";
 import "package:sesori_bridge/src/routing/get_scheduled_task_runs_handler.dart";
 import "package:sesori_bridge/src/routing/get_scheduled_tasks_handler.dart";
 import "package:sesori_bridge/src/routing/request_router.dart";
+import "package:sesori_bridge/src/routing/run_scheduled_task_now_handler.dart";
 import "package:sesori_bridge/src/routing/set_scheduled_task_enabled_handler.dart";
 import "package:sesori_bridge/src/routing/update_scheduled_task_handler.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
+import "package:sesori_bridge/src/services/scheduled_task_run_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_service.dart";
+import "package:sesori_bridge/src/services/session_creation_service.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -23,6 +32,9 @@ void main() {
   setUpAll(tz_data.initializeTimeZones);
 
   late RequestRouter router;
+  late AppDatabase db;
+  late FakeSessionRepository sessions;
+  late ScheduledTaskService service;
 
   const definition = ScheduledTaskDefinition(
     name: "Morning summary",
@@ -42,15 +54,30 @@ void main() {
   );
 
   setUp(() {
-    final db = createTestDatabase();
+    db = createTestDatabase();
     addTearDown(db.close);
-    final service = ScheduledTaskService(
-      repository: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
-      sessionRepository: FakeSessionRepository(plugin: FakeBridgePlugin())..projectPathResult = "/repo",
+    final repository = ScheduledTaskRepository(dao: ScheduledTaskDao(database: db));
+    sessions = FakeSessionRepository(plugin: FakeBridgePlugin())..projectPathResult = "/repo";
+    final clock = Clock.fixed(DateTime.utc(2026, 11, 15, 10));
+    service = ScheduledTaskService(
+      repository: repository,
+      sessionRepository: sessions,
       calculator: const ScheduledTaskOccurrenceCalculator(),
-      clock: Clock.fixed(DateTime.utc(2026, 11, 15, 10)),
+      clock: clock,
     );
     addTearDown(service.dispose);
+    final runService = ScheduledTaskRunService(
+      repository: repository,
+      sessionCreation: _UnusedSessionCreation(),
+      prompts: _UnusedPrompts(),
+      operations: _UnusedOperations(),
+      yoloSettings: _UnusedYoloSettings(),
+      sessions: sessions,
+      sessionOptions: FakeSessionOptionsService(),
+      calculator: const ScheduledTaskOccurrenceCalculator(),
+      clock: clock,
+    );
+    addTearDown(runService.dispose);
     router = RequestRouter(
       handlers: [
         GetScheduledTasksHandler(scheduledTaskService: service),
@@ -59,6 +86,7 @@ void main() {
         SetScheduledTaskEnabledHandler(scheduledTaskService: service),
         DeleteScheduledTaskHandler(scheduledTaskService: service),
         GetScheduledTaskRunsHandler(scheduledTaskService: service),
+        RunScheduledTaskNowHandler(scheduledTaskRunService: runService),
       ],
     );
   });
@@ -130,4 +158,59 @@ void main() {
     expect(response.status, 404);
     expect(ScheduledTaskErrorResponse.fromJson(json(response)).code, ScheduledTaskErrorCode.taskNotFound);
   });
+
+  test("Run now answers 400 for an empty id and 409 while the previous run is going", () async {
+    final empty = await send(
+      "POST",
+      "/scheduled-task/run-now",
+      body: const ScheduledTaskIdRequest(taskId: "").toJson(),
+    );
+    expect(empty.status, 400);
+
+    final task = await service.create(definition: definition);
+    await recordSessionBinding(
+      database: db,
+      sessionId: "ses_running",
+      backendSessionId: "backend-running",
+      pluginId: "fake",
+      projectId: "/repo",
+      parentSessionId: null,
+    );
+    await ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)).recordRun(
+      taskId: task.id,
+      scheduledFor: const ScheduledTaskInstant(at: 0, offsetMinutes: 0),
+      outcome: const ScheduledTaskRunOutcome.started(sessionId: "ses_running", late: false),
+      firedAt: DateTime.utc(2026, 11, 15, 9),
+    );
+    sessions.quietness["ses_running"] = SessionQuietness.working;
+
+    final refused = await send(
+      "POST",
+      "/scheduled-task/run-now",
+      body: ScheduledTaskIdRequest(taskId: task.id).toJson(),
+    );
+    expect(refused.status, 409);
+    expect(ScheduledTaskErrorResponse.fromJson(json(refused)).code, ScheduledTaskErrorCode.previousRunActive);
+  });
+}
+
+/// Run now refusals never reach session creation.
+class _UnusedSessionCreation() implements SessionCreationService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedPrompts() implements SessionPromptService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedOperations() implements SessionOperationDispatcher {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedYoloSettings() implements YoloSettingsService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
