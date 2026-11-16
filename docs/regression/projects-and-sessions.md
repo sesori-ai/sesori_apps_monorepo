@@ -592,7 +592,9 @@ state.
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, starting under the logo, one tertiary meta line holds any state that needs
   words ("Waiting" in amber, else retrying, else "Interrupted" in secondary for a
   session that is not running, whose turn a bridge stop cut off, until the user
-  opens it or sends to it), then the project when the list gives
+  opens it or sends to it), then, for a scheduled task's run, a repeat glyph (recurring) or clock (one-off)
+  and the task's name, ellipsizing with the line, which screen readers hear as "Run of recurring task <name>"
+  or "Run of one-time task <name>" (see scheduled-tasks.md), then the project when the list gives
   one, then background tasks as a quiet count: a stack glyph and the number,
   which screen readers hear as "2 background tasks". Waiting and retrying hide
   the count. A plain running session has no words on the line; the sparkle and

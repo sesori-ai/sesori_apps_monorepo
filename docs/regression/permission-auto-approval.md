@@ -37,6 +37,10 @@ user present. It is a bridge policy, not a client feature.
   effective mode is YOLO are auto-approved: an asking session keeps its
   requests answerable while the bridge setting is on, and a YOLO session is
   auto-approved while the bridge setting is off.
+- A scheduled task's approval mode ("Ask me" or "Approve everything", defaulting to the bridge setting when the
+  task is created) is written as its run session's explicit override when the session is created, and a
+  same-session run sets it again before each prompt, replacing a change made in between. A task that asks still
+  asks while the bridge setting is on. See [Scheduled tasks](scheduled-tasks.md).
 - Switching a session to YOLO resolves its already-pending permissions at once.
   Other surfaces learn about the change through the normal session update.
 - Setting an override on a session the bridge does not know fails with a
