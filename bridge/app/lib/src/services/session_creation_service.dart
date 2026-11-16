@@ -173,7 +173,11 @@ class SessionCreationService({
     } on PluginStaleOptionsException {
       // The harness ran nothing, so the session it just made would sit empty
       // beside the corrected retry; it goes before the refusal is reported.
-      await _deleteRefusedSession(sessionId: created.id);
+      await _deleteRefusedSession(
+        sessionId: created.id,
+        // Only a project-less session got a folder of its own to remove.
+        deleteSessionFolder: _projectCatalogIdentityCalculator.isScratchRoot(path: request.projectId),
+      );
       rethrow;
     }
     // A scheduled run must not change the user's remembered picks.
@@ -190,14 +194,14 @@ class SessionCreationService({
     return created;
   }
 
-  Future<void> _deleteRefusedSession({required String sessionId}) async {
+  Future<void> _deleteRefusedSession({required String sessionId, required bool deleteSessionFolder}) async {
     Log.i("Deleting session $sessionId: its first command was refused as stale");
     try {
       await _sessionDeletionService.deleteSession(
         sessionId: sessionId,
         deleteWorktree: true,
         force: true,
-        deleteSessionFolder: true,
+        deleteSessionFolder: deleteSessionFolder,
       );
     } on Object catch (error, stackTrace) {
       Log.w("Failed to delete session $sessionId after its command was refused as stale", error, stackTrace);
