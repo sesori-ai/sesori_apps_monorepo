@@ -1,4 +1,3 @@
-import "dart:convert";
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
@@ -6,6 +5,7 @@ import "package:grok_plugin/src/api/models/grok_session_notification_dto.dart";
 import "package:grok_plugin/src/repositories/mappers/grok_session_replay_collector.dart";
 import "package:grok_plugin/src/repositories/models/grok_session_replay_context.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap;
 import "package:test/test.dart";
 
 void main() {
@@ -253,15 +253,13 @@ void main() {
   group("compaction rows from recorded replay", () {
     const root = "01a00000-0000-7000-8000-000000000001";
 
-    List<AcpNotification> frames(String name) => [
-      for (final frame in jsonDecode(File("test/fixtures/protocol/v1/$name").readAsStringSync()) as List)
-        AcpNotification(
-          method: (frame as Map)["method"] as String,
-          params: (frame["params"] as Map).cast<String, dynamic>(),
-        ),
+    List<AcpNotification> frames({required String name}) => [
+      for (final frame in jsonDecodeListMap(File("test/fixtures/protocol/v1/$name").readAsStringSync()))
+        if (frame case {"method": final String method, "params": final Map<String, dynamic> params})
+          AcpNotification(method: method, params: params),
     ];
 
-    List<PluginMessageWithParts> replay(List<AcpNotification> notifications) {
+    List<PluginMessageWithParts> replay({required List<AcpNotification> notifications}) {
       final standardCollector = AcpReplayCollector(
         sessionUpdateNormalizer: null,
         shellCommandResolver: null,
@@ -286,13 +284,13 @@ void main() {
       return grokCollector.buildWithAssistantSelection(modelId: null, providerId: null, variant: null);
     }
 
-    PluginCompactionState? compactionOf(PluginMessageWithParts message) => switch (message.parts) {
+    PluginCompactionState? compactionOf({required PluginMessageWithParts message}) => switch (message.parts) {
       [PluginMessagePartCompaction(:final compactionState)] => compactionState,
       _ => null,
     };
 
     test("an automatic compaction sits between its prompt and reply under the live row's id and time", () {
-      final messages = replay(frames("replay_compaction_auto.json"));
+      final messages = replay(notifications: frames(name: "replay_compaction_auto.json"));
 
       expect(messages.map((message) => message.info), [
         isA<PluginMessageUser>(),
@@ -303,14 +301,14 @@ void main() {
       expect(row.info.id, GrokSessionProtocol.compactionMessageId(sessionId: root, key: "$root-13"));
       expect(row.info.time?.created, 1790000000000);
       expect(
-        compactionOf(row),
+        compactionOf(message: row),
         const PluginCompactionState.completed(summary: null, freedTokens: 21022 - 18671, trigger: .auto),
       );
-      expect(compactionOf(messages.last), isNull);
+      expect(compactionOf(message: messages.last), isNull);
     });
 
     test("a manual compaction follows its /compact under the live row's id", () {
-      final messages = replay(frames("replay_compaction_manual.json"));
+      final messages = replay(notifications: frames(name: "replay_compaction_manual.json"));
 
       expect(messages, hasLength(2));
       expect(messages.first.info, isA<PluginMessageUser>());
@@ -320,15 +318,20 @@ void main() {
         GrokSessionProtocol.compactionMessageId(sessionId: root, key: "00000000-0000-4000-8000-0000000000c1"),
       );
       expect(
-        compactionOf(row),
+        compactionOf(message: row),
         const PluginCompactionState.completed(summary: null, freedTokens: 19992 - 19017, trigger: .manual),
       );
     });
 
     test("a failed automatic compaction replays as its failure note", () {
-      final messages = replay([...frames("replay_compaction_auto.json").take(2), _failedFrame(root: root)]);
+      final messages = replay(
+        notifications: [
+          ...frames(name: "replay_compaction_auto.json").take(2),
+          _failedFrame(root: root),
+        ],
+      );
 
-      expect(compactionOf(messages.last), const PluginCompactionState.failed(reason: null));
+      expect(compactionOf(message: messages.last), const PluginCompactionState.failed(reason: null));
     });
   });
 }
