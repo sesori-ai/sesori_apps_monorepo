@@ -145,6 +145,7 @@ export "src/cubits/session_detail/session_external_action_state.dart";
 export "src/cubits/session_detail/tool_output_fetch.dart";
 export "src/cubits/session_detail/transcript_activity.dart";
 export "src/cubits/session_detail/transcript_builder.dart";
+export "src/cubits/session_detail/transcript_handoffs.dart";
 export "src/cubits/session_detail/transcript_prompt_list.dart";
 export "src/cubits/session_detail/transcript_turns.dart";
 export "src/cubits/session_diffs/diff_cubit.dart";

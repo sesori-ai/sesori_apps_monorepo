@@ -3139,6 +3139,66 @@ abstract class AppLocalizations {
   /// **'This prompt is no longer in the session'**
   String get transcriptPromptsGone;
 
+  /// One-line marker in a session's transcript while its agent writes the summary Sesori asked for, to send the session into another one. target is the receiving session's title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing a summary for {target}…'**
+  String transcriptHandoffWriting(String target);
+
+  /// One-line marker in a session's transcript once its summary was sent into another session; an Open action follows it. target is the receiving session's title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary sent to {target}'**
+  String transcriptHandoffSent(String target);
+
+  /// One-line marker in a session's transcript when sending it into another session did not complete. target is the receiving session's title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send to {target}'**
+  String transcriptHandoffNotSent(String target);
+
+  /// Action after transcriptHandoffSent that opens the session the summary was sent to.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get transcriptHandoffOpen;
+
+  /// Stands in for a session title in the handoff marker and card when the session had none, as in 'Summary sent to another session'.
+  ///
+  /// In en, this message translates to:
+  /// **'another session'**
+  String get transcriptHandoffAnotherSession;
+
+  /// Title of the sheet that shows the summary a session wrote to be sent into another session.
+  ///
+  /// In en, this message translates to:
+  /// **'Handoff summary'**
+  String get transcriptHandoffSummaryTitle;
+
+  /// Header of the card that shows a session sent in from another one; tapping it opens that session. source is its title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'From {source}'**
+  String transcriptHandoffFrom(String source);
+
+  /// Expands the summary on the card of a session sent in from another one.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get transcriptHandoffShowAll;
+
+  /// Collapses the expanded summary on the card of a session sent in from another one.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get transcriptHandoffShowLess;
+
+  /// Alert when a session linked from a handoff marker or card could not be read, for example because it was deleted or the computer is offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open that session'**
+  String get transcriptHandoffSessionUnavailable;
+
   /// Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped.
   ///
   /// In en, this message translates to:
@@ -3907,6 +3967,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t send: “{source}” didn\'t respond.'**
   String sendSessionFailedSourceUnavailable(String source);
 
+  /// Error alert when the sent session's harness no longer offers the model, agent or variant that session last used, so it refused the summary request.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{source}” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.'**
+  String sendSessionFailedSourceOptionsUnavailable(String source);
+
   /// Error alert when the sent session has no conversation yet.
   ///
   /// In en, this message translates to:
@@ -3954,6 +4020,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t send: {reason}'**
   String sendSessionFailedTargetRefusedReason(String reason);
+
+  /// Error alert when the receiving session's harness no longer offers the model, agent or variant that session last used, so it refused the prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{target}” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.'**
+  String sendSessionFailedTargetOptionsUnavailable(String target);
 
   /// Extra line of the delete question when the session being deleted is pinned.
   ///

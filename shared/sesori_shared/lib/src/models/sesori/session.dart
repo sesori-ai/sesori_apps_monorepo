@@ -6,6 +6,7 @@ import "plugin_identity.dart";
 import "scheduled_task.dart";
 import "session_approval_override.dart";
 import "session_auto_continuation.dart";
+import "session_interruption.dart";
 
 part "session.freezed.dart";
 
@@ -75,6 +76,9 @@ sealed class Session with _$Session {
     // The task whose run started this session. Null means it is not a task
     // run, which is also what bridges before scheduled tasks mean.
     required SessionScheduledTaskMark? scheduledTask,
+    // The latest turn a bridge stop cut off. Null means none, which is also
+    // what bridges before interruption records mean.
+    required SessionInterruption? interruption,
     // Where this session was forked from, or null when it is not a fork.
     // Bridges before forking omit it, which reads as null: they made no forks.
     required SessionForkOrigin? forkedFrom,

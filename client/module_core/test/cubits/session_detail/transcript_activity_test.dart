@@ -49,6 +49,7 @@ Session _child({required String id, required int? createdAt}) => Session(
   lastUserActivityAt: null,
   autoContinuation: null,
   scheduledTask: null,
+  interruption: null,
   forkedFrom: null,
 );
 

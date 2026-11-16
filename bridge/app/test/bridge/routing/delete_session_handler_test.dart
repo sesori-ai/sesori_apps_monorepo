@@ -24,6 +24,7 @@ import "package:test/test.dart";
 import "../../helpers/fakes/deletion_worktree_service_fake.dart";
 import "../../helpers/log_capture.dart";
 import "../../helpers/session_continuation_test_support.dart";
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_drive_roots_api.dart";
@@ -76,6 +77,7 @@ void main() {
       chatHistory = createTestChatHistory();
       sessionOperationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       sessionMutationDispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: sessionRepository,
         sessionOperationDispatcher: sessionOperationDispatcher,
       );
