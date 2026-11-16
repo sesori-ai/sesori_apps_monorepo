@@ -177,6 +177,8 @@ class const SessionContinuationService({
           model: settings.model,
           variant: settings.variant,
           fastMode: settings.fastMode,
+          command: null,
+          commandSource: null,
           handoff: null,
         ),
       );

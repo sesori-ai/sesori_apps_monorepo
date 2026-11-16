@@ -398,6 +398,7 @@ class AcpReplayCollector({
             modelID: selection.modelId,
             providerID: selection.providerId,
             variant: selection.variant,
+            kind: PluginErrorKind.failure,
             errorName: halt.errorName,
             errorMessage: assistantText,
             time: draft.time,

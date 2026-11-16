@@ -126,7 +126,8 @@ class DesktopProductAnalyticsDeliveryService({
     FounderCallShownEvent() ||
     FounderCallLinkOpenedEvent() ||
     FounderCallDeclinedEvent() ||
-    SideQuestionAskedEvent() => null,
+    SideQuestionAskedEvent() ||
+    SessionMessageEditedEvent() => null,
     // The warehouse has no `finish` or `mode` column, and a server enum would
     // reject the next new mode.
     VoiceTranscriptionCompletedEvent() => const {},

@@ -75,10 +75,7 @@ class SessionPromptService({
     required CommandSource? commandSource,
     required MessageHandoff? handoff,
   }) {
-    final normalizedCommand = command?.trim();
-    final send = normalizedCommand == null || normalizedCommand.isEmpty
-        ? _PromptSendPrompt(handoff: handoff)
-        : _PromptSendCommand(command: normalizedCommand, commandSource: commandSource);
+    final send = _promptOrCommand(command: command, commandSource: commandSource, handoff: handoff);
     return _dispatcher.dispatch(
       sessionId: sessionId,
       operation: switch (send) {
@@ -179,6 +176,9 @@ class SessionPromptService({
     }
   }
 
+  /// Sends as [sendPrompt] does, for a caller that already holds the session's
+  /// lane. It is the bridge's own send (a scheduled run, a quota continuation,
+  /// a send-to-session summary request), never a person's prompt.
   Future<void> sendPromptAlreadyReserved({
     required String sessionId,
     required String promptId,
@@ -187,6 +187,8 @@ class SessionPromptService({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required String? command,
+    required CommandSource? commandSource,
     required MessageHandoff? handoff,
   }) => _sendPrompt(
     sessionId: sessionId,
@@ -196,8 +198,19 @@ class SessionPromptService({
     fastMode: fastMode,
     agent: agent,
     model: model,
-    send: _PromptSendPrompt(handoff: handoff),
+    send: _promptOrCommand(command: command, commandSource: commandSource, handoff: handoff),
   );
+
+  static _PromptSend _promptOrCommand({
+    required String? command,
+    required CommandSource? commandSource,
+    required MessageHandoff? handoff,
+  }) {
+    final normalizedCommand = command?.trim();
+    return normalizedCommand == null || normalizedCommand.isEmpty
+        ? _PromptSendPrompt(handoff: handoff)
+        : _PromptSendCommand(command: normalizedCommand, commandSource: commandSource);
+  }
 
   Future<void> _sendPrompt({
     required String sessionId,

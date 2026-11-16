@@ -118,7 +118,12 @@ class GrokEventMapper({
       ),
       GrokAutoCompactStarted() => _compactionRow(
         sessionId: dto.sessionId,
-        compaction: compactionTracker.start(sessionId: dto.sessionId, trigger: .auto),
+        compaction: compactionTracker.start(
+          sessionId: dto.sessionId,
+          key: dto.meta?.eventId,
+          startedAtMs: dto.meta?.agentTimestampMs,
+          trigger: .auto,
+        ),
         state: const .running(summary: null),
       ),
       GrokAutoCompactCompleted(:final tokensBefore, :final tokensAfter) => _mapCompactionCompleted(
@@ -144,7 +149,13 @@ class GrokEventMapper({
     if (!GrokSessionProtocol.isCompactCommand(text: queue.runningText)) return const [];
     return _compactionRow(
       sessionId: queue.sessionId,
-      compaction: compactionTracker.start(sessionId: queue.sessionId, trigger: .manual),
+      // The queue entry carries no time.
+      compaction: compactionTracker.start(
+        sessionId: queue.sessionId,
+        key: queue.runningPromptId,
+        startedAtMs: null,
+        trigger: .manual,
+      ),
       state: const .running(summary: null),
     );
   }
@@ -161,13 +172,10 @@ class GrokEventMapper({
         ..._compactionRow(
           sessionId: sessionId,
           compaction: compaction,
-          // Grok reports no summary over ACP. A compaction that freed nothing
-          // (an empty session reports equal counts) shows no count.
+          // Grok reports no summary over ACP.
           state: .completed(
             summary: null,
-            freedTokens: tokensBefore != null && tokensAfter != null && tokensBefore > tokensAfter
-                ? tokensBefore - tokensAfter
-                : null,
+            freedTokens: GrokSessionProtocol.freedTokens(tokensBefore: tokensBefore, tokensAfter: tokensAfter),
             trigger: compaction.trigger,
           ),
         ),
