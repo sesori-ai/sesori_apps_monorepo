@@ -4457,6 +4457,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduledTaskFailureUnknown => 'an unknown reason';
 
   @override
+  String get scheduledTaskRunFailureTitle => 'Why this run couldn’t start';
+
+  @override
+  String scheduledTaskRunFailureProjectFolder(String project, String path) {
+    return 'The folder of $project wasn’t found at $path.';
+  }
+
+  @override
+  String get scheduledTaskRunFailureProjectUnlisted => 'This task’s project wasn’t found on this computer.';
+
+  @override
+  String scheduledTaskRunFailureHarness(String harness) {
+    return '$harness wasn’t available on this computer.';
+  }
+
+  @override
+  String scheduledTaskRunFailureModel(String harness, String model) {
+    return '$harness no longer offers $model.';
+  }
+
+  @override
+  String scheduledTaskRunFailureModelUnnamed(String harness) {
+    return '$harness no longer offers this task’s model.';
+  }
+
+  @override
+  String get scheduledTaskRunFailureStart =>
+      'The computer couldn’t start the session. Sesori Bridge’s log on that computer has the error.';
+
+  @override
+  String get scheduledTaskRunFailureUnknown =>
+      'The computer gave a reason this app doesn’t know. Update the app to see it.';
+
+  @override
+  String get scheduledTaskRunFailureNextProjectFolder =>
+      'Put the folder back, or pick another project in the task editor.';
+
+  @override
+  String get scheduledTaskRunFailureNextProject => 'Pick another project in the task editor.';
+
+  @override
+  String get scheduledTaskRunFailureNextHarness =>
+      'Check it in harness settings, or pick another harness in the task editor.';
+
+  @override
+  String get scheduledTaskRunFailureNextModel => 'Pick another model in the task editor.';
+
+  @override
+  String get scheduledTaskRunFailureNextStart => 'Run now tries again.';
+
+  @override
+  String get scheduledTaskRunFailureClose => 'Close';
+
+  @override
+  String get scheduledTaskRunSessionDeleted => 'This run’s session was deleted.';
+
+  @override
   String get scheduledTaskNew => 'New task';
 
   @override

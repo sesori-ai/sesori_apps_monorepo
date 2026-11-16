@@ -221,6 +221,17 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               context: context,
               route: AppRoute.scheduledTaskEditor(taskId: route.taskId),
             ),
+            onOpenSession: ({required projectId, required projectName, required sessionId}) => _pushRoute(
+              context: context,
+              route: AppRoute.sessionDetail(
+                projectId: projectId,
+                projectName: projectName,
+                sessionId: sessionId,
+                sessionTitle: null,
+                readOnly: false,
+                fromLaunch: false,
+              ),
+            ),
           );
         },
       ),
