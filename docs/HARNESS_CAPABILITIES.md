@@ -666,8 +666,8 @@ app ignores `kind` and shows the row's text in red.
 | Pi | ✅ `stopReason: aborted`. | ✅ The same record. |
 | OpenCode v1 | ✅ `MessageAbortedError`. | ✅ The same record. |
 | OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
-| OMP | ✅ The shared ACP plugin's line, as below. | ⚠️ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing; it folds into the live line. A reply that streamed first keeps its line only until the history is re-read. |
-| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ⚠️ They record no stop, so the line shows only until the history is re-read. |
+| OMP | ✅ The shared ACP plugin's line, as below. | ✅ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing, folds into the live line. For a reply that streamed first, the bridge keeps the live line while the replay holds the turn's prompt. |
+| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ✅ They record no stop; the bridge keeps the live line while the replay holds the turn's prompt. |
 | Claude Code | ✅ The CLI's `[Request interrupted by user]` record (`… for tool use` when a tool was cut off), streamed before the turn's result. | ✅ The same record, by its uuid; the CLI's `<synthetic>` "No response requested." reply after it is hidden. |
 | Codex | ✅ `turn/completed` `interrupted` for a turn a Stop interrupted, keyed by the turn id. | ✅ Rollout `turn_aborted` with reason `interrupted`, keyed by its turn id. |
 
@@ -681,8 +681,15 @@ record before the shutdown ends the process, which a shutdown does not wait for.
 seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds,
 including for a turn the CLI started on its own, such as a wakeup.
 
-Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so that text
-shows live but is gone after a reload, leaving the Stopped line directly under the prompt. Claude Code keeps it.
+Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so the bridge
+snapshots that text live.
+
+The bridge's chat history keeps the live rows that the replay lacks of a turn with a row marked `kind: stopped` (a
+user Stop), its streamed reply and its Stopped row alike, for as long as the replay still holds the turn's prompt. A
+Stopped line shown live therefore stays after a reload on every harness, including those that record no stop; a
+rollback that removes the prompt removes them too. Rows not marked stopped, such as OMP's "Request was aborted"
+notices, stay failures and this rule keeps none of them. A session the bridge did not watch live shows only what the
+harness recorded.
 
 On the ACP harnesses a shutdown, a plugin restart or a follow-up that replaces the running turn cancels it without a
 Stopped line, and so does a Stop that lands before the prompt reached the agent. A turn that already showed a failed-turn

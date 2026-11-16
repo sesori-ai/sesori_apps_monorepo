@@ -120,14 +120,16 @@ defaults and queued client sends coherent.
   stopped (Claude Code's interrupt record by its uuid, with the CLI's "No response requested." filler hidden; Codex's
   interrupted turn by its turn id), so the line shows live and after a reload as one row, with no interrupt bubble. On
   the ACP harnesses (Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity and OMP) the bridge adds one stopped row when
-  the agent ends a turn the user's Stop cancelled; they record no stop, so the line lasts until the history is re-read.
-  The exception is an OMP stop before the reply produced anything: OMP records it as "Interrupted by user", which
-  replays as the same one line, so that line also shows after a reload. A shutdown, a plugin restart, a follow-up that
+  the agent ends a turn the user's Stop cancelled; they record no stop, so the bridge keeps that line after a reload
+  while the replay holds the turn's prompt. An OMP stop before the reply produced anything is recorded as
+  "Interrupted by user", which replays as the same one line. A shutdown, a plugin restart, a follow-up that
   replaces the running turn, or a Stop before the prompt reached the agent adds no line on the ACP harnesses. The other
   harnesses are listed under "Stopped turns" in
   [HARNESS_CAPABILITIES](../HARNESS_CAPABILITIES.md#stopped-turns). The text and steps the turn already streamed
-  stay, with the line under them where the reply ended (after a reload Codex keeps only the steps, because its rollout
-  records none of the reply text it was streaming); a failed turn likewise keeps them above its red error. The
+  stay, with the line under them where the reply ended, and both stay after a reload while the harness still holds
+  the turn's prompt: the bridge's chat history keeps the rows a harness doesn't record, such as the reply Codex was
+  streaming or the Stopped row of a harness that records no stop. A failed turn likewise keeps them above its red
+  error. The
   Working row leaves as the stopped row arrives, before the session's idle lands, and the line grows in as it folds
   away and stands exactly as tall, so the rows above hold still. Stopped mid-stream, with no Working row showing, the
   line grows and fades in under the reply over the transcript's motion, like any new row, and a reader scrolled up
