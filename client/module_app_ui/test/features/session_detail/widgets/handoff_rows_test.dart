@@ -156,6 +156,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(lastLine, findRichText: true).hitTestable(), findsOneWidget);
     expect(find.text("From Relay retries"), findsNWidgets(2));
+    // The path stays selectable in the sheet, as on the card.
+    expect(find.widgetWithText(SelectableText, "/tmp/handoff/transcript.md"), findsNWidgets(2));
     expect(tester.getRect(card), before);
 
     // A drag down closes the sheet, onto the card as it was.

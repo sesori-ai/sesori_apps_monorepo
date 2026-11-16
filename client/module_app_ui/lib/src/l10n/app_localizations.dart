@@ -3169,7 +3169,7 @@ abstract class AppLocalizations {
   /// **'another session'**
   String get transcriptHandoffAnotherSession;
 
-  /// Title of the sheet that shows the summary a session wrote to be sent into another session, opened from the source's marker or the target's card.
+  /// Title of the modal (a sheet on touch, a dialog under a pointer) that shows the summary a session wrote to be sent into another session, opened from the source's marker or the target's card.
   ///
   /// In en, this message translates to:
   /// **'Handoff summary'**
@@ -3181,7 +3181,7 @@ abstract class AppLocalizations {
   /// **'From {source}'**
   String transcriptHandoffFrom(String source);
 
-  /// Opens the whole summary in a sheet from the card of a session sent in from another one.
+  /// Opens the whole summary in a modal (a sheet on touch, a dialog under a pointer) from the card of a session sent in from another one.
   ///
   /// In en, this message translates to:
   /// **'Show all'**
