@@ -24,9 +24,9 @@
 | 15.b Keep the transcript in place during a Claude first-message edit (`[step 19/24]`) | Merged | #2725 |
 | 15.c Resend shows no stale Working timer (`[step 20/24]`) | Merged | #2726 |
 | 15.d Codex later-prompt edit fold settles without rows bouncing (`[step 21/24]`) | Merged | #2727 |
-| 15.e Relay observer keeps its anchor through an edit (`[step 22/24]`) | In review | #2728 |
-| 15.f No Working row flash between a streamed reply and idle (`[step 23/24]`) | Not started | |
-| 15 Reconcile docs, verify and retire (`[step 24/24]`) | In progress: waits on 15.e-15.f | |
+| 15.e Relay observer keeps its anchor through an edit (`[step 22/24]`) | Merged | #2728 |
+| 15.f No Working row flash between a streamed reply and idle (`[step 23/24]`) | Merged | #2729 |
+| 15 Reconcile docs, verify and retire (`[step 24/24]`) | Merged | this PR |
 
 Steps 2, 5, 7 and 9 depend on nothing in this plan and can run in parallel. Step 4 needs 3. Step 6 needs 3 and 5;
 step 8 needs 3 and 7. Step 9.b needs 9. Step 10 needs 2, 4 and 9 (and 6 or 8 for a
@@ -47,6 +47,13 @@ opens read-only from the start. When the origin isn't the page below, desktop se
 stack, as its parent-session link does, while the phone pushes it. A follow-up (#2709) keeps the " (fork)" suffix
 visible when a title truncates.
 
+Step 15's verification found five feel problems and one data bug, fixed as steps 18 to 23 (15.a-15.f). Decided in
+them, without asking: a removal at the live edge with nothing replacing it folds up to 300 ms later on every client,
+so a watching client's rows move one way only (#2728); and once streamed text ends while the session still works,
+the Working row returns only after a 250 ms grace, so a harness that reports idle a moment late moves nothing
+(#2729). A fork's attachments still point at the origin's uploads folder; that is a known limitation in the
+regression doc, not a fix.
+
 ## Open questions
 
 Round 2 (2026-11-15) answered the first seven. Round 4 answered the archived-worktree question (recreate it, step
@@ -61,5 +68,5 @@ Round 2 (2026-11-15) answered the first seven. Round 4 answered the archived-wor
 | Live plugin, Codex 0.169.0 | Pass: later-prompt edit (store and model memory match), first-message swap (new thread, old rollouts deleted, one row), every fork point, archived origin forks; project files unchanged | 2026-11-16 |
 | Live plugin, Codex 0.139.0 refusal | **Pass (live, after #2724)** on main 4ef315450b, headless iOS sim, 9router: a live-captured session imports with each reply once and its live time (4 rows before and after); the edit is refused as `legacySession` with the store byte-identical and the banner and composer kept; a fork at the latest turn is refused with "Update Codex to fork sessions." and the store unchanged. Prompts were sent through the bridge debug API. The first run failed (duplicated replies, misleading fork reason) | 2026-11-16 |
 | Headless iOS simulator (sesori-dev-5), Claude Code and Codex | Pass: edit with fold-away, mid-turn popup Fork (whole turn kept, text in the composer), fork from a reply, own prompt and ⋯ with `… (fork)` kept on long titles, "Forked from" back and open, archived origin read-only from the first frame, delete or archive one of a pair | 2026-11-16 |
-| Desktop right-click menu | Covered by widget tests, not run live (a macOS debug build raises a keychain prompt): `transcript_message_menu_test.dart` (right-click with and without a selection), `session_detail_message_list_test.dart` (right-click Copy selected text, drag across messages), `session_tile_menu_test.dart` (right-click a row opens the anchored menu), `prego_context_menu_test.dart` (secondary click). No test asserts Fork or Edit in a right-click menu | 2026-11-16 |
+| Desktop right-click menu | Covered by widget tests, not run live (a macOS debug build raises a keychain prompt): `transcript_message_menu_test.dart` (right-click with and without a selection), `session_detail_message_list_test.dart` (right-click Copy selected text, drag across messages), `session_tile_menu_test.dart` (right-click a row opens the anchored menu), `prego_context_menu_test.dart` (secondary click). #2727 added right-click Fork and Edit and resend for a reply and a prompt to `session_detail_message_list_test.dart`, and this PR adds Fork in a session row's right-click menu (shown when the plugin forks, absent when not) to `session_tile_menu_test.dart` | 2026-11-16 |
 | Relay, second client (sesori-dev-7, Codex 0.169.0) | Pass: removed rows fold away, a swapped session stays one row, a fork row appears (edit, swap and fork driven through the bridge debug API) | 2026-11-16 |
