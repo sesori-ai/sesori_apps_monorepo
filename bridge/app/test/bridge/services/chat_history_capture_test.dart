@@ -1247,9 +1247,10 @@ void main() {
           "replay-a",
           "live-a",
           "tool-1",
-          "replay-shared",
+          // The exact copy still matches between its tool anchors: the partial
+          // row the replay doesn't hold doesn't separate them.
           "live-middle-partial",
-          "live-middle-exact",
+          "replay-shared",
           "tool-2",
           "replay-b",
           "live-b",
@@ -2062,6 +2063,116 @@ void main() {
             containsAll(["replay", "live"]),
           );
         });
+      });
+    });
+
+    // Oh My Pi replays untimed rows under fresh ids on every load.
+    group("a replay under fresh ids", () {
+      test("matches a live turn after an earlier import once", () async {
+        final transcript = [
+          _messageWithText(id: "r1-alpha", text: "Say ALPHA", createdAt: null, promptId: null),
+          _assistantMessageWithText(id: "r1-alpha-reply", text: "ALPHA", reasoning: null, createdAt: null),
+        ];
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-alpha", text: "Say ALPHA", createdAt: 100, promptId: "p1"),
+            _assistantMessageWithText(id: "live-alpha-reply", text: "ALPHA", reasoning: null, createdAt: null),
+          ],
+        );
+        await history.service.backfillSession(sessionId: "ses_a");
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-beta", text: "Say BETA", createdAt: 300, promptId: "p2"),
+            _assistantMessageWithText(id: "live-beta-reply", text: "BETA", reasoning: null, createdAt: null),
+          ],
+        );
+        transcript
+          ..clear()
+          ..addAll([
+            _messageWithText(id: "r2-alpha", text: "Say ALPHA", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "r2-alpha-reply", text: "ALPHA", reasoning: null, createdAt: null),
+            _messageWithText(id: "r2-beta", text: "Say BETA", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "r2-beta-reply", text: "BETA", reasoning: null, createdAt: null),
+          ]);
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r2-alpha", "r2-alpha-reply", "r2-beta", "r2-beta-reply"],
+        );
+      });
+
+      // A live turn the replay doesn't hold yet separates no neighbors, so its
+      // reply sits in the same context as an imported reply of the same text.
+      test("keeps a live reply that looks like a replayed one", () async {
+        final transcript = [
+          _messageWithText(id: "r1-q", text: "Say Q", createdAt: null, promptId: null),
+          _assistantMessageWithText(id: "r1-a", text: "A", reasoning: null, createdAt: null),
+        ];
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-q", text: "Say Q", createdAt: 100, promptId: "p1"),
+            _assistantMessageWithText(id: "live-a", text: "A", reasoning: null, createdAt: null),
+          ],
+        );
+        await history.service.backfillSession(sessionId: "ses_a");
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-x", text: "Say X", createdAt: 300, promptId: "p2"),
+            _assistantMessageWithText(id: "live-x-a", text: "A", reasoning: null, createdAt: null),
+          ],
+        );
+        transcript
+          ..clear()
+          ..addAll([
+            _messageWithText(id: "r2-q", text: "Say Q", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "r2-a", text: "A", reasoning: null, createdAt: null),
+          ]);
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r2-q", "r2-a", "live-x", "live-x-a"],
+        );
+      });
+
+      // Oh My Pi replays no row for a reply whose model call failed.
+      test("keeps each failed reply after its own turn", () async {
+        final history = createTestChatHistory(
+          sessionRepository: _FakeSessionRepository(
+            transcript: [
+              for (final word in ["ALPHA", "BETA", "GAMMA"])
+                _messageWithText(id: "r1-$word", text: "Say $word", createdAt: null, promptId: null),
+            ],
+          ),
+        );
+        await _captureMessages(
+          history: history,
+          messages: [
+            for (final (index, word) in ["ALPHA", "BETA", "GAMMA"].indexed) ...[
+              _messageWithText(id: "live-$word", text: "Say $word", createdAt: index * 100, promptId: "p$index"),
+              _assistantMessageWithText(id: "failed-$word", text: "400 $word", reasoning: null, createdAt: null),
+            ],
+          ],
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r1-ALPHA", "failed-ALPHA", "r1-BETA", "failed-BETA", "r1-GAMMA", "failed-GAMMA"],
+        );
       });
     });
 

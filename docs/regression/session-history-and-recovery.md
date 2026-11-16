@@ -118,12 +118,20 @@ reconnect or restart.
   re-import: the card and the expanded text both shown, a reply shown twice,
   the next prompt shown both above and below the card, the card below the
   last reply, or the card or its reply gone.
+- A replay under fresh ids on every load (OMP) still matches each live turn
+  once on a later re-import, including a turn sent after an earlier import:
+  the earlier imported rows around it shape its match. A turn whose content and
+  neighbors repeat elsewhere in the session has no unique match without
+  matching creation times, so its live rows are kept. A live reply the replay
+  never holds (OMP drops a reply whose model call failed) stays after its own
+  turn and does not separate the replayed turns around it. Failure signals
+  after a reload or forced re-import: a live prompt shown twice, or all
+  replayed prompts first and the live turns repeated below them.
 - A tool call the harness replays inside the stamped assistant message before
   it (Oh My Pi and DeepSeek stamp their reasoning and text chunks with a
-  message id)
-  is replayed as its own message, the shape the live stream captured, so a
-  re-import or the first read after a bridge restart matches the live tool row
-  by id. Failure signal: after a forced re-import or a restart mid-turn, a tool
+  message id) is replayed as its own message, the shape the live stream
+  captured, so a re-import or the first read after a bridge restart matches
+  the live tool row by id. Failure signal: after a forced re-import or a restart mid-turn, a tool
   turn shows its reasoning or tool call twice.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
@@ -774,6 +782,8 @@ rules where supported.
   bridge store, an OMP prompt template run shows its expanded text without a
   name and a text-only OMP skill run has no row, since OMP records neither
   name.
+- OMP omits a reply whose model call failed from its replay, so a later forced
+  re-import drops those failed replies stored before the previous import.
 - A first-ever open or a stale re-read still needs the backend; if it is
   unavailable and cannot auto-start, that read fails. A store-only read avoids
   that at the cost of a possibly incomplete transcript. A store-only read also
