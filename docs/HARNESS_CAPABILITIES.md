@@ -177,7 +177,7 @@ context the full-history index sees. See `docs/regression/transcript-turn-naviga
 | Codex | `turn/start` steers the active turn | ✅ |
 | Pi | Sent with the `steer` streaming behavior | ✅ |
 | OpenCode | Sent at once into the running turn | ✅ |
-| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, as does the 18.19.0 source) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. While OMP runs a turn no Sesori prompt started (a background-job wake, which OMP before 18.20.1 starts after a prompt ends), it refuses steering and rejects `session/prompt` with `-32003`; the bridge resends the prompt every second until OMP takes it, for up to 30 minutes. Checked in the OMP 18.20.2 source on 2026-11-15. |
+| Oh My Pi | Steered through OMP's `_session/steering` extension when the process advertises `_meta.steering.supported` (18.12.6 does, and 18.21.0 did in a 2026-11-16 initialize probe) | ✅ The running turn takes it at its next tool-batch or model-call boundary. Slash commands, a follow-up that changes the model, effort or agent, one queued behind another waiting prompt, or a failed steering request use stop-and-send instead. Input OMP does not admit (the turn was ending or stopping) is sent as the next turn without a cancel. While OMP runs a turn no Sesori prompt started (a background-job wake, which OMP before 18.20.1 starts after a prompt ends), it refuses steering and rejects `session/prompt` with `-32003`; the bridge resends the prompt every second until OMP takes it, for up to 30 minutes. Checked in the OMP 18.20.2 source on 2026-11-15. |
 | ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and none of these plugins implements the shared steering hook (checked in code on 2026-11-05). |
 
 ## Quota-reset auto continuation
@@ -657,7 +657,7 @@ cannot be waiting on the user; this covers requests abandoned silently.
 | DeepSeek | ✅ Already handled: the adapter's `deepseek/input/cancel {sessionId}` retires every pending request of the session when a turn is cancelled, a session stops or a sub-agent is interrupted. It never withdraws a single `session/request_permission` and has no timeout. Source only, not run live (`0.2.2`). |
 | Hermes | 🚫 `0.23.1` sends no withdrawal. Verified live (2026-11-12): after `session/cancel` it fails the real tool call and the prompt ends `cancelled`; Sesori's own Stop already retires the card. When its own approval timeout fires (`approvals.timeout`, default 300 s) or another Hermes viewer answers, it only fails the tool call, whose id differs from the permission's synthetic `perm-check-N` id, and the turn goes on. That card stays until the turn ends, which retires it through the shared ACP turn-end rule, or until Stop, delete, archive or disposal; an answer before then is dropped. |
 | Grok | 🚫 `1.0.77` sends no `$/cancel_request`. Verified live (2026-11-12): `session/cancel` sends its own `interaction_resolved` for the tool call and the prompt ends `cancelled`; Sesori's own Stop already retires the card. Its 600 s client-permission backstop did not fire on Sesori's `--no-leader stdio` launch in 660 s. |
-| Cursor | 🚫 `2026.11.11-b912975` has no request withdrawal or permission timeout. Source only, not run live: its ACP client has no `$/cancel_request`, and a cancelled prompt leaves the request open. Sesori's own Stop retires the card, and any card still pending closes when the turn ends (shared ACP turn-end rule). |
+| Cursor | 🚫 `2026.11.11-b912975` has no request withdrawal or permission timeout. Source only, not run live: its ACP client (and the `2026.11.13-eacade1` bundle) has no `$/cancel_request`, and a cancelled prompt leaves the request open. Sesori's own Stop retires the card, and any card still pending closes when the turn ends (shared ACP turn-end rule). |
 | Antigravity | 🚫 `1.4.5` has no request withdrawal or permission timeout. Source only, not run live: a cancelled turn drops its pending request without a message. Sesori's own Stop retires the card, and any card still pending closes when the turn ends (shared ACP turn-end rule). |
 
 ## Stop on archive
@@ -994,7 +994,7 @@ harness that raises the exception.
 
 | Capability | Harness | Sesori implementation | Native verification |
 |---|---|---|---|
-| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.19.0`; install/version/ACP/teardown still needs a native ARM64 host |
+| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.21.0`; install/version/ACP/teardown still needs a native ARM64 host |
 
 OMP's eight mappings retain separate Linux glibc/musl binaries and macOS/Windows
 architecture selection. This implementation status is not a native verification
@@ -1419,7 +1419,7 @@ prompt does to a target that is running, from each plugin's
 | Copilot (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
 | Antigravity (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
 
-¹ OMP's `busyPromptHandling` is static. The bundled OMP 18.19.0 advertises
+¹ OMP's `busyPromptHandling` is static. The bundled OMP 18.21.0 advertises
 `_session/steering`. An older OMP on PATH without it stops the running turn,
 and the picker still shows the plain "Running" label instead of the warning. A
 steer that OMP admits as `promptRequired` runs as the next turn, without
@@ -1536,15 +1536,15 @@ sends none. In both modes `wait_agent` renders as a "Waiting for N sub-agents" t
 this mapping keep their generic `Spawn_agent` card, because their child was
 never registered.
 
-⁴ Copilot CLI (plugin targets 1.0.109) runs custom agents as subagents. When
+⁴ Copilot CLI (plugin targets 1.0.112) runs custom agents as subagents. When
 probed on 1.0.80, inside the supported range (minimum 1.0.78), its Agent Client
 Protocol server exposed no subagent lifecycle, no child session, and only the
 turn-wide `session/cancel`. Copilot's changelog says ACP clients receive
-subagent IDs since 1.0.81; Sesori has not re-probed on the 1.0.109 pin and maps
+subagent IDs since 1.0.81; Sesori has not re-probed on the 1.0.112 pin and maps
 no Copilot sub-agent data, so these cells stay 🚫 until a probe confirms usable
 sub-agent identity, lifecycle and per-child stop.
 
-⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.11.11-b912975`;
+⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.11.13-eacade1`;
 shapes derived from the CLI bundle on 2026-10-06 and not yet confirmed on the
 wire) runs each sub-agent as a native child session once the client sends
 `clientCapabilities._meta.subagents: true`, which Sesori always does. A Task
