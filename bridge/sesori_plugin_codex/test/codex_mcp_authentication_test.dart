@@ -8,6 +8,7 @@ import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/repositories/codex_mcp_authentication_repository.dart";
 import "package:codex_plugin/src/repositories/codex_mcp_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_mcp_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_user_agent_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_mcp_authentication_exception.dart";
 import "package:codex_plugin/src/repositories/models/codex_mcp_login_challenge.dart";
 import "package:codex_plugin/src/services/codex_mcp_authentication_service.dart";
@@ -75,7 +76,7 @@ class _Harness({required final http.Client? callbackClient, required final Strin
   late final api = CodexAppServerApi(client: transport);
   late final inventory = CodexMcpRepository(
     appServerApi: api,
-    mapper: CodexMcpMapper(codexVersion: CodexInitializeResult.fromJson({"userAgent": userAgent}).codexVersion),
+    mapper: CodexMcpMapper(codexVersion: const CodexUserAgentMapper().codexVersion(userAgent: userAgent)),
   );
   late final repository = CodexMcpAuthenticationRepository(
     appServerApi: api,

@@ -242,6 +242,8 @@ not loaded yet.
   archives them in Codex, so the session leaves Codex's thread list. When the
   app-server is not connected at the delete, it stays listed there (not in
   Sesori).
+- Those archived rollouts stay in Codex's archive after the last fork that
+  needs them is deleted.
 - An archived origin whose worktree was removed is not handled yet.
 - A fork of an untitled origin that was later deleted reads as an ordinary
   session.

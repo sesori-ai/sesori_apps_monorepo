@@ -222,7 +222,7 @@ class _FakeStdioClient({final Object? connectError}) implements CodexStdioAppSer
   Future<CodexInitializeResult> connect({required Duration timeout}) async {
     final error = connectError;
     if (error != null) throw error;
-    return CodexInitializeResult.fromJson(const {"userAgent": "codex_cli_rs/0.146.0"});
+    return const CodexInitializeResult(userAgent: "codex_cli_rs/0.146.0");
   }
 
   @override

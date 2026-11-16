@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
@@ -211,6 +212,39 @@ void main() {
     // A bridge restart starts from a fresh catalog.
     catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
     expect(texts(messages: await readMessages(sessionId: _forkId)), hasLength(4));
+  });
+
+  test("a fork of a deleted, archived fork keeps the rollouts it builds on through it", () async {
+    // A fork of the fork, through all of the fork's history.
+    const grandForkId = "01a1e0f0-0000-7000-8000-0000000000aa";
+    final forkFile = File(p.join(sessionDay.path, _forkRollout));
+    final meta = {
+      "timestamp": "2026-11-15T20:50:00.000Z",
+      "type": "session_meta",
+      "payload": {
+        "id": grandForkId,
+        "timestamp": "2026-11-15T20:50:00.000Z",
+        "cwd": "/workspace/demo",
+        "history_mode": "paginated",
+        "history_base": {
+          "thread_id": _forkId,
+          "end_ordinal_exclusive": forkFile.readAsLinesSync().length,
+          "end_byte_offset": forkFile.lengthSync(),
+        },
+      },
+    };
+    File(p.join(sessionDay.path, "rollout-2026-11-15T12-50-00-$grandForkId.jsonl"))
+        .writeAsStringSync("${jsonEncode(meta)}\n");
+
+    expect(await catalogRepository.deleteSession(sessionId: _forkId), CodexSessionDeletion.keptForForks);
+    // What `thread/archive` does with the kept fork; then a bridge restart.
+    final archived = Directory(p.join(codexHome.path, "archived_sessions"))..createSync();
+    forkFile.renameSync(p.join(archived.path, _forkRollout));
+    catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
+
+    expect(await catalogRepository.deleteSession(sessionId: _sourceId), CodexSessionDeletion.keptForForks);
+    expect(rolloutFiles(), [_originalRollout, "rollout-2026-11-15T12-50-00-$grandForkId.jsonl"]);
+    expect(texts(messages: await readMessages(sessionId: grandForkId)), hasLength(4));
   });
 
   test("a thread no fork builds on deletes every rollout it owns", () async {

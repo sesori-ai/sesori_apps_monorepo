@@ -33,6 +33,7 @@ import "repositories/codex_tool_lifecycle_tracker.dart";
 import "repositories/codex_tool_outcome_repository.dart";
 import "repositories/mappers/codex_mcp_mapper.dart";
 import "repositories/mappers/codex_question_mapper.dart";
+import "repositories/mappers/codex_user_agent_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_resumed_thread.dart";
 import "repositories/models/codex_thread_record.dart";
@@ -306,9 +307,10 @@ class CodexPlugin._({
         await _sessionService.hydratePersistedChildAncestry();
         final initialized = await client.connect();
         final appServerApi = CodexAppServerApi(client: client);
+        final codexVersion = const CodexUserAgentMapper().codexVersion(userAgent: initialized.userAgent);
         final inventory = CodexMcpRepository(
           appServerApi: appServerApi,
-          mapper: CodexMcpMapper(codexVersion: initialized.codexVersion),
+          mapper: CodexMcpMapper(codexVersion: codexVersion),
         );
         _mcpRepository = inventory;
         _mcpAuthentication = CodexMcpAuthenticationService(
@@ -320,7 +322,7 @@ class CodexPlugin._({
           ),
         );
         _sessionService.attachAppServerRepositories(
-          threadRepository: CodexThreadRepository(appServerApi: appServerApi, codexVersion: initialized.codexVersion),
+          threadRepository: CodexThreadRepository(appServerApi: appServerApi, codexVersion: codexVersion),
           modelRepository: CodexModelRepository(appServerApi: appServerApi),
           skillRepository: CodexSkillRepository(appServerApi: appServerApi),
         );

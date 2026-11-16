@@ -291,7 +291,13 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     var outcome = CodexSessionDeletion.deleted;
     if (rolloutPath != null) {
       final owned = [...?_supersededPathsById[sessionId], rolloutPath];
-      final kept = _pathsOtherThreadsBuildOn(sessionId: sessionId, owned: owned);
+      final Set<String> kept;
+      try {
+        kept = _pathsOtherRolloutsBuildOn(owned: owned);
+      } on Object catch (error, stackTrace) {
+        Log.w("[codex] failed to read which rollouts build on $sessionId", error, stackTrace);
+        return CodexSessionDeletion.failed;
+      }
       if (kept.isNotEmpty) outcome = CodexSessionDeletion.keptForForks;
       // The current rollout goes last: a failure part-way leaves the
       // session listed, so the delete can be retried.
@@ -339,27 +345,33 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     return outcome;
   }
 
-  /// Those of [sessionId]'s [owned] rollouts another thread's history base
-  /// names, directly or through another of [owned].
-  Set<String> _pathsOtherThreadsBuildOn({required String sessionId, required List<String> owned}) {
+  /// Those of [owned] that another rollout, active or archived, still builds
+  /// on, directly or through the rollouts between, such as a deleted fork
+  /// kept and archived for a fork of its own.
+  Set<String> _pathsOtherRolloutsBuildOn({required List<String> owned}) {
     String? baseOf({required String path}) =>
         (_rollouts[path]?.parsed ?? _parseRollout(rolloutApi: _rolloutApi, rolloutPath: path))
             ?.metadata
             ?.historyBaseRolloutId;
-    final ownedByRolloutId = {
-      for (final path in owned)
+    // Parses every archived header per delete; index them if a large archive
+    // makes deletes slow.
+    final others = {
+      ..._pathsById.values,
+      ..._supersededPathsById.values.expand((paths) => paths),
+      ..._rolloutApi.listArchivedRolloutPaths(),
+    }.difference(owned.toSet());
+    final pathsByRolloutId = {
+      for (final path in [...owned, ...others])
         if (CodexRolloutFileName.tryParse(fileName: p.basename(path)) case final name?) name.rolloutId: path,
     };
-    final pending = [
-      for (final MapEntry(key: id, value: path) in _pathsById.entries)
-        if (id != sessionId)
-          for (final other in [path, ...?_supersededPathsById[id]])
-            if (baseOf(path: other) case final base? when ownedByRolloutId.containsKey(base)) base,
-    ];
+    final pending = [for (final path in others) ?baseOf(path: path)];
+    final visited = <String>{};
     final kept = <String>{};
     while (pending.isNotEmpty) {
-      final path = ownedByRolloutId[pending.removeLast()];
-      if (path == null || !kept.add(path)) continue;
+      final rolloutId = pending.removeLast();
+      final path = pathsByRolloutId[rolloutId];
+      if (path == null || !visited.add(rolloutId)) continue;
+      if (owned.contains(path)) kept.add(path);
       if (baseOf(path: path) case final base?) pending.add(base);
     }
     return kept;
