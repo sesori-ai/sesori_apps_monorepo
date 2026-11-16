@@ -174,6 +174,34 @@ void main() {
     expect(tracker.snapshotForSession(sessionId: "session-2").modelId, isNull);
   });
 
+  test("refuses a model or reasoning level the last catalog no longer lists", () async {
+    final tracker = AcpSessionConfigurationTracker();
+    final service = DeepSeekSessionOptionsService(
+      repository: _FakeCatalogRepository(options: mapper.map(catalog(failures: const []))),
+      configurationTracker: tracker,
+      pluginId: DeepSeekIdentity.id,
+      discoveryTimeout: const Duration(seconds: 1),
+    );
+    final client = AcpStdioClient(
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "unused", args: []),
+      processFactory: (_) async => FakeAcpProcess(),
+    );
+    void validate({required String modelId, required String? variant}) => service.validateTurnSelection(
+      operation: "sendPrompt",
+      sessionId: "session-1",
+      cwd: "/project",
+      model: (providerID: providerId, modelID: modelId),
+      variant: variant == null ? null : PluginSessionVariant(id: variant),
+    );
+
+    validate(modelId: "retired", variant: null);
+    await service.getSessionOptions(client: client, cwd: "/project");
+
+    expect(() => validate(modelId: "retired", variant: null), throwsA(isA<PluginStaleOptionsException>()));
+    expect(() => validate(modelId: selectionId, variant: "max"), throwsA(isA<PluginStaleOptionsException>()));
+    validate(modelId: selectionId, variant: "high");
+  });
+
   test("session config capture derives provider without decoding the opaque model id", () {
     final tracker = AcpSessionConfigurationTracker();
     final service = DeepSeekSessionOptionsService(

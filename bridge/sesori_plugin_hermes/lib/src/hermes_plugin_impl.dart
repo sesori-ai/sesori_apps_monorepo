@@ -43,6 +43,15 @@ class HermesPlugin({
     fromNewSession: fromNewSession,
   );
 
+  @override
+  Future<void> validateTurnSelection({
+    required String operation,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) async => _hermesSessionOptionsService.validateTurnSelection(operation: operation, model: model);
+
   /// Hermes selects models through its `session/set_model` extension, so the
   /// standard config repository is unused; the write goes through the Hermes
   /// repository over the live client.

@@ -14,6 +14,10 @@ class DeepSeekSessionOptionsService({
   static const String _noModelsActionHint =
       "DeepSeek reported no models. Complete DeepSeek provider setup, such as an API key, then retry.";
 
+  /// The providers each project's last catalog discovery reported, for the
+  /// send-time check in [validateTurnSelection].
+  final Map<String, List<PluginProvider>> _providersByCwd = {};
+
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required AcpStdioClient client,
     required String cwd,
@@ -101,6 +105,36 @@ class DeepSeekSessionOptionsService({
     }
   }
 
+  /// Refuses a [model] or [variant] missing from the catalog DeepSeek last
+  /// reported for [cwd]. Before any catalog was reported nothing is checked.
+  void validateTurnSelection({
+    required String operation,
+    required String sessionId,
+    required String cwd,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+  }) {
+    final providers = _providersByCwd[cwd];
+    if (providers == null) return;
+    final modelId = model?.modelID ?? configurationTracker.snapshotForSession(sessionId: sessionId).modelId;
+    if (modelId == null) return;
+    final listed = providers
+        .where((provider) => model == null || provider.id == model.providerID)
+        .expand((provider) => provider.models)
+        .where((entry) => entry.id == modelId)
+        .firstOrNull;
+    if (listed == null) {
+      if (model == null) return;
+      throw PluginStaleOptionsException(operation: operation, message: "DeepSeek no longer offers the selected model");
+    }
+    if (variant != null && listed.variants.isNotEmpty && !listed.variants.contains(variant.id)) {
+      throw PluginStaleOptionsException(
+        operation: operation,
+        message: "DeepSeek no longer offers the selected reasoning level",
+      );
+    }
+  }
+
   Future<PluginSessionOptions> _discover({required AcpStdioClient client, required String cwd}) async =>
       await _tryDiscover(client: client, cwd: cwd) ??
       (throw const PluginOperationException(operation: "deepseek/catalog", message: _noModelsActionHint));
@@ -109,6 +143,7 @@ class DeepSeekSessionOptionsService({
   Future<PluginSessionOptions?> _tryDiscover({required AcpStdioClient client, required String cwd}) async {
     final options = await repository.discover(client: client, cwd: cwd, timeout: discoveryTimeout);
     if (options.providers.providers.isEmpty) return null;
+    _providersByCwd[cwd] = options.providers.providers;
     final selected = options.agents.single.model;
     configurationTracker.setProcessDefaults(
       modelId: selected?.modelID,

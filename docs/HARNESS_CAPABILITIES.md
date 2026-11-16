@@ -1307,7 +1307,8 @@ no longer lists:
 |---|---|
 | OMP (ACP) | ✅ Refused before the prompt is accepted, so the bridge's stale-option correction runs or the send fails visibly. |
 | Cursor (ACP) | ✅ Refused before the prompt is accepted, against the catalog Cursor last reported. An option kind Cursor has not reported yet is not checked. An option the catalog still lists but Cursor rejects when the turn applies it fails that turn with a session error, instead of running on the previous settings. |
-| Hermes, DeepSeek (ACP) | ❌ Not implemented: caught only when the turn applies it. The target shows a session error after the send reported Sent. |
+| Hermes (ACP) | ✅ A model the catalog no longer lists is refused before the prompt is accepted (checked live on 0.21.5 through the test proxy). Hermes applies no reasoning level or mode, so neither is checked. A model Hermes rejects when the turn applies it fails that turn with a session error. |
+| DeepSeek (ACP) | ✅ A model or reasoning level missing from the last `deepseek/catalog` result for the project is refused before the prompt is accepted. Before a catalog was reported, nothing is checked, and a rejection when the turn applies it fails that turn with a session error. Not checked live: the runtime needs a DeepSeek account. |
 
 ## Sub-agents
 
