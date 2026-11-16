@@ -271,6 +271,7 @@ export "src/repositories/models/installed_app_build.dart";
 export "src/repositories/models/mcp_action_response.dart";
 export "src/repositories/models/mcp_authentication_response.dart";
 export "src/repositories/models/plugin_management_result.dart";
+export "src/repositories/models/send_to_session_result.dart";
 export "src/repositories/models/session_abort_not_accepted_exception.dart";
 export "src/repositories/models/session_abort_rejected_exception.dart";
 export "src/repositories/models/session_cleanup_rejection.dart";

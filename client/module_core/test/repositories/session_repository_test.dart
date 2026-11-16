@@ -1,10 +1,13 @@
+import "dart:async";
 import "dart:convert";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
+import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/prompt_send_failure.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/send_to_session_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_diff_summary_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
@@ -789,6 +792,87 @@ void main() {
 
       expect(unsupported, isA<SessionPinUnsupported>());
       expect(failed, isA<SessionPinFailure>());
+    });
+  });
+
+  group("sendToSession", () {
+    Future<SendToSessionResult> sendFor({required ApiResponse<SuccessEmptyResponse> response}) {
+      final api = MockSessionApi();
+      when(
+        () => api.sendToSession(sourceSessionId: "source", targetSessionId: "target"),
+      ).thenAnswer((_) async => response);
+      return SessionRepository(api: api).sendToSession(sourceSessionId: "source", targetSessionId: "target");
+    }
+
+    ApiResponse<SuccessEmptyResponse> refusal({required String body}) =>
+        ApiResponse.error(ApiError.nonSuccessCode(errorCode: 409, rawErrorString: body));
+
+    test("a 200 reads as sent", () async {
+      expect(await sendFor(response: ApiResponse.success(const SuccessEmptyResponse())), isA<SendToSessionSent>());
+    });
+
+    test("a 409 carries the bridge's code and the harness's message", () async {
+      final stopped = await sendFor(
+        response: refusal(
+          body: jsonEncode(
+            const SendToSessionErrorResponse(code: SendToSessionErrorCode.summaryStopped, message: null).toJson(),
+          ),
+        ),
+      );
+      final refused = await sendFor(
+        response: refusal(
+          body: jsonEncode(
+            const SendToSessionErrorResponse(
+              code: SendToSessionErrorCode.targetRefused,
+              message: "Out of credits",
+            ).toJson(),
+          ),
+        ),
+      );
+      final later = await sendFor(response: refusal(body: '{"code":"aLaterCode","message":null}'));
+
+      expect(
+        stopped,
+        isA<SendToSessionRefused>()
+            .having((value) => value.code, "code", SendToSessionErrorCode.summaryStopped)
+            .having((value) => value.message, "message", isNull),
+      );
+      expect(refused, isA<SendToSessionRefused>().having((value) => value.message, "message", "Out of credits"));
+      expect(later, isA<SendToSessionRefused>().having((value) => value.code, "code", SendToSessionErrorCode.unknown));
+    });
+
+    test("a 409 without a refusal body is a failure", () async {
+      expect(await sendFor(response: refusal(body: "not json")), isA<SendToSessionFailed>());
+    });
+
+    test("only the router's missing-route 404 reads as unsupported", () async {
+      final unsupported = await sendFor(
+        response: ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found for POST /session/send-to-session"),
+        ),
+      );
+      final missingSession = await sendFor(
+        response: ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session not found")),
+      );
+
+      expect(unsupported, isA<SendToSessionUnsupported>());
+      expect(missingSession, isA<SendToSessionFailed>());
+    });
+
+    test("a timeout or a lost answer is unconfirmed; a request that never went out failed", () async {
+      final timedOut = await sendFor(response: ApiResponse.error(ApiError.dartHttpClient(TimeoutException("late"))));
+      final lost = await sendFor(
+        response: ApiResponse.error(
+          ApiError.dartHttpClient(const RelayResponseLostException(message: "Relay disconnected")),
+        ),
+      );
+      final disconnected = await sendFor(
+        response: ApiResponse.error(ApiError.dartHttpClient(Exception("Relay is not connected"))),
+      );
+
+      expect(timedOut, isA<SendToSessionUnconfirmed>());
+      expect(lost, isA<SendToSessionUnconfirmed>());
+      expect(disconnected, isA<SendToSessionFailed>());
     });
   });
 

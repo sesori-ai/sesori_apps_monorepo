@@ -1793,8 +1793,14 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
           allowApprovalWrites &&
           processRepository.answerControlRequest(sessionId: sessionId, requestId: requestId, payload: payload),
     );
+    final transcripts = ClaudeTranscriptCatalogRepository(
+      transcriptApi: failTranscriptDelete
+          ? _ThrowingDeleteTranscriptApi()
+          : ClaudeTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": temporary.path}),
+    );
     sessionService = ClaudeSessionService(
       processes: processRepository,
+      transcripts: transcripts,
       approvals: approvals,
       quotaMapper: ClaudeQuotaInterruptionMapper(contentMapper: const ClaudeContentMapper()),
       clock: const _NeverIdleClock(),
@@ -1802,11 +1808,6 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       idleTimeoutChanges: const Stream<Duration?>.empty(),
     );
     const content = ClaudeContentMapper();
-    final transcripts = ClaudeTranscriptCatalogRepository(
-      transcriptApi: failTranscriptDelete
-          ? _ThrowingDeleteTranscriptApi()
-          : ClaudeTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": temporary.path}),
-    );
     plugin = ClaudePlugin(
       processes: processRepository,
       mcpAuthentication: ClaudeMcpAuthenticationService(

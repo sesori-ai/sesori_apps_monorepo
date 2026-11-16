@@ -20,6 +20,7 @@ import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
 import "../models/claude_subagent_session_id.dart";
 import "mappers/claude_content_mapper.dart";
+import "models/claude_rewind_point.dart";
 import "models/claude_session_record.dart";
 import "models/claude_transcript_record.dart";
 
@@ -151,6 +152,20 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
       () => _activeBranch(
         records: transcriptApi.readTranscript(transcriptPath: path),
       ).map(_mapTranscriptRecord).toList(growable: false),
+    );
+  }
+
+  /// Where a rewind that removes the user prompt [messageId] and everything
+  /// after it resumes [sessionId]: the prompt's parent on the active branch.
+  Future<ClaudeRewindPoint> rewindPointBefore({required String sessionId, required String messageId}) async {
+    final path = await findTranscriptPath(sessionId: sessionId);
+    if (path == null) return const ClaudeRewindUnavailable(reason: ClaudeRewindRefusal.notOnActiveBranch);
+    final transcriptApi = _transcriptApi;
+    return await Isolate.run(
+      () => _rewindPointBefore(
+        records: transcriptApi.readTranscript(transcriptPath: path),
+        messageId: messageId,
+      ),
     );
   }
 
@@ -552,27 +567,9 @@ String? _promptTitle(ClaudeTranscriptUserRecord record) {
 /// so the turns before a compaction still show. Sub-agent records are not part
 /// of the main chain and stay as they are.
 List<ClaudeTranscriptRecordDto> _activeBranch({required List<ClaudeTranscriptRecordDto> records}) {
-  final parents = <String, String?>{};
-  String? leaf;
-  for (final record in records) {
-    if (_chainId(record) case final id?) {
-      parents[id] = record.parentUuid ?? record.logicalParentUuid;
-      leaf = id;
-    } else if (record.type == _lastPromptType) {
-      if (record.leafUuid case final named? when parents.containsKey(named)) leaf = named;
-    }
-  }
-  if (leaf == null) return records;
-
-  // The walk stops at the root, at a link the file does not resolve, or at a
-  // cycle a corrupt file could hold.
-  final chain = <String>{};
-  String? cursor = leaf;
-  while (cursor != null && parents.containsKey(cursor) && chain.add(cursor)) {
-    cursor = parents[cursor];
-  }
-  // Only then is another root prompt a rewind to before the first message.
-  final reachesRoot = cursor == null;
+  final active = _activeChain(records: records);
+  if (active == null) return records;
+  final (:parents, :chain, leaf: _, :reachesRoot) = active;
 
   // A parent precedes its children in the file, so one pass decides every
   // parent before its children.
@@ -593,6 +590,66 @@ List<ClaudeTranscriptRecordDto> _activeBranch({required List<ClaudeTranscriptRec
   return branch;
 }
 
+/// Every main-chain record's parent link and the chain from the active leaf
+/// back to the root, as [_activeBranch] describes; null for a transcript with
+/// no main-chain record. [reachesRoot] is whether the walk ended at a record
+/// with no parent.
+({Map<String, String?> parents, Set<String> chain, String leaf, bool reachesRoot})? _activeChain({
+  required List<ClaudeTranscriptRecordDto> records,
+}) {
+  final parents = <String, String?>{};
+  String? leaf;
+  for (final record in records) {
+    if (_chainId(record) case final id?) {
+      parents[id] = record.parentUuid ?? record.logicalParentUuid;
+      leaf = id;
+    } else if (record.type == _lastPromptType) {
+      if (record.leafUuid case final named? when parents.containsKey(named)) leaf = named;
+    }
+  }
+  if (leaf == null) return null;
+
+  // The walk stops at the root, at a link the file does not resolve, or at a
+  // cycle a corrupt file could hold.
+  final chain = <String>{};
+  String? cursor = leaf;
+  while (cursor != null && parents.containsKey(cursor) && chain.add(cursor)) {
+    cursor = parents[cursor];
+  }
+  return (parents: parents, chain: chain, leaf: leaf, reachesRoot: cursor == null);
+}
+
+/// The entry `--resume-session-at` keeps when the prompt [messageId] and
+/// everything after it are removed: the prompt's own `parentUuid`, so the
+/// edited prompt is the next record (verified live on 2.1.221 and 2.1.322).
+ClaudeRewindPoint _rewindPointBefore({required List<ClaudeTranscriptRecordDto> records, required String messageId}) {
+  final active = _activeChain(records: records);
+  final byId = {for (final record in records) ?_chainId(record): record};
+  final prompt = byId[messageId];
+  if (active == null || prompt == null || !_isPrompt(prompt) || !active.chain.contains(messageId)) {
+    return const ClaudeRewindUnavailable(reason: ClaudeRewindRefusal.notOnActiveBranch);
+  }
+  final entryUuid = trimmedOrNull(value: prompt.parentUuid);
+  if (entryUuid == null) return const ClaudeRewindUnavailable(reason: ClaudeRewindRefusal.firstMessage);
+  // A parent missing from the file (a truncated transcript) cannot be resumed at.
+  if (!active.chain.contains(entryUuid)) {
+    return const ClaudeRewindUnavailable(reason: ClaudeRewindRefusal.notOnActiveBranch);
+  }
+  // The chain from the leaf reaches the prompt, which it holds.
+  String? cursor = active.leaf;
+  while (cursor != null && cursor != messageId) {
+    if (byId[cursor] case final record? when _isCompactBoundary(record)) {
+      return const ClaudeRewindUnavailable(reason: ClaudeRewindRefusal.beforeCompaction);
+    }
+    cursor = active.parents[cursor];
+  }
+  return ClaudeRewindEntry(entryUuid: entryUuid);
+}
+
+bool _isCompactBoundary(ClaudeTranscriptRecordDto record) =>
+    record.type == ClaudeTranscriptContextKind.system.wireType &&
+    record.subtype == ClaudeTranscriptCompactBoundaryRecord.subtype;
+
 /// A main-chain record's id; null for sub-agent records and records without
 /// one.
 String? _chainId(ClaudeTranscriptRecordDto record) =>
@@ -601,10 +658,7 @@ String? _chainId(ClaudeTranscriptRecordDto record) =>
 /// What a rewound branch starts with: a prompt, or a compaction when the
 /// rewind went back to just before it. An active compaction is on the chain,
 /// so a boundary off it was always left behind.
-bool _startsBranch(ClaudeTranscriptRecordDto record) =>
-    _isPrompt(record) ||
-    (record.type == ClaudeTranscriptContextKind.system.wireType &&
-        record.subtype == ClaudeTranscriptCompactBoundaryRecord.subtype);
+bool _startsBranch(ClaudeTranscriptRecordDto record) => _isPrompt(record) || _isCompactBoundary(record);
 
 /// A user record that is not a tool result.
 bool _isPrompt(ClaudeTranscriptRecordDto record) =>
