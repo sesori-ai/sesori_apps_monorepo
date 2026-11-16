@@ -137,6 +137,51 @@ void main() {
       expect(messages.map(_textOf).where((text) => text.contains("CONTEXT COMPACTION")), isEmpty);
     });
 
+    // The bridge pairs a live reply with its replayed copy by content, so a
+    // reply that reads differently on replay shows twice after a reload.
+    test("a reply after a tool round reads the same live as on replay", () {
+      // Recorded from Hermes v0.21.5 with synthetic ids: a read_file round,
+      // then a reply whose first live chunk starts with a paragraph break.
+      final recorded =
+          jsonDecode(File("test/fixtures/reply_after_tool_round.json").readAsStringSync()) as Map<String, dynamic>;
+      List<Map<String, dynamic>> updates({required String key}) => [
+        if (recorded[key] case final List<dynamic> frames)
+          for (final frame in frames)
+            if (frame case {"params": {"update": final Map<String, dynamic> update}}) update,
+      ];
+
+      final replayed = _replay(frames: updates(key: "replay"));
+      final mapper = HermesEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "hermes",
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
+        clock: const ServerClock(),
+      );
+      mapper.beginTurn(sessionId: _sessionId, messageId: null);
+      final events = [
+        for (final update in updates(key: "live"))
+          ...mapper.map(
+            AcpNotification(
+              method: "session/update",
+              params: {"sessionId": _sessionId, "update": update},
+            ),
+          ),
+        ...mapper.finalizeTurn(sessionId: _sessionId),
+      ];
+
+      final reply = _textOf(replayed.last);
+      expect(reply, startsWith("`greeter.py`"));
+      final saved = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartText>()
+          .last;
+      expect(saved.text, reply);
+      final streamed = events.whereType<BridgeSseMessagePartDelta>().where((delta) => delta.partID == saved.id);
+      expect(streamed.map((delta) => delta.delta).join(), reply);
+    });
+
     test("a user prompt that repeats the row stays the user's prompt", () {
       final messages = _replay(frames: [_userChunk(text: failedTurnBoundary)]);
 
