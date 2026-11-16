@@ -74,9 +74,9 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   product-event route doesn't accept it. Reporting reads it from the raw export: no curated view consumes it, so
   adoption is read as asks per harness and the share of each outcome.
 - Edit and resend reports `session_message_edited` once per Resend the bridge answers, with the session's pinned
-  `harness` and an `outcome`: `succeeded` when the bridge accepted the edit, `busy` when the session ran when it
-  arrived, `refused` for a missing branch point, stale options or another refusal, and `failed` for a failed or lost
-  request. It never carries the prompt, the message, the session, or a count. A Resend the app never sends (a busy
+  `harness` and an `outcome`: `succeeded` when the bridge accepted the edit, `refused_busy` when the session ran when it
+  arrived, `branch_point_unavailable` when the harness cannot cut the conversation at that message, `refused` for stale
+  options or another refusal, and `failed` for a failed or lost request. It never carries the prompt, the message, the session, or a count. A Resend the app never sends (a busy
   session caught locally, which offers Stop and resend instead, or a cancelled edit) reports nothing. The desktop does
   not send it to the warehouse yet, because the auth server's product-event route doesn't accept it. Reporting reads it
   from the raw export: adoption is read as edits per harness and the share of each outcome.

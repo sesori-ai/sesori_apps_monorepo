@@ -233,11 +233,14 @@ enum AnalyticsMessageEditOutcome({required final String wireValue}) {
   succeeded(wireValue: "succeeded"),
 
   /// The session was running a turn.
-  busy(wireValue: "busy"),
+  refusedBusy(wireValue: "refused_busy"),
 
-  /// The bridge refused the edit: the message cannot be a branch point, the
-  /// selected options changed, the harness refused it, or a reason this app
-  /// doesn't know.
+  /// The harness cannot cut the conversation at the message, such as before
+  /// Claude Code's latest compaction.
+  branchPointUnavailable(wireValue: "branch_point_unavailable"),
+
+  /// The bridge refused the edit otherwise: the selected options changed, the
+  /// harness refused the prompt, or a reason this app doesn't know.
   refused(wireValue: "refused"),
 
   /// The request failed or timed out, so the edit may or may not have run.

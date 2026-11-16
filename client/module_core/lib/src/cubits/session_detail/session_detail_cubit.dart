@@ -3461,10 +3461,9 @@ class SessionDetailCubit(
           harness: AnalyticsHarness.fromPluginId(pluginId: pluginId),
           outcome: switch (result) {
             SessionRewindAccepted() => AnalyticsMessageEditOutcome.succeeded,
-            SessionRewindBusy() => AnalyticsMessageEditOutcome.busy,
-            SessionRewindUnavailable() ||
-            SessionRewindOptionsChanged() ||
-            SessionRewindRejected() => AnalyticsMessageEditOutcome.refused,
+            SessionRewindBusy() => AnalyticsMessageEditOutcome.refusedBusy,
+            SessionRewindUnavailable() => AnalyticsMessageEditOutcome.branchPointUnavailable,
+            SessionRewindOptionsChanged() || SessionRewindRejected() => AnalyticsMessageEditOutcome.refused,
             SessionRewindFailed() => AnalyticsMessageEditOutcome.failed,
           },
         ),

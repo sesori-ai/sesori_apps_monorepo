@@ -96,7 +96,8 @@ declares `rewind`, so a bridge that does not declare it shows no Edit.
   the edit, and a retry reuses the same prompt id, so the bridge never applies
   one edit twice.
 - `session_message_edited` records each answered Resend with the harness and a
-  closed outcome: succeeded, busy, refused or failed.
+  closed outcome: succeeded, refused_busy, branch_point_unavailable, refused
+  or failed.
 
 ### Bridge edit route
 
