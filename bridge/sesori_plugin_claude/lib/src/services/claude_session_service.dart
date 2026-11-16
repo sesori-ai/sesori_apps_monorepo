@@ -405,7 +405,7 @@ final class ClaudeSessionService({
         entryUuid: entryUuid,
         model: model,
         effort: effort,
-        permissionMode: permissionMode,
+        permissionMode: _approvals.permissionModeFor(sessionId: sessionId, requested: permissionMode),
         fastMode: fastMode,
         allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
       );
@@ -522,7 +522,7 @@ final class ClaudeSessionService({
         sessionId: sessionId,
         model: model,
         effort: effort,
-        permissionMode: permissionMode,
+        permissionMode: _approvals.permissionModeFor(sessionId: sessionId, requested: permissionMode),
         fastMode: fastMode,
         mode: mode,
       )) {
@@ -544,7 +544,8 @@ final class ClaudeSessionService({
         purpose: ClaudeProcessPurpose.session,
         model: model,
         effort: effort,
-        permissionMode: permissionMode,
+        // Read again here: an Always answered during the boundary wait counts.
+        permissionMode: _approvals.permissionModeFor(sessionId: sessionId, requested: permissionMode),
         fastMode: fastMode,
         allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
       );

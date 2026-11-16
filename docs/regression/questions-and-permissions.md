@@ -150,15 +150,24 @@ reaches the backend so the turn continues.
   option, it cancels rather than escalating or selecting another scope. The
   pinned CLI does not forward `ask_user` over ACP, so Copilot declares no
   question capability and Sesori never invents a custom question channel.
-- Claude Code offers Always only when its `can_use_tool` request carries at
-  least one `addRules` suggestion with rules and does not set
-  `suppress_always_allow_rule`. Always sends those rules back with the `session`
+- Claude Code offers Always only when its `can_use_tool` request does not set
+  `suppress_always_allow_rule` and carries either at least one `addRules`
+  suggestion with rules or a `setMode` suggestion to `acceptEdits`. Always sends
+  the rules back with the `session`
   destination, even when Claude suggested a settings file (Bash and Skill rules
   arrive as `localSettings`), so the same command runs again in that session
-  without a request and Sesori never writes the user's settings files. Other
-  suggestion types are never sent. A request with no rule to save (an absent or
-  empty suggestion list, or only `setMode` for a file edit) offers Once and
-  Reject only.
+  without a request and Sesori never writes the user's settings files. When
+  there is no rule but a `setMode` suggestion to `acceptEdits` (a file edit),
+  Always sends that mode switch with the `session` destination: Claude switches
+  the session to accept-edits, later edits in it run without a request, and a
+  relaunched process starts in accept-edits. Choosing Plan still applies; the
+  next Agent turn, or a bridge-started turn with no agent, returns to
+  accept-edits. The grant lives in bridge memory, like the session rules, so a
+  bridge restart ends it. No mode is shown in the app yet; a follow-up adds the
+  line. Any other mode (`bypassPermissions`,
+  `plan`, `default`) and other suggestion types are never sent. A request with
+  nothing to grant (an absent or empty suggestion list, or only such other
+  suggestions) offers Once and Reject only.
 - DeepSeek standard ACP permissions use explicit session IDs or exact tracked
   tool-call attribution, retained across parent turns. Ambiguity cancels; only
   unattributed requests use the ACP active-turn fallback. These permissions

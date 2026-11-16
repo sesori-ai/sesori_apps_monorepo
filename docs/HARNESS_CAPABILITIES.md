@@ -336,8 +336,8 @@ Claude Code (live probe against 2.1.325 with haiku, 2026-11-16):
   [anthropics/claude-code#110490](https://github.com/anthropics/claude-code/issues/110490).
 - Sesori catches only this exact echo: an answer equal, after trimming, to
   the final reply of a turn that ended while the ask was out is refused as
-  `repeatedRunningReply`, and the app says Claude Code answered with its
-  running reply, with Retry. A real answer that happens to equal such a reply
+  `repeatedRunningReply`, and the app says it couldn't answer while Claude
+  Code was busy, with Retry. A real answer that happens to equal such a reply
   is refused too, which costs only a re-ask. An answer to the running turn's
   prompt in other words (the proxy case above) is not caught.
 
@@ -1066,10 +1066,13 @@ sessions. Ambient Google login is not imported. Neither row is a general API-key
 entry form or a claim of support for every provider authentication method.
 
 Claude Code's Always saves the suggested allow rules for the session only, never
-to a settings file. It is offered only when Claude suggests a rule. A file edit
-suggests only switching to accept-edits mode, so Always is not offered for edits
-yet (not implemented). Commands Claude cannot save a rule for get no Always
-either (not supported). Both still get Once and Reject.
+to a settings file. On a file edit, whose only suggestion is switching to
+accept-edits mode, Always switches the session to accept-edits, as Claude Code's
+own terminal does, so later edits in that session run without asking
+(implemented). An explicit Plan selection still applies, and the grant lives in
+bridge memory, so a bridge restart ends it. No mode is shown in the app yet; a
+follow-up adds the line. Commands Claude cannot save a rule for get no Always (not supported),
+only Once and Reject.
 
 Antigravity deliberately omits every persistent `allow_always` choice because
 Sesori's current permission contract cannot safely represent persistent approval.

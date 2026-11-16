@@ -288,7 +288,7 @@ void main() {
     );
     await settle(tester);
 
-    expect(find.text("Claude Code answered with its running reply instead. Ask again."), findsOneWidget);
+    expect(find.text("Couldn't answer while Claude Code was busy. Ask again."), findsOneWidget);
     expect(find.text("Retry"), findsOneWidget);
   });
 
