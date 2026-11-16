@@ -20,4 +20,12 @@ class SessionApprovalService({required final SessionRepository _repository}) {
       ErrorResponse(:final error) => throw error,
     };
   }
+
+  /// Makes the session's next file edit ask again, ending the rest-of-session
+  /// grant from an edit's approval.
+  ///
+  /// Throws the [ApiError] when the bridge does not acknowledge it.
+  Future<void> stopAcceptingEdits({required String sessionId}) async {
+    if (await _repository.stopAcceptingEdits(sessionId: sessionId) case ErrorResponse(:final error)) throw error;
+  }
 }

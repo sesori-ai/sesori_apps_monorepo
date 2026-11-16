@@ -454,6 +454,16 @@ final class ClaudeApprovalRegistry({
       ? ClaudePermissionMode.acceptEdits
       : requested;
 
+  bool acceptsEdits({required String sessionId}) => _acceptEditsSessions.contains(sessionId);
+
+  /// Ends [sessionId]'s accept-edits grant so its next edit asks again.
+  /// Returns whether it held one.
+  bool stopAcceptingEdits({required String sessionId}) {
+    if (!_acceptEditsSessions.remove(sessionId)) return false;
+    _emit(BridgeSseSessionEditsAutoAcceptedChanged(sessionID: sessionId, editsAutoAccepted: false));
+    return true;
+  }
+
   bool hasPendingInput({required String sessionId}) => _pending.values.any((entry) => entry.sessionId == sessionId);
 
   bool hasPermission({required String id}) => _pending[id] is _PendingPermission;
@@ -484,7 +494,9 @@ final class ClaudeApprovalRegistry({
           }
           if (allowedTools.isEmpty) _allowedTools.remove(entry.sessionId);
         case _AcceptEditsGrant():
-          _acceptEditsSessions.add(entry.sessionId);
+          if (_acceptEditsSessions.add(entry.sessionId)) {
+            _emit(BridgeSseSessionEditsAutoAcceptedChanged(sessionID: entry.sessionId, editsAutoAccepted: true));
+          }
         case null:
           break;
       }

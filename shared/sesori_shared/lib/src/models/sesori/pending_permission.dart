@@ -4,11 +4,19 @@ part "pending_permission.freezed.dart";
 
 part "pending_permission.g.dart";
 
-/// Response body for `GET /permission`.
+/// Response body for `POST /session/permissions`: the permission state of one
+/// session's screen.
 @Freezed(fromJson: true, toJson: true)
 sealed class PendingPermissionResponse with _$PendingPermissionResponse {
   const factory({
     required List<PendingPermission> data,
+
+    /// Whether the session's file edits currently run without asking, because
+    /// the user allowed them for the rest of the session from an edit's
+    /// approval. `POST /session/stop-accepting-edits` makes the next edit ask
+    /// again.
+    // COMPATIBILITY 2026-11-16 (v1.14.0): Bridges before this field omit it and never auto-accept edits for a session, so false is honest. Make it required once the minimum supported bridge sends it.
+    @Default(false) bool editsAutoAccepted,
   }) = _PendingPermissionResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$PendingPermissionResponseFromJson(json);

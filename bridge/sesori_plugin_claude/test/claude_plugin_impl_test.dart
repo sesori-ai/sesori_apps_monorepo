@@ -1608,6 +1608,63 @@ void main() {
       expect(permissionModes(), ["plan", "acceptEdits"]);
     });
 
+    test("stopping accept-edits reports it and switches the running process back to asking", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      process.emit({
+        "type": "control_request",
+        "request_id": "edit-1",
+        "request": {
+          "subtype": "can_use_tool",
+          "tool_name": "Write",
+          "tool_use_id": "toolu-edit",
+          "input": {"file_path": "a.dart"},
+          "permission_suggestions": [
+            {"type": "setMode", "mode": "acceptEdits", "destination": "session"},
+          ],
+        },
+      });
+      await pump();
+      expect(harness.plugin.editsAutoAccepted(sessionId: testSessionId), isFalse);
+
+      await harness.plugin.replyToPermission(
+        requestId: "br-1",
+        sessionId: testSessionId,
+        reply: PluginPermissionReply.always,
+      );
+      await pump();
+      expect(harness.plugin.editsAutoAccepted(sessionId: testSessionId), isTrue);
+
+      // Mid-turn, so the next edit of this same turn asks again.
+      await harness.plugin.stopAcceptingEdits(sessionId: testSessionId);
+      final permissionMode = await _waitForControl(process, "set_permission_mode");
+      expect(_request(permissionMode)["mode"], "default");
+      expect(harness.plugin.editsAutoAccepted(sessionId: testSessionId), isFalse);
+      await pump();
+      expect(
+        [
+          for (final event in events.whereType<BridgeSseSessionEditsAutoAcceptedChanged>())
+            (event.sessionID, event.editsAutoAccepted),
+        ],
+        [(testSessionId, true), (testSessionId, false)],
+      );
+
+      // Nothing left to stop: no second switch, no second report.
+      await harness.plugin.stopAcceptingEdits(sessionId: testSessionId);
+      await pump();
+      expect(events.whereType<BridgeSseSessionEditsAutoAcceptedChanged>(), hasLength(2));
+      expect(
+        process.written.where(
+          (frame) => frame["type"] == "control_request" && _request(frame)["subtype"] == "set_permission_mode",
+        ),
+        hasLength(1),
+      );
+    });
+
     test("suppresses the terminal result after an explicit interruption", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);

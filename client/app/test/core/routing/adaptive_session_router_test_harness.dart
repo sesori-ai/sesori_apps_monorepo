@@ -412,6 +412,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
     awaitingHarnessSync: false,
     pendingQuestions: const [],
     pendingPermissions: const [],
+    editsAutoAccepted: false,
     childSessions: childSessionsBySession[sessionId] ?? const [],
     statuses: {sessionId: const SessionStatus.idle()},
     agents: [testAgentInfo()],

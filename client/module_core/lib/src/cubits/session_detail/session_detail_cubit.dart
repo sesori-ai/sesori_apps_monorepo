@@ -1576,6 +1576,7 @@ class SessionDetailCubit(
               sessionStatus: refreshedSessionStatus,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+              editsAutoAccepted: snapshot.editsAutoAccepted,
               bridgeQueuedPrompts: bridgeQueuedPrompts,
               bridgePromptAttachments: queue.bridgePromptAttachments,
               assistantAgentModel: assistantAgentModel,
@@ -1783,6 +1784,10 @@ class SessionDetailCubit(
           _onPromptDefaultsChanged(promptDefaults);
         case SesoriSessionQueuedPrompts(:final prompts):
           _onBridgeQueueUpdated(prompts);
+        case SesoriSessionEditsAutoAccepted(:final editsAutoAccepted):
+          if (state case final SessionDetailLoaded current) {
+            emit(current.copyWith(editsAutoAccepted: editsAutoAccepted));
+          }
         case SesoriSessionPromptSettled(:final promptID):
           _settlePromptRepresentation(promptId: promptID);
         case SesoriSessionCreated() ||
@@ -1905,6 +1910,7 @@ class SessionDetailCubit(
       // Queued prompts render only for the session itself; own-session events
       // arrive through the session-scoped stream, not this global path.
       SesoriSessionQueuedPrompts() ||
+      SesoriSessionEditsAutoAccepted() ||
       // Unseen-state changes are list-level concerns handled by the tracker;
       // the detail screen does not react to them.
       SesoriSessionUnseenChanged() => false,
@@ -1981,6 +1987,7 @@ class SessionDetailCubit(
             SesoriTuiToastShow() ||
             SesoriSessionUnseenChanged() ||
             SesoriSessionQueuedPrompts() ||
+            SesoriSessionEditsAutoAccepted() ||
             SesoriSessionPromptDefaultsChanged():
           break;
       }
@@ -2155,6 +2162,22 @@ class SessionDetailCubit(
       if (!isClosed) _noticeStream.add(const SessionDetailApprovalUpdateFailed());
     } finally {
       _setApprovalProgress(pending: false);
+    }
+  }
+
+  /// Makes the session's next file edit ask again. The line hides at once; it
+  /// comes back with a notice when the bridge does not acknowledge it.
+  Future<void> stopAcceptingEdits() async {
+    final current = state;
+    if (isClosed || current is! SessionDetailLoaded || !current.editsAutoAccepted) return;
+    emit(current.copyWith(editsAutoAccepted: false));
+    try {
+      await _approvalService.stopAcceptingEdits(sessionId: _sessionId);
+    } on Object catch (error, stackTrace) {
+      loge("Failed to stop accepting edits for session $_sessionId", error, stackTrace);
+      if (isClosed) return;
+      if (state case final SessionDetailLoaded current) emit(current.copyWith(editsAutoAccepted: true));
+      _noticeStream.add(const SessionDetailStopAcceptingEditsFailed());
     }
   }
 
@@ -4601,6 +4624,7 @@ class SessionDetailCubit(
       sessionStatus: initialSessionStatus,
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+      editsAutoAccepted: snapshot.editsAutoAccepted,
       bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
       bridgePromptAttachments: queue.bridgePromptAttachments,
       sessionTitle: snapshot.canonicalSessionTitle,

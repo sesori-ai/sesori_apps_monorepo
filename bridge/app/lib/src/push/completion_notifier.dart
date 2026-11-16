@@ -134,6 +134,7 @@ class CompletionNotifier({
           SesoriSessionHistoryRefreshed() ||
           SesoriSessionPromptSettled() ||
           SesoriSessionPromptDefaultsChanged() ||
+          SesoriSessionEditsAutoAccepted() ||
           SesoriCommandExecuted() ||
           SesoriSessionQueuedPrompts() ||
           SesoriMessageUpdated() ||

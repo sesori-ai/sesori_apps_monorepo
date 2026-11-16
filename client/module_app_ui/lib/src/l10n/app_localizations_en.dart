@@ -2024,6 +2024,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionApprovalUpdateFailed => 'Could not change approval for this session. Try again.';
 
   @override
+  String get sessionEditsAutoAccepted => 'Accepting edits';
+
+  @override
+  String get sessionEditsAutoAcceptedTurnOff => 'Turn off';
+
+  @override
+  String get sessionStopAcceptingEditsFailed => 'Could not turn off accepting edits. Try again.';
+
+  @override
   String get sessionDetailYoloTitle => 'YOLO mode is on';
 
   @override

@@ -7,6 +7,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
@@ -807,6 +808,76 @@ void main() {
         ),
       );
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+    });
+
+    group("auto-accepted edits", () {
+      Future<SessionDetailCubit> loadedCubit({required bool editsAutoAccepted}) async {
+        when(() => mockSourceRepository.getPendingPermissions(sessionId: any(named: "sessionId"))).thenAnswer(
+          (_) async => ApiResponse.success(
+            PendingPermissionResponse(data: const [], editsAutoAccepted: editsAutoAccepted),
+          ),
+        );
+        final cubit = _buildCubit(
+          sessionId: sessionId,
+          projectId: "project-1",
+          connectionService: mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          notificationCanceller: mockNotificationCanceller,
+          permissionRepository: mockPermissionRepository,
+          failureReporter: mockFailureReporter,
+        );
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+        return cubit;
+      }
+
+      bool editsAutoAcceptedOf(SessionDetailCubit cubit) => (cubit.state as SessionDetailLoaded).editsAutoAccepted;
+
+      test("follows the snapshot and the bridge's events", () async {
+        final cubit = await loadedCubit(editsAutoAccepted: true);
+        expect(editsAutoAcceptedOf(cubit), isTrue);
+
+        sessionEvents.add(const SesoriSessionEditsAutoAccepted(sessionID: sessionId, editsAutoAccepted: false));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && !state.editsAutoAccepted,
+          description: "edits ask again",
+        );
+        sessionEvents.add(const SesoriSessionEditsAutoAccepted(sessionID: sessionId, editsAutoAccepted: true));
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && state.editsAutoAccepted,
+          description: "edits auto-accepted",
+        );
+      });
+
+      test("turning it off hides it at once and asks the bridge", () async {
+        final reply = Completer<ApiResponse<SuccessEmptyResponse>>();
+        when(() => mockSessionRepository.stopAcceptingEdits(sessionId: sessionId)).thenAnswer((_) => reply.future);
+        final cubit = await loadedCubit(editsAutoAccepted: true);
+
+        final stopping = cubit.stopAcceptingEdits();
+        expect(editsAutoAcceptedOf(cubit), isFalse);
+        reply.complete(ApiResponse.success(const SuccessEmptyResponse()));
+        await stopping;
+
+        expect(editsAutoAcceptedOf(cubit), isFalse);
+        verify(() => mockSessionRepository.stopAcceptingEdits(sessionId: sessionId)).called(1);
+      });
+
+      test("a turn-off the bridge refuses brings it back with a notice", () async {
+        when(
+          () => mockSessionRepository.stopAcceptingEdits(sessionId: sessionId),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final cubit = await loadedCubit(editsAutoAccepted: true);
+        final notice = cubit.noticeStream.first;
+
+        await cubit.stopAcceptingEdits();
+
+        expect(await notice, isA<SessionDetailStopAcceptingEditsFailed>());
+        expect(editsAutoAcceptedOf(cubit), isTrue);
+      });
     });
   });
 }

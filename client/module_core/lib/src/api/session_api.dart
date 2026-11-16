@@ -350,6 +350,14 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<SuccessEmptyResponse>> stopAcceptingEdits({required String sessionId}) {
+    return _client.post(
+      "/session/stop-accepting-edits",
+      fromJson: SuccessEmptyResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
   /// The bridge waits up to 15 minutes for the source's summary, so the
   /// request outlives that wait.
   static const Duration _sendToSessionTimeout = Duration(minutes: 16);

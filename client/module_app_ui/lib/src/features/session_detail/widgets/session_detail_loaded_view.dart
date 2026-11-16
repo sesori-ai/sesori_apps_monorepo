@@ -15,6 +15,7 @@ import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
+import "session_edits_auto_accepted_line.dart";
 import "session_fork_flow.dart";
 import "transcript_jump_notifier.dart";
 import "transcript_laid_out_list_view.dart";
@@ -288,6 +289,20 @@ class SessionDetailLoadedView extends StatelessWidget {
                         onEnabledChanged: (enabled) =>
                             unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
                       ),
+                    // Fades in after Always on an edit and out on Turn off;
+                    // the composer below never moves.
+                    TranscriptPresenceColumn(
+                      risesFromBottom: true,
+                      children: [
+                        if (!readOnly && !state.isArchived && state.editsAutoAccepted)
+                          SessionEditsAutoAcceptedLine(
+                            key: const ValueKey("edits-auto-accepted"),
+                            onTurnOff: state.interaction.canInteract
+                                ? () => unawaited(context.read<SessionDetailCubit>().stopAcceptingEdits())
+                                : null,
+                          ),
+                      ],
+                    ),
                     if (bottomControls case final controls?)
                       SentBubbleRowReach(reach: composerInset - transcriptInset, child: controls),
                   ],

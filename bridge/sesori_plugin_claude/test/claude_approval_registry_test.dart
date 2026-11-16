@@ -427,6 +427,42 @@ void main() {
       });
     }
 
+    test("stopping accept-edits ends the grant and reports each change once", () {
+      List<(String, bool)> editsEvents() => [
+        for (final event in events.whereType<BridgeSseSessionEditsAutoAcceptedChanged>())
+          (event.sessionID, event.editsAutoAccepted),
+      ];
+      for (final id in const ["edit-1", "edit-2"]) {
+        registry.handle(
+          sessionId: "session-1",
+          message: _request(
+            requestId: id,
+            request: const {
+              "tool_name": "Write",
+              "input": {"file_path": "a.dart"},
+              "permission_suggestions": [
+                {"type": "setMode", "destination": "session", "mode": "acceptEdits"},
+              ],
+            },
+          ),
+        );
+      }
+
+      registry.replyPermission(id: "br-1", reply: PluginPermissionReply.always);
+      registry.replyPermission(id: "br-2", reply: PluginPermissionReply.always);
+      expect(registry.acceptsEdits(sessionId: "session-1"), isTrue);
+      expect(editsEvents(), [("session-1", true)]);
+
+      expect(registry.stopAcceptingEdits(sessionId: "session-1"), isTrue);
+      expect(registry.acceptsEdits(sessionId: "session-1"), isFalse);
+      expect(
+        registry.permissionModeFor(sessionId: "session-1", requested: null),
+        isNull,
+      );
+      expect(registry.stopAcceptingEdits(sessionId: "session-1"), isFalse);
+      expect(editsEvents(), [("session-1", true), ("session-1", false)]);
+    });
+
     for (final reply in const [PluginPermissionReply.once, PluginPermissionReply.reject]) {
       test("${reply.name} on an accept-edits suggestion leaves the session mode alone", () {
         registry.handle(

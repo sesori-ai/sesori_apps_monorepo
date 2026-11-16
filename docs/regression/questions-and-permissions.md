@@ -163,8 +163,20 @@ reaches the backend so the turn continues.
   relaunched process starts in accept-edits. Choosing Plan still applies; the
   next Agent turn, or a bridge-started turn with no agent, returns to
   accept-edits. The grant lives in bridge memory, like the session rules, so a
-  bridge restart ends it. No mode is shown in the app yet; a follow-up adds the
-  line. Any other mode (`bypassPermissions`,
+  bridge restart ends it. While the grant holds, a grey "Accepting edits · Turn
+  off" line fades in above the composer of that session, on the phone and the
+  desktop, without moving the composer. The session's
+  `POST /session/permissions` snapshot carries `editsAutoAccepted` and each
+  change arrives as `session.edits-auto-accepted`, so opening or reconnecting
+  shows the bridge's current value and a bridge restart clears it. Turn off
+  hides the line at once and calls `POST /session/stop-accepting-edits`: the
+  bridge drops the grant and switches the running process back to asking
+  (`default`), so the next edit, even in the same turn, asks again, and every
+  surface's line fades out. A refused Turn off brings the line back with an
+  error alert. An older app never shows the line; a newer app on an older
+  bridge reads the missing field as false and shows nothing. If the plugin
+  stops after its idle timeout, the grant ends without an event, so a connected
+  app keeps the line until its next snapshot. Any other mode (`bypassPermissions`,
   `plan`, `default`) and other suggestion types are never sent. A request with
   nothing to grant (an absent or empty suggestion list, or only such other
   suggestions) offers Once and Reject only.

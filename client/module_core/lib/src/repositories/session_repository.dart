@@ -66,6 +66,10 @@ class SessionRepository({
     return _api.setApprovalOverride(sessionId: sessionId, approvalOverride: approvalOverride);
   }
 
+  Future<ApiResponse<SuccessEmptyResponse>> stopAcceptingEdits({required String sessionId}) {
+    return _api.stopAcceptingEdits(sessionId: sessionId);
+  }
+
   Future<SessionPinResult> setPinned({required String sessionId, required bool pinned}) async {
     final response = await _api.setPinned(sessionId: sessionId, pinned: pinned);
     return switch (response) {

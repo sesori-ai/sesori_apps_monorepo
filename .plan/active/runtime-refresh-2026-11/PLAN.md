@@ -37,8 +37,11 @@ All 11 `knownPlugins` entries in `bridge/app/lib/src/runtime/plugin_registry.dar
    - 7.a Claude "Always" shown with nothing to save.
    - 7.b OpenCode 2.3.0 background sub-agent report rows in the parent session.
    - 7.c OMP 18.21.0 busy-window docs and comments, plus the skill corrections below (#2744, merged).
-   - 7.d Claude "Always" on a file edit switches the session to `acceptEdits` (#2747, held for the owner's
-     indicator decision).
+   - 7.d Claude "Always" on a file edit switches the session to `acceptEdits` (#2747, merged).
+   - 7.e A finished background sub-agent's Automation card shows its single step ("General · task ›") in place
+     of "1 step"; cards with several steps keep the count. App-only, every harness.
+   - 7.f An "Accepting edits · Turn off" line above the composer while a session auto-accepts edits, with a
+     backend-neutral session fact and turn-off request (bridge, wire and app).
 
 ## Findings from step 7
 
@@ -61,6 +64,11 @@ Owner decisions:
   (2026-11-16; step 7.d).
 - Finished sub-agent rows stay compact: the answer stays one tap away in the child session, not shown inline in
   the parent chat (2026-11-16; no app change, #2745 ships as is).
+- Q4: after Always on a Claude file edit, a small grey "Accepting edits · Turn off" line fades in above the
+  composer on the phone and the desktop for that session; Turn off fades it out and the next edit asks again. An
+  older app shows no line (2026-11-16; step 7.f).
+- Q5: a finished background sub-agent's Automation card shows its single step, one tap into the sub-agent's
+  session, instead of "1 step", for every harness (2026-11-16; step 7.e).
 
 Track only: OpenCode first-token timing, Copilot `--resume` marking sessions in use, Claude sandbox prompts and
 `auto` permission-mode fallback, OMP late background results carried into the next prompt.

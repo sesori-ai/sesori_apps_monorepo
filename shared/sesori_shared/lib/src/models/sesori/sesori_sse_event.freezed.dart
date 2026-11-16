@@ -112,6 +112,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriSessionQueuedPrompts.fromJson(
             json
           );
+                case 'session.edits-auto-accepted':
+          return SesoriSessionEditsAutoAccepted.fromJson(
+            json
+          );
                 case 'message.updated':
           return SesoriMessageUpdated.fromJson(
             json
@@ -1924,6 +1928,83 @@ class _$SesoriSessionQueuedPromptsCopyWithImpl<$Res>
 sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,prompts: null == prompts ? _self._prompts : prompts // ignore: cast_nullable_to_non_nullable
 as List<QueuedSessionPrompt>,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriSessionEditsAutoAccepted implements SesoriSseEvent, SesoriSessionEvent {
+  const SesoriSessionEditsAutoAccepted({required this.sessionID, required this.editsAutoAccepted,  String? $type}): $type = $type ?? 'session.edits-auto-accepted';
+  factory SesoriSessionEditsAutoAccepted.fromJson(Map<String, dynamic> json) => _$SesoriSessionEditsAutoAcceptedFromJson(json);
+
+ final  String sessionID;
+ final  bool editsAutoAccepted;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriSessionEditsAutoAcceptedCopyWith<SesoriSessionEditsAutoAccepted> get copyWith => _$SesoriSessionEditsAutoAcceptedCopyWithImpl<SesoriSessionEditsAutoAccepted>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriSessionEditsAutoAcceptedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionEditsAutoAccepted&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.editsAutoAccepted, editsAutoAccepted) || other.editsAutoAccepted == editsAutoAccepted));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,sessionID,editsAutoAccepted);
+}
+
+@override
+String toString() {
+    return 'SesoriSseEvent.sessionEditsAutoAccepted(sessionID: $sessionID, editsAutoAccepted: $editsAutoAccepted)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriSessionEditsAutoAcceptedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriSessionEditsAutoAcceptedCopyWith(SesoriSessionEditsAutoAccepted value, $Res Function(SesoriSessionEditsAutoAccepted) _then) = _$SesoriSessionEditsAutoAcceptedCopyWithImpl;
+@useResult
+$Res call({
+ String sessionID, bool editsAutoAccepted
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriSessionEditsAutoAcceptedCopyWithImpl<$Res>
+    implements $SesoriSessionEditsAutoAcceptedCopyWith<$Res> {
+  _$SesoriSessionEditsAutoAcceptedCopyWithImpl(this._self, this._then);
+
+  final SesoriSessionEditsAutoAccepted _self;
+  final $Res Function(SesoriSessionEditsAutoAccepted) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,Object? editsAutoAccepted = null,}) {
+  return _then(SesoriSessionEditsAutoAccepted(
+sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,editsAutoAccepted: null == editsAutoAccepted ? _self.editsAutoAccepted : editsAutoAccepted // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

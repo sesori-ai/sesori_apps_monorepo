@@ -41,4 +41,20 @@ void main() {
 
     expect((event as SesoriPermissionAsked).allowAlways, isFalse);
   });
+
+  test("a permissions response from an older bridge reads as not auto-accepting edits", () {
+    expect(PendingPermissionResponse.fromJson(const {"data": <Object?>[]}).editsAutoAccepted, isFalse);
+    expect(
+      PendingPermissionResponse.fromJson(const {"data": <Object?>[], "editsAutoAccepted": true}).editsAutoAccepted,
+      isTrue,
+    );
+  });
+
+  test("the edits auto-accepted event round-trips as a session event", () {
+    const event = SesoriSseEvent.sessionEditsAutoAccepted(sessionID: "session-1", editsAutoAccepted: true);
+    final json = event.toJson();
+
+    expect(json["type"], "session.edits-auto-accepted");
+    expect(SesoriSseEvent.fromJson(json), isA<SesoriSessionEvent>().having((e) => e, "event", event));
+  });
 }

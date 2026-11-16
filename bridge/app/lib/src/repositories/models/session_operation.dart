@@ -27,6 +27,8 @@ enum SessionOperation() {
   rejectQuestion,
   getPendingPermissions,
   replyToPermission,
+  getEditsAutoAccepted,
+  stopAcceptingEdits,
   cleanupSession,
   updateSessionArchiveStatus,
   getProjectActivitySummaries,

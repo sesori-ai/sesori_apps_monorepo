@@ -88,6 +88,7 @@ class ProjectActivityService({
           SesoriSessionHistoryRefreshed() ||
           SesoriSessionPromptSettled() ||
           SesoriSessionPromptDefaultsChanged() ||
+          SesoriSessionEditsAutoAccepted() ||
           SesoriSessionStatus() ||
           SesoriCommandExecuted() ||
           SesoriSessionQueuedPrompts() ||

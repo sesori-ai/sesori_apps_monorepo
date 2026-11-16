@@ -397,14 +397,28 @@ final class ClaudeSessionProcessRepository({
       );
       process.appliedModel = model;
     }
-    if (process.appliedPermissionMode != permissionMode) {
-      await process.client.sendControlRequest(
-        subtype: "set_permission_mode",
-        params: {"mode": permissionMode?.controlValue ?? ClaudePermissionMode.auto.controlValue},
-      );
-      process.appliedPermissionMode = permissionMode;
-    }
+    await _applyPermissionMode(process: process, permissionMode: permissionMode);
     await _applyFastMode(process: process, fastMode: fastMode);
+  }
+
+  /// Switches [sessionId]'s resident process to [permissionMode] right away,
+  /// even mid-turn. A no-op when no process is resident.
+  Future<void> setPermissionMode({required String sessionId, required ClaudePermissionMode permissionMode}) async {
+    final process = _resident[sessionId];
+    if (process == null) return;
+    await _applyPermissionMode(process: process, permissionMode: permissionMode);
+  }
+
+  Future<void> _applyPermissionMode({
+    required _ResidentProcess process,
+    required ClaudePermissionMode? permissionMode,
+  }) async {
+    if (process.appliedPermissionMode == permissionMode) return;
+    await process.client.sendControlRequest(
+      subtype: "set_permission_mode",
+      params: {"mode": permissionMode?.controlValue ?? ClaudePermissionMode.auto.controlValue},
+    );
+    process.appliedPermissionMode = permissionMode;
   }
 
   /// The CLI acknowledges this setting even when the model or account cannot

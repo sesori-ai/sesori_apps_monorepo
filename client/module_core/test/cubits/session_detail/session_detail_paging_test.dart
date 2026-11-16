@@ -637,6 +637,7 @@ SessionDetailSnapshot _snapshot({
   awaitingHarnessSync: false,
   pendingQuestions: const [],
   pendingPermissions: const [],
+  editsAutoAccepted: false,
   childSessions: const [],
   statuses: const {},
   agents: const [],

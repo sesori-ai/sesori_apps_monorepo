@@ -182,6 +182,17 @@ void main() {
       expect(result, const SesoriSessionPromptSettled(sessionID: "s1", promptID: "prompt-1"));
     });
 
+    test("maps edits auto-accepted changes with their value", () {
+      expect(
+        mapEvent(const BridgeSseSessionEditsAutoAcceptedChanged(sessionID: "s1", editsAutoAccepted: true)),
+        const SesoriSessionEditsAutoAccepted(sessionID: "s1", editsAutoAccepted: true),
+      );
+      expect(
+        mapEvent(const BridgeSseSessionEditsAutoAcceptedChanged(sessionID: "s1", editsAutoAccepted: false)),
+        const SesoriSessionEditsAutoAccepted(sessionID: "s1", editsAutoAccepted: false),
+      );
+    });
+
     test("maps command.executed events", () {
       final result = mapEvent(
         const BridgeSseCommandExecuted(

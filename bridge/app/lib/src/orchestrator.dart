@@ -186,6 +186,7 @@ import "routing/set_session_approval_override_handler.dart";
 import "routing/set_session_auto_continuation_handler.dart";
 import "routing/set_session_pinned_handler.dart";
 import "routing/start_catalog_import_handler.dart";
+import "routing/stop_accepting_edits_handler.dart";
 import "routing/update_scheduled_task_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
@@ -895,6 +896,7 @@ class Orchestrator({
         DeclineFormHandler(service: pendingInteractionService),
         RejectQuestionHandler(pendingInteractionService: pendingInteractionService),
         ReplyToPermissionHandler(pendingInteractionService: pendingInteractionService),
+        StopAcceptingEditsHandler(permissionRepository: permissionRepository),
         RenameProjectHandler(projectRepository: projectRepository),
         CreateProjectHandler(projectMutationService: projectMutationService),
         OpenProjectHandler(projectMutationService: projectMutationService),
@@ -2115,6 +2117,7 @@ class OrchestratorSession._({
       SesoriSessionHistoryRefreshed() ||
       SesoriSessionPromptSettled() ||
       SesoriSessionPromptDefaultsChanged() ||
+      SesoriSessionEditsAutoAccepted() ||
       SesoriSessionStatus() ||
       SesoriCommandExecuted() ||
       SesoriSessionQueuedPrompts() ||
@@ -2381,6 +2384,7 @@ class OrchestratorSession._({
           SesoriSessionHistoryRefreshed() ||
           SesoriSessionPromptSettled() ||
           SesoriSessionPromptDefaultsChanged() ||
+          SesoriSessionEditsAutoAccepted() ||
           SesoriSessionStatus() ||
           SesoriCommandExecuted() ||
           SesoriSessionQueuedPrompts() ||

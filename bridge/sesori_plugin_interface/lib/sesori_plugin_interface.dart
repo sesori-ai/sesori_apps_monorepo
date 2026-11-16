@@ -83,6 +83,7 @@ export "src/process/process_identity.dart";
 export "src/process/process_user.dart";
 export "src/process/server_clock.dart";
 export "src/process/signal_result.dart";
+export "src/session_edits_auto_accept_plugin_api.dart";
 export "src/session_external_actions_plugin_api.dart";
 export "src/session_fork_plugin_api.dart";
 export "src/session_rewind_plugin_api.dart";

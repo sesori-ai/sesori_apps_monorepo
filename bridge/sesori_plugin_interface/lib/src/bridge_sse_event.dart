@@ -52,6 +52,13 @@ class const BridgeSseSessionPromptDefaultsChanged({
   required final PluginAgentModel? model,
 }) extends BridgeSseEvent;
 
+/// Signals whether the session's file edits now run without asking, after the
+/// user allowed them for the rest of the session or turned that off.
+class const BridgeSseSessionEditsAutoAcceptedChanged({
+  required final String sessionID,
+  required final bool editsAutoAccepted,
+}) extends BridgeSseEvent;
+
 class const BridgeSseSessionDeleted({required final Map<String, dynamic> info}) extends BridgeSseEvent;
 
 class const BridgeSseSessionDiff({required final String sessionID}) extends BridgeSseEvent;
