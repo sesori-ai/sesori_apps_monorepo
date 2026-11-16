@@ -1507,6 +1507,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _animatedPromptRow(
           child: QueuedMessageBubble(
+            body: null,
             displayText: submission.displayText,
             isCommand: submission is NewSessionCommandSubmissionSnapshot,
             shape: widget.promptTurnShapes.launch,
@@ -1538,15 +1539,22 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       final promptId = entryId.substring(_kPromptRowPrefix.length);
       final prompt = widget.bridgeQueuedPrompts.where((candidate) => candidate.id == promptId).firstOrNull;
       if (prompt != null) {
-        // A handoff shows as it will once delivered, in the same row.
-        if (_queuedHandoffRow(promptId: prompt.id) case final handoff?) {
-          return _revealable(createdAtMs: prompt.createdAt, child: handoff);
+        // A handoff shows as it will once delivered, in the same row. The source's
+        // marker offers no Cancel, as the source must be idle to hand off; the
+        // target's card waits under the same status line a message would.
+        if (_handoffs.queuedMarkers[prompt.id] case final marker?) {
+          return _revealable(
+            createdAtMs: prompt.createdAt,
+            child: HandoffMarkerRow(marker: marker),
+          );
         }
+        final card = _handoffs.queuedCards[prompt.id];
         final onCancel = widget.onCancelBridgeQueuedPrompt;
         return _revealable(
           createdAtMs: prompt.createdAt,
           child: _animatedPromptRow(
             child: QueuedMessageBubble(
+              body: card == null ? null : HandoffCard(messageId: prompt.id, card: card),
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               shape: widget.promptTurnShapes.ofPrompt(promptId: prompt.id),
@@ -1581,6 +1589,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _animatedPromptRow(
           child: QueuedMessageBubble(
+            body: null,
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             shape: widget.promptTurnShapes.ofPrompt(promptId: submission.promptId),
@@ -1605,6 +1614,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _animatedPromptRow(
           child: QueuedMessageBubble(
+            body: null,
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             shape: widget.promptTurnShapes.ofPrompt(promptId: submission.promptId),
@@ -1759,19 +1769,26 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   );
 
   /// A handoff's marker or card in place of its prompt's bubble, or null for
-  /// any other prompt.
+  /// any other prompt. The card carries on from the queued card's row, so the
+  /// status line it waited under sees out its fade.
   Widget? _handoffRow({required MessageWithParts message}) {
     final id = message.info.id;
     if (_handoffs.markers[id] case final marker?) return HandoffMarkerRow(marker: marker);
-    if (_handoffs.cards[id] case final card?) return HandoffCard(messageId: id, card: card);
-    return null;
-  }
-
-  /// The marker or card a bridge-queued handoff prompt shows until its user
-  /// message arrives, or null for any other queued prompt.
-  Widget? _queuedHandoffRow({required String promptId}) {
-    if (_handoffs.queuedMarkers[promptId] case final marker?) return HandoffMarkerRow(marker: marker);
-    if (_handoffs.queuedCards[promptId] case final card?) return HandoffCard(messageId: promptId, card: card);
+    if (_handoffs.cards[id] case final card?) {
+      return _animatedPromptRow(
+        child: QueuedMessageBubble(
+          body: null,
+          displayText: null,
+          isCommand: false,
+          shape: _messageShape(messageId: id),
+          attachmentCount: 0,
+          localAttachments: const [],
+          presentation: QueuedMessageBubblePresentation.delivered(
+            message: ({required outlineFade}) => HandoffCard(messageId: id, card: card),
+          ),
+        ),
+      );
+    }
     return null;
   }
 
@@ -1780,6 +1797,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// later has none to replay.
   Widget _deliveredPromptRow({required MessageWithParts message}) => _animatedPromptRow(
     child: QueuedMessageBubble(
+      body: null,
       displayText: null,
       isCommand: false,
       shape: _messageShape(messageId: message.info.id),

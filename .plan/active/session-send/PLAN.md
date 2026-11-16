@@ -423,7 +423,7 @@ How each pairing behaves:
 | Old app, new bridge | The app never calls the route and ignores the unknown `handoff` key. A send started from another client looks like ordinary turns: a user prompt and reply in the source, and a user prompt in the target. |
 | New app, bridge with the route | Markers render as D12. |
 
-Two more additive fields:
+Three more additive fields:
 
 - `Message.user` gains a nullable `handoff: MessageHandoff?` (D11). Null is the honest meaning for every other
   message, so it needs no `@Default` or compatibility comment.
@@ -860,7 +860,9 @@ including l10n output.
     `stampQueuedCommandSources`) applies whichever stamp the tracker holds for each queued prompt.
   - The transcript builder turns a queued `sent` or `notSent` prompt into a marker and a queued `received` prompt into
     a card, keyed by prompt id. The message list shows them in the queued prompt's own row, so the row keeps its
-    place and its element when the echo arrives. A queued handoff has no Cancel; stopping the source covers it.
+    place and its element when the echo arrives. The source's queued marker has no Cancel, as the source must be idle
+    to hand off. The target's queued card waits under the usual Queued and Cancel line, because once the source has
+    finished its summary, only the target can withdraw the prompt.
     The queued marker stays while the bridge still lists the prompt, because a user message can arrive before its
     parts, and a row with nothing to render falls back to the queue.
   - The Claude Code, Pi and ACP plugins now list a new queued prompt before they report the session busy. The

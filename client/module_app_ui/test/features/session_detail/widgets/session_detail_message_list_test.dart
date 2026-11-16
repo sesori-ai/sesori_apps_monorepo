@@ -2074,6 +2074,7 @@ void main() {
             child: SizedBox(
               width: 280,
               child: QueuedMessageBubble(
+                body: null,
                 displayText: "first",
                 isCommand: false,
                 attachmentCount: 0,
@@ -2117,6 +2118,7 @@ void main() {
               child: SizedBox(
                 width: 280,
                 child: QueuedMessageBubble(
+                  body: null,
                   displayText: "first",
                   isCommand: false,
                   attachmentCount: 0,
@@ -2462,7 +2464,9 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets("a bridge-queued handoff prompt shows as its card, never as a bubble", (tester) async {
+  testWidgets("a bridge-queued handoff prompt shows as its card, never as a bubble, and can be cancelled", (
+    tester,
+  ) async {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
       _presented(
@@ -2499,9 +2503,15 @@ void main() {
       // Offstage too: a row is measured before it eases in.
       expect(find.byType(HandoffCard, skipOffstage: false), findsOneWidget, reason: "frame $frame");
       expect(find.text(promptText, skipOffstage: false), findsNothing, reason: "frame $frame");
-      expect(find.byType(QueuedMessageBubble, skipOffstage: false), findsNothing, reason: "frame $frame");
+      expect(find.byType(UserMessageBubble, skipOffstage: false), findsNothing, reason: "frame $frame");
     }
     expect(find.byType(HandoffCard), findsOneWidget);
+    // The source has finished its part, so only the target can withdraw the card.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Cancel"));
+    await tester.pumpAndSettle();
+    expect(harnessKey.harness.cancelledBridgePromptIds, ["prm_handoff"]);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
