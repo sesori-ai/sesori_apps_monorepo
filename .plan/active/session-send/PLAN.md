@@ -155,7 +155,14 @@ The bridge sends the source session a summarise prompt through the existing prom
   - `sourceAwaitingInput` covers a pending question or permission.
   - A plugin listed in `unavailablePluginIds` whose backend is not running has no turn, so it counts as idle. A
     running backend listed there failed its status read, so readiness is unknown and the send is refused as
-    `sourceUnavailable`. Any failure of the summarise send itself, including a refusal, is also `sourceUnavailable`.
+    `sourceUnavailable`. Any other failure of the summarise send itself, including a refusal, is also
+    `sourceUnavailable`.
+- A stale-options rejection of a bridge send is its own code: `sourceOptionsUnavailable` for the summarise send (step 3)
+  and `targetOptionsUnavailable` for the handoff to the target (step 3). It means the harness no longer offers that
+  session's saved model, agent or variant. The session keeps its own model and the bridge never swaps it silently,
+  because a typed prompt fails the same way and lets the user pick a replacement. The user sends that session a
+  message, which the app corrects for a stale agent or variant and which needs another model for a stale one, then
+  sends again.
 - Readiness comes from sources that every plugin supplies:
   - `SessionRepository.getSessionStatuses()` decides idle, busy or retrying;
   - `PermissionRepository.getPendingPermissions` and `QuestionRepository.getPendingQuestions` decide awaiting input.
@@ -410,9 +417,9 @@ New wire contracts, all additive:
   `@JsonKey(unknownEnumValue: SendToSessionErrorCode.unknown)`. The codes are:
   - `sameSession`
   - `sourceArchived`, `targetArchived`, `sourceNotRoot`
-  - `sourceBusy`, `sourceAwaitingInput`, `sourceUnavailable`, `sourceEmpty`
+  - `sourceBusy`, `sourceAwaitingInput`, `sourceUnavailable`, `sourceOptionsUnavailable`, `sourceEmpty`
   - `summaryStopped`, `summaryFailed`, `summaryTimedOut`, `summaryMissing`
-  - `transcriptUnavailable`, `targetRefused`
+  - `transcriptUnavailable`, `targetRefused`, `targetOptionsUnavailable`
   - `unknown`
 
 How each pairing behaves:
