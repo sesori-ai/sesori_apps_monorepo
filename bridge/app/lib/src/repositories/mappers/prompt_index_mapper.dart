@@ -14,14 +14,16 @@ class const PromptIndexMapper() {
   /// [messages] must be the session's complete history in `seq` order, so the
   /// numbers count every user message from the start and the fold sees every
   /// turn. A prompt in the leading segment is an opener, as the app lists it.
-  /// It is derived on every read but ignores interruptions, so a prompt after
-  /// a bridge stop that the transcript opens a new turn with can be indexed
-  /// here as a follow-up of the cut-off prompt.
-  List<SessionPromptIndexEntry> indexOf({required List<SequencedMessage> messages}) {
+  /// [turnEndMessageIds] end turns as the transcript does, so a prompt after
+  /// a bridge stop opens a new turn here too.
+  List<SessionPromptIndexEntry> indexOf({
+    required List<SequencedMessage> messages,
+    required Set<String> turnEndMessageIds,
+  }) {
     final openerIdByMessageId = <String, String>{
       for (final segment in splitPromptTurns(
         messages: [for (final entry in messages) entry.message],
-        turnEndMessageIds: const {},
+        turnEndMessageIds: turnEndMessageIds,
       ))
         if (segment case PromptSegment(:final opener))
           for (final message in segment.messages) message.info.id: opener.info.id,
