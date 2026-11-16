@@ -224,8 +224,9 @@ class CursorPlugin._({
     final modelId = hasRequestedModel
         ? requestedModel
         : _configurationTracker.snapshotForSession(sessionId: sessionId).modelId ?? _catalogTracker.currentModelId;
-    final thoughtLevel = modelId == null ? null : _catalogTracker.thoughtLevelForModel(modelId: modelId);
-    if (thoughtLevel != null && !thoughtLevel.variants.contains(requestedVariant)) {
+    // The variants the picker offers: the model's own, else the provisional set.
+    final variants = modelId == null ? const <String>[] : _catalogTracker.variantsForModel(modelId: modelId);
+    if (variants.isNotEmpty && !variants.contains(requestedVariant)) {
       throw PluginStaleOptionsException(
         operation: operation,
         message: "Cursor no longer offers the selected reasoning level",

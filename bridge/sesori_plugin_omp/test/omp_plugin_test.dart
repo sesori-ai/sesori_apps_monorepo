@@ -262,6 +262,39 @@ void main() {
       expect(frames(AcpMethods.sessionSetConfigOption), isEmpty);
     });
 
+    test("forgets the session it created when the create's selection is refused as stale", () async {
+      await connect();
+      final creating = plugin.createSession(
+        fastMode: false,
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: (providerID: "gone", modelID: "gone/model"),
+      );
+      respond(await waitForFrame(AcpMethods.sessionNew), {
+        "sessionId": "session-1",
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "one/model",
+            "options": const [
+              {"value": "one/model", "name": "One"},
+            ],
+          },
+        ],
+      });
+
+      await expectLater(
+        creating,
+        throwsA(isA<PluginStaleOptionsException>().having((e) => e.operation, "operation", "createSession")),
+      );
+      expect(plugin.knownSessionDirectory(sessionId: "session-1"), isNull);
+    });
+
     test("does not prompt after a partially applied model selection", () async {
       await connect();
       final creating = plugin.createSession(
