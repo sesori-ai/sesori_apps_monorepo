@@ -73,8 +73,21 @@ the file and what a prompt to a running target does.
 - A bridge without the route (its route-not-found 404) shows "Update Sesori on
   this computer to send sessions." with the bridge-update action.
 - No answer (the 16-minute request timeout or a dropped connection after the
-  request went out) shows "Couldn't confirm the send. Check “<target>”." with
-  Open. The bridge finishes the send regardless. Nothing is archived.
+  request went out, typically a phone left in the background while the source
+  writes) is not a final answer yet. The bridge finishes the send regardless,
+  so the app reads the newest messages of both sessions every 10 s, failing
+  quietly while it is offline, for up to 15 minutes:
+  - The target holding a handoff prompt from the source written after the
+    source's newest request for the target, with that request still marked
+    sent, shows the Sent alert (an earlier send's prompt doesn't count)
+    above, and archives the source when the switch was on, as a direct answer
+    would.
+  - The source's newest request for the target marked not sent shows
+    "Couldn't send “<source>”"; the reason was in the lost answer.
+  - When neither shows in time, "Couldn't confirm the send. Check
+    “<target>”." with Open. Nothing is archived. Only one of these outcomes
+    ever shows for a send.
+  - Moving to another computer meanwhile stops the reads and shows nothing.
 - A refusal shows its own error text (below). Any other failure shows
   "Couldn't send “<source>”". Neither archives anything.
 - When the app has switched to another computer before the answer, nothing

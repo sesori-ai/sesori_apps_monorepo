@@ -139,7 +139,8 @@ void _sendToAnother({
           title: _refusalText(loc: loc, code: code, message: message, sourceName: sourceName, targetName: targetName),
           variant: PregoPopupAlertsNotificationsVariant.error,
         );
-      case SendToSessionFailed():
+      // A lost answer recovered as not sent carries no reason.
+      case SendToSessionFailed() || SendToSessionNotSent():
         presenter.show(
           title: loc.sendSessionFailed(sourceName),
           variant: PregoPopupAlertsNotificationsVariant.error,
