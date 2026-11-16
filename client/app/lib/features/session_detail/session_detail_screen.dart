@@ -84,6 +84,7 @@ void _openSideChat({
   required String pluginId,
   required SideQuestionAvailability availability,
   required bool isArchived,
+  required String? initialQuestion,
 }) => showSideChatSheet(
   context: context,
   pluginId: pluginId,
@@ -94,7 +95,7 @@ void _openSideChat({
     pluginId: pluginId,
     availability: availability,
     isArchived: isArchived,
-    initialQuestion: null,
+    initialQuestion: initialQuestion,
   ),
 );
 

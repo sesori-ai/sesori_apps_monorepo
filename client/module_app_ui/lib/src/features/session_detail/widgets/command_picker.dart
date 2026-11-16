@@ -17,8 +17,15 @@ class const CommandPicker({
   super.key,
   required final List<CommandInfo> commands,
   required final ValueChanged<CommandInfo> onCommandSelected,
+
+  /// Lists Sesori's own /btw row above the harness's commands, which switches
+  /// the composer to a side question; null where none can be asked.
+  required final VoidCallback? onSideQuestion,
   required final VoidCallback onClose,
 }) extends StatefulWidget {
+  /// Finds the /btw row in widget tests.
+  static const sideQuestionRowKey = ValueKey("commandPicker.sideQuestion");
+
   @override
   State<CommandPicker> createState() => _CommandPickerState();
 }
@@ -73,6 +80,12 @@ class _CommandPickerState() extends State<CommandPicker> {
   /// A cheap `contains` pass over precomputed lowercase haystacks; the sorting
   /// and display strings were prepared in the background isolate.
   List<PregoPickerSearchRow> _rowsFor({required List<CommandPickerEntry> entries}) => [
+    if (widget.onSideQuestion case final onSideQuestion? when _query.isEmpty || "btw side question".contains(_query))
+      PregoPickerSearchOption(
+        isSelected: false,
+        onPick: onSideQuestion,
+        child: const _SideQuestionLabel(key: CommandPicker.sideQuestionRowKey),
+      ),
     for (final entry in entries)
       if (_query.isEmpty || entry.searchText.contains(_query))
         PregoPickerSearchOption(
@@ -98,6 +111,37 @@ class _CommandPickerState() extends State<CommandPicker> {
       rows: _rows,
       emptyText: loc.sessionDetailNoCommands,
       onClose: widget.onClose,
+    );
+  }
+}
+
+/// Sesori's /btw row, laid out as a command's.
+class const _SideQuestionLabel({super.key}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 2,
+      children: [
+        Wrap(
+          spacing: PregoSpacing.md,
+          runSpacing: PregoSpacing.xs,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text("/btw", style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary)),
+            PregoTag(label: loc.sideQuestionCommandSource),
+          ],
+        ),
+        Text(
+          loc.sideQuestionCommandDescription,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+        ),
+      ],
     );
   }
 }

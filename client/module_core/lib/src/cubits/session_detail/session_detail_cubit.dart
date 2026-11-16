@@ -205,6 +205,11 @@ class SessionDetailCubit(
   /// prompt; see [editMessage].
   _MessageEdit? _edit;
 
+  /// Whether Send asks the composer's text as a side question. Never set
+  /// while [_edit] holds an edit, as entering either leaves the other; see
+  /// [_composerMode].
+  bool _asksSideQuestion = false;
+
   /// The words returned messages put at the front of the composer's draft,
   /// for a later return to go after while the draft still starts with them.
   String _restoredDraftPrefix = "";
@@ -3317,11 +3322,24 @@ class SessionDetailCubit(
 
   void acknowledgeRestoredAttachments() => _restoredAttachments = const [];
 
-  void trackComposerAttachments({required List<ComposerAttachment> attachments}) => _composerAttachments = attachments;
+  /// A side question takes no images, so staging one leaves that mode.
+  void trackComposerAttachments({required List<ComposerAttachment> attachments}) {
+    _composerAttachments = attachments;
+    if (attachments.isNotEmpty) leaveSideQuestion();
+  }
 
   /// An edit's words stay off the saved draft, which keeps what the composer
-  /// held before the edit for when it ends or the screen closes.
+  /// held before the edit for when it ends or the screen closes. Typing
+  /// "/btw " at its start switches the composer to a side question; see
+  /// [_sideQuestionTyped].
   void saveComposerDraft({required ComposerDraft draft}) {
+    if (_sideQuestionTyped(draft: draft) case final question?) {
+      _asksSideQuestion = true;
+      // Only the mode is not saved: a restored draft comes back as plain text.
+      _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: question);
+      _fillComposer(draft: question, restoredPrefix: "", attachments: const [], stagedCommand: null);
+      return;
+    }
     _composerDraft = draft;
     if (_edit == null) _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: draft);
   }
@@ -3337,6 +3355,7 @@ class SessionDetailCubit(
   // ---------------------------------------------------------------------------
 
   SessionComposerMode get _composerMode => switch (_edit) {
+    null when _asksSideQuestion => const SessionComposerMode.sideQuestion(),
     null => const SessionComposerMode.normal(),
     final edit => SessionComposerMode.editing(
       messageId: edit.messageId,
@@ -3371,6 +3390,9 @@ class SessionDetailCubit(
           ),
     );
     _edit = edit;
+    // The side question's words wait, as plain text, with what the composer
+    // held.
+    _asksSideQuestion = false;
     emit(current.copyWith(composerMode: _composerMode, stagedCommand: null));
     final restored = await _composerRestore.restore(sessionId: _sessionId, message: message);
     // Cancelled meanwhile.
@@ -3567,8 +3589,72 @@ class SessionDetailCubit(
 
   void _setEdit({required _MessageEdit edit}) {
     _edit = edit;
+    _emitComposerMode();
+  }
+
+  void _emitComposerMode() {
     final current = state;
     if (current is SessionDetailLoaded && !isClosed) emit(current.copyWith(composerMode: _composerMode));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Side-question mode
+  // ---------------------------------------------------------------------------
+
+  static const _sideQuestionPrefix = "/btw ";
+
+  /// [draft] without its "/btw " prefix (any letter case) when typing it
+  /// switches the composer to a side question: on a root session that can
+  /// ask one, in a normal composer without a staged command or images, which
+  /// a side question doesn't take. Elsewhere "/btw " stays plain text.
+  ComposerDraft? _sideQuestionTyped({required ComposerDraft draft}) {
+    final current = state;
+    if (current is! SessionDetailLoaded ||
+        !_offersSideQuestions(state: current) ||
+        _composerMode is! SessionComposerNormal ||
+        current.stagedCommand != null ||
+        _composerAttachments.isNotEmpty) {
+      return null;
+    }
+    final text = draft.text;
+    if (text.length < _sideQuestionPrefix.length ||
+        text.substring(0, _sideQuestionPrefix.length).toLowerCase() != _sideQuestionPrefix) {
+      return null;
+    }
+    return _draftCalculator.replaceTyped(draft: draft, start: 0, end: _sideQuestionPrefix.length, replacement: "");
+  }
+
+  bool _offersSideQuestions({required SessionDetailLoaded state}) =>
+      state.sideQuestions == SideQuestionAvailability.available && state.session.parentID == null;
+
+  /// Switches the composer to a side question, keeping what it holds, as the
+  /// command picker's btw row does.
+  void startSideQuestion() {
+    final current = state;
+    if (current is! SessionDetailLoaded || !_offersSideQuestions(state: current)) return;
+    if (_composerMode is! SessionComposerNormal) return;
+    _asksSideQuestion = true;
+    emit(current.copyWith(composerMode: _composerMode, stagedCommand: null));
+  }
+
+  /// Returns the composer to sending prompts, keeping its text.
+  void leaveSideQuestion() {
+    if (!_asksSideQuestion) return;
+    _asksSideQuestion = false;
+    _emitComposerMode();
+  }
+
+  /// Takes the side question the composer holds: leaves the mode, clears the
+  /// draft and returns the trimmed text for a new side chat to ask, or null
+  /// when there is none to ask.
+  String? submitSideQuestion() {
+    if (!_asksSideQuestion) return null;
+    final question = _composerDraft.text.trim();
+    if (question.isEmpty) return null;
+    _asksSideQuestion = false;
+    clearComposerDraft();
+    _emitComposerMode();
+    return question;
   }
 
   void reportVoiceTranscriptionCompleted({required AnalyticsVoiceFinish finish, required AnalyticsVoiceMode mode}) {
@@ -3981,7 +4067,9 @@ class SessionDetailCubit(
     if (_refuseComposerInput(action: action) || isClosed) return;
     switch (state) {
       case final SessionDetailLoaded current:
-        emit(current.copyWith(stagedCommand: command));
+        // A side question takes no command.
+        if (command != null) _asksSideQuestion = false;
+        emit(current.copyWith(stagedCommand: command, composerMode: _composerMode));
       case final SessionDetailLoading current:
         if (current.seededComposer case final seeded?) {
           emit(

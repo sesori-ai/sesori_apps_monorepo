@@ -141,6 +141,21 @@ final class _ComposerSendShortcutActivator({
   String debugDescribeKeys() => _activator.debugDescribeKeys();
 }
 
+/// Backspace in the empty field, which has nothing to delete.
+final class _EmptyFieldBackspaceActivator({required final TextEditingController controller}) extends ShortcutActivator {
+  static const _backspace = SingleActivator(LogicalKeyboardKey.backspace);
+  final TextEditingController _controller = controller;
+
+  @override
+  Iterable<LogicalKeyboardKey>? get triggers => _backspace.triggers;
+
+  @override
+  bool accepts(KeyEvent event, HardwareKeyboard state) => _controller.text.isEmpty && _backspace.accepts(event, state);
+
+  @override
+  String debugDescribeKeys() => _backspace.debugDescribeKeys();
+}
+
 typedef PromptSubmitCallback = void Function({
   required ComposerDraft draft,
   required CommandInfo? command,
@@ -185,6 +200,11 @@ class const PromptInput({
   /// The options pill's side-question action; null where the composer offers
   /// none.
   required final ComposerSideQuestion? sideQuestion,
+
+  /// Non-null while Send asks a side question instead: the strip above the
+  /// input says so, with this as its ✕, and the field's border darkens.
+  /// Backspace in the empty field calls it too.
+  required final VoidCallback? onLeaveSideQuestion,
 
   /// Kept at the trailing edge of the strip above the input in every state,
   /// while a staged command or the voice controls take [composerHeader]'s place.
@@ -245,6 +265,9 @@ class const PromptInput({
 
   /// Finds the composer's text field in widget and integration tests.
   static const textFieldKey = ValueKey("promptInput.textField");
+
+  /// Finds the darker border a side question draws, in widget tests.
+  static const sideQuestionBorderKey = ValueKey("promptInput.sideQuestionBorder");
 
   /// Finds the resting text-first pill's field area, which a tap opens into
   /// the text field, in widget and integration tests.
@@ -547,7 +570,10 @@ class _PromptInputState() extends State<PromptInput> {
       _focusNode.hasFocus ||
       _hasText ||
       widget.stagedCommand != null ||
+      _asksSideQuestion ||
       _attachments.isNotEmpty;
+
+  bool get _asksSideQuestion => widget.onLeaveSideQuestion != null;
 
   /// The layout the composer would rest in right now, ignoring any pinned
   /// voice interaction.
@@ -755,7 +781,9 @@ class _PromptInputState() extends State<PromptInput> {
     // Here rather than before this method: a refusal above leaves the words
     // for the box, with no bubble expected.
     final handsOver = widget.submitAction != null;
-    if (fromDictation && !handsOver) SentBubbleLanding.of(context: context).expect();
+    // A side question lands in its side chat, not in the transcript.
+    final asksSideQuestion = _asksSideQuestion;
+    if (fromDictation && !handsOver && !asksSideQuestion) SentBubbleLanding.of(context: context).expect();
     widget.onSend(
       draft: submission,
       command: stagedCommand,
@@ -771,6 +799,8 @@ class _PromptInputState() extends State<PromptInput> {
     }
     _controller.clear();
     widget.onDraftCleared();
+    // The side chat that asks it takes the focus.
+    if (asksSideQuestion) return true;
     // Keep the keyboard up across a send only where it was already part of
     // the flow: when the field was focused, and after a typed send in
     // text-first. A dictation that sent itself never raises it — the composer
@@ -1431,6 +1461,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
       return context.loc.sessionDetailCommandArgumentsHint;
     }
+    if (_asksSideQuestion) return context.loc.sideQuestionComposerHint;
     if (_pointerShell && _voicePresentation == _VoicePresentation.recording) return context.loc.voiceListening;
     return widget.hasMessages ? context.loc.sessionDetailFollowUpHint : context.loc.sessionDetailPromptHint;
   }
@@ -1772,26 +1803,31 @@ class _PromptInputState() extends State<PromptInput> {
         },
       );
     } else {
-      final headerChild = switch (widget.stagedCommand) {
-        null => _pointerShell ? null : widget.composerHeader,
-        final commandInfo => Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: PregoPageHalo(
-              radius: PregoRadius.full,
-              reachesLayerBottom: false,
-              child: GlassChip(
-                label: "/${commandInfo.name}",
-                onDeleted: widget.onCommandCleared,
-                deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
-              ),
-            ),
+      final headerChild = switch ((widget.stagedCommand, widget.onLeaveSideQuestion)) {
+        (final commandInfo?, _) => _buildHeaderChip(
+          chip: GlassChip(
+            label: "/${commandInfo.name}",
+            onDeleted: widget.onCommandCleared,
+            deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
           ),
         ),
+        (null, final onLeave?) => _buildHeaderChip(
+          chip: GlassChip(
+            label: context.loc.sideQuestionComposerLabel,
+            icon: const Icon(TablerRegular.message_dots, size: PregoIconSize.md),
+            onDeleted: onLeave,
+            deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
+            deleteSemanticLabel: context.loc.sideQuestionComposerLeave,
+          ),
+        ),
+        (null, null) => _pointerShell ? null : widget.composerHeader,
       };
       child = KeyedSubtree(
-        key: ValueKey(widget.stagedCommand == null ? "header" : "staged-command"),
+        key: switch ((widget.stagedCommand, widget.onLeaveSideQuestion)) {
+          (_?, _) => const ValueKey("staged-command"),
+          (null, _?) => _sideQuestionChipKey,
+          (null, null) => const ValueKey("header"),
+        },
         // Older bridges can provide no picker header. Reserve its footprint so
         // the recording helper does not grow the composer when it appears.
         child:
@@ -1819,7 +1855,7 @@ class _PromptInputState() extends State<PromptInput> {
           // its ordinary fade, including while the outgoing chip dematerializes.
           // Under reduced motion the materialize is itself a plain fade, with no
           // scale or blur, and the one fade that glass honours.
-          if (transitionChild.key == const ValueKey("staged-command")) {
+          if (transitionChild.key == const ValueKey("staged-command") || transitionChild.key == _sideQuestionChipKey) {
             return GlassMaterializeTransition(animation: animation, child: transitionChild);
           }
           final fade = _fadeEachEntry(transitionChild, animation);
@@ -1835,6 +1871,17 @@ class _PromptInputState() extends State<PromptInput> {
       ),
     );
   }
+
+  static const _sideQuestionChipKey = ValueKey("side-question");
+
+  /// A staged command's chip, or the side question's, where the header shows.
+  Widget _buildHeaderChip({required Widget chip}) => Padding(
+    padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
+    child: Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: chip),
+    ),
+  );
 
   Widget _buildSavedRecordingActions(BuildContext context) {
     final loc = context.loc;
@@ -2399,6 +2446,23 @@ class _PromptInputState() extends State<PromptInput> {
               ],
             ),
           ),
+          // A side question darkens the border: a darker one eases in over it.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _asksSideQuestion ? 1 : 0,
+                duration: context.isReducedMotion ? Duration.zero : _morphDuration,
+                curve: _morphCurve,
+                child: DecoratedBox(
+                  key: PromptInput.sideQuestionBorderKey,
+                  decoration: BoxDecoration(
+                    borderRadius: borderRadius,
+                    border: Border.all(color: context.prego.colors.fgQuaternary),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -2457,6 +2521,7 @@ class _PromptInputState() extends State<PromptInput> {
                         controller: _controller,
                         activator: const SingleActivator(LogicalKeyboardKey.enter),
                       ): _handleSend,
+                    _EmptyFieldBackspaceActivator(controller: _controller): ?widget.onLeaveSideQuestion,
                   },
                   child: ComposerWordsBoxSlot(
                     box: _wordsBox,
@@ -2902,6 +2967,16 @@ class _PromptInputState() extends State<PromptInput> {
           if (!mounted) return;
           widget.onCommandSelected(command);
           _focusComposerField();
+        },
+        // A side question takes no images, and one is already being asked.
+        onSideQuestion: switch (widget.sideQuestion) {
+          ComposerSideQuestionOpen(:final onAskInComposer) when !_asksSideQuestion && _attachments.isEmpty => () {
+            close();
+            if (!mounted) return;
+            onAskInComposer();
+            _focusComposerField();
+          },
+          _ => null,
         },
         onClose: close,
       ),

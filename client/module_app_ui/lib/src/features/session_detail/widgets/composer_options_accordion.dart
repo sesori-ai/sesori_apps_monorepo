@@ -283,7 +283,13 @@ class const _AccordionIconButton({
 sealed class const ComposerSideQuestion();
 
 /// Opens the session's side chats.
-final class const ComposerSideQuestionOpen({required final VoidCallback onOpen}) extends ComposerSideQuestion;
+final class const ComposerSideQuestionOpen({
+  required final VoidCallback onOpen,
+
+  /// Switches the composer to a side question, as the command picker's /btw
+  /// row does.
+  required final VoidCallback onAskInComposer,
+}) extends ComposerSideQuestion;
 
 /// The session can't take side questions; a tap says [reason].
 final class const ComposerSideQuestionBlocked({required final String reason}) extends ComposerSideQuestion;

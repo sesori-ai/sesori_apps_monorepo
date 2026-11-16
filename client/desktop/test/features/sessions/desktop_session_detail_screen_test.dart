@@ -229,6 +229,7 @@ SideChatCubit _unusedSideChatCubit({
   required String pluginId,
   required SideQuestionAvailability availability,
   required bool isArchived,
+  required String? initialQuestion,
 }) => throw UnimplementedError("Side chats are not under test");
 
 const _sideChat = SideChat(
@@ -596,7 +597,13 @@ void main() {
                       createExternalActionCubit: ({required requestId, required sessionId}) =>
                           throw UnimplementedError("External actions are not under test"),
                       createSideChatCubit:
-                          ({required sessionId, required pluginId, required availability, required isArchived}) {
+                          ({
+                            required sessionId,
+                            required pluginId,
+                            required availability,
+                            required isArchived,
+                            required initialQuestion,
+                          }) {
                             final sideChat = SideChatCubit(
                               repository: sideChats,
                               productAnalyticsService: MockProductAnalyticsService(),
@@ -604,7 +611,7 @@ void main() {
                               pluginId: pluginId,
                               availability: availability,
                               isArchived: isArchived,
-                              initialQuestion: null,
+                              initialQuestion: initialQuestion,
                             );
                             createdSideChats.add(sideChat);
                             return sideChat;

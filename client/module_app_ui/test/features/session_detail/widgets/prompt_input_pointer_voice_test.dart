@@ -846,6 +846,7 @@ Future<void> _pumpPointerComposer({
                 onAbort: () {},
                 surfaceStyleController: surfaceStyle,
                 sideQuestion: null,
+                onLeaveSideQuestion: null,
                 composerHeader: null,
                 composerTrailing: null,
                 availableCommands: const [],

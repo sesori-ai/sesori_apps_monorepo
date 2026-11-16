@@ -583,6 +583,7 @@ void main() {
                 onAbort: () {},
                 surfaceStyleController: surfaceStyle,
                 sideQuestion: null,
+                onLeaveSideQuestion: null,
                 composerHeader: null,
                 composerTrailing: null,
                 availableCommands: const [],
@@ -7168,14 +7169,18 @@ void main() {
   });
 
   group("side questions", () {
-    final opened = <({String pluginId, SideQuestionAvailability availability, bool isArchived})>[];
+    final opened =
+        <({String pluginId, SideQuestionAvailability availability, bool isArchived, String? initialQuestion})>[];
     void openSideChat({
       required BuildContext context,
       required String sessionId,
       required String pluginId,
       required SideQuestionAvailability availability,
       required bool isArchived,
-    }) => opened.add((pluginId: pluginId, availability: availability, isArchived: isArchived));
+      required String? initialQuestion,
+    }) => opened.add(
+      (pluginId: pluginId, availability: availability, isArchived: isArchived, initialQuestion: initialQuestion),
+    );
 
     setUp(opened.clear);
 
@@ -7203,7 +7208,14 @@ void main() {
       await tester.tap(sideQuestionButton);
       await tester.pumpAndSettle();
 
-      expect(opened, [(pluginId: "opencode", availability: SideQuestionAvailability.available, isArchived: false)]);
+      expect(opened, [
+        (
+          pluginId: "opencode",
+          availability: SideQuestionAvailability.available,
+          isArchived: false,
+          initialQuestion: null,
+        ),
+      ]);
     });
 
     testWidgets("an old bridge answers the tap with why", (tester) async {
@@ -7246,6 +7258,97 @@ void main() {
       expect(sideQuestionButton, findsNothing);
     });
 
+    group("typed with /btw", () {
+      final strip = find.widgetWithText(GlassChip, "Side question");
+      double borderOpacity(WidgetTester tester) => tester
+          .widget<AnimatedOpacity>(
+            find.ancestor(of: find.byKey(PromptInput.sideQuestionBorderKey), matching: find.byType(AnimatedOpacity)),
+          )
+          .opacity;
+
+      SessionDetailLoaded asking() => withSideQuestions(
+        SideQuestionAvailability.available,
+      ).copyWith(composerMode: const SessionComposerMode.sideQuestion());
+
+      testWidgets("the composer shows the side-question strip and border, and the strip's x leaves", (tester) async {
+        when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: "why so slow?"));
+        when(() => cubit.state).thenReturn(asking());
+        await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+        await tester.pumpAndSettle();
+
+        expect(strip, findsOneWidget);
+        expect(borderOpacity(tester), 1);
+
+        await tester.tap(find.descendant(of: strip, matching: find.byIcon(TablerRegular.x)));
+        verify(cubit.leaveSideQuestion).called(1);
+      });
+
+      testWidgets("a normal composer has neither", (tester) async {
+        when(() => cubit.state).thenReturn(withSideQuestions(SideQuestionAvailability.available));
+        await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+        await tester.pumpAndSettle();
+        await enterTypingMode(tester);
+
+        expect(strip, findsNothing);
+        expect(borderOpacity(tester), 0);
+      });
+
+      testWidgets("send asks the question in a new side chat instead of the session", (tester) async {
+        when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: "why so slow?"));
+        when(cubit.submitSideQuestion).thenReturn("why so slow?");
+        when(() => cubit.state).thenReturn(asking());
+        await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
+        await tester.pumpAndSettle();
+
+        expect(opened, [
+          (
+            pluginId: "opencode",
+            availability: SideQuestionAvailability.available,
+            isArchived: false,
+            initialQuestion: "why so slow?",
+          ),
+        ]);
+        verifyNever(
+          () => cubit.sendMessage(
+            text: any(named: "text"),
+            command: any(named: "command"),
+            inputMode: any(named: "inputMode"),
+            attachments: any(named: "attachments"),
+          ),
+        );
+      });
+
+      Future<CommandPicker> openPicker(WidgetTester tester, {required SideQuestionAvailability availability}) async {
+        await pumpComposer(tester, state: withSideQuestions(availability));
+        await tester.tap(find.byIcon(TablerRegular.slash));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        return tester.widget<CommandPicker>(find.byType(CommandPicker));
+      }
+
+      testWidgets("the / picker offers /btw on a session that asks side questions", (tester) async {
+        final picker = await openPicker(tester, availability: SideQuestionAvailability.available);
+
+        switch (picker.onSideQuestion) {
+          case final onSideQuestion?:
+            onSideQuestion();
+          case null:
+            fail("the picker offers no /btw row");
+        }
+        await tester.pumpAndSettle();
+        verify(cubit.startSideQuestion).called(1);
+      });
+
+      testWidgets("the / picker offers no /btw where side questions can't be asked", (tester) async {
+        final picker = await openPicker(tester, availability: SideQuestionAvailability.harnessUnsupported);
+
+        expect(picker.onSideQuestion, isNull);
+      });
+    });
+
     group("archived", () {
       final link = find.byKey(SessionDetailArchivedNotice.sideChatsLinkKey);
 
@@ -7262,7 +7365,14 @@ void main() {
         await tester.tap(find.text("Side chats (2)"));
         await tester.pumpAndSettle();
 
-        expect(opened, [(pluginId: "opencode", availability: SideQuestionAvailability.available, isArchived: true)]);
+        expect(opened, [
+          (
+            pluginId: "opencode",
+            availability: SideQuestionAvailability.available,
+            isArchived: true,
+            initialQuestion: null,
+          ),
+        ]);
       });
 
       testWidgets("shows no link without side chats", (tester) async {

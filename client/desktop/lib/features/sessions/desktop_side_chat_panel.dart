@@ -14,6 +14,7 @@ typedef DesktopSideChatCubitFactory = SideChatCubit Function({
   required String pluginId,
   required SideQuestionAvailability availability,
   required bool isArchived,
+  required String? initialQuestion,
 });
 
 /// Builds the session page around its side chats: [openSideChat] shows them,
@@ -98,10 +99,12 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
     required String pluginId,
     required SideQuestionAvailability availability,
     required bool isArchived,
+    required String? initialQuestion,
   }) {
-    // Opened again while it shows or slides away, the panel keeps its chat.
-    if (_opening == null) {
-      _focusBeforeOpening = FocusManager.instance.primaryFocus;
+    // Opened again while it shows or slides away, the panel keeps its chat,
+    // unless a question from the composer asks for a new one.
+    if (_opening == null) _focusBeforeOpening = FocusManager.instance.primaryFocus;
+    if (_opening == null || initialQuestion != null) {
       setState(
         () => _opening = (
           key: ValueKey(_openings++),
@@ -111,6 +114,7 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
             pluginId: pluginId,
             availability: availability,
             isArchived: isArchived,
+            initialQuestion: initialQuestion,
           ),
         ),
       );

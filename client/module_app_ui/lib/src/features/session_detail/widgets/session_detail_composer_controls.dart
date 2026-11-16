@@ -172,7 +172,9 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
           pluginId: pluginId,
           availability: state.sideQuestions,
           isArchived: state.isArchived,
+          initialQuestion: null,
         ),
+        onAskInComposer: context.read<SessionDetailCubit>().startSideQuestion,
       ),
       (SideQuestionAvailability.bridgeUpdateRequired, _) => ComposerSideQuestionBlocked(
         reason: loc.sideQuestionBridgeUpdateRequired,
@@ -182,6 +184,26 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
       ),
       _ => const ComposerSideQuestionPending(),
     };
+  }
+
+  /// Send in side-question mode: a new side chat asks what the composer holds.
+  void _askSideQuestion({required BuildContext context}) {
+    final openSideChat = SessionDetailPresentationScope.read(context).openSideChat;
+    final cubit = context.read<SessionDetailCubit>();
+    final current = cubit.state;
+    if (openSideChat == null || current is! SessionDetailLoaded) return;
+    final pluginId = current.pluginId;
+    if (pluginId == null) return;
+    final question = cubit.submitSideQuestion();
+    if (question == null) return;
+    openSideChat(
+      context: context,
+      sessionId: widget.sessionId,
+      pluginId: pluginId,
+      availability: current.sideQuestions,
+      isArchived: current.isArchived,
+      initialQuestion: question,
+    );
   }
 
   Widget _buildComposer({
@@ -215,8 +237,9 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     final cubit = context.read<SessionDetailCubit>();
     final editing = switch (composerMode) {
       final SessionComposerEditing editing => editing,
-      SessionComposerNormal() => null,
+      SessionComposerNormal() || SessionComposerSideQuestion() => null,
     };
+    final asksSideQuestion = composerMode is SessionComposerSideQuestion;
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = composerCapabilities.presentation == ComposerPresentation.pointer;
     return Column(
@@ -227,6 +250,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
           child: CallbackShortcuts(
             bindings: {
               if (editing != null) const SingleActivator(LogicalKeyboardKey.escape): cubit.cancelEditing,
+              if (asksSideQuestion) const SingleActivator(LogicalKeyboardKey.escape): cubit.leaveSideQuestion,
             },
             child: PromptInput(
               draftIdentity: widget.sessionId,
@@ -249,14 +273,23 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
               submitAction: editing == null
                   ? null
                   : PromptSubmitAction(label: context.loc.sessionDetailEditResend, icon: TablerRegular.arrow_up),
-              onSend: ({required draft, required command, required attachments}) => editing == null
-                  ? cubit.sendMessage(
-                      text: draft.text,
-                      command: command,
-                      inputMode: command == null ? draft.inputMode : ComposerInputMode.typed,
-                      attachments: attachments,
-                    )
-                  : cubit.resendEdit(text: draft.text, attachments: attachments),
+              onSend: ({required draft, required command, required attachments}) {
+                switch (composerMode) {
+                  case SessionComposerNormal():
+                    unawaited(
+                      cubit.sendMessage(
+                        text: draft.text,
+                        command: command,
+                        inputMode: command == null ? draft.inputMode : ComposerInputMode.typed,
+                        attachments: attachments,
+                      ),
+                    );
+                  case SessionComposerEditing():
+                    unawaited(cubit.resendEdit(text: draft.text, attachments: attachments));
+                  case SessionComposerSideQuestion():
+                    _askSideQuestion(context: context);
+                }
+              },
               onVoiceTranscriptionFinished: composerCapabilities.voiceSupport.isSupported
                   ? context.read<SessionDetailCubit>().reportVoiceTranscriptionCompleted
                   : null,
@@ -271,6 +304,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                 banner: editing == null ? null : EditMessageBanner(editing: editing, onCancel: cubit.cancelEditing),
               ),
               sideQuestion: sideQuestion,
+              onLeaveSideQuestion: asksSideQuestion ? cubit.leaveSideQuestion : null,
               composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
                 valueListenable: _composerSurfaceStyle,
                 builder: (context, surfaceStyle, _) => AgentModelButtons(
