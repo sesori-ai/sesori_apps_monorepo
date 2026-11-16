@@ -92,6 +92,7 @@ void main() {
           ),
         ),
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
 

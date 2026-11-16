@@ -182,6 +182,7 @@ void main() {
         lastUserActivityAt: null,
         branchName: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
 
@@ -255,6 +256,7 @@ PendingSessionEvent _pending({
     lastUserActivityAt: null,
     branchName: null,
     scheduledTask: null,
+    interruption: null,
     forkedFrom: null,
   );
   return PendingSessionEvent(

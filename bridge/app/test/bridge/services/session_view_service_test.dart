@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/plugin_runtime_test_support.dart";
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
 
@@ -44,6 +45,7 @@ void main() {
         runtime: createAlwaysCurrentTestPluginRuntime(),
       ),
       scheduledTasks: tasks,
+      interruptions: const NoSessionInterruptions(),
       resetBuffer: const Duration(minutes: 2),
     );
   });
@@ -130,4 +132,5 @@ Session _session({required String id}) => Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   scheduledTask: null,
+  interruption: null,
 );

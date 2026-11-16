@@ -10,6 +10,7 @@ import "../api/database/history/chat_history_database.dart";
 import "../debug_server.dart";
 import "../foundation/bandwidth_tracker.dart";
 import "../listeners/plugin_catalog_hydration_listener.dart";
+import "../listeners/running_turn_listener.dart";
 import "../orchestrator.dart";
 import "../routing/routed_request_dispatcher.dart";
 import "../services/catalog_import_service.dart";
@@ -29,6 +30,7 @@ class BridgeRuntime({
   CatalogImportService get catalogImportService => _composition.catalogImportService;
   ChatHistoryService get chatHistoryService => _composition.chatHistoryService;
   PluginCatalogHydrationListener get catalogHydrationListener => _composition.catalogHydrationListener;
+  RunningTurnListener get runningTurnListener => _composition.runningTurnListener;
 
   Future<void> ensureScratchProject() {
     return _composition.scratchRepository.ensureScratchProject();
