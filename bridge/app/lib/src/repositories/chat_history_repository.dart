@@ -1069,13 +1069,21 @@ class ChatHistoryRepository({
         );
         if (fingerprint != null) staleRowsByContent.putIfAbsent(fingerprint.content, () => []).add(row);
       }
+      // A row the previous import wrote and this replay lacks was removed by
+      // the harness (an edit or a rollback), so only live rows can stay. An
+      // import writes its rows at its own sync time, the line [isCurrent]
+      // draws too.
       final unreplayedStaleIds = <String>{};
       for (final MapEntry(key: content, value: rows) in staleRowsByContent.entries) {
         final importedIndexes = importedIndexesByContent[content];
         if (importedIndexes == null) {
-          unreplayedStaleIds.addAll([for (final row in rows) row.messageId]);
-          keptStaleIds.addAll([
+          final liveRows = [
             for (final row in rows)
+              if (row.updatedAt != lastImportedAt) row,
+          ];
+          unreplayedStaleIds.addAll([for (final row in liveRows) row.messageId]);
+          keptStaleIds.addAll([
+            for (final row in liveRows)
               if (_isInvocationRow(row: row)) row.messageId,
           ]);
           continue;

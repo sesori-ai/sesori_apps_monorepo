@@ -1883,6 +1883,8 @@ void main() {
               _assistantMessageWithText(id: "live-hi-bob", text: "Hi Bob", reasoning: null, createdAt: null),
             ],
           );
+          // An import tells its own rows from live ones by their write time.
+          await Future<void>.delayed(const Duration(milliseconds: 2));
           return history;
         }
 
@@ -1914,6 +1916,23 @@ void main() {
             const ["r2-greet", "r2-hi-alice", "r2-plain", "r2-p", "live-hello", "r2-hi-bob"],
           );
           expect(await storedInvocations(history: history), [greet, null, null, null, hello, null]);
+        });
+
+        test("drops a replayed reply and a named turn the harness later removes", () async {
+          final transcript = replay(generation: "r1");
+          final history = await liveSession(transcript: transcript);
+          await history.service.backfillSession(sessionId: "ses_a");
+          transcript
+            ..clear()
+            ..addAll(replay(generation: "r2").sublist(2, 4));
+          await Future<void>.delayed(const Duration(milliseconds: 2));
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(
+            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+            const ["r2-plain", "r2-p", "live-hello"],
+          );
         });
 
         // Hermes runs `/compress` and `/help` itself: its replay holds neither
