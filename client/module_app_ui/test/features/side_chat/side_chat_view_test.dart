@@ -137,6 +137,89 @@ void main() {
     expect(find.byKey(SideChatView.newChatButtonKey), findsOneWidget);
   });
 
+  double earlierButtonX(WidgetTester tester) => tester.getTopLeft(find.byKey(SideChatView.earlierButtonKey)).dx;
+
+  T nearestAbove<T extends Widget>(WidgetTester tester, Key key) => tester.widget<T>(
+    find.ancestor(of: find.byKey(key), matching: find.byType(T)).first,
+  );
+
+  double newChatOpacity(WidgetTester tester) => nearestAbove<Opacity>(tester, SideChatView.newChatButtonKey).opacity;
+
+  double newChatScale(WidgetTester tester) =>
+      nearestAbove<Transform>(tester, SideChatView.newChatButtonKey).transform.entry(0, 0);
+
+  void answerFirstQuestion() => answer.complete(
+    ApiResponse.success(
+      AskSideQuestionResponse.answered(
+        sideChatId: "chat-asked",
+        exchange: _exchange(id: "a1", question: "Where is the cache?", answer: "In the store module."),
+      ),
+    ),
+  );
+
+  testWidgets("the header eases New chat in and out while Earlier slides aside", (tester) async {
+    await pumpView(tester);
+    await ask(tester, "Where is the cache?");
+    final startX = earlierButtonX(tester);
+
+    answerFirstQuestion();
+    await tester.pump();
+    final xs = <double>[earlierButtonX(tester)];
+    final opacities = <double>[newChatOpacity(tester)];
+    final scales = <double>[newChatScale(tester)];
+    for (var frame = 0; frame < 4; frame++) {
+      await tester.pump(const Duration(milliseconds: 40));
+      xs.add(earlierButtonX(tester));
+      opacities.add(newChatOpacity(tester));
+      scales.add(newChatScale(tester));
+    }
+    await settle(tester);
+    final endX = earlierButtonX(tester);
+
+    expect(endX, lessThan(startX - 40), reason: "Earlier makes room for New chat");
+    expect(xs.first, startX, reason: "nothing moves in the first frame");
+    for (var i = 1; i < xs.length; i++) {
+      expect(xs[i], lessThan(xs[i - 1]), reason: "Earlier slides on every frame");
+      expect(opacities[i], greaterThanOrEqualTo(opacities[i - 1]), reason: "New chat fades in");
+      expect(scales[i], greaterThan(scales[i - 1]), reason: "New chat grows in");
+    }
+    expect(xs.last, greaterThan(endX), reason: "the slide is still under way");
+    expect(opacities.first, lessThan(0.1));
+    expect(opacities.where((opacity) => opacity > 0 && opacity < 1), hasLength(greaterThanOrEqualTo(2)));
+    expect(scales.first, closeTo(0.9, 0.01));
+    expect(newChatOpacity(tester), 1);
+    expect(newChatScale(tester), 1);
+
+    // A new chat takes the button away again, and Earlier slides back.
+    await tester.tap(find.byKey(SideChatView.newChatButtonKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(newChatOpacity(tester), allOf(greaterThan(0), lessThan(1)));
+    expect(newChatScale(tester), lessThan(1));
+    expect(earlierButtonX(tester), allOf(greaterThan(endX), lessThan(startX)));
+    await settle(tester);
+    expect(find.byKey(SideChatView.newChatButtonKey), findsNothing);
+    expect(earlierButtonX(tester), startX);
+  });
+
+  testWidgets("under reduced motion the header buttons change at once", (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await pumpView(tester);
+    await ask(tester, "Where is the cache?");
+    final startX = earlierButtonX(tester);
+
+    answerFirstQuestion();
+    await tester.pump();
+    final xAfterAnswer = earlierButtonX(tester);
+    expect(xAfterAnswer, lessThan(startX - 40));
+    expect(newChatOpacity(tester), 1);
+    expect(newChatScale(tester), 1);
+
+    await settle(tester);
+    expect(earlierButtonX(tester), xAfterAnswer);
+  });
+
   testWidgets("while an answer is on its way the controls look disabled and say why", (tester) async {
     await pumpView(tester);
     await ask(tester, "Where is the cache?");
