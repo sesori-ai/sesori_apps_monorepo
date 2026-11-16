@@ -24,8 +24,7 @@ class const PregoKeptSuffixText({
   /// How the text before [keptSuffix] is cut.
   TextOverflow overflow = TextOverflow.ellipsis,
 }) extends Text {
-  this
-    : super(text, style: style, textAlign: textAlign, softWrap: softWrap, overflow: overflow, maxLines: 1);
+  this : super(text, style: style, textAlign: textAlign, softWrap: softWrap, overflow: overflow, maxLines: 1);
 
   /// [text] split before [keptSuffix], or null when it does not end with it.
   /// For lines that compose their own parts, such as highlighted matches.

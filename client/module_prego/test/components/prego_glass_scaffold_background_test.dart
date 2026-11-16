@@ -18,6 +18,7 @@ void main() {
           automaticallyImplyLeading: false,
           backgroundColor: pageBackground,
           slivers: [SliverFillRemaining(child: SizedBox.expand())],
+          titleKeptSuffix: null,
         ),
       ),
     );

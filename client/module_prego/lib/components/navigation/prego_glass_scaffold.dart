@@ -86,7 +86,7 @@ class const PregoGlassScaffold({
 
   /// Kept whole when a long inline [title] ending with it is cut (see
   /// [PregoKeptSuffixText]). Inline mode only.
-  final String? titleKeptSuffix,
+  required final String? titleKeptSuffix,
 
   /// How the bar presents its title — collapsing large title (default), fixed
   /// centred inline title, or the back-leading title block. See the class doc.

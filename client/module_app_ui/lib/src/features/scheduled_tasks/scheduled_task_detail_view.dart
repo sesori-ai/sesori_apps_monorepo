@@ -94,6 +94,7 @@ class const ScheduledTaskDetailView({
               },
             ),
           ],
+          titleKeptSuffix: null,
         );
       },
     ),

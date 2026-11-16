@@ -107,6 +107,7 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
                 (null, final viewModels?) => _buildSlivers(viewModels: viewModels),
                 (null, null) => const [],
               },
+              titleKeptSuffix: null,
             ),
             SessionDiffsSplit(:final headerBuilder) => Material(
               color: Theme.of(context).scaffoldBackgroundColor,

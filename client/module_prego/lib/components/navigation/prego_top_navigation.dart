@@ -95,7 +95,7 @@ class const PregoTopNavigation({
 
   /// Kept whole when a long [title] ending with it is cut (see
   /// [PregoKeptSuffixText]), in inline mode; null cuts the title at its end.
-  final String? titleKeptSuffix,
+  required final String? titleKeptSuffix,
 
   /// How the bar presents its title. See the class doc for the three modes.
   final PregoTopNavigationTitleMode titleMode = PregoTopNavigationTitleMode.collapsing,

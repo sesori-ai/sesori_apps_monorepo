@@ -64,6 +64,7 @@ class const ScheduledTasksView({
         ],
         onRefresh: () => context.read<ScheduledTasksCubit>().refresh(),
         slivers: [_Body(onOpenTask: onOpenTask)],
+        titleKeptSuffix: null,
       ),
     ),
   );

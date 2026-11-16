@@ -109,6 +109,7 @@ class const _StatusFrame({
       subtitle: null,
       banner: null,
       slivers: [body],
+      titleKeptSuffix: null,
     );
   }
 }

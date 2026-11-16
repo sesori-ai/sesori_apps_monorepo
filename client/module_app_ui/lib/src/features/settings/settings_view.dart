@@ -195,6 +195,7 @@ class const SettingsView({
           child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
         ),
       ],
+      titleKeptSuffix: null,
     );
   }
 }

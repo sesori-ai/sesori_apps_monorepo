@@ -29,12 +29,15 @@ void main() {
     await tester.pumpWidget(app(text: text, width: 200));
 
     expect(tester.takeException(), isNull);
-    expect(tester.renderObject<RenderParagraph>(find.text("Math Utilities Summary of every helper")).didExceedMaxLines, isTrue);
+    expect(
+      tester.renderObject<RenderParagraph>(find.text("Math Utilities Summary of every helper")).didExceedMaxLines,
+      isTrue,
+    );
     expect(tester.renderObject<RenderParagraph>(find.text(suffix)).didExceedMaxLines, isFalse);
     expect(tester.getTopRight(find.text(suffix)).dx, lessThanOrEqualTo(tester.getTopRight(find.byKey(boundsKey)).dx));
     // Read as one whole title, not as two fragments.
     expect(find.text(text), findsOneWidget);
-    expect(tester.getSemantics(find.byType(PregoKeptSuffixText)), containsSemantics(label: text));
+    expect(tester.getSemantics(find.byType(PregoKeptSuffixText)), isSemantics(label: text));
     semantics.dispose();
   });
 
@@ -45,7 +48,7 @@ void main() {
     expect(tester.renderObject<RenderParagraph>(find.text("Math")).didExceedMaxLines, isFalse);
     expect(tester.renderObject<RenderParagraph>(find.text(suffix)).didExceedMaxLines, isFalse);
     final plain = TextPainter(
-      text: TextSpan(text: text, style: style),
+      text: const TextSpan(text: text, style: style),
       textDirection: TextDirection.ltr,
       maxLines: 1,
     )..layout();

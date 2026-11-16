@@ -29,7 +29,7 @@ class const PregoNavTitle({
 
   /// Kept whole when a long [title] ending with it is cut (see
   /// [PregoKeptSuffixText]); null cuts the title at its end.
-  final String? titleKeptSuffix,
+  required final String? titleKeptSuffix,
 }) extends StatelessWidget {
   /// Line-height multiplier for a two-line title/subtitle block, overriding the
   /// design tokens' body-text leading (`text-lg` 1.56×, `text-xs` 1.5×).

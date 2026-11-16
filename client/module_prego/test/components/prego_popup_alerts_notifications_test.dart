@@ -645,6 +645,7 @@ void main() {
               ),
             ),
           ],
+          titleKeptSuffix: null,
         ),
       ),
     );
@@ -686,6 +687,7 @@ void main() {
                     ),
                   ),
                 ],
+                titleKeptSuffix: null,
               );
             },
           ),
@@ -732,6 +734,7 @@ void main() {
         home: const PregoGlassScaffold(
           title: "Home",
           slivers: [SliverFillRemaining(child: SizedBox.expand())],
+          titleKeptSuffix: null,
         ),
       ),
     );
@@ -751,6 +754,7 @@ void main() {
               ),
             ),
           ],
+          titleKeptSuffix: null,
         ),
       ),
     );
@@ -778,6 +782,7 @@ void main() {
           title: "Screen",
           banner: SizedBox(height: 30),
           slivers: [SliverFillRemaining(child: SizedBox.expand())],
+          titleKeptSuffix: null,
         ),
       ),
     );
