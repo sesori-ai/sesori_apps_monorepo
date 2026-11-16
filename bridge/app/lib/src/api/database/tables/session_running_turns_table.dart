@@ -11,8 +11,8 @@ class SessionRunningTurnsTable() extends Table {
 
   TextColumn get sessionId => text().references(SessionTable, #sessionId, onDelete: KeyAction.cascade)();
 
-  /// UTC milliseconds of when this bridge run first saw the turn running, or
-  /// adopted it from an earlier run.
+  /// UTC milliseconds of when this bridge run last saw the turn running, or
+  /// adopted it from an earlier run. Every busy status re-stamps it.
   IntColumn get startedAt => integer()();
 
   @override
