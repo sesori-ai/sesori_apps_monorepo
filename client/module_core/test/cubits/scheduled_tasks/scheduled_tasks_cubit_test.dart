@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -115,5 +116,41 @@ void main() {
     answer.complete(const ScheduledTaskRefused(code: ScheduledTaskErrorCode.taskNotFound));
     expect(await changed, isFalse);
     expect((cubit.state as ScheduledTasksLoaded).recurring.single.enabled, isTrue);
+  });
+
+  test("an older switch answer arriving last does not undo a newer tap", () async {
+    answerList(ScheduledTaskSuccess(value: [_daily]));
+    final cubit = create();
+    await pumpEventQueue();
+    final pause = Completer<ScheduledTaskResult<ScheduledTask>>();
+    final resume = Completer<ScheduledTaskResult<ScheduledTask>>();
+    when(() => repository.setEnabled(taskId: "daily", enabled: false)).thenAnswer((_) => pause.future);
+    when(() => repository.setEnabled(taskId: "daily", enabled: true)).thenAnswer((_) => resume.future);
+
+    final paused = cubit.setEnabled(taskId: "daily", enabled: false);
+    final resumed = cubit.setEnabled(taskId: "daily", enabled: true);
+    resume.complete(ScheduledTaskSuccess(value: _daily));
+    await resumed;
+    pause.complete(ScheduledTaskSuccess(value: _daily.copyWith(enabled: false, nextRunAt: null)));
+    await paused;
+
+    expect((cubit.state as ScheduledTasksLoaded).recurring.single.enabled, isTrue);
+  });
+
+  test("a failed refresh is tried again until a snapshot applies", () {
+    fakeAsync((async) {
+      answerList(ScheduledTaskSuccess(value: [_daily]));
+      final cubit = create();
+      async.flushMicrotasks();
+
+      answerList(ScheduledTaskFailure(error: NonSuccessCodeError(errorCode: 503, rawErrorString: null)));
+      unawaited(cubit.refresh());
+      async.flushMicrotasks();
+      answerList(ScheduledTaskSuccess(value: [_daily, _sooner]));
+      async.elapse(const Duration(seconds: 5));
+
+      expect((cubit.state as ScheduledTasksLoaded).once.single.id, "sooner");
+      verify(() => repository.listTasks()).called(3);
+    });
   });
 }

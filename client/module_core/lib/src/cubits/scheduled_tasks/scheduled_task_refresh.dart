@@ -22,13 +22,31 @@ Stream<void> scheduledTaskRefreshSignals({required ConnectionService connectionS
 ]);
 
 /// Runs one refresh at a time. A request that arrives meanwhile runs once
-/// after it, so an older response never replaces a newer one.
-class ScheduledTaskRefreshDispatcher({required final Future<void> Function() _refresh}) {
+/// after it, so an older response never replaces a newer one. The refresh
+/// returns whether it applied a snapshot; one that did not keeps the tasks
+/// stale and is tried again after [retryDelay], up to [maxRetries] times in a
+/// row, after which the next signal or reconnect tries again.
+class ScheduledTaskRefreshDispatcher({required final Future<bool> Function() _refresh}) {
+  static const Duration retryDelay = Duration(seconds: 5);
+  static const int maxRetries = 3;
+
   Future<void>? _active;
   bool _queued = false;
+  int _retries = 0;
+  Timer? _retry;
 
   /// Completes once the refresh this request asked for has run.
   Future<void> request() {
+    _retries = 0;
+    return _start();
+  }
+
+  /// Stops a pending retry; call when the owner closes.
+  void dispose() => _retry?.cancel();
+
+  Future<void> _start() {
+    _retry?.cancel();
+    _retry = null;
     final active = _active;
     if (active != null) {
       _queued = true;
@@ -38,13 +56,18 @@ class ScheduledTaskRefreshDispatcher({required final Future<void> Function() _re
   }
 
   Future<void> _drain() async {
+    var applied = false;
     try {
       do {
         _queued = false;
-        await _refresh();
+        applied = await _refresh();
       } while (_queued);
     } finally {
       _active = null;
+    }
+    if (!applied && _retries < maxRetries) {
+      _retries++;
+      _retry = Timer(retryDelay, () => unawaited(_start()));
     }
   }
 }
