@@ -2521,6 +2521,7 @@ void main() {
         isUnseen: false,
         isAwaitingInput: false,
         isRetrying: false,
+        isInterrupted: false,
         backgroundTaskCount: 0,
       );
     }
