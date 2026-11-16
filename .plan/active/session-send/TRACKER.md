@@ -14,8 +14,8 @@
 | 8.a Queued handoff prompts stay hidden; a failed send updates live | Done | #2654 |
 | 9 Archive the source after sending | Done | #2669 |
 | 10 Analytics | Done | #2661 |
-| 11 Reconcile docs and harness rows | In PR | #2682 |
-| 12 Verify and retire | Not started | |
+| 11 Reconcile docs and harness rows | Done | #2682 |
+| 12 Verify and retire | In PR | |
 
 Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 7.a←7; 8←4; 8.a←8;
 9←7.a; 10←7; 11←5,8,8.a,9,10; 12←11.
@@ -37,6 +37,30 @@ All answered (rounds 1–3, 2026-11-14 and 2026-11-15).
 | Same: DeepSeek 0.2.2, Cursor, Copilot, Antigravity | Blocked: DeepSeek needs a real account; Cursor CLI 2026.07.23 is below the required 2026.09.23; Copilot and Antigravity not installed | 2026-11-16 |
 | Finding: OMP target whose saved agent OMP does not offer | Fail: the ACP plugin drops the handoff after accepting it, so the app shows Sent and the target gets nothing. Reported to the parent | 2026-11-16 |
 | Finding: OpenCode target with a stale saved variant | Refused `targetOptionsUnavailable` before #2664 merged; #2664's correction covers it, not rechecked | 2026-11-16 |
+| Send from the session menu and from a list row, picker search, success alert, Open (Claude source, Codex target) | Pass on a headless iOS simulator | 2026-11-16 |
+| Source marker: "Writing a summary…", then "Summary sent to … · Open", summary sheet, no jump when the turn ends (Claude source) | Pass on a headless iOS simulator | 2026-11-16 |
+| Send across harnesses, reversed (Codex source, Claude target) | Pass on a headless iOS simulator | 2026-11-16 |
+| Archive switch: on archives the source after success and Undo restores it; off keeps it; the choice is remembered | Pass on a headless iOS simulator | 2026-11-16 |
+| Pinned source with the switch on: confirmation before sending; cancel keeps the sheet | Pass on a headless iOS simulator | 2026-11-16 |
+| Busy source: alert with Stop, then send (Claude) | Pass on a headless iOS simulator | 2026-11-16 |
+| Stop during the summary: "summary was stopped", nothing sent, source not archived, "Couldn't send to …" after reload | Fail on live behaviour (findings A and B below, fixed in #2721) | 2026-11-16 |
+| Picker labels: "Running" on a running Codex session; "Running: sending stops its current turn" on a running ACP session | Codex: Pass. ACP: Blocked, Hermes is broken locally, Grok and DeepSeek need real accounts, Cursor and Copilot are missing | 2026-11-16 |
+| Old bridge (before step 3): picking a target shows the update alert | Pass on a headless iOS simulator | 2026-11-16 |
+| Finding A: after Stop during the summary, a stale "Working… · 11m" row flashes and the transcript snaps 52 px (Codex and Claude sources) | Fixed in #2721 (merged) | 2026-11-16 |
+| Finding B: after Stop during the summary, the stamped summary request shows as a user bubble and is restored into the composer | Fixed in #2721 (merged) | 2026-11-16 |
+| Finding C: Stop within about 1 s of Send leaves no source marker; the alert is correct | Design question, raised with the user | 2026-11-16 |
+| Target archived between the pick and the send, and session-error paths (fake plugin, automated) | Pass: `session_send_service_test` and `send_to_session_handler_test` | 2026-11-16 |
+| Transcript file written owner-only, deleted with the target, kept on archive | Pass on a headless bridge | 2026-11-16 |
+| Markers survive a history replay and an archived read (sent, not sent, received) | Pass across a bridge restart and replay, Claude and Codex | 2026-11-16 |
+| Recheck: OMP target whose saved agent OMP does not offer | Pass after the stale-options series (#2683, #2685–#2687): refused before acceptance, corrected and resent once | 2026-11-16 |
+| Recheck: OpenCode target with a stale saved variant | Pass: corrected and resent by #2664 | 2026-11-16 |
+| Recheck: a create with a command refused as stale | Pass after #2692: the new session is deleted and the 409 returned; no empty row | 2026-11-16 |
+| Same as above: Hermes stale model | Blocked, final for this plan (rechecked after #2702 and #2707 merged): a fresh scratch Hermes home has no Python dependencies (`ModuleNotFoundError: ruamel`), and installing them writes into the user's real `~/.hermes`. `hermes_session_options_service_test` covers the refusal; it also passed live on 0.21.5 during #2687. A live run, if the user allows one, is a follow-up | 2026-11-16 |
+| Live read check: Cursor, Copilot, Antigravity, DeepSeek | Blocked: Cursor CLI 2026.07.23 is below the required 2026.09.23; Copilot and Antigravity not installed; DeepSeek has a fixed model list, so it can't be pinned to the test proxy | 2026-11-16 |
+| Finding: target archived while the summary is written | Fail: answered `targetRefused`, so the app said the target didn't accept it. Fixed in #2701 (merged), which also removes the saved transcript after a definite target refusal (finding below) | 2026-11-16 |
+| Finding: a failed target send left its transcript file in the target's folder | Fixed in #2701 (merged) for definite refusals (archived, stale options, harness refusal); kept when the target may already have taken the prompt | 2026-11-16 |
+| Finding: Claude history and the send export showed the plugin's own `/model` switch as a user line | Fixed in #2704 (merged): a picker model switch no longer shows as a user line, and a `/model` the user sent stays. #2714 (merged) also hides `/model` and the other native commands that bypass the pickers from the command list | 2026-11-16 |
+| Finding: the Hermes setup probe killed a pending Hermes self-update, leaving Hermes unready | Fixed in #2702 (merged; the status probe sets `HERMES_DISABLE_LAZY_INSTALLS=1`); #2707 (merged) lets the agent launch take up to 10 minutes to finish a pending update | 2026-11-16 |
 
 ## Decisions log
 
