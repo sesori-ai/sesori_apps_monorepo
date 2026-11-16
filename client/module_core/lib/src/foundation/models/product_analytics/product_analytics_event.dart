@@ -257,7 +257,8 @@ enum AnalyticsSessionSendOutcome({required final String wireValue}) {
   refusedBusy(wireValue: "refused_busy"),
 
   /// The bridge did not send for another reason: the summary or transcript
-  /// failed, the target refused, or a reason this app doesn't know.
+  /// failed, a harness no longer offers the session's options, the target
+  /// refused, or a reason this app doesn't know.
   refusedOther(wireValue: "refused_other"),
 
   /// The request failed before the bridge could send, or with an answer that

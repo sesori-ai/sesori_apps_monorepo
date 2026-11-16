@@ -117,6 +117,8 @@ class SessionActionService({
           SendToSessionErrorCode.targetArchived ||
           SendToSessionErrorCode.sourceNotRoot ||
           SendToSessionErrorCode.sourceUnavailable ||
+          SendToSessionErrorCode.sourceOptionsUnavailable ||
+          SendToSessionErrorCode.targetOptionsUnavailable ||
           SendToSessionErrorCode.sourceEmpty ||
           SendToSessionErrorCode.summaryStopped ||
           SendToSessionErrorCode.summaryFailed ||

@@ -168,6 +168,10 @@ void main() {
         AnalyticsSessionSendOutcome.refusedOther,
       ),
       (
+        const SendToSessionRefused(code: SendToSessionErrorCode.targetOptionsUnavailable, message: null),
+        AnalyticsSessionSendOutcome.refusedOther,
+      ),
+      (
         const SendToSessionRefused(code: SendToSessionErrorCode.unknown, message: null),
         AnalyticsSessionSendOutcome.refusedOther,
       ),
