@@ -338,7 +338,7 @@ void main() {
       expect(registry.allowedToolsForSession(sessionId: "session-1"), ["Write"]);
     });
 
-    for (final destination in const ["localSettings", "projectSettings", "userSettings"]) {
+    for (final destination in const ["localSettings", "projectSettings", "userSettings", "cliArg"]) {
       test("always saves a $destination rule for the session only", () {
         registry.handle(
           sessionId: "session-1",
@@ -380,13 +380,6 @@ void main() {
       {"type": "removeDirectories", "destination": "session"},
       {"type": "replaceRules", "destination": "session"},
       {"type": "removeRules", "destination": "session"},
-      {
-        "type": "addRules",
-        "destination": "cliArg",
-        "rules": [
-          {"toolName": "Write"},
-        ],
-      },
     ]) {
       test("does not offer always for ${suggestion["type"]}/${suggestion["destination"]}", () {
         registry.handle(

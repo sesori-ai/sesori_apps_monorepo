@@ -591,7 +591,7 @@ final class ClaudeApprovalRegistry({
 
 /// Claude suggests saving most allow rules to a settings file: Bash and Skill
 /// rules go to `localSettings`. Sesori grants only session-scoped approvals, so
-/// a rule from any settings destination is sent back with the `session`
+/// a rule from any destination is sent back with the `session`
 /// destination, which Claude applies to the running process without writing a
 /// file. Other suggestion types (`setMode`, `addDirectories`, ...) are not
 /// rules and are never sent. Verified live on 2026-11-16 with Claude Code
@@ -600,13 +600,9 @@ final class ClaudeApprovalRegistry({
 /// file was written.
 List<Map<String, Object?>> _sessionRules({required Object? suggestions}) => [
   for (final suggestion in _maps(suggestions))
-    if (suggestion["type"] == "addRules" &&
-        _ruleDestinations.contains(suggestion["destination"]) &&
-        _maps(suggestion["rules"]).isNotEmpty)
+    if (suggestion["type"] == "addRules" && _maps(suggestion["rules"]).isNotEmpty)
       {...suggestion, "destination": "session"},
 ];
-
-const _ruleDestinations = {"session", "localSettings", "projectSettings", "userSettings"};
 
 Iterable<String> _allowedToolRules(Map<String, Object?> suggestion) sync* {
   for (final rule in _maps(suggestion["rules"])) {
