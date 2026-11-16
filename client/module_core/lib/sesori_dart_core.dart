@@ -290,6 +290,7 @@ export "src/repositories/models/session_abort_not_accepted_exception.dart";
 export "src/repositories/models/session_abort_rejected_exception.dart";
 export "src/repositories/models/session_cleanup_rejection.dart";
 export "src/repositories/models/session_diff_summary_result.dart";
+export "src/repositories/models/session_fork_result.dart";
 export "src/repositories/models/session_messages_through_result.dart";
 export "src/repositories/models/session_page_result.dart";
 export "src/repositories/models/session_pin_result.dart";

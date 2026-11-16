@@ -48,11 +48,12 @@ typedef SessionDetailHeaderBuilder = Widget Function({
 
 /// The session's own actions for the glass bar's menu, built with the page so
 /// More can hide when there are none. [isBusy] is whether the session works
-/// right now.
+/// right now; [canFork] whether its harness forks it.
 typedef SessionDetailMenuEntriesBuilder = List<PregoMenuEntry> Function({
   required BuildContext context,
   required Session session,
   required bool isBusy,
+  required bool canFork,
 });
 
 /// A pointer surface's page frame: an opaque header above the transcript
@@ -843,7 +844,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     // it, and More must not open an empty menu. Built once per page build and
     // reused by the menu.
     final shellMenuEntries = switch ((session, menuEntriesBuilder)) {
-      (final session?, final builder?) => builder(context: context, session: session, isBusy: isBusy),
+      (final session?, final builder?) => builder(
+        context: context,
+        session: session,
+        isBusy: isBusy,
+        canFork: state is SessionDetailLoaded && state.forksMessages,
+      ),
       _ => const <PregoMenuEntry>[],
     };
     if (pageChrome != null) {

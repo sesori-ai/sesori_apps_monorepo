@@ -275,6 +275,7 @@ class SessionDetailLoadService({
           offersSessionMcp: pluginCapabilities.offersSessionMcp,
           namesCommandInvocations: pluginCapabilities.namesCommandInvocations,
           supportsRewind: pluginCapabilities.supportsRewind,
+          supportsFork: pluginCapabilities.supportsFork,
           sideQuestions: pluginCapabilities.sideQuestions,
           messages: messagesPage.messages,
           olderMessagesCursor: messagesPage.nextCursor,
@@ -431,6 +432,7 @@ class SessionDetailLoadService({
     offersSessionMcp: true,
     namesCommandInvocations: false,
     supportsRewind: false,
+    supportsFork: false,
     sideQuestions: SideQuestionAvailability.unresolved,
   );
 
@@ -459,6 +461,8 @@ class SessionDetailLoadService({
             // An older bridge declares no branching, so it offers no edit.
             supportsRewind:
                 !isArchived && (plugin?.sessionBranching.contains(SessionBranchingOperation.rewind) ?? false),
+            // Archived sessions can be forked.
+            supportsFork: plugin?.sessionBranching.contains(SessionBranchingOperation.fork) ?? false,
             sideQuestions: switch (plugin) {
               // An older bridge has no side-question routes, whatever its
               // harnesses could answer.
@@ -507,6 +511,10 @@ class const SessionDetailSnapshot({
   /// False when the session is archived or plugin metadata could not be
   /// resolved.
   required final bool supportsRewind,
+
+  /// Whether the bridge can fork the session from its messages, archived or
+  /// not. False when plugin metadata could not be resolved.
+  required final bool supportsFork,
 
   /// Whether the session can ask side questions, and if not, why.
   required final SideQuestionAvailability sideQuestions,
@@ -563,6 +571,7 @@ typedef _PluginCapabilities = ({
   bool offersSessionMcp,
   bool namesCommandInvocations,
   bool supportsRewind,
+  bool supportsFork,
   SideQuestionAvailability sideQuestions,
 });
 

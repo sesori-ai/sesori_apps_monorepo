@@ -100,6 +100,7 @@ void main() {
                                           actions: actions,
                                           session: sending,
                                           isRunning: false,
+                                          canFork: false,
                                           readEntry: const SessionReadMenuNone(),
                                           surfaceEntries: const [],
                                         )

@@ -35,6 +35,7 @@ void main() {
 
   setUp(() {
     actionService = _MockActionService();
+    when(() => actionService.refreshForkCapabilities()).thenAnswer((_) async {});
     abortService = _MockAbortService();
     feedback = FakeFeedbackPromptService();
     persister = _MemoryPersister();
@@ -48,6 +49,26 @@ void main() {
   });
 
   tearDown(() => cubit.close());
+
+  group("forkSession", () {
+    for (final recreateFromBase in [false, true]) {
+      test("forks after the latest finished turn, recreateFromBase $recreateFromBase", () async {
+        final session = testSession(id: "ses-1", pluginId: "claude");
+        when(
+          () => actionService.forkSession(
+            sessionId: "ses-1",
+            pluginId: "claude",
+            point: const ForkPoint.latest(),
+            recreateFromBase: recreateFromBase,
+          ),
+        ).thenAnswer((_) async => SessionForked(session: session));
+
+        final result = await cubit.forkSession(session: session, recreateFromBase: recreateFromBase);
+
+        expect(result, isA<SessionForked>());
+      });
+    }
+  });
 
   group("sendToSession", () {
     final outcomes = <SendToSessionResult>[

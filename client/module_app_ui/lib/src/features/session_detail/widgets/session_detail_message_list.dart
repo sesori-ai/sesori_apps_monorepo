@@ -23,6 +23,7 @@ import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "sent_bubble_landing.dart";
+import "session_fork_flow.dart";
 import "session_launch_submission_view.dart";
 import "system_message_card.dart";
 import "transcript_glide_activity.dart";
@@ -141,6 +142,11 @@ class const SessionDetailMessageList({
   /// when it can. Null when the session offers no edit.
   required final void Function({required MessageWithParts message, required MessageEditRefusal? refusal})?
   onEditMessage,
+
+  /// "Fork from here" at [point]. [ownMessage] is the user message it was
+  /// asked from, whose text and attachments go to the fork's composer, or
+  /// null for an agent reply. Null when the session offers no fork.
+  required final void Function({required ForkPoint point, required MessageWithParts? ownMessage})? onForkMessage,
 
   /// The user message the composer is editing, which stands out, or null.
   required final String? editingMessageId,
@@ -401,7 +407,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   SessionPromptIndexEntry? _unloadedPin;
 
   /// The rendered messages' turns, as the last build split them.
-  TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {});
+  TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {}, finalReplyIds: {});
 
   /// The Interrupted line the last build rendered, which the rows it builds
   /// read.
@@ -1767,7 +1773,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           SizedBox(
             key: const ValueKey("reply"),
             width: double.infinity,
-            child: _agentReply(blocks: blocks, streamingText: streamingText, createdAtMs: createdAtMs),
+            child: _agentReply(
+              messageId: messageId,
+              blocks: blocks,
+              streamingText: streamingText,
+              createdAtMs: createdAtMs,
+            ),
           ),
         if (end != null)
           SizedBox(
@@ -1839,13 +1850,23 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// An agent reply's card, with its message menu.
   Widget _agentReply({
+    required String messageId,
     required List<TranscriptBlock> blocks,
     required Map<String, String> streamingText,
     required int? createdAtMs,
   }) => TranscriptMessageMenu(
     spotlight: PregoMenuSpotlight.listRow,
     copyText: AssistantMessageCard.markdownOf(blocks: blocks, streamingText: streamingText),
-    actions: const [],
+    actions: [
+      if ((widget.onForkMessage, _turns.replyForkPoint(messageId: messageId, working: widget.isBusy)) case (
+        final onFork?,
+        final point?,
+      ))
+        forkFromHereMenuItem(
+          context: context,
+          onTap: () => onFork(point: point, ownMessage: null),
+        ),
+    ],
     builder: (context, selectionArea) => AssistantMessageCard(
       projectId: widget.projectId,
       blocks: blocks,
@@ -1879,6 +1900,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             shape: _messageShape(messageId: message.info.id),
           ),
         ),
+      },
+      onFork: switch ((
+        widget.onForkMessage,
+        _turns.userMessageForkPoint(messageId: message.info.id, working: widget.isBusy),
+      )) {
+        (final onFork?, final point?) => () => onFork(point: point, ownMessage: message),
+        _ => null,
       },
     ),
   );

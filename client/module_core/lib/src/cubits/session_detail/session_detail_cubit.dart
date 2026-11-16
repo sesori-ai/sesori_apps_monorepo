@@ -34,6 +34,7 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/models/plugin_management_result.dart";
 import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
+import "../../repositories/models/session_fork_result.dart";
 import "../../repositories/models/session_messages_through_result.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/models/session_prompt_index_result.dart";
@@ -52,6 +53,7 @@ import "../../services/models/session_activity_info.dart";
 import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/session_abort_service.dart";
+import "../../services/session_action_service.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_approval_service.dart";
 import "../../services/session_auto_continuation_service.dart";
@@ -139,6 +141,9 @@ class SessionDetailCubit(
   required final FileReferenceOpenService _fileReferenceOpenService,
   required final MessageComposerRestoreService _composerRestore,
 
+  /// Forks the session, for the transcript's "Fork from here".
+  required final SessionActionService _actionService,
+
   /// The window of the scope this page opened in, whose renames its title
   /// follows the way the session's row does.
   required final SessionWindowService _window,
@@ -200,9 +205,15 @@ class SessionDetailCubit(
   List<ComposerAttachment> _composerAttachments = const [];
 
   /// The composer's images after a stop restored queued messages into it,
-  /// until the composer stages them; see [restoredAttachments].
-  List<ComposerAttachment> _restoredAttachments = const [];
-  int _composerRestorations = 0;
+  /// or a fork from one of the origin's own messages handed them over, until
+  /// the composer stages them; see [restoredAttachments].
+  List<ComposerAttachment> _restoredAttachments = _composerDraftRepository.takeHandedOverAttachments(
+    sessionId: _sessionId,
+  );
+
+  /// Starts at one when a fork handed attachments over, so the composer
+  /// stages them on its first build.
+  late int _composerRestorations = _restoredAttachments.isEmpty ? 0 : 1;
 
   /// What Send does instead of adding a prompt, or null while it adds one; see
   /// [editMessage], [startSideQuestion] and [_composerMode].
@@ -1580,6 +1591,7 @@ class SessionDetailCubit(
               offersSessionMcp: snapshot.offersSessionMcp,
               namesCommandInvocations: snapshot.namesCommandInvocations,
               supportsRewind: snapshot.supportsRewind,
+              supportsFork: snapshot.supportsFork,
               sideQuestions: snapshot.sideQuestions,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               session: refreshedSession,
@@ -3499,6 +3511,35 @@ class SessionDetailCubit(
     _fillComposer(draft: restored.draft, restoredPrefix: "", attachments: restored.attachments, stagedCommand: null);
   }
 
+  /// Forks this session at [point]. [ownMessage] is the user message the
+  /// fork was asked from, whose text and attachments wait in the fork's
+  /// composer when its page opens; null for an agent reply.
+  /// [recreateFromBase] answers a [SessionForkWorktreeBranchMissing].
+  Future<SessionForkResult> forkSession({
+    required ForkPoint point,
+    required MessageWithParts? ownMessage,
+    required bool recreateFromBase,
+  }) async {
+    // Restored while the bridge forks, so the fork's page opens with them.
+    final restoring = switch (ownMessage) {
+      final message? => _composerRestore.restore(sessionId: _sessionId, message: message),
+      null => null,
+    };
+    final result = await _actionService.forkSession(
+      sessionId: _sessionId,
+      pluginId: switch (state) {
+        SessionDetailLoaded(:final pluginId) => pluginId,
+        _ => null,
+      },
+      point: point,
+      recreateFromBase: recreateFromBase,
+    );
+    if (result case SessionForked(:final session) when restoring != null) {
+      _composerDraftRepository.handOverForSession(sessionId: session.id, restored: await restoring);
+    }
+    return result;
+  }
+
   /// Ends the edit without sending it.
   void cancelEditing() {
     final edit = _edit;
@@ -4548,6 +4589,7 @@ class SessionDetailCubit(
       offersSessionMcp: snapshot.offersSessionMcp,
       namesCommandInvocations: snapshot.namesCommandInvocations,
       supportsRewind: snapshot.supportsRewind,
+      supportsFork: snapshot.supportsFork,
       sideQuestions: snapshot.sideQuestions,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,

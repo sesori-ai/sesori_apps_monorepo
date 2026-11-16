@@ -327,6 +327,7 @@ class const DesktopSessionDetailView({
                       actions: context.read<SessionActionsCubit>(),
                       session: session,
                       isRunning: isBusy,
+                      canFork: context.read<SessionActionsCubit>().canFork(session: session),
                       readEntry: const SessionReadMenuNone(),
                       surfaceEntries: [
                         if (state.offersMcp)

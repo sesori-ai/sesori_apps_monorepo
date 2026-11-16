@@ -106,6 +106,7 @@ void main() {
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
       composerRestore: restore,
+      actionService: MockSessionActionService(),
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -301,4 +302,5 @@ SessionDetailSnapshot _snapshot({
   cannotContinueMessage: null,
   namesCommandInvocations: false,
   supportsRewind: true,
+  supportsFork: false,
 );

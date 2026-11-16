@@ -229,6 +229,22 @@ enum AnalyticsFileSource({required final String wireValue}) {
   mixed(wireValue: "mixed"),
 }
 
+/// How the bridge answered one fork of a session.
+enum AnalyticsSessionForkOutcome({required final String wireValue}) {
+  /// The bridge made the fork.
+  succeeded(wireValue: "succeeded"),
+
+  /// The harness cannot fork at that point, or no longer has the session.
+  branchPointUnavailable(wireValue: "branch_point_unavailable"),
+
+  /// The bridge refused the fork otherwise: nothing to fork yet, a removed
+  /// worktree it could not bring back, or a reason this app doesn't know.
+  refused(wireValue: "refused"),
+
+  /// The request failed or timed out, so the fork may or may not exist.
+  failed(wireValue: "failed"),
+}
+
 /// How the bridge answered one edit and resend of an earlier message.
 enum AnalyticsMessageEditOutcome({required final String wireValue}) {
   /// The bridge removed the message and what followed it, and sent the edit.
@@ -422,6 +438,10 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsHarness harness,
     required AnalyticsMessageEditOutcome outcome,
   }) = SessionMessageEditedEvent;
+  const factory sessionForked({
+    required AnalyticsHarness harness,
+    required AnalyticsSessionForkOutcome outcome,
+  }) = SessionForkedEvent;
   const factory sessionSentToSession({
     required AnalyticsHarness harness,
     required AnalyticsSessionSendOutcome outcome,
@@ -899,6 +919,19 @@ final class const SessionMessageEditedEvent({
 }) extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_message_edited";
+
+  @override
+  Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};
+}
+
+/// The bridge answered a fork of a session. The session, its title and where
+/// it was cut stay off the wire.
+final class const SessionForkedEvent({
+  required final AnalyticsHarness harness,
+  required final AnalyticsSessionForkOutcome outcome,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "session_forked";
 
   @override
   Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};

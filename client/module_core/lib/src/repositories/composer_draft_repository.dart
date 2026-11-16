@@ -1,10 +1,16 @@
 import "package:injectable/injectable.dart";
 
 import "../api/storage/composer_draft_storage.dart";
+import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/composer/composer_draft.dart";
+import "../foundation/models/composer/restored_composer.dart";
 
 @lazySingleton
 class ComposerDraftRepository({required final ComposerDraftStorage _storage}) {
+  /// Attachments handed to sessions whose page has not opened yet; see
+  /// [handOverForSession]. Their bytes are never persisted.
+  final Map<String, List<ComposerAttachment>> _handedOverAttachments = {};
+
   /// The new-session composer's draft: one for every project, since the
   /// composer keeps what it holds when its project changes.
   static const String newSessionIdentity = "new-session";
@@ -23,6 +29,18 @@ class ComposerDraftRepository({required final ComposerDraftStorage _storage}) {
   }
 
   void clearForSession({required String sessionId}) => _storage.clear(key: sessionId);
+
+  /// Gives [sessionId]'s composer what [restored] holds, before its page
+  /// opens: the text becomes its draft, and the attachments wait for
+  /// [takeHandedOverAttachments], once.
+  void handOverForSession({required String sessionId, required RestoredComposer restored}) {
+    saveForSession(sessionId: sessionId, draft: restored.draft);
+    if (restored.attachments.isNotEmpty) _handedOverAttachments[sessionId] = restored.attachments;
+  }
+
+  /// The attachments handed over to [sessionId], once; empty when none were.
+  List<ComposerAttachment> takeHandedOverAttachments({required String sessionId}) =>
+      _handedOverAttachments.remove(sessionId) ?? const [];
 
   void clearForNewSession() => _storage.clear(key: newSessionIdentity);
 

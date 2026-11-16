@@ -22,7 +22,10 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
-class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit {
+  @override
+  bool canFork({required Session session}) => false;
+}
 
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
 

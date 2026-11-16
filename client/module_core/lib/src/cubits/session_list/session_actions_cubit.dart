@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc/bloc.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -6,6 +8,7 @@ import "../../repositories/archive_after_send_preference_storage.dart";
 import "../../repositories/models/send_to_session_result.dart";
 import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
+import "../../repositories/models/session_fork_result.dart";
 import "../../repositories/models/session_pin_result.dart";
 import "../../services/feedback_prompt_service.dart";
 import "../../services/models/session_delete_result.dart";
@@ -14,7 +17,7 @@ import "../../services/session_action_service.dart";
 import "../../services/session_window_service.dart";
 
 /// The actions a session row or page offers: pin, rename, delete, mark read
-/// or unread, send into another session, and stop. The rows they change live
+/// or unread, fork, send into another session, and stop. The rows they change live
 /// in [SessionWindowService] and the trackers.
 ///
 /// It holds no state. Each action returns its own outcome, so actions on
@@ -26,7 +29,24 @@ class SessionActionsCubit({
   required final FeedbackPromptService _feedbackPromptService,
   required final ArchiveAfterSendPreferenceStorage _archiveAfterSendStorage,
 }) extends Cubit<void> {
-  this : super(null);
+  this : super(null) {
+    // So the first menu already knows which harnesses fork.
+    unawaited(_actionService.refreshForkCapabilities());
+  }
+
+  /// Whether the session menu offers Fork for [session].
+  bool canFork({required Session session}) => _actionService.canFork(session: session);
+
+  /// Forks [session] after its latest finished turn. [recreateFromBase]
+  /// answers a [SessionForkWorktreeBranchMissing] with a new worktree from
+  /// its base branch.
+  Future<SessionForkResult> forkSession({required Session session, required bool recreateFromBase}) =>
+      _actionService.forkSession(
+        sessionId: session.id,
+        pluginId: session.pluginId,
+        point: const ForkPoint.latest(),
+        recreateFromBase: recreateFromBase,
+      );
 
   /// The row shows [title] at once. False when the bridge refused it, after
   /// the row got its previous title back.

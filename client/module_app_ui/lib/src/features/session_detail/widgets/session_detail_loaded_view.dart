@@ -14,6 +14,7 @@ import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
+import "session_fork_flow.dart";
 import "transcript_jump_notifier.dart";
 import "transcript_laid_out_list_view.dart";
 import "transcript_motion.dart";
@@ -347,6 +348,28 @@ class SessionDetailLoadedView extends StatelessWidget {
               null => context.read<SessionDetailCubit>().editMessage(message: message),
               final refusal => showEditUnavailableDialog(context: context, refusal: refusal),
             }),
+      // Archived sessions fork too.
+      onForkMessage: state.forksMessages
+          ? ({required point, required ownMessage}) {
+              final openSession = SessionDetailPresentationScope.of(context).openSession;
+              unawaited(
+                runSessionFork(
+                  context: context,
+                  fork: ({required recreateFromBase}) => context.read<SessionDetailCubit>().forkSession(
+                    point: point,
+                    ownMessage: ownMessage,
+                    recreateFromBase: recreateFromBase,
+                  ),
+                  open: ({required fork}) => openSession(
+                    projectId: fork.projectID,
+                    sessionId: fork.id,
+                    sessionTitle: fork.title,
+                    readOnly: false,
+                  ),
+                ),
+              );
+            }
+          : null,
       editingMessageId: switch (state.composerMode) {
         SessionComposerEditing(:final messageId) => messageId,
         SessionComposerNormal() || SessionComposerSideQuestion() => null,

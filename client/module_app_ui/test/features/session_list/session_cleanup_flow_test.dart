@@ -173,6 +173,7 @@ void main() {
                       actions: actions,
                       session: target,
                       isRunning: false,
+                      canFork: false,
                       readEntry: const SessionReadMenuNone(),
                       surfaceEntries: [
                         PregoMenuItem(
@@ -248,6 +249,7 @@ void main() {
                     actions: actions,
                     session: worktreeSession,
                     isRunning: false,
+                    canFork: false,
                     readEntry: const SessionReadMenuNone(),
                     surfaceEntries: const [],
                   )

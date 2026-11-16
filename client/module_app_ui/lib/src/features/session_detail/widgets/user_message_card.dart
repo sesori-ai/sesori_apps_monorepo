@@ -11,12 +11,13 @@ import "../session_detail_markdown_link_handler.dart";
 import "attachment_collection_widget.dart";
 import "invocation_card.dart";
 import "sent_bubble_landing.dart";
+import "session_fork_flow.dart";
 import "transcript_message_menu.dart";
 import "transcript_motion.dart";
 import "user_prompt_markdown_image.dart";
 
 /// A user message in the transcript, as a bubble or an invocation card, with
-/// its [TranscriptMessageMenu] when it has text or can be edited.
+/// its [TranscriptMessageMenu] when it has text or can be edited or forked.
 class const UserMessageCard({
   super.key,
   required final MessageWithParts message,
@@ -33,6 +34,9 @@ class const UserMessageCard({
 
   /// The menu's Edit and resend, or null when the session offers no edit.
   required final VoidCallback? onEdit,
+
+  /// The menu's Fork from here, or null when the message offers no fork.
+  required final VoidCallback? onFork,
 }) extends StatefulWidget {
   @override
   State<UserMessageCard> createState() => _UserMessageCardState();
@@ -98,6 +102,7 @@ class _UserMessageCardState() extends State<UserMessageCard> {
           shortcutLabel: null,
           onTap: onEdit,
         ),
+      if (widget.onFork case final onFork?) forkFromHereMenuItem(context: context, onTap: onFork),
     ];
     final outlined = _outlined || widget.editing;
     // The edit's outline comes and goes in the transcript's motion, only in

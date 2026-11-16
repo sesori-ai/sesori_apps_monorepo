@@ -5701,6 +5701,78 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 attachment couldn\'t be brought back} other{{count} attachments couldn\'t be brought back}}'**
   String sessionDetailEditBannerLeftOut(int count);
 
+  /// Transcript message menu entry that starts a new session holding the conversation up to this message. On the user's own message the fork starts just before it, with the message waiting in the new session's composer.
+  ///
+  /// In en, this message translates to:
+  /// **'Fork from here'**
+  String get sessionDetailForkFromHere;
+
+  /// Session menu entry that starts a new session holding this session's conversation through its latest finished reply.
+  ///
+  /// In en, this message translates to:
+  /// **'Fork'**
+  String get sessionListFork;
+
+  /// Alert shown while the computer makes a fork, when it takes longer than a moment.
+  ///
+  /// In en, this message translates to:
+  /// **'Forking…'**
+  String get sessionForkForking;
+
+  /// Alert shown when Fork in the session menu found no finished reply to keep.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to fork yet'**
+  String get sessionForkNothingToFork;
+
+  /// Line under the Nothing to fork yet alert.
+  ///
+  /// In en, this message translates to:
+  /// **'The session hasn\'t finished a reply yet.'**
+  String get sessionForkNothingToForkBody;
+
+  /// Alert title shown when the computer refused a fork. Its line is the computer's reason, or the generic line.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t fork this session'**
+  String get sessionForkRefused;
+
+  /// Line of the refused-fork alert when the computer gave no reason.
+  ///
+  /// In en, this message translates to:
+  /// **'The session didn\'t accept the fork. Nothing changed.'**
+  String get sessionForkRefusedBody;
+
+  /// Alert shown when the computer's answer to a fork never arrived, so the fork may exist.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the fork. Check your session list before trying again.'**
+  String get sessionForkFailed;
+
+  /// Title of the prompt shown when an archived session's worktree was removed and nothing kept where it stood, before forking it.
+  ///
+  /// In en, this message translates to:
+  /// **'This session\'s worktree is gone'**
+  String get sessionForkWorktreeMissingTitle;
+
+  /// Body of the prompt shown before forking an archived session whose worktree is gone.
+  ///
+  /// In en, this message translates to:
+  /// **'Its earlier work can\'t be restored. The fork can start in a new worktree from where this session began.'**
+  String get sessionForkWorktreeMissingBody;
+
+  /// Button of the missing-worktree prompt that forks the session into a new worktree from where it began.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new worktree'**
+  String get sessionForkWorktreeMissingCreate;
+
+  /// Button of the missing-worktree prompt that leaves the session unforked.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionForkCancel;
+
   /// Confirmation shown after Copy in a transcript message's menu copied the message, or the text selected in it.
   ///
   /// In en, this message translates to:

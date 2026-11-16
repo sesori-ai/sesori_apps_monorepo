@@ -5,8 +5,9 @@
 Every user prompt with text, command card with arguments and agent reply in a
 transcript has a message menu, on phone and desktop alike, and so do queued
 prompts and the pinned prompt. It holds what can be done with that message:
-Edit and resend on a user prompt or command card, then Copy and Select text. Copy and Select
-text are client-only; they send nothing to the bridge.
+Edit and resend on a user prompt or command card, Fork from here where a fork
+can start, then Copy and Select text. Copy and Select text are client-only;
+they send nothing to the bridge.
 
 The bridge can edit a prompt that opens a turn: `POST /session/rewind` removes
 that prompt and every later message from the session's conversation and sends
@@ -21,7 +22,8 @@ The bridge can also fork: `POST /session/fork` creates a new root session whose
 conversation is the origin's up to a turn boundary, in the same directory or
 worktree, and leaves the origin unchanged. Claude Code and Codex declare
 `fork`; on every other harness only a fork that keeps nothing (before the
-first turn) succeeds today. Clients offer no Fork yet.
+first turn) succeeds today. Clients offer Fork only where the session's
+harness declares `fork`.
 
 ## Required Behavior
 
@@ -115,6 +117,33 @@ first turn) succeeds today. Clients offer no Fork yet.
 - `session_message_edited` records each answered Resend with the harness and a
   closed outcome: succeeded, refused_busy, branch_point_unavailable, refused
   or failed.
+
+### Client fork
+
+- Fork from here shows on a user prompt or command card, after Edit and
+  resend, and on the last agent reply of a finished turn, in a top-level
+  session whose harness declares `fork`, archived or read-only sessions
+  included. It never shows in the turn that is running, on an earlier reply
+  of a turn, or in a sub-agent's session.
+- On a prompt that opens its turn the fork keeps everything before that turn
+  (`beforeMessage`); on a follow-up sent mid-turn it keeps that whole turn, and
+  on a reply it keeps everything through the reply (`afterMessage`). Forking
+  from your own prompt or follow-up puts its text and attachments in the
+  fork's composer, ready to send or change; the origin's composer is left
+  alone.
+- The session's ⋯ menu on phone and desktop, and a session row's long-press
+  and right-click menu, offer Fork before Archive, for the latest finished
+  turn (`latest`). An archived session offers it too.
+- A fork that takes longer than 300 ms shows a Forking alert until the bridge
+  answers. On success the fork's page opens, titled `<origin title> (fork)`;
+  having left the origin meanwhile, the fork waits in the session list.
+- Nothing to fork, a refusal (with the bridge's reason when it gives one) and
+  a failure each answer with an alert, and nothing opens.
+- When an archived origin's worktree is gone and kept nothing, a sheet asks
+  whether to create a new worktree from where the session began; Create
+  retries the fork that way and Cancel forks nothing.
+- `session_forked` records each answered fork with the origin's harness and a
+  closed outcome: succeeded, branch_point_unavailable, refused or failed.
 
 ### Removed messages fold away
 
@@ -297,7 +326,7 @@ first turn) succeeds today. Clients offer no Fork yet.
 | L2 Routine | Message menu, automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, opens only the top item's menu where two overlap, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, a shift-click afterwards extends it, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. Removal motion, automated widget tests: a removed row folds away while following with the rows above easing down; under reduced motion it goes at once; while detached a visible row and a built row out of view fold and an unbuilt row goes at once, all without moving the row being read by a pixel, and the reader's own drag during the fold moves the transcript by exactly the drag; an edit's echo and three removals in a row fold together with the echo below them; a row whose message comes back mid-fold stays; a refresh's history twins replace live rows with no fold. Bridge edit route, automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`; a failed resend after the harness rewound removes exactly the dropped messages, and a failure that changed nothing removes none. A first-turn edit binds the new harness session (with the worktree context in a dedicated worktree), tombstones and deletes the old one and its sub-agent rows and history, survives a failed old delete, replaces a stray imported row, and leaves the binding, rows and transcript untouched when the new session cannot be created; the event service releases the new session's held events under the old id and ignores the old session's late events. Codex plugin tests against a fake app-server: resume, revert and `turn/start` order with the prompt id; history follows the reverted rollout; steered, unknown-id, attachment and revert-error refusals happen before any revert. Claude Code plugin tests against a fake CLI: the respawn's arguments and carried-over selection, then the prompt on the respawned process; a later plain `--resume`; an armed idle reap superseded; a second edit refused and a mid-respawn send ordered after the edit; no-entry, busy and unknown-option refusals before acceptance; the rewind point against recorded transcripts and a compaction. |
 | L2 Routine (composer lock) | `prompt_input_lock_test.dart`: a locked composer dims to 60 % and answers a tap with its note, typing into a focused composer that locks changes nothing and keeps focus, attachments cannot be removed, and unlocking restores full opacity and typing. |
 | L2 Routine (fork) | Automated bridge tests with a fake fork plugin: each fork point keeps the right turn, a follow-up keeps its whole turn, `latest` skips a running turn, and busy, non-point, nothing-to-fork, no-fork harness, plugin reason and sub-agent refusals happen before anything is created; the fork row copies the origin's worktree and options, the origin's deletion clears the link and keeps the title, an imported binding is reused, an archived origin forks from its archive record, and an empty fork's first prompt alone carries the worktree context; an archived origin's removed worktree is recreated on its kept branch or at its pinned HEAD before the harness forks, a worktree that kept nothing answers `worktreeBranchMissing` and creates nothing until the `recreateFromBase` retry, and a taken path, a checkout of another repository or a failed add is refused; real-git repository tests recreate on a kept branch, after a hand-deleted folder (pruned), at a pinned detached HEAD after `gc --prune=now`, on a deleted branch from its pinned HEAD, from the base on a new branch and detached, and fail for a branch checked out elsewhere; a new session's worktree skips a path whose HEAD an archived session kept; a migration test covers the fork columns and their `ON DELETE SET NULL`. Codex plugin tests against a fake app-server: `thread/fork` names the native turn a reply or user message belongs to and leaves the source unloaded; the fork reads the kept history and lists once; unknown-id, missing-session, steered-turn and pre-0.143 runtime refusals happen before `thread/fork`, and its in-progress, unknown-turn and missing-rollout errors become reasons; deleting a source archives the rollouts its forks keep, and a thread no fork builds on archives nothing. Codex catalog tests on recorded rollouts: deleting an origin keeps the rollout its fork builds on, so the fork reads the same before and after a fresh catalog, and a later delete removes the rest. Claude Code plugin tests against recorded transcripts: the copied prefix for a linear, rewound and parallel-tool transcript, a running later turn left out, a fork from before and from after a compaction, the off-branch and missing-transcript refusals, a single catalog listing, a fork-only delete; against a fake CLI: the untitled created event, a `--resume` of the fork, and a restarted empty fork starting with `--session-id`. |
-| L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. On a headless iOS simulator against Codex and against Claude Code: edit the first and a later prompt of an idle session and check the bubble outline, banner and composer arrive without the transcript moving and the removed messages fold out; Cancel restores a half-typed draft; Resend during a running turn offers Stop and resend and completes. While it stops and sends, tapping, typing and pressing Enter in the dimmed composer each show the lock note, and nothing typed is kept. The fork route is not included until clients offer Fork. |
+| L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. On a headless iOS simulator against Codex and against Claude Code: edit the first and a later prompt of an idle session and check the bubble outline, banner and composer arrive without the transcript moving and the removed messages fold out; Cancel restores a half-typed draft; Resend during a running turn offers Stop and resend and completes. While it stops and sends, tapping, typing and pressing Enter in the dimmed composer each show the lock note, and nothing typed is kept. On a headless iOS simulator against Codex and against Claude Code: fork from a finished reply, from your own prompt (its text in the fork's composer) and from the ⋯ menu, check the fork opens titled `(fork)` with the right history and the origin unchanged, and fork an archived session. On macOS, right-click a reply and a session row and fork from each. |
 | L4 Extended | Long-press a message near the screen's edges and at the largest text size; open the menu during a pinch, a peek and a code-block scroll. |
 | L5 Full | No additional coverage. |
 
@@ -350,6 +379,10 @@ not loaded yet.
   compaction from after its fork point, is listed twice, deletes the origin's
   transcript or sub-agents, or answers "not found" for an empty fork after a
   bridge restart.
+- Fork from here shows in a running turn, on a reply that does not end its
+  turn, in a sub-agent's session or for a harness without `fork`; a tap on
+  Fork answers nothing; the fork's composer misses the prompt it was forked
+  from, or the origin's composer changes.
 - A fork of an archived origin whose worktree was removed points at a missing
   folder, lands in a folder something else holds, or leaves a worktree behind
   after a restoration refusal.
@@ -408,6 +441,9 @@ not loaded yet.
 - `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`
 - `client/module_core/lib/src/cubits/session_detail/transcript_turns.dart`
 - `client/module_core/lib/src/repositories/session_repository.dart`
+- `client/module_core/lib/src/services/session_action_service.dart`
+- `client/module_app_ui/lib/src/features/session_detail/widgets/session_fork_flow.dart`
+- `client/module_app_ui/lib/src/features/session_list/session_list_action_dispatcher.dart`
 - `bridge/sesori_plugin_interface/lib/src/session_rewind_plugin_api.dart`
 - `bridge/app/lib/src/routing/rewind_session_handler.dart`
 - `bridge/sesori_plugin_interface/lib/src/session_fork_plugin_api.dart`

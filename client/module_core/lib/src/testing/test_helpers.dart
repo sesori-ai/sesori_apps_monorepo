@@ -57,6 +57,7 @@ import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
 import "../services/registered_bridges_service.dart";
 import "../services/selected_computer_service.dart";
+import "../services/session_action_service.dart";
 import "../services/session_detail_load_service.dart";
 import "../services/session_launch_service.dart";
 import "../services/session_unseen_tracker.dart";
@@ -258,6 +259,8 @@ class MockFilesystemApi() extends Mock implements FilesystemApi;
 class MockFileReferenceOpenService() extends Mock implements FileReferenceOpenService;
 
 class MockMessageComposerRestoreService() extends Mock implements MessageComposerRestoreService;
+
+class MockSessionActionService() extends Mock implements SessionActionService;
 
 class MockProjectRepository() extends Mock implements ProjectRepository;
 

@@ -16,6 +16,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/restored_compose
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/side_question_availability.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
+import "package:sesori_dart_core/src/repositories/models/session_fork_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_rewind_result.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
@@ -41,6 +42,7 @@ void main() {
 
   late MockSessionRepository sessionRepository;
   late MockMessageComposerRestoreService restore;
+  late MockSessionActionService actions;
   late MockProductAnalyticsService analytics;
   late ComposerDraftRepository drafts;
   late StreamController<SesoriSessionEvent> sessionEvents;
@@ -52,6 +54,7 @@ void main() {
     final connectionService = MockConnectionService();
     sessionRepository = MockSessionRepository();
     restore = MockMessageComposerRestoreService();
+    actions = MockSessionActionService();
     analytics = stubbedProductAnalyticsService();
     drafts = inMemoryComposerDraftRepository();
     sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
@@ -117,6 +120,7 @@ void main() {
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
       composerRestore: restore,
+      actionService: actions,
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -229,6 +233,32 @@ void main() {
 
     expect(notices.last, isA<SessionDetailEditFailed>());
     expect(rewoundPromptIds().toSet(), hasLength(1), reason: "the bridge never applies one edit twice");
+  });
+
+  test("a fork from your own message hands its text to the fork's composer, a failed one keeps nothing", () async {
+    await openSession(status: const SessionStatus.idle());
+    void answerFork(SessionForkResult result) => when(
+      () => actions.forkSession(
+        sessionId: _sessionId,
+        pluginId: any(named: "pluginId"),
+        point: const ForkPoint.beforeMessage(messageId: "m1"),
+        recreateFromBase: false,
+      ),
+    ).thenAnswer((_) async => result);
+    Future<SessionForkResult> fork() => cubit.forkSession(
+      point: const ForkPoint.beforeMessage(messageId: "m1"),
+      ownMessage: edited,
+      recreateFromBase: false,
+    );
+
+    answerFork(SessionForkFailed(error: ApiError.generic()));
+    expect(await fork(), isA<SessionForkFailed>());
+    expect(drafts.readForSession(sessionId: "fork-1").text, isEmpty);
+
+    answerFork(SessionForked(session: testSession(id: "fork-1")));
+    expect(await fork(), isA<SessionForked>());
+    expect(drafts.readForSession(sessionId: "fork-1").text, "first prompt");
+    expect(cubit.composerDraft.text, isEmpty, reason: "the origin's composer is left alone");
   });
 
   test("an edit changed after a lost answer goes out under a new prompt id", () async {
@@ -371,4 +401,5 @@ SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, requi
       cannotContinueMessage: null,
       namesCommandInvocations: false,
       supportsRewind: true,
+      supportsFork: false,
     );

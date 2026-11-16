@@ -27,7 +27,8 @@ one a newer bridge advertises, is sent as `other`; the raw ID never is. The
 mobile app's `side_question_asked` carries the same value, beside the side
 question's bounded outcome and never its text, and so does its
 `session_message_edited`, beside the edit's bounded outcome and never the
-prompt, and its `session_sent_to_session`, naming the source session's harness
+prompt, its `session_forked`, beside the fork's bounded outcome and never the
+message or the sessions, and its `session_sent_to_session`, naming the source session's harness
 beside the send's bounded outcome and never the sessions or the summary. No
 other event carries it, and
 model, provider, agent, tool, and command names stay excluded. App versions from before it send none; reporting counts those as

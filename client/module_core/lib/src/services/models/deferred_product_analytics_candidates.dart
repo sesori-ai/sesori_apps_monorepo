@@ -88,6 +88,7 @@ final class DeferredProductAnalyticsCandidates {
     SideQuestionAskedEvent() ||
     ScheduledTaskSavedEvent() ||
     SessionMessageEditedEvent() ||
+    SessionForkedEvent() ||
     SessionSentToSessionEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
   };
 
