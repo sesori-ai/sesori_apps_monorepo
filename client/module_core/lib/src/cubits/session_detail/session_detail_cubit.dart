@@ -3360,6 +3360,7 @@ class SessionDetailCubit(
       promptId: generatePromptId(),
       phase: SessionEditPhase.restoring,
       leftOutCount: 0,
+      unconfirmed: null,
       // Editing another message keeps what the composer held before the first.
       held:
           previous?.held ??
@@ -3373,14 +3374,16 @@ class SessionDetailCubit(
     _edit = edit;
     emit(current.copyWith(composerMode: _composerMode, stagedCommand: null));
     final restored = await _composerRestore.restore(sessionId: _sessionId, message: message);
-    // Cancelled meanwhile.
-    if (isClosed || !identical(_edit, edit)) return;
+    // Cancelled meanwhile. A return meanwhile changed only what it holds.
+    final latest = _edit;
+    if (isClosed || latest == null || latest.promptId != edit.promptId) return;
     _edit = _MessageEdit(
       messageId: edit.messageId,
       promptId: edit.promptId,
       phase: SessionEditPhase.composing,
       leftOutCount: restored.leftOutCount,
-      held: edit.held,
+      unconfirmed: null,
+      held: latest.held,
     );
     _fillComposer(draft: restored.draft, restoredPrefix: "", attachments: restored.attachments, stagedCommand: null);
   }
@@ -3475,12 +3478,22 @@ class SessionDetailCubit(
   }) async {
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    _setEdit(edit: edit.withPhase(phase: SessionEditPhase.sending));
+    final payload = (text: text, attachments: attachments);
+    // The bridge answers a prompt id it took with success, whatever the
+    // payload, so only an unchanged retry may reuse it.
+    final attempt = switch (edit.unconfirmed) {
+      final unconfirmed? when !_samePayload(unconfirmed, payload) => edit.withAttempt(
+        promptId: generatePromptId(),
+        unconfirmed: null,
+      ),
+      _ => edit,
+    };
+    _setEdit(edit: attempt.withPhase(phase: SessionEditPhase.sending));
     final agentModel = current.selectedAgentModel;
     final result = await _sessionRepository.rewindSession(
       sessionId: _sessionId,
-      messageId: edit.messageId,
-      promptId: edit.promptId,
+      messageId: attempt.messageId,
+      promptId: attempt.promptId,
       text: text,
       attachments: attachments,
       agent: current.selectedAgent,
@@ -3508,13 +3521,18 @@ class SessionDetailCubit(
     }
     // A return during the request may have changed what the edit holds.
     final latest = _edit;
-    if (isClosed || latest == null || latest.promptId != edit.promptId) return;
+    if (isClosed || latest == null || latest.promptId != attempt.promptId) return;
     if (result is SessionRewindAccepted) {
       _endEdit(edit: latest);
       return;
     }
-    // The composer still holds the edit, to change or resend.
-    _setEdit(edit: latest.withPhase(phase: SessionEditPhase.composing));
+    // The composer still holds the edit, to change or resend. A refusal ran
+    // nothing; a failure may have, so its id stays tied to what it sent.
+    _setEdit(
+      edit: latest
+          .withAttempt(promptId: latest.promptId, unconfirmed: result is SessionRewindFailed ? payload : null)
+          .withPhase(phase: SessionEditPhase.composing),
+    );
     switch (result) {
       case SessionRewindAccepted():
         break;
@@ -3530,6 +3548,9 @@ class SessionDetailCubit(
         _noticeStream.add(const SessionDetailEditFailed());
     }
   }
+
+  static bool _samePayload(_EditPayload a, _EditPayload b) =>
+      a.text == b.text && const ListEquality<ComposerAttachment>().equals(a.attachments, b.attachments);
 
   /// Gives the composer back what it held before the edit.
   void _endEdit({required _MessageEdit edit}) {
@@ -4460,13 +4481,16 @@ typedef _HeldComposer = ({
 final class const _MessageEdit({
   required final String messageId,
 
-  /// The edit's prompt id, the same across resends, so a retry after a lost
-  /// answer cannot rewind twice.
+  /// The edit's prompt id, so a retry after a lost answer cannot rewind twice.
   required final String promptId,
   required final SessionEditPhase phase,
 
   /// How many of the message's attachments could not be brought back.
   required final int leftOutCount,
+
+  /// What went out under [promptId] without an answer, if anything: only
+  /// that same payload may go out under it again.
+  required final _EditPayload? unconfirmed,
   required final _HeldComposer held,
 }) {
   _MessageEdit withPhase({required SessionEditPhase phase}) => _MessageEdit(
@@ -4474,6 +4498,7 @@ final class const _MessageEdit({
     promptId: promptId,
     phase: phase,
     leftOutCount: leftOutCount,
+    unconfirmed: unconfirmed,
     held: held,
   );
 
@@ -4482,9 +4507,21 @@ final class const _MessageEdit({
     promptId: promptId,
     phase: phase,
     leftOutCount: leftOutCount,
+    unconfirmed: unconfirmed,
+    held: held,
+  );
+
+  _MessageEdit withAttempt({required String promptId, required _EditPayload? unconfirmed}) => _MessageEdit(
+    messageId: messageId,
+    promptId: promptId,
+    phase: phase,
+    leftOutCount: leftOutCount,
+    unconfirmed: unconfirmed,
     held: held,
   );
 }
+
+typedef _EditPayload = ({String text, List<ComposerAttachment> attachments});
 
 typedef _QueueView = ({
   Map<String, List<ComposerAttachment>> bridgePromptAttachments,

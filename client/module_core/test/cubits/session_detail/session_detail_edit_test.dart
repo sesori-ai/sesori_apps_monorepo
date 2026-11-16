@@ -230,6 +230,32 @@ void main() {
     expect(rewoundPromptIds().toSet(), hasLength(1), reason: "the bridge never applies one edit twice");
   });
 
+  test("an edit changed after a lost answer goes out under a new prompt id", () async {
+    await openSession(status: const SessionStatus.idle());
+    await cubit.editMessage(message: edited);
+    answerRewind(SessionRewindFailed(error: ApiError.generic()));
+    await cubit.resendEdit(text: "first prompt, edited", attachments: const []);
+
+    answerRewind(const SessionRewindAccepted());
+    await cubit.resendEdit(text: "first prompt, edited twice", attachments: const []);
+
+    final promptIds = verify(
+      () => sessionRepository.rewindSession(
+        sessionId: _sessionId,
+        messageId: "m1",
+        promptId: captureAny(named: "promptId"),
+        text: any(named: "text"),
+        attachments: any(named: "attachments"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+      ),
+    ).captured;
+    expect(promptIds.toSet(), hasLength(2), reason: "the bridge would answer the first id without the change");
+    expect(loaded().composerMode, const SessionComposerMode.normal());
+  });
+
   test("Resend during a turn offers to stop first, and Stop and resend sends once the session is idle", () async {
     await openSession(status: const SessionStatus.busy(since: null));
     answerRewind(const SessionRewindAccepted());
