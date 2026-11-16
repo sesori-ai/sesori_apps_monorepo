@@ -112,17 +112,18 @@ class SessionSendService({
     if (source.parentID != null) throw _rejected(code: SendToSessionErrorCode.sourceNotRoot);
     if (await _hasNoMessages(sessionId: source.id)) throw _rejected(code: SendToSessionErrorCode.sourceEmpty);
 
-    // A second send of a source already sending is refused once it reserves
-    // the source, so it leaves the first send's entry alone.
+    // A second send of a source already sending is refused before it can
+    // prompt the source, and leaves the first send's entry alone.
     final sending = ActiveSessionSending(targetTitle: _nonBlank(text: target.title));
-    if (identical(_sending.putIfAbsent(source.id, () => sending), sending)) _sendingChanges.add(null);
+    if (!identical(_sending.putIfAbsent(source.id, () => sending), sending)) {
+      throw _rejected(code: SendToSessionErrorCode.sourceBusy);
+    }
+    _sendingChanges.add(null);
     try {
       await _handOff(source: source, target: target);
     } finally {
-      if (identical(_sending[source.id], sending)) {
-        _sending.remove(source.id);
-        _sendingChanges.add(null);
-      }
+      _sending.remove(source.id);
+      _sendingChanges.add(null);
     }
   }
 

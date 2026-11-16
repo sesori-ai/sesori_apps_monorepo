@@ -2198,8 +2198,9 @@ class OrchestratorSession._({
   Future<void> _buildAndEnqueueProjectsSummaryInOrder() {
     return _enqueueProjectsSummaryInOrder(
       operation: () async {
+        if (_cancelled) return;
         final summary = await _buildProjectsSummary();
-        if (summary == null) return;
+        if (_cancelled || summary == null) return;
         _feedLocalObservers(summary);
         _enqueueWireEvent(summary);
       },

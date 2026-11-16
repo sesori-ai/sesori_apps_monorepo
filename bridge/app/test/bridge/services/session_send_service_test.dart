@@ -632,19 +632,16 @@ void main() {
     expect(prompts.sends.last.sessionId, _target);
   });
 
-  test("a second send racing the first is refused as busy", () async {
+  test("a second send racing the first is refused as busy, before the source reports busy", () async {
     final accepted = Completer<String>();
-    prompts.onSummaryAccepted = (promptId) {
-      // The harness reports the turn as running once it accepts the prompt.
-      sessions.statuses[_source] = const SessionStatus.busy(since: null);
-      accepted.complete(promptId);
-    };
+    // The source's busy status has yet to arrive.
+    prompts.onSummaryAccepted = accepted.complete;
 
     final first = send();
-    final second = send();
+    final second = refusalOf(send());
     final promptId = await accepted.future;
 
-    expect(await refusalOf(second), SendToSessionErrorCode.sourceBusy);
+    expect(await second, SendToSessionErrorCode.sourceBusy);
     // The refused send leaves the first one listed.
     expect(service.sending.keys, [_source]);
     events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));

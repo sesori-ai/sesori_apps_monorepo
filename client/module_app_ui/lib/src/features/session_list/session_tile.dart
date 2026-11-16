@@ -66,9 +66,9 @@ class const SessionTile({
   required final bool isInterrupted,
   final int backgroundTaskCount = 0,
 
-  /// This app's send of the session into another, while the session writes
-  /// its summary: a paper plane takes the sparkle's place and the meta line
-  /// says where it goes.
+  /// A send of the session into another, from any device, while the session
+  /// writes its summary: a paper plane takes the sparkle's place and the meta
+  /// line says where it goes.
   required final SessionSending? sending,
 
   /// Opens the session.
