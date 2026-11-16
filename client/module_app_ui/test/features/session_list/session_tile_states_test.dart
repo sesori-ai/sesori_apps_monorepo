@@ -167,6 +167,33 @@ void main() {
         }
       });
 
+      testWidgets("a mark that leaves fades out, then its room closes without a snap", (tester) async {
+        final session = testSession(title: "My Session", updatedAt: now);
+        await pump(tester, tile(session: session, isRunning: true));
+        final sparkle = find.byType(PregoAiLoader);
+        double sparkleOpacity() =>
+            tester.widget<Opacity>(find.ancestor(of: sparkle, matching: find.byType(Opacity)).first).opacity;
+        double markRoom() => tester.getSize(find.ancestor(of: sparkle, matching: find.byType(ClipRect)).first).width;
+        final fullRoom = markRoom();
+        final rowSize = tester.getSize(find.byType(SessionTile));
+
+        await pump(tester, tile(session: session));
+        await tester.pump(const Duration(milliseconds: 100));
+        // Fading, in its full room.
+        expect(sparkleOpacity(), inExclusiveRange(0, 1));
+        expect(markRoom(), fullRoom);
+
+        await tester.pump(const Duration(milliseconds: 200));
+        // Gone from sight, its room closing.
+        expect(sparkleOpacity(), 0);
+        expect(markRoom(), inExclusiveRange(0, fullRoom));
+        expect(tester.getSize(find.byType(SessionTile)), rowSize);
+
+        await tester.pump(const Duration(milliseconds: 200));
+        // Gone, and a quiet row keeps no room for it.
+        expect(sparkle, findsNothing);
+      });
+
       testWidgets("a session being sent swaps the sparkle and meta line for the send, in place", (tester) async {
         final semantics = tester.ensureSemantics();
         final session = testSession(title: "My Session", updatedAt: now);
