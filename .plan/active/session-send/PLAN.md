@@ -870,6 +870,13 @@ including l10n output.
 - **Risk and test focus:** low to medium. Check the refusal modal and Undo behave as in a plain archive, and that
   leaving the source page during the send still archives it.
 - **Expected result:** with the switch on, the source is archived after the summary lands. No database change.
+- **As built:**
+  - `PendingSessionArchiveCubit.archive` takes a required `callerOffersUndo`, carried on `PendingArchiveOpen`.
+    `PendingArchiveAlerts` then leaves out its own "Session archived" alert, because the send's combined alert carries
+    the archive's Undo. The flag is generic, so no `module_core` class learns about sends.
+  - The combined alert lasts the Undo window (5 s), not the 8 s of the other send alerts, so Undo never outlives the
+    window.
+  - The sheet reads the remembered choice before it opens, so the switch never flips while the sheet slides in.
 
 ### Step 10: analytics
 

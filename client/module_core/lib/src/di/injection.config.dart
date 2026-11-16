@@ -135,6 +135,8 @@ import 'package:sesori_dart_core/src/repositories/analytics_repository.dart'
     as _i274;
 import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
     as _i209;
+import 'package:sesori_dart_core/src/repositories/archive_after_send_preference_storage.dart'
+    as _i95;
 import 'package:sesori_dart_core/src/repositories/attribution_repository.dart'
     as _i993;
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
@@ -474,6 +476,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i209.AppearanceStore>(
       () => _i209.AppearanceStore(persister: gh<_i903.PersisterRepository>()),
+    );
+    gh.lazySingleton<_i95.ArchiveAfterSendPreferenceStorage>(
+      () => _i95.ArchiveAfterSendPreferenceStorage(
+        persister: gh<_i903.PersisterRepository>(),
+      ),
     );
     gh.lazySingleton<_i901.ChatInputModeStore>(
       () =>

@@ -2229,6 +2229,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String sendSessionSentArchived(String target, String source) {
+    return 'Sent to “$target”. Archived “$source”.';
+  }
+
+  @override
   String get sendSessionOpen => 'Open';
 
   @override

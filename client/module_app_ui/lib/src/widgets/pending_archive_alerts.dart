@@ -88,8 +88,8 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
 
   void _onWindowChanged(PendingArchiveWindow window) {
     switch (window) {
-      case PendingArchiveOpen():
-        _offerUndo();
+      case PendingArchiveOpen(:final callerOffersUndo):
+        if (!callerOffersUndo) _offerUndo();
       case PendingArchiveIdle():
         // Archiving inside a window passes through idle on its way to the next
         // window; the failure stays held for that one.

@@ -12,7 +12,7 @@
 | 7.a Send from the session menu | Done | #2623 |
 | 8 Handoff marker and card in the chats | In PR | #2629 |
 | 8.a Queued handoff prompts stay hidden; a failed send updates live | Not started | |
-| 9 Archive the source after sending | Not started | |
+| 9 Archive the source after sending | In PR | |
 | 10 Analytics | Not started | |
 | 11 Reconcile docs and harness rows | Not started | |
 | 12 Verify and retire | Not started | |
