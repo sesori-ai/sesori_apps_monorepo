@@ -202,8 +202,9 @@ class OmpPlugin._({
     required PluginSessionVariant? variant,
     required String? agent,
   }) async => _ompSessionOptionsService.validateTurnSelection(
+    operation: operation,
     sessionId: sessionId,
-    projectId: directoryForSession(sessionId: sessionId),
+    projectId: knownSessionDirectory(sessionId: sessionId),
     model: model,
     variant: variant,
     agent: agent,

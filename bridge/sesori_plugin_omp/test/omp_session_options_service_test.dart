@@ -162,11 +162,12 @@ void main() {
   group("validateTurnSelection", () {
     void validate({
       String sessionId = "session",
-      String projectId = "/repo",
+      String? projectId = "/repo",
       ({String providerID, String modelID})? model,
       PluginSessionVariant? variant,
       String? agent,
     }) => service.validateTurnSelection(
+      operation: "sendPrompt",
       sessionId: sessionId,
       projectId: projectId,
       model: model,
@@ -210,6 +211,17 @@ void main() {
 
     test("leaves the check to the turn when OMP has reported nothing for the session or project", () {
       validate(sessionId: "unknown", projectId: "/elsewhere", agent: "build");
+    });
+
+    test("does not check an unloaded session against another project's catalog", () {
+      validate(sessionId: "unknown", projectId: null, agent: "build");
+    });
+
+    test("names the refused operation", () {
+      expect(
+        () => validate(agent: "build"),
+        throwsA(isA<PluginStaleOptionsException>().having((e) => e.operation, "operation", "sendPrompt")),
+      );
     });
   });
 

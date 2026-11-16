@@ -224,8 +224,9 @@ class CursorPlugin._({
     final modelId = hasRequestedModel
         ? requestedModel
         : _configurationTracker.snapshotForSession(sessionId: sessionId).modelId ?? _catalogTracker.currentModelId;
-    final thoughtLevel = modelId == null ? null : _catalogTracker.thoughtLevelForModel(modelId: modelId);
-    if (thoughtLevel != null && !thoughtLevel.variants.contains(requestedVariant)) {
+    // The variants the picker offers: the model's own, else the provisional set.
+    final variants = modelId == null ? const <String>[] : _catalogTracker.variantsForModel(modelId: modelId);
+    if (variants.isNotEmpty && !variants.contains(requestedVariant)) {
       throw PluginStaleOptionsException(
         operation: operation,
         message: "Cursor no longer offers the selected reasoning level",
@@ -309,21 +310,13 @@ class CursorPlugin._({
     required String configId,
     required String value,
   }) async {
+    final AcpNewSessionResult? result;
     try {
-      final result = await configRepository.setConfigOption(
+      result = await configRepository.setConfigOption(
         sessionId: sessionId,
         configId: configId,
         value: value,
       );
-      if (result != null) {
-        final capture = _catalogService.captureSessionConfig(
-          result: result,
-          fromNewSession: false,
-          thoughtLevelModelId: configId == _catalogTracker.modelConfigId ? value : null,
-          captureThoughtLevelDefault: configId == _catalogTracker.modelConfigId,
-        );
-        _applyCaptureToEventMapper(capture: capture, sessionId: sessionId);
-      }
     } on Object catch (error, stack) {
       Error.throwWithStackTrace(
         PluginStaleOptionsException(
@@ -334,6 +327,14 @@ class CursorPlugin._({
         stack,
       );
     }
+    if (result == null) return;
+    final capture = _catalogService.captureSessionConfig(
+      result: result,
+      fromNewSession: false,
+      thoughtLevelModelId: configId == _catalogTracker.modelConfigId ? value : null,
+      captureThoughtLevelDefault: configId == _catalogTracker.modelConfigId,
+    );
+    _applyCaptureToEventMapper(capture: capture, sessionId: sessionId);
   }
 
   @override
