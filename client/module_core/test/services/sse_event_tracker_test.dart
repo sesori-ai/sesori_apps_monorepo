@@ -509,6 +509,43 @@ void main() {
     // 11. awaitingInput false is mapped to SessionActivityInfo
     // -------------------------------------------------------------------------
 
+    test("sessionActivity carries the session the bridge is sending into another", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+      final completer = Completer<Map<String, Map<String, SessionActivityInfo>>>();
+      final subscription = tracker.sessionActivity.listen((activity) {
+        if (activity.isNotEmpty) completer.complete(activity);
+      });
+
+      eventController.add(
+        SseEvent(
+          data: const SesoriProjectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "/foo",
+                activeSessions: [
+                  ActiveSession(
+                    id: "s1",
+                    mainAgentRunning: true,
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                    sending: ActiveSessionSending(targetTitle: "Target"),
+                  ),
+                  ActiveSession(id: "s2", lastUserActivityAt: null, updatedAt: null, sending: null),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final activity = await completer.future;
+      expect(activity["/foo"]?["s1"]?.sending, const SessionSending(targetTitle: "Target"));
+      expect(activity["/foo"]?["s2"]?.sending, isNull);
+
+      await subscription.cancel();
+      await tracker.onDispose();
+    });
+
     test("sessionActivity maps awaitingInput false from ActiveSession", () async {
       final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
 

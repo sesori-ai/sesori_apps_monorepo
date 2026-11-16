@@ -72,11 +72,25 @@ class SessionSendService({
   final Map<String, ActiveSessionSending> _sending = {};
   final StreamController<void> _sendingChanges = StreamController.broadcast(sync: true);
 
-  /// The sends running now, by source session id, for every client's list.
+  /// The sends running now, by source session id.
   Map<String, ActiveSessionSending> get sending => UnmodifiableMapView(_sending);
 
   /// Fires when a send starts or ends.
   Stream<void> get sendingChanges => _sendingChanges.stream;
+
+  /// [projects] with each active session this bridge is sending into another
+  /// marked so.
+  List<ProjectActivitySummary> markSending({required List<ProjectActivitySummary> projects}) {
+    if (_sending.isEmpty) return projects;
+    return [
+      for (final project in projects)
+        project.copyWith(
+          activeSessions: [
+            for (final active in project.activeSessions) active.copyWith(sending: _sending[active.id]),
+          ],
+        ),
+    ];
+  }
 
   /// Ends every send still waiting for its summary as `summaryStopped`. The
   /// orchestrator calls this before it removes event producers and drains

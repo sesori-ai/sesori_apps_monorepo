@@ -572,6 +572,21 @@ void main() {
       expect(second['activeSessions'], <Map<String, dynamic>>[]);
     });
 
+    test('carries a session being sent, and reads an older bridge without it as not sending', () {
+      const sending = ActiveSession(
+        id: 's1',
+        lastUserActivityAt: null,
+        updatedAt: null,
+        sending: ActiveSessionSending(targetTitle: 'Target'),
+      );
+      final json = sending.toJson();
+      expect(json['sending'], {'targetTitle': 'Target'});
+      expect(ActiveSession.fromJson(json), sending);
+
+      final older = ActiveSession.fromJson({'id': 's1'});
+      expect(older.sending, isNull);
+    });
+
     test('deserializes correctly', () {
       final json = <String, dynamic>{
         'type': 'projects.summary',

@@ -2250,7 +2250,7 @@ class OrchestratorSession._({
   Future<SesoriSseEvent?> _buildProjectsSummary() async {
     try {
       return _mapper.buildProjectsSummaryEvent(
-        projects: _withSends(projects: await _sessionRepository.getProjectActivitySummaries()),
+        projects: _sessionSendService.markSending(projects: await _sessionRepository.getProjectActivitySummaries()),
       );
     } catch (e, st) {
       Log.e("[sse] error building projects summary", e, st);
@@ -2263,20 +2263,6 @@ class OrchestratorSession._({
       );
       return null;
     }
-  }
-
-  /// Marks each active session the bridge is sending into another.
-  List<ProjectActivitySummary> _withSends({required List<ProjectActivitySummary> projects}) {
-    final sending = _sessionSendService.sending;
-    if (sending.isEmpty) return projects;
-    return [
-      for (final project in projects)
-        project.copyWith(
-          activeSessions: [
-            for (final active in project.activeSessions) active.copyWith(sending: sending[active.id]),
-          ],
-        ),
-    ];
   }
 
   /// Feeds an outgoing event to the in-process observers: completion pushes

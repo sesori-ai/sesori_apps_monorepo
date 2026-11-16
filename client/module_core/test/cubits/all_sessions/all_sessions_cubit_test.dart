@@ -70,6 +70,7 @@ void main() {
   late MockConnectionService connection;
   late MockSseEventTracker activity;
   late FakeSessionUnseenTracker unseen;
+  late SessionSendTracker sendTracker;
   late FakeCatalogRescanService catalog;
   late _MockProjectInventory projectInventory;
   late BehaviorSubject<ProjectListState> inventory;
@@ -99,6 +100,7 @@ void main() {
     connection = MockConnectionService();
     activity = MockSseEventTracker();
     unseen = FakeSessionUnseenTracker();
+    sendTracker = SessionSendTracker();
     catalog = FakeCatalogRescanService();
     projectInventory = _MockProjectInventory();
     events = StreamController.broadcast(sync: true);
@@ -137,6 +139,7 @@ void main() {
     await activity.onDispose();
     await unseen.onDispose();
     await catalog.onDispose();
+    sendTracker.onDispose();
   });
 
   /// Runs [body] in fake time over a cubit on a new [mode] window, then
@@ -157,7 +160,7 @@ void main() {
       catalogRescanService: catalog,
     );
     final cubit = AllSessionsCubit(
-      sessionSendTracker: SessionSendTracker(),
+      sessionSendTracker: sendTracker,
       window: window,
       projectInventory: projectInventory,
       filterTracker: filterTracker,
@@ -196,6 +199,36 @@ void main() {
       activity.emitSessionActivity(const {});
       async.elapse(Duration.zero);
       expect(cubit.state.rows.last.isRunning, isFalse);
+    });
+  });
+
+  test("a row shows a send the bridge reports from any device, and this device's own send first", () {
+    bridge.sessions = [_session(id: "a", updatedAt: 2)];
+    activity.emitSessionActivity({
+      "one": {
+        "a": const SessionActivityInfo(
+          mainAgentRunning: true,
+          isRunning: true,
+          lastUserActivityAt: null,
+          updatedAt: null,
+          sending: SessionSending(targetTitle: "From the bridge"),
+        ),
+      },
+    });
+    withCubit((cubit, async) {
+      expect(cubit.state.rows.single.sending, const SessionSending(targetTitle: "From the bridge"));
+
+      const own = SessionSending(targetTitle: "Mine");
+      sendTracker.start(sourceSessionId: "a", sending: own);
+      async.elapse(Duration.zero);
+      expect(cubit.state.rows.single.sending, own);
+
+      sendTracker.end(sourceSessionId: "a", sending: own);
+      activity.emitSessionActivity({
+        "one": {"a": _running},
+      });
+      async.elapse(Duration.zero);
+      expect(cubit.state.rows.single.sending, isNull);
     });
   });
 
