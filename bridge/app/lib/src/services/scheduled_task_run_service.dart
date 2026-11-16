@@ -2,13 +2,14 @@ import "dart:async";
 
 import "package:clock/clock.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginWorkingDirectoryMissingException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/project_not_found_exception.dart";
 import "../repositories/models/scheduled_task_record.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/session_quietness.dart";
+import "../repositories/project_repository.dart";
 import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
 import "scheduled_task_compaction_service.dart";
@@ -48,6 +49,7 @@ class ScheduledTaskRunService({
   required final SessionOperationDispatcher _operations,
   required final YoloSettingsService _yoloSettings,
   required final SessionRepository _sessions,
+  required final ProjectRepository _projects,
   required final SessionLifecycleService _lifecycle,
   required final SessionOptionsService _sessionOptions,
   required final ScheduledTaskOccurrenceCalculator _calculator,
@@ -184,7 +186,7 @@ class ScheduledTaskRunService({
   Future<TaskRunFailureReason?> _startBlocker({required ScheduledTaskRecord task}) async {
     final definition = task.definition;
     final context = "Scheduled task ${task.id} in project ${definition.projectId} with ${definition.pluginId}";
-    if (await _sessions.getProjectPath(projectId: definition.projectId) == null) {
+    if (await _projects.isProjectGone(projectId: definition.projectId)) {
       Log.w("$context cannot run: the project is gone");
       return TaskRunFailureReason.projectMissing;
     }
@@ -265,7 +267,7 @@ class ScheduledTaskRunService({
       sessionId = await _sendRunPrompt(task: task);
     } on Object catch (error, stackTrace) {
       final reason = switch (error) {
-        ProjectNotFoundException() => TaskRunFailureReason.projectMissing,
+        ProjectNotFoundException() || PluginWorkingDirectoryMissingException() => TaskRunFailureReason.projectMissing,
         StaleSessionPromptOptionsException() => TaskRunFailureReason.modelUnavailable,
         _ => TaskRunFailureReason.startFailed,
       };

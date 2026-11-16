@@ -755,6 +755,7 @@ class Orchestrator({
       operations: sessionOperationDispatcher,
       yoloSettings: yoloSettingsService,
       sessions: sessionRepository,
+      projects: projectRepository,
       lifecycle: sessionLifecycleService,
       sessionOptions: sessionOptionsService,
       calculator: scheduledTaskOccurrenceCalculator,

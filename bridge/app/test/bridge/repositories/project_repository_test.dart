@@ -516,6 +516,27 @@ void main() {
       );
     });
 
+    test("isProjectGone is true for an unknown project or a deleted folder only", () async {
+      for (final path in ["/present", "/gone", "/locked"]) {
+        await db.projectsDao.setActivity(projectId: path, createdAt: 1, updatedAt: 2);
+      }
+      final catalogRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(missingPaths: {"/gone"}, throwingPaths: {"/locked"}),
+      );
+
+      expect(
+        {
+          for (final id in ["/present", "/gone", "/locked", "/unknown"])
+            id: await catalogRepo.isProjectGone(projectId: id),
+        },
+        {"/present": false, "/gone": true, "/locked": false, "/unknown": true},
+      );
+    });
+
     test("getProjects breaks equal timestamps by project id descending", () async {
       plugin.projectsResult = const [
         PluginProject(id: "z", directory: "z", name: "Beta"),

@@ -95,6 +95,13 @@ class ProjectRepository({
     );
   }
 
+  /// Whether [projectId] is gone: no project is stored under it, or its folder
+  /// no longer exists on disk.
+  Future<bool> isProjectGone({required String projectId}) async {
+    final row = await _projectsDao.getProject(projectId: projectId);
+    return row == null || await _directoryMissing(row.path);
+  }
+
   /// Resolves [path] locally, retaining any durable identity already recorded
   /// for the same canonical directory.
   ///
