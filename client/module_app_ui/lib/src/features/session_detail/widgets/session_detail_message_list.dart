@@ -909,14 +909,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     return pixels + restTop - (first.top - (first.index - target) * builtHeight / builtCount);
   }
 
-  /// Places the pinned messages from where the user message bubbles are. Runs
-  /// while the transcript lays out, once the rows have and once the pins
-  /// have, so whichever lays out last places them with both current.
+  /// Moves what follows the rows in the layout pass that moved them: the pins
+  /// and the selection highlight.
   void _onRowsLaidOut() {
     _layOutSticky();
     _rowsLaidOut.pulse();
   }
 
+  /// Places the pinned messages from where the user message bubbles are. Runs
+  /// while the transcript lays out, once the rows have and once the pins
+  /// have, so whichever lays out last places them with both current.
   void _layOutSticky() {
     // The pins lay out before the list when both have to, and a rebuild that
     // moved the rows has them out of place until the list does. Its pass, later
