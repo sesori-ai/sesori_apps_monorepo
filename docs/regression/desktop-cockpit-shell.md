@@ -218,7 +218,7 @@ The main pane hosts one full-width routed page.
   behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
   floating glass bar and one full-width transcript and composer.
 - Side chats open in a panel that floats over the session page's trailing
-  edge, 380 pt wide and full height under the toolbar, inset from the window's edge and bottom. The composer's
+  edge, 380 pt wide and full height under the toolbar, inset 12 pt from the toolbar, the window's edge and bottom. The composer's
   side-question button and an archived session's "Side chats (N)" link open it, where the phone opens its sheet. It
   slides in from the window's edge by transform with the sidebar's timing and curve; the transcript and composer
   neither move nor reflow, and the page around it keeps taking clicks, scrolls and typing. Opening moves the focus
@@ -429,7 +429,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   Mark unread sending unread and leaving the page from the menu (which shows its shortcut) and from
   Shift+Cmd/Ctrl+U, and a menu without Mark as read.
 - The side-chat panel (`desktop_session_detail_screen_test`): the composer's button slides it in to its place
-  under the toolbar without moving the transcript, mid-slide and settled, with the question field focused and the
+  12 pt under the toolbar without moving the transcript, mid-slide and settled, with the question field focused and the
   page still taking clicks; the close button slides it out and ends its chat after the slide; Escape closes it at
   once from its field and from the page's composer, which keeps its focus; a session switch closes it; an archived
   session's link opens it read-only, and Escape closes it with no field focused; with the connection lost, the
