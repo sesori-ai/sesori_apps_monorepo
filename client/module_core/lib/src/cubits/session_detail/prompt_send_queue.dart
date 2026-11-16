@@ -116,7 +116,9 @@ class PromptSendQueue() {
   /// Parks a submission another owner sent and the bridge accepted, exactly as
   /// [parkAccepted] parks one this queue sent. That owner hands over only
   /// submissions not yet settled, so there is no mark to consume here.
-  void adoptAccepted({required QueuedSessionSubmission submission, required DateTime since, required int epoch}) {
+  /// [since] is when a launch follow-up was sent, or null for a send from
+  /// this screen, such as an edit's, as [parkAccepted] parks one.
+  void adoptAccepted({required QueuedSessionSubmission submission, required DateTime? since, required int epoch}) {
     _awaitingBridge.add((submission: submission, since: since, epoch: epoch));
   }
 
