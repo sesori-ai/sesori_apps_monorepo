@@ -707,6 +707,52 @@ void main() {
 
         await expectLater(sendRefusingFirst(defaults: staleDefaults), throwsA(same(staleRefusal)));
       });
+
+      group("for a scheduled run's own settings", () {
+        const staleSettings = (
+          variant: SessionVariant(id: "removed"),
+          fastMode: false,
+          agent: "removed-agent",
+          model: PromptModel(providerID: "p", modelID: "m"),
+        );
+
+        Future<List<PromptSettings>> sendInScopeRefusingFirst() async {
+          final sent = <PromptSettings>[];
+          final result = await service.sendWithSettingsIn(
+            pluginId: "fake",
+            projectId: "/repo",
+            settings: staleSettings,
+            send: (settings) async {
+              sent.add(settings);
+              if (sent.length == 1) throw staleRefusal;
+              return "sent";
+            },
+          );
+          expect(result, "sent");
+          return sent;
+        }
+
+        test("are resent once corrected against that harness's rediscovered catalog", () async {
+          optionsService.refreshOutcome = SessionOptionsAvailable(response: _catalog(modelAvailable: true));
+
+          final sent = await sendInScopeRefusingFirst();
+
+          expect(optionsService.explicitRefreshes.single, (pluginId: "fake", projectId: "/repo"));
+          expect(sent.first, staleSettings);
+          expect(sent.last, (
+            variant: const SessionVariant(id: "high"),
+            fastMode: false,
+            agent: "build",
+            model: const PromptModel(providerID: "p", modelID: "m"),
+          ));
+        });
+
+        test("are rethrown when the catalog no longer offers the model", () async {
+          optionsService.refreshOutcome = SessionOptionsAvailable(response: _catalog(modelAvailable: false));
+
+          await expectLater(sendInScopeRefusingFirst(), throwsA(same(staleRefusal)));
+        });
+      });
     });
   });
 
