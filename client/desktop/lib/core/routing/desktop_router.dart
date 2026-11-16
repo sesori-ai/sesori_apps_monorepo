@@ -176,6 +176,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           createCubit: () => ScheduledTasksCubit(
             repository: getIt<ScheduledTaskRepository>(),
             connectionService: getIt<ConnectionService>(),
+            timeZoneSource: getIt<DeviceTimeZoneSource>(),
           ),
           exit: ScheduledPageExit.close,
           onExit: () => _popRouteOrGo(context: context, fallback: const AppRoute.home()),
@@ -210,6 +211,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             createCubit: () => ScheduledTaskDetailCubit(
               repository: getIt<ScheduledTaskRepository>(),
               connectionService: getIt<ConnectionService>(),
+              timeZoneSource: getIt<DeviceTimeZoneSource>(),
               taskId: route.taskId,
             ),
             onBack: leave,

@@ -4,6 +4,7 @@ import "package:bloc/bloc.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
+import "../../foundation/platform/device_time_zone_source.dart";
 import "../../logging/logging.dart";
 import "../../repositories/models/scheduled_task_editability.dart";
 import "../../repositories/models/scheduled_task_result.dart";
@@ -16,13 +17,16 @@ import "scheduled_task_refresh.dart";
 class ScheduledTaskDetailCubit({
   required final ScheduledTaskRepository _repository,
   required final ConnectionService _connectionService,
+  required final DeviceTimeZoneSource _timeZoneSource,
   required final String taskId,
 }) extends Cubit<ScheduledTaskDetailState> {
   late final ScheduledTaskRefreshDispatcher _queue = ScheduledTaskRefreshDispatcher(refresh: _refresh);
+  late final Future<String?> _deviceTimeZone = readDeviceTimeZone(source: _timeZoneSource);
   late final StreamSubscription<void> _signals;
 
   /// The task and its runs as the bridge last gave them; null until loaded.
   ({ScheduledTask task, List<ScheduledTaskRun> runs})? _shown;
+  String? _shownDeviceTimeZone;
 
   /// The pause or resume sent but not yet answered, shown over the task.
   /// Its [request] number tells each answer whether a newer tap followed.
@@ -118,6 +122,7 @@ class ScheduledTaskDetailCubit({
           emit(const ScheduledTaskDetailGone());
         } else {
           _shown = (task: task, runs: runs);
+          _shownDeviceTimeZone = await _deviceTimeZone;
           _emitShown();
         }
         return true;
@@ -151,6 +156,7 @@ class ScheduledTaskDetailCubit({
         task: pending == null ? shown.task : shown.task.copyWith(enabled: pending.enabled),
         runs: shown.runs,
         editable: shown.task.definition.isEditableHere,
+        deviceTimeZone: _shownDeviceTimeZone,
       ),
     );
   }

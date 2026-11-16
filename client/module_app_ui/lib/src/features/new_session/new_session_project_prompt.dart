@@ -21,6 +21,9 @@ class const NewSessionProjectPrompt({
   /// The glass bar's title, such as "New session".
   required final String title,
 
+  /// Where the glass bar's title sits.
+  required final PregoTopNavigationTitleMode titleMode,
+
   /// Null where nothing lies behind the page, such as the home's content pane.
   required final VoidCallback? onBack,
   required final Widget? banner,
@@ -161,7 +164,7 @@ class _NewSessionProjectPromptState() extends State<NewSessionProjectPrompt> {
     return PregoGlassScaffold(
       title: widget.title,
       onBack: widget.onBack,
-      titleMode: PregoTopNavigationTitleMode.backLeading,
+      titleMode: widget.titleMode,
       subtitle: null,
       banner: widget.banner,
       slivers: [

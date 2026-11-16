@@ -19,6 +19,11 @@ final _once = scheduledTaskFixture(
   nextRunAt: ScheduledTaskInstant(at: DateTime.utc(2026, 12, 1, 9).millisecondsSinceEpoch, offsetMinutes: 0),
 );
 
+class _FixedTimeZoneSource({required final String zone}) implements DeviceTimeZoneSource {
+  @override
+  Future<String> currentZoneName() async => zone;
+}
+
 void main() {
   late MockScheduledTaskRepository repository;
   late MockConnectionService connection;
@@ -51,12 +56,17 @@ void main() {
     required WidgetTester tester,
     required ScheduledTaskResult<List<ScheduledTask>> tasks,
     VoidCallback? onNewTask,
+    String deviceTimeZone = "UTC",
   }) {
     when(() => repository.listTasks()).thenAnswer((_) async => tasks);
     return pump(
       tester: tester,
       child: ScheduledTasksView(
-        createCubit: () => ScheduledTasksCubit(repository: repository, connectionService: connection),
+        createCubit: () => ScheduledTasksCubit(
+          repository: repository,
+          connectionService: connection,
+          timeZoneSource: _FixedTimeZoneSource(zone: deviceTimeZone),
+        ),
         exit: ScheduledPageExit.back,
         onExit: () {},
         onOpenTask: ({required taskId}) {},
@@ -120,6 +130,23 @@ void main() {
       expect(opened, 1);
     });
 
+    testWidgets("names no zone for a paused never-run task in the device's zone", (tester) async {
+      await pumpList(
+        tester: tester,
+        tasks: ScheduledTaskSuccess(value: [scheduledTaskFixture(id: "paused", enabled: false)]),
+      );
+      expect(find.text("Every day at 9:00\u202FAM"), findsOneWidget);
+    });
+
+    testWidgets("names the zone of a paused never-run task in another zone", (tester) async {
+      await pumpList(
+        tester: tester,
+        tasks: ScheduledTaskSuccess(value: [scheduledTaskFixture(id: "paused", enabled: false)]),
+        deviceTimeZone: "Europe/Bucharest",
+      );
+      expect(find.text("Every day at 9:00\u202FAM (UTC)"), findsOneWidget);
+    });
+
     testWidgets("the + on an older computer says how to update it", (tester) async {
       var opened = 0;
       await pumpList(tester: tester, tasks: const ScheduledTaskBridgeOutdated(), onNewTask: () => opened++);
@@ -137,8 +164,12 @@ void main() {
       return pump(
         tester: tester,
         child: ScheduledTaskDetailView(
-          createCubit: () =>
-              ScheduledTaskDetailCubit(repository: repository, connectionService: connection, taskId: task.id),
+          createCubit: () => ScheduledTaskDetailCubit(
+            repository: repository,
+            connectionService: connection,
+            timeZoneSource: _FixedTimeZoneSource(zone: "UTC"),
+            taskId: task.id,
+          ),
           onBack: () {},
           onDeleted: () {},
           onEdit: onEdit ?? () {},

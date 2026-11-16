@@ -274,12 +274,16 @@ class ScheduledTaskEditorCubit({
           ? TaskApprovalMode.approveAll
           : TaskApprovalMode.ask,
       timeZone: timeZone,
+      deviceTimeZone: timeZone,
       save: const ScheduledTaskEditorSaveIdle(),
     );
   }
 
   Future<ScheduledTaskEditorState> _editedTask({required String taskId}) async {
-    final result = await _repository.listTasks();
+    final (result, deviceTimeZone) = await (
+      _repository.listTasks(),
+      readDeviceTimeZone(source: _timeZoneSource),
+    ).wait;
     logScheduledTaskFailure(message: "Failed to load scheduled task $taskId to edit", result: result);
     return switch (result) {
       ScheduledTaskSuccess(:final value) => switch (value.where((task) => task.id == taskId).firstOrNull) {
@@ -294,6 +298,7 @@ class ScheduledTaskEditorCubit({
           runMode: task.definition.runMode,
           approvalMode: task.definition.approvalMode,
           timeZone: task.definition.timeZone,
+          deviceTimeZone: deviceTimeZone,
           save: const ScheduledTaskEditorSaveIdle(),
         ),
       },

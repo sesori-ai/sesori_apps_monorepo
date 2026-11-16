@@ -103,7 +103,7 @@ class const _Body({required final void Function({required String taskId}) onOpen
         ScheduledTasksBridgeOutdated() => const SliverToBoxAdapter(child: ScheduledTasksBridgeOutdatedRow()),
         // The list stays mounted when the last task leaves, so its row and
         // heading collapse before the empty text fades in.
-        ScheduledTasksLoaded(:final recurring, :final once) => SliverMainAxisGroup(
+        ScheduledTasksLoaded(:final recurring, :final once, :final deviceTimeZone) => SliverMainAxisGroup(
           slivers: [
             _TaskList(
               entries: [
@@ -112,6 +112,7 @@ class const _Body({required final void Function({required String taskId}) onOpen
                 if (once.isNotEmpty) _HeadingEntry(heading: loc.scheduledTasksOnceHeading),
                 for (final task in once) _TaskEntry(task: task, isRecurring: false),
               ],
+              deviceTimeZone: deviceTimeZone,
               onOpenTask: onOpenTask,
             ),
             if (recurring.isEmpty && once.isEmpty) const SliverFillRemaining(hasScrollBody: false, child: _EmptyText()),
@@ -149,6 +150,7 @@ final class const _TaskEntry({required final ScheduledTask task, required final 
 
 class const _TaskList({
   required final List<_Entry> entries,
+  required final String? deviceTimeZone,
   required final void Function({required String taskId}) onOpenTask,
 }) extends StatelessWidget {
   @override
@@ -164,7 +166,12 @@ class const _TaskList({
       _HeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0),
       _TaskEntry(:final task, :final isRecurring) => PregoGroupedRowPosition(
         isLast: index == entries.length - 1 || entries[index + 1] is _HeadingEntry,
-        child: _TaskRow(task: task, isRecurring: isRecurring, onOpenTask: onOpenTask),
+        child: _TaskRow(
+          task: task,
+          isRecurring: isRecurring,
+          deviceTimeZone: deviceTimeZone,
+          onOpenTask: onOpenTask,
+        ),
       ),
     },
   );
@@ -173,6 +180,7 @@ class const _TaskList({
 class const _TaskRow({
   required final ScheduledTask task,
   required final bool isRecurring,
+  required final String? deviceTimeZone,
   required final void Function({required String taskId}) onOpenTask,
 }) extends StatelessWidget {
   @override
@@ -185,7 +193,7 @@ class const _TaskRow({
       title: Text(task.definition.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         isRecurring
-            ? labels.schedule(task: task)
+            ? labels.schedule(task: task, deviceTimeZone: deviceTimeZone)
             : switch (task.nextRunAt) {
                 final next? when task.enabled => labels.instant(task: task, instant: next),
                 _ => loc.scheduledTaskPaused,

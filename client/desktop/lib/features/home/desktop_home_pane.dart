@@ -490,6 +490,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
 
   Widget _prompt({required NewSessionProjectSelected onProjectSelected}) => NewSessionProjectPrompt(
     title: context.loc.sessionListNewSession,
+    titleMode: PregoTopNavigationTitleMode.backLeading,
     key: const Key("desktop-home-prompt"),
     onProjectSelected: onProjectSelected,
     onBack: null,
@@ -514,6 +515,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
       child: switch (listed) {
         final listed? => NewSessionView(
           title: context.loc.sessionListNewSession,
+          composingTitleMode: PregoTopNavigationTitleMode.backLeading,
           key: const Key("desktop-home-composer"),
           onProjectSelected: select,
           // The home is where Back would lead; there is nothing to leave.
