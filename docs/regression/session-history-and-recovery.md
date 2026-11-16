@@ -778,8 +778,9 @@ rules where supported.
   by signal), a running turn the plugin still reports busy is reported
   interrupted, a failed status read drops the rows, a turn started after the
   restart is converted, the anchor names a message the store no longer holds,
-  the row the cut-off turn ended on shows next to its replayed copy, or opening or sending to the session leaves it unacknowledged or announces it
-  more than once.
+  the row the cut-off turn ended on shows next to its replayed copy, or opening
+  or sending to the session leaves it unacknowledged or announces it more than
+  once.
 
 ## Known Limitations
 
