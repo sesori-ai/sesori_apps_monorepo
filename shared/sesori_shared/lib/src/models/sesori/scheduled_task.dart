@@ -211,9 +211,15 @@ sealed class ScheduledTaskRun with _$ScheduledTaskRun {
 @Freezed(unionKey: "kind", fallbackUnion: "unknown", fromJson: true, toJson: true, copyWith: false)
 sealed class ScheduledTaskRunOutcome with _$ScheduledTaskRunOutcome {
   /// The run's prompt went out. [sessionId] is null once that session has been
-  /// deleted. [late] means it ran after the grace period, such as when the
-  /// bridge was off at its time.
-  const factory started({required String? sessionId, required bool late}) = ScheduledTaskRunStarted;
+  /// deleted. [projectId] is the project that session is in now, which the
+  /// task may have moved away from; null with [sessionId], and from a bridge
+  /// that predates it. [late] means it ran after the grace period, such as when
+  /// the bridge was off at its time.
+  const factory started({
+    required String? sessionId,
+    required String? projectId,
+    required bool late,
+  }) = ScheduledTaskRunStarted;
 
   /// The previous run was still going, so this one did not start.
   const factory skipped() = ScheduledTaskRunSkipped;

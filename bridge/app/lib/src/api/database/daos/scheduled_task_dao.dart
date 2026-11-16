@@ -78,12 +78,23 @@ class ScheduledTaskDao({required AppDatabase database})
     return (delete(scheduledTasksTable)..where((row) => row.id.equals(taskId))).go();
   }
 
-  /// The runs of [taskIds], newest first.
-  Future<List<ScheduledTaskRunDto>> listRunsForTasks({required Set<String> taskIds}) {
-    return (select(scheduledTaskRunsTable)
-          ..where((row) => row.taskId.isIn(taskIds))
-          ..orderBy(_newestFirst))
-        .get();
+  /// The runs of [taskIds], newest first, each with the project its session
+  /// is in now.
+  Future<List<({ScheduledTaskRunDto run, String? sessionProjectId})>> listRunsForTasks({
+    required Set<String> taskIds,
+  }) async {
+    final taskRuns = scheduledTaskRunsTable;
+    final query =
+        select(taskRuns).join([
+            leftOuterJoin(sessionTable, sessionTable.sessionId.equalsExp(taskRuns.sessionId), useColumns: false),
+          ])
+          ..addColumns([sessionTable.projectId])
+          ..where(taskRuns.taskId.isIn(taskIds))
+          ..orderBy(_newestFirstColumns(taskRuns));
+    return [
+      for (final row in await query.get())
+        (run: row.readTable(taskRuns), sessionProjectId: row.read(sessionTable.projectId)),
+    ];
   }
 
   /// Inserts [row], then deletes its task's runs beyond the newest [keep],

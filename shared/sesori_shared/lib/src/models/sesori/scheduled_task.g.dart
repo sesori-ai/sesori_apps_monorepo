@@ -310,6 +310,7 @@ Map<String, dynamic> _$ScheduledTaskRunToJson(_ScheduledTaskRun instance) =>
 ScheduledTaskRunStarted _$ScheduledTaskRunStartedFromJson(Map json) =>
     ScheduledTaskRunStarted(
       sessionId: json['sessionId'] as String?,
+      projectId: json['projectId'] as String?,
       late: json['late'] as bool,
       $type: json['kind'] as String?,
     );
@@ -318,6 +319,7 @@ Map<String, dynamic> _$ScheduledTaskRunStartedToJson(
   ScheduledTaskRunStarted instance,
 ) => <String, dynamic>{
   'sessionId': ?instance.sessionId,
+  'projectId': ?instance.projectId,
   'late': instance.late,
   'kind': instance.$type,
 };

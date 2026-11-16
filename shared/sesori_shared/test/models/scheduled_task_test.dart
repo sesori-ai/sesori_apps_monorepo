@@ -35,7 +35,7 @@ void main() {
       lastRun: ScheduledTaskRun(
         id: "run-1",
         scheduledFor: ScheduledTaskInstant(at: 1763019000000, offsetMinutes: 120),
-        outcome: ScheduledTaskRunOutcome.started(sessionId: null, late: true),
+        outcome: ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: true),
       ),
     );
 

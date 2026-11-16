@@ -1823,10 +1823,11 @@ String toString() {
 @JsonSerializable()
 
 class ScheduledTaskRunStarted implements ScheduledTaskRunOutcome {
-  const ScheduledTaskRunStarted({required this.sessionId, required this.late,  String? $type}): $type = $type ?? 'started';
+  const ScheduledTaskRunStarted({required this.sessionId, required this.projectId, required this.late,  String? $type}): $type = $type ?? 'started';
   factory ScheduledTaskRunStarted.fromJson(Map<String, dynamic> json) => _$ScheduledTaskRunStartedFromJson(json);
 
  final  String? sessionId;
+ final  String? projectId;
  final  bool late;
 
 @JsonKey(name: 'kind')
@@ -1841,18 +1842,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTaskRunStarted&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.late, late) || other.late == late));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTaskRunStarted&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.late, late) || other.late == late));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,sessionId,late);
+    return Object.hash(runtimeType,sessionId,projectId,late);
 }
 
 @override
 String toString() {
-    return 'ScheduledTaskRunOutcome.started(sessionId: $sessionId, late: $late)';
+    return 'ScheduledTaskRunOutcome.started(sessionId: $sessionId, projectId: $projectId, late: $late)';
 }
 
 

@@ -110,13 +110,13 @@ void main() {
     );
     await recordRun(
       taskId: task.id,
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: true),
+      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: true),
       minute: 2,
     );
 
     final runs = await repository.listRuns(taskId: task.id);
     expect(runs.map((run) => run.outcome), [
-      const ScheduledTaskRunOutcome.started(sessionId: null, late: true),
+      const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: true),
       failed,
     ]);
     expect(runs.first.scheduledFor, const ScheduledTaskInstant(at: 2, offsetMinutes: 120));
@@ -127,7 +127,7 @@ void main() {
     final task = await repository.create(definition: definition, nextDueAt: null, now: now);
     final startedId = await recordRun(
       taskId: task.id,
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: false),
+      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
       minute: 0,
     );
     final skippedIds = [
@@ -143,7 +143,7 @@ void main() {
     final task = await repository.create(definition: definition, nextDueAt: null, now: now);
     final olderStartedId = await recordRun(
       taskId: task.id,
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: false),
+      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
       minute: 0,
     );
     for (var minute = 1; minute <= 20; minute++) {
@@ -151,7 +151,7 @@ void main() {
     }
     await recordRun(
       taskId: task.id,
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: false),
+      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
       minute: 21,
     );
 
@@ -186,7 +186,7 @@ void main() {
       nextDueAt: dueAt.add(const Duration(days: 3)),
       completedAt: null,
       scheduledFor: ScheduledTaskInstant(at: dueAt.millisecondsSinceEpoch, offsetMinutes: 120),
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: false),
+      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
       firedAt: dueAt,
     );
 
@@ -200,13 +200,13 @@ void main() {
   });
 
   group("scheduled run sessions", () {
-    Future<void> runSession({required String sessionId, required String? taskId}) async {
+    Future<void> runSession({required String sessionId, required String? taskId, String projectId = "/repo"}) async {
       await recordSessionBinding(
         database: db,
         sessionId: sessionId,
         backendSessionId: "backend_$sessionId",
         pluginId: "fake",
-        projectId: "/repo",
+        projectId: projectId,
         parentSessionId: null,
       );
       if (taskId != null) {
@@ -221,7 +221,7 @@ void main() {
     Future<String> startedRun({required String taskId, required String sessionId, required int minute}) async {
       final runId = await recordRun(
         taskId: taskId,
-        outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: false),
+        outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
         minute: minute,
       );
       await repository.setRunSession(runId: runId, sessionId: sessionId);
@@ -254,6 +254,23 @@ void main() {
       });
     });
 
+    test("a started run names the project its session is in, even after the task moved away", () async {
+      final task = await repository.create(definition: definition, nextDueAt: null, now: now);
+      await runSession(sessionId: "ses_1", taskId: task.id, projectId: "/elsewhere");
+      await startedRun(taskId: task.id, sessionId: "ses_1", minute: 1);
+      await recordRun(
+        taskId: task.id,
+        outcome: const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
+        minute: 2,
+      );
+
+      final runs = await repository.listRuns(taskId: task.id);
+      expect(runs.map((run) => run.outcome), [
+        const ScheduledTaskRunOutcome.started(sessionId: null, projectId: null, late: false),
+        const ScheduledTaskRunOutcome.started(sessionId: "ses_1", projectId: "/elsewhere", late: false),
+      ]);
+    });
+
     test("a run is unattended until the user prompts its session, and each new run starts unattended", () async {
       final task = await repository.create(definition: definition, nextDueAt: null, now: now);
       await runSession(sessionId: "ses_1", taskId: task.id);
@@ -272,7 +289,7 @@ void main() {
       await repository.recordUserPrompted(sessionId: "ses_1", at: now.add(const Duration(minutes: 9)));
       final runs = await ScheduledTaskDao(database: db).listRunsForTasks(taskIds: {task.id});
       expect(
-        {for (final run in runs) run.id: run.userPromptedAt},
+        {for (final (:run, sessionProjectId: _) in runs) run.id: run.userPromptedAt},
         containsPair(nextRunId, now.add(const Duration(minutes: 3)).millisecondsSinceEpoch),
         reason: "the first prompt of the user's own is kept",
       );

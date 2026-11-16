@@ -106,15 +106,16 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   /// The newest run of each of [taskIds] that has one.
   Future<Map<String, ScheduledTaskRun>> latestRuns({required Set<String> taskIds}) async {
     final latest = <String, ScheduledTaskRun>{};
-    for (final row in await _dao.listRunsForTasks(taskIds: taskIds)) {
-      latest.putIfAbsent(row.taskId, () => _mapper.runFromDto(row: row));
+    for (final (:run, :sessionProjectId) in await _dao.listRunsForTasks(taskIds: taskIds)) {
+      latest.putIfAbsent(run.taskId, () => _mapper.runFromDto(row: run, sessionProjectId: sessionProjectId));
     }
     return latest;
   }
 
   /// The task's run history, newest first.
   Future<List<ScheduledTaskRun>> listRuns({required String taskId}) async => [
-    for (final row in await _dao.listRunsForTasks(taskIds: {taskId})) _mapper.runFromDto(row: row),
+    for (final (:run, :sessionProjectId) in await _dao.listRunsForTasks(taskIds: {taskId}))
+      _mapper.runFromDto(row: run, sessionProjectId: sessionProjectId),
   ];
 
   /// Writes one history row and trims the task's history to the newest
@@ -138,7 +139,8 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
       keep: runHistoryLimit,
       alwaysKeepNewest: ScheduledTaskRunOutcomeKind.started,
     );
-    return _mapper.runFromDto(row: row);
+    // A new row has no session yet.
+    return _mapper.runFromDto(row: row, sessionProjectId: null);
   }
 
   /// Enabled tasks not yet done that are due at [now], earliest first.
@@ -175,7 +177,8 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
       run: row,
       keep: runHistoryLimit,
     );
-    return reserved ? _mapper.runFromDto(row: row) : null;
+    // A new row has no session yet.
+    return reserved ? _mapper.runFromDto(row: row, sessionProjectId: null) : null;
   }
 
   /// The session of the task's newest run whose prompt went out, unless that
