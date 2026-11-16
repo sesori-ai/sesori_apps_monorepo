@@ -198,6 +198,8 @@ void main() {
       expect(tester.getTopLeft(card).dy, moreOrLessEquals(top, epsilon: 0.5));
       // A hold past the end would spring back, and the spring fight the hold.
       expect(position.isScrollingNotifier.value, isFalse);
+      // The toggle names what it does next as soon as the card moves.
+      if (frame == 5) expect(find.text("Show less"), findsOneWidget);
     }
     expect(tester.getTopLeft(find.text("prompt")).dy, prompt);
     expect(tester.getSize(card).height, greaterThan(600));

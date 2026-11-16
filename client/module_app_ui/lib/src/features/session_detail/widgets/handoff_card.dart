@@ -92,7 +92,8 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
       _roomAhead = ahead;
       // The room is there to scroll into once the transcript lays out with it.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _move(expanding: true);
+        // The toggle's label follows the motion it starts.
+        if (mounted) setState(() => _move(expanding: true));
       });
     } else {
       _move(expanding: expanding);
