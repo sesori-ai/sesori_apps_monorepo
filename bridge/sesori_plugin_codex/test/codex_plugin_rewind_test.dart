@@ -220,6 +220,18 @@ void main() {
       expect(server.methods, isNot(contains("thread/fork")));
     });
 
+    test("an old runtime is the reason even for a message the turn lookup can't place", () async {
+      // 0.139.0 rollouts keep no item ids, so replay names its messages
+      // `m-N`, which no turn holds.
+      final server = await _AppServer.start(revertError: null, userAgent: "codex-cli/0.139.0 (Mac OS 15.0; arm64)");
+
+      await expectLater(
+        server.plugin.forkSession(sessionId: _sourceId, throughMessageId: "m-3"),
+        throwsA(_refusal(reason: "Update Codex to fork sessions.")),
+      );
+      expect(server.methods, isNot(contains("thread/fork")));
+    });
+
     for (final (:message, :reason) in const [
       (
         message: "lastTurnId '$_turnOne' identifies an in-progress turn",

@@ -646,6 +646,9 @@ class CodexSessionService({
     required String threadId,
     required String throughMessageId,
   }) async {
+    // An old runtime is the reason even when its rollout names the message
+    // in a way the turn lookup below can't place.
+    _connectedThreadRepository.checkForkSupported();
     final source = await _catalogRepository.findSessionById(sessionId: threadId);
     if (source == null) throw CodexForkRefusal.missingSession.toException(cause: null);
     final lastTurnId = _messageRepository.forkTurnId(
