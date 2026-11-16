@@ -32,6 +32,10 @@ class ScheduledTaskRunService({
   required final ScheduledTaskOccurrenceCalculator _calculator,
   required final Clock _clock,
 }) {
+  /// How long after it fires a started run counts as going before its
+  /// session's quietness decides.
+  static const Duration startupGrace = Duration(seconds: 30);
+
   /// Serializes every pass and Run now, so no two fire the same task.
   final ParallelLock _lock = ParallelLock(maxParallelOperations: 1);
   final StreamController<void> _changes = StreamController<void>.broadcast();
@@ -123,9 +127,15 @@ class ScheduledTaskRunService({
 
   /// Whether the session of the task's latest started run is still going.
   Future<bool> _isPreviousRunActive({required String taskId}) async {
-    final sessionId = await _repository.latestStartedSessionId(taskId: taskId);
-    if (sessionId == null) return false;
-    return switch (await _sessions.getSessionQuietness(sessionId: sessionId)) {
+    final run = await _repository.latestStartedRun(taskId: taskId);
+    if (run == null) return false;
+    // A harness reports a new turn's busy status a moment after the create
+    // returns, so until then the session reads quiet. A run that fired this
+    // recently counts as going whatever its session reads.
+    // ponytail: a run that really ends inside the grace still refuses Run now
+    // until the grace passes; track the first busy status if that bites.
+    if (_clock.now().difference(run.firedAt) < startupGrace) return true;
+    return switch (await _sessions.getSessionQuietness(sessionId: run.sessionId)) {
       SessionQuietness.working || SessionQuietness.awaitingUser => true,
       // Unknown is no sign of a run still going, and a session its harness
       // can no longer read must not block the task for good.

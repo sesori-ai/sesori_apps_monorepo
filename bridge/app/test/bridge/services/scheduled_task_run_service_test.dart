@@ -296,9 +296,23 @@ void main() {
       final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 16, 9));
       await service.runNow(taskId: task.id);
       sessions.quietness["ses_1"] = SessionQuietness.working;
+      now = now.add(const Duration(minutes: 5));
 
       await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.previousRunActive));
       expect(creation.calls, hasLength(1));
+    });
+
+    test("a second tap right after a run started is refused before the harness reports the turn", () async {
+      final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 16, 9));
+      await service.runNow(taskId: task.id);
+
+      // The session still reads quiet: its busy status has not arrived yet.
+      now = now.add(const Duration(seconds: 3));
+      await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.previousRunActive));
+
+      now = now.add(ScheduledTaskRunService.startupGrace);
+      await service.runNow(taskId: task.id);
+      expect(creation.calls, hasLength(2));
     });
 
     test("is refused for a missing task", () async {

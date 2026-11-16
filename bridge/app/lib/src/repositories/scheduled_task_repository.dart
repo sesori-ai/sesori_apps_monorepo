@@ -11,6 +11,9 @@ import "random_hex_id.dart";
 /// A task whose time has come, with the time it fell due.
 typedef DueScheduledTask = ({ScheduledTaskRecord task, DateTime dueAt});
 
+/// A run whose prompt went out, with its session and when it fired.
+typedef StartedScheduledRun = ({String sessionId, DateTime firedAt});
+
 /// Stored tasks and their run history.
 class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   /// History rows kept per task, beyond the newest started run.
@@ -169,11 +172,17 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
     return reserved ? _mapper.runFromDto(row: row) : null;
   }
 
-  /// The session of the task's newest run whose prompt went out, unless that
-  /// session has been deleted. Skipped, missed and failed rows have none, so
-  /// they never hide an earlier run that is still going.
-  Future<String?> latestStartedSessionId({required String taskId}) async =>
-      (await _dao.getLatestStartedRun(taskId: taskId))?.sessionId;
+  /// The session of the task's newest run whose prompt went out, and when that
+  /// run fired, unless the session has been deleted. Skipped, missed and
+  /// failed rows have none, so they never hide an earlier run that is still
+  /// going.
+  Future<StartedScheduledRun?> latestStartedRun({required String taskId}) async {
+    final row = await _dao.getLatestStartedRun(taskId: taskId);
+    if (row == null) return null;
+    final sessionId = row.sessionId;
+    if (sessionId == null) return null;
+    return (sessionId: sessionId, firedAt: DateTime.fromMillisecondsSinceEpoch(row.firedAt, isUtc: true));
+  }
 
   /// Records the session a started run created. False when the run is gone
   /// with its deleted task.
