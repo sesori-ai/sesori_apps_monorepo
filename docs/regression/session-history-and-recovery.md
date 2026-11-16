@@ -127,12 +127,13 @@ reconnect or restart.
   turn and does not separate the replayed turns around it. Failure signals
   after a reload or forced re-import: a live prompt shown twice, or all
   replayed prompts first and the live turns repeated below them.
-- A tool call the harness replays inside the stamped assistant message before
-  it (Oh My Pi and DeepSeek stamp their reasoning and text chunks with a
-  message id) is replayed as its own message, the shape the live stream
-  captured, so a re-import or the first read after a bridge restart matches
-  the live tool row by id. Failure signal: after a forced re-import or a restart mid-turn, a tool
-  turn shows its reasoning or tool call twice.
+- Every ACP harness replays each tool call as its own message, the shape the
+  live stream captured, also after reasoning or text chunks stamped with a
+  message id (Oh My Pi and DeepSeek stamp them). Text the stamped message
+  continues after the tool follows as its own segment. A re-import or the first
+  read after a bridge restart therefore matches the live tool row by id.
+  Failure signal: after a forced re-import or a restart mid-turn, a tool turn
+  shows its reasoning or tool call twice.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness

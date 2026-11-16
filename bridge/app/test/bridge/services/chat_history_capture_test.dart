@@ -871,7 +871,6 @@ void main() {
         haltClassifier: null,
         toolPartReplacement: null,
         toolPartSuppression: null,
-        separatesToolMessages: false,
       );
       final liveUpdates = [
         {
