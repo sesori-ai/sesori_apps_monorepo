@@ -233,6 +233,11 @@ defaults and queued client sends coherent.
   is serialized only per session family. Different families can execute
   concurrently on one plugin, and one slow session or plugin must not stall other
   sessions, other plugins, the relay read loop, or catalog reads.
+- An ACP agent's `session/update` that arrives before the prompt response that
+  ends the turn is mapped into that turn, even when both arrive in one read. A
+  fast one-chunk reply or error notice keeps its text in durable history.
+  Failure signal: the reply shows live but is an empty assistant message after
+  a reload.
 - Streaming produces incremental message and part events and a terminal status
   transition back to idle; retry carries attempt, backend-provided message, and
   timing and returns to busy as soon as the retried request streams output again,

@@ -94,11 +94,11 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         composerTrailing: null,
         availableCommands: composer.commands,
         stagedCommand: stagedCommand,
+        composerMode: const SessionComposerMode.normal(),
         // A launch is never a sub-agent. Its button waits for the load, in place.
         sideQuestion: SessionDetailPresentationScope.of(context).openSideChat == null
             ? null
             : const ComposerSideQuestionPending(),
-        composerMode: const SessionComposerMode.normal(),
       ),
     };
   }
@@ -154,8 +154,8 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     // An edit resends text and attachments only.
     availableCommands: state.composerMode is SessionComposerEditing ? const [] : state.availableCommands,
     stagedCommand: state.stagedCommand,
-    sideQuestion: _sideQuestion(context: context, state: state),
     composerMode: state.composerMode,
+    sideQuestion: _sideQuestion(context: context, state: state),
   );
 
   /// Null where side questions don't apply: a shell without a side chat, and
@@ -230,8 +230,8 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required Widget? composerTrailing,
     required List<CommandInfo> availableCommands,
     required CommandInfo? stagedCommand,
-    required ComposerSideQuestion? sideQuestion,
     required SessionComposerMode composerMode,
+    required ComposerSideQuestion? sideQuestion,
   }) {
     final composerCapabilities = ComposerPresentationScope.of(context);
     final cubit = context.read<SessionDetailCubit>();

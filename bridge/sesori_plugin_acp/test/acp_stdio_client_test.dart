@@ -69,6 +69,58 @@ void main() {
       expect(seen.single.params["sessionId"], "s1");
     });
 
+    // Oh My Pi sends a failed request's error text and the prompt response
+    // together; a turn finalized before its text lands stores an empty reply.
+    test("a notification reaches listeners before the response that follows it resolves", () async {
+      final seen = <String>[];
+      client.notifications.listen((_) => seen.add("notification"));
+      final response = client.request(method: "session/prompt", params: {"sessionId": "s1"});
+      final id = fake.written.single["id"];
+
+      fake.emitChunk(
+        messages: [
+          {
+            "jsonrpc": "2.0",
+            "method": "session/update",
+            "params": {"sessionId": "s1"},
+          },
+          {
+            "jsonrpc": "2.0",
+            "id": id,
+            "result": {"stopReason": "end_turn"},
+          },
+        ],
+      );
+      await response.then((_) => seen.add("response"));
+
+      expect(seen, ["notification", "response"]);
+    });
+
+    test("a server request reaches listeners before the notification that follows it", () async {
+      final seen = <String>[];
+      client.serverRequests.listen((_) => seen.add("request"));
+      client.notifications.listen((_) => seen.add("notification"));
+
+      fake.emitChunk(
+        messages: [
+          {
+            "jsonrpc": "2.0",
+            "id": 42,
+            "method": "session/request_permission",
+            "params": {"sessionId": "s1"},
+          },
+          {
+            "jsonrpc": "2.0",
+            "method": AcpMethods.cancelRequest,
+            "params": {"requestId": 42},
+          },
+        ],
+      );
+      await pump();
+
+      expect(seen, ["request", "notification"]);
+    });
+
     test("session request inactivity resets only for matching session activity", () async {
       const inactivityTimeout = Duration(milliseconds: 300);
       final first = await client.dispatchSessionRequest(
