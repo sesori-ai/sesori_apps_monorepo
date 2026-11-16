@@ -206,16 +206,23 @@ class CodexThreadRepository({
     return null;
   }
 
+  /// Throws [PluginBranchPointUnavailableException] when this runtime is too
+  /// old to fork at a turn, before anything else is checked, since nothing
+  /// about the message or session could make that fork work.
+  void checkForkSupported() {
+    if (!_forksThroughTurn) throw CodexForkRefusal.runtimeTooOld.toException(cause: null);
+  }
+
   /// Forks [threadId] through its finished turn [lastTurnId] into a new
   /// persisted thread in the same directory, leaving the source untouched.
-  /// The refusals Codex answers before creating the fork, and a runtime too
-  /// old to fork at a turn, become [PluginBranchPointUnavailableException].
+  /// The refusals Codex answers before creating the fork become
+  /// [PluginBranchPointUnavailableException]. Callers check
+  /// [checkForkSupported] first.
   Future<CodexThreadRecord> forkThread({
     required String threadId,
     required String lastTurnId,
     required String developerInstructions,
   }) async {
-    if (!_forksThroughTurn) throw CodexForkRefusal.runtimeTooOld.toException(cause: null);
     const operation = "thread/fork";
     try {
       final dto = await _appServerApi.forkThread(

@@ -136,7 +136,8 @@ void main() {
       final written = await waitForFrame(process, "user");
       final executionText = _userTexts(process).join("\n");
       expect(executionText, contains("private-branch"));
-      process.emit(_replayOf(written, uuid: "replay-user-1"));
+      final uuid = written.field<String>("uuid");
+      process.emit(_replayOf(written, uuid: uuid));
       await pump();
 
       final visibleParts = events.whereType<BridgeSseMessagePartUpdated>().where(
@@ -145,11 +146,51 @@ void main() {
       // The bridge hides the worktree note at its own seams; the plugin
       // forwards the replayed frame as written.
       expect(visibleParts.map((event) => event.part.text), [_worktreeContext, "visible prompt"]);
-      expect(visibleParts.map((event) => event.part.messageID), everyElement("replay-user-1"));
+      expect(visibleParts.map((event) => event.part.messageID), everyElement(uuid));
       final user = events.whereType<BridgeSseMessageUpdated>().where(
         (event) => event.info is PluginMessageUser,
       );
-      expect(user.single.info.id, "replay-user-1");
+      expect(user.single.info.id, uuid);
+      await subscription.cancel();
+    });
+
+    test("shows a new session's prompt as it is written, before the starting CLI echoes it", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.createSession(
+        fastMode: false,
+        directory: "/tmp/project",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "first prompt")],
+        userVisibleText: "first prompt",
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      final process = harness.processes.single;
+      final written = process.written.lastWhere((frame) => frame["type"] == "user");
+      final uuid = written.field<String>("uuid");
+      await pump();
+
+      // A new process echoes its first prompt only once it has started up.
+      final prompt = events.whereType<BridgeSseMessageUpdated>().where((event) => event.info is PluginMessageUser);
+      expect(prompt.map((event) => event.info.id), [uuid]);
+      expect(
+        events
+            .whereType<BridgeSseMessagePartUpdated>()
+            .where((event) => event.part.messageID == uuid)
+            .map((event) => event.part.text),
+        ["first prompt"],
+      );
+
+      process.emit(_replayOf(written, uuid: uuid));
+      await pump();
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().where((event) => event.info.id == uuid),
+        hasLength(1),
+        reason: "the CLI's own echo is dropped",
+      );
       await subscription.cancel();
     });
 
@@ -2020,7 +2061,8 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
     );
     final process = processes.last;
     final written = process.written.lastWhere((frame) => frame["type"] == "user");
-    process.emit(_replayOf(written, uuid: "initial-${session.id}"));
+    // The CLI echoes a prompt under the uuid it was written with.
+    process.emit(_replayOf(written, uuid: written.field<String>("uuid")));
     await pump();
     return session;
   }

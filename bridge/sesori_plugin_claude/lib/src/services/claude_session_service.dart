@@ -377,10 +377,6 @@ final class ClaudeSessionService({
     if (state.hasWork || state.aborting != null) {
       throw const PluginOperationException(operation: operation, statusCode: 409, message: "session is busy");
     }
-    // The edited prompt's turn starts now: the session is busy, so a second
-    // rewind is refused and an armed idle reap cannot end the respawned process.
-    _beginTurnAccounting(sessionId: sessionId, state: state);
-    final generation = state.generation;
     final entry = _QueuedPrompt(
       id: promptId,
       displayText: displayText,
@@ -388,6 +384,15 @@ final class ClaudeSessionService({
       attachmentCount: attachmentCount,
       createdAt: _clock.now().millisecondsSinceEpoch,
     );
+    // The edited prompt goes out ahead of busy, as in [enqueueTurn], so a
+    // client never counts the respawn's work from a message the edit removes.
+    // It is queued at the front: anything queued later arrived after it.
+    state.queue.insert(0, entry);
+    _emitQueueUpdate(sessionId: sessionId, state: state);
+    // The edited prompt's turn starts now: the session is busy, so a second
+    // rewind is refused and an armed idle reap cannot end the respawned process.
+    _beginTurnAccounting(sessionId: sessionId, state: state);
+    final generation = state.generation;
     final respawn = state.dispatchTail.then((_) async {
       final reaping = _teardownsBySession[sessionId];
       if (reaping != null) await reaping;
@@ -406,32 +411,29 @@ final class ClaudeSessionService({
       );
     });
     // The edited prompt takes the chain slot right after the respawn, so a
-    // send that arrives meanwhile cannot reach the process first. It is
-    // queued at the front: anything already queued arrived after it.
+    // send that arrives meanwhile cannot reach the process first.
+    final mode = _QueuedTurnMode(entry: entry);
     state.dispatchTail = respawn.then(
-      (_) {
-        state.queue.insert(0, entry);
-        _emitQueueUpdate(sessionId: sessionId, state: state);
-        return _dispatchTurn(
-          sessionId: sessionId,
-          directory: directory,
-          createNew: false,
-          parts: parts,
-          model: model,
-          effort: effort,
-          permissionMode: permissionMode,
-          fastMode: fastMode,
-          state: state,
-          generation: generation,
-          mode: _QueuedTurnMode(entry: entry),
-        );
-      },
+      (_) => _dispatchTurn(
+        sessionId: sessionId,
+        directory: directory,
+        createNew: false,
+        parts: parts,
+        model: model,
+        effort: effort,
+        permissionMode: permissionMode,
+        fastMode: fastMode,
+        state: state,
+        generation: generation,
+        mode: mode,
+      ),
       // The caller receives the respawn's failure below.
       onError: (Object _) {},
     );
     try {
       await respawn;
     } on Object catch (error) {
+      _settleQueuedEntry(sessionId: sessionId, state: state, mode: mode);
       _finish(sessionId: sessionId, state: state, outcome: null);
       if (error is ClaudeRewindUnsupportedException) {
         throw PluginBranchPointUnavailableException(
@@ -555,6 +557,7 @@ final class ClaudeSessionService({
         sessionId: sessionId,
         parts: parts,
         promptId: mode.replayPromptId,
+        echoAtOnce: mode.echoesAtOnce,
       );
       final isSteering = state.selfStartedTurn != null || state.settlements.isNotEmpty;
       switch (mode) {
@@ -1229,6 +1232,10 @@ final class ClaudeSessionService({
 sealed class const _TurnMode() {
   String? get replayPromptId;
 
+  /// Whether the prompt is echoed as soon as it is written. Only a turn with
+  /// no queued entry needs it: nothing else shows the prompt meanwhile.
+  bool get echoesAtOnce;
+
   /// Settles a turn that was dropped before dispatch (stale generation or a
   /// cancelled queued entry).
   void settleUnaccepted();
@@ -1242,6 +1249,10 @@ final class const _QueuedTurnMode({required final _QueuedPrompt entry}) extends 
   @override
   String? get replayPromptId => entry.command == null ? entry.id : null;
 
+  /// The queued entry shows the prompt until the CLI echoes it.
+  @override
+  bool get echoesAtOnce => false;
+
   @override
   void settleUnaccepted() {}
 
@@ -1253,6 +1264,10 @@ final class const _QueuedTurnMode({required final _QueuedPrompt entry}) extends 
 final class const _BlockingTurnMode({required final Completer<void> acceptance}) extends _TurnMode {
   @override
   String? get replayPromptId => null;
+
+  /// The opening prompt of a new process, which echoes it only once started.
+  @override
+  bool get echoesAtOnce => true;
 
   @override
   void settleUnaccepted() {
