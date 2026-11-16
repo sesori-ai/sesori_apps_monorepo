@@ -403,6 +403,7 @@ Session _session({required String? title}) => Session(
   autoContinuation: null,
   approvalOverride: null,
   scheduledTask: null,
+  forkedFrom: null,
 );
 
 MessageWithParts _user({required String text}) => MessageWithParts(

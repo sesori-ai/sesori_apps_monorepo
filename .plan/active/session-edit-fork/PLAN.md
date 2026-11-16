@@ -421,8 +421,8 @@ The research brief quoted older pins (Claude 2.1.310, Pi 1.4.0).
      `directory`, `worktreePath`, `branchName`, `isDedicated`, `baseBranch`, `baseCommit`, `lastAgent`,
      `lastAgentModel` and `fastMode`; `approvalOverride` stays null; `parentSessionId` stays null so it is a root row.
      `SessionForkService` decides the title and passes `title` and `forkedFromTitle` in: the origin's displayed title
-     plus " (fork)" (decision 9), or null for an untitled origin, which then gets a generated title after its first
-     message like any new session. A backend session that catalog import already bound keeps its row and gains the
+     plus " (fork)" (decision 9), or null for an untitled origin, whose fork stays untitled until its harness
+     names it, as a new session does. A backend session that catalog import already bound keeps its row and gains the
      fork columns (same rule as `createSession`'s existing-binding branch). The commit publishes
      `SessionBindingCommitKind.sessionCreation`, so the fork's held `session.created` and first events are released
      onto its new id and the options refresh listener runs, as for any created session;

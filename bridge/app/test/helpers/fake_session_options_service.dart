@@ -5,6 +5,8 @@ import "package:sesori_bridge/src/services/session_options_service.dart";
 final class FakeSessionOptionsService() implements SessionOptionsService {
   final List<({String pluginId, String projectId})> explicitRefreshes = [];
   final List<({String pluginId, String projectId})> explicitInvalidations = [];
+  SessionOptionsOutcome dynamicOutcome = const SessionOptionsAutomaticNoOp();
+  SessionOptionsOutcome refreshOutcome = const SessionOptionsAutomaticNoOp();
 
   @override
   Stream<SessionOptionsCacheUpdate> get cacheUpdates => const Stream<SessionOptionsCacheUpdate>.empty();
@@ -17,7 +19,7 @@ final class FakeSessionOptionsService() implements SessionOptionsService {
 
   @override
   Future<SessionOptionsOutcome> loadDynamic({required String pluginId, required String projectId}) async =>
-      const SessionOptionsAutomaticNoOp();
+      dynamicOutcome;
 
   @override
   Future<SessionOptionsOutcome> loadCacheOnly({required String pluginId, required String projectId}) async =>
@@ -26,7 +28,7 @@ final class FakeSessionOptionsService() implements SessionOptionsService {
   @override
   Future<SessionOptionsOutcome> refreshExplicit({required String pluginId, required String projectId}) async {
     explicitRefreshes.add((pluginId: pluginId, projectId: projectId));
-    return const SessionOptionsAutomaticNoOp();
+    return refreshOutcome;
   }
 
   @override

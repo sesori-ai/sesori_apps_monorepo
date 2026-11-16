@@ -50,6 +50,26 @@ final class const RewindRemovalLaterTurn({
 /// or not in the session's history.
 final class const RewindRemovalNotTurnOpener() extends RewindRemoval;
 
+/// Where a fork cuts its origin's history, by the shared prompt-turn rule.
+sealed class const ForkBoundary();
+
+/// The fork keeps the origin's conversation through [messageId], inclusive,
+/// the last message of a finished turn.
+final class const ForkBoundaryThroughMessage({required final String messageId}) extends ForkBoundary;
+
+/// The fork keeps nothing: it forks before the origin's first turn.
+final class const ForkBoundaryEmpty() extends ForkBoundary;
+
+/// A fork after the latest finished turn found no finished turn.
+final class const ForkBoundaryNothingToFork() extends ForkBoundary;
+
+/// The named message is in the turn that is still running.
+final class const ForkBoundaryTurnRunning() extends ForkBoundary;
+
+/// The named message is not in the history, or does not open a turn when the
+/// fork starts before it.
+final class const ForkBoundaryNotBranchPoint() extends ForkBoundary;
+
 /// The outcome of storing one finalized part whose delivery shape depends on
 /// that write having landed.
 sealed class const CapturedPartDelivery();
@@ -528,6 +548,58 @@ class ChatHistoryService({
       for (final id in messageIds)
         if (!kept.contains(id)) id,
     ];
+  }
+
+  /// Where a fork of [sessionId] at [point] cuts its history.
+  ///
+  /// Reads the whole history like [removalForRewind], from the archive audit
+  /// record for an archived session. Only the last turn can be running, and
+  /// only when [running]; a fork never keeps part of a turn. A fork through a
+  /// turn ends at its last shown message, which is always the turn's own.
+  Future<ForkBoundary> forkBoundary({
+    required String sessionId,
+    required ForkPoint point,
+    required bool running,
+  }) async {
+    final page = await getSessionMessages(
+      sessionId: sessionId,
+      window: const HistoryWindowAll(),
+      attachmentDelivery: MessageAttachmentDelivery.storedReference,
+      toolOutputDelivery: ToolOutputDelivery.onExpand,
+      storedOnly: false,
+      backgroundRefresh: false,
+    );
+    // Messages before the first prompt belong to no turn, so no fork keeps them.
+    final turns = splitPromptTurns(messages: page.messages).whereType<PromptSegment>().toList();
+    final finishedTurns = running && turns.isNotEmpty ? turns.length - 1 : turns.length;
+    ForkBoundary throughTurn(int index) => ForkBoundaryThroughMessage(messageId: turns[index].messages.last.info.id);
+    switch (point) {
+      case ForkPointLatest():
+        return finishedTurns == 0 ? const ForkBoundaryNothingToFork() : throughTurn(finishedTurns - 1);
+      case ForkPointAfterMessage(:final messageId):
+        // A follow-up sent mid-turn keeps the whole turn that holds it.
+        final index = turns.indexWhere((turn) => turn.messages.any((message) => message.info.id == messageId));
+        if (index == -1) return const ForkBoundaryNotBranchPoint();
+        return index < finishedTurns ? throughTurn(index) : const ForkBoundaryTurnRunning();
+      case ForkPointBeforeMessage(:final messageId):
+        final index = turns.indexWhere((turn) => turn.opener.info.id == messageId);
+        if (index == -1) return const ForkBoundaryNotBranchPoint();
+        return index == 0 ? const ForkBoundaryEmpty() : throughTurn(index - 1);
+    }
+  }
+
+  /// Whether the store holds [sessionId]'s whole history and it has no
+  /// messages, as for a fork that kept nothing and has not had its first
+  /// prompt. Read from the store alone, so a session the store has not caught
+  /// up with is not known to be empty.
+  Future<bool> isKnownEmpty({required String sessionId}) async {
+    final page = await _storedOnlyPage(
+      sessionId: sessionId,
+      window: const HistoryWindowNewest(limit: 1, before: null),
+      attachmentProjection: _attachmentProjectionFor(delivery: MessageAttachmentDelivery.storedReference),
+      toolOutputDelivery: ToolOutputDelivery.onExpand,
+    );
+    return page.messages.isEmpty && !page.awaitingHarnessSync;
   }
 
   /// The prompts in the session's history whose whole text holds [query],
