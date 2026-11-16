@@ -1858,9 +1858,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     spotlight: PregoMenuSpotlight.listRow,
     copyText: AssistantMessageCard.markdownOf(blocks: blocks, streamingText: streamingText),
     actions: [
-      if ((widget.onForkMessage, _turns.replyForkPoint(messageId: messageId, working: widget.isBusy))
-          case (final onFork?, final point?))
-        forkFromHereMenuItem(context: context, onTap: () => onFork(point: point, ownMessage: null)),
+      if ((widget.onForkMessage, _turns.replyForkPoint(messageId: messageId, working: widget.isBusy)) case (
+        final onFork?,
+        final point?,
+      ))
+        forkFromHereMenuItem(
+          context: context,
+          onTap: () => onFork(point: point, ownMessage: null),
+        ),
     ],
     builder: (context, selectionArea) => AssistantMessageCard(
       projectId: widget.projectId,

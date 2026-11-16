@@ -294,7 +294,9 @@ class const SessionListActionDispatcher({
         open: ({required fork}) => openSession(
           projectId: fork.projectID,
           projectName: switch (projects) {
-            ProjectListLoaded(:final projects) => switch (projects.where((project) => project.id == fork.projectID).firstOrNull) {
+            ProjectListLoaded(:final projects) => switch (projects
+                .where((project) => project.id == fork.projectID)
+                .firstOrNull) {
               final project? => projectDisplayName(loc: loc, project: project),
               null => loc.projectListDefaultName,
             },

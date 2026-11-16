@@ -39,7 +39,11 @@ Future<void> runSessionFork({
     var progressShown = false;
     final progress = Timer(_forkProgressDelay, () {
       progressShown = true;
-      presenter.show(title: loc.sessionForkForking, variant: PregoPopupAlertsNotificationsVariant.loading, duration: null);
+      presenter.show(
+        title: loc.sessionForkForking,
+        variant: PregoPopupAlertsNotificationsVariant.loading,
+        duration: null,
+      );
     });
     final result = await fork(recreateFromBase: recreateFromBase);
     progress.cancel();
@@ -60,7 +64,11 @@ Future<void> runSessionFork({
         );
         return;
       case SessionForkUnavailable(:final reason) || SessionForkRejected(:final reason):
-        _showRefused(presenter: presenter, title: loc.sessionForkRefused, message: reason ?? loc.sessionForkRefusedBody);
+        _showRefused(
+          presenter: presenter,
+          title: loc.sessionForkRefused,
+          message: reason ?? loc.sessionForkRefusedBody,
+        );
         return;
       // The bridge answers a retry with a new worktree; this one is a refusal it never gives.
       case SessionForkWorktreeBranchMissing():

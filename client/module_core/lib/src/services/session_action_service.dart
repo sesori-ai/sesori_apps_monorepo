@@ -106,6 +106,7 @@ class SessionActionService({
     }
     return result;
   }
+
   /// Marks a session read (clears its bold) or unread (forces bold). Applied
   /// optimistically to the tracker so the row updates immediately; the bridge
   /// echo delivers the authoritative state (including the project aggregate)
