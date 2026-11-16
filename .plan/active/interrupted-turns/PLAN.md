@@ -120,7 +120,7 @@ the `Session` wire.
   idempotent because resolved rows are gone or adopted). It calls `InterruptedTurnService.resolve(pluginId)`, whose
   collaborators are `SessionInterruptionRepository`, a new `SessionRepository.getPluginSessionStatuses(pluginId)`
   (one plugin's statuses keyed by bridge session id, throwing on a failed read, mapped as the aggregate read maps
-  backend ids), `ChatHistoryService` (the anchor read) and `SessionMutationDispatcher`. The service captures the
+  backend ids; it starts a plugin that is not running for a transient generation, since ready plugins start lazily), `ChatHistoryService` (the anchor read) and `SessionMutationDispatcher`. The service captures the
   bridge run's start time at construction; a leftover row is one with `startedAt` before it.
 - Resolution, per leftover row: still busy → adopt (restamp `startedAt` to now; the OpenCode 2 shared-service case);
   idle → convert (below). A failed status read is no evidence the turn ended, so it keeps the plugin's rows; the next

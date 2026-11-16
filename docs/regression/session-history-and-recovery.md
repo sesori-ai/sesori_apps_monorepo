@@ -571,7 +571,8 @@ reconnect or restart.
   durable running row for each session with a turn in flight (busy or retry
   marks it, idle clears it). Once shutdown begins, idles no longer clear rows,
   so a stop by signal records the same turns as `kill -9`. When a plugin becomes
-  ready, each row an earlier run left is resolved against the plugin's statuses:
+  ready, each row an earlier run left is resolved against the plugin's statuses,
+  starting the plugin for a short-lived generation when it is not running yet:
   a turn still running is adopted, and an idle or unknown session gets an
   unacknowledged interruption after its newest stored message, delivered as the
   session's `interruption` with a session update. A session with no stored
