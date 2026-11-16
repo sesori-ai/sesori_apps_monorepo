@@ -5185,6 +5185,24 @@ abstract class AppLocalizations {
   /// **'Copy'**
   String get sessionDetailCopy;
 
+  /// Item of a transcript message's long-press or right-click menu, in place of Copy, while some of the message's text is selected: it copies only that selection.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy selected text'**
+  String get sessionDetailCopySelectedText;
+
+  /// Item of a transcript message's long-press or right-click menu that closes the menu and selects the message's text, with handles to narrow the selection.
+  ///
+  /// In en, this message translates to:
+  /// **'Select text'**
+  String get sessionDetailSelectText;
+
+  /// Confirmation shown after Copy in a transcript message's menu copied the message, or the text selected in it.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied to clipboard'**
+  String get sessionDetailMessageCopied;
+
   /// Label of the phone and tablet sidebar footer button that hides the sidebar beside the open page.
   ///
   /// In en, this message translates to:
