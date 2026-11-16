@@ -65,6 +65,7 @@ void main() {
     isAwaitingInput: false,
     isRetrying: false,
     backgroundTaskCount: 0,
+    isInterrupted: false,
   );
 
   late _MockProjectListCubit projects;
@@ -447,6 +448,7 @@ void main() {
             isAwaitingInput: true,
             isRetrying: false,
             backgroundTaskCount: 0,
+            isInterrupted: false,
           ),
           row(title: "Rename the module", updatedAt: yesterday, archivedAt: null, isRunning: false),
         ],
@@ -501,6 +503,7 @@ void main() {
       isAwaitingInput: false,
       isRetrying: false,
       backgroundTaskCount: 0,
+      isInterrupted: false,
     );
     const projectList = ProjectListState.loaded(
       projects: [project, scratch],
@@ -2375,6 +2378,7 @@ void main() {
           isAwaitingInput: false,
           isRetrying: false,
           backgroundTaskCount: 0,
+          isInterrupted: false,
         );
         final finders = [for (final index in onScreen) find.text("Session $index")];
         List<double?> readTops() => [for (final finder in finders) topOf(tester, finder)];
@@ -2428,6 +2432,7 @@ void main() {
         isAwaitingInput: false,
         isRetrying: false,
         backgroundTaskCount: 0,
+        isInterrupted: false,
       );
     }
 

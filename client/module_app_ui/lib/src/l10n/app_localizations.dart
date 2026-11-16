@@ -4441,6 +4441,12 @@ abstract class AppLocalizations {
   /// **'Waiting'**
   String get sessionListWaiting;
 
+  /// Grey word leading a session row's meta line when the Sesori bridge stopped during the session's last turn, until the user opens the session or sends something
+  ///
+  /// In en, this message translates to:
+  /// **'Interrupted'**
+  String get sessionListInterrupted;
+
   /// Label showing the number of active background tasks for a session
   ///
   /// In en, this message translates to:
@@ -5448,6 +5454,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stopped'**
   String get sessionDetailTurnStopped;
+
+  /// Quiet line that ends an agent turn cut off because the Sesori bridge stopped (crashed or was restarted) during it. Not an error. Its reason follows after ' · ', e.g. 'Interrupted · Sesori's bridge stopped during this turn'.
+  ///
+  /// In en, this message translates to:
+  /// **'Interrupted'**
+  String get sessionDetailTurnInterrupted;
+
+  /// Reason after 'Interrupted' on the line that ends a turn the Sesori bridge stopped during, e.g. 'Interrupted · Sesori's bridge stopped during this turn'.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori\'s bridge stopped during this turn'**
+  String get sessionDetailTurnInterruptedReason;
+
+  /// Button under the 'Interrupted' line of a turn the Sesori bridge cut off. Sends the agent a prompt asking it to continue where it left off.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get sessionDetailContinueInterruptedTurn;
 
   /// Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator.
   ///

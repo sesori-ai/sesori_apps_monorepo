@@ -2542,6 +2542,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListWaiting => 'Waiting';
 
   @override
+  String get sessionListInterrupted => 'Interrupted';
+
+  @override
   String sessionListBackgroundTasks(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -3142,6 +3145,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailTurnStopped => 'Stopped';
+
+  @override
+  String get sessionDetailTurnInterrupted => 'Interrupted';
+
+  @override
+  String get sessionDetailTurnInterruptedReason => 'Sesori\'s bridge stopped during this turn';
+
+  @override
+  String get sessionDetailContinueInterruptedTurn => 'Continue';
 
   @override
   String get sessionDetailCompactionTurnEnded => 'the turn ended first';

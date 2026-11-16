@@ -64,6 +64,7 @@ import "../../services/session_window_service.dart";
 import "../../services/sse_event_tracker.dart";
 import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
+import "interrupted_turn.dart";
 import "load_through_outcome.dart";
 import "local_send_phase.dart";
 import "prompt_send_queue.dart";
@@ -76,6 +77,7 @@ import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 import "tool_output_fetch.dart";
+import "turn_end_calculator.dart";
 
 enum _SessionRefreshTrigger(final String logValue) {
   commandExecuted("command_executed"),
@@ -155,6 +157,7 @@ class SessionDetailCubit(
   static const TranscriptSnapshotCalculator _transcript = TranscriptSnapshotCalculator();
   static const ComposerDraftCalculator _draftCalculator = ComposerDraftCalculator();
   static const PromptTurnShapeCalculator _promptTurnShapes = PromptTurnShapeCalculator();
+  static const TurnEndCalculator _turnEnds = TurnEndCalculator();
 
   /// Shown when a catalog offers no agent at all, so the composer still names
   /// something. Backends that advertise agents always replace it.
@@ -378,8 +381,41 @@ class SessionDetailCubit(
         next.copyWith(launchHandoff: null),
       _ => next,
     };
-    super.emit(_withPromptTurnShapes(state: shown, namesCommandInvocations: _namesCommandInvocations));
+    super.emit(
+      _withInterruptedTurn(
+        state: _withPromptTurnShapes(state: shown, namesCommandInvocations: _namesCommandInvocations),
+      ),
+    );
   }
+
+  static SessionDetailState _withInterruptedTurn({required SessionDetailState state}) => switch (state) {
+    SessionDetailLoaded(
+      :final messages,
+      :final session,
+      :final sessionStatus,
+      :final launchHandoff,
+      :final localSend,
+      :final queuedMessages,
+      :final bridgeQueuedPrompts,
+      :final awaitingBridgeSubmissions,
+      :final launchFollowUps,
+    ) =>
+      state.copyWith(
+        interruptedTurn: _turnEnds.interruptedTurn(
+          messages: messages,
+          interruption: session.interruption,
+          sessionStatus: sessionStatus,
+          hasPendingPrompts:
+              launchHandoff != null ||
+              localSend is! LocalSendIdle ||
+              queuedMessages.isNotEmpty ||
+              bridgeQueuedPrompts.isNotEmpty ||
+              awaitingBridgeSubmissions.isNotEmpty ||
+              launchFollowUps.isNotEmpty,
+        ),
+      ),
+    SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => state,
+  };
 
   static SessionDetailState _withPromptTurnShapes({
     required SessionDetailState state,
@@ -2006,6 +2042,13 @@ class SessionDetailCubit(
         isArchived: sessionTime == null ? current.isArchived : sessionTime.archived != null,
       ),
     );
+    // A view declared before the bridge recorded this interruption found
+    // nothing to acknowledge, such as one a reconnect sent while the restarted
+    // bridge was still resolving its turns. Declaring it again clears the
+    // session's Interrupted label while the user is looking at it.
+    if (session.interruption case final interruption? when interruption.unacknowledged) {
+      if (interruption != current.session.interruption) _declareViewingSessionIfVisible();
+    }
   }
 
   /// Opens the file [raw] names, resolving a relative path against this
@@ -3359,6 +3402,31 @@ class SessionDetailCubit(
       leftOutCount: edit.leftOutCount,
     ),
   };
+
+  /// What Continue sends to pick up a turn a bridge stop cut off.
+  static const String continueInterruptedTurnPrompt = "Continue where you left off.";
+
+  /// Picks up the turn a bridge stop cut off: sends
+  /// [continueInterruptedTurnPrompt] like a typed prompt, with the composer's
+  /// current agent and model. Returns why it sent nothing, or null once the
+  /// prompt is on its way.
+  Future<InterruptedTurnContinueRefusal?> continueInterruptedTurn() async {
+    final refusal = switch (state) {
+      SessionDetailLoaded(interruptedTurn: InterruptedTurnShown(:final continueRefusal)) => continueRefusal,
+      _ => InterruptedTurnContinueRefusal.noInterruptedTurn,
+    };
+    if (refusal != null) {
+      logw("Refused to continue the interrupted turn: ${refusal.name}");
+      return refusal;
+    }
+    await sendMessage(
+      text: continueInterruptedTurnPrompt,
+      command: null,
+      inputMode: ComposerInputMode.typed,
+      attachments: const [],
+    );
+    return null;
+  }
 
   /// Starts editing [message], an earlier user message: the composer takes up
   /// its text and attachments, and Resend replaces it and everything after it.

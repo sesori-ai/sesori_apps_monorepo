@@ -309,6 +309,14 @@ Workspaces: `shared/sesori_shared` (`splitPromptTurns` turn-end ids), `bridge/ap
 followed by Continue. Simulator recording of the Continue flow and the list label for the PR. Docs:
 projects-and-sessions and session-turns. ~700 lines.
 
+- Claude Code and Codex record a bridge shutdown like a user Stop, so a reload shows a stopped row in the cut-off turn,
+  sometimes after the interrupted message. Every stopped row in that turn is superseded: only the Interrupted line shows,
+  never both. A calculator test covers it.
+- #2651 thread 8: a phone left open on the session can reconnect while resolution starts the plugin, so its view
+  declaration arrives before the conversion and the list keeps "Interrupted" although the user is looking. The open
+  `SessionDetailCubit` re-sends its view declaration (the existing acknowledgement route) when a session update brings a
+  new unacknowledged interruption. A cubit test covers it.
+
 ### Step 7: reconcile regression docs and harness rows
 
 Make the feature docs and HARNESS_CAPABILITIES match what shipped; remove stale "Stopped shows as an error" text.

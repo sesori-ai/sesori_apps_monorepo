@@ -37,6 +37,7 @@ import "transcript_row_hold.dart";
 import "transcript_row_reporter.dart";
 import "transcript_sticky_layout.dart";
 import "transcript_sticky_prompt_overlay.dart";
+import "turn_end_line.dart";
 import "user_message_card.dart";
 
 /// Chat-style message list for the session detail screen.
@@ -97,6 +98,13 @@ class const SessionDetailMessageList({
   /// Whether the bridge reports the main agent mid-turn. Only while it is
   /// not does the sub-agent row take over from "Working…".
   required final bool mainAgentRunning,
+
+  /// How the transcript ends the turn a bridge stop cut off.
+  required final InterruptedTurnView interruptedTurn,
+
+  /// Sends the prompt that continues the interrupted turn, answering why it
+  /// sent nothing; null on a surface that cannot send.
+  required final Future<InterruptedTurnContinueRefusal?> Function()? onContinueInterruptedTurn,
 
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
@@ -171,6 +179,10 @@ typedef _DetachedSnapshot = ({
   /// The frozen messages' card shapes, so a row being read never turns
   /// between a card and a bubble.
   Map<String, InvocationPromptTurnShape> messageShapes,
+
+  /// The Interrupted line as it stood, so it neither arrives nor loses its
+  /// Continue under the rows being read.
+  InterruptedTurnView interruptedTurn,
 });
 
 enum _TransientStage() {
@@ -385,6 +397,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The rendered messages' turns, as the last build split them.
   TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {});
 
+  /// The Interrupted line the last build rendered, which the rows it builds
+  /// read.
+  InterruptedTurnView _interruptedTurn = const InterruptedTurnView.absent();
+
   /// The unloaded prompt a tap on its pin is loading, until that load ends.
   /// Its spinner keeps to this entry's side even once the pin itself clears.
   SessionPromptIndexEntry? _pinLoad;
@@ -503,6 +519,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           for (final MessageWithParts(:info) in [...prepended, ...delivered])
             info.id: ?widget.promptTurnShapes.messages[info.id],
         },
+        interruptedTurn: frozen.interruptedTurn,
       );
     });
     // The prepended rows render against the frozen `streamingText` and
@@ -573,6 +590,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     mainAgentRunning: widget.mainAgentRunning,
     promptIndex: widget.promptIndex ?? _promptIndex,
     messageShapes: widget.promptTurnShapes.messages,
+    interruptedTurn: widget.interruptedTurn,
   );
 
   PromptTurnShape _messageShape({required String messageId}) => switch (_snapshot) {
@@ -1123,6 +1141,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
     final isBusy = snap?.isBusy ?? widget.isBusy;
     final mainAgentRunning = snap?.mainAgentRunning ?? widget.mainAgentRunning;
+    final interruptedTurn = _interruptedTurn = snap?.interruptedTurn ?? widget.interruptedTurn;
 
     final indexById = _indexByIdFor(messages: messages);
     final transcript = const TranscriptBuilder().build(
@@ -1134,6 +1153,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final turns = _turns = const TranscriptTurnBuilder().build(
       messages: messages,
       hasOlderMessages: widget.onLoadOlderMessages != null,
+      turnEndMessageIds: interruptedTurn.turnEndMessageIds,
     );
     _promptIndex = widget.promptIndex ?? _promptIndex;
     // An index that arrives while detached still pins above the frozen messages.
@@ -1499,6 +1519,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return _revealable(
         createdAtMs: null,
         child: _animatedPromptRow(
+          deliveredMessageId: null,
           child: QueuedMessageBubble(
             displayText: submission.displayText,
             isCommand: submission is NewSessionCommandSubmissionSnapshot,
@@ -1525,7 +1546,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         final message = messages[index];
         return _revealable(
           createdAtMs: message.info.time?.created,
-          child: _handoffRow(message: message) ?? _deliveredPromptRow(message: message),
+          child: switch (_handoffRow(message: message)) {
+            final handoff? => _endingInterruptedTurn(messageId: message.info.id, child: handoff),
+            null => _deliveredPromptRow(message: message),
+          },
         );
       }
       final promptId = entryId.substring(_kPromptRowPrefix.length);
@@ -1535,6 +1559,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         return _revealable(
           createdAtMs: prompt.createdAt,
           child: _animatedPromptRow(
+            deliveredMessageId: null,
             child: QueuedMessageBubble(
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
@@ -1569,6 +1594,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return _revealable(
         createdAtMs: null,
         child: _animatedPromptRow(
+          deliveredMessageId: null,
           child: QueuedMessageBubble(
             displayText: submission.displayText,
             isCommand: submission.isCommand,
@@ -1593,6 +1619,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return _revealable(
         createdAtMs: null,
         child: _animatedPromptRow(
+          deliveredMessageId: null,
           child: QueuedMessageBubble(
             displayText: submission.displayText,
             isCommand: submission.isCommand,
@@ -1646,43 +1673,68 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return const SizedBox.shrink();
     }
     final createdAtMs = message.info.time?.created;
-    if (_handoffRow(message: message) case final handoff?) return _revealable(createdAtMs: createdAtMs, child: handoff);
+    if (_handoffRow(message: message) case final handoff?) {
+      return _revealable(
+        createdAtMs: createdAtMs,
+        child: _endingInterruptedTurn(messageId: message.info.id, child: handoff),
+      );
+    }
     final card = switch (message.info) {
       // The launch bubble's echo keeps easing like the bubble it replaced.
       MessageUser() when entryId == _launchSlotRowId => _deliveredPromptRow(message: message),
-      MessageUser() => _userMessage(message: message, outlineFade: null),
+      MessageUser(:final id) => _endingInterruptedTurn(
+        messageId: id,
+        child: _userMessage(message: message, outlineFade: null),
+      ),
       MessageAssistant(sender: MessageSender.agent, :final id) => _agentRow(
+        messageId: id,
+        isError: false,
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
         createdAtMs: createdAtMs,
         end: null,
       ),
-      MessageAssistant(:final id) => SystemMessageCard(
-        projectId: widget.projectId,
-        blocks: transcript.blocksFor(messageId: id),
-        streamingText: streamingText,
-        createdAtMs: createdAtMs,
+      MessageAssistant(:final id) => _endingInterruptedTurn(
+        messageId: id,
+        child: SystemMessageCard(
+          projectId: widget.projectId,
+          blocks: transcript.blocksFor(messageId: id),
+          streamingText: streamingText,
+          createdAtMs: createdAtMs,
+        ),
       ),
       final MessageError error => _agentRow(
+        messageId: error.id,
+        isError: true,
         blocks: transcript.blocksFor(messageId: error.id),
         streamingText: streamingText,
         createdAtMs: createdAtMs,
-        end: error,
+        // The Interrupted line ends the turn in place of its Stopped line.
+        end: switch (_interruptedTurn) {
+          InterruptedTurnShown(:final supersededStoppedIds) when supersededStoppedIds.contains(error.id) => null,
+          InterruptedTurnShown() || InterruptedTurnAbsent() => error,
+        },
       ),
     };
     return _revealable(createdAtMs: createdAtMs, child: card);
   }
 
   /// An agent reply's row: what it streamed, then, once the turn stopped or
-  /// failed, the [end] row under it. A reply keeps its row when its turn ends,
-  /// so the end row grows in under it as the working row folds away.
+  /// failed, the [end] row under it, and the Interrupted line when a bridge
+  /// stop cut the turn off here. A reply keeps its row when its turn ends, so
+  /// the end row grows in under it as the working row folds away.
+  ///
+  /// [end] is null for a reply, and for an error row whose Stopped line the
+  /// Interrupted line replaces, which then shows only what it streamed.
   Widget _agentRow({
+    required String messageId,
+    required bool isError,
     required List<TranscriptBlock> blocks,
     required Map<String, String> streamingText,
     required int? createdAtMs,
     required MessageError? end,
   }) {
-    final showsReply = blocks.isNotEmpty || end == null;
+    final showsReply = blocks.isNotEmpty || !isError;
     return TranscriptPresenceColumn(
       children: [
         if (showsReply)
@@ -1697,8 +1749,47 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             width: double.infinity,
             child: ErrorMessageCard(message: end, followsReply: showsReply),
           ),
+        ?_interruptedLine(messageId: messageId, followsReply: showsReply && end == null),
       ],
     );
+  }
+
+  /// [child], the row of message [messageId], with the Interrupted line under
+  /// it when a bridge stop cut the turn off after it. The row keeps one shape
+  /// with or without the line, so it keeps its state when the line arrives.
+  /// [messageId] is null for a prompt not delivered yet, which ends no turn.
+  Widget _endingInterruptedTurn({required String? messageId, required Widget child}) => TranscriptPresenceColumn(
+    children: [
+      KeyedSubtree(key: const ValueKey("message"), child: child),
+      ?_interruptedLine(messageId: messageId, followsReply: false),
+    ],
+  );
+
+  /// The Interrupted line, when the turn a bridge stop cut off ends with
+  /// message [messageId]. It offers Continue only while the turn can be picked
+  /// up and this surface can send.
+  Widget? _interruptedLine({required String? messageId, required bool followsReply}) {
+    if (_interruptedTurn case InterruptedTurnShown(:final lineAfterMessageId, :final continueRefusal)
+        when lineAfterMessageId == messageId) {
+      final onContinue = widget.onContinueInterruptedTurn;
+      return SizedBox(
+        key: const ValueKey("interrupted"),
+        width: double.infinity,
+        child: InterruptedTurnLine(
+          followsReply: followsReply,
+          onContinue: onContinue == null || continueRefusal != null ? null : () => _continue(onContinue: onContinue),
+        ),
+      );
+    }
+    return null;
+  }
+
+  /// Continues the interrupted turn. A refusal comes from a line that no
+  /// longer matches the session, frozen while the reader is detached, so the
+  /// list returns to the newest rows, which show why.
+  Future<void> _continue({required Future<InterruptedTurnContinueRefusal?> Function() onContinue}) async {
+    final refusal = await onContinue();
+    if (refusal != null && mounted && !_follow.following) await _follow.animateToEdge();
   }
 
   /// An agent reply's card, with its message menu.
@@ -1760,6 +1851,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// key keeping them one, so a line that showed sees out its fade, and a row built
   /// later has none to replay.
   Widget _deliveredPromptRow({required MessageWithParts message}) => _animatedPromptRow(
+    deliveredMessageId: message.info.id,
     child: QueuedMessageBubble(
       displayText: null,
       isCommand: false,
@@ -1783,17 +1875,23 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// Eases a prompt row's height as it moves between its sending, queued,
   /// and sent renderings, whose status rows differ in height — without this
   /// each hop snaps and reads as a flash in the bottom-pinned list.
-  Widget _animatedPromptRow({required Widget child}) {
+  ///
+  /// Every state of the row keeps one shape, so the bubble that waited and its
+  /// delivered message stay one element; [deliveredMessageId] is the delivered
+  /// message, which may end an interrupted turn, or null before delivery.
+  Widget _animatedPromptRow({required String? deliveredMessageId, required Widget child}) => _endingInterruptedTurn(
+    messageId: deliveredMessageId,
     // No wrapper at all under reduced motion: a zero-duration AnimatedSize
     // re-dirties itself inside its own layout pass.
-    if (context.isReducedMotion) return child;
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeInOutCubic,
-      alignment: AlignmentDirectional.topEnd,
-      child: child,
-    );
-  }
+    child: context.isReducedMotion
+        ? child
+        : AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeInOutCubic,
+            alignment: AlignmentDirectional.topEnd,
+            child: child,
+          ),
+  );
 
   /// The working row eases in when work starts or a step ends, and away when
   /// a step starts or work ends. The sub-agent row takes over, easing, while

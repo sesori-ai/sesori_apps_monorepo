@@ -575,6 +575,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                               isAwaitingInput: false,
                               isRetrying: false,
                               backgroundTaskCount: 0,
+                              isInterrupted: false,
                             ),
                           ),
                         ),

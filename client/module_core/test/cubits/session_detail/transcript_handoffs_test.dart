@@ -46,7 +46,11 @@ const _notSent = MessageHandoff.notSent(targetSessionId: "target", targetTitle: 
 TranscriptHandoffs _build({required List<MessageWithParts> messages, required bool isBusy}) =>
     const TranscriptHandoffBuilder().build(
       messages: messages,
-      turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: false),
+      turns: const TranscriptTurnBuilder().build(
+        messages: messages,
+        hasOlderMessages: false,
+        turnEndMessageIds: const {},
+      ),
       isBusy: isBusy,
     );
 

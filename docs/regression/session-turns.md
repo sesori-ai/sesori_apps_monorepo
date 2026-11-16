@@ -125,6 +125,16 @@ defaults and queued client sends coherent.
   line grows and fades in under the reply over the transcript's motion, like any new row, and a reader scrolled up
   into the reply sees nothing they read move. Failures keep their verbatim red text. An older bridge sends no
   kind, so its rows stay failures; an older app ignores the kind and keeps a red row.
+- A turn a bridge stop cut off (see session-history-and-recovery.md) ends with a grey "Interrupted · Sesori's bridge
+  stopped during this turn" line in the Stopped line's style, after the turn's last loaded message: under the reply
+  when it streamed one, under the prompt when the stop came before any output. The turn ends there, so the next
+  prompt opens a new turn even with no reply between. The line replaces every Stopped line in that turn, so Claude
+  Code and Codex, which record a bridge shutdown like a user Stop, show only the Interrupted line, never both. While
+  the turn is the latest, the session is idle and no prompt is on its way, a "Continue" link button sits under the
+  line and sends "Continue where you left off."; it folds away under the line once a later turn appears, so nothing
+  above moves. A detached reader's frozen view that taps a stale Continue sends nothing and returns to the newest
+  rows. An open session view that receives a new unacknowledged interruption declares its view again, so the list's
+  label clears while the user is looking. An older bridge sends no interruption and an older app ignores it.
 - A sent prompt stays on screen from send to delivered message. Scrolling while
   it is delivered, or a refresh whose fetch began before a queue event, must not
   blank its row. A wheel or trackpad touch that moves nothing at the newest edge
@@ -1069,6 +1079,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   abort message) instead of the grey "Stopped" line, live or after a reload; a real failure reads "Stopped"; a
   stopped or failed turn loses the text or steps it streamed; or the rows above the line move when it replaces the
   Working row.
+- A turn a bridge stop cut off shows no Interrupted line, shows it beside a Stopped line, or offers Continue while
+  the session works, a prompt is queued or a later turn follows; Continue sends nothing or sends twice; the prompt
+  after a turn cut off before any output joins that turn; or the list keeps "Interrupted" after the session is opened.
 - A Claude compaction shows two rows, a row that stays running after its
   turn, a failure with no note or with the error repeated as a reply, or
   successful-compaction details missing after a reload.

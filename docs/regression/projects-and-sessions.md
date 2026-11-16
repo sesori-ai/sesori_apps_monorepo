@@ -572,7 +572,9 @@ state.
   time, except that a scheduled auto-continuation shows "Resumes <time>" in
   its place while the session is neither running nor waiting for the user;
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, starting under the logo, one tertiary meta line holds any state that needs
-  words ("Waiting" in amber, else retrying), then the project when the list gives
+  words ("Waiting" in amber, else retrying, else "Interrupted" in secondary for a
+  session that is not running, whose turn a bridge stop cut off, until the user
+  opens it or sends to it), then the project when the list gives
   one, then background tasks as a quiet count: a stack glyph and the number,
   which screen readers hear as "2 background tasks". Waiting and retrying hide
   the count. A plain running session has no words on the line; the sparkle and

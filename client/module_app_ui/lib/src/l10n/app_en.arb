@@ -1841,6 +1841,10 @@
   "@sessionListWaiting": {
     "description": "Amber word leading a session row's meta line while the session waits for the user's answer or permission"
   },
+  "sessionListInterrupted": "Interrupted",
+  "@sessionListInterrupted": {
+    "description": "Grey word leading a session row's meta line when the Sesori bridge stopped during the session's last turn, until the user opens the session or sends something"
+  },
   "sessionListBackgroundTasks": "{count, plural, =1{1 background task} other{{count} background tasks}}",
   "@sessionListBackgroundTasks": {
     "description": "Label showing the number of active background tasks for a session",
@@ -2239,6 +2243,12 @@
   "@sessionDetailCompactionCancelled": {"description": "Reason after 'Compaction failed' when the user or the coding agent stopped the compaction, e.g. 'Compaction failed · stopped'. Lowercase because it follows a separator."},
   "sessionDetailTurnStopped": "Stopped",
   "@sessionDetailTurnStopped": {"description": "Quiet line that ends an agent turn the user stopped with the Stop button. Not an error."},
+  "sessionDetailTurnInterrupted": "Interrupted",
+  "@sessionDetailTurnInterrupted": {"description": "Quiet line that ends an agent turn cut off because the Sesori bridge stopped (crashed or was restarted) during it. Not an error. Its reason follows after ' · ', e.g. 'Interrupted · Sesori's bridge stopped during this turn'."},
+  "sessionDetailTurnInterruptedReason": "Sesori's bridge stopped during this turn",
+  "@sessionDetailTurnInterruptedReason": {"description": "Reason after 'Interrupted' on the line that ends a turn the Sesori bridge stopped during, e.g. 'Interrupted · Sesori's bridge stopped during this turn'."},
+  "sessionDetailContinueInterruptedTurn": "Continue",
+  "@sessionDetailContinueInterruptedTurn": {"description": "Button under the 'Interrupted' line of a turn the Sesori bridge cut off. Sends the agent a prompt asking it to continue where it left off."},
   "sessionDetailCompactionTurnEnded": "the turn ended first",
   "@sessionDetailCompactionTurnEnded": {"description": "Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator."},
   "sessionDetailCompactionFreedTokens": "freed {tokens} tokens",
