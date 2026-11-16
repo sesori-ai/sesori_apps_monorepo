@@ -68,8 +68,9 @@ declares `rewind`, so a bridge that does not declare it shows no Edit.
 ### Client edit and resend
 
 - Edit and resend shows on every user prompt and command card of a live,
-  continuable session whose harness declares `rewind`, and not in read-only,
-  archived or blocked sessions. The first prompt edits like any other.
+  continuable session whose harness declares `rewind`, outside the turn that
+  is running, and not in read-only, archived or blocked sessions. The first
+  prompt edits like any other.
 - A prompt sent while a turn ran, or a command or skill invocation, still shows
   Edit; tapping it opens a popup explaining why it cannot be edited, with OK
   only.

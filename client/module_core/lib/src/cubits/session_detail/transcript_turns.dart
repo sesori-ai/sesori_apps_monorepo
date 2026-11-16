@@ -48,6 +48,9 @@ final class const TranscriptTurns({
     };
     return opensTurn ? null : MessageEditRefusal.sentMidTurn;
   }
+
+  /// Whether [messageId] is in the newest turn, the one a working session runs.
+  bool inNewestTurn({required String messageId}) => turnIndexByMessageId[messageId] == turns.length - 1;
 }
 
 /// Why a user message cannot be edited and resent.
