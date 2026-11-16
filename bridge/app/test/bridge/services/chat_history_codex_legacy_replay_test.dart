@@ -31,9 +31,17 @@ void main() {
     // app-server item ids, stamped when they started.
     for (final message in [
       _user(id: "live-user-1", text: "Reply with exactly: red.", createdAt: _promptOneAt),
-      _reply(id: "msg_red", text: "red", time: const MessageTime(created: 1794817387198, completed: _replyOneAt)),
+      _reply(
+        id: "msg_red",
+        text: "red",
+        time: const MessageTime(created: 1794817387198, completed: _replyOneAt),
+      ),
       _user(id: "live-user-2", text: "Reply with exactly: blue.", createdAt: _promptTwoAt),
-      _reply(id: "msg_blue", text: "blue", time: const MessageTime(created: 1794817389623, completed: _replyTwoAt)),
+      _reply(
+        id: "msg_blue",
+        text: "blue",
+        time: const MessageTime(created: 1794817389623, completed: _replyTwoAt),
+      ),
     ]) {
       await history.service.captureMessage(sessionId: _sessionId, message: message.info);
       for (final part in message.parts) {
@@ -92,9 +100,25 @@ List<MessageWithParts> _replay({required Directory directory}) {
   final rollout = File(p.join(directory.path, "rollout-2026-11-16T00-23-05-$_threadId.jsonl"))
     ..writeAsStringSync(
       [
-        _line(at: _promptOneAt, type: "session_meta", payload: {"id": _threadId, "cwd": "/repo", "cli_version": "0.139.0"}),
-        ..._turn(turnId: "turn-1", prompt: "Reply with exactly: red.", promptAt: _promptOneAt, reply: "red", replyAt: _replyOneAt),
-        ..._turn(turnId: "turn-2", prompt: "Reply with exactly: blue.", promptAt: _promptTwoAt, reply: "blue", replyAt: _replyTwoAt),
+        _line(
+          at: _promptOneAt,
+          type: "session_meta",
+          payload: {"id": _threadId, "cwd": "/repo", "cli_version": "0.139.0"},
+        ),
+        ..._turn(
+          turnId: "turn-1",
+          prompt: "Reply with exactly: red.",
+          promptAt: _promptOneAt,
+          reply: "red",
+          replyAt: _replyOneAt,
+        ),
+        ..._turn(
+          turnId: "turn-2",
+          prompt: "Reply with exactly: blue.",
+          promptAt: _promptTwoAt,
+          reply: "blue",
+          replyAt: _replyTwoAt,
+        ),
       ].join("\n"),
     );
   final repository = CodexMessageRepository(
