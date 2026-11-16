@@ -46,6 +46,7 @@ void main() {
     projectName: null,
     sessionId: "origin",
     sessionTitle: "Origin",
+    readOnly: false,
   );
 
   testWidgets("a fork opened over its origin goes back to it, so the pages never pile up", (tester) async {

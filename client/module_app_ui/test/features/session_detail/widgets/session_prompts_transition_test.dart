@@ -55,7 +55,7 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
         builder: (context, state) => BlocProvider<SessionDetailCubit>.value(
           value: cubit,
           child: SessionDetailPresentationScope(
-            returnToSession: ({required projectId, required sessionId, required sessionTitle}) {},
+            returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
             openHarnessSettings: () {},
             openBridgeSettings: () {},
             openSideChat: null,

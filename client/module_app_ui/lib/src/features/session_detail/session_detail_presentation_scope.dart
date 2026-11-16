@@ -113,6 +113,7 @@ typedef SessionDetailSessionReturner = void Function({
   required String projectId,
   required String sessionId,
   required String? sessionTitle,
+  required bool readOnly,
 });
 
 /// Shows the side chats of [sessionId], read-only when [isArchived]. [context]

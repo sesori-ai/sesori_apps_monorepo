@@ -121,7 +121,7 @@ Future<({List<String> taps, List<String> closes})> _pump(
         canShareImages: false,
         openExternalLink: ({required url, required mode}) => _unused(),
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-        returnToSession: ({required projectId, required sessionId, required sessionTitle}) {},
+        returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
         openHarnessSettings: () {},
         openBridgeSettings: () {},
         openSideChat: null,

@@ -611,7 +611,7 @@ Widget _presented({required Widget child}) => SessionDetailPresentationScope(
   canShareImages: false,
   openExternalLink: ({required url, required mode}) async => false,
   openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-  returnToSession: ({required projectId, required sessionId, required sessionTitle}) {},
+  returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
   openHarnessSettings: () {},
   openBridgeSettings: () {},
   openSideChat: null,

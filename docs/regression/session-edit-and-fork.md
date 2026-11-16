@@ -150,10 +150,15 @@ harness declares `fork`.
 - A fork's transcript starts with a quiet centred "Forked from <origin
   title>" line ("Forked from an untitled session" when the origin had no
   title), shown above the oldest message only once no older page is left to
-  load. A tap returns to the origin: back when the origin is the page below
+  load. A tap reads the origin first, so an archived origin opens read-only
+  from the start, and returns to it: back when the origin is the page below
   (phone) or the previous page (desktop), so origin, fork, origin never piles
-  up; otherwise the origin opens (pushed on phone, selected on desktop). Once
-  the origin is deleted the line stays as plain text and a tap does nothing.
+  up; otherwise the origin opens. The phone pushes it, so back returns to the
+  fork. Desktop selects it and replaces the page stack, as the parent-session
+  link does. An origin that can't be read, such as one deleted since the page
+  loaded, answers the tap with "Couldn't open that session". Once the
+  origin's deletion reaches the fork, the line stays as plain text and a tap
+  does nothing.
 - `session_forked` records each answered fork with the origin's harness and a
   closed outcome: succeeded, branch_point_unavailable, refused or failed.
 

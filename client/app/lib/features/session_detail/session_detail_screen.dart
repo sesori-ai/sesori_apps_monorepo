@@ -177,13 +177,15 @@ class const _MobileSessionDetailBody({
                     ),
             );
           },
-      returnToSession: ({required projectId, required sessionId, required sessionTitle}) => returnToSessionRoute(
-        context: context,
-        projectId: projectId,
-        projectName: projectId == this.projectId ? projectName : null,
-        sessionId: sessionId,
-        sessionTitle: sessionTitle,
-      ),
+      returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+          returnToSessionRoute(
+            context: context,
+            projectId: projectId,
+            projectName: projectId == this.projectId ? projectName : null,
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+            readOnly: readOnly,
+          ),
       child: SessionDetailBody(
         projectId: projectId,
         sessionId: sessionId,

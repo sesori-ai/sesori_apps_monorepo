@@ -701,13 +701,14 @@ void returnToSessionRoute({
   required String? projectName,
   required String sessionId,
   required String? sessionTitle,
+  required bool readOnly,
 }) {
   final route = AppRoute.sessionDetail(
     projectId: projectId,
     projectName: projectName,
     sessionId: sessionId,
     sessionTitle: sessionTitle,
-    readOnly: false,
+    readOnly: readOnly,
     fromLaunch: false,
   );
   final locations = {

@@ -10,6 +10,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../session_detail_presentation_scope.dart";
 import "edit_message_dialogs.dart";
+import "handoff_session_link.dart";
 import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
@@ -371,13 +372,8 @@ class SessionDetailLoadedView extends StatelessWidget {
             }
           : null,
       forkedFrom: state.session.forkedFrom,
-      // A fork shares its origin's project.
       onOpenForkOrigin: ({required sessionId, required sessionTitle}) =>
-          SessionDetailPresentationScope.read(context).returnToSession(
-            projectId: state.session.projectID,
-            sessionId: sessionId,
-            sessionTitle: sessionTitle,
-          ),
+          unawaited(openForkOrigin(context: context, sessionId: sessionId)),
       editingMessageId: switch (state.composerMode) {
         SessionComposerEditing(:final messageId) => messageId,
         SessionComposerNormal() || SessionComposerSideQuestion() => null,
