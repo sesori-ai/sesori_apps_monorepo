@@ -281,7 +281,15 @@ class const SessionTile({
 
   Widget _titleRow({required BuildContext context, required bool pointer}) {
     final state = _state(context: context);
-    if (pointer) return _pointerTitleRow(context: context, state: state);
+    return _MarkRoom(
+      mark: state != null ? _crossFadeMark(context: context, label: state.label, mark: state.mark) : null,
+      builder: (context, mark, room) => pointer
+          ? _pointerTitleRow(context: context, mark: mark, room: room)
+          : _touchTitleRow(context: context, mark: mark),
+    );
+  }
+
+  Widget _touchTitleRow({required BuildContext context, required Widget? mark}) {
     // The row's width caps a resume time, which a narrow row with large text
     // could not otherwise fit beside the title.
     return LayoutBuilder(
@@ -298,10 +306,10 @@ class const SessionTile({
             child: _TitleLine(
               title: _title(context: context, pointer: false),
               pin: _LeadingPin(pinned: session.pinned, pointer: false),
-              mark: state != null ? _crossFadeMark(context: context, label: state.label, mark: state.mark) : null,
+              mark: mark,
             ),
           ),
-          ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, holdsColumn: false),
+          ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, column: 0),
         ],
       ),
     );
@@ -309,8 +317,9 @@ class const SessionTile({
 
   /// A pointer row's first line: the title from the row's edge, after the pin
   /// of a pinned session, then its state right before the time, so a quiet row
-  /// gives the title that room.
-  Widget _pointerTitleRow({required BuildContext context, required ({String label, Widget mark})? state}) =>
+  /// gives the title that room. The time's column opens and closes with the
+  /// mark's [room].
+  Widget _pointerTitleRow({required BuildContext context, required Widget? mark, required double room}) =>
       LayoutBuilder(
         builder: (context, constraints) => Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -324,20 +333,11 @@ class const SessionTile({
                 children: [
                   _LeadingPin(pinned: session.pinned, pointer: true),
                   Expanded(child: _title(context: context, pointer: true)),
-                  if (state != null)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                      child: SizedBox.square(
-                        dimension: _markSize,
-                        child: Center(
-                          child: _crossFadeMark(context: context, label: state.label, mark: state.mark),
-                        ),
-                      ),
-                    ),
+                  ?mark,
                 ],
               ),
             ),
-            ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, holdsColumn: state != null),
+            ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, column: room),
           ],
         ),
       );
@@ -402,15 +402,26 @@ class const SessionTile({
   /// When the session last changed, at the end of the title line, or when a
   /// quiet session will continue on its own. Waiting and running outrank a
   /// scheduled continuation.
-  Widget? _time({required BuildContext context, required double resumeMaxWidth, required bool holdsColumn}) {
+  /// [column] is how much of the fixed time column a mark beside it holds
+  /// open, from none to all of it.
+  Widget? _time({required BuildContext context, required double resumeMaxWidth, required double column}) {
     if (!awaitingInput && !isRunning) {
       if (sessionScheduledResumeAt(view: session.autoContinuation) case final continueAt?) {
-        // Half the row at most: the title keeps the other half, and both ellipsize.
+        // Half the row at most: the title keeps the other half, and both
+        // ellipsize. It holds the mark's column like the time does.
         return ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: resumeMaxWidth),
-          child: Padding(
-            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-            child: SessionScheduledResume(continueAt: continueAt, labelled: true),
+          constraints: BoxConstraints(
+            minWidth: min(_pointerTimeWidth * column, resumeMaxWidth),
+            maxWidth: resumeMaxWidth,
+          ),
+          // Its own width, at least the column's, flush with the row's end.
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            widthFactor: 1,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+              child: SessionScheduledResume(continueAt: continueAt, labelled: true),
+            ),
           ),
         );
       }
@@ -422,7 +433,7 @@ class const SessionTile({
     return Container(
       // A fixed column beside a mark, so marks line up down the list; a quiet row's
       // title has that room instead.
-      constraints: BoxConstraints(minWidth: holdsColumn ? _pointerTimeWidth : 0),
+      constraints: BoxConstraints(minWidth: _pointerTimeWidth * column),
       alignment: AlignmentDirectional.centerEnd,
       padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
       child: Text(
@@ -874,7 +885,9 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                             ),
                             pin: null,
                             // "Creating…" already says what the sparkle means.
-                            mark: const ExcludeSemantics(child: PregoAiLoader(size: _markSize)),
+                            mark: const _MarkBox(
+                              child: ExcludeSemantics(child: PregoAiLoader(size: _markSize)),
+                            ),
                           ),
                         ),
                       ],
@@ -1007,23 +1020,102 @@ class const _TitleLine({
   required final Widget? mark,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    final mark = this.mark;
-    return Row(
-      children: [
-        ?pin,
-        Flexible(child: title),
-        if (mark != null)
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-            child: SizedBox.square(
-              dimension: _markSize,
-              child: Center(child: mark),
+  Widget build(BuildContext context) => Row(
+    children: [
+      ?pin,
+      Flexible(child: title),
+      ?mark,
+    ],
+  );
+}
+
+/// A status mark's room after the title: a small gap, then the mark centred
+/// in a square.
+class const _MarkBox({required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+    child: SizedBox.square(
+      dimension: _markSize,
+      child: Center(child: child),
+    ),
+  );
+}
+
+/// Brings a title line's status mark in and out without a snap. A mark that
+/// leaves fades out, then its room closes, so the title eases into it. A new
+/// mark opens its room, then fades in. A quiet row keeps no room, and a mark
+/// that changes into another changes in place. Under reduced motion the mark
+/// comes and goes at once.
+class const _MarkRoom({
+  /// The mark to show, or null for none.
+  required final Widget? mark,
+
+  /// Lays the title line out around the mark's [_MarkBox], null while there
+  /// is none, and how open its room is, from 0 to 1.
+  required final Widget Function(BuildContext context, Widget? mark, double room) builder,
+}) extends StatefulWidget {
+  @override
+  State<_MarkRoom> createState() => _MarkRoomState();
+}
+
+class _MarkRoomState() extends State<_MarkRoom> with SingleTickerProviderStateMixin {
+  /// Opening the room, then fading the mark in, each over the usual motion.
+  late final AnimationController _presence = AnimationController(
+    vsync: this,
+    value: widget.mark == null ? 0 : 1,
+  );
+
+  /// The mark shown, kept while it fades out after the row lost it.
+  late Widget? _shown = widget.mark;
+
+  @override
+  void didUpdateWidget(covariant _MarkRoom oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _presence.duration = context.isReducedMotion ? Duration.zero : transcriptMotionDuration * 2;
+    if (widget.mark case final mark?) {
+      _shown = mark;
+      _presence.forward();
+    } else {
+      _presence.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _presence.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _presence,
+    builder: (context, _) {
+      final shown = _shown;
+      final presence = _presence.value;
+      if (shown == null || presence == 0) return widget.builder(context, null, 0);
+      final room = transcriptMotionCurve.transform(min(1.0, presence * 2));
+      final opacity = transcriptMotionCurve.transform(max(0.0, presence * 2 - 1));
+      return widget.builder(
+        context,
+        // A leaving mark no longer speaks.
+        ExcludeSemantics(
+          excluding: widget.mark == null,
+          child: ClipRect(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              widthFactor: room,
+              child: Opacity(
+                opacity: opacity,
+                child: _MarkBox(child: shown),
+              ),
             ),
           ),
-      ],
-    );
-  }
+        ),
+        room,
+      );
+    },
+  );
 }
 
 /// The pin before a pinned session's title, in the meta line's grey, with a

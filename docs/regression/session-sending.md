@@ -196,6 +196,11 @@ The bridge answers a send that did not happen with 409 and a
   that predates the field omits it, and the row then shows as running only.
 - The row keeps its height and the title its place; only the mark and the
   meta line's words cross-fade.
+- When the row goes quiet, the send glyph or sparkle fades out where it stands
+  (200 ms), then its room after the title closes over the next 200 ms, so the
+  title and, under a pointer, the time ease into the space instead of snapping.
+  A mark arriving opens its room first, then fades in. A quiet row reserves no
+  room. Under reduce motion the mark comes and goes at once.
 
 ### Target card
 
