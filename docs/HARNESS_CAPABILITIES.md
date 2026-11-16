@@ -306,6 +306,13 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
   only 2.1.322 was probed live.
 - `control_cancel_request` ends the ask with "Side question cancelled". Sesori
   sends it when its own 3-minute wait ends, below the CLI's 11-minute deadline.
+- A mid-turn ask sends the model the running turn's prompt as well as the
+  question. With a non-Claude model behind a proxy (2026-11-16), some mid-turn
+  asks got an answer to that prompt instead of the question, on 2.1.322,
+  2.1.323 and 2.1.325 alike. That answer took as long as the main reply, so it
+  looked as if the ask had waited for the turn. The request is built inside
+  the CLI, so Sesori can't shape it. Mid-turn asks with a real Claude model
+  were checked only on 2.1.322.
 
 Codex (live probe against 0.169.0 with a local test provider, 2026-11-15):
 
