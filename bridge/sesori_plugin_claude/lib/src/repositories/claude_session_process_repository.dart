@@ -407,7 +407,7 @@ final class ClaudeSessionProcessRepository({
   Future<void> switchPermissionMode({
     required String sessionId,
     required ClaudePermissionMode from,
-    required ClaudePermissionMode to,
+    required ClaudePermissionMode? to,
   }) async {
     if (_connecting[sessionId] case final connecting?) {
       // A failed relaunch leaves no process to switch; its caller reports it.

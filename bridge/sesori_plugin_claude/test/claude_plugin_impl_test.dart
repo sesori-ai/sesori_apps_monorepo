@@ -1671,6 +1671,68 @@ void main() {
       );
     });
 
+    test("Turn off during a relaunch leaves the relaunched process asking", () async {
+      harness.holdStdinClose = true;
+      await harness.createSession();
+      final first = harness.processes.single;
+      harness.holdStdinClose = false;
+      await waitForFrame(first, "user");
+      first.emit({
+        "type": "control_request",
+        "request_id": "edit-1",
+        "request": {
+          "subtype": "can_use_tool",
+          "tool_name": "Write",
+          "tool_use_id": "toolu-edit",
+          "input": {"file_path": "a.dart"},
+          "permission_suggestions": [
+            {"type": "setMode", "mode": "acceptEdits", "destination": "session"},
+          ],
+        },
+      });
+      await pump();
+      await harness.plugin.replyToPermission(
+        requestId: "br-1",
+        sessionId: testSessionId,
+        reply: PluginPermissionReply.always,
+      );
+      first.emit(_result());
+      await pump();
+
+      // An effort change relaunches the process with the accept-edits mode
+      // read before teardown; Turn off lands while teardown holds.
+      unawaited(
+        harness.plugin.sendPrompt(
+          fastMode: false,
+          promptId: "prompt-deeper",
+          sessionId: testSessionId,
+          parts: const [PluginPromptPart.text(text: "deeper")],
+          variant: const PluginSessionVariant(id: "high"),
+          agent: "Agent",
+          model: (providerID: "anthropic", modelID: "default"),
+        ),
+      );
+      for (var attempt = 0; attempt < 50 && !first.stdinClosed; attempt++) {
+        await pump();
+      }
+      expect(first.stdinClosed, isTrue);
+      await harness.plugin.stopAcceptingEdits(sessionId: testSessionId);
+      first.completeStdinClose();
+      for (var attempt = 0; attempt < 50 && harness.processes.length < 2; attempt++) {
+        await pump();
+      }
+
+      final second = harness.processes.last;
+      expect(harness.specs.last.permissionMode, ClaudePermissionMode.acceptEdits);
+      await _waitForUserText(second, "deeper");
+      final switchIndex = second.written.indexWhere(
+        (frame) => frame["type"] == "control_request" && _request(frame)["subtype"] == "set_permission_mode",
+      );
+      expect(switchIndex, isNot(-1));
+      expect(_request(second.written[switchIndex])["mode"], "default");
+      expect(switchIndex, lessThan(second.written.indexWhere((frame) => frame["type"] == "user")));
+    });
+
     test("suppresses the terminal result after an explicit interruption", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
@@ -2103,7 +2165,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
     processRepository = ClaudeSessionProcessRepository(
       supportsMcpAuthentication: true,
       processFactory: (spec) async {
-        final process = FakeClaudeProcess();
+        final process = FakeClaudeProcess(stdinCloseCompletes: !holdStdinClose);
         specs.add(spec);
         processes.add(process);
         unawaited(_answerControls(process, failInitialize: failInitialize));
@@ -2180,6 +2242,9 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
   var _idIndex = 0;
   var _probeIndex = 0;
   bool allowApprovalWrites = true;
+
+  /// New processes hold their teardown until the test completes stdin close.
+  bool holdStdinClose = false;
 
   String _nextId() => _testIds[_idIndex++];
 

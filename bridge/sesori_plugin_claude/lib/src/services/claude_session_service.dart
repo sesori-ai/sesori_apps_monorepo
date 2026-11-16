@@ -549,6 +549,13 @@ final class ClaudeSessionService({
         fastMode: fastMode,
         allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
       );
+      // Turn off can land while that relaunches the process in accept-edits,
+      // after the mode above was read: leave it now that the grant is gone.
+      await _processes.switchPermissionMode(
+        sessionId: sessionId,
+        from: ClaudePermissionMode.acceptEdits,
+        to: _approvals.permissionModeFor(sessionId: sessionId, requested: permissionMode),
+      );
       if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) ||
           _isCancelled(mode: mode, state: state)) {
         mode.settleUnaccepted();
