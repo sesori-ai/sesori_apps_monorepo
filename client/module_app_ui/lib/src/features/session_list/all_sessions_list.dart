@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/foundation.dart" show setEquals;
+import "package:flutter/gestures.dart" show Drag;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -278,7 +279,8 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   /// as its pinned rows scroll on beneath it: a copy over the list takes
   /// over from the heading as it scrolls under the top, so nothing in the
   /// list moves, and fades out once editing ends.
-  final GlobalKey _pinnedHeadingKey = GlobalKey(debugLabel: "pinned-heading");
+  /// The list's own Pinned heading while the list lays it out.
+  BuildContext? _pinnedHeading;
   final OverlayPortalController _heldHeadingPortal = OverlayPortalController()..show();
   late final AnimationController _heldFade = AnimationController(vsync: this, duration: transcriptMotionDuration);
   late final CurvedAnimation _heldOpacity = CurvedAnimation(
@@ -287,6 +289,10 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     reverseCurve: transcriptMotionCurve.flipped,
   );
   ScrollableState? _scrollable;
+
+  /// A finger scrolling the list from the held heading, which takes every
+  /// touch on it so none reaches a handle beneath.
+  Drag? _heldHeadingDrag;
 
   @override
   void initState() {
@@ -320,7 +326,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     }
     final viewportOrigin = viewport.localToGlobal(Offset.zero);
     final coveredTop = pinnedListUncoveredTop(listContext: scrollable.context, viewportTop: viewportOrigin.dy);
-    if (_pinnedHeadingKey.currentContext?.findRenderObject() case final RenderBox heading
+    if (_pinnedHeading?.findRenderObject() case final RenderBox heading
         when heading.attached && heading.hasSize && heading.localToGlobal(Offset.zero).dy >= coveredTop) {
       return null;
     }
@@ -697,11 +703,23 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                 width: MediaQuery.sizeOf(context).width,
                 interactive: true,
                 clipAbove: () => _heldHeading()?.coveredTop ?? double.negativeInfinity,
-                child: FadeTransition(
-                  opacity: _heldOpacity,
-                  child: ColoredBox(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    child: SessionListHeading(heading: loc.sessionListPinned, isFirst: true, action: pinnedAction),
+                // Only Done takes a tap; a drag scrolls the list beneath, as
+                // from any row.
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onVerticalDragStart: (details) => _heldHeadingDrag = _scrollable?.position.drag(
+                    details,
+                    () => _heldHeadingDrag = null,
+                  ),
+                  onVerticalDragUpdate: (details) => _heldHeadingDrag?.update(details),
+                  onVerticalDragEnd: (details) => _heldHeadingDrag?.end(details),
+                  onVerticalDragCancel: () => _heldHeadingDrag?.cancel(),
+                  child: FadeTransition(
+                    opacity: _heldOpacity,
+                    child: ColoredBox(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      child: SessionListHeading(heading: loc.sessionListPinned, isFirst: true, action: pinnedAction),
+                    ),
                   ),
                 ),
               ),
@@ -897,8 +915,8 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                             SessionListItemEntry(item: _SessionItem(:final row)) => row.session.pinned,
                             _ => false,
                           } =>
-                    KeyedSubtree(
-                      key: _pinnedHeadingKey,
+                    _LaidOut(
+                      onChanged: (heading) => _pinnedHeading = heading,
                       child: SessionListHeading(heading: heading, isFirst: index == 0, action: pinnedAction),
                     ),
                   SessionListHeadingEntry(:final heading) => SessionListHeading(
@@ -1278,3 +1296,34 @@ Widget _launchRowSettling({required BuildContext context, required bool launchin
     );
 
 const Duration _settleDuration = Duration(milliseconds: 200);
+
+/// Hands [onChanged] its context while the list lays it out, and null once
+/// the list sets it aside, as it scrolls away.
+class const _LaidOut({required final ValueSetter<BuildContext?> onChanged, required final Widget child})
+    extends StatefulWidget {
+  @override
+  State<_LaidOut> createState() => _LaidOutState();
+}
+
+class _LaidOutState() extends State<_LaidOut> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onChanged(context);
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    widget.onChanged(context);
+  }
+
+  @override
+  void deactivate() {
+    widget.onChanged(null);
+    super.deactivate();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}

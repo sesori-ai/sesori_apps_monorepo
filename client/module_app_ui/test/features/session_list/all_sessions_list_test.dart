@@ -2818,6 +2818,41 @@ void main() {
         expect(rowTop(), scrolled);
         expect(held("Done"), findsOneWidget);
       });
+
+      testWidgets("the held heading scrolls the list under a finger, and a tap on it reaches no row beneath", (
+        tester,
+      ) async {
+        final haptics = <String>[];
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == "HapticFeedback.vibrate") haptics.add(call.arguments as String);
+          return null;
+        });
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null),
+        );
+        final many = [for (var at = 0; at < 20; at++) pinnedRow(title: "Pin $at", pinOrder: 100 - at)];
+        await pumpPinned(tester, rows: [...many, unpinned], interaction: PregoInteractionMode.touch);
+        final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+        Finder held(String text) => find.text(text, skipOffstage: false).hitTestable();
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+        position.jumpTo(400);
+        await tester.pump();
+        final band = tester.getRect(find.ancestor(of: held("Pinned"), matching: find.byType(ColoredBox)).first);
+
+        // Over a row's handle, left of Done: it neither lifts that row nor
+        // ends editing.
+        await tester.tapAt(Offset(tester.getCenter(held("Done")).dx - 56, band.center.dy));
+        await settle(tester);
+        expect(haptics, isEmpty);
+        expect(held("Done"), findsOneWidget);
+        expect(position.pixels, 400);
+
+        await tester.dragFrom(Offset(band.width / 3, band.center.dy), const Offset(0, 150));
+        await tester.pump();
+        expect(position.pixels, lessThan(300));
+        expect(haptics, isEmpty);
+      });
     });
 
     group("held at the list's edge", () {

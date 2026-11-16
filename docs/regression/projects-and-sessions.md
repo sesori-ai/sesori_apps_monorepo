@@ -676,7 +676,8 @@ state.
   or leaving the screen ends editing. While editing, the Pinned heading with
   Done stays right under the glass bar as the pinned rows scroll on beneath
   it, the last pinned row pushing it up as Pinned ends, and the edge scroll
-  starts below it; Edit or Done moves no row and no scroll offset, and once
+  starts below it; a finger on the held heading scrolls the list as from a
+  row, and only its Done takes a tap, never a row beneath; Edit or Done moves no row and no scroll offset, and once
   editing ends a held heading fades out where it stands while the list's own
   heading scrolls on.
 - Above the active session list, on the phone and the sidebar alike, chips

@@ -447,9 +447,21 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
     }
   }
 
+  // A row the list set aside, as it scrolled away, is no longer laid out.
+  @override
+  void deactivate() {
+    widget.tracker._unregister(sessionId: widget.sessionId, context: context);
+    super.deactivate();
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    widget.tracker._register(sessionId: widget.sessionId, context: context);
+  }
+
   @override
   void dispose() {
-    widget.tracker._unregister(sessionId: widget.sessionId, context: context);
     widget.tracker._abandon(sessionId: widget.sessionId);
     _lifted.dispose();
     _lift.dispose();
