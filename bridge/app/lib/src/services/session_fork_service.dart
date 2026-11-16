@@ -110,7 +110,7 @@ class SessionForkService({
       operation: SessionOperation.forkSession,
     );
     if (origin case StoredSession(archivedAt: _?, isDedicated: true, :final worktreePath?)) {
-      if (await _worktrees.worktreeExists(worktreePath: worktreePath)) return;
+      if (await _worktrees.worktreeExists(projectId: origin.projectId, worktreePath: worktreePath)) return;
       if (_worktrees.worktreePathExists(worktreePath: worktreePath)) {
         throw _refusal(
           code: SessionBranchErrorCode.refused,

@@ -312,8 +312,12 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       _worktreeRepository.worktreePathExists(worktreePath: worktreePath);
 
   /// See [WorktreeRepository.worktreeExists].
-  Future<bool> worktreeExists({required String worktreePath}) =>
-      _worktreeRepository.worktreeExists(worktreePath: worktreePath);
+  Future<bool> worktreeExists({required String projectId, required String worktreePath}) async {
+    return await _worktreeRepository.worktreeExists(
+      projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
+      worktreePath: worktreePath,
+    );
+  }
 
   /// Adds a worktree again at [worktreePath], where a removed one was, so a
   /// harness session that remembers that folder still finds it, with the work
