@@ -50,6 +50,7 @@ Session _childSession({required String id}) => Session(
   autoContinuation: null,
   approvalOverride: null,
   scheduledTask: null,
+  interruption: null,
 );
 
 void main() {

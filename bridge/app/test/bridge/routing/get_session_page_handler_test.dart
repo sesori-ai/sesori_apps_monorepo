@@ -141,6 +141,7 @@ Session _session({required String id}) => Session(
   autoContinuation: null,
   approvalOverride: null,
   scheduledTask: null,
+  interruption: null,
 );
 
 final class const _TitlingSessionViews() implements SessionViewService {

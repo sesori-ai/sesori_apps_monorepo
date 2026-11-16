@@ -14,9 +14,12 @@ import "../repositories/attachment_thumbnail_builder.dart";
 import "../repositories/catalog_import_repository.dart" show SessionBackendActivity;
 import "../repositories/chat_history_repository.dart";
 import "../repositories/models/history_window.dart";
+import "../repositories/models/session_running_turn_record.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/models/tool_output_lookup.dart";
+import "../repositories/session_interruption_repository.dart";
 import "../repositories/session_repository.dart";
+import "session_mutation_dispatcher.dart";
 
 sealed class const SessionAttachmentResult();
 
@@ -108,6 +111,8 @@ class ChatHistoryService({
   required final SessionRepository _sessionRepository,
   required final AttachmentThumbnailBuilder _attachmentThumbnailBuilder,
   required final BridgeIdProvider _bridgeIdProvider,
+  required final SessionInterruptionRepository _interruptions,
+  required final SessionMutationDispatcher _mutations,
 }) {
   final KeyedParallelLock<String> _writeLock = KeyedParallelLock<String>();
   final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
@@ -1219,7 +1224,7 @@ class ChatHistoryService({
             observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
         final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
-        await _chatHistoryRepository.replaceSessionMessages(
+        final replacementIds = await _chatHistoryRepository.replaceSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
           messages: snapshot.messages,
@@ -1228,6 +1233,7 @@ class ChatHistoryService({
           backendActivityAt: backendActivityAt,
           syncedAt: DateTime.now().millisecondsSinceEpoch,
         );
+        await _reanchorInterruption(sessionId: sessionId, replacementIds: replacementIds);
         final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;
         if (promptDefaults == null) return null;
         try {
@@ -1245,6 +1251,36 @@ class ChatHistoryService({
         }
       },
     );
+  }
+
+  /// Records the [leftover] running turn an earlier bridge run left as the
+  /// session's interruption after its newest stored message. Queued with the
+  /// session's other history work, so a re-import cannot replace that message
+  /// between the read and the write, and a later re-import moves the anchor
+  /// along with it. Returns whether an interruption was written.
+  Future<bool> convertInterruptedTurn({required SessionRunningTurnRecord leftover}) => _enqueue(
+    sessionId: leftover.sessionId,
+    write: () async {
+      final afterMessageId = await _chatHistoryRepository.getNewestMessageId(sessionId: leftover.sessionId);
+      return await _interruptions.convertLeftover(leftover: leftover, afterMessageId: afterMessageId);
+    },
+  );
+
+  /// Keeps the session's interruption on the message a re-import replaced it
+  /// with, since replayed ids can differ from the live ones. The transcript
+  /// already landed, so a failure only leaves the old anchor and is logged.
+  Future<void> _reanchorInterruption({
+    required String sessionId,
+    required Map<String, String> replacementIds,
+  }) async {
+    if (replacementIds.isEmpty) return;
+    try {
+      if (await _interruptions.reanchor(sessionId: sessionId, replacementIds: replacementIds)) {
+        await _mutations.interruptionUpdated(sessionId: sessionId);
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not move the interruption of session $sessionId to its re-imported message", error, stackTrace);
+    }
   }
 
   /// Writes the session's audit file before it is archived.

@@ -19,6 +19,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/session_continuation_test_support.dart";
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 
 void main() {
@@ -267,6 +268,7 @@ class _Fixture() {
     operations = SessionOperationDispatcher(sessionRepository: repository);
     worktree = _FamilyWorktreeService();
     mutations = SessionMutationDispatcher(
+      interruptions: const NoSessionInterruptions(),
       sessionRepository: repository,
       sessionOperationDispatcher: operations,
     );
@@ -534,6 +536,7 @@ class _SessionRecord({
     lastUserActivityAt: null,
     branchName: "branch-$id",
     scheduledTask: null,
+    interruption: null,
   );
 }
 

@@ -26,6 +26,7 @@ class const SessionCatalogMapper() {
       approvalOverride: row.approvalOverride,
       pinned: row.pinned,
       scheduledTask: null,
+      interruption: null,
     );
   }
 

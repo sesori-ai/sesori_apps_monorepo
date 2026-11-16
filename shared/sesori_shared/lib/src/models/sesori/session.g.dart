@@ -66,6 +66,11 @@ _Session _$SessionFromJson(Map json) => _Session(
       : SessionScheduledTaskMark.fromJson(
           Map<String, dynamic>.from(json['scheduledTask'] as Map),
         ),
+  interruption: json['interruption'] == null
+      ? null
+      : SessionInterruption.fromJson(
+          Map<String, dynamic>.from(json['interruption'] as Map),
+        ),
 );
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
@@ -85,6 +90,7 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'approvalOverride': ?_$SessionApprovalModeEnumMap[instance.approvalOverride],
   'pinned': instance.pinned,
   'scheduledTask': ?instance.scheduledTask?.toJson(),
+  'interruption': ?instance.interruption?.toJson(),
 };
 
 const _$SessionApprovalModeEnumMap = {

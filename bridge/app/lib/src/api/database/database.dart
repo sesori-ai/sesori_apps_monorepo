@@ -22,7 +22,9 @@ import "tables/projects_table.dart";
 import "tables/scheduled_task_runs_table.dart";
 import "tables/scheduled_tasks_table.dart";
 import "tables/session_continuation_table.dart";
+import "tables/session_interruptions_table.dart";
 import "tables/session_options_cache_table.dart";
+import "tables/session_running_turns_table.dart";
 import "tables/session_table.dart";
 import "tables/side_chat_exchanges_table.dart";
 
@@ -44,6 +46,8 @@ part "database.g.dart";
     SideChatExchangesTable,
     ScheduledTasksTable,
     ScheduledTaskRunsTable,
+    SessionRunningTurnsTable,
+    SessionInterruptionsTable,
   ],
   daos: [ProjectsDao, SessionDao, CatalogHydrationsDao],
 )
@@ -51,7 +55,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 28;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -374,6 +378,11 @@ class AppDatabase(super.e) extends _$AppDatabase {
         await m.createIndex(schema.idxScheduledTaskRunsTask);
         await m.createIndex(schema.idxScheduledTaskRunsSession);
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.scheduledTaskId);
+      },
+      from26To28: (m, schema) async {
+        // No bridge recorded running turns before v28, so both start empty.
+        await m.createTable(schema.sessionRunningTurns);
+        await m.createTable(schema.sessionInterruptions);
       },
     ),
     beforeOpen: (details) async {

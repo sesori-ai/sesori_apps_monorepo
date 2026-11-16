@@ -700,6 +700,7 @@ void main() {
               lastUserActivityAt: null,
               branchName: null,
               scheduledTask: null,
+              interruption: null,
             ).toJson(),
           ),
         ),
@@ -1479,6 +1480,7 @@ void main() {
               lastUserActivityAt: null,
               branchName: null,
               scheduledTask: null,
+              interruption: null,
             ).toJson(),
             titleChanged: false,
           ),
@@ -1667,6 +1669,7 @@ void main() {
               lastUserActivityAt: null,
               branchName: null,
               scheduledTask: null,
+              interruption: null,
             ).toJson(),
           ),
         ),
@@ -1696,6 +1699,7 @@ void main() {
           lastUserActivityAt: null,
           branchName: null,
           scheduledTask: null,
+          interruption: null,
         ).toJson(),
         titleChanged: false,
       );
@@ -1819,6 +1823,7 @@ Map<String, dynamic> _sessionInfo({
     lastUserActivityAt: null,
     branchName: null,
     scheduledTask: null,
+    interruption: null,
   ).toJson();
 }
 

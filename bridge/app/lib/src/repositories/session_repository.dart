@@ -1605,26 +1605,15 @@ class SessionRepository({
     final results = await Future.wait(
       _runtime.eligiblePluginIds.map((pluginId) async {
         try {
-          final pluginStatuses = await _runtime.useIfActive(
-            pluginId: pluginId,
-            operation: SessionOperation.getSessionStatuses,
-            body: (plugin, _) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
-          );
-          if (pluginStatuses == null) return (pluginId: pluginId, statuses: null);
-          final bindings = await _sessionDao.getSessionsByBackendIds(
-            pluginId: pluginId,
-            backendSessionIds: pluginStatuses.keys.toList(growable: false),
-          );
+          final pluginStatuses = await _readPluginSessionStatuses(pluginId: pluginId);
           return (
             pluginId: pluginId,
-            statuses: {
-              for (final entry in pluginStatuses.entries)
-                if (bindings[entry.key] case final binding?)
-                  binding.sessionId: _stampSnapshotStatus(
-                    sessionId: binding.sessionId,
-                    status: entry.value.toSharedSessionStatus(),
-                  ),
-            },
+            statuses: pluginStatuses == null
+                ? null
+                : {
+                    for (final MapEntry(key: sessionId, value: status) in pluginStatuses.entries)
+                      sessionId: _stampSnapshotStatus(sessionId: sessionId, status: status),
+                  },
           );
         } on Object catch (error, stackTrace) {
           Log.w("Could not read session statuses from plugin $pluginId", error, stackTrace);
@@ -1641,6 +1630,32 @@ class SessionRepository({
           if (result.statuses == null) result.pluginId,
       ],
     );
+  }
+
+  /// [pluginId]'s session statuses keyed by bridge session id, as its plugin
+  /// reports them. Throws when the plugin is not active or the read fails.
+  Future<Map<String, SessionStatus>> getPluginSessionStatuses({required String pluginId}) async {
+    final statuses = await _readPluginSessionStatuses(pluginId: pluginId);
+    if (statuses == null) throw StateError("Plugin $pluginId is not active");
+    return statuses;
+  }
+
+  /// Null when [pluginId] is not active.
+  Future<Map<String, SessionStatus>?> _readPluginSessionStatuses({required String pluginId}) async {
+    final pluginStatuses = await _runtime.useIfActive(
+      pluginId: pluginId,
+      operation: SessionOperation.getSessionStatuses,
+      body: (plugin, _) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
+    );
+    if (pluginStatuses == null) return null;
+    final bindings = await _sessionDao.getSessionsByBackendIds(
+      pluginId: pluginId,
+      backendSessionIds: pluginStatuses.keys.toList(growable: false),
+    );
+    return {
+      for (final entry in pluginStatuses.entries)
+        if (bindings[entry.key] case final binding?) binding.sessionId: entry.value.toSharedSessionStatus(),
+    };
   }
 
   /// [status] as a client receives it live: a busy or retry status carries when

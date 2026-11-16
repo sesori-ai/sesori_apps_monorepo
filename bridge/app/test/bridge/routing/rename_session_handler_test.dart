@@ -11,6 +11,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/session_continuation_test_support.dart";
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -34,6 +35,7 @@ void main() {
       );
       sessionOperationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       sessionMutationDispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: sessionRepository,
         sessionOperationDispatcher: sessionOperationDispatcher,
       );

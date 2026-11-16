@@ -3,12 +3,15 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_continuation_record.dart";
 import "../repositories/session_continuation_repository.dart";
+import "../repositories/session_interruption_repository.dart";
 import "../repositories/session_repository.dart";
 
-/// Projects bridge-owned continuation state onto existing session responses.
+/// Projects bridge-owned continuation and interruption state onto existing
+/// session responses.
 class const SessionViewService({
   required final SessionRepository _sessions,
   required final SessionContinuationRepository _continuations,
+  required final SessionInterruptionRepository _interruptions,
   required final Duration _resetBuffer,
 }) {
   Future<Session> get({required String sessionId}) async {
@@ -22,11 +25,20 @@ class const SessionViewService({
   Future<Session> enrich({required Session session}) async => (await enrichMany(sessions: [session])).single;
 
   Future<List<Session>> enrichMany({required List<Session> sessions}) async {
-    final records = await _continuations.readMany(sessionIds: sessions.map((session) => session.id).toSet());
+    final sessionIds = sessions.map((session) => session.id).toSet();
+    final records = await _continuations.readMany(sessionIds: sessionIds);
+    final interruptions = await _interruptions.readMany(sessionIds: sessionIds);
     return [
       for (final session in sessions)
         session.copyWith(
           autoContinuation: _view(session: session, record: records[session.id]),
+          interruption: switch (interruptions[session.id]) {
+            null => null,
+            final interruption => SessionInterruption(
+              afterMessageId: interruption.afterMessageId,
+              unacknowledged: !interruption.acknowledged,
+            ),
+          },
         ),
     ];
   }

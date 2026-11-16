@@ -743,6 +743,7 @@ Session _session({
   autoContinuation: null,
   approvalOverride: null,
   scheduledTask: null,
+  interruption: null,
 );
 
 final class _Sessions() implements SessionRepository {

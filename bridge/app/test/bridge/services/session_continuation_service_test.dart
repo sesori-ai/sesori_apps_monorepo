@@ -2,11 +2,13 @@ import "dart:async";
 
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_readiness.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
+import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/routing/set_session_auto_continuation_handler.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
@@ -20,6 +22,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/plugin_runtime_test_support.dart";
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart" show RequestHandlerTestMatching, makeRequest;
 
@@ -48,7 +51,12 @@ void main() {
     operations = SessionOperationDispatcher(sessionRepository: sessions);
     prompts = _Prompts(records: records);
     mutations = _Mutations();
-    views = SessionViewService(sessions: sessions, continuations: records, resetBuffer: const Duration(minutes: 2));
+    views = SessionViewService(
+      sessions: sessions,
+      continuations: records,
+      interruptions: const NoSessionInterruptions(),
+      resetBuffer: const Duration(minutes: 2),
+    );
     now = observed;
     service = SessionContinuationService(
       continuations: records,
@@ -345,6 +353,29 @@ void main() {
     await db.customStatement("DELETE FROM sessions_table WHERE session_id = ?", ["session"]);
     expect(await SessionContinuationDao(database: db).read(sessionId: "session"), isNull);
   });
+
+  test("the session view projects each session's interruption", () async {
+    final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+    await interruptions.markRunning(sessionId: "session", at: observed);
+    final leftover = (await interruptions.readLeftovers(pluginId: "plugin", startedBefore: reset)).single;
+    await interruptions.convertLeftover(leftover: leftover, afterMessageId: "m1");
+    final projecting = SessionViewService(
+      sessions: sessions,
+      continuations: records,
+      interruptions: interruptions,
+      resetBuffer: const Duration(minutes: 2),
+    );
+    Future<List<SessionInterruption?>> project() async {
+      final catalog = [
+        for (final sessionId in ["session", "other"]) await sessions.getCatalogSession(sessionId: sessionId),
+      ].nonNulls.toList();
+      return [for (final session in await projecting.enrichMany(sessions: catalog)) session.interruption];
+    }
+
+    expect(await project(), [const SessionInterruption(afterMessageId: "m1", unacknowledged: true), null]);
+    await interruptions.acknowledge(sessionId: "session");
+    expect(await project(), [const SessionInterruption(afterMessageId: "m1", unacknowledged: false), null]);
+  });
 }
 
 class _OutcomeRepository({required super.dao, required super.runtime}) extends SessionContinuationRepository {
@@ -397,6 +428,7 @@ class _Sessions() implements SessionRepository {
     lastUserActivityAt: null,
     autoContinuation: null,
     scheduledTask: null,
+    interruption: null,
   );
   @override
   Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {

@@ -37,6 +37,7 @@ import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 
 export "../../helpers/fakes/fake_bridge_plugin.dart";
@@ -58,6 +59,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       filesystemApi: FakeFilesystemApi(),
     ),
     viewTracker: SessionViewTracker(),
+    mutations: const UnusedContinuationMutations(),
     now: () => DateTime.now().millisecondsSinceEpoch,
   );
 }
@@ -224,6 +226,7 @@ Session _deletedSessionInfo(String sessionId) => Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   scheduledTask: null,
+  interruption: null,
 );
 
 Future<void> recordSessionBinding({
@@ -289,6 +292,7 @@ Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    interruption: null,
   );
 }
 
@@ -417,6 +421,7 @@ class FakeSessionRepository({
       promptDefaults: null,
       lastUserActivityAt: stored.lastUserMessageAt,
       scheduledTask: null,
+      interruption: null,
     );
   }
 
@@ -499,6 +504,7 @@ class FakeSessionRepository({
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    interruption: null,
   );
 
   SessionPage sessionPage = (
@@ -705,6 +711,10 @@ class FakeSessionRepository({
 
   @override
   bool isPluginActive({required String pluginId}) => pluginId == _plugin.id;
+
+  @override
+  Future<Map<String, SessionStatus>> getPluginSessionStatuses({required String pluginId}) async =>
+      (await getSessionStatuses()).statuses;
 
   @override
   Future<SessionStatusResponse> getSessionStatuses() async {

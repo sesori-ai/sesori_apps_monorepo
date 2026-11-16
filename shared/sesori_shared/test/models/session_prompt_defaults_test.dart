@@ -92,6 +92,7 @@ void main() {
           ),
         ),
         scheduledTask: null,
+        interruption: null,
       );
 
       final json = session.toJson();

@@ -35,6 +35,7 @@ const _session = Session(
   branchName: null,
   lastUserActivityAt: null,
   scheduledTask: null,
+  interruption: null,
 );
 
 void main() {
