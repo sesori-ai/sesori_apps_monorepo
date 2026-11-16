@@ -3645,7 +3645,10 @@ void main() {
     await settle();
     expect(find.text("Working…"), findsNothing);
 
+    // Once the stream ends, Working waits out a short grace before it returns.
     harnessKey.harness.clearStreamingText();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
     await settle();
     expect(find.text("Working…"), findsOneWidget);
 
@@ -3659,6 +3662,68 @@ void main() {
       ..setRetryErrorMessage("Rate limited");
     await settle();
     expect(find.text("Working…"), findsNothing);
+  });
+
+  group("a streamed reply that ends", () {
+    final prompt = _message(messageId: "prompt", role: "user", text: "Write a story", createdAtMs: 100);
+    MessageWithParts reply({required String text}) =>
+        _message(messageId: "reply", role: "assistant", text: text, createdAtMs: 200);
+
+    /// Streams the reply while the session works, then installs its final
+    /// part, which ends the stream with the session still busy.
+    Future<_SessionDetailMessageListHarnessState> pumpStreamEnded(WidgetTester tester) async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: [
+          prompt,
+          reply(text: ""),
+        ],
+      );
+      harness
+        ..setBusy(true)
+        ..updateStreamingText(partId: "reply-part", text: "Once upon");
+      await tester.pumpAndSettle();
+      expect(find.byType(TranscriptWorkingRow), findsNothing, reason: "streaming text already shows progress");
+      harness
+        ..replaceMessages([prompt, reply(text: "Once upon a time")])
+        ..clearStreamingText();
+      await tester.pump();
+      return harness;
+    }
+
+    testWidgets("keeps Working… away, and the rows still, when idle lands just after", (tester) async {
+      final harness = await pumpStreamEnded(tester);
+      final top = tester.getTopLeft(find.text("Write a story")).dy;
+      void expectStill(String reason) {
+        expect(find.byType(TranscriptWorkingRow), findsNothing, reason: reason);
+        expect(tester.getTopLeft(find.text("Write a story")).dy, moreOrLessEquals(top, epsilon: 0.01), reason: reason);
+      }
+
+      // The harness reports idle about 50 ms after its stream ends.
+      for (var ms = 16; ms <= 64; ms += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expectStill("$ms ms after the stream ended");
+      }
+      harness.setBusy(false);
+      for (var ms = 0; ms <= 600; ms += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expectStill("$ms ms after idle");
+      }
+    });
+
+    testWidgets("brings Working… back once a real gap outlasts the grace", (tester) async {
+      await pumpStreamEnded(tester);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(TranscriptWorkingRow), findsNothing, reason: "a short gap may be the idle on its way");
+
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        find.byType(TranscriptWorkingRow),
+        findsOneWidget,
+        reason: "the session still works with nothing else showing it",
+      );
+    });
   });
 
   testWidgets("a running compaction ticks in its own row instead of Working…, then settles in place", (tester) async {
@@ -3916,6 +3981,9 @@ void main() {
     harness
       ..replaceMessages([..._userMessages(count: 2), thoughtDone])
       ..clearStreamingText();
+    // Working waits out a short grace after a stream before it returns.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text("Working…"), findsOneWidget);
