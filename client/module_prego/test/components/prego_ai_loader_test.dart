@@ -426,6 +426,34 @@ void main() {
     expect(tester.hasRunningAnimations, isFalse);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
+  testWidgets("a turn that finishes before a replacement native view exists never calls the torn-down view", (
+    tester,
+  ) async {
+    const channel = MethodChannel("sesori/native-ai-loader/7");
+    final calls = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call.arguments);
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
+
+    await tester.pumpWidget(harness(const TickerMode(enabled: true, child: PregoAiLoader())));
+    final loader = tester.state(find.byType(PregoAiLoader));
+    (tester.widget<AppKitView>(find.byType(AppKitView)).onPlatformViewCreated ??
+        fail("the native view has no creation callback"))(7);
+    await tester.pump();
+    // A covering route tears the native view down.
+    await tester.pumpWidget(harness(const TickerMode(enabled: false, child: PregoAiLoader())));
+    expect(find.byType(AppKitView), findsNothing);
+    // The row comes back and finishes before its new view reports creation.
+    await tester.pumpWidget(harness(const TickerMode(enabled: true, child: PregoAiLoader(animate: false))));
+    await tester.pump();
+
+    expect(tester.state(find.byType(PregoAiLoader)), same(loader));
+    expect(calls, [true]);
+    expect((tester.widget<AppKitView>(find.byType(AppKitView)).creationParams as Map)["loading"], isFalse);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   group("native rotation", () {
     final expectedParams = <String, Object>{
       "solid": PregoColorsLight.textPrimaryOnBrand.toARGB32(),
