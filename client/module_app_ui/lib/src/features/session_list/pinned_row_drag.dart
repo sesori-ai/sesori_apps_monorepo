@@ -91,9 +91,9 @@ final class PinnedRowDragTracker({
   /// infinite while the built ones end above it, and null while none is
   /// built.
   double? pinnedBottom() {
-    final boxes = [for (final sessionId in _rows.keys) ?_box(sessionId: sessionId)];
+    final boxes = [for (final sessionId in _shown) ?_box(sessionId: sessionId)];
     if (boxes.isEmpty) return null;
-    if (_shown.isNotEmpty && _box(sessionId: _shown.last) == null) return double.infinity;
+    if (_box(sessionId: _shown.last) == null) return double.infinity;
     return boxes.map((box) => box.localToGlobal(Offset(0, box.size.height)).dy).reduce(math.max);
   }
 
@@ -793,6 +793,11 @@ final class RenderFloatAt({
     result.add(BoxHitTestEntry(this, position));
     return true;
   }
+
+  /// A copy is only drawn: what assistive technology reads stays the list's
+  /// own row or heading, not a duplicate wherever the copy may stand.
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {}
 
   /// The child stands where it paints, for its taps and for whoever locates it.
   @override
