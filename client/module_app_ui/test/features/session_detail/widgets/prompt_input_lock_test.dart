@@ -7,7 +7,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../helpers/composer_attachment_dispatcher_fixture.dart";
 
-const _note = "Sending your edit. You can type again in a moment.";
+const _note = "Your edit is on its way. You can type again in a moment.";
 
 class _NoOpImageClipboard() implements ImageClipboard {
   @override

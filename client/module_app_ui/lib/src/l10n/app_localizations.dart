@@ -5512,7 +5512,7 @@ abstract class AppLocalizations {
   /// Alert shown when the user taps Continue under an interrupted turn while an edited message is stopping the session or being sent.
   ///
   /// In en, this message translates to:
-  /// **'Sending your edit. Continue in a moment.'**
+  /// **'Your edit is on its way. Continue in a moment.'**
   String get sessionDetailContinueEditSending;
 
   /// Alert shown when the user taps Continue under an interrupted turn just as the session started working.
@@ -5692,7 +5692,7 @@ abstract class AppLocalizations {
   /// Note shown when the user taps or types in the composer while an edited message is stopping the session or being sent.
   ///
   /// In en, this message translates to:
-  /// **'Sending your edit. You can type again in a moment.'**
+  /// **'Your edit is on its way. You can type again in a moment.'**
   String get sessionDetailEditSendingLock;
 
   /// Alert shown when an edit named a model or agent the session no longer offers; the options were refreshed.
