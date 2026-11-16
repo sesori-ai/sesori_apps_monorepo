@@ -120,7 +120,9 @@ reconnect or restart.
   last reply, or the card or its reply gone.
 - A replay under fresh ids on every load (OMP) still matches each live turn
   once on a later re-import, including a turn sent after an earlier import:
-  the earlier imported rows around it shape its match. A live reply the replay
+  the earlier imported rows around it shape its match. A turn whose content and
+  neighbors repeat elsewhere in the session has no unique match without
+  matching creation times, so its live rows are kept. A live reply the replay
   never holds (OMP drops a reply whose model call failed) stays after its own
   turn and does not separate the replayed turns around it. Failure signals
   after a reload or forced re-import: a live prompt shown twice, or all
