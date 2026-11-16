@@ -139,7 +139,7 @@ class const _WhenSheet() extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SessionListHeading(heading: loc.scheduledTaskMissedHeading, isFirst: false),
+                    SessionListHeading(heading: loc.scheduledTaskMissedHeading, isFirst: false, action: null),
                     PregoGroupedRows(
                       children: [
                         _ChoiceRow(
@@ -314,7 +314,7 @@ class const _EachRunSheet() extends StatelessWidget {
             null => null,
           },
         ),
-        SessionListHeading(heading: loc.scheduledTaskApprovalsHeading, isFirst: false),
+        SessionListHeading(heading: loc.scheduledTaskApprovalsHeading, isFirst: false, action: null),
         PregoGroupedRows(
           children: [
             _ChoiceRow(

@@ -3811,6 +3811,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t save the pinned order'**
   String get sessionListPinMoveFailed;
 
+  /// Text button at the end of the Pinned heading on a phone that shows drag handles for reordering the pinned sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get sessionListPinnedEdit;
+
+  /// Text button at the end of the Pinned heading that ends reordering the pinned sessions and hides the drag handles.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get sessionListPinnedEditDone;
+
   /// Session menu entry that opens the sheet for sending this session's work into another session.
   ///
   /// In en, this message translates to:

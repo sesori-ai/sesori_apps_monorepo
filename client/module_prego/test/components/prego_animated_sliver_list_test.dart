@@ -103,6 +103,30 @@ void main() {
     expect([topOf("11"), topOf("10"), topOf("12")], [tops["10"], tops["11"], tops["12"]]);
   });
 
+  testWidgets("in a scrolled list, a row arriving among sliding rows that moved the first visible one opens", (
+    tester,
+  ) async {
+    bool slides(String item) => true;
+    final rows = [for (var at = 0; at < 30; at++) "$at"];
+    await tester.pumpWidget(_harness(rows, slidesWhenMoved: slides));
+    tester.state<ScrollableState>(find.byType(Scrollable)).position.jumpTo(10.5 * _rowHeight);
+    await tester.pump();
+
+    // The first visible row and the next swap, and a row arrives between them.
+    await tester.pumpWidget(
+      _harness(
+        [...rows.take(10), "11", "new", "10", ...rows.skip(12)],
+        slidesWhenMoved: slides,
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final opening = tester.getSize(
+      find.ancestor(of: find.byKey(const ValueKey("row-new")), matching: find.byType(SizeTransition)),
+    );
+    expect(opening.height, inExclusiveRange(0, _rowHeight));
+  });
+
   testWidgets("removed row closes while the following row moves into place", (tester) async {
     await tester.pumpWidget(_harness(["A", "B"]));
     expect(tester.getTopLeft(find.byKey(const ValueKey("row-B"))).dy, _rowHeight);

@@ -653,7 +653,8 @@ state.
   this computer to pin sessions"; a failed pin or unpin says so.
   In the desktop sidebar a mouse drag reorders the pinned rows, under the All
   chip with no search typed, also within a project filter, where the row lands
-  below the pinned row it was dropped under. A press that moves lifts the row
+  below the pinned row it was dropped under, or first of all pinned rows when
+  dropped at the top. A press that moves lifts the row
   (slight scale and shadow) and it follows the pointer vertically, held within
   Pinned, while the other pinned rows slide to open its gap and show no hover
   or tooltip beneath it. On release it glides into the gap and nothing moves
@@ -664,6 +665,15 @@ state.
   edge, and the scroll eases to a stop once Pinned's end shows; the row stays
   under the pointer and the gap follows it through any scroll, including a
   wheel scroll mid-drag, and through rows built on the way.
+  On the phone, under the same conditions and with at least two pinned rows,
+  the Pinned heading ends with Edit. Edit turns into Done and fades a ≡ handle
+  in over each pinned row's time, moving nothing. Touching a handle lifts the
+  row at once with a light haptic, with the same lift, slide, glide, refusal
+  and edge scroll as the sidebar; the edge zones start below the glass bar
+  and above the home indicator. While editing, pinned rows neither open, swipe
+  nor show their long-press menu, and a finger on a row still scrolls the
+  list; other rows are untouched. Done, a search, a chip, too few pinned rows
+  or leaving the screen ends editing.
 - Above the active session list, on the phone and the sidebar alike, chips
   read All, Running and Unread with the bridge's counts under the project
   filter and the search, whatever chip is chosen. A chip narrows the loaded
@@ -923,6 +933,11 @@ beside each mark on both apps, with preserved swipe/menu actions and enlarged
 text.
 Verify running rows under Today keeping their place, awaiting-only date grouping,
 updated-time versus archive-time buckets, and missing-timestamp headings.
+For pinned reordering, drag with a mouse in the sidebar and with Edit's handles
+on an iPhone viewport, in All and in a project filter, scrolled and at the top:
+drop first, last and between, hold at each edge until Pinned's end shows, have
+the bridge refuse a move, and end editing with Done, a search, a chip and by
+unpinning down to one row. Watch for any row or heading that jumps.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
