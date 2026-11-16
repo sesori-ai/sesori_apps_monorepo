@@ -20,7 +20,7 @@ without cross-owner cancellation; exercise both start orders in the
 ## Runtime Target Coverage
 
 Targets audited on **2026-11-12**, covering all eleven registered harnesses; all eleven moved
-(DeepSeek with its owned adapter release `0.2.2`). Managed assets were independently downloaded and
+(DeepSeek with its owned adapter release `0.2.2`; since moved to `0.2.3`, see its row). Managed assets were independently downloaded and
 hashed: OpenCode 6, Antigravity 6, Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. npm integrity, GitHub digests,
 available checksum lists and the Antigravity registry's published archive hashes agree. Cursor
 hashes are locally computed, not publisher attestations. Direct-CLI targets (Claude, Hermes, Grok)
@@ -154,7 +154,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
   descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
   release (`>=0.1.5`) and then a managed release at or above that minimum,
-  preferring the pinned `0.2.2` target. An outdated explicit
+  preferring the pinned `0.2.3` target. An outdated explicit
   binary is rejected; an old or malformed PATH candidate falls through to managed
   selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
@@ -168,7 +168,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   0.1.4 verified that the bridge and native runtime survived atomic cancellation
   of an independently resumed child and its grandchild after #1379, and accepted
   a successful follow-up turn. That evidence does not requalify current managed
-  target 0.2.2 or cover setup selection, crash reconnect, idle suspension/reap,
+  target 0.2.3 or cover setup selection, crash reconnect, idle suspension/reap,
   bridge restart, desktop, or another platform.
 - Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
   `deepseek/*` adds catalog, detached history, rename, questions, bounded statuses,

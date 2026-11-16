@@ -36,7 +36,9 @@ All 11 `knownPlugins` entries in `bridge/app/lib/src/runtime/plugin_registry.dar
    skill corrections, then retire this plan. Fixes that need code get their own PRs inside this step:
    - 7.a Claude "Always" shown with nothing to save.
    - 7.b OpenCode 2.3.0 background sub-agent report rows in the parent session.
-   - 7.c OMP 18.21.0 busy-window docs and comments, plus the skill corrections below (this PR).
+   - 7.c OMP 18.21.0 busy-window docs and comments, plus the skill corrections below (#2744, merged).
+   - 7.d Claude "Always" on a file edit switches the session to `acceptEdits` (#2747, held for the owner's
+     indicator decision).
 
 ## Findings from step 7
 
@@ -56,7 +58,7 @@ Owner decisions:
 - OMP floor stays 17.2.13 (2026-11-16): 18.20.1 is too new to require, so both workarounds for the upstream
   bugs it fixes stay.
 - Claude "Always" on a file edit switches the session to `acceptEdits`, matching Claude Code's own terminal
-  (2026-11-16; step 7.d, stacked on #2743).
+  (2026-11-16; step 7.d).
 - Finished sub-agent rows stay compact: the answer stays one tap away in the child session, not shown inline in
   the parent chat (2026-11-16; no app change, #2745 ships as is).
 
@@ -65,7 +67,7 @@ Track only: OpenCode first-token timing, Copilot `--resume` marking sessions in 
 
 ## Verification still needed (final follow-ups)
 
-- Authenticated lifecycles for Copilot, Cursor, OMP, Antigravity (signed-in model list) and Grok.
+- Authenticated lifecycles for Copilot, Cursor, OMP, Antigravity (signed-in model list), Grok and DeepSeek.
 - Native checks on hosts other than macOS arm64.
 
 ## Skill corrections
