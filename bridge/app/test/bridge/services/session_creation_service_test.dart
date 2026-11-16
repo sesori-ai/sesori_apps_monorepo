@@ -478,6 +478,27 @@ void main() {
       expect(plugin.lastCreateUserVisibleText, "Build it");
     });
 
+    test("a scheduled run whose task was deleted meanwhile still binds, as an ordinary session", () async {
+      final created = await service.createScheduledRunSession(
+        request: const CreateSessionRequest(
+          commandSource: null,
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: "Build it")],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+        scheduledRun: (taskId: "stk_deleted", approvalOverride: SessionApprovalMode.yolo),
+      );
+
+      final stored = await db.sessionDao.getSession(sessionId: created.id) ?? fail("missing stored session");
+      expect(stored.scheduledTaskId, isNull);
+      expect(stored.approvalOverride, SessionApprovalMode.yolo);
+    });
+
     test("returns without waiting for defaults persistence", () async {
       final gatedDefaultsRepository = _GatedNewSessionDefaultsRepository();
       final localService = SessionCreationService(

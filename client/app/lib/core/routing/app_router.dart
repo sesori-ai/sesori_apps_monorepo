@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoPage;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
@@ -626,6 +628,8 @@ ShellRoute buildArchivedSessionsRoute() {
             onSessionArchived: null,
             onSessionDeleted: closeDeletedArchivedSessionRoute,
             onSessionMarkedUnread: null,
+            openSession: openSentSession,
+            createSessionSearch: createSendSessionSearch,
           ),
           createActions: ({required window}) => createSessionActionsCubit(locator: getIt, window: window),
         ),
@@ -682,6 +686,33 @@ void closeDeletedArchivedSessionRoute({required BuildContext context, required S
   // ignore: no_slop_linter/avoid_navigator_of, pop owned audit pages without replacing the root stack
   Navigator.of(context).popUntil((route) => route.isFirst);
 }
+
+/// Opens the session a send went into, from an alert that can outlive the
+/// page that sent.
+void openSentSession({required String projectId, required String projectName, required Session session}) {
+  final route = AppRoute.sessionDetail(
+    projectId: projectId,
+    projectName: projectName,
+    sessionId: session.id,
+    sessionTitle: session.title,
+    readOnly: false,
+    fromLaunch: false,
+  );
+  // ignore: no_slop_linter/avoid_raw_go_router, an alert's action has no route-local context
+  unawaited(appRouter.push<void>(route.buildPath()));
+}
+
+/// The send sheet's session search.
+SessionSearchCubit createSendSessionSearch({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) => createSessionSearchCubit(
+  locator: getIt,
+  window: window,
+  projectInventory: projectInventory,
+  excludedSessionId: excludedSessionId,
+);
 
 HarnessSettingsChrome _harnessChrome({required HarnessSettingsPresentation presentation}) => switch (presentation) {
   HarnessSettingsPresentation.modal => HarnessSettingsChrome.modal,

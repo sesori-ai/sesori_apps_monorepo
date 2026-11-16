@@ -16,6 +16,7 @@ import "repositories/mappers/grok_session_replay_collector.dart";
 import "services/grok_session_options_service.dart";
 import "services/grok_session_service.dart";
 import "trackers/grok_catalog_tracker.dart";
+import "trackers/grok_compaction_tracker.dart";
 
 /// Grok Build backend over ACP v1 with plugin-local legacy model selection.
 class GrokPlugin._({
@@ -33,6 +34,7 @@ class GrokPlugin._({
     required String launchDirectory,
     required Map<String, String> environment,
     required AcpProcessFactory processFactory,
+    required ServerClock clock,
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
@@ -71,6 +73,7 @@ class GrokPlugin._({
         pluginId: GrokPluginIdentity.id,
         configurationTracker: configurationTracker,
         childSessions: childSessionTracker,
+        compactionTracker: GrokCompactionTracker(clock: clock),
       ),
       commandTracker: commandTracker,
       processFactory: processFactory,

@@ -6,16 +6,17 @@
 | 2 Transcript Markdown and file store | Done | #2588 |
 | 3 Bridge send flow | Done | #2600 |
 | 4 Handoff marker in the bridge | Done | #2608 |
-| 5 Claude read rules (transcripts and uploads) | In PR | #2613 |
-| 6 Busy-prompt declaration | In PR | #2589 |
-| 7 Client send flow | Not started | |
+| 5 Claude read rules (transcripts and uploads) | Done | #2613 |
+| 6 Busy-prompt declaration | Done | #2589 |
+| 7 Client send and stop pipeline | In PR | #2622 |
+| 7.a Send from the session menu | In PR | #2623 |
 | 8 Handoff marker and card in the chats | Not started | |
 | 9 Archive the source after sending | Not started | |
 | 10 Analytics | Not started | |
 | 11 Reconcile docs and harness rows | Not started | |
 | 12 Verify and retire | Not started | |
 
-Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 8←4; 9←7; 10←7; 11←5,8,9,10; 12←11.
+Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 7.a←7; 8←4; 9←7.a; 10←7; 11←5,8,9,10; 12←11.
 
 ## Product questions
 
@@ -31,6 +32,10 @@ All answered (rounds 1–3, 2026-11-14 and 2026-11-15).
 - 2026-11-15: round 2 and 3 answers applied: stay in the source (S1), running ACP targets allowed with a label (S2),
   bridge-stamped handoff marker with a source marker and a target card (S3, Q2), Claude read rule for transcripts and
   uploads (S4), archive switch on by default and remembered (Q3). Series grows from 8 to 12 PRs.
+- 2026-11-15: step 7 measured about 1,680 lines, so it split into step 7 (the `module_core` pipeline) and step 7.a (the
+  sheet, picker, menu entry and alerts), as the plan allows. Series total 13.
+- 2026-11-15: 7.a ships the archive switch inert, on by default. Step 9 makes it act; if step 9 misses the release that
+  carries 7.a, hide the switch in that release.
 
 ## Review record
 

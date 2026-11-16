@@ -4,6 +4,7 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show Session;
 import "package:theme_prego/module_prego.dart";
 
 import "../../features/auth_gate/auth_gate.dart";
@@ -41,6 +42,8 @@ const _desktopSessionActions = SessionListActionDispatcher(
   onSessionArchived: _closeDeletedSessionRoute,
   onSessionDeleted: _closeDeletedSessionRoute,
   onSessionMarkedUnread: null,
+  openSession: _openSentSession,
+  createSessionSearch: _createSendSessionSearch,
 );
 
 /// One routed main pane beside the sidebar, under a single authenticated shell.
@@ -157,6 +160,8 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               onSessionArchived: null,
               onSessionDeleted: null,
               onSessionMarkedUnread: null,
+              openSession: _openSentSession,
+              createSessionSearch: _createSendSessionSearch,
             ),
             createActions: ({required window}) => createSessionActionsCubit(locator: getIt, window: window),
           ),
@@ -366,6 +371,33 @@ void _closeDeletedSessionRoute({required BuildContext context, required String s
   if (routeState.pathParameters[sessionIdPathParam] != sessionId) return;
   _goRoute(context: context, route: const AppRoute.home());
 }
+
+/// Opens the session a send went into, from an alert that can outlive the
+/// page that sent.
+void _openSentSession({required String projectId, required String projectName, required Session session}) {
+  final route = AppRoute.sessionDetail(
+    projectId: projectId,
+    projectName: projectName,
+    sessionId: session.id,
+    sessionTitle: session.title,
+    readOnly: false,
+    fromLaunch: false,
+  );
+  // ignore: no_slop_linter/avoid_raw_go_router, an alert's action has no route-local context
+  desktopRouter.go(route.buildPath());
+}
+
+/// The send sheet's session search.
+SessionSearchCubit _createSendSessionSearch({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) => createSessionSearchCubit(
+  locator: getIt,
+  window: window,
+  projectInventory: projectInventory,
+  excludedSessionId: excludedSessionId,
+);
 
 void _goDesktopHome() {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
