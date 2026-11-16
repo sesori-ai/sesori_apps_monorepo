@@ -368,6 +368,7 @@ Session adaptiveTestSession({
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    forkedFrom: null,
   );
 }
 

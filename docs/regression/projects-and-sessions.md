@@ -701,6 +701,8 @@ state.
 - A newly committed session can list before generated metadata. A later generated
   title reuses `session.updated`; lists and detail adopt the durable session facts without marking unseen or moving
   the worktree directory.
+- A fork lists as an ordinary root session in its origin's project; its title and `Session.forkedFrom` follow
+  session-edit-and-fork.md.
 - A Claude root session imported from its transcript is titled by its newest
   `/rename` (`custom-title`), else the CLI's newest `ai-title`, else the first
   prompt the user typed, on one line and cut to 100 characters with "…".

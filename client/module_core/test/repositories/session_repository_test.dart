@@ -297,10 +297,10 @@ void main() {
       );
     });
 
-    test("a plain 4xx proves nothing ran, while a 5xx might have", () async {
+    test("only an explained refusal proves nothing ran; any other error stays retryable", () async {
       expect(
         await rewindAnswering(ErrorResponse(NonSuccessCodeError(errorCode: 400, rawErrorString: "empty parts"))),
-        isA<SessionRewindRejected>().having((result) => result.reason, "reason", isNull),
+        isA<SessionRewindFailed>(),
       );
       expect(
         await rewindAnswering(ErrorResponse(NonSuccessCodeError(errorCode: 502, rawErrorString: null))),

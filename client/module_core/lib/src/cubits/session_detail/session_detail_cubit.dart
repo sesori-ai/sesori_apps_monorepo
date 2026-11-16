@@ -3344,6 +3344,7 @@ class SessionDetailCubit(
           previous?.held ??
           (
             draft: _composerDraft,
+            restoredPrefix: _restoredDraftPrefix,
             attachments: _restoredAttachments.isEmpty ? _composerAttachments : _restoredAttachments,
             command: current.stagedCommand,
           ),
@@ -3360,7 +3361,7 @@ class SessionDetailCubit(
       leftOutCount: restored.leftOutCount,
       held: edit.held,
     );
-    _fillComposer(draft: restored.draft, attachments: restored.attachments, stagedCommand: null);
+    _fillComposer(draft: restored.draft, restoredPrefix: "", attachments: restored.attachments, stagedCommand: null);
   }
 
   /// Ends the edit without sending it.
@@ -3378,16 +3379,7 @@ class SessionDetailCubit(
     final edit = _edit;
     final current = state;
     if (edit == null || edit.phase != SessionEditPhase.composing || current is! SessionDetailLoaded) return;
-    if (_refuseComposerInput(action: "resend an edit") || _refuseWhenArchived(action: "resend an edit")) return;
-    if (text.trim().isEmpty && attachments.isEmpty) return;
-    if (!canDeliverComposerAttachments(
-      attachments: attachments,
-      inlineImages: current.supportsPromptAttachments,
-      fileUploads: current.supportsFileUploads,
-    )) {
-      logw("Refused an edit with ${attachments.length} attachment(s) because plugin or bridge support is unavailable");
-      return;
-    }
+    if (!_editCanGo(current: current, text: text, attachments: attachments)) return;
     if (current.sessionStatus is! SessionStatusIdle) {
       _noticeStream.add(const SessionDetailEditBusy());
       return;
@@ -3408,14 +3400,38 @@ class SessionDetailCubit(
     final outcome = await abort(subAgents: SessionAbortSubAgentPolicy.stop);
     final stopped = outcome is SessionAbortAccepted && await _becomesIdle();
     final latest = _edit;
+    final current = state;
     // Cancelled while it stopped.
-    if (isClosed || latest == null || latest.promptId != edit.promptId) return;
+    if (isClosed || latest == null || latest.promptId != edit.promptId || current is! SessionDetailLoaded) return;
     if (!stopped) {
       _setEdit(edit: latest.withPhase(phase: SessionEditPhase.composing));
       _noticeStream.add(const SessionDetailEditStopFailed());
       return;
     }
+    if (!_editCanGo(current: current, text: text, attachments: attachments)) {
+      _setEdit(edit: latest.withPhase(phase: SessionEditPhase.composing));
+      return;
+    }
     await _sendEdit(edit: latest, text: text, attachments: attachments);
+  }
+
+  /// Whether an edit holding [text] and [attachments] may be sent now.
+  bool _editCanGo({
+    required SessionDetailLoaded current,
+    required String text,
+    required List<ComposerAttachment> attachments,
+  }) {
+    if (_refuseComposerInput(action: "resend an edit") || _refuseWhenArchived(action: "resend an edit")) return false;
+    if (text.trim().isEmpty && attachments.isEmpty) return false;
+    if (!canDeliverComposerAttachments(
+      attachments: attachments,
+      inlineImages: current.supportsPromptAttachments,
+      fileUploads: current.supportsFileUploads,
+    )) {
+      logw("Refused an edit with ${attachments.length} attachment(s) because plugin or bridge support is unavailable");
+      return false;
+    }
+    return true;
   }
 
   Future<bool> _becomesIdle() async {
@@ -3454,7 +3470,7 @@ class SessionDetailCubit(
       },
       fastMode: current.runsFastMode,
     );
-    if (isClosed) return;
+    // Reported even when the screen closed meanwhile, as the edit ran.
     if (current.pluginId case final pluginId?) {
       _reportProductEvent(
         event: ProductAnalyticsEvent.sessionMessageEdited(
@@ -3469,12 +3485,15 @@ class SessionDetailCubit(
         ),
       );
     }
+    // A return during the request may have changed what the edit holds.
+    final latest = _edit;
+    if (isClosed || latest == null || latest.promptId != edit.promptId) return;
     if (result is SessionRewindAccepted) {
-      _endEdit(edit: edit);
+      _endEdit(edit: latest);
       return;
     }
     // The composer still holds the edit, to change or resend.
-    _setEdit(edit: edit.withPhase(phase: SessionEditPhase.composing));
+    _setEdit(edit: latest.withPhase(phase: SessionEditPhase.composing));
     switch (result) {
       case SessionRewindAccepted():
         break;
@@ -3494,17 +3513,24 @@ class SessionDetailCubit(
   /// Gives the composer back what it held before the edit.
   void _endEdit({required _MessageEdit edit}) {
     _edit = null;
-    _fillComposer(draft: edit.held.draft, attachments: edit.held.attachments, stagedCommand: edit.held.command);
+    final held = edit.held;
+    _fillComposer(
+      draft: held.draft,
+      restoredPrefix: held.restoredPrefix,
+      attachments: held.attachments,
+      stagedCommand: held.command,
+    );
   }
 
   /// Replaces what the composer holds, once, as a stop's return does.
   void _fillComposer({
     required ComposerDraft draft,
+    required String restoredPrefix,
     required List<ComposerAttachment> attachments,
     required CommandInfo? stagedCommand,
   }) {
     _composerDraft = draft;
-    _restoredDraftPrefix = "";
+    _restoredDraftPrefix = restoredPrefix;
     _restoredAttachments = attachments;
     _composerRestorations++;
     final current = state;
@@ -4156,11 +4182,15 @@ class SessionDetailCubit(
     if (_edit case final edit?) {
       final held = edit.held;
       final restoration = switch (held.command) {
-        null => _draftCalculator.restoreParagraphs(held: held.draft, restoredPrefix: "", restored: restored),
+        null => _draftCalculator.restoreParagraphs(
+          held: held.draft,
+          restoredPrefix: held.restoredPrefix,
+          restored: restored,
+        ),
         CommandInfo(:final name) => _draftCalculator.restoreParagraphsUnderCommand(
           command: name,
           args: held.draft,
-          restoredPrefix: "",
+          restoredPrefix: held.restoredPrefix,
           restored: restored,
         ),
       };
@@ -4168,6 +4198,7 @@ class SessionDetailCubit(
       _edit = edit.withHeld(
         held: (
           draft: restoration.draft,
+          restoredPrefix: restoration.restoredPrefix,
           attachments: [...held.attachments, for (final prompt in unsent) ...prompt.attachments],
           command: null,
         ),
@@ -4391,7 +4422,14 @@ class SessionDetailCubit(
 const Duration _editStopTimeout = Duration(seconds: 15);
 
 /// What the composer held when an edit began.
-typedef _HeldComposer = ({ComposerDraft draft, List<ComposerAttachment> attachments, CommandInfo? command});
+/// What the composer held before an edit. [restoredPrefix] is what earlier
+/// returns put ahead of the draft, so later ones still go after them.
+typedef _HeldComposer = ({
+  ComposerDraft draft,
+  String restoredPrefix,
+  List<ComposerAttachment> attachments,
+  CommandInfo? command,
+});
 
 /// An edit of an earlier message the composer holds.
 final class const _MessageEdit({

@@ -227,6 +227,8 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         variant: variant,
         fastMode: fastMode,
       ),
+      // A first-message edit creates a new harness session.
+      timeout: _createTimeout,
     );
   }
 

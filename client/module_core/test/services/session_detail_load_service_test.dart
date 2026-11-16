@@ -43,6 +43,7 @@ void main() {
             mcpScopes: null,
             supportsPromptAttachments: true,
             failureReason: null,
+            sessionBranching: {SessionBranchingOperation.rewind},
           ),
         ],
       );
@@ -77,6 +78,7 @@ void main() {
       expect(loaded.snapshot.canonicalSessionTitle, "Canonical title");
       expect(loaded.snapshot.isArchived, isFalse);
       expect(loaded.snapshot.supportsPromptAttachments, isTrue);
+      expect(loaded.snapshot.supportsRewind, isTrue);
       verify(() => pluginRepository.listPlugins()).called(1);
       verify(
         () => repository.loadSessionOptions(
@@ -227,6 +229,7 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       expect((result as SessionDetailLoadResultLoaded).snapshot.supportsPromptAttachments, isNull);
       expect(result.snapshot.supportsFileUploads, isNull);
+      expect(result.snapshot.supportsRewind, isFalse);
       expect(result.snapshot.offersSessionMcp, isTrue);
     });
 
@@ -396,6 +399,7 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
       expect(snapshot.isArchived, isTrue);
+      expect(snapshot.supportsRewind, isFalse);
       expect(snapshot.agents, hasLength(1));
       expect(snapshot.providerData?.items, hasLength(1));
       expect(snapshot.supportsPromptAttachments, isNull);

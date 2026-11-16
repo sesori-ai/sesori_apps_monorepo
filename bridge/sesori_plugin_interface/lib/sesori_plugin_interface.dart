@@ -84,6 +84,7 @@ export "src/process/process_user.dart";
 export "src/process/server_clock.dart";
 export "src/process/signal_result.dart";
 export "src/session_external_actions_plugin_api.dart";
+export "src/session_fork_plugin_api.dart";
 export "src/session_rewind_plugin_api.dart";
 export "src/side_question_plugin_api.dart";
 export "src/terminal_color_validator.dart";

@@ -517,8 +517,11 @@ class SessionRepository({
           SessionBranchErrorResponse(code: SessionBranchErrorCode.refused, :final message) => SessionRewindRejected(
             reason: message,
           ),
-          SessionBranchErrorResponse(code: SessionBranchErrorCode.nothingToFork || SessionBranchErrorCode.unknown) ||
-          null => const SessionRewindRejected(reason: null),
+          SessionBranchErrorResponse(code: SessionBranchErrorCode.nothingToFork || SessionBranchErrorCode.unknown) =>
+            const SessionRewindRejected(reason: null),
+          // Without a refusal the bridge may have rewound before failing, so
+          // this stays a failure the same prompt id can retry.
+          null => SessionRewindFailed(error: error),
         },
       ErrorResponse(error: NotAuthenticatedError()) => const SessionRewindRejected(reason: null),
       ErrorResponse(:final error) => SessionRewindFailed(error: error),
@@ -529,8 +532,8 @@ class SessionRepository({
     if (error.rawErrorString case final raw?) {
       try {
         return SessionBranchErrorResponse.fromJson(jsonDecodeMap(raw));
-      } on Object {
-        // A plain-text error carries no structured refusal.
+      } on Object catch (parseError, stackTrace) {
+        logw("Session branch error carried no structured refusal", parseError, stackTrace);
       }
     }
     return null;

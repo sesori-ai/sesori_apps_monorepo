@@ -1561,7 +1561,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       editing: widget.editingMessageId == message.info.id,
       onEdit: switch (widget.onEditMessage) {
         null => null,
-        // The running turn offers no edit until it finishes.
+        // The running turn offers no edit until it finishes, and the message
+        // being edited none over the changes the composer holds.
+        _ when widget.editingMessageId == message.info.id => null,
         _ when widget.isBusy && _turns.inNewestTurn(messageId: message.info.id) => null,
         final onEdit => () => onEdit(
           message: message,
