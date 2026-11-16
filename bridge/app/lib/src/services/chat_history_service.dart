@@ -1239,12 +1239,14 @@ class ChatHistoryService({
     );
   }
 
-  /// Fills the store from the backend's own transcript.
+  /// Fills the store from the backend's transcript as it stands after this
+  /// call. Failures propagate so a cache miss never looks like an empty thread.
   ///
-  /// Concurrent callers for the same session await one fetch. Failures
-  /// propagate so a cache miss never looks like an empty thread.
+  /// Unlike a read, this never joins a backfill already running: that one may
+  /// have fetched before the change the caller waited for reached the backend,
+  /// such as a send's summary finishing mid-fetch. The fetch queues behind it.
   Future<void> backfillSession({required String sessionId}) async {
-    await _backfillSessionForRead(sessionId: sessionId);
+    await _backfillSession(sessionId: sessionId);
   }
 
   /// Turns the stored `sent` handoff of the user message [messageId] into its

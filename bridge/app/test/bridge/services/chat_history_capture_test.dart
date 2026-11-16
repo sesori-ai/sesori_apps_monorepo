@@ -2707,18 +2707,6 @@ void main() {
       expect(stored.single.parts, isEmpty, reason: "the removal is newer than the fetched transcript");
     });
 
-    test("concurrent reads share one fetch", () async {
-      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
-      final history = createTestChatHistory(sessionRepository: repository);
-
-      await Future.wait([
-        history.service.backfillSession(sessionId: "ses_a"),
-        history.service.backfillSession(sessionId: "ses_a"),
-      ]);
-
-      expect(repository.fetchCount, 1);
-    });
-
     test("a failed fetch propagates and leaves the session unsynced", () async {
       final repository = _FakeSessionRepository(transcript: const [], error: StateError("backend down"));
       final history = createTestChatHistory(sessionRepository: repository);
