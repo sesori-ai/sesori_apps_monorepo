@@ -26,42 +26,50 @@ class const ForkedFromRow({
     final title = origin.title?.trim();
     final label = title == null || title.isEmpty ? loc.transcriptForkedFromUntitled : loc.transcriptForkedFrom(title);
     final sessionId = origin.sessionId;
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox.square(
+          dimension: TranscriptLiveSparkle.size,
+          child: Icon(TablerRegular.git_fork, size: PregoIconSize.sm, color: color),
+        ),
+        const SizedBox(width: PregoSpacing.sm),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: prego.textTheme.textSm.regular.copyWith(color: color),
+          ),
+        ),
+        if (sessionId != null) Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: color),
+      ],
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
       child: SizedBox(
         height: height,
         child: Center(
-          child: TextButton(
-            key: const ValueKey("forked-from-row"),
-            onPressed: sessionId == null ? null : () => onOpenOrigin(sessionId: sessionId, sessionTitle: origin.title),
-            style: TextButton.styleFrom(
-              foregroundColor: color,
-              disabledForegroundColor: color,
+          // A deleted origin's line is plain text, not a dimmed button.
+          child: switch (sessionId) {
+            null => Padding(
+              key: const ValueKey("forked-from-row"),
               padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
-              minimumSize: const Size(44, height),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
+              child: content,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox.square(
-                  dimension: TranscriptLiveSparkle.size,
-                  child: Icon(TablerRegular.git_fork, size: PregoIconSize.sm, color: color),
-                ),
-                const SizedBox(width: PregoSpacing.sm),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textSm.regular.copyWith(color: color),
-                  ),
-                ),
-                if (sessionId != null) Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: color),
-              ],
+            final sessionId => TextButton(
+              key: const ValueKey("forked-from-row"),
+              onPressed: () => onOpenOrigin(sessionId: sessionId, sessionTitle: origin.title),
+              style: TextButton.styleFrom(
+                foregroundColor: color,
+                padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs),
+                minimumSize: const Size(44, height),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
+              ),
+              child: content,
             ),
-          ),
+          },
         ),
       ),
     );

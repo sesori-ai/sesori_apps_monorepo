@@ -43,10 +43,15 @@ void main() {
   void returnToOrigin(WidgetTester tester) => returnToSessionRoute(
     context: tester.element(find.byKey(_forkKey)),
     projectId: "p1",
-    projectName: null,
     sessionId: "origin",
-    sessionTitle: "Origin",
-    readOnly: false,
+    route: const AppRoute.sessionDetail(
+      projectId: "p1",
+      projectName: null,
+      sessionId: "origin",
+      sessionTitle: "Origin",
+      readOnly: false,
+      fromLaunch: false,
+    ),
   );
 
   testWidgets("a fork opened over its origin goes back to it, so the pages never pile up", (tester) async {

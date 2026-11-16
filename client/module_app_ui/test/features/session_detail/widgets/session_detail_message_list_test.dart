@@ -7545,7 +7545,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text("Forked from an untitled session"), findsOneWidget);
-      expect(tester.widget<TextButton>(forkedFromLine).onPressed, isNull);
+      expect(tester.widget(forkedFromLine), isNot(isA<TextButton>()), reason: "Plain text, not a dimmed button.");
       await tester.tap(forkedFromLine, warnIfMissed: false);
       await tester.pump();
       expect(opened, isEmpty);

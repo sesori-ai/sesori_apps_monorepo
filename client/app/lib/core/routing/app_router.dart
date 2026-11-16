@@ -694,32 +694,25 @@ void closeDeletedArchivedSessionRoute({required BuildContext context, required S
 
 /// Goes back to the session a page came from, such as a fork's origin: back
 /// when its page, live or archived, is the one below, so going there and back
-/// never piles pages up; otherwise its page opens over this one.
+/// never piles pages up; otherwise [route], that session's page, opens over
+/// this one.
 void returnToSessionRoute({
   required BuildContext context,
   required String projectId,
-  required String? projectName,
   required String sessionId,
-  required String? sessionTitle,
-  required bool readOnly,
+  required AppRoute route,
 }) {
-  final route = AppRoute.sessionDetail(
-    projectId: projectId,
-    projectName: projectName,
-    sessionId: sessionId,
-    sessionTitle: sessionTitle,
-    readOnly: readOnly,
-    fromLaunch: false,
-  );
   final locations = {
     for (final candidate in [
-      route,
-      AppRoute.archivedSessionDetail(
+      AppRoute.sessionDetail(
         projectId: projectId,
-        projectName: projectName,
+        projectName: null,
         sessionId: sessionId,
-        sessionTitle: sessionTitle,
+        sessionTitle: null,
+        readOnly: false,
+        fromLaunch: false,
       ),
+      AppRoute.archivedSessionDetail(projectId: projectId, projectName: null, sessionId: sessionId, sessionTitle: null),
     ])
       Uri.parse(candidate.buildPath()).path,
   };
