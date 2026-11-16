@@ -105,6 +105,8 @@ void main() {
       catalogTitle: "Observed title",
       approvalOverride: null,
       pinned: false,
+      forkedFromSessionId: null,
+      forkedFromTitle: null,
       scheduledTaskId: null,
     );
 
@@ -154,6 +156,8 @@ void main() {
       catalogTitle: null,
       approvalOverride: null,
       pinned: false,
+      forkedFromSessionId: null,
+      forkedFromTitle: null,
       scheduledTaskId: null,
     );
 
@@ -200,6 +204,8 @@ void main() {
       catalogTitle: "Observed",
       approvalOverride: null,
       pinned: false,
+      forkedFromSessionId: null,
+      forkedFromTitle: null,
       scheduledTaskId: null,
     );
 

@@ -51,7 +51,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 27;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -374,6 +374,12 @@ class AppDatabase(super.e) extends _$AppDatabase {
         await m.createIndex(schema.idxScheduledTaskRunsTask);
         await m.createIndex(schema.idxScheduledTaskRunsSession);
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.scheduledTaskId);
+      },
+      from26To27: (m, schema) async {
+        // No session was forked before v27, so null is the honest backfill.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.forkedFromSessionId);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.forkedFromTitle);
+        await m.createIndex(schema.idxSessionsForkedFrom);
       },
     ),
     beforeOpen: (details) async {

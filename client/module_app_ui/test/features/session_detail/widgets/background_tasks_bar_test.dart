@@ -22,6 +22,7 @@ void main() {
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    forkedFrom: null,
   );
 
   final openedSessionIds = <String>[];

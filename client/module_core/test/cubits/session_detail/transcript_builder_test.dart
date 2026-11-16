@@ -104,6 +104,7 @@ Session _child(String id, {String? title}) => Session(
   lastUserActivityAt: null,
   autoContinuation: null,
   scheduledTask: null,
+  forkedFrom: null,
 );
 
 ToolState _taskState(ToolStatus status) =>

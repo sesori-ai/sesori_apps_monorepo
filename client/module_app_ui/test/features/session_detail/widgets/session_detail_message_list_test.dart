@@ -3525,6 +3525,7 @@ void main() {
         lastUserActivityAt: null,
         autoContinuation: null,
         scheduledTask: null,
+        forkedFrom: null,
       );
       harness.setChildren(children: [child], childStatuses: const {"child-1": SessionStatus.busy(since: null)});
       await tester.pump();
