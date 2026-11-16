@@ -347,12 +347,16 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
 
   /// Those of [owned] that another rollout, active or archived, still builds
   /// on, directly or through the rollouts between, such as a deleted fork
-  /// kept and archived for a fork of its own.
+  /// kept and archived for a fork of its own. All of [owned] when a header
+  /// cannot be read, since it may name any of them.
   Set<String> _pathsOtherRolloutsBuildOn({required List<String> owned}) {
-    String? baseOf({required String path}) =>
-        (_rollouts[path]?.parsed ?? _parseRollout(rolloutApi: _rolloutApi, rolloutPath: path))
-            ?.metadata
-            ?.historyBaseRolloutId;
+    var unreadable = false;
+    String? baseOf({required String path}) {
+      final parsed = _rollouts[path]?.parsed ?? _parseRollout(rolloutApi: _rolloutApi, rolloutPath: path);
+      if (parsed == null) unreadable = true;
+      return parsed?.metadata?.historyBaseRolloutId;
+    }
+
     // Parses every archived header per delete; index them if a large archive
     // makes deletes slow.
     final others = {
@@ -374,7 +378,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       if (owned.contains(path)) kept.add(path);
       if (baseOf(path: path) case final base?) pending.add(base);
     }
-    return kept;
+    return unreadable ? owned.toSet() : kept;
   }
 
   /// Null when the rollout's header names another session.

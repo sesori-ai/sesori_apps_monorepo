@@ -247,6 +247,18 @@ void main() {
     expect(texts(messages: await readMessages(sessionId: grandForkId)), hasLength(4));
   });
 
+  test("an unreadable header that may name the deleted thread keeps all its rollouts", () async {
+    final fork = File(p.join(sessionDay.path, _forkRollout));
+    await catalogRepository.listSessionRecords();
+    Process.runSync("chmod", ["000", fork.path]);
+    addTearDown(() => Process.runSync("chmod", ["644", fork.path]));
+    // A fresh catalog must read the fork's header during the delete.
+    catalogRepository = CodexCatalogRepository(rolloutApi: rolloutApi);
+
+    expect(await catalogRepository.deleteSession(sessionId: _sourceId), CodexSessionDeletion.keptForForks);
+    expect(rolloutFiles(), [_originalRollout, _revertRollout, _forkRollout]);
+  }, testOn: "posix");
+
   test("a thread no fork builds on deletes every rollout it owns", () async {
     expect(await catalogRepository.deleteSession(sessionId: _forkId), CodexSessionDeletion.deleted);
     expect(rolloutFiles(), [_originalRollout, _revertRollout]);
