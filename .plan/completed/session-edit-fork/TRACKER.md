@@ -61,9 +61,12 @@ Round 2 (2026-11-15) answered the first seven. Round 4 answered the archived-wor
 
 ## Verification results
 
+The step 15 run below used main 7d8a422401 (#2711's merge), before steps 18-23; the Codex 0.139.0 row reran on
+4ef315450b. Steps 18-23 (#2724-#2729) each passed full CI on their own head and carry their own live checks in the PR.
+
 | Cell | Result | Date (UTC) |
 | --- | --- | --- |
-| Automated (bridge, plugin and client suites in CI) | Pass: Desktop and Mobile CI green on main 7d8a422401 (#2711's merge), Bridge CI green on 5091836459 (no bridge change after it) | 2026-11-16 |
+| Automated (bridge, plugin and client suites in CI) | Pass: Desktop and Mobile CI green on main 7d8a422401 (#2711's merge), Bridge CI green on 5091836459 (no bridge change between it and 7d8a422401) | 2026-11-16 |
 | Live plugin, Claude Code 2.1.325 | Pass: later-prompt edit (store matches the active branch), first-message swap (old transcript deleted, one row), every fork point, archived origin forks; project files unchanged | 2026-11-16 |
 | Live plugin, Codex 0.169.0 | Pass: later-prompt edit (store and model memory match), first-message swap (new thread, old rollouts deleted, one row), every fork point, archived origin forks; project files unchanged | 2026-11-16 |
 | Live plugin, Codex 0.139.0 refusal | **Pass (live, after #2724)** on main 4ef315450b, headless iOS sim, 9router: a live-captured session imports with each reply once and its live time (4 rows before and after); the edit is refused as `legacySession` with the store byte-identical and the banner and composer kept; a fork at the latest turn is refused with "Update Codex to fork sessions." and the store unchanged. Prompts were sent through the bridge debug API. The first run failed (duplicated replies, misleading fork reason) | 2026-11-16 |
