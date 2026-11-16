@@ -23,9 +23,13 @@ final class const _PendingPermission({
   required final String tool,
   required final String description,
   required final Map<String, Object?> input,
-  required final List<_ClaudePermissionSuggestion> suggestions,
-  required final bool allowAlways,
-}) extends _PendingApproval;
+
+  /// The rules an Always answer saves, already scoped to the session; empty
+  /// when Claude suppresses Always or suggests no rule to save.
+  required final List<Map<String, Object?>> sessionRules,
+}) extends _PendingApproval {
+  bool get allowAlways => sessionRules.isNotEmpty;
+}
 
 final class const _PendingExternalAction({
   required super.id,
@@ -114,16 +118,6 @@ final class const _UnknownInteraction({
   Map<String, Object?> updatedInput({required List<List<String>> answers}) => input;
 }
 
-sealed class const _ClaudePermissionSuggestion() {
-  factory parse(Map<String, Object?> raw) => raw["type"] == "addRules" && raw["destination"] == "session"
-      ? _SessionAddRules(raw: raw)
-      : const _IneligiblePermissionSuggestion();
-}
-
-final class const _SessionAddRules({required final Map<String, Object?> raw}) extends _ClaudePermissionSuggestion;
-
-final class const _IneligiblePermissionSuggestion() extends _ClaudePermissionSuggestion;
-
 /// Owns pending Claude permission and interaction requests until the phone
 /// answers them or their session is torn down.
 final class ClaudeApprovalRegistry({
@@ -196,8 +190,9 @@ final class ClaudeApprovalRegistry({
       tool: tool,
       description: _description(request),
       input: input,
-      suggestions: _maps(request["permission_suggestions"]).map(_ClaudePermissionSuggestion.parse).toList(),
-      allowAlways: request["suppress_always_allow_rule"] != true,
+      sessionRules: request["suppress_always_allow_rule"] == true
+          ? const []
+          : _sessionRules(suggestions: request["permission_suggestions"]),
     );
     _pending[id] = pending;
     _emitActivity(
@@ -435,28 +430,20 @@ final class ClaudeApprovalRegistry({
   bool replyPermission({required String id, required PluginPermissionReply reply}) {
     final entry = _pending[id];
     if (entry is! _PendingPermission) return false;
-    final suggestions = entry.allowAlways
-        ? [
-            for (final suggestion in entry.suggestions)
-              if (suggestion case _SessionAddRules(:final raw)) raw,
-          ]
-        : const <Map<String, Object?>>[];
     final payload = switch (reply) {
       PluginPermissionReply.once => <String, Object?>{"behavior": "allow", "updatedInput": entry.input},
       PluginPermissionReply.always => <String, Object?>{
         "behavior": "allow",
         "updatedInput": entry.input,
-        if (suggestions.isNotEmpty) "updatedPermissions": suggestions,
+        if (entry.sessionRules.isNotEmpty) "updatedPermissions": entry.sessionRules,
       },
       PluginPermissionReply.reject => <String, Object?>{"behavior": "deny", "message": "User denied permission."},
     };
     if (!_respond(sessionId: entry.sessionId, requestId: entry.requestId, payload: payload)) return false;
-    if (reply == PluginPermissionReply.always && entry.allowAlways) {
+    if (reply == PluginPermissionReply.always && entry.sessionRules.isNotEmpty) {
       final allowedTools = _allowedTools.putIfAbsent(entry.sessionId, () => {});
-      for (final suggestion in entry.suggestions) {
-        if (suggestion case _SessionAddRules(:final raw)) {
-          allowedTools.addAll(_allowedToolRules(raw));
-        }
+      for (final rule in entry.sessionRules) {
+        allowedTools.addAll(_allowedToolRules(rule));
       }
       if (allowedTools.isEmpty) _allowedTools.remove(entry.sessionId);
     }
@@ -601,6 +588,21 @@ final class ClaudeApprovalRegistry({
     payload: {"behavior": "deny", "message": message},
   );
 }
+
+/// Claude suggests saving most allow rules to a settings file: Bash and Skill
+/// rules go to `localSettings`. Sesori grants only session-scoped approvals, so
+/// a rule from any destination is sent back with the `session`
+/// destination, which Claude applies to the running process without writing a
+/// file. Other suggestion types (`setMode`, `addDirectories`, ...) are not
+/// rules and are never sent. Verified live on 2026-11-16 with Claude Code
+/// 2.1.325: a `localSettings` Bash rule returned as `session` let the same
+/// command run again in that process without a second request, and no settings
+/// file was written.
+List<Map<String, Object?>> _sessionRules({required Object? suggestions}) => [
+  for (final suggestion in _maps(suggestions))
+    if (suggestion["type"] == "addRules" && _maps(suggestion["rules"]).isNotEmpty)
+      {...suggestion, "destination": "session"},
+];
 
 Iterable<String> _allowedToolRules(Map<String, Object?> suggestion) sync* {
   for (final rule in _maps(suggestion["rules"])) {

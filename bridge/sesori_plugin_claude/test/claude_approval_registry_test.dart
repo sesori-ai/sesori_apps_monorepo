@@ -304,7 +304,7 @@ void main() {
       expect(events.whereType<BridgeSseProjectUpdated>(), hasLength(2));
     });
 
-    test("always sends only session-scoped addRules suggestions", () {
+    test("always sends only addRules suggestions that carry rules", () {
       registry.handle(
         sessionId: "session-1",
         message: _permission(
@@ -338,23 +338,56 @@ void main() {
       expect(registry.allowedToolsForSession(sessionId: "session-1"), ["Write"]);
     });
 
+    for (final destination in const ["localSettings", "projectSettings", "userSettings", "cliArg"]) {
+      test("always saves a $destination rule for the session only", () {
+        registry.handle(
+          sessionId: "session-1",
+          message: _permission(
+            suggestions: [
+              {
+                "type": "addRules",
+                "destination": destination,
+                "behavior": "allow",
+                "rules": const [
+                  {"toolName": "Bash", "ruleContent": "touch a.txt"},
+                ],
+              },
+              const {"type": "setMode", "destination": "session", "mode": "acceptEdits"},
+            ],
+          ),
+        );
+
+        expect(events.whereType<BridgeSsePermissionAsked>().single.allowAlways, isTrue);
+        registry.replyPermission(id: "br-1", reply: PluginPermissionReply.always);
+
+        expect(responses.single.payload["updatedPermissions"], [
+          {
+            "type": "addRules",
+            "destination": "session",
+            "behavior": "allow",
+            "rules": [
+              {"toolName": "Bash", "ruleContent": "touch a.txt"},
+            ],
+          },
+        ]);
+        expect(registry.allowedToolsForSession(sessionId: "session-1"), ["Bash(touch a.txt)"]);
+      });
+    }
+
     for (final suggestion in const <Map<String, Object?>>[
-      {"type": "setMode", "destination": "session"},
+      {"type": "setMode", "destination": "session", "mode": "acceptEdits"},
       {"type": "addDirectories", "destination": "session"},
       {"type": "removeDirectories", "destination": "session"},
       {"type": "replaceRules", "destination": "session"},
       {"type": "removeRules", "destination": "session"},
-      {"type": "addRules", "destination": "userSettings"},
-      {"type": "addRules", "destination": "projectSettings"},
-      {"type": "addRules", "destination": "localSettings"},
-      {"type": "addRules", "destination": "cliArg"},
     ]) {
-      test("always rejects ${suggestion["type"]}/${suggestion["destination"]}", () {
+      test("does not offer always for ${suggestion["type"]}/${suggestion["destination"]}", () {
         registry.handle(
           sessionId: "session-1",
           message: _permission(suggestions: [suggestion]),
         );
 
+        expect(events.whereType<BridgeSsePermissionAsked>().single.allowAlways, isFalse);
         registry.replyPermission(id: "br-1", reply: PluginPermissionReply.always);
 
         expect(responses.single.payload, {
@@ -363,6 +396,26 @@ void main() {
         });
       });
     }
+
+    test("does not offer always when Claude sends no rule to save", () {
+      registry.handle(sessionId: "session-1", message: _permission());
+      registry.handle(
+        sessionId: "session-1",
+        message: _request(
+          requestId: "unsaveable-request",
+          request: {
+            "tool_name": "Bash",
+            "input": {"command": "cd .. && touch d.txt"},
+          },
+        ),
+      );
+
+      expect(events.whereType<BridgeSsePermissionAsked>().map((event) => event.allowAlways), [isFalse, isFalse]);
+      expect(
+        registry.pendingPermissionsForSession(sessionId: "session-1").map((permission) => permission.allowAlways),
+        [isFalse, isFalse],
+      );
+    });
 
     test("suppressed always degrades safely even if an older client sends it", () {
       registry.handle(
