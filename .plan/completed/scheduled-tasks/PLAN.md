@@ -2,6 +2,8 @@
 
 ## Status
 
+- **Retired 2026-11-16** after the L3 regression (Partial: some cells Blocked); see
+  [TRACKER](TRACKER.md#l3-regression-result-2026-11-16).
 - **Date:** 2026-11-15. Code facts are from `origin/main` at `25d9a40a2f`
   (product version 1.14.0, bridge drift schema 25).
 - **Design source:** three review rounds the user answered on 2026-11-14/15.
