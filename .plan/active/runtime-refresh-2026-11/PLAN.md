@@ -19,7 +19,7 @@ All 11 `knownPlugins` entries in `bridge/app/lib/src/runtime/plugin_registry.dar
 | Hermes Agent | 0.23.1 | 0.23.1 | 0.20.0 | Already the newest stable | None | — |
 | Pi | 1.5.2 | 1.5.2 | 0.99.0 | Already the newest stable | None | — |
 | Oh My Pi | 18.19.0 | 18.21.0 (`6f03614d`) | 17.2.13 | 8 binaries match `SHA256SUMS.txt` and GitHub digests | Step 4, merged (#2741) | Managed install and offline initialize pass; live busy-window probe passes (7.c) |
-| DeepSeek | adapter 0.2.2 (dsh 0.2.2-rc.2) | adapter 0.2.3 (dsh 0.2.2-rc.3, `38a6a5c9`) | 0.1.5 | Producer release `v0.2.3` | Steps 5–6 | `npm run check` and darwin-arm64 packaged smoke pass; six-platform release CI |
+| DeepSeek | adapter 0.2.2 (dsh 0.2.2-rc.2) | adapter 0.2.3 (dsh 0.2.2-rc.3, `38a6a5c9`) | 0.1.5 | Producer release `v0.2.3` (tag commit `cca1c801`); 6 archives match `checksums.txt` and GitHub digests; `BUILD-METADATA.json` names adapter 0.2.3 over dsh 0.2.2-rc.3 | Steps 5–6 | `npm run check`, six-platform release CI; managed install and offline `check`/initialize/new/list on macOS arm64 pass; authenticated turn pending |
 | Grok Build | 1.0.77 | 1.0.77 | 1.0.5 | Already the newest stable (`x.ai/cli/stable`) | None | — |
 
 ## Steps
@@ -31,7 +31,7 @@ All 11 `knownPlugins` entries in `bridge/app/lib/src/runtime/plugin_registry.dar
 5. DeepSeek adapter: move to dsh 0.2.2-rc.3 and release `v0.2.3` (sesori-deepseek-acp#25, merged and tagged
    `v0.2.3`). Also fixes the Windows arm64 packaging step, whose `Expand-Archive` broke on the current
    `windows-11-arm` runner image.
-6. Pin the DeepSeek consumer to adapter 0.2.3 from the published assets.
+6. Pin the DeepSeek consumer to adapter 0.2.3 from the published assets (#2748, in review).
 7. Live follow-up probes against the local test endpoint, the fixes they show are needed, doc reconciliation,
    skill corrections, then retire this plan. Fixes that need code get their own PRs inside this step:
    - 7.a Claude "Always" shown with nothing to save.
@@ -55,8 +55,10 @@ Owner decisions:
 
 - OMP floor stays 17.2.13 (2026-11-16): 18.20.1 is too new to require, so both workarounds for the upstream
   bugs it fixes stay.
-- Open: whether Claude "Always" on a file edit switches the session to `acceptEdits` (Claude suggests only
-  that mode change for edits, so after 7.a edits show Once and Reject only).
+- Claude "Always" on a file edit switches the session to `acceptEdits`, matching Claude Code's own terminal
+  (2026-11-16; step 7.d, stacked on #2743).
+- Finished sub-agent rows stay compact: the answer stays one tap away in the child session, not shown inline in
+  the parent chat (2026-11-16; no app change, #2745 ships as is).
 
 Track only: OpenCode first-token timing, Copilot `--resume` marking sessions in use, Claude sandbox prompts and
 `auto` permission-mode fallback, OMP late background results carried into the next prompt.
