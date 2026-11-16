@@ -992,13 +992,14 @@ final class ClaudePlugin({
     if (_createdSessions[sessionId] case final created?) return created;
     final directory = _primedDirectories[sessionId];
     if (directory == null || ClaudeSubagentSessionId.agentIdOf(sessionId) != null) return null;
+    final now = _clock.now().millisecondsSinceEpoch;
     final session = PluginSession(
       id: sessionId,
       projectID: directory,
       directory: directory,
       parentID: null,
       title: null,
-      time: null,
+      time: PluginSessionTime(created: now, updated: now, archived: null),
     );
     _createdSessions[sessionId] = session;
     _unstartedSessions.add(sessionId);

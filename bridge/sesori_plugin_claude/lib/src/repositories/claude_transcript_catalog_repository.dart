@@ -704,7 +704,8 @@ final class const _ForkRefused({required final ClaudeForkRefusal reason}) extend
 ///
 /// Records the branch keeps beside the chain, such as parallel tool results,
 /// come along. Records without an id carry metadata rather than turns, and stay
-/// behind as with the CLI's own fork; the fork's title is the bridge's.
+/// behind as with the CLI's own fork; the fork's title is the bridge's. Inline
+/// sub-agent records stay with the origin, as its sub-agent transcripts do.
 _ForkPrefix _forkPrefix({required List<ClaudeTranscriptEntry> entries, required String messageId}) {
   final records = [for (final entry in entries) entry.record];
   final active = _activeChain(records: records);
@@ -727,7 +728,7 @@ _ForkPrefix _forkPrefix({required List<ClaudeTranscriptEntry> entries, required 
   return _ForkKept(
     records: [
       for (final entry in entries.take(end + 1))
-        if (branch.contains(entry.record) && trimmedOrNull(value: entry.record.uuid) != null) entry.json,
+        if (branch.contains(entry.record) && _chainId(entry.record) != null) entry.json,
     ],
   );
 }

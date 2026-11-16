@@ -194,7 +194,9 @@ succeeds today. Clients offer no Fork yet.
   transcript.
 - An empty fork has no transcript until its first prompt. After a bridge
   restart the bridge's directory hint marks it unstarted again, so its history
-  reads empty and its first prompt starts it under its own id.
+  reads empty and its first prompt starts it under its own id. Any bound
+  Claude Code session without a transcript, such as one Claude Code pruned,
+  reads the same way rather than as not found; forking it is still refused.
 
 ## Regression Levels
 

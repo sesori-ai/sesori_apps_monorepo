@@ -321,7 +321,10 @@ void main() {
     test("refuses a message off the active branch and a missing session", () async {
       install(fixture: "terminal_rewind", sessionId: _terminalRewind);
 
-      expect(await forkThrough(sessionId: _terminalRewind, messageId: "1794774978480"), _forkRefused(.notOnActiveBranch));
+      expect(
+        await forkThrough(sessionId: _terminalRewind, messageId: "1794774978480"),
+        _forkRefused(.notOnActiveBranch),
+      );
       expect(await forkThrough(sessionId: _terminalRewind, messageId: "unknown"), _forkRefused(.notOnActiveBranch));
       expect(await forkThrough(sessionId: _linear, messageId: "1794774680780"), _forkRefused(.transcriptMissing));
     });
