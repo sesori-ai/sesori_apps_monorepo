@@ -173,7 +173,116 @@ void main() {
 
     expect(await _copySelection(tester: tester), "paragraph.\nSecond");
   });
+
+  testWidgets("a selection across nested areas paints as one continuous highlight", (tester) async {
+    const firstKey = Key("first");
+    const bulletKey = Key("bullet");
+    const lastKey = Key("last");
+    final moved = ChangeNotifier();
+    addTearDown(moved.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PregoReadableSelectionArea(
+            child: PregoNestedSelectionHighlight(
+              moved: moved,
+              child: const Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 400,
+                      child: PregoReadableSelectionArea(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("First message.", key: firstKey),
+                            SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Text("•", key: bulletKey),
+                                SizedBox(width: 8),
+                                Text("An item"),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 40),
+                    SizedBox(
+                      width: 400,
+                      child: PregoReadableSelectionArea(child: Text("Last message.", key: lastKey)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final first = _renderParagraph(tester: tester, textKey: firstKey);
+    final last = _renderParagraph(tester: tester, textKey: lastKey);
+    final gesture = await tester.startGesture(
+      _textPosition(paragraph: first, offset: 6),
+      kind: PointerDeviceKind.mouse,
+    );
+    addTearDown(gesture.removePointer);
+    await tester.pump();
+    await gesture.moveTo(_textPosition(paragraph: last, offset: 4));
+    await tester.pump();
+    await gesture.up();
+    await tester.pump();
+
+    // The text paints no boxes of its own, which would show as patches.
+    for (final key in [firstKey, bulletKey, lastKey]) {
+      expect(_renderParagraph(tester: tester, textKey: key).selectionColor?.a, 0);
+    }
+
+    final highlight = tester.renderObject<RenderBox>(find.byType(PregoNestedSelectionHighlight));
+    Offset local(Offset global) => highlight.globalToLocal(global);
+    final firstLine = _lineCenter(paragraph: first);
+    final lastLine = _lineCenter(paragraph: last);
+    final bullet = tester.getCenter(find.byKey(bulletKey));
+    final gapBelowFirst = (tester.getBottomLeft(find.byKey(firstKey)).dy + bullet.dy) / 2;
+    final gapBetweenAreas = tester.getTopLeft(find.byKey(lastKey)).dy - 20;
+    final color = DefaultSelectionStyle.of(tester.element(find.byType(PregoNestedSelectionHighlight))).selectionColor;
+    expect(
+      highlight,
+      paints..path(
+        color: color,
+        includes: [
+          // The first line, from the start to the areas' far edge.
+          local(Offset(_textPosition(paragraph: first, offset: 8).dx, firstLine.dy)),
+          local(Offset(410, firstLine.dy)),
+          // The gap between paragraphs, the bullet, and the gap between areas.
+          local(Offset(30, gapBelowFirst)),
+          local(bullet),
+          local(Offset(400, gapBetweenAreas)),
+          // The last line, from the near edge to the end.
+          local(Offset(22, lastLine.dy)),
+          local(Offset(_textPosition(paragraph: last, offset: 2).dx, lastLine.dy)),
+        ],
+        excludes: [
+          local(Offset(22, firstLine.dy)),
+          local(Offset(_textPosition(paragraph: last, offset: 8).dx, lastLine.dy)),
+          local(Offset(10, gapBetweenAreas)),
+          local(Offset(430, gapBetweenAreas)),
+        ],
+      ),
+    );
+    // Copying, which clears the selection on a phone, is as it was.
+    expect(await _copySelection(tester: tester), "message.\n• An item\nLast");
+  });
 }
+
+/// The middle of [paragraph]'s first line, in global coordinates.
+Offset _lineCenter({required RenderParagraph paragraph}) =>
+    paragraph.localToGlobal(Offset(0, paragraph.size.height / 2));
 
 Future<String?> _copyAll({required WidgetTester tester}) async {
   final selectionArea = tester.state<SelectionAreaState>(find.byType(SelectionArea));

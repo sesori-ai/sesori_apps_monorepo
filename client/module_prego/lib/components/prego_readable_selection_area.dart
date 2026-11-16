@@ -1,3 +1,5 @@
+import "dart:math";
+
 import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
 
@@ -134,7 +136,17 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
         delegate: _selectionDelegate,
         // Marks where a press may start the outer area's gestures: wherever
         // this area's own selection region took it.
-        child: MetaData(metaData: _nestedAreaMark, behavior: HitTestBehavior.translucent, child: widget.child),
+        child: MetaData(
+          metaData: _nestedAreaMark,
+          behavior: HitTestBehavior.translucent,
+          // Under a [PregoNestedSelectionHighlight], which paints this area's
+          // selection, the text paints none of its own: its tight boxes would
+          // show through as a patch per line.
+          child: DefaultSelectionStyle.merge(
+            selectionColor: _NestedSelectionHighlightScope.covers(context) ? const Color(0x00000000) : null,
+            child: widget.child,
+          ),
+        ),
       );
     }
     return _OuterSelectionAreaScope(
@@ -224,6 +236,197 @@ class const PregoSelectionOnlyInNestedAreas({super.key, required final Widget ch
       registrar: registrar,
       child: SelectionContainer.disabled(child: child),
     );
+  }
+}
+
+/// Paints the selection in the [PregoReadableSelectionArea]s nested in
+/// [child] as one continuous highlight, the way a browser does: from the
+/// selection's start to the text's far edge, across every line, paragraph,
+/// list item and gap between messages, then from the text's near edge to the
+/// selection's end. The text itself paints none, whose tight boxes would show
+/// as a patch per line and per text widget.
+///
+/// It sits inside the outer area, around the nested ones, and paints over
+/// [child], clipped to it. The text's edges are those of the nested areas that
+/// hold the selection.
+///
+/// [moved] fires whenever the nested areas may have moved while the selection
+/// stayed the same, as on each frame a scroll view in [child] lays out or a
+/// transform slides its rows. Firing it during layout moves the highlight in
+/// the same frame as the text.
+class const PregoNestedSelectionHighlight({super.key, required final Listenable moved, required final Widget child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final area = _OuterSelectionAreaScope.maybeOf(context);
+    if (area == null) return child;
+    return _NestedSelectionHighlightScope(
+      child: _NestedSelectionHighlight(
+        selection: area._selectionDelegate,
+        moved: moved,
+        color: DefaultSelectionStyle.of(context).selectionColor ?? DefaultSelectionStyle.defaultColor,
+        child: child,
+      ),
+    );
+  }
+}
+
+/// Marks the nested areas a [PregoNestedSelectionHighlight] paints for.
+class const _NestedSelectionHighlightScope({required super.child}) extends InheritedWidget {
+  static bool covers(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_NestedSelectionHighlightScope>() != null;
+
+  @override
+  bool updateShouldNotify(_NestedSelectionHighlightScope oldWidget) => false;
+}
+
+class const _NestedSelectionHighlight({
+  required final _ReadableSelectionContainerDelegate selection,
+  required final Listenable moved,
+  required final Color color,
+  required super.child,
+}) extends SingleChildRenderObjectWidget {
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderNestedSelectionHighlight(selection: selection, moved: moved, color: color);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderNestedSelectionHighlight renderObject) => renderObject
+    ..selection = selection
+    ..moved = moved
+    ..color = color;
+}
+
+class _RenderNestedSelectionHighlight({
+  required _ReadableSelectionContainerDelegate selection,
+  required Listenable moved,
+  required Color color,
+}) extends RenderProxyBox {
+  _ReadableSelectionContainerDelegate _selection = selection;
+  Listenable _moved = moved;
+  final _paint = Paint()..color = color;
+
+  _ReadableSelectionContainerDelegate get selection => _selection;
+  Listenable get moved => _moved;
+  Color get color => _paint.color;
+
+  set selection(_ReadableSelectionContainerDelegate value) {
+    if (identical(value, _selection)) return;
+    if (attached) {
+      _selection.removeListener(markNeedsPaint);
+      value.addListener(markNeedsPaint);
+    }
+    _selection = value;
+    markNeedsPaint();
+  }
+
+  set moved(Listenable value) {
+    if (identical(value, _moved)) return;
+    if (attached) {
+      _moved.removeListener(markNeedsPaint);
+      value.addListener(markNeedsPaint);
+    }
+    _moved = value;
+    markNeedsPaint();
+  }
+
+  set color(Color value) {
+    if (value == _paint.color) return;
+    _paint.color = value;
+    markNeedsPaint();
+  }
+
+  // Repaints on its own as the selection changes or the text moves, without
+  // repainting the content under it.
+  @override
+  bool get isRepaintBoundary => true;
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _selection.addListener(markNeedsPaint);
+    _moved.addListener(markNeedsPaint);
+  }
+
+  @override
+  void detach() {
+    _selection.removeListener(markNeedsPaint);
+    _moved.removeListener(markNeedsPaint);
+    super.detach();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    super.paint(context, offset);
+    final highlight = _highlight();
+    if (highlight == null) return;
+    context.canvas
+      ..save()
+      ..clipRect(offset & size)
+      ..drawPath(highlight.shift(offset), _paint)
+      ..restore();
+  }
+
+  /// The selection's shape in this box, read from where the text is now.
+  ///
+  /// The first line runs from the selection's start to the far edge of the
+  /// areas holding the selection, the lines below it fill those areas' width,
+  /// and the last line runs from the near edge to the selection's end. Only
+  /// the first and last areas' text is measured: whatever lies between them
+  /// is filled whole.
+  Path? _highlight() {
+    if (!_selection.value.hasSelection) return null;
+    final areas = [
+      for (final area in _selection.nested)
+        if (area.value.status == SelectionStatus.uncollapsed && area.hasSize)
+          if (MatrixUtils.transformRect(area.getTransformTo(this), Offset.zero & area.containerSize) case final bounds
+              // A row kept alive out of view has no paint transform.
+              when bounds.isFinite && !bounds.isEmpty)
+            (area: area, bounds: bounds),
+    ];
+    if (areas.isEmpty) return null;
+    final left = areas.map((area) => area.bounds.left).reduce(min);
+    final right = areas.map((area) => area.bounds.right).reduce(max);
+    final firstArea = areas.reduce((a, b) => b.bounds.top < a.bounds.top ? b : a).area;
+    final lastArea = areas.reduce((a, b) => b.bounds.bottom > a.bounds.bottom ? b : a).area;
+    final firstLine = _line(rects: _selectedRects(area: firstArea), atTop: true);
+    final lastLine = _line(rects: _selectedRects(area: lastArea), atTop: false);
+    if (firstLine == null || lastLine == null) return null;
+    // A part scrolled sideways, such as a code block's, can end beyond the edges.
+    final start = firstLine.left.clamp(left, right);
+    final end = lastLine.right.clamp(left, right);
+    if (lastLine.top < firstLine.bottom) {
+      return Path()..addRect(Rect.fromLTRB(start, firstLine.top, end, lastLine.bottom));
+    }
+    return Path()
+      ..addRect(Rect.fromLTRB(start, firstLine.top, right, firstLine.bottom))
+      ..addRect(Rect.fromLTRB(left, firstLine.bottom, right, lastLine.top))
+      ..addRect(Rect.fromLTRB(left, lastLine.top, end, lastLine.bottom));
+  }
+
+  /// The selected text's boxes in [area], in this box's coordinates.
+  List<Rect> _selectedRects({required _ReadableSelectionContainerDelegate area}) {
+    final boxes = <Rect>[];
+    for (final selectable in area.selectables) {
+      final rects = selectable.value.selectionRects;
+      if (rects.isEmpty) continue;
+      final transform = selectable.getTransformTo(this);
+      for (final rect in rects) {
+        final box = MatrixUtils.transformRect(transform, rect);
+        if (box.isFinite && !box.isEmpty) boxes.add(box);
+      }
+    }
+    return boxes;
+  }
+
+  /// The extent of the topmost or bottommost line among [rects]: every box
+  /// beside the outermost one, such as a bullet and its item's text.
+  static Rect? _line({required List<Rect> rects, required bool atTop}) {
+    if (rects.isEmpty) return null;
+    final edge = rects.reduce((a, b) => atTop ? (b.top < a.top ? b : a) : (b.bottom > a.bottom ? b : a));
+    return rects
+        .where((rect) => rect.top < edge.bottom && rect.bottom > edge.top)
+        .reduce((a, b) => a.expandToInclude(b));
   }
 }
 
