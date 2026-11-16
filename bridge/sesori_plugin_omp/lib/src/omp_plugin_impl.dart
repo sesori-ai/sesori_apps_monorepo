@@ -133,6 +133,11 @@ class OmpPlugin._({
   @override
   bool get replaysResidentHistoryOnLiveProcess => true;
 
+  /// OMP stamps a turn's thinking and tool calls with one message id but
+  /// replays under fresh ids on every load.
+  @override
+  bool get replaysToolCallsAsOwnMessages => true;
+
   @override
   AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) => OmpApprovalRegistry(
     client: client,

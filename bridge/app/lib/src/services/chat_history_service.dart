@@ -14,9 +14,12 @@ import "../repositories/attachment_thumbnail_builder.dart";
 import "../repositories/catalog_import_repository.dart" show SessionBackendActivity;
 import "../repositories/chat_history_repository.dart";
 import "../repositories/models/history_window.dart";
+import "../repositories/models/session_running_turn_record.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/models/tool_output_lookup.dart";
+import "../repositories/session_interruption_repository.dart";
 import "../repositories/session_repository.dart";
+import "session_mutation_dispatcher.dart";
 
 sealed class const SessionAttachmentResult();
 
@@ -87,9 +90,10 @@ final class const CapturedPartShapes({
 /// fallback is bounded to the released inline-wire budget.
 final class const CapturedPartUnavailable({required final MessagePart inlineFallbackPart}) extends CapturedPartDelivery;
 
-/// A session whose stored pages changed after a background re-read: the
-/// re-read transcript landed, the backend newly refused to restore the
-/// session, or finalizing dead tool parts rewrote the store.
+/// A session whose stored pages changed under the clients that read them: a
+/// background re-read's transcript landed, the backend newly refused to
+/// restore the session, finalizing dead tool parts rewrote the store, or a
+/// handoff request was marked not sent.
 typedef SessionHistoryRefresh = ({
   String sessionId,
 
@@ -128,6 +132,8 @@ class ChatHistoryService({
   required final SessionRepository _sessionRepository,
   required final AttachmentThumbnailBuilder _attachmentThumbnailBuilder,
   required final BridgeIdProvider _bridgeIdProvider,
+  required final SessionInterruptionRepository _interruptions,
+  required final SessionMutationDispatcher _mutations,
 }) {
   final KeyedParallelLock<String> _writeLock = KeyedParallelLock<String>();
   final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
@@ -142,7 +148,8 @@ class ChatHistoryService({
   /// Each session re-read in the background after a read served it behind its
   /// harness, once its stored pages changed: the re-read transcript landed,
   /// the backend newly reported it cannot restore the session, or dead tool
-  /// parts were finalized.
+  /// parts were finalized; and each session whose handoff request was marked
+  /// not sent.
   Stream<SessionHistoryRefresh> get historyRefreshes => _historyRefreshes.stream;
 
   /// The [window] of the session's messages, served from the store whenever
@@ -1241,20 +1248,27 @@ class ChatHistoryService({
   }
 
   /// Stamps the user message [messageId] with [notSent] in place of its
-  /// stored `sent` handoff, or of none, after the session's pending captures.
+  /// stored `sent` handoff, or of none, after the session's pending captures,
+  /// and announces the change on [historyRefreshes], so an open chat shows
+  /// the marker's new state without waiting for its next history load.
   Future<void> markHandoffNotSent({
     required String sessionId,
     required String messageId,
     required MessageHandoffNotSent notSent,
-  }) => _enqueue(
-    sessionId: sessionId,
-    write: () => _chatHistoryRepository.markHandoffNotSent(
+  }) async {
+    final marked = await _enqueue(
       sessionId: sessionId,
-      messageId: messageId,
-      notSent: notSent,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
-    ),
-  );
+      write: () => _chatHistoryRepository.markHandoffNotSent(
+        sessionId: sessionId,
+        messageId: messageId,
+        notSent: notSent,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+    if (marked && !_historyRefreshes.isClosed) {
+      _historyRefreshes.add((sessionId: sessionId, replayedPromptDefaults: null));
+    }
+  }
 
   Future<SessionPromptDefaults?> _backfillSessionForRead({required String sessionId}) {
     final inFlight = _inFlightBackfills[sessionId];
@@ -1296,7 +1310,7 @@ class ChatHistoryService({
             observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
         final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
-        await _chatHistoryRepository.replaceSessionMessages(
+        final replacementIds = await _chatHistoryRepository.replaceSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
           messages: snapshot.messages,
@@ -1305,6 +1319,7 @@ class ChatHistoryService({
           backendActivityAt: backendActivityAt,
           syncedAt: DateTime.now().millisecondsSinceEpoch,
         );
+        await _reanchorInterruption(sessionId: sessionId, replacementIds: replacementIds);
         final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;
         if (promptDefaults == null) return null;
         try {
@@ -1322,6 +1337,36 @@ class ChatHistoryService({
         }
       },
     );
+  }
+
+  /// Records the [leftover] running turn an earlier bridge run left as the
+  /// session's interruption after its newest stored message. Queued with the
+  /// session's other history work, so a re-import cannot replace that message
+  /// between the read and the write, and a later re-import moves the anchor
+  /// along with it. Returns whether an interruption was written.
+  Future<bool> convertInterruptedTurn({required SessionRunningTurnRecord leftover}) => _enqueue(
+    sessionId: leftover.sessionId,
+    write: () async {
+      final afterMessageId = await _chatHistoryRepository.getNewestMessageId(sessionId: leftover.sessionId);
+      return await _interruptions.convertLeftover(leftover: leftover, afterMessageId: afterMessageId);
+    },
+  );
+
+  /// Keeps the session's interruption on the message a re-import replaced it
+  /// with, since replayed ids can differ from the live ones. The transcript
+  /// already landed, so a failure only leaves the old anchor and is logged.
+  Future<void> _reanchorInterruption({
+    required String sessionId,
+    required Map<String, String> replacementIds,
+  }) async {
+    if (replacementIds.isEmpty) return;
+    try {
+      if (await _interruptions.reanchor(sessionId: sessionId, replacementIds: replacementIds)) {
+        await _mutations.interruptionUpdated(sessionId: sessionId);
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not move the interruption of session $sessionId to its re-imported message", error, stackTrace);
+    }
   }
 
   /// Writes the session's audit file before it is archived.

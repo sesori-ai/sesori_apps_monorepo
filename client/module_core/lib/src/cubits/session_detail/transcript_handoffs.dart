@@ -1,0 +1,213 @@
+import "package:meta/meta.dart";
+import "package:sesori_shared/sesori_shared.dart";
+
+import "transcript_turns.dart";
+
+/// Where a handoff's summary request stands in the source session.
+enum TranscriptHandoffMarkerStatus() {
+  /// The agent is still writing the summary.
+  writing,
+
+  /// The summary was written and handed to the target.
+  sent,
+
+  /// The send did not complete, so the target got nothing.
+  notSent,
+}
+
+/// The one-line row a summary request's turn folds into in the source session:
+/// Sesori's request and the agent's reply never show as messages.
+@immutable
+final class const TranscriptHandoffMarker({
+  required final String targetSessionId,
+
+  /// The target's title when the send started; null when it had none.
+  required final String? targetTitle,
+  required final TranscriptHandoffMarkerStatus status,
+
+  /// The agent's reply to the request, read as the bridge reads the summary:
+  /// its text up to the next user message. Null while it has written none.
+  required final String? summary,
+});
+
+/// The card that takes the place of a handoff prompt's bubble in the target
+/// session.
+@immutable
+final class const TranscriptHandoffCard({
+  required final String sourceSessionId,
+
+  /// The source's title when the send started; null when it had none.
+  required final String? sourceTitle,
+  required final String summary,
+
+  /// Where the bridge saved the source's transcript for the target's agent.
+  required final String transcriptPath,
+});
+
+/// The handoffs among the rendered messages.
+@immutable
+final class const TranscriptHandoffs({
+  /// Markers by the id of the summary request they replace, whose row shows
+  /// them.
+  required final Map<String, TranscriptHandoffMarker> markers,
+
+  /// The messages a marker folds away: everything after its request in the
+  /// request's turn, steered follow-ups included.
+  required final Set<String> foldedMessageIds,
+
+  /// Cards by the id of the handoff prompt they replace.
+  required final Map<String, TranscriptHandoffCard> cards,
+
+  /// Markers by the id of a summary request the bridge still lists as queued,
+  /// so the request never shows as a plain prompt before its message renders.
+  required final Map<String, TranscriptHandoffMarker> queuedMarkers,
+
+  /// Cards by the id of a handoff prompt the bridge still lists as queued.
+  required final Map<String, TranscriptHandoffCard> queuedCards,
+}) {
+  /// Whether the newest turn is a summary still being written, or a request
+  /// on its way to being answered, which its marker already shows, so no
+  /// working row joins it. Only the newest turn is ever writing.
+  bool get writing => [
+    ...markers.values,
+    ...queuedMarkers.values,
+  ].any((marker) => marker.status == TranscriptHandoffMarkerStatus.writing);
+}
+
+/// Folds handoff turns into markers and turns handoff prompts into cards.
+///
+/// Pure and stateless like [TranscriptTurnBuilder], over the same messages and
+/// turns, so the widgets hold no folding rule.
+class const TranscriptHandoffBuilder() {
+  TranscriptHandoffs build({
+    required List<MessageWithParts> messages,
+
+    /// [TranscriptTurnBuilder]'s turns for [messages].
+    required TranscriptTurns turns,
+
+    /// Whether the session works, so a summary request in the newest turn is
+    /// still being answered.
+    required bool isBusy,
+
+    /// The prompts the bridge accepted for the session, which show before
+    /// their user messages arrive.
+    required List<QueuedSessionPrompt> queuedPrompts,
+  }) {
+    final byId = {for (final message in messages) message.info.id: message};
+    final markers = <String, TranscriptHandoffMarker>{};
+    final folded = <String>{};
+    for (final (turnIndex, turn) in turns.turns.indexed) {
+      final turnMessages = [
+        for (final id in turn.messageIds) ?byId[id],
+      ];
+      // A request is normally its turn's opener, but one the shared turn rule
+      // reads as a follow-up folds from where it is all the same. A send
+      // retried after a stop, unanswered, joins the stopped one's turn, so each
+      // request folds only up to the next.
+      final requestIndexes = [
+        for (final (index, message) in turnMessages.indexed)
+          if (_isRequest(message: message)) index,
+      ];
+      for (final (position, requestIndex) in requestIndexes.indexed) {
+        final request = turnMessages[requestIndex];
+        final last = position == requestIndexes.length - 1;
+        final rest = turnMessages.sublist(requestIndex + 1, last ? null : requestIndexes[position + 1]);
+        // A prompt steered into a summary being written folds with it, but once
+        // a send has stopped, the shared turn rule can join the user's next,
+        // ordinary prompt to an unanswered request, so only the reply folds.
+        final folds = switch (request.info) {
+          MessageUser(handoff: MessageHandoffNotSent()) => rest.takeWhile((message) => message.info is! MessageUser),
+          MessageUser() || MessageAssistant() || MessageError() => rest,
+        };
+        for (final message in folds) {
+          // Another session's handoff landing in this turn keeps its card.
+          if (message.info case MessageUser(handoff: MessageHandoffReceived())) continue;
+          folded.add(message.info.id);
+        }
+        final reply = rest.takeWhile((message) => message.info is! MessageUser).toList();
+        final writing = last && isBusy && turnIndex == turns.turns.length - 1;
+        final marker = switch (request.info) {
+          MessageUser(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle)) =>
+            TranscriptHandoffMarker(
+              targetSessionId: targetSessionId,
+              targetTitle: targetTitle,
+              status: writing ? TranscriptHandoffMarkerStatus.writing : TranscriptHandoffMarkerStatus.sent,
+              summary: _summaryOf(reply: reply),
+            ),
+          MessageUser(handoff: MessageHandoffNotSent(:final targetSessionId, :final targetTitle)) =>
+            TranscriptHandoffMarker(
+              targetSessionId: targetSessionId,
+              targetTitle: targetTitle,
+              status: TranscriptHandoffMarkerStatus.notSent,
+              summary: _summaryOf(reply: reply),
+            ),
+          MessageUser() || MessageAssistant() || MessageError() => null,
+        };
+        if (marker != null) markers[request.info.id] = marker;
+      }
+    }
+    final cards = <String, TranscriptHandoffCard>{
+      for (final message in messages)
+        if (message.info case MessageUser(:final id, :final MessageHandoffReceived handoff) when !folded.contains(id))
+          id: _cardOf(handoff: handoff),
+    };
+    // A prompt whose user message arrived before its parts still shows from
+    // the queue, so its row keeps the handoff until the message can take over.
+    final queuedMarkers = <String, TranscriptHandoffMarker>{};
+    final queuedCards = <String, TranscriptHandoffCard>{};
+    for (final prompt in queuedPrompts) {
+      switch (prompt.handoff) {
+        // Not answered yet, so the summary is still to be written.
+        case MessageHandoffSent(:final targetSessionId, :final targetTitle):
+          queuedMarkers[prompt.id] = TranscriptHandoffMarker(
+            targetSessionId: targetSessionId,
+            targetTitle: targetTitle,
+            status: TranscriptHandoffMarkerStatus.writing,
+            summary: null,
+          );
+        case MessageHandoffNotSent(:final targetSessionId, :final targetTitle):
+          queuedMarkers[prompt.id] = TranscriptHandoffMarker(
+            targetSessionId: targetSessionId,
+            targetTitle: targetTitle,
+            status: TranscriptHandoffMarkerStatus.notSent,
+            summary: null,
+          );
+        case final MessageHandoffReceived handoff:
+          queuedCards[prompt.id] = _cardOf(handoff: handoff);
+        case MessageHandoffUnknown() || null:
+          break;
+      }
+    }
+    return TranscriptHandoffs(
+      markers: Map.unmodifiable(markers),
+      foldedMessageIds: Set.unmodifiable(folded),
+      cards: Map.unmodifiable(cards),
+      queuedMarkers: Map.unmodifiable(queuedMarkers),
+      queuedCards: Map.unmodifiable(queuedCards),
+    );
+  }
+
+  static TranscriptHandoffCard _cardOf({required MessageHandoffReceived handoff}) => TranscriptHandoffCard(
+    sourceSessionId: handoff.sourceSessionId,
+    sourceTitle: handoff.sourceTitle,
+    summary: handoff.summary,
+    transcriptPath: handoff.transcriptPath,
+  );
+
+  static bool _isRequest({required MessageWithParts message}) => switch (message.info) {
+    MessageUser(handoff: MessageHandoffSent() || MessageHandoffNotSent()) => true,
+    MessageUser() || MessageAssistant() || MessageError() => false,
+  };
+
+  /// The agent's text in [reply], which runs up to the next user message, as
+  /// the bridge's send reads the summary it hands off.
+  static String? _summaryOf({required List<MessageWithParts> reply}) {
+    final text = [
+      for (final message in reply)
+        if (message.info case MessageAssistant(sender: MessageSender.agent))
+          for (final part in message.parts)
+            if (part case MessagePartText(:final text) when text.trim().isNotEmpty) text.trim(),
+    ].join("\n\n");
+    return text.isEmpty ? null : text;
+  }
+}

@@ -276,21 +276,25 @@ class ChatHistoryRepository({
   /// `sent` handoff, or of none when the harness stored the request without
   /// its live echo. It is an update at [updatedAt], so a later replay still
   /// pairs the row with its replayed turn. Any other stored stamp is left as it is.
-  Future<void> markHandoffNotSent({
+  ///
+  /// Returns whether the message was marked.
+  Future<bool> markHandoffNotSent({
     required String sessionId,
     required String messageId,
     required MessageHandoffNotSent notSent,
     required int updatedAt,
   }) async {
     final existing = await _chatHistoryDao.getMessage(sessionId: sessionId, messageId: messageId);
-    if (existing == null) return;
+    if (existing == null) return false;
     final stored = Message.fromJson(jsonDecodeMap(existing.infoJson));
     if (stored case MessageUser(handoff: MessageHandoffSent() || null)) {
       final marked = stored.copyWith(handoff: notSent);
       await _chatHistoryDao.upsertMessage(
         row: existing.copyWith(infoJson: jsonEncode(marked.toJson()), updatedAt: updatedAt),
       );
+      return true;
     }
+    return false;
   }
 
   /// [update] with the command invocation and handoff [stored] already
@@ -779,6 +783,9 @@ class ChatHistoryRepository({
   /// internal parts hidden from clients do not affect visible equivalence. The
   /// imported row remains authoritative for replay metadata.
   ///
+  /// Returns, for each stored row an imported row replaced under a different
+  /// id, that imported row's id.
+  ///
   /// Retained rows rejoin the imported transcript at their recorded message
   /// time while their relative order stays stable. Thus an older backend-only
   /// row cannot jump to the newest edge on re-import, while a genuinely newer
@@ -787,7 +794,7 @@ class ChatHistoryRepository({
   /// the replay doesn't hold at all, retained without a time the import can
   /// order it by, keeps its place before the closest stored row below it; only
   /// a row with no imported row below it stays at the newest edge.
-  Future<void> replaceSessionMessages({
+  Future<Map<String, String>> replaceSessionMessages({
     required String sessionId,
     required AttachmentStorageScope storageScope,
     required List<MessageWithParts> messages,
@@ -1196,7 +1203,15 @@ class ChatHistoryRepository({
       backendActivityAt: backendActivityAt,
       syncedAt: syncedAt,
     );
+    return {
+      for (final MapEntry(key: storedId, value: importedIndex) in importedIndexByStoredId.entries)
+        if (messages[importedIndex].info.id case final importedId when importedId != storedId) storedId: importedId,
+    };
   }
+
+  /// The id of the session's newest stored message, or null when it has none.
+  Future<String?> getNewestMessageId({required String sessionId}) async =>
+      (await _chatHistoryDao.getMessages(sessionId: sessionId, limit: 1, before: null)).firstOrNull?.messageId;
 
   Future<void> advanceSyncState({
     required String sessionId,

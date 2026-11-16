@@ -40,8 +40,15 @@ class ScheduledTaskRunService({
   required final ScheduledTaskOccurrenceCalculator _calculator,
   required final Clock _clock,
 }) {
+  /// How long after its prompt goes out a run counts as going before its
+  /// session's quietness decides.
+  static const Duration startupGrace = Duration(seconds: 30);
+
   /// Serializes every pass and Run now, so no two fire the same task.
   final ParallelLock _lock = ParallelLock(maxParallelOperations: 1);
+
+  /// When each task's latest run's prompt went out.
+  final Map<String, DateTime> _promptSentAt = {};
   final StreamController<void> _changes = StreamController<void>.broadcast();
   final StreamController<ScheduledTaskRunFailure> _failures = StreamController<ScheduledTaskRunFailure>.broadcast();
 
@@ -129,6 +136,14 @@ class ScheduledTaskRunService({
   Future<bool> _isPreviousRunActive({required String taskId}) async {
     final sessionId = await _repository.latestStartedSessionId(taskId: taskId);
     if (sessionId == null) return false;
+    // A harness reports a new turn's busy status a moment after the prompt
+    // goes out, so until then the session reads quiet. A run whose prompt went
+    // out this recently counts as going whatever its session reads.
+    // ponytail: a run that really ends inside the grace still refuses Run now
+    // until the grace passes, and a bridge restart forgets the grace; track
+    // the first busy status if either bites.
+    final sentAt = _promptSentAt[taskId];
+    if (sentAt != null && _clock.now().difference(sentAt) < startupGrace) return true;
     return switch (await _sessions.getSessionQuietness(sessionId: sessionId)) {
       SessionQuietness.working || SessionQuietness.awaitingUser => true,
       // Unknown is no sign of a run still going, and a session its harness
@@ -231,6 +246,7 @@ class ScheduledTaskRunService({
       _failures.add(ScheduledTaskRunFailure(taskId: task.id, taskName: definition.name, reason: reason));
       return failed;
     }
+    _promptSentAt[task.id] = _clock.now();
     if (await _repository.setRunSession(runId: run.id, sessionId: sessionId)) {
       _changes.add(null);
     } else {

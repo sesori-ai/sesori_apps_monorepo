@@ -8,15 +8,17 @@
 | 4 Handoff marker in the bridge | Done | #2608 |
 | 5 Claude read rules (transcripts and uploads) | Done | #2613 |
 | 6 Busy-prompt declaration | Done | #2589 |
-| 7 Client send and stop pipeline | In PR | #2622 |
-| 7.a Send from the session menu | In PR | #2623 |
-| 8 Handoff marker and card in the chats | Not started | |
+| 7 Client send and stop pipeline | Done | #2622 |
+| 7.a Send from the session menu | Done | #2623 |
+| 8 Handoff marker and card in the chats | In PR | #2629 |
+| 8.a Queued handoff prompts stay hidden; a failed send updates live | In PR | #2654 |
 | 9 Archive the source after sending | Not started | |
 | 10 Analytics | Not started | |
 | 11 Reconcile docs and harness rows | Not started | |
 | 12 Verify and retire | Not started | |
 
-Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 7.a←7; 8←4; 9←7.a; 10←7; 11←5,8,9,10; 12←11.
+Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 7.a←7; 8←4; 8.a←8;
+9←7.a; 10←7; 11←5,8,8.a,9,10; 12←11.
 
 ## Product questions
 

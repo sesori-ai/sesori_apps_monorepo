@@ -19,6 +19,7 @@ import "api/database/daos/accepted_prompts_dao.dart";
 import "api/database/daos/new_session_defaults_dao.dart";
 import "api/database/daos/scheduled_task_dao.dart";
 import "api/database/daos/session_continuation_dao.dart";
+import "api/database/daos/session_interruption_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
 import "api/database/daos/side_chat_dao.dart";
 import "api/database/database.dart";
@@ -39,9 +40,11 @@ import "foundation/relay_plaintext_codec.dart";
 import "foundation/streaming_process_runner.dart";
 import "listeners/chat_history_activity_listener.dart";
 import "listeners/chat_history_listener.dart";
+import "listeners/interrupted_turn_listener.dart";
 import "listeners/plugin_catalog_hydration_listener.dart";
 import "listeners/plugin_event_listener.dart";
 import "listeners/plugin_warmup_setting_listener.dart";
+import "listeners/running_turn_listener.dart";
 import "listeners/scheduled_task_timer_listener.dart";
 import "listeners/session_binding_commit_listener.dart";
 import "listeners/session_continuation_timer_listener.dart";
@@ -91,6 +94,7 @@ import "repositories/scheduled_task_repository.dart";
 import "repositories/scratch_repository.dart";
 import "repositories/session_continuation_repository.dart";
 import "repositories/session_diff_repository.dart";
+import "repositories/session_interruption_repository.dart";
 import "repositories/session_metadata_repository.dart";
 import "repositories/session_options_repository.dart";
 import "repositories/session_repository.dart";
@@ -189,6 +193,7 @@ import "services/catalog_import_service.dart";
 import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
+import "services/interrupted_turn_service.dart";
 import "services/mcp_authentication_service.dart";
 import "services/mcp_service.dart";
 import "services/pending_interaction_service.dart";
@@ -245,6 +250,7 @@ typedef OrchestratorComposition = ({
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
   ChatHistoryService chatHistoryService,
+  RunningTurnListener runningTurnListener,
 });
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
@@ -344,15 +350,6 @@ class Orchestrator({
       warmupService: pluginWarmupService,
       settingsService: pluginWarmupSettingsService,
     );
-    final sessionUnseenService = SessionUnseenService(
-      unseenRepository: SessionUnseenRepository(
-        sessionDao: _database.sessionDao,
-        calculator: unseenCalculator,
-      ),
-      projectRepository: projectRepository,
-      viewTracker: sessionViewTracker,
-      now: () => clock.now().millisecondsSinceEpoch,
-    );
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),
       permissionValidator: const FilesystemPermissionValidator(),
@@ -394,9 +391,13 @@ class Orchestrator({
       dao: SessionContinuationDao(database: _database),
       runtime: _pluginRuntime,
     );
+    final sessionInterruptions = SessionInterruptionRepository(
+      dao: SessionInterruptionDao(database: _database),
+    );
     final sessionViews = SessionViewService(
       sessions: sessionRepository,
       continuations: sessionContinuations,
+      interruptions: sessionInterruptions,
       resetBuffer: quotaResetBuffer,
     );
     final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
@@ -417,6 +418,17 @@ class Orchestrator({
     final sessionMutationDispatcher = SessionMutationDispatcher(
       sessionRepository: sessionRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
+      interruptions: sessionInterruptions,
+    );
+    final sessionUnseenService = SessionUnseenService(
+      unseenRepository: SessionUnseenRepository(
+        sessionDao: _database.sessionDao,
+        calculator: unseenCalculator,
+      ),
+      projectRepository: projectRepository,
+      viewTracker: sessionViewTracker,
+      mutations: sessionMutationDispatcher,
+      now: () => clock.now().millisecondsSinceEpoch,
     );
     final pushTracker = PushSessionStateTracker(now: clock.now);
     final pushRateLimiter = PushRateLimiter(now: clock.now);
@@ -598,6 +610,8 @@ class Orchestrator({
       sessionRepository: sessionRepository,
       attachmentThumbnailBuilder: const AttachmentThumbnailBuilder(),
       bridgeIdProvider: _bridgeRegistrationService,
+      interruptions: sessionInterruptions,
+      mutations: sessionMutationDispatcher,
     );
     final sessionPromptService = SessionPromptService(
       continuations: sessionContinuations,
@@ -753,6 +767,21 @@ class Orchestrator({
       source: catalogImportRepository.backendActivity,
       chatHistoryService: chatHistoryService,
     );
+    final runningTurnListener = RunningTurnListener(
+      source: sessionEventDispatcher.events,
+      interruptions: sessionInterruptions,
+      clock: clock,
+    );
+    final interruptedTurnListener = InterruptedTurnListener(
+      readyPluginIds: _pluginLifecycleService.readyPluginIds,
+      service: InterruptedTurnService(
+        interruptions: sessionInterruptions,
+        sessions: sessionRepository,
+        chatHistory: chatHistoryService,
+        mutations: sessionMutationDispatcher,
+        clock: clock,
+      ),
+    );
     final normalizedPluginEvents = sessionEventDispatcher.events;
     final router = RequestRouter(
       handlers: [
@@ -870,6 +899,8 @@ class Orchestrator({
       sessionMutationListener: sessionMutationListener,
       chatHistoryListener: chatHistoryListener,
       chatHistoryActivityListener: chatHistoryActivityListener,
+      runningTurnListener: runningTurnListener,
+      interruptedTurnListener: interruptedTurnListener,
       chatHistoryService: chatHistoryService,
       sessionOptionsCreationRefreshListener: sessionOptionsCreationRefreshListener,
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
@@ -935,6 +966,7 @@ class Orchestrator({
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
       chatHistoryService: chatHistoryService,
+      runningTurnListener: runningTurnListener,
     );
   }
 
@@ -954,15 +986,19 @@ class Orchestrator({
       SessionContinuationUpdated() ||
       SessionArchived() ||
       SessionMessagesRewound() => mutation.session,
-      SessionTitleUpdated() || SessionApprovalOverrideUpdated() || SessionPinnedUpdated() => await sessionViews.enrich(
-        session: mutation.session,
-      ),
+      SessionTitleUpdated() ||
+      SessionApprovalOverrideUpdated() ||
+      SessionPinnedUpdated() ||
+      SessionInterruptionUpdated() => await sessionViews.enrich(session: mutation.session),
     };
     return (
       pluginId: session.pluginId,
       events: switch (mutation) {
         SessionTitleUpdated() => [BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true)],
-        SessionContinuationUpdated() || SessionApprovalOverrideUpdated() || SessionPinnedUpdated() => [
+        SessionContinuationUpdated() ||
+        SessionApprovalOverrideUpdated() ||
+        SessionPinnedUpdated() ||
+        SessionInterruptionUpdated() => [
           BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         ],
         SessionDeleted() => [BridgeSseSessionDeleted(info: session.toJson())],
@@ -1002,6 +1038,8 @@ class OrchestratorSession._({
   required final SessionMutationListener _sessionMutationListener,
   required final ChatHistoryListener _chatHistoryListener,
   required final ChatHistoryActivityListener _chatHistoryActivityListener,
+  required final RunningTurnListener _runningTurnListener,
+  required final InterruptedTurnListener _interruptedTurnListener,
   required final ChatHistoryService _chatHistoryService,
   required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
   required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
@@ -1205,6 +1243,7 @@ class OrchestratorSession._({
     );
     _sessionMutationListener.start();
     _chatHistoryListener.start();
+    _runningTurnListener.start();
     _sessionBindingCommitListener.start();
     _pluginEventListener.start();
     _sessionOptionsCreationRefreshListener.start();
@@ -1214,6 +1253,9 @@ class OrchestratorSession._({
     _chatHistoryActivityListener.start();
     _sessionContinuationTimer.start();
     _scheduledTaskTimer.start();
+    // After the mutation listener, so a resolution's announcement reaches
+    // clients.
+    _interruptedTurnListener.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
     final lifecycleFuture = Future<void>.microtask(
       () => _runLifecycle(readiness: readiness),
@@ -1391,6 +1433,8 @@ class OrchestratorSession._({
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_chatHistoryListener.dispose),
       attempt(_chatHistoryActivityListener.dispose),
+      attempt(_runningTurnListener.dispose),
+      attempt(_interruptedTurnListener.dispose),
     ]);
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_inFlightRelayCompletions.drain)]);

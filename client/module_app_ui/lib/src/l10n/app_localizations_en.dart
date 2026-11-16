@@ -1782,6 +1782,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptPromptsGone => 'This prompt is no longer in the session';
 
   @override
+  String transcriptHandoffWriting(String target) {
+    return 'Writing a summary for $target…';
+  }
+
+  @override
+  String transcriptHandoffSent(String target) {
+    return 'Summary sent to $target';
+  }
+
+  @override
+  String transcriptHandoffNotSent(String target) {
+    return 'Couldn\'t send to $target';
+  }
+
+  @override
+  String get transcriptHandoffOpen => 'Open';
+
+  @override
+  String get transcriptHandoffAnotherSession => 'another session';
+
+  @override
+  String get transcriptHandoffSummaryTitle => 'Handoff summary';
+
+  @override
+  String transcriptHandoffFrom(String source) {
+    return 'From $source';
+  }
+
+  @override
+  String get transcriptHandoffShowAll => 'Show all';
+
+  @override
+  String get transcriptHandoffShowLess => 'Show less';
+
+  @override
+  String get transcriptHandoffSessionUnavailable => 'Couldn\'t open that session';
+
+  @override
   String get transcriptPromptsRefreshed => 'The session just refreshed. Tap the prompt again.';
 
   @override
@@ -2240,6 +2278,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String sendSessionFailedSourceOptionsUnavailable(String source) {
+    return 'Couldn\'t send: “$source” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.';
+  }
+
+  @override
   String sendSessionFailedSourceEmpty(String source) {
     return 'Couldn\'t send: “$source” has nothing to send yet.';
   }
@@ -2269,6 +2312,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String sendSessionFailedTargetRefusedReason(String reason) {
     return 'Couldn\'t send: $reason';
+  }
+
+  @override
+  String sendSessionFailedTargetOptionsUnavailable(String target) {
+    return 'Couldn\'t send: “$target” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.';
   }
 
   @override
@@ -4098,6 +4146,201 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mcpCancel => 'Cancel';
+
+  @override
+  String get scheduledTasksTitle => 'Scheduled';
+
+  @override
+  String get scheduledTasksClose => 'Close Scheduled';
+
+  @override
+  String get scheduledTasksRecurringHeading => 'Recurring';
+
+  @override
+  String get scheduledTasksOnceHeading => 'Once';
+
+  @override
+  String get scheduledTasksEmpty => 'No scheduled tasks on this computer yet.';
+
+  @override
+  String get scheduledTasksLoadFailed => 'Couldn’t load scheduled tasks';
+
+  @override
+  String get scheduledTasksRetry => 'Try again';
+
+  @override
+  String get scheduledTasksBridgeOutdated => 'Update this computer to schedule tasks';
+
+  @override
+  String scheduledTasksToggleFailed(String name) {
+    return 'Couldn’t change “$name”. Try again.';
+  }
+
+  @override
+  String scheduledTaskDaily(String time) {
+    return 'Every day at $time';
+  }
+
+  @override
+  String scheduledTaskWeekdays(String time) {
+    return 'Weekdays at $time';
+  }
+
+  @override
+  String scheduledTaskWeekly(String days, String time) {
+    return '$days at $time';
+  }
+
+  @override
+  String scheduledTaskEveryHours(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: 'Every $hours hours',
+      one: 'Every hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get scheduledTaskNewerApp => 'Edit on a newer app';
+
+  @override
+  String get scheduledTaskPaused => 'Paused';
+
+  @override
+  String get scheduledTaskToday => 'Today';
+
+  @override
+  String get scheduledTaskTomorrow => 'Tomorrow';
+
+  @override
+  String get scheduledTaskYesterday => 'Yesterday';
+
+  @override
+  String scheduledTaskDayAndTime(String day, String time) {
+    return '$day, $time';
+  }
+
+  @override
+  String scheduledTaskInZone(String time, String zone) {
+    return '$time ($zone)';
+  }
+
+  @override
+  String get scheduledTaskWhen => 'When';
+
+  @override
+  String get scheduledTaskNextRun => 'Next run';
+
+  @override
+  String get scheduledTaskNoNextRun => 'Not scheduled';
+
+  @override
+  String get scheduledTaskRunNow => 'Run now';
+
+  @override
+  String get scheduledTaskRunStarted => 'Run started';
+
+  @override
+  String get scheduledTaskRunNowFailed => 'Couldn’t start the run. Try again.';
+
+  @override
+  String get scheduledTaskPreviousRunActive => 'The previous run is still going. Try again once it finishes.';
+
+  @override
+  String get scheduledTaskRunNowUnsupported => 'This computer can’t run this task yet.';
+
+  @override
+  String get scheduledTaskPause => 'Pause';
+
+  @override
+  String get scheduledTaskResume => 'Resume';
+
+  @override
+  String get scheduledTaskPauseFailed => 'Couldn’t pause the task. Try again.';
+
+  @override
+  String get scheduledTaskResumeFailed => 'Couldn’t resume the task. Try again.';
+
+  @override
+  String get scheduledTaskRename => 'Rename';
+
+  @override
+  String get scheduledTaskRenameTitle => 'Rename task';
+
+  @override
+  String get scheduledTaskRenameHint => 'Task name';
+
+  @override
+  String get scheduledTaskRenameFailed => 'Couldn’t rename the task';
+
+  @override
+  String get scheduledTaskDelete => 'Delete task';
+
+  @override
+  String scheduledTaskDeleteTitle(String name) {
+    return 'Delete “$name”?';
+  }
+
+  @override
+  String get scheduledTaskDeleteMessage => 'It won’t run again. Sessions it already started stay.';
+
+  @override
+  String get scheduledTaskDeleteCancel => 'Cancel';
+
+  @override
+  String get scheduledTaskDeleteConfirm => 'Delete';
+
+  @override
+  String get scheduledTaskDeleteFailed => 'Couldn’t delete the task. Try again.';
+
+  @override
+  String get scheduledTaskReadOnly => 'This task uses settings this app doesn’t know. Edit it on a newer app.';
+
+  @override
+  String get scheduledTaskGone => 'This task is no longer scheduled.';
+
+  @override
+  String get scheduledTaskRunsHeading => 'Runs';
+
+  @override
+  String get scheduledTaskNoRuns => 'No runs yet';
+
+  @override
+  String get scheduledTaskRunRan => 'Ran';
+
+  @override
+  String get scheduledTaskRunRanLate => 'Ran late';
+
+  @override
+  String get scheduledTaskRunSkipped => 'Skipped: the previous run was still going';
+
+  @override
+  String get scheduledTaskRunMissed => 'Missed: the computer was off';
+
+  @override
+  String scheduledTaskRunFailed(String reason) {
+    return 'Couldn’t start: $reason';
+  }
+
+  @override
+  String get scheduledTaskRunUnknown => 'Updated app needed to show this run';
+
+  @override
+  String get scheduledTaskFailureProjectMissing => 'the project is gone';
+
+  @override
+  String get scheduledTaskFailureHarnessUnavailable => 'the harness isn’t available';
+
+  @override
+  String get scheduledTaskFailureModelUnavailable => 'its model isn’t offered anymore';
+
+  @override
+  String get scheduledTaskFailureStartFailed => 'the session didn’t start';
+
+  @override
+  String get scheduledTaskFailureUnknown => 'an unknown reason';
 
   @override
   String get sideQuestionAsk => 'Ask a side question';
