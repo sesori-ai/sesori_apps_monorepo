@@ -95,6 +95,14 @@ declaration into a `SideQuestionAvailability`: `available`,
   replaces an open panel's chat with a new one asking it. See
   [desktop-cockpit-shell.md](desktop-cockpit-shell.md) for focus, the
   connection pill and pushed pages.
+- It runs from under the toolbar to 12 pt above the controls docked at the
+  page's bottom (the composer, and any card or notice above it), so the
+  composer's Send and Stop stay clickable. Its bottom edge follows the
+  composer as a draft grows or folds, after a frame. Where that leaves it
+  shorter than 300 pt, it keeps 300 pt and runs over the composer's top, by
+  design: a usable side chat wins over the top of a tall draft, and Send, at
+  the composer's bottom, stays clear down to the 560×480 minimum window. With
+  no composer (read-only or archived) it runs to the page's bottom.
 
 ### Side chat
 
@@ -120,7 +128,7 @@ declaration into a `SideQuestionAvailability`: `available`,
 | --- | --- |
 | L1 Smoke | Not included. |
 | L2 Routine | Automated: bridge route, repository and migration tests (`side_question_handlers_test`, `side_chat_repository_test`, `side_chat_exchanges_migration_test`) cover the routes, refusals, storage, history order, archived read-only and delete cascade; Claude Code (`claude_stream_client_test`, `claude_side_answer_mapper_test`, `claude_session_process_repository_test` for the running-reply echo) and Codex (`codex_side_questions_test`, `codex_side_question_prompt_builder_test`) plugin tests against fakes; client `side_chat_cubit_test`, `session_detail_side_question_test`, `side_chat_view_test`, `prego_detent_sheet_test`, `side_chat_keyboard_hold_test`, `command_picker_test` and `desktop_session_detail_screen_test`; one `side_question_asked` per ask with bounded parameters. |
-| L3 Release | Live Claude Code and Codex: ask while the main turn streams and check it finishes normally; a follow-up uses the history; an ask after a cold resume answers; the `.jsonl` and the rollout are unchanged, and an over-budget Codex history is trimmed. On a headless iOS simulator, against Claude Code and Codex: both entries (button, and "/btw " with ✕ back keeping the text, and the picker row); sheet heights and drag; ask during streaming and follow up; reopen an earlier chat; close while waiting and reopen to see the answer; no main-transcript jump; the tap reason on an unsupported harness and on an older bridge. On macOS: the panel slides in without the transcript moving, answers a question and a follow-up, and closes on Escape and on a session switch. |
+| L3 Release | Live Claude Code and Codex: ask while the main turn streams and check it finishes normally; a follow-up uses the history; an ask after a cold resume answers; the `.jsonl` and the rollout are unchanged, and an over-budget Codex history is trimmed. On a headless iOS simulator, against Claude Code and Codex: both entries (button, and "/btw " with ✕ back keeping the text, and the picker row); sheet heights and drag; ask during streaming and follow up; reopen an earlier chat; close while waiting and reopen to see the answer; no main-transcript jump; the tap reason on an unsupported harness and on an older bridge. On macOS: the panel slides in without the transcript moving, stops above the composer with Send clickable and follows a growing draft, answers a question and a follow-up, and closes on Escape and on a session switch. |
 | L4 Extended | Very long questions and answers, the largest text size, a reopened chat with many exchanges, and an ask on a session with no turn yet. |
 | L5 Full | No additional coverage. |
 
@@ -146,6 +154,8 @@ bridge first.
 - The main transcript scrolls or jumps when the sheet or panel opens, closes or
   receives an answer, or the composer behind the sheet creeps or dips.
 - A tap on the side-question button, or on Send in the mode, does nothing.
+- The open desktop panel covers the composer's Send or Stop in a normal-size
+  window, or its bottom edge snaps or lags visibly behind a growing draft.
 - "/btw " is sent to the harness as a prompt on an `available` session, or
   composer text is lost when leaving the mode.
 - A refused or failed ask is stored, or loses the typed question.
@@ -162,9 +172,11 @@ bridge first.
   model (verified on 2.1.325, 2026-11-16, upstream
   [anthropics/claude-code#110490](https://github.com/anthropics/claude-code/issues/110490)):
   an ask sent early in the stream comes back after the main turn ends,
-  holding the main turn's reply. Sesori catches that echo and shows "Claude
-  Code answered with its running reply instead. Ask again." with Retry,
-  instead of the reply. A non-Claude model behind a proxy hits it more often,
+  holding the main turn's reply. Sesori catches that echo (an answer equal,
+  after trimming, to the reply of a turn that ended while the ask was out) and
+  shows "Couldn't answer while Claude Code was busy. Ask again." with Retry,
+  instead of the reply. A real answer equal to that reply is refused the same
+  way, which costs only a re-ask. A non-Claude model behind a proxy hits it more often,
   and can also answer the running turn's prompt in its own words, which
   Sesori can't tell from an answer (see HARNESS_CAPABILITIES.md).
 - The side chat input takes no voice, attachments or commands.

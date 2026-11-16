@@ -1999,7 +1999,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     PregoPopupAlertPresenter.of(context).show(
       title: switch (refusal) {
         InterruptedTurnContinueRefusal.editOpen => loc.sessionDetailContinueEditOpen,
-        InterruptedTurnContinueRefusal.editSending => loc.sessionDetailContinueEditSending,
+        InterruptedTurnContinueRefusal.editSending => loc.sessionDetailEditSendingLock,
         InterruptedTurnContinueRefusal.sessionWorking => loc.sessionDetailContinueSessionWorking,
         InterruptedTurnContinueRefusal.promptPending => loc.sessionDetailContinuePromptPending,
         InterruptedTurnContinueRefusal.laterTurn ||
@@ -2037,6 +2037,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       createdAtMs: createdAtMs,
       contentPadding: _kReplyPadding,
       selectionArea: selectionArea,
+      showsLoneStep: false,
     ),
   );
 

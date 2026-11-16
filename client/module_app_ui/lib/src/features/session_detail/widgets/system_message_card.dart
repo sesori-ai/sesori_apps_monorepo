@@ -47,6 +47,9 @@ class const SystemMessageCard({
                 createdAtMs: createdAtMs,
                 contentPadding: EdgeInsets.zero,
                 selectionArea: null,
+                // A background report is usually one sub-agent or task; its
+                // row says what ran without a tap.
+                showsLoneStep: true,
               ),
             ],
           ),
