@@ -31,8 +31,9 @@ class const AssistantMessageCard({
   /// selects its text; null where no menu does.
   required final GlobalKey<PregoReadableSelectionAreaState>? selectionArea,
 
-  /// Whether a group of one step shows that step's row in place of a
-  /// one-step summary; see [TranscriptGroupWidget.showsLoneStep].
+  /// Whether a card holding one step in all shows that step's row in place of
+  /// a one-step summary; see [TranscriptGroupWidget.showsLoneStep]. Steps
+  /// split across groups by text still count together.
   required final bool showsLoneStep,
 }) extends StatelessWidget {
   /// The reply's text as Markdown, its paragraphs as they stream, or null when
@@ -53,6 +54,9 @@ class const AssistantMessageCard({
     // joining; the vertical padding waits for it, so an empty row has no
     // height, and eases in with it, so the row grows as one. The horizontal
     // inset stays, so the first block fades in where it will sit.
+    final showsGroupLoneStep =
+        showsLoneStep &&
+        blocks.whereType<TranscriptGroupBlock>().fold(0, (count, group) => count + group.steps.length) == 1;
     return AnimatedPadding(
       duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
       curve: transcriptMotionCurve,
@@ -69,7 +73,7 @@ class const AssistantMessageCard({
                     key: ValueKey(block.id),
                     projectId: projectId,
                     group: block,
-                    showsLoneStep: showsLoneStep,
+                    showsLoneStep: showsGroupLoneStep,
                   ),
                 ],
               },
