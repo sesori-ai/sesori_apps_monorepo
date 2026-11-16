@@ -102,6 +102,7 @@ void main() {
       haltClassifier: null,
       toolPartReplacement: null,
       toolPartSuppression: null,
+      separatesToolMessages: false,
     );
     collector.consume(
       notification({
@@ -156,6 +157,7 @@ void main() {
       haltClassifier: classifier,
       toolPartReplacement: null,
       toolPartSuppression: null,
+      separatesToolMessages: false,
     );
     final halted = collector(
       ({required text}) => const AcpHaltNotice(errorName: "halt", kind: PluginErrorKind.failure),

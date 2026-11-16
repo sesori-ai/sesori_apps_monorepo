@@ -24,6 +24,7 @@ void main() {
         haltClassifier: null,
         toolPartReplacement: null,
         toolPartSuppression: null,
+        separatesToolMessages: false,
       );
       final foreignParams = {
         "sessionId": "s1",
@@ -72,6 +73,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -183,6 +185,7 @@ void main() {
           haltClassifier: null,
           toolPartReplacement: null,
           toolPartSuppression: null,
+          separatesToolMessages: false,
         );
         final liveEvents = <BridgeSseEvent>[];
 
@@ -236,6 +239,7 @@ void main() {
                   haltClassifier: null,
                   toolPartReplacement: null,
                   toolPartSuppression: null,
+                  separatesToolMessages: false,
                 )
                 ..consume(
                   upd({
@@ -284,6 +288,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -349,6 +354,7 @@ void main() {
             haltClassifier: null,
             toolPartReplacement: null,
             toolPartSuppression: null,
+            separatesToolMessages: false,
           )..consume(
             upd({
               "sessionUpdate": "tool_call",
@@ -390,6 +396,7 @@ void main() {
             haltClassifier: null,
             toolPartReplacement: null,
             toolPartSuppression: null,
+            separatesToolMessages: false,
           )..consume(
             upd({
               "sessionUpdate": "tool_call",
@@ -425,6 +432,7 @@ void main() {
         haltClassifier: null,
         toolPartReplacement: null,
         toolPartSuppression: null,
+        separatesToolMessages: false,
       );
       final update = {
         "sessionUpdate": "tool_call",
@@ -469,6 +477,7 @@ void main() {
         haltClassifier: null,
         toolPartReplacement: null,
         toolPartSuppression: null,
+        separatesToolMessages: false,
       );
       final update = {
         "sessionUpdate": "tool_call",
@@ -510,6 +519,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -533,6 +543,46 @@ void main() {
       expect(replayMessage.parts.last.id, "$sessionId-mexplicit-assistant-tool-$toolCallId");
     });
 
+    test("separatesToolMessages gives a tool after stamped reasoning the live tool message", () {
+      const sessionId = "s1";
+      const toolCallId = "call-1";
+      final collector =
+          AcpReplayCollector(
+              sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
+              toolNameResolver: null,
+              sessionId: sessionId,
+              agentId: "ACP",
+              initialUserMessage: null,
+              messageIdOverride: null,
+              messageTimeResolver: null,
+              haltClassifier: null,
+              toolPartReplacement: null,
+              toolPartSuppression: null,
+              separatesToolMessages: true,
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "agent_thought_chunk",
+                "messageId": "explicit",
+                "content": {"type": "text", "text": "thinking"},
+              }),
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "tool_call",
+                "toolCallId": toolCallId,
+                "kind": "execute",
+                "status": "completed",
+              }),
+            );
+
+      final messages = collector.build();
+      final toolMessageId = AcpEventMapper.toolMessageId(sessionId: sessionId, toolCallId: toolCallId);
+      expect(messages.map((message) => message.info.id), ["$sessionId-mexplicit-assistant", toolMessageId]);
+      expect(messages.last.parts.single.id, AcpEventMapper.toolPartId(messageId: toolMessageId));
+    });
+
     test("id-less text after a tool stays chronologically after the tool", () {
       final collector =
           AcpReplayCollector(
@@ -547,6 +597,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -590,6 +641,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -648,6 +700,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -686,6 +739,7 @@ void main() {
             haltClassifier: null,
             toolPartReplacement: null,
             toolPartSuppression: null,
+            separatesToolMessages: false,
           )..consume(
             upd({
               "sessionUpdate": "tool_call",
@@ -715,6 +769,7 @@ void main() {
             haltClassifier: null,
             toolPartReplacement: null,
             toolPartSuppression: null,
+            separatesToolMessages: false,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -752,6 +807,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -796,6 +852,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -826,6 +883,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -856,6 +914,7 @@ void main() {
         haltClassifier: null,
         toolPartReplacement: null,
         toolPartSuppression: null,
+        separatesToolMessages: false,
       );
 
       expect(
@@ -878,6 +937,7 @@ void main() {
         haltClassifier: null,
         toolPartReplacement: null,
         toolPartSuppression: null,
+        separatesToolMessages: false,
       );
       final output = _captureWarnings(() {
         for (var index = 0; index < 2; index++) {
@@ -910,6 +970,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -1026,6 +1087,7 @@ void main() {
                 haltClassifier: null,
                 toolPartReplacement: null,
                 toolPartSuppression: null,
+                separatesToolMessages: false,
               )
               ..consume(
                 upd({
@@ -1084,6 +1146,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -1129,6 +1192,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -1164,6 +1228,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -1199,6 +1264,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -1250,6 +1316,7 @@ void main() {
                 : null,
             toolPartReplacement: null,
             toolPartSuppression: null,
+            separatesToolMessages: false,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1284,6 +1351,7 @@ void main() {
                 const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure),
             toolPartReplacement: null,
             toolPartSuppression: null,
+            separatesToolMessages: false,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1310,6 +1378,7 @@ void main() {
                 const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure),
             toolPartReplacement: null,
             toolPartSuppression: null,
+            separatesToolMessages: false,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1349,6 +1418,7 @@ void main() {
                 const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure),
             toolPartReplacement: null,
             toolPartSuppression: null,
+            separatesToolMessages: false,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1378,6 +1448,7 @@ void main() {
             haltClassifier: null,
             toolPartReplacement: null,
             toolPartSuppression: null,
+            separatesToolMessages: false,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1422,6 +1493,7 @@ void main() {
               );
             },
             toolPartSuppression: null,
+            separatesToolMessages: false,
           )..consume(
             upd({
               "sessionUpdate": "tool_call",
@@ -1455,6 +1527,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: ({required update}) => update["_meta"] == "suppress",
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -1493,6 +1566,7 @@ void main() {
               toolPartReplacement: ({required toolCallId, required toolPart}) =>
                   toolPart.copyWith(tool: "configured-$toolCallId"),
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -1550,6 +1624,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -1595,6 +1670,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
@@ -1643,6 +1719,7 @@ void main() {
               haltClassifier: null,
               toolPartReplacement: null,
               toolPartSuppression: null,
+              separatesToolMessages: false,
             )
             ..consume(
               upd({
