@@ -19,8 +19,8 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   command names, paths, repository, project, session, branch or worktree names, raw error text, OAuth identity, email,
   or raw or hashed project, session, bridge, or device identifiers. The account-less authentication catalog's pinned
   provider/method enum is the explicit provider-name exception, and the pinned `harness` on the two message outcomes and
-  on `side_question_asked`, `session_message_edited` and `session_sent_to_session` is the explicit harness-name
-  exception.
+  on `side_question_asked`, `session_message_edited`, `session_forked` and `session_sent_to_session` is the explicit
+  harness-name exception.
 - Account-linked events require an enabled runtime capability (release build, supported platform, sink present),
   authentication, and a server preference resolved to enabled for that generation; anything else suppresses them.
   They carry the validated server-derived key, never a raw account ID, and never set Firebase's global SDK identity.
@@ -83,6 +83,13 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   session caught locally, which offers Stop and resend instead, or a cancelled edit) reports nothing. The desktop does
   not send it to the warehouse yet, because the auth server's product-event route doesn't accept it. Reporting reads
   it from the raw export: adoption is read as edits per harness and the share of each outcome.
+- Fork reports `session_forked` once per fork the bridge answers, from a message's "Fork from here" or the session
+  menu, even if the screen closed meanwhile, with the origin's pinned `harness` and an `outcome`: `succeeded` when the
+  bridge created the fork, `branch_point_unavailable` when the harness cannot cut the conversation there, `refused`
+  for nothing to fork, a missing worktree branch or another refusal, and `failed` for a failed or lost request. A
+  missing-branch refusal followed by "Create a new worktree" reports twice, once per request. It never carries the
+  message, the sessions, or a count. Like the edit event, the desktop does not send it to the warehouse yet. Reporting
+  reads it from the raw export: adoption is read as forks per harness and the share of each outcome.
 - Sending a session into another reports `session_sent_to_session` once per send that reaches an outcome, even if the
   app moved to another computer meanwhile, with the source session's pinned `harness` and an `outcome`: `sent` when the
   target accepted the handoff, `refused_busy` when the source was running or waiting for an answer, `refused_other` for
@@ -200,6 +207,7 @@ account against a real property.
 - `side_question_asked` fires more than once for one ask, fires for an ask the app never sent, or carries anything
   beyond `harness` and `outcome`.
 - `session_message_edited` fires for an edit the app never sent, or carries anything beyond `harness` and `outcome`.
+- `session_forked` fires for a fork the app never requested, or carries anything beyond `harness` and `outcome`.
 - `session_sent_to_session` fires for a send the app never made, fires twice for one send, reports the target's harness,
   or carries anything beyond `harness` and `outcome`.
 - `prompt_files_sent` fires for a failed, locally queued or image-only prompt, fires twice for one accepted prompt, or

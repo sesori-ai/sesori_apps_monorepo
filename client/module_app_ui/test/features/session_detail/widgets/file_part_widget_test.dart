@@ -1608,6 +1608,7 @@ void main() {
           shape: PromptTurnShape.bubble(),
           editing: false,
           onEdit: null,
+          onFork: null,
         ),
       ),
     );

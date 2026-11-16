@@ -15,6 +15,7 @@ import "models/session_abort_not_accepted_exception.dart";
 import "models/session_abort_rejected_exception.dart";
 import "models/session_cleanup_rejection.dart";
 import "models/session_diff_summary_result.dart";
+import "models/session_fork_result.dart";
 import "models/session_messages_through_result.dart";
 import "models/session_options_repository_result.dart";
 import "models/session_page_result.dart";
@@ -534,6 +535,42 @@ class SessionRepository({
         },
       ErrorResponse(error: NotAuthenticatedError()) => const SessionRewindRejected(reason: null),
       ErrorResponse(:final error) => SessionRewindFailed(error: error),
+    };
+  }
+
+  /// Forks [sessionId] at [point]. [recreateFromBase] answers a
+  /// [SessionForkWorktreeBranchMissing] with a new worktree from the base
+  /// branch.
+  Future<SessionForkResult> forkSession({
+    required String sessionId,
+    required ForkPoint point,
+    required bool recreateFromBase,
+  }) async {
+    final response = await _api.forkSession(sessionId: sessionId, point: point, recreateFromBase: recreateFromBase);
+    return switch (response) {
+      SuccessResponse(:final data) => SessionForked(session: data),
+      ErrorResponse(:final NonSuccessCodeError error) when error.errorCode >= 400 && error.errorCode < 500 =>
+        switch (_branchErrorResponse(error: error)) {
+          SessionBranchErrorResponse(code: SessionBranchErrorCode.nothingToFork) => const SessionForkNothingToFork(),
+          SessionBranchErrorResponse(code: SessionBranchErrorCode.branchPointUnavailable, :final message) =>
+            SessionForkUnavailable(reason: message),
+          SessionBranchErrorResponse(code: SessionBranchErrorCode.worktreeBranchMissing) =>
+            const SessionForkWorktreeBranchMissing(),
+          // A point inside a turn that started since the menu opened answers sessionBusy.
+          SessionBranchErrorResponse(
+            code: SessionBranchErrorCode.refused || SessionBranchErrorCode.sessionBusy,
+            :final message,
+          ) =>
+            SessionForkRejected(reason: message),
+          // Edit-only codes never answer a fork.
+          SessionBranchErrorResponse(
+            code: SessionBranchErrorCode.staleSessionOptions || SessionBranchErrorCode.unknown,
+          ) =>
+            const SessionForkRejected(reason: null),
+          null => SessionForkFailed(error: error),
+        },
+      ErrorResponse(error: NotAuthenticatedError()) => const SessionForkRejected(reason: null),
+      ErrorResponse(:final error) => SessionForkFailed(error: error),
     };
   }
 

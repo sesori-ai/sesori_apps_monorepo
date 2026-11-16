@@ -64,6 +64,38 @@ void main() {
       await connectionStatus.close();
     });
 
+    test("a harness that declares fork loads as supporting fork", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      service = SessionDetailLoadService(
+        repository: repository,
+        pluginRepository: stubbedPluginRepository(
+          plugins: const [
+            PluginMetadata(
+              id: "plugin-1",
+              displayName: "Plugin One",
+              isDefault: true,
+              state: PluginLifecycleState.ready,
+              actionHint: null,
+              failureBlock: null,
+              mcpScopes: null,
+              supportsPromptAttachments: true,
+              failureReason: null,
+              sessionBranching: {SessionBranchingOperation.fork},
+            ),
+          ],
+        ),
+        sideChatRepository: MockSideChatRepository(),
+        connectionService: connectionService,
+      );
+
+      final result = await _load(service: service, projectId: "project-1");
+
+      final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
+      expect(snapshot.supportsFork, isTrue);
+      expect(snapshot.supportsRewind, isFalse);
+    });
+
     test("load returns exactly one typed outcome without emitting ui state", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);
@@ -80,6 +112,7 @@ void main() {
       expect(loaded.snapshot.isArchived, isFalse);
       expect(loaded.snapshot.supportsPromptAttachments, isTrue);
       expect(loaded.snapshot.supportsRewind, isTrue);
+      expect(loaded.snapshot.supportsFork, isFalse);
       verify(() => pluginRepository.listPlugins()).called(1);
       verify(
         () => repository.loadSessionOptions(

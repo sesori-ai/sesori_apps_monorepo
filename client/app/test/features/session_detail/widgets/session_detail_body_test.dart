@@ -460,14 +460,16 @@ void main() {
     await tester.pumpWidget(
       _buildApp(
         cubit: cubit,
-        menuEntriesBuilder: ({required context, required session, required isBusy}) => dispatcher.sessionMenuEntries(
-          context: context,
-          actions: actions,
-          session: unseen,
-          isRunning: isBusy,
-          readEntry: const SessionReadMenuMarkUnread(),
-          surfaceEntries: const [],
-        ),
+        menuEntriesBuilder: ({required context, required session, required isBusy, required canFork}) =>
+            dispatcher.sessionMenuEntries(
+              context: context,
+              actions: actions,
+              session: unseen,
+              isRunning: isBusy,
+              canFork: false,
+              readEntry: const SessionReadMenuMarkUnread(),
+              surfaceEntries: const [],
+            ),
       ),
     );
     await tester.pump();
@@ -496,7 +498,7 @@ void main() {
       _buildApp(
         cubit: cubit,
         readOnly: true,
-        menuEntriesBuilder: ({required context, required session, required isBusy}) => [
+        menuEntriesBuilder: ({required context, required session, required isBusy, required canFork}) => [
           PregoMenuItem(
             leadingIcon: TablerRegular.plug,
             title: "MCP",

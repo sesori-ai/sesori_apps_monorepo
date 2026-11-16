@@ -123,8 +123,8 @@ class DesktopProductAnalyticsDeliveryService({
     FounderCallDeclinedEvent() ||
     SessionMessageEditedEvent() ||
     SessionSentToSessionEvent() => null,
-    // The auth server does not accept it yet.
-    ScheduledTaskSavedEvent() => null,
+    // The auth server does not accept these yet.
+    ScheduledTaskSavedEvent() || SessionForkedEvent() => null,
     // The warehouse has no `finish` or `mode` column, and a server enum would
     // reject the next new mode.
     VoiceTranscriptionCompletedEvent() => const {},

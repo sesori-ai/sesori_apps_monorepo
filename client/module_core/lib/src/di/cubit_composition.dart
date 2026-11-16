@@ -77,6 +77,7 @@ SessionDetailCubit createSessionDetailCubit({
     sessionLaunchService: locator<SessionLaunchService>(),
     fileReferenceOpenService: locator<FileReferenceOpenService>(),
     composerRestore: locator<MessageComposerRestoreService>(),
+    actionService: locator<SessionActionService>(),
     window: window,
   );
 }

@@ -375,9 +375,16 @@ final class _PipeReader({required final HANDLE _pipe}) {
   }
 
   void _read() {
-    // Success and pending both deliver a completion to _onRead.
-    final Win32Result(value: read, error: readError) = ReadFile(_pipe, _buffer, _bufferSize, null, _overlapped);
-    if (!read && readError != ERROR_IO_PENDING) _end(error: readError);
+    // Success and pending both deliver a completion to _onRead; only an error
+    // status returns without one.
+    final status = _startPipeIo(
+      call: _ntReadFile,
+      pipe: _pipe,
+      overlapped: _overlapped,
+      buffer: _buffer,
+      length: _bufferSize,
+    );
+    if (_isNtError(status)) _end(error: _ntStatusToWin32Error(status));
   }
 
   // ignore: no_slop_linter/prefer_required_named_parameters, native LPOVERLAPPED_COMPLETION_ROUTINE signature
@@ -393,9 +400,9 @@ final class _PipeReader({required final HANDLE _pipe}) {
     _read();
   }
 
-  // Only called with no read in flight. The callable stays open: a read that
-  // fails here as the child closes its end can still post a completion, and
-  // the thread pool calling a closed callable aborts the whole VM.
+  // Only called with no read in flight. The callable stays open anyway: the
+  // thread pool calling a closed callable aborts the whole VM, and an open one
+  // costs a few hundred bytes.
   void _end({required int error}) {
     if (error != ERROR_SUCCESS && error != ERROR_BROKEN_PIPE && error != ERROR_HANDLE_EOF) {
       Log.w("Reading a process's output pipe failed (Win32 error $error)");
@@ -446,8 +453,14 @@ final class _PipeWriter({required final HANDLE _pipe}) implements StreamConsumer
     final pending = Completer<void>();
     _pending = pending;
     try {
-      final Win32Result(value: written, error: writeError) = WriteFile(_pipe, buffer, bytes.length, null, _overlapped);
-      if (!written && writeError != ERROR_IO_PENDING) throw io.OSError("WriteFile", writeError);
+      final status = _startPipeIo(
+        call: _ntWriteFile,
+        pipe: _pipe,
+        overlapped: _overlapped,
+        buffer: buffer,
+        length: bytes.length,
+      );
+      if (_isNtError(status)) throw io.OSError("NtWriteFile", _ntStatusToWin32Error(status));
       await pending.future;
     } on Object {
       // IOSink never closes a consumer whose addStream failed.
@@ -480,7 +493,7 @@ final class _PipeWriter({required final HANDLE _pipe}) implements StreamConsumer
   }
 
   // Only called with no write in flight. The callable stays open, as in
-  // _PipeReader._end: a write that failed here can still post a completion.
+  // _PipeReader._end.
   void _release() {
     if (_released) return;
     _released = true;
@@ -491,7 +504,7 @@ final class _PipeWriter({required final HANDLE _pipe}) implements StreamConsumer
 }
 
 // win32 6.4.0 ships neither the job limit flags nor the limit structs, the
-// two process attributes, the wait flag or the four native calls below; these
+// two process attributes, the wait flag or the six native calls below; these
 // mirror winnt.h, winbase.h, processthreadsapi.h and winternl.h.
 const int _jobObjectLimitBreakawayOk = 0x00000800;
 const int _jobObjectLimitKillOnJobClose = 0x00002000;
@@ -523,11 +536,60 @@ final int Function(Pointer) _unregisterWait = _kernel32.lookupFunction<Int32 Fun
   "UnregisterWait",
 );
 
+final DynamicLibrary _ntdll = DynamicLibrary.open("ntdll.dll");
+
 // BindIoCompletionCallback passes its callback the NTSTATUS (a broken pipe is
 // 0xC000014B), not the Win32 error its documentation names.
-final int Function(int) _ntStatusToWin32Error = DynamicLibrary.open(
-  "ntdll.dll",
-).lookupFunction<Uint32 Function(Int32), int Function(int)>("RtlNtStatusToDosError");
+final int Function(int) _ntStatusToWin32Error = _ntdll.lookupFunction<Uint32 Function(Int32), int Function(int)>(
+  "RtlNtStatusToDosError",
+);
+
+// The overlapped reads and writes go through NtReadFile and NtWriteFile,
+// which return the NTSTATUS. ReadFile and WriteFile leave it to GetLastError,
+// and the Dart VM can clobber the last error on its way back from an FFI
+// call: about one pending ReadFile in 2,500 read as ERROR_SUCCESS under GC.
+// A pending read taken for a failure ended the output early.
+typedef _NtFileIoNative = Uint32 Function(
+  Pointer,
+  Pointer,
+  Pointer,
+  Pointer<OVERLAPPED>,
+  Pointer<OVERLAPPED>,
+  Pointer<Uint8>,
+  Uint32,
+  Pointer,
+  Pointer,
+);
+typedef _NtFileIo = int Function(
+  Pointer,
+  Pointer,
+  Pointer,
+  Pointer<OVERLAPPED>,
+  Pointer<OVERLAPPED>,
+  Pointer<Uint8>,
+  int,
+  Pointer,
+  Pointer,
+);
+
+final _NtFileIo _ntReadFile = _ntdll.lookupFunction<_NtFileIoNative, _NtFileIo>("NtReadFile");
+final _NtFileIo _ntWriteFile = _ntdll.lookupFunction<_NtFileIoNative, _NtFileIo>("NtWriteFile");
+
+/// Starts an overlapped read or write of [length] bytes and returns its
+/// NTSTATUS. As in ReadFile and WriteFile, the OVERLAPPED is both the context
+/// the completion hands back and the IO_STATUS_BLOCK (its first two fields);
+/// there is no event, APC routine or key, and pipes take no byte offset.
+int _startPipeIo({
+  required _NtFileIo call,
+  required HANDLE pipe,
+  required Pointer<OVERLAPPED> overlapped,
+  required Pointer<Uint8> buffer,
+  required int length,
+}) => call(pipe, nullptr, nullptr, overlapped, overlapped, buffer, length, nullptr, nullptr);
+
+/// NT_ERROR: an error status, which posts no completion. Success, pending and
+/// warning statuses all post one.
+bool _isNtError(int status) => status >= 0xC0000000;
 
 final class _JobObjectBasicLimitInformation() extends Struct {
   @Int64()

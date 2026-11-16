@@ -146,6 +146,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   pre-ACP binary, a Hermes Agent release below `0.20.0`, and missing model/provider
   configuration; startup revalidates the effective PATH or explicit `--hermes-bin` executable
   while preserving an explicit path as authoritative.
+  A pending Hermes self-update does not stall the `hermes status` probe: the probe skips
+  Hermes' launch-time update completion, which the `hermes acp` launch still runs; that
+  launch waits up to 10 minutes for the ACP handshake so the update can finish.
   Provider setup remains an out-of-band Hermes CLI action, so authentication-required
   Hermes entries give local setup guidance rather than offering bridge-managed login.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
@@ -708,7 +711,7 @@ Vary which harness runs first and which stays disabled, and the configuration: d
 managed, explicit binary path, externally managed backend. Vary the trigger between app
 and management API, whether a session is idle or working, and fresh versus reused data
 directories. For Hermes, vary missing and pre-ACP installs, a release below `0.20.0`, an
-unconfigured model/provider, PATH discovery, and `--hermes-bin`. Restore eligibility,
+unconfigured model/provider, a pending self-update, PATH discovery, and `--hermes-bin`. Restore eligibility,
 timeouts, and sessions afterwards. For Antigravity, vary missing, mismatched and
 valid official pairs, PATH versus authoritative explicit selection,
 authenticated versus authentication-required isolated profiles, and current

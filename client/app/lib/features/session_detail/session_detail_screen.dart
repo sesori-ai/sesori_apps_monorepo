@@ -197,7 +197,7 @@ class const _MobileSessionDetailBody({
               ),
         pageChrome: null,
         // Audit and read-only views retain read-only inventory without session mutations.
-        menuEntriesBuilder: ({required context, required session, required isBusy}) {
+        menuEntriesBuilder: ({required context, required session, required isBusy, required canFork}) {
           final pageEntries = [
             if (context.read<SessionDetailCubit>().state.offersMcp)
               PregoMenuItem(
@@ -226,12 +226,24 @@ class const _MobileSessionDetailBody({
                 },
               ),
           ];
-          if (auditView || readOnly || session.parentID != null) return pageEntries;
+          // An archived session still forks.
+          if (auditView || readOnly || session.parentID != null) {
+            return [
+              ...pageEntries,
+              ?_sessionActions.forkMenuEntry(
+                context: context,
+                actions: context.read<SessionActionsCubit>(),
+                session: session,
+                canFork: canFork,
+              ),
+            ];
+          }
           return _sessionActions.sessionMenuEntries(
             context: context,
             actions: context.read<SessionActionsCubit>(),
             session: session,
             isRunning: isBusy,
+            canFork: canFork,
             readEntry: const SessionReadMenuMarkUnread(),
             surfaceEntries: pageEntries,
           );

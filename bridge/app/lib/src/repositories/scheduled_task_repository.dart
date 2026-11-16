@@ -11,6 +11,15 @@ import "random_hex_id.dart";
 /// A task whose time has come, with the time it fell due.
 typedef DueScheduledTask = ({ScheduledTaskRecord task, DateTime dueAt});
 
+/// What auto-compact reads of a task's newest started run and its session.
+typedef StartedRunState = ({
+  String runId,
+  String sessionId,
+  DateTime firedAt,
+  DateTime? compactRequestedAt,
+  DateTime? userPromptedAt,
+});
+
 /// Stored tasks and their run history.
 class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   /// History rows kept per task, beyond the newest started run.
@@ -174,6 +183,28 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   /// they never hide an earlier run that is still going.
   Future<String?> latestStartedSessionId({required String taskId}) async =>
       (await _dao.getLatestStartedRun(taskId: taskId))?.sessionId;
+
+  /// The task's newest started run, once its prompt has gone to a session.
+  Future<StartedRunState?> latestStartedRun({required String taskId}) async {
+    final row = await _dao.getLatestStartedRun(taskId: taskId);
+    final sessionId = row?.sessionId;
+    if (row == null || sessionId == null) return null;
+    return (
+      runId: row.id,
+      sessionId: sessionId,
+      firedAt: DateTime.fromMillisecondsSinceEpoch(row.firedAt, isUtc: true),
+      compactRequestedAt: _instantOrNull(millis: row.compactRequestedAt),
+      userPromptedAt: _instantOrNull(millis: row.userPromptedAt),
+    );
+  }
+
+  static DateTime? _instantOrNull({required int? millis}) =>
+      millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+
+  /// Records that auto-compact asked for [runId]'s session to be compacted,
+  /// or gave up on it, so it does not ask again for that run.
+  Future<void> recordCompactRequested({required String runId, required DateTime at}) =>
+      _dao.setRunCompactRequestedAt(runId: runId, compactRequestedAt: at.millisecondsSinceEpoch);
 
   /// Makes [sessionId] the session a same-session task continues in. It writes
   /// nothing and returns false when the task was edited, paused or deleted

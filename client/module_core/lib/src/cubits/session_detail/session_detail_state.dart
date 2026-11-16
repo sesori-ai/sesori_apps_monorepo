@@ -107,6 +107,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// Whether the bridge can edit and resend this session's earlier messages.
     @Default(false) bool supportsRewind,
 
+    /// Whether the bridge can fork this session from its messages, archived
+    /// or not.
+    @Default(false) bool supportsFork,
+
     /// What Send does: add a prompt, or resend an edited earlier message.
     @Default(SessionComposerMode.normal()) SessionComposerMode composerMode,
     // Model from the latest assistant message.
@@ -300,6 +304,10 @@ extension SessionDetailLoadedX on SessionDetailLoaded {
   /// Whether the next prompt runs in fast mode.
   bool get runsFastMode =>
       _selection.resolvedFastMode(providers: availableProviders, model: selectedAgentModel, requested: fastMode);
+
+  /// Whether the transcript offers to fork from its messages. A sub-agent's
+  /// conversation is not forked on its own.
+  bool get forksMessages => supportsFork && session.parentID == null;
 
   /// Whether the transcript offers to edit and resend earlier messages.
   bool get editsMessages => supportsRewind && !isArchived && cannotContinueMessage == null;

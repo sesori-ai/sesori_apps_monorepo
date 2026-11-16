@@ -377,6 +377,17 @@ void main() {
           "session_sent_to_session",
           {"harness": "claude_code", "outcome": wireValue},
         ),
+      for (final (outcome, wireValue) in [
+        (AnalyticsSessionForkOutcome.succeeded, "succeeded"),
+        (AnalyticsSessionForkOutcome.branchPointUnavailable, "branch_point_unavailable"),
+        (AnalyticsSessionForkOutcome.refused, "refused"),
+        (AnalyticsSessionForkOutcome.failed, "failed"),
+      ])
+        (
+          ProductAnalyticsEvent.sessionForked(harness: AnalyticsHarness.codex, outcome: outcome),
+          "session_forked",
+          {"harness": "codex", "outcome": wireValue},
+        ),
     ];
 
     for (final (event, expectedName, expectedParameters) in cases) {

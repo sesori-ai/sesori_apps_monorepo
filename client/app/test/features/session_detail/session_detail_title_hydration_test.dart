@@ -94,6 +94,7 @@ SessionDetailLoadResult _loadedResult({required bool isArchived, required bool o
       cannotContinueMessage: null,
       namesCommandInvocations: false,
       supportsRewind: false,
+      supportsFork: false,
     ),
   );
 }
@@ -126,6 +127,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       cannotContinueMessage: null,
       namesCommandInvocations: false,
       supportsRewind: false,
+      supportsFork: false,
     ),
   );
 }
@@ -165,6 +167,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       cannotContinueMessage: null,
       namesCommandInvocations: false,
       supportsRewind: false,
+      supportsFork: false,
     ),
   );
 }
@@ -221,6 +224,7 @@ void _registerDependencies({
       failureReporter: failureReporter,
       selectedComputerService: FakeSelectedComputerService(),
       productAnalyticsService: productAnalyticsService,
+      pluginRepository: MockPluginRepository(),
     ),
   );
 }

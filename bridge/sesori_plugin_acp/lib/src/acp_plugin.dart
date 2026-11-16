@@ -256,6 +256,10 @@ abstract class AcpPlugin({
   /// (`elicitation/create`).
   bool get supportsFormElicitation => false;
 
+  /// Deadline for the `initialize` (and `authenticate`) handshake of every
+  /// agent process this plugin spawns. A timeout tears the process down.
+  Duration get initializeTimeout => AcpAgentApi.defaultRequestTimeout;
+
   /// Maximum time deletion waits for a cancelled target turn before close.
   Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
 
@@ -707,7 +711,7 @@ abstract class AcpPlugin({
         capabilityMeta: initializeCapabilityMeta,
         authMethodId: authMethodId,
         authMethodAllowlist: authMethodAllowlist,
-        timeout: AcpAgentApi.defaultRequestTimeout,
+        timeout: initializeTimeout,
       );
       validateInitializeResult(result);
       return result;

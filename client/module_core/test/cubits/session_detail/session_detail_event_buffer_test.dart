@@ -110,6 +110,7 @@ void main() {
         sseEventTracker: MockSseEventTracker(),
         fileReferenceOpenService: MockFileReferenceOpenService(),
         composerRestore: MockMessageComposerRestoreService(),
+        actionService: MockSessionActionService(),
         window: idleSessionWindow(),
         sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       );
@@ -177,6 +178,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -242,6 +244,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -340,6 +343,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -417,6 +421,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -479,6 +484,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -558,6 +564,7 @@ void main() {
           cannotContinueMessage: null,
           namesCommandInvocations: false,
           supportsRewind: false,
+          supportsFork: false,
         );
       }
 
@@ -633,6 +640,7 @@ void main() {
           cannotContinueMessage: null,
           namesCommandInvocations: false,
           supportsRewind: false,
+          supportsFork: false,
         );
       }
 
@@ -705,6 +713,7 @@ void main() {
         cannotContinueMessage: null,
         namesCommandInvocations: false,
         supportsRewind: false,
+        supportsFork: false,
       );
       when(
         () => mockLoadService.load(
@@ -832,6 +841,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -905,6 +915,7 @@ void main() {
         cannotContinueMessage: null,
         namesCommandInvocations: false,
         supportsRewind: false,
+        supportsFork: false,
       );
       when(
         () => mockLoadService.load(
@@ -1001,6 +1012,7 @@ void main() {
         cannotContinueMessage: null,
         namesCommandInvocations: false,
         supportsRewind: false,
+        supportsFork: false,
       );
       const unsupportedSnapshot = SessionDetailSnapshot(
         areOptionsStale: false,
@@ -1028,6 +1040,7 @@ void main() {
         cannotContinueMessage: null,
         namesCommandInvocations: false,
         supportsRewind: false,
+        supportsFork: false,
       );
       when(
         () => mockLoadService.load(
@@ -1163,6 +1176,7 @@ void main() {
         cannotContinueMessage: null,
         namesCommandInvocations: false,
         supportsRewind: false,
+        supportsFork: false,
       );
       when(
         () => mockLoadService.load(
@@ -1297,6 +1311,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -1383,6 +1398,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -1429,6 +1445,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -1508,6 +1525,7 @@ void main() {
         cannotContinueMessage: null,
         namesCommandInvocations: false,
         supportsRewind: false,
+        supportsFork: false,
       );
 
       when(
@@ -2024,6 +2042,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -2096,6 +2115,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -2192,6 +2212,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -2277,6 +2298,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -2364,6 +2386,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -2442,6 +2465,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         ),
       );
@@ -2568,6 +2592,7 @@ SessionDetailSnapshot _snapshot({
   cannotContinueMessage: null,
   namesCommandInvocations: false,
   supportsRewind: false,
+  supportsFork: false,
 );
 
 Future<void> _awaitStreamingText(SessionDetailCubit cubit, {required String partId, required String text}) async {

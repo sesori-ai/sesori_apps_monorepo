@@ -208,6 +208,13 @@ class ScheduledTaskDao({required AppDatabase database})
     );
   }
 
+  /// Returns the rows changed.
+  Future<int> setRunCompactRequestedAt({required String runId, required int compactRequestedAt}) {
+    return (update(scheduledTaskRunsTable)..where((row) => row.id.equals(runId))).write(
+      ScheduledTaskRunsTableCompanion(compactRequestedAt: Value(compactRequestedAt)),
+    );
+  }
+
   /// Turns a started run into one that could not start. Returns the rows
   /// changed.
   Future<int> markRunFailed({required String runId, required TaskRunFailureReason reason}) {

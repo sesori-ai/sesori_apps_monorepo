@@ -968,6 +968,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
           actions: actions(),
           session: row.session,
           isRunning: row.isRunning,
+          canFork: actions().canFork(session: row.session),
           readEntry: SessionReadMenuToggle(unseen: row.isUnseen),
           surfaceEntries: const [],
         ),

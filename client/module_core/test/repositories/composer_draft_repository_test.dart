@@ -1,5 +1,9 @@
+import "dart:typed_data";
+
 import "package:sesori_dart_core/src/api/storage/composer_draft_storage.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/restored_composer.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:test/test.dart";
 
@@ -47,5 +51,21 @@ void main() {
     );
 
     expect(repository.readForSession(sessionId: "session"), ComposerDraft.typed(text: ""));
+  });
+
+  test("a handover saves the text and gives its attachments to the first reader only", () {
+    final image = ComposerImageAttachment(mime: "image/png", bytes: Uint8List(3), filename: null);
+    repository.handOverForSession(
+      sessionId: "fork",
+      restored: RestoredComposer(
+        draft: ComposerDraft.typed(text: "again"),
+        attachments: [image],
+        leftOutCount: 0,
+      ),
+    );
+
+    expect(repository.readForSession(sessionId: "fork").text, "again");
+    expect(repository.takeHandedOverAttachments(sessionId: "fork"), [image]);
+    expect(repository.takeHandedOverAttachments(sessionId: "fork"), isEmpty);
   });
 }
