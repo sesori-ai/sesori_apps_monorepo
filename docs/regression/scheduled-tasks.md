@@ -77,9 +77,10 @@ them or can't start. Same-session tasks can compact their session between runs (
   stored as the run session's explicit approval override, and a same-session run sets it again before each prompt.
   Questions are never auto-answered.
 - Run rows carry the task in the session row's meta line, after the state and before the project: a repeat glyph for
-  a recurring task or a clock for a one-off, then its name, on one line that ellipsizes. Screen readers hear "Run of
-  recurring task <name>" or "Run of one-time task <name>". The mark comes from the session, so it survives history
-  trimming, and deleting the task removes it.
+  a recurring task, a clock for a one-off or a calendar for a kind this app doesn't know, then its name, on one line
+  that ellipsizes. Screen readers hear "Run of recurring task <name>", "Run of one-time task <name>" or "Run of
+  scheduled task <name>". The mark comes from the session, so it survives history trimming, and deleting the task
+  removes it.
 - After a new-session run starts, the task's finished run sessions beyond the newest 5 are archived through the normal
   archive flow, removing their worktrees. Pinned sessions are neither archived nor counted; a session working, waiting
   on the user or reading unknown stays; a worktree the cleanup checks refuse (uncommitted work) keeps its session, and
@@ -105,7 +106,8 @@ them or can't start. Same-session tasks can compact their session between runs (
   fires when quiet or is skipped as overlapping. A busy, unsupported or failed answer fires at once. Past the 2-minute
   grace, a run a pass actually held counts as late, never missed, even under Wait for the next time.
 - **After a bridge restart** the activity clock starts at the bridge's start, so the window restarts and can't pass
-  early; a held run is forgotten and follows its missed-run policy.
+  early. The saved ask still holds a due run while the session works, up to the same 10 minutes after it, but the
+  bridge forgets that it held the run, so past the grace it follows its missed-run policy.
 - Auto-compact follows the task's current target only. An edit that changes the project, harness or worktree clears
   the target: the old session is never compacted, and the next run starts a fresh session without waiting.
 - Turning auto-compact off, moving to New session, or pausing the task stops it for that session.

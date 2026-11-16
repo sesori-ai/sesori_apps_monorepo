@@ -81,7 +81,7 @@ external.
 - A scheduled run's completion push is suppressed until the user sends their own prompt into that session; each new
   run suppresses it again, and its question and permission pushes are unchanged. A scheduled run that can't start (not a
   Run now, which answers in the page's alert) pushes the
-  task name and a short reason under the session-message category with event type `scheduledTaskRunFailed` and the
+  task name and a short reason under the session-message category with event type `scheduled_task_run_failed` and the
   task id, limited and collapsed per task. See [Scheduled tasks](scheduled-tasks.md).
 - A scheduled task's can't-start push names no session, only its task. Tapping it on mobile, in the foreground or from
   the system tray, opens that task's page over the Scheduled page on the push's computer, so Back returns to the list;
