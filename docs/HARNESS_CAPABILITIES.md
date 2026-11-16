@@ -664,12 +664,21 @@ app ignores `kind` and shows the row's text in red.
 | OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
 | OMP | ✅ The shared ACP plugin's line, as below. | ⚠️ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing; it folds into the live line. A reply that streamed first keeps its line only until the history is re-read. |
 | Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ⚠️ They record no stop, so the line shows only until the history is re-read. |
-| Claude Code | ⬜ | ⬜ |
-| Codex | ⬜ | ⬜ |
+| Claude Code | ✅ The CLI's `[Request interrupted by user]` record (`… for tool use` when a tool was cut off), streamed before the turn's result. | ✅ The same record, by its uuid; the CLI's `<synthetic>` "No response requested." reply after it is hidden. |
+| Codex | ✅ `turn/completed` `interrupted` for a turn a Stop interrupted, keyed by the turn id. | ✅ Rollout `turn_aborted` with reason `interrupted`, keyed by its turn id. |
 
 Pi and OpenCode do not tell a user Stop from another abort of the turn, so any abort they record reads Stopped.
 OpenCode v2 (2.2.7 source) records the same `aborted` error when the user declines a permission, which ends the turn
 too.
+
+Codex (0.169.0) records the interrupt a bridge shutdown sends the same way as a user Stop, so such a turn reads Stopped
+after a reload although it showed no Stopped line live. Claude Code (2.1.325) does too when the CLI writes its interrupt
+record before the shutdown ends the process, which a shutdown does not wait for. A Claude Code Stop waits up to 2
+seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds,
+including for a turn the CLI started on its own, such as a wakeup.
+
+Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so that text
+shows live but is gone after a reload, leaving the Stopped line directly under the prompt. Claude Code keeps it.
 
 On the ACP harnesses a shutdown, a plugin restart or a follow-up that replaces the running turn cancels it without a
 Stopped line, and so does a Stop that lands before the prompt reached the agent. A turn that already showed a failed-turn
@@ -1179,19 +1188,20 @@ reconciliation when connected to an older bridge.
 
 ## Tool calls in replayed history
 
-The live stream gives every visible ACP tool call its own message. When a
-harness stamps its reasoning and text chunks with a message id, the shared
-replay groups the next tool call into that stamped message, which no longer
-matches the live rows, so a re-import shows the tool call twice: inside the
-replayed assistant message and as the live tool row.
+The live stream gives every visible ACP tool call its own message, and the
+shared replay does the same for every ACP harness, also after reasoning or text
+chunks stamped with a message id. Before, a replayed tool call joined the
+stamped message before it, so a re-import showed it twice: inside the replayed
+assistant message and as the live tool row. A harness that replays without
+message ids was never affected.
 
 | Harness | Status |
 |---|---|
-| Oh My Pi | ✅ Replays each tool call as its own message. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
-| Hermes | ✅ Not affected: Hermes's history replays its chunks without message ids, so each replayed tool call already gets its own message. |
-| DeepSeek | ✅ Its history read replays each tool call as its own message. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
-| Cursor, Grok | ⚠️ Not verified live: they need a real account, which the test proxy can't serve. |
-| Copilot, Antigravity | ⚠️ Not verified live: runtime not installed on the test machine. |
+| Oh My Pi | ✅ Stamps its chunks. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
+| DeepSeek | ✅ Stamps its chunks. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
+| Hermes | ✅ Not affected: Hermes's history replays its chunks without message ids. |
+| Grok | ✅ Not affected as recorded: the `session/load` replay fixtures from 1.0.30 carry no message ids on their chunks. Not verified live with a tool turn. |
+| Cursor, Copilot, Antigravity | ⚠️ Not verified live, and no recorded replay shows whether they stamp chunks. Either way, a replayed tool call now gets its own message. |
 
 ## Failed-turn notices sent as text
 
