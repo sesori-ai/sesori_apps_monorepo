@@ -34,6 +34,7 @@ void main() {
                   itemCount: 100,
                   onLaidOut: () {},
                   detached: () => detached,
+                  rowsLeaving: () => false,
                   onCarriedToNewestEnd: () => carriedToNewestEnd++,
                   itemBuilder: (context, index) =>
                       SizedBox(key: ValueKey(index), height: 50, child: Text("row $index")),

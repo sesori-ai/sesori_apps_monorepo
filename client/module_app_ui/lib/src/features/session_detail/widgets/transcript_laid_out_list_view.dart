@@ -18,7 +18,9 @@ import "package:material_ui/material_ui.dart";
 /// While [detached] says the reader has scrolled away from that end, a change
 /// in the inset or in the viewport's height, as when the keyboard opens, leaves
 /// the rows where they are. When such a shrink carries the list all the way
-/// back to that end, [onCarriedToNewestEnd] runs after the frame.
+/// back to that end, [onCarriedToNewestEnd] runs after the frame. While
+/// [rowsLeaving] says rows are folding away, the topmost row in view stays
+/// where it is on screen too, unless the fold carries the list back to that end.
 class TranscriptLaidOutListView({
   super.key,
   super.reverse,
@@ -31,6 +33,7 @@ class TranscriptLaidOutListView({
   required super.itemBuilder,
   required final VoidCallback onLaidOut,
   required final ValueGetter<bool> detached,
+  required final ValueGetter<bool> rowsLeaving,
   required final VoidCallback onCarriedToNewestEnd,
 }) extends ListView {
   this : super.builder();
@@ -39,7 +42,12 @@ class TranscriptLaidOutListView({
   Widget buildChildLayout(BuildContext context) => _BottomInsetPadding(
     detached: detached,
     onCarriedToNewestEnd: onCarriedToNewestEnd,
-    sliver: _RowsHeldInPlace(delegate: childrenDelegate),
+    sliver: _RowsHeldInPlace(
+      delegate: childrenDelegate,
+      detached: detached,
+      rowsLeaving: rowsLeaving,
+      onCarriedToNewestEnd: onCarriedToNewestEnd,
+    ),
   );
 
   @override
@@ -207,31 +215,122 @@ class _RenderLaidOutViewport({
   }
 }
 
-class const _RowsHeldInPlace({required super.delegate}) extends SliverList {
+class const _RowsHeldInPlace({
+  required super.delegate,
+  required final ValueGetter<bool> detached,
+  required final ValueGetter<bool> rowsLeaving,
+  required final VoidCallback onCarriedToNewestEnd,
+}) extends SliverList {
   @override
   RenderSliverList createRenderObject(BuildContext context) => switch (context) {
-    final SliverMultiBoxAdaptorElement element => _RenderRowsHeldInPlace(childManager: element),
+    final SliverMultiBoxAdaptorElement element => _RenderRowsHeldInPlace(
+      childManager: element,
+      detached: detached,
+      rowsLeaving: rowsLeaving,
+      onCarriedToNewestEnd: onCarriedToNewestEnd,
+    ),
     _ => throw StateError("A sliver list builds under its own element."),
   };
+
+  @override
+  void updateRenderObject(BuildContext context, RenderSliverList renderObject) {
+    if (renderObject is _RenderRowsHeldInPlace) {
+      renderObject
+        ..detached = detached
+        ..rowsLeaving = rowsLeaving
+        ..onCarriedToNewestEnd = onCarriedToNewestEnd;
+    }
+  }
 }
 
-/// A row joining the newest end moves every built row along one index, and the
-/// framework then places each where the row that held that index was. Scrolled
-/// away from that end, the list would step by a row's height for a row nobody
-/// sees yet, and step back on reaching it. This lays out again from where the
-/// first row was, and layout builds the rows before that one again from there.
-class _RenderRowsHeldInPlace({required super.childManager}) extends RenderSliverList {
+/// A row joining or leaving the newest end moves every built row along one
+/// index, and the framework then places each where the row that held that index
+/// was, or nowhere when no built row held it. Scrolled away from that end, the
+/// list would step by a row's height for a row nobody sees, and step back on
+/// reaching it. This lays out from where the first row was, and layout builds
+/// the rows before that one again from there.
+///
+/// While [rowsLeaving] fold away below a [detached] reader, they would carry
+/// the topmost row in view down; the scroll offset moves by as much in the same
+/// layout, so it stays where it is, up to the layout that drops the last of them.
+class _RenderRowsHeldInPlace({
+  required super.childManager,
+  required var ValueGetter<bool> detached,
+  required var ValueGetter<bool> rowsLeaving,
+  required var VoidCallback onCarriedToNewestEnd,
+}) extends RenderSliverList {
   RenderBox? _heldRow;
   double? _heldOffset;
 
+  /// The topmost row in view, and how far it was from the viewport's newest
+  /// edge.
+  ({RenderBox row, double position})? _readerRow;
+
   @override
   void performLayout() {
+    // Moved to an index no built row held, the first row has lost its place,
+    // and layout would drop it and start from the next row instead.
+    if (_heldRow case final held? when identical(held, firstChild) && childScrollOffset(held) == null) {
+      _place(row: held, offset: _heldOffset);
+    }
     super.performLayout();
     if (geometry?.scrollOffsetCorrection == null && _putHeldRowBack()) super.performLayout();
+    if (geometry?.scrollOffsetCorrection == null) {
+      final correction = _keepReaderRowStill();
+      if (correction != 0) {
+        geometry = SliverGeometry(scrollOffsetCorrection: correction);
+        return;
+      }
+    }
     final first = firstChild;
     _heldRow = first;
     _heldOffset = first == null ? null : childScrollOffset(first);
+    _readerRow = detached() && rowsLeaving() ? _topmostRowInView() : null;
   }
+
+  /// How far the scroll offset must move for the reader's row to stay where it
+  /// was: no further than the newest end, where the list may follow again.
+  double _keepReaderRowStill() {
+    final reader = _readerRow;
+    if (reader == null || !detached()) return 0;
+    final position = _positionOf(row: reader.row);
+    if (position == null) return 0;
+    final change = position - reader.position;
+    if (change == 0) return 0;
+    final scrolled = _scrolled();
+    if (scrolled > 0 && change <= -scrolled) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => onCarriedToNewestEnd());
+    }
+    final correction = max(change, -scrolled);
+    _readerRow = (row: reader.row, position: position - correction);
+    return correction;
+  }
+
+  ({RenderBox row, double position})? _topmostRowInView() {
+    ({RenderBox row, double position})? topmost;
+    for (var child = firstChild; child != null; child = childAfter(child)) {
+      final position = _positionOf(row: child);
+      if (position == null) continue;
+      if (position < constraints.viewportMainAxisExtent && position + paintExtentOf(child) > 0) {
+        topmost = (row: child, position: position);
+      }
+    }
+    return topmost;
+  }
+
+  /// How far [row] sits from the viewport's newest edge, or null once it is
+  /// not one of the rows.
+  double? _positionOf({required RenderBox row}) {
+    if (row.parent != this) return null;
+    final offset = childScrollOffset(row);
+    if (offset == null) return null;
+    return constraints.precedingScrollExtent + offset - _scrolled();
+  }
+
+  double _scrolled() => switch (RenderAbstractViewport.maybeOf(this)) {
+    final RenderViewportBase viewport => viewport.offset.pixels,
+    _ => 0.0,
+  };
 
   bool _putHeldRowBack() {
     final held = _heldRow;

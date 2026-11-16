@@ -63,6 +63,31 @@ route accepts it on every harness.
 - A screen reader offers the pinned prompt's menu as a long-press around the
   pin, which it can still activate to jump.
 
+### Removed messages fold away
+
+- When the bridge removes messages (`message.removed`), as an edit does to the
+  edited prompt and everything after it, from this device or another, each
+  removed row the reader could see folds away where it was, as it last looked:
+  its height shrinks while it fades and slides up a little, over about 200 ms.
+  Several removals in a row fold together. A row nobody could see (not built)
+  goes at once.
+- Following the latest edge, the rows above ease down as the rows below fold,
+  and the list stays at that edge.
+- Reading history, the removals still reach the frozen transcript, and the
+  rows being read stay exactly where they are on screen while rows below or
+  among them fold; only when the fold reaches the newest edge does the list
+  follow again. Removed rows above the reader fold without moving anything.
+- A new prompt that arrives with the removals, such as the edit's echo, even
+  one that arrives before them, shows below the rows folding away and eases in
+  as any arrival does.
+- Under reduced motion removed rows go at once.
+- A refresh that replaces the transcript never folds rows away: a live row
+  swapped for its history twin stays in place, and history the refresh drops
+  goes at once. Neither does a prompt row turning into its message.
+- The pinned prompt, the Working row and prompt numbering follow the
+  transcript without the removed messages from the moment they are removed;
+  only their rows linger while folding.
+
 ### Bridge edit route
 
 - The edit runs on the session's lane, so it never interleaves with a send,
@@ -148,7 +173,7 @@ route accepts it on every harness.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Message menu, automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, opens only the top item's menu where two overlap, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, a shift-click afterwards extends it, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. Bridge edit route, automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`; a failed resend after the harness rewound removes exactly the dropped messages, and a failure that changed nothing removes none. A first-turn edit binds the new harness session (with the worktree context in a dedicated worktree), tombstones and deletes the old one and its sub-agent rows and history, survives a failed old delete, replaces a stray imported row, and leaves the binding, rows and transcript untouched when the new session cannot be created; the event service releases the new session's held events under the old id and ignores the old session's late events. Codex plugin tests against a fake app-server: resume, revert and `turn/start` order with the prompt id; history follows the reverted rollout; steered, unknown-id, attachment and revert-error refusals happen before any revert. Claude Code plugin tests against a fake CLI: the respawn's arguments and carried-over selection, then the prompt on the respawned process; a later plain `--resume`; an armed idle reap superseded; a second edit refused and a mid-respawn send ordered after the edit; no-entry, busy and unknown-option refusals before acceptance; the rewind point against recorded transcripts and a compaction. |
+| L2 Routine | Message menu, automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, opens only the top item's menu where two overlap, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, a shift-click afterwards extends it, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. Removal motion, automated widget tests: a removed row folds away while following with the rows above easing down; under reduced motion it goes at once; while detached a visible row, a built row out of view and an unbuilt row go without moving the row being read by a pixel; an edit's echo and three removals in a row fold together with the echo below them; a row whose message comes back mid-fold stays; a refresh's history twins replace live rows with no fold. Bridge edit route, automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`; a failed resend after the harness rewound removes exactly the dropped messages, and a failure that changed nothing removes none. A first-turn edit binds the new harness session (with the worktree context in a dedicated worktree), tombstones and deletes the old one and its sub-agent rows and history, survives a failed old delete, replaces a stray imported row, and leaves the binding, rows and transcript untouched when the new session cannot be created; the event service releases the new session's held events under the old id and ignores the old session's late events. Codex plugin tests against a fake app-server: resume, revert and `turn/start` order with the prompt id; history follows the reverted rollout; steered, unknown-id, attachment and revert-error refusals happen before any revert. Claude Code plugin tests against a fake CLI: the respawn's arguments and carried-over selection, then the prompt on the respawned process; a later plain `--resume`; an armed idle reap superseded; a second edit refused and a mid-respawn send ordered after the edit; no-entry, busy and unknown-option refusals before acceptance; the rewind point against recorded transcripts and a compaction. |
 | L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. The edit route is not included until clients offer Edit. |
 | L4 Extended | Long-press a message near the screen's edges and at the largest text size; open the menu during a pinch, a peek and a code-block scroll. |
 | L5 Full | No additional coverage. |
@@ -174,6 +199,13 @@ not loaded yet.
 - A tap, scroll, peek, pinch or code-block scroll opens the menu.
 - An edit removes the edited prompt's echo, or leaves a removed message on
   screen until reload.
+- A removed row vanishes in one frame instead of folding, folds under reduced
+  motion, or stays on screen after its fold.
+- While reading history, a removal moves the rows being read, or a row
+  removed below the screen is still there on returning to the latest edge.
+- A refresh folds rows away, or a re-keyed row (a history twin, a prompt row
+  turning into its message) plays a fold.
+- The edit's echo shows above the rows it replaces while they fold.
 - A retried edit rewinds twice.
 - A refusal changes the transcript, or its message carries transcript text.
 - After a first-message edit the session shows twice, the old conversation
@@ -204,6 +236,8 @@ not loaded yet.
 - `client/module_prego/lib/components/prego_readable_selection_area.dart`
 - `client/module_app_ui/lib/src/features/session_detail/widgets/transcript_message_menu.dart`
 - `client/module_app_ui/lib/src/features/session_detail/widgets/session_detail_message_list.dart`
+- `client/module_app_ui/lib/src/features/session_detail/widgets/transcript_laid_out_list_view.dart`
+- `client/module_app_ui/lib/src/features/session_detail/widgets/transcript_motion.dart`
 - `client/module_app_ui/lib/src/features/session_detail/widgets/user_message_card.dart`
 - `client/module_app_ui/lib/src/features/session_detail/widgets/queued_message_bubble.dart`
 - `client/module_app_ui/lib/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart`
