@@ -98,21 +98,67 @@ List<SessionListEntry<T>> groupUnderHeadings<T>({
 ///
 /// A heading that becomes or stops being the first, as Today does when Pinned
 /// arrives above it or leaves, eases into its new room instead of jumping.
-class const SessionListHeading({super.key, required final String heading, required final bool isFirst})
-    extends StatelessWidget {
+class const SessionListHeading({
+  super.key,
+  required final String heading,
+  required final bool isFirst,
+
+  /// A text button at the heading's end, on its line, as Pinned's Edit;
+  /// changing or removing it cross-fades it.
+  required final ({String label, VoidCallback onTap})? action,
+}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => SizedBox(
-    // Filling the width keeps the text at the start inset under a parent that
-    // loosens its constraints and centres what it holds, as the animated
-    // list's rows do.
-    width: double.infinity,
-    child: AnimatedPadding(
-      duration: context.isReducedMotion ? Duration.zero : pregoAnimatedListItemDuration,
-      curve: transcriptMotionCurve,
-      padding: _paddingOf(context: context, isFirst: isFirst),
-      child: Text(heading, style: _styleOf(context: context)),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final duration = context.isReducedMotion ? Duration.zero : pregoAnimatedListItemDuration;
+    final padding = _paddingOf(context: context, isFirst: isFirst);
+    final style = _styleOf(context: context);
+    return SizedBox(
+      // Filling the width keeps the text at the start inset under a parent that
+      // loosens its constraints and centres what it holds, as the animated
+      // list's rows do.
+      width: double.infinity,
+      child: Stack(
+        children: [
+          AnimatedPadding(
+            duration: duration,
+            curve: transcriptMotionCurve,
+            padding: padding,
+            child: Text(heading, style: style),
+          ),
+          // Over the heading's end, the full height of it, so it moves nothing.
+          PositionedDirectional(
+            top: 0,
+            bottom: 0,
+            end: 0,
+            child: AnimatedSwitcher(
+              duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+              layoutBuilder: (current, previous) => Stack(
+                alignment: AlignmentDirectional.centerEnd,
+                children: [...previous, ?current],
+              ),
+              child: switch (action) {
+                (:final label, :final onTap)? => Semantics(
+                  key: ValueKey(label),
+                  button: true,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onTap,
+                    child: AnimatedPadding(
+                      duration: duration,
+                      curve: transcriptMotionCurve,
+                      padding: padding,
+                      child: Text(label, style: style.copyWith(color: context.prego.colors.textBrandSecondary)),
+                    ),
+                  ),
+                ),
+                null => const SizedBox.shrink(),
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// A heading's loading placeholder: the heading's insets and line box, with a

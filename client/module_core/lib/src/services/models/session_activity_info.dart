@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "session_sending.dart";
+
 part "session_activity_info.freezed.dart";
 
 /// Describes the activity state of a single root session.
@@ -19,5 +21,9 @@ sealed class SessionActivityInfo with _$SessionActivityInfo {
     required bool isRunning,
     required int? lastUserActivityAt,
     required int? updatedAt,
+
+    /// The bridge's send of this session into another, from any device; null
+    /// when it sends none.
+    required SessionSending? sending,
   }) = _SessionActivityInfo;
 }

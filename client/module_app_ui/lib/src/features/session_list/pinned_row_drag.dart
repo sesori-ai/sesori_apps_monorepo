@@ -4,6 +4,7 @@ import "dart:math" as math;
 import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/scheduler.dart";
+import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -99,11 +100,24 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
     final position = scrollable.position;
     final viewportTop = viewport.localToGlobal(Offset.zero).dy;
     final top = room.localToGlobal(Offset.zero).dy;
+    // A phone list scrolls on under its glass bar and the home indicator, so
+    // its edges are where those leave it uncovered.
+    final listContext = scrollable.context;
+    final barBottom = switch (pregoTopBarGeometryOf(context: listContext)) {
+      (:final baseInset, :final bannerHeight)? => baseInset + bannerHeight.value,
+      null => viewportTop,
+    };
+    final screen = listContext.getInheritedWidgetOfExactType<MediaQuery>()?.data;
+    final uncoveredBottom = switch (screen) {
+      final screen? => screen.size.height - screen.padding.bottom,
+      null => double.infinity,
+    };
     final lift = _Lift(
       sessionId: sessionId,
       position: position,
       viewportTop: viewportTop,
-      viewportBottom: viewportTop + viewport.size.height,
+      edgeTop: math.max(viewportTop, barBottom),
+      edgeBottom: math.min(viewportTop + viewport.size.height, uncoveredBottom),
       height: room.size.height,
       groupTop: top - viewportTop + position.pixels,
       grab: pointerY - top,
@@ -241,9 +255,13 @@ final class _Lift({
   required final String sessionId,
   required final ScrollPosition position,
 
-  /// The list's global top and bottom edges.
+  /// The list's global top, where its scroll content starts.
   required final double viewportTop,
-  required final double viewportBottom,
+
+  /// The global top and bottom of the list's uncovered part, whose edges the
+  /// copy is held at to scroll it.
+  required final double edgeTop,
+  required final double edgeBottom,
   required final double height,
 
   /// Where the known pinned rows start, in the list's scroll content.
@@ -327,16 +345,15 @@ final class _Lift({
   /// it nears [limit], so it stops within a pixel of it rather than creep on.
   ({double speed, double limit})? edgeScroll() {
     final pixels = position.pixels;
-    final fromTop = top - viewportTop;
+    final fromTop = top - edgeTop;
     if (fromTop < _edgeScrollZone) {
-      final limit = math.max(position.minScrollExtent, groupTop - _edgeScrollZone);
+      final limit = math.max(position.minScrollExtent, groupTop - _edgeScrollZone - (edgeTop - viewportTop));
       if (pixels <= limit + 1) return null;
       return (speed: -_edgeScrollMaxSpeed * math.min(1, (_edgeScrollZone - fromTop) / _edgeScrollZone), limit: limit);
     }
-    final fromBottom = viewportBottom - top - height;
+    final fromBottom = edgeBottom - top - height;
     if (fromBottom < _edgeScrollZone) {
-      final viewportExtent = viewportBottom - viewportTop;
-      final limit = math.min(position.maxScrollExtent, groupBottom + _edgeScrollZone - viewportExtent);
+      final limit = math.min(position.maxScrollExtent, groupBottom + _edgeScrollZone - (edgeBottom - viewportTop));
       if (pixels >= limit - 1) return null;
       return (speed: _edgeScrollMaxSpeed * math.min(1, (_edgeScrollZone - fromBottom) / _edgeScrollZone), limit: limit);
     }
@@ -346,13 +363,19 @@ final class _Lift({
 
 /// A pinned row the user can drag within the pinned rows: with a mouse, a
 /// press that moves lifts it at once, while a click still opens it and a
-/// right click its menu. While lifted, the row keeps its room in the list,
-/// empty, and a lifted copy of it follows the pointer over the list; on
-/// release the copy glides into that room.
+/// right click its menu. While [editing], a finger lifts it from the handle
+/// at its end as soon as it touches it, and the row takes no other taps or
+/// swipes. While lifted, the row keeps its room in the list, empty, and a
+/// lifted copy of it follows the pointer over the list; on release the copy
+/// glides into that room.
 class const PinnedRowDrag({
   super.key,
   required final String sessionId,
   required final PinnedRowDragTracker tracker,
+
+  /// Whether the list's pinned rows are being reordered by touch, which
+  /// fades the handle in over the row's end.
+  required final bool editing,
 
   /// Asked on a drop that moved the row.
   required final PinnedRowMove onMove,
@@ -363,6 +386,8 @@ class const PinnedRowDrag({
 
   /// Whether the row's corners are rounded, as a pointer row's are.
   required final BorderRadius borderRadius,
+
+  /// The lifted copy's fill, and the handle's scrim: the row's own.
   required final Color liftedColor,
   required final Widget child,
 }) extends StatefulWidget {
@@ -411,7 +436,12 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
     super.dispose();
   }
 
-  void _onStart(DragStartDetails details) {
+  /// The finger holding the handle, while one lifted the row.
+  int? _handleTouch;
+
+  /// Lifts the row under a pointer at [pointerY]; false when it cannot be
+  /// lifted now, as while another row is.
+  bool _grab({required double pointerY}) {
     final room = _roomBox();
     final scrollable = Scrollable.maybeOf(context);
     if (room == null ||
@@ -420,10 +450,10 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
           sessionId: widget.sessionId,
           room: room,
           scrollable: scrollable,
-          pointerY: details.globalPosition.dy,
+          pointerY: pointerY,
           vsync: this,
         )) {
-      return;
+      return false;
     }
     _width = room.size.width;
     _settle.value = 0;
@@ -434,9 +464,27 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
       _lift.forward();
     }
     setState(() {});
+    return true;
   }
 
   void _onUpdate(DragUpdateDetails details) => widget.tracker._update(pointerY: details.globalPosition.dy);
+
+  void _onHandleDown(PointerDownEvent event) {
+    if (_handleTouch != null || !_grab(pointerY: event.position.dy)) return;
+    _handleTouch = event.pointer;
+    unawaited(HapticFeedback.lightImpact());
+  }
+
+  void _onHandleMove(PointerMoveEvent event) {
+    if (event.pointer == _handleTouch) widget.tracker._update(pointerY: event.position.dy);
+  }
+
+  void _onHandleUp(PointerEvent event) {
+    if (event.pointer != _handleTouch) return;
+    _handleTouch = null;
+    if (event is PointerCancelEvent) widget.tracker._cancel();
+    _onEnd();
+  }
 
   void _onEnd() {
     final top = widget.tracker.liftedTop.value;
@@ -471,7 +519,7 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
         () => VerticalDragGestureRecognizer(supportedDevices: const {PointerDeviceKind.mouse}),
         (recognizer) => recognizer
           ..dragStartBehavior = DragStartBehavior.down
-          ..onStart = _onStart
+          ..onStart = ((details) => _grab(pointerY: details.globalPosition.dy))
           ..onUpdate = _onUpdate
           // A pointer cancelled mid-drag also ends it; the listener below
           // has put the row back by then.
@@ -486,7 +534,77 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
         // Its room stays, empty and untouchable, while the copy stands for it.
         child: IgnorePointer(
           ignoring: _portal.isShowing,
-          child: Opacity(opacity: _portal.isShowing ? 0 : 1, child: widget.child),
+          child: Opacity(
+            opacity: _portal.isShowing ? 0 : 1,
+            child: _withHandle(
+              context: context,
+              // Reordering, the row neither opens nor swipes; the list still
+              // scrolls under a finger on it.
+              row: IgnorePointer(ignoring: widget.editing, child: widget.child),
+              handle: RawGestureDetector(
+                behavior: HitTestBehavior.opaque,
+                // Takes the touch from the list's scroll at once, so the row
+                // lifts on touch down, with no hold.
+                gestures: {
+                  EagerGestureRecognizer: GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
+                    EagerGestureRecognizer.new,
+                    (_) {},
+                  ),
+                },
+                child: Listener(
+                  onPointerDown: _onHandleDown,
+                  onPointerMove: _onHandleMove,
+                  onPointerUp: _onHandleUp,
+                  onPointerCancel: _onHandleUp,
+                  child: _handleMark(context: context),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  /// [row] with [handle] over its end, faded in while [PinnedRowDrag.editing].
+  Widget _withHandle({required BuildContext context, required Widget row, required Widget handle}) => Stack(
+    fit: StackFit.passthrough,
+    children: [
+      row,
+      PositionedDirectional(
+        top: 0,
+        bottom: 0,
+        end: 0,
+        child: IgnorePointer(
+          ignoring: !widget.editing,
+          child: AnimatedOpacity(
+            opacity: widget.editing ? 1 : 0,
+            duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+            curve: transcriptMotionCurve,
+            child: handle,
+          ),
+        ),
+      ),
+    ],
+  );
+
+  /// The handle's ≡ on a scrim of the row's fill, which covers the time
+  /// beneath it rather than moving anything.
+  Widget _handleMark({required BuildContext context}) => ExcludeSemantics(
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: AlignmentDirectional.centerStart,
+          end: AlignmentDirectional.centerEnd,
+          colors: [widget.liftedColor.withValues(alpha: 0), widget.liftedColor],
+          stops: const [0, 0.4],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(start: 2 * PregoSpacing.xl, end: PregoSpacing.xl),
+        child: Align(
+          widthFactor: 1,
+          child: Icon(TablerRegular.menu_2, size: PregoIconSize.lg, color: context.prego.colors.fgQuaternary),
         ),
       ),
     ),
@@ -514,7 +632,11 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
             child: child,
           ),
         ),
-        child: widget.child,
+        child: _withHandle(
+          context: context,
+          row: widget.child,
+          handle: _handleMark(context: context),
+        ),
       ),
     );
   }

@@ -10,6 +10,7 @@ void main() {
     List<String> childSessionIds = const [],
     bool isRetrying = false,
   }) => ActiveSession(
+    sending: null,
     id: "s",
     mainAgentRunning: mainAgentRunning,
     awaitingInput: awaitingInput,

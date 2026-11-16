@@ -12,6 +12,7 @@ import "../capabilities/server_connection/models/sse_event.dart";
 import "../capabilities/server_connection/target_bridge_change_tracker.dart";
 import "../logging/logging.dart";
 import "models/session_activity_info.dart";
+import "models/session_sending.dart";
 
 @lazySingleton
 class SseEventTracker(
@@ -183,6 +184,10 @@ class SseEventTracker(
             isRunning: _runningCalculator.isRunning(session: session),
             lastUserActivityAt: session.lastUserActivityAt,
             updatedAt: session.updatedAt,
+            sending: switch (session.sending) {
+              ActiveSessionSending(:final targetTitle) => SessionSending(targetTitle: targetTitle),
+              null => null,
+            },
           );
         }
         sessionMap[summary.id] = infoMap;

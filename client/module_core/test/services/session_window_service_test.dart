@@ -612,7 +612,14 @@ void main() {
         ];
         bridge.runningIds = {"running"};
         activity.emitSessionActivity({
-          "alpha": {"running": const SessionActivityInfo(isRunning: true, lastUserActivityAt: null, updatedAt: null)},
+          "alpha": {
+            "running": const SessionActivityInfo(
+              sending: null,
+              isRunning: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+          },
         });
         final window = create();
         async.flushMicrotasks();
@@ -866,7 +873,14 @@ void main() {
         async.flushMicrotasks();
         bridge.requests.clear();
         activity.emitSessionActivity({
-          "alpha": {"s0000": const SessionActivityInfo(isRunning: true, lastUserActivityAt: null, updatedAt: null)},
+          "alpha": {
+            "s0000": const SessionActivityInfo(
+              sending: null,
+              isRunning: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+          },
         });
         emit(
           const SesoriSseEvent.sessionUnseenChanged(
@@ -1289,7 +1303,9 @@ void main() {
         expect(ids(window), ["b1"]);
         expect(loaded(window).counts, const SessionPageCounts(all: 2, running: 0, unread: 1));
         activity.emitSessionActivity({
-          "alpha": {"a1": const SessionActivityInfo(isRunning: true, lastUserActivityAt: null, updatedAt: null)},
+          "alpha": {
+            "a1": const SessionActivityInfo(sending: null, isRunning: true, lastUserActivityAt: null, updatedAt: null),
+          },
         });
         async.flushMicrotasks();
         expect(loaded(window).counts.running, 1);

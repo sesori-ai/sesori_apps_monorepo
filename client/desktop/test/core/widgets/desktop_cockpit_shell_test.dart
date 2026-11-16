@@ -643,6 +643,7 @@ void main() {
       (tester) async {
         seedTwoProjects();
         const waiting = SessionActivityInfo(
+          sending: null,
           awaitingInput: true,
           isRunning: false,
           lastUserActivityAt: null,

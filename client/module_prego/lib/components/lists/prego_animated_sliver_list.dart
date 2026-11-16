@@ -182,10 +182,17 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
     // the update puts or takes away before that row lands or goes above the
     // screen, and the rows on it hold still. At its top, the list instead
     // keeps its indices in place, so a row arriving first opens in view.
-    final anchorIndex = _indexByKey[shown?.anchor];
+    // The rows on screen now start that many rows above the row kept still.
+    final anchorIndex = switch (anchor) {
+      (:final key, offset: _, :final below)? => switch (_indexByKey[key]) {
+        final index? => index - below,
+        null => null,
+      },
+      null => null,
+    };
     if ((context.findRenderObject(), anchor) case (
       final _RenderPregoAnimatedSliverList sliver,
-      (:final key, :final offset)?,
+      (:final key, :final offset, below: _)?,
     )) {
       if (_indexByKey[key] case final index?) sliver.keepRow(index: index, offset: offset);
     }
@@ -246,20 +253,22 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
   /// The row an update keeps where it stands, and the scroll offset it had:
   /// the first one visible, or, when that one moved among the sliding rows,
   /// the first row below them that did not, since the rows they moved among
-  /// fill the same room as before. Read before the update is laid out, at
-  /// the old indices.
-  ({Key key, double offset})? _steadyRow({required _ShownRows shown, required Set<int> moved}) {
+  /// fill the same room as before; [below] counts the rows on screen above
+  /// it. Read before the update is laid out, at the old indices.
+  ({Key key, double offset, int below})? _steadyRow({required _ShownRows shown, required Set<int> moved}) {
     final anchor = shown.anchor;
     final sliver = context.findRenderObject();
     if (anchor == null || !moved.contains(shown.first) || sliver is! _RenderPregoAnimatedSliverList) {
-      return anchor == null ? null : (key: anchor, offset: shown.firstOffset);
+      return anchor == null ? null : (key: anchor, offset: shown.firstOffset, below: 0);
     }
     for (var child = sliver.firstChild; child != null; child = sliver.childAfter(child)) {
       final index = sliver.indexOf(child);
       if (index <= shown.first || moved.contains(index)) continue;
-      if (sliver.childScrollOffset(child) case final offset?) return (key: _entries[index].key, offset: offset);
+      if (sliver.childScrollOffset(child) case final offset?) {
+        return (key: _entries[index].key, offset: offset, below: index - shown.first);
+      }
     }
-    return (key: anchor, offset: shown.firstOffset);
+    return (key: anchor, offset: shown.firstOffset, below: 0);
   }
 
   /// Opens or closes [motion] once the frame the update lands in has painted.
