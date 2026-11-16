@@ -285,7 +285,7 @@ void main() {
       final allPaths = _collectAbsoluteRoutePaths(routes: routes);
 
       expect(flatPaths, equals([AppRouteDef.splash.path, AppRouteDef.login.path]));
-      expect(signedInPaths, equals([AppRouteDef.settings.path]));
+      expect(signedInPaths, equals([AppRouteDef.scheduledTasks.path, AppRouteDef.settings.path]));
       expect(shell.routes, hasLength(1));
       expect(
         allPaths,
@@ -298,6 +298,8 @@ void main() {
           AppRouteDef.sessionDiffs.path,
           AppRouteDef.archivedSessions.path,
           AppRouteDef.archivedSessionDetail.path,
+          AppRouteDef.scheduledTasks.path,
+          AppRouteDef.scheduledTaskDetail.path,
           AppRouteDef.settingsHarnesses.path,
           AppRouteDef.settingsHarnessDetail.path,
           AppRouteDef.settings.path,
@@ -446,7 +448,10 @@ void main() {
           AppRouteDef.splash.path,
           AppRouteDef.login.path,
         ]);
-        expect(_signedInRoutes().whereType<GoRoute>().map((route) => route.path), [AppRouteDef.settings.path]);
+        expect(_signedInRoutes().whereType<GoRoute>().map((route) => route.path), [
+          AppRouteDef.scheduledTasks.path,
+          AppRouteDef.settings.path,
+        ]);
       });
 
       test("detail route has exactly one nested child", () {

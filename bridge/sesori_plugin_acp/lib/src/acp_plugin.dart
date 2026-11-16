@@ -269,6 +269,12 @@ abstract class AcpPlugin({
   /// with the turn's.
   bool get replaysResidentHistoryOnLiveProcess => false;
 
+  /// Whether a replay gives every tool call its own message, the shape the
+  /// live mapper streams. A harness that stamps its reasoning and text chunks
+  /// with a message id opts in; otherwise a replayed tool call joins the
+  /// stamped message before it and a re-import shows it twice.
+  bool get replaysToolCallsAsOwnMessages => false;
+
   /// A concrete plugin delegates to its injected composition factory. The client
   /// remains the pre-log interception and failure-cleanup owner.
   AcpOutputInterceptors createOutputInterceptors() => (stdout: null, stderr: null);
@@ -1605,6 +1611,9 @@ abstract class AcpPlugin({
     final state = _turnStates.putIfAbsent(sessionId, _SessionTurnState.new);
     if (turn case _QueuedAcpTurn(:final queuedPrompt)) {
       state.queue.add(queuedPrompt);
+      // The queue goes out ahead of busy, so a client never shows the session
+      // working before the prompt that started it.
+      _emitQueueUpdate(sessionId: sessionId, state: state);
     }
     state.pending++;
     if (state.pending == 1) {
@@ -1617,9 +1626,6 @@ abstract class AcpPlugin({
         ),
       );
       _eventBuffer.add(const BridgeSseProjectUpdated());
-    }
-    if (turn is _QueuedAcpTurn) {
-      _emitQueueUpdate(sessionId: sessionId, state: state);
     }
     final expectedGeneration = state.generation;
     // Each link isolates its own failure (_runTurn never throws), so one
@@ -2556,6 +2562,7 @@ abstract class AcpPlugin({
           haltClassifier: eventMapper.classifyHaltNotice,
           toolPartReplacement: null,
           toolPartSuppression: toolPartSuppression,
+          separatesToolMessages: replaysToolCallsAsOwnMessages,
         );
     if (replaysResidentHistoryOnLiveProcess && _residentSessions.contains(sessionId)) {
       return await _replayResidentHistory(sessionId: sessionId, collectorFactory: collectorFactory);

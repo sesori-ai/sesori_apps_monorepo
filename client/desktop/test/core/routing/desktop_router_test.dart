@@ -82,6 +82,8 @@ void main() {
     final pages = shell.routes.whereType<GoRoute>().toList();
     for (final def in [
       AppRouteDef.archivedSessions,
+      AppRouteDef.scheduledTasks,
+      AppRouteDef.scheduledTaskDetail,
       AppRouteDef.newSession,
       AppRouteDef.sessionDetail,
       AppRouteDef.sessionDiffs,

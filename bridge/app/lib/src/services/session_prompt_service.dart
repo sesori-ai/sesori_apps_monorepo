@@ -11,6 +11,7 @@ import "../repositories/models/deliverable_prompt_part.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/random_hex_id.dart";
+import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
@@ -57,6 +58,7 @@ class SessionPromptService({
   required final SessionMutationDispatcher _mutations,
   required final PromptPartDeliveryService _promptPartDelivery,
   required final ChatHistoryService _chatHistory,
+  required final ScheduledTaskRepository _scheduledTasks,
 }) {
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
@@ -93,6 +95,7 @@ class SessionPromptService({
         agent: agent,
         model: model,
         send: send,
+        byUser: true,
       ),
     );
   }
@@ -129,6 +132,7 @@ class SessionPromptService({
             agent: agent,
             model: model,
             send: _PromptSendRewind(beforeMessageId: messageId),
+            byUser: true,
           );
         } on StaleSessionPromptOptionsException catch (error) {
           throw SessionBranchRefusedException(
@@ -199,6 +203,7 @@ class SessionPromptService({
     agent: agent,
     model: model,
     send: _promptOrCommand(command: command, commandSource: commandSource, handoff: handoff),
+    byUser: false,
   );
 
   static _PromptSend _promptOrCommand({
@@ -221,6 +226,9 @@ class SessionPromptService({
     required String? agent,
     required PromptModel? model,
     required _PromptSend send,
+    // A person's own prompt, which hands a scheduled run's session back to
+    // the user, so its completions push again.
+    required bool byUser,
   }) async {
     // Inside the dispatched body, so this cannot race a concurrent archive on
     // the same family lane.
@@ -300,6 +308,14 @@ class SessionPromptService({
       // The plugin already owns the prompt; failing the send would only make
       // the client retry it.
       Log.w("Failed to record accepted prompt $promptId for session $sessionId", error, stackTrace);
+    }
+    if (byUser) {
+      try {
+        await _scheduledTasks.recordUserPrompted(sessionId: sessionId, at: DateTime.now());
+      } on Object catch (error, stackTrace) {
+        // The prompt went out; only the run's completion push stays silenced.
+        Log.w("Failed to record the user's prompt on the scheduled run of session $sessionId", error, stackTrace);
+      }
     }
     // The user moved on from an interrupted turn once the bridge accepted
     // something for it, whether or not the harness echoes the prompt.

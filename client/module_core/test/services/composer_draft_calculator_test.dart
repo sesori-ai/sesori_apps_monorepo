@@ -274,7 +274,14 @@ void main() {
 
   test("bridgePromptDraft unwraps dictated text and spells out commands", () {
     ComposerDraft? draftOf({required String? text, required String? command}) => calculator.bridgePromptDraft(
-      prompt: QueuedSessionPrompt(commandSource: null, id: "prm_1", text: text, command: command, createdAt: 100),
+      prompt: QueuedSessionPrompt(
+        commandSource: null,
+        handoff: null,
+        id: "prm_1",
+        text: text,
+        command: command,
+        createdAt: 100,
+      ),
     );
 
     expect(

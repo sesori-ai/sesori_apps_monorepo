@@ -1,7 +1,7 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../models/hermes_replay_update_dto.dart";
+import "../models/hermes_session_update_dto.dart";
 
 /// Hermes's replay: the standard ACP history, with each compaction summary
 /// shown as a compaction row.
@@ -48,9 +48,9 @@ class HermesSessionReplayCollector({
         update["sessionUpdate"] != "agent_message_chunk") {
       return null;
     }
-    final HermesReplayUpdateDto dto;
+    final HermesSessionUpdateDto dto;
     try {
-      dto = HermesReplayUpdateDto.fromJson(update);
+      dto = HermesSessionUpdateDto.fromJson(update);
     } on Object catch (error, stackTrace) {
       Log.w("[hermes] read a replayed agent chunk without its compaction marker", error, stackTrace);
       return null;
