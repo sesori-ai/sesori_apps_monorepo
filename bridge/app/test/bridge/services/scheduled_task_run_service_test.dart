@@ -488,6 +488,28 @@ void main() {
       expect(sessions.compacted, ["ses_1"]);
     });
 
+    test("a run seen past the grace after a compaction that held nothing follows its policy", () async {
+      sessions
+        ..promptCacheLife = const Duration(minutes: 5)
+        ..compactionResult = SessionCompactionResult.accepted;
+      final task = await firstRun(definition: autoCompact.copyWith(missedRunPolicy: TaskMissedRunPolicy.waitForNext));
+      // The session stays busy until 8:52 the next day, then compacts at 8:55,
+      // 5 minutes before its next run.
+      sessions.quietness["ses_1"] = SessionQuietness.working;
+      await runDueAt(const Duration(hours: 12));
+      sessions.quietness.remove("ses_1");
+      now = DateTime.utc(2026, 11, 16, 8, 52);
+      activity.recordEvent(event: const SesoriSseEvent.sessionStatus(sessionID: "ses_1", status: SessionStatus.idle()));
+      await runDueAt(const Duration(hours: 23, minutes: 54));
+      expect(sessions.compacted, ["ses_1"]);
+
+      // The bridge slept through the next due time.
+      await runDueAt(const Duration(days: 1, minutes: 30));
+
+      expect((await outcomes(task.id)).first, const ScheduledTaskRunOutcome.missed());
+      expect(prompts.sends, isEmpty);
+    });
+
     test("a compaction still going 10 minutes after it was asked for skips the run", () async {
       sessions.compactionResult = SessionCompactionResult.accepted;
       final task = await firstRun();

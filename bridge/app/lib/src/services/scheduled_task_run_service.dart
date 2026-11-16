@@ -102,7 +102,7 @@ class ScheduledTaskRunService({
 
   Future<void> _fireDue({required ScheduledTaskRecord task, required DateTime dueAt}) async {
     final definition = task.definition;
-    final gate = await _compaction.gateDueRun(task: task, dueAt: dueAt);
+    final gate = await _compaction.gateDueRun(task: task);
     if (gate == DueRunGate.hold) return;
     final now = _clock.now();
     final action = switch (_calculator.dueAction(

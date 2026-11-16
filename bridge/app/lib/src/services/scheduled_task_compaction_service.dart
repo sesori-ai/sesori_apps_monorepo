@@ -9,7 +9,6 @@ import "../repositories/models/session_quietness.dart";
 import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
 import "scheduled_task_activity_tracker.dart";
-import "scheduled_task_occurrence_calculator.dart";
 import "session_operation_dispatcher.dart";
 import "session_prompt_service.dart";
 
@@ -21,8 +20,8 @@ enum DueRunGate() {
   /// Fire as usual.
   fire,
 
-  /// Fire. A compaction asked for while the run was still on time held it,
-  /// so the run counts as late, never as missed.
+  /// Fire after an earlier pass held the run for compaction. Past the
+  /// on-time grace it counts as late, never as missed.
   fireAfterCompaction,
 }
 
@@ -49,6 +48,10 @@ class ScheduledTaskCompactionService({
   /// How long a due run waits for its session's compaction to finish.
   static const Duration compactionWait = Duration(minutes: 10);
 
+  /// Tasks whose due run a pass held for compaction. A restart forgets them,
+  /// so a run held across one follows its missed-run policy as usual.
+  final Set<String> _heldTaskIds = {};
+
   /// Compacts the session of each auto-compact task whose latest run has
   /// been quiet for its window, unless the user has prompted in it since.
   Future<void> compactQuietRuns() async {
@@ -68,11 +71,20 @@ class ScheduledTaskCompactionService({
     }
   }
 
-  /// What [task]'s run due at [dueAt] does. Nothing compacted the session
+  /// What [task]'s due run does. Nothing compacted the session
   /// since its last run: compact it first and hold the run. A compaction was
   /// asked for: hold the run while the session works, up to
   /// [compactionWait] after the ask.
-  Future<DueRunGate> gateDueRun({required ScheduledTaskRecord task, required DateTime dueAt}) async {
+  Future<DueRunGate> gateDueRun({required ScheduledTaskRecord task}) async {
+    final gate = await _gate(task: task);
+    if (gate == DueRunGate.hold) {
+      _heldTaskIds.add(task.id);
+      return gate;
+    }
+    return _heldTaskIds.remove(task.id) ? DueRunGate.fireAfterCompaction : gate;
+  }
+
+  Future<DueRunGate> _gate({required ScheduledTaskRecord task}) async {
     if (!_autoCompacts(task: task)) return DueRunGate.fire;
     final run = await _repository.latestStartedRun(taskId: task.id);
     if (run == null || !await _isUnarchived(sessionId: run.sessionId)) return DueRunGate.fire;
@@ -84,11 +96,7 @@ class ScheduledTaskCompactionService({
       return result == SessionCompactionResult.accepted ? DueRunGate.hold : DueRunGate.fire;
     }
     final busy = quietness == SessionQuietness.working || quietness == SessionQuietness.awaitingUser;
-    if (busy && _clock.now().isBefore(requestedAt.add(compactionWait))) return DueRunGate.hold;
-    final heldRun =
-        !requestedAt.isAfter(dueAt.add(ScheduledTaskOccurrenceCalculator.onTimeGrace)) &&
-        requestedAt.add(compactionWait).isAfter(dueAt);
-    return heldRun ? DueRunGate.fireAfterCompaction : DueRunGate.fire;
+    return busy && _clock.now().isBefore(requestedAt.add(compactionWait)) ? DueRunGate.hold : DueRunGate.fire;
   }
 
   static bool _autoCompacts({required ScheduledTaskRecord task}) => switch (task.definition.runMode) {

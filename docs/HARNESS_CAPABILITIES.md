@@ -1123,8 +1123,9 @@ compaction state and show no row.
 
 The bridge can ask a harness to compact a session's context without a client
 command, through `compactSession`. Same-session scheduled tasks with auto-compact on
-call it once a run's session has gone quiet for its prompt-cache window, or
-before the next run when that comes first. It only starts a compaction on a
+call it once a run's session has been quiet for `min(cache life - 2 minutes,
+25 minutes)` (25 minutes when the life is unknown), or before the next run
+when that comes first. It only starts a compaction on a
 quiet session: a session that
 is running, retrying, holding queued prompts or waiting for input answers
 "busy", and the request never stops or queues behind that work. A harness that
