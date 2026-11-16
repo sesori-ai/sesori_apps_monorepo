@@ -119,7 +119,8 @@ reconnect or restart.
   the next prompt shown both above and below the card, the card below the
   last reply, or the card or its reply gone.
 - A tool call the harness replays inside the stamped assistant message before
-  it (Oh My Pi groups a turn's thinking and tool calls under one message id)
+  it (Oh My Pi and DeepSeek stamp a model call's thinking and tool calls with
+  one message id)
   is replayed as its own message, the shape the live stream captured, so a
   re-import or the first read after a bridge restart matches the live tool row
   by id. Failure signal: after a forced re-import or a restart mid-turn, a tool
@@ -767,6 +768,10 @@ rules where supported.
   reads its prefix through `history_base`, so the fork then shows only its own
   turns. That step keeps every rollout another thread's `history_base` still
   references, so deleting an origin leaves its fork intact.
+- When a bridge stop cuts a turn off after a live row but before the bridge
+  stored the row after it, the first read after the restart shows that last
+  live row (for example an Oh My Pi reasoning row) next to its replayed copy,
+  because the replay has a following row the store lacks.
 - A Codex revert made outside Sesori is picked up at the next catalog scan;
   until then the catalog reads the thread's previous rollout.
 - A session already open on screen picks up an outside turn on the next app

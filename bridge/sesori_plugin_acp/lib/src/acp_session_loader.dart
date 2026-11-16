@@ -83,8 +83,8 @@ class AcpReplayCollector({
 
   /// Gives every tool call its own message, the shape the live mapper streams,
   /// instead of attaching it to the stamped assistant message before it. A
-  /// harness whose replay ids change on every load sets it, so the replay
-  /// still matches the rows captured live.
+  /// harness that stamps a model call's reasoning and tool calls with one
+  /// message id sets it, so the replay still matches the rows captured live.
   required final bool separatesToolMessages,
 }) implements AcpSessionReplayCollector {
   static const AcpContentMapper _contentMapper = AcpContentMapper();

@@ -270,9 +270,9 @@ abstract class AcpPlugin({
   bool get replaysResidentHistoryOnLiveProcess => false;
 
   /// Whether a replay gives every tool call its own message, the shape the
-  /// live mapper streams. A harness that stamps chunks with a message id and
-  /// replays under ids that change on every load opts in, or a re-import
-  /// shows its tool turns twice.
+  /// live mapper streams. A harness that stamps a model call's reasoning and
+  /// tool calls with one message id opts in, or a re-import shows its tool
+  /// calls twice.
   bool get replaysToolCallsAsOwnMessages => false;
 
   /// A concrete plugin delegates to its injected composition factory. The client

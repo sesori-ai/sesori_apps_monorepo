@@ -1149,14 +1149,14 @@ reconciliation when connected to an older bridge.
 
 The live stream gives every ACP tool call its own message. A replay that
 groups a tool call with the stamped assistant message before it no longer
-matches the live rows on a re-import, so the turn shows twice when the replay
-ids change on every load.
+matches the live rows, so a re-import shows the tool call twice: inside the
+replayed assistant message and as the live tool row.
 
 | Harness | Status |
 |---|---|
-| Oh My Pi | ✅ Replays each tool call as its own message. Verified live on 18.20.2 (2026-11-16): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
+| Oh My Pi | ✅ Replays each tool call as its own message. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
 | Hermes | ✅ Not affected: the plugin strips Hermes's chunk message ids, so replay and live use the same unstamped shape. |
-| DeepSeek | ⚠️ Not verified live. Its history read groups a tool call with the stamped assistant message before it, as the shared replay does. |
+| DeepSeek | ✅ Its history read replays each tool call as its own message. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
 | Cursor, Grok | ⚠️ Not verified live: they need a real account, which the test proxy can't serve. |
 | Copilot, Antigravity | ⚠️ Not verified live: runtime not installed on the test machine. |
 
