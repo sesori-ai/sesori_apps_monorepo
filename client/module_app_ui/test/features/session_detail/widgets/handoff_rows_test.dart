@@ -229,4 +229,33 @@ void main() {
     expect(find.text("Show all").hitTestable(), findsNothing);
     expect(find.text("/tmp/handoff/transcript.md"), findsOneWidget);
   });
+
+  testWidgets(
+    "a summary heading takes the app's type, not the platform's fallback",
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    (tester) async {
+      await tester.pumpWidget(
+        _app(
+          child: const HandoffCard(
+            messageId: "card",
+            card: TranscriptHandoffCard(
+              sourceSessionId: "source",
+              sourceTitle: "Relay retries",
+              summary: "## Next steps\n\nRetry the relay once.",
+              transcriptPath: "/tmp/handoff/transcript.md",
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final heading = tester
+          .widgetList<RichText>(find.byType(RichText))
+          .map((text) => text.text)
+          .firstWhere((span) => span.toPlainText() == "Next steps");
+      final style = (heading as TextSpan).children?.whereType<TextSpan>().first.style ?? heading.style;
+      expect(style?.fontFamily, PregoTextTheme.fontFamily);
+      expect(style?.fontSize, PregoTextTheme.light.textLg.bold.fontSize);
+    },
+  );
 }
