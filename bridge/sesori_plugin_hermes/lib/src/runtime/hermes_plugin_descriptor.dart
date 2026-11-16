@@ -402,6 +402,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       pluginId: HermesPluginIdentity.id,
       configurationTracker: configurationTracker,
       childSessions: childSessionTracker,
+      clock: host.clock,
     );
     final catalogRepository = HermesCatalogRepository(
       api: HermesAcpApi(
