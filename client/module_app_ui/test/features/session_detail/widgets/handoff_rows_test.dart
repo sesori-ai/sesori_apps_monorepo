@@ -224,9 +224,8 @@ void main() {
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
     (tester) async {
       await tester.pumpWidget(
-        _app(
+        app(
           child: const HandoffCard(
-            messageId: "card",
             card: TranscriptHandoffCard(
               sourceSessionId: "source",
               sourceTitle: "Relay retries",
@@ -242,7 +241,10 @@ void main() {
           .widgetList<RichText>(find.byType(RichText))
           .map((text) => text.text)
           .firstWhere((span) => span.toPlainText() == "Next steps");
-      final style = (heading as TextSpan).children?.whereType<TextSpan>().first.style ?? heading.style;
+      final style = switch (heading) {
+        TextSpan(:final children, :final style) => children?.whereType<TextSpan>().first.style ?? style,
+        _ => null,
+      };
       expect(style?.fontFamily, PregoTextTheme.fontFamily);
       expect(style?.fontSize, PregoTextTheme.light.textLg.bold.fontSize);
     },
