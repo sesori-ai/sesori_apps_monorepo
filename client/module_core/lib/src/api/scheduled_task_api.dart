@@ -17,6 +17,12 @@ class ScheduledTaskApi({required final RelayHttpApiClient _client}) {
     fromJson: ScheduledTaskRunListResponse.fromJson,
   );
 
+  Future<ApiResponse<ScheduledTaskResponse>> create({required ScheduledTaskDefinition definition}) => _client.post(
+    "/scheduled-task/create",
+    body: CreateScheduledTaskRequest(definition: definition),
+    fromJson: ScheduledTaskResponse.fromJson,
+  );
+
   Future<ApiResponse<ScheduledTaskResponse>> update({
     required String taskId,
     required ScheduledTaskDefinition definition,

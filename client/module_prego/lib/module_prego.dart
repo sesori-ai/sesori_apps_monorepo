@@ -14,6 +14,7 @@ export 'components/buttons/prego_voice_send_button.dart';
 export 'components/buttons/prego_voice_target.dart';
 export 'components/icons/prego_avatar_user.dart';
 export 'components/icons/prego_brand_logo.dart';
+export 'components/inputs/prego_date_time_field.dart';
 export 'components/inputs/prego_image_attachment_preview.dart';
 export 'components/inputs/prego_input_field.dart';
 export 'components/inputs/prego_voice_waveform.dart';

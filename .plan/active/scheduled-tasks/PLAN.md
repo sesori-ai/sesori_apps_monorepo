@@ -720,6 +720,20 @@ What it means:
 - The time field is a new `module_prego` component built on Flutter's
   Cupertino date picker in time and date-and-time modes, inside
   `showPregoModal` (sheet on touch, popover/dialog on pointer).
+- As built in step 9.a: the editor cubit keeps the wire `TaskSchedule` and
+  `TaskRunMode` as its state, so switching presets carries the time of day
+  over (a one-off or interval start lands on the next time that clock time
+  comes round; Weekly starts on today). Client checks reuse the bridge's
+  `ScheduledTaskErrorCode`s (empty prompt, weekly with no days, a past
+  one-off time for a new task). An edit keeps the task's zone; only a new
+  task's one-off time is judged on the device clock, the bridge judges the
+  rest. Same session saves `autoCompact: false` (or the edited task's value)
+  until step 11 adds the switch and its harness-based default. The name is
+  the prompt's first line (80 characters at most); an edit keeps a name the
+  user changed and follows the prompt otherwise, and renaming stays on the
+  task page. A command without a source saves as a plain command.
+  `scheduled_task_saved` is not sent from desktop until the auth server
+  accepts it (`DesktopProductAnalyticsDeliveryService` maps it to null).
 
 ## Explicitly Excluded From Phase 1
 
@@ -819,7 +833,7 @@ consecutive-failure auto-pause, a new push category.
 ## Delivery Rules
 
 - PR titles are fixed in [TRACKER.md](TRACKER.md). Use
-  `<emoji> [scheduled-tasks] <description> [step x/17]`.
+  `<emoji> [scheduled-tasks] <description> [step x/18]`.
 - Soft cap ~1,500 changed lines; lower for lifecycle steps (4.b, 5, 11). Drift
   and Freezed output can push steps 2 and 3.a over; report generated versus
   authored lines. Clean splits (for example 8.a/8.b, 9.a/9.b) need no
@@ -885,12 +899,18 @@ parallel with the bridge chain.
      name in the row meta line, rendered from the merged `Session.scheduledTask`
      field; the push tap to a task page through `NotificationOpenDispatcher`,
      which needs step 6's `taskId` payload. [6, 8.a.2]
-9. 🚧 **New task screen.** `ScheduledTaskEditorCubit`; When and Each run
-   lines and sheets (P13 defaults; missed-run line hidden for Once); the
-   `module_prego` time and date fields; the `DeviceTimeZoneSource` port and its
-   one `flutter_timezone` adapter in `module_app_ui`; save and edit; the `+`
-   on the Scheduled page; entry points next to Archived (phone Settings,
-   desktop sidebar and palette); `scheduled_task_saved`. [4.b, 7, 8.a.2]
+9. Split in two because the editor ran over the soft cap.
+   - 9.a 🚧 **Task editor core, time fields and device time zone.**
+     `ScheduledTaskEditorCubit` (P13 defaults, validation, create and edit,
+     `scheduled_task_saved`), the create route's API and repository call, the
+     `module_prego` date and time field, and the `DeviceTimeZoneSource` port
+     with its one `flutter_timezone` adapter in `module_app_ui`, registered by
+     both shells. No screen yet. [4.b, 7, 8.a.2]
+   - 9.b 🚧 **New task screen.** When and Each run lines and sheets
+     (missed-run line hidden for Once); save and edit; the `+` on the
+     Scheduled page and Edit on the task page; entry points next to Archived
+     (phone Settings, desktop sidebar and palette); the editor's screen
+     mapping. [9.a]
 10. ⚙️ **Compaction on request in every harness that can.**
     `compactSession`, `PluginCompactionResult` and
     `supportsCompactionOnRequest` (P9) across all plugins,
@@ -899,7 +919,7 @@ parallel with the bridge chain.
 11. 🚧 **Auto-compact same-session tasks.** `ScheduledTaskCompactionService`
     and `ScheduledTaskActivityTracker` in the tick (P10 cases 1–4), the auto-compact switch and its
     unsupported-harness tap on the Each run sheet, and the plugin-interface
-    prompt-cache-life query. Uses Q1 = B. [5, 9, 10]
+    prompt-cache-life query. Uses Q1 = B. [5, 9.b, 10]
 12. 🌱 **Regression docs.** Write `scheduled-tasks.md`, update the documents
     listed under Regression Coverage and the README index. [2–11]
 13. 🌱 **Run the L3 regression and retire the plan.** Run the matrix above,

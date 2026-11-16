@@ -331,7 +331,7 @@ refused with a reason.
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
 | Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ⬜ Not implemented yet |
-| Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ⬜ `thread/fork {lastTurnId}` |
+| Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ✅ `thread/fork {lastTurnId}` into a new persisted thread in the same directory; the source is not loaded, so it can run a later turn or be archived. Verified live on 2026-11-15 with Codex 0.169.0. Runtimes before 0.143.0 predate `lastTurnId`; by their source they ignore the unknown field and would copy the whole thread (not run live), so they are refused with a reason before anything is created, as are an unknown message, a missing rollout and a turn still running. A reply that a steered follow-up continued in the same native turn is 🚫: Codex forks only whole turns. Deleting a source keeps the rollouts a fork builds on and `thread/archive`s them, which Codex allows and forks keep reading |
 | Every other harness | ⬜ Not implemented yet for in-place rewinds; the bridge accepts a first-message swap, but the app shows no Edit because the harness does not declare `rewind` | ⬜ Not implemented yet |
 
 Claude Code (live probes against 2.1.221 and 2.1.322 in a scratch config
@@ -654,14 +654,18 @@ app ignores `kind` and shows the row's text in red.
 | Pi | ✅ `stopReason: aborted`. | ✅ The same record. |
 | OpenCode v1 | ✅ `MessageAbortedError`. | ✅ The same record. |
 | OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
-| OMP | ⬜ | ⬜ |
-| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ⬜ | ⬜ |
+| OMP | ✅ The shared ACP plugin's line, as below. | ⚠️ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing; it folds into the live line. A reply that streamed first keeps its line only until the history is re-read. |
+| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ⚠️ They record no stop, so the line shows only until the history is re-read. |
 | Claude Code | ⬜ | ⬜ |
 | Codex | ⬜ | ⬜ |
 
 Pi and OpenCode do not tell a user Stop from another abort of the turn, so any abort they record reads Stopped.
 OpenCode v2 (2.2.7 source) records the same `aborted` error when the user declines a permission, which ends the turn
 too.
+
+On the ACP harnesses a shutdown, a plugin restart or a follow-up that replaces the running turn cancels it without a
+Stopped line, and so does a Stop that lands before the prompt reached the agent. A turn that already showed a failed-turn
+notice (see [Failed-turn notices sent as text](#failed-turn-notices-sent-as-text)) keeps that notice as its one row.
 
 ## Pre-start catalog import
 
@@ -1200,7 +1204,7 @@ live one.
 | Harness | Sesori availability |
 |---|---|
 | Cursor | ✅ The account/plan gate ("Check your settings to continue"), live and after history load. |
-| Oh My Pi | ✅ An aborted reply that produced nothing, which OMP sends as its bare abort reason ("Interrupted by user" after a stop, "Request was aborted" otherwise): after history load, and live when a failed request never streamed. ⚠️ A live stop shows no notice, since OMP sends none then, so a reload can add one. Wording read in the OMP 18.20.2 source on 2026-11-15. |
+| Oh My Pi | ✅ An aborted reply that produced nothing, which OMP sends as its bare abort reason ("Interrupted by user" after a stop, "Request was aborted" otherwise): after history load, and live when a failed request never streamed. The stop's reason is the Stopped line (see Stopped turns), named like the live stop's line so a reload keeps one; "Request was aborted" stays a red notice. Wording read in the OMP 18.20.2 source on 2026-11-15. |
 | Hermes | ✅ The English failure copy Hermes sends as its final response, live and after history load: retries exhausted (including the stream-lifetime cap), first-attempt rate limits, usage limits, rejected credentials, unknown models, content policy, data-policy refusals, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions, shutdown, the "No reply:" explanations for exits that fail the turn (a stop on a pending tool result, no answer after all retries, a local context window too small, an error near the iteration limit, repeated errors, and every session-storage failure), a scheduled-job chat, a missing working folder and a chat whose launch API key is gone (in other languages by its untranslated `Details: launch_credentials_unavailable (<field>: <detail>)` line after a one-line notice naming the same key; Hermes's other translated copy stays a plain reply). Hermes saves a different row for a failed turn ("Your request was not processed…", "This turn did not complete. Some actions may already have run…" after a tool ran, or "An automated delivery was interrupted…" for a lost cron or webhook turn, and "This message was refused by the model's safety filter…" for a refused turn); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows only Hermes's live reason, followed by the row's warning when actions may already have run. Wording read in the Hermes 0.21.5 source on 2026-11-09 and the 0.23.1 source on 2026-11-12. Hermes appends its generic "Your request was not processed…" row to a live reason; Sesori drops it so the notice reads the same live and after a reload. Hermes then fails the prompt with `admitted_turn_failed`, which adds no second notice; when the model streamed part of a reply first, Hermes sends no failure text, so that failed prompt shows as Hermes's own "Your request was not processed…" notice. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts, and so do the "No reply:" explanations for exits that do not fail the turn (no reply after retries, a partial stream recovered, prior context shown, restart limits, budget or iteration limit reached, an interrupted call). 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
 
 Claude Code does not need text matching: it tags a failed turn's assistant

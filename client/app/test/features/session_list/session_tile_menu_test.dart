@@ -160,7 +160,7 @@ void main() {
     expect(find.widgetWithText(FilledButton, "Archive"), findsNothing);
     expect(find.widgetWithText(SessionTile, "My Session"), findsNothing);
 
-    tester.element(find.byType(AllSessionsList)).read<PendingSessionArchiveCubit>().undo();
+    tester.element(find.byType(AllSessionsList)).read<PendingSessionArchiveCubit>().undo(sessionId: session.id);
     await tester.pumpAndSettle();
     expect(find.widgetWithText(SessionTile, "My Session"), findsOneWidget);
   });

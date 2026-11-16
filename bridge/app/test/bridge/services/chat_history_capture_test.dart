@@ -14,6 +14,9 @@ import "package:claude_plugin/claude_plugin.dart"
         ClaudeToolTracker,
         ClaudeTranscriptApi,
         ClaudeTranscriptCatalogRepository;
+import "package:omp_plugin/src/omp_event_mapper.dart";
+import "package:omp_plugin/src/omp_identity.dart";
+import "package:omp_plugin/src/trackers/omp_compaction_tracker.dart";
 import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
@@ -1247,9 +1250,10 @@ void main() {
           "replay-a",
           "live-a",
           "tool-1",
-          "replay-shared",
+          // The exact copy still matches between its tool anchors: the partial
+          // row the replay doesn't hold doesn't separate them.
           "live-middle-partial",
-          "live-middle-exact",
+          "replay-shared",
           "tool-2",
           "replay-b",
           "live-b",
@@ -2065,8 +2069,119 @@ void main() {
       });
     });
 
+    // Oh My Pi replays untimed rows under fresh ids on every load.
+    group("a replay under fresh ids", () {
+      test("matches a live turn after an earlier import once", () async {
+        final transcript = [
+          _messageWithText(id: "r1-alpha", text: "Say ALPHA", createdAt: null, promptId: null),
+          _assistantMessageWithText(id: "r1-alpha-reply", text: "ALPHA", reasoning: null, createdAt: null),
+        ];
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-alpha", text: "Say ALPHA", createdAt: 100, promptId: "p1"),
+            _assistantMessageWithText(id: "live-alpha-reply", text: "ALPHA", reasoning: null, createdAt: null),
+          ],
+        );
+        await history.service.backfillSession(sessionId: "ses_a");
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-beta", text: "Say BETA", createdAt: 300, promptId: "p2"),
+            _assistantMessageWithText(id: "live-beta-reply", text: "BETA", reasoning: null, createdAt: null),
+          ],
+        );
+        transcript
+          ..clear()
+          ..addAll([
+            _messageWithText(id: "r2-alpha", text: "Say ALPHA", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "r2-alpha-reply", text: "ALPHA", reasoning: null, createdAt: null),
+            _messageWithText(id: "r2-beta", text: "Say BETA", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "r2-beta-reply", text: "BETA", reasoning: null, createdAt: null),
+          ]);
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r2-alpha", "r2-alpha-reply", "r2-beta", "r2-beta-reply"],
+        );
+      });
+
+      // A live turn the replay doesn't hold yet separates no neighbors, so its
+      // reply sits in the same context as an imported reply of the same text.
+      test("keeps a live reply that looks like a replayed one", () async {
+        final transcript = [
+          _messageWithText(id: "r1-q", text: "Say Q", createdAt: null, promptId: null),
+          _assistantMessageWithText(id: "r1-a", text: "A", reasoning: null, createdAt: null),
+        ];
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-q", text: "Say Q", createdAt: 100, promptId: "p1"),
+            _assistantMessageWithText(id: "live-a", text: "A", reasoning: null, createdAt: null),
+          ],
+        );
+        await history.service.backfillSession(sessionId: "ses_a");
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-x", text: "Say X", createdAt: 300, promptId: "p2"),
+            _assistantMessageWithText(id: "live-x-a", text: "A", reasoning: null, createdAt: null),
+          ],
+        );
+        transcript
+          ..clear()
+          ..addAll([
+            _messageWithText(id: "r2-q", text: "Say Q", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "r2-a", text: "A", reasoning: null, createdAt: null),
+          ]);
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r2-q", "r2-a", "live-x", "live-x-a"],
+        );
+      });
+
+      // Oh My Pi replays no row for a reply whose model call failed.
+      test("keeps each failed reply after its own turn", () async {
+        final history = createTestChatHistory(
+          sessionRepository: _FakeSessionRepository(
+            transcript: [
+              for (final word in ["ALPHA", "BETA", "GAMMA"])
+                _messageWithText(id: "r1-$word", text: "Say $word", createdAt: null, promptId: null),
+            ],
+          ),
+        );
+        await _captureMessages(
+          history: history,
+          messages: [
+            for (final (index, word) in ["ALPHA", "BETA", "GAMMA"].indexed) ...[
+              _messageWithText(id: "live-$word", text: "Say $word", createdAt: index * 100, promptId: "p$index"),
+              _assistantMessageWithText(id: "failed-$word", text: "400 $word", reasoning: null, createdAt: null),
+            ],
+          ],
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r1-ALPHA", "failed-ALPHA", "r1-BETA", "failed-BETA", "r1-GAMMA", "failed-GAMMA"],
+        );
+      });
+    });
+
     group("handoff stamps", () {
       const sent = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Target");
+      const notSent = MessageHandoffNotSent(targetSessionId: "target", targetTitle: "Target");
       MessageWithParts stamped({required String id, required MessageHandoff? handoff}) {
         final message = _messageWithText(id: id, text: "Fixture request", createdAt: 100, promptId: null);
         return switch (message.info) {
@@ -2118,48 +2233,48 @@ void main() {
         }
       });
 
-      test("marking a send as not sent turns only a sent stamp, and announces that change", () async {
-        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
-        final refreshed = <String>[];
-        final refreshes = history.service.historyRefreshes.listen((refresh) => refreshed.add(refresh.sessionId));
-        addTearDown(refreshes.cancel);
-        const received = MessageHandoff.received(
-          sourceSessionId: "source",
-          sourceTitle: null,
-          summary: "Fixture summary",
-          transcriptPath: "/fixture/transcript.md",
-        );
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m1", handoff: sent),
-        );
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m2", handoff: received),
-        );
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m3", handoff: null),
-        );
+      test(
+        "marking a send as not sent replaces a sent stamp or stamps an unstamped request, and announces each",
+        () async {
+          final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
+          final refreshed = <String>[];
+          final refreshes = history.service.historyRefreshes.listen((refresh) => refreshed.add(refresh.sessionId));
+          addTearDown(refreshes.cancel);
+          const received = MessageHandoff.received(
+            sourceSessionId: "source",
+            sourceTitle: null,
+            summary: "Fixture summary",
+            transcriptPath: "/fixture/transcript.md",
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m1", handoff: sent),
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m2", handoff: received),
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m3", handoff: null),
+          );
 
-        for (final messageId in ["m1", "m2", "m3", "missing"]) {
-          await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId);
-        }
-        await pumpEventQueue();
-        // Only the marked request reloads the clients that show it.
-        expect(refreshed, ["ses_a"]);
-        // A later update of the turn keeps the replaced stamp.
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m1", handoff: null),
-        );
+          for (final messageId in ["m1", "m2", "m3", "missing"]) {
+            await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId, notSent: notSent);
+          }
+          await pumpEventQueue();
+          // Only the marked requests reload the clients that show them.
+          expect(refreshed, ["ses_a", "ses_a"]);
+          // A later update of the turn keeps the replaced stamp.
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m1", handoff: null),
+          );
 
-        expect(await storedHandoffs(history: history), [
-          const MessageHandoff.notSent(targetSessionId: "target", targetTitle: "Target"),
-          received,
-          null,
-        ]);
-      });
+          // The harness stored m3 without the echo that would have stamped it.
+          expect(await storedHandoffs(history: history), [notSent, received, notSent]);
+        },
+      );
     });
 
     test("semantic replay matching preserves repeated-message multiplicity", () async {
@@ -2580,6 +2695,78 @@ void main() {
 
         expect(await storedNotices(history: history), unorderedEquals(const [savedRow, liveReason]));
       });
+    });
+
+    // OMP sends nothing live for a stop, so the shared ACP plugin adds the
+    // stopped row; OMP replays the stop as its "Interrupted by user" reason.
+    test("an OMP stop seen live stays one stopped row after a reload", () async {
+      const sessionId = "ses_a";
+      final replayTranscript = <MessageWithParts>[];
+      final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: replayTranscript));
+      final mapper = OmpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: OmpPluginIdentity.id,
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
+        compactionTracker: OmpCompactionTracker(clock: const ServerClock()),
+        hasPendingTurn: ({required sessionId}) => false,
+      )..beginTurn(sessionId: sessionId, messageId: "live-user");
+      await _captureAcpEvents(
+        history: history,
+        sessionId: sessionId,
+        events: [
+          ...mapper.mapSentPrompt(
+            sessionId: sessionId,
+            messageId: "live-user",
+            promptId: "prompt-1",
+            parts: const [PluginPromptPart.text(text: "request")],
+            createdAtMs: 100,
+          ),
+          ...mapper.mapUserStop(sessionId: sessionId),
+        ],
+      );
+      final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
+        shellCommandResolver: null,
+        toolNameResolver: null,
+        sessionId: sessionId,
+        agentId: OmpPluginIdentity.id,
+        initialUserMessage: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: mapper.classifyHaltNotice,
+        toolPartReplacement: null,
+        toolPartSuppression: null,
+        separatesToolMessages: false,
+      );
+      for (final update in [
+        {
+          "sessionUpdate": "user_message_chunk",
+          "content": {"type": "text", "text": "request"},
+          "messageId": "user-1",
+        },
+        {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Interrupted by user"},
+          "messageId": "assistant-1",
+        },
+      ]) {
+        collector.consume({"update": update});
+      }
+      replayTranscript.addAll(collector.build().toSharedMessageWithParts(sessionId: sessionId));
+
+      for (var reload = 0; reload < 2; reload++) {
+        await history.service.backfillSession(sessionId: sessionId);
+
+        final errors = [
+          for (final message in await _storedMessages(history: history, sessionId: sessionId))
+            if (message.info case final MessageError error) error,
+        ];
+        expect(
+          errors.map((error) => (error.kind, error.errorMessage)),
+          [(MessageErrorKind.stopped, "Stopped")],
+        );
+      }
     });
 
     // Editing a message in the backend's own client rolls the session back and

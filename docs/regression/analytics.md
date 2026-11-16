@@ -64,15 +64,16 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   the auth server confirms the change, never a name, nickname or identifier. A failed change reports nothing.
 - Pinning or unpinning a session reports `session_pin_changed` with `pinned` (`true`, `false`) only after the bridge
   answers the updated session, never the session or its title. A refused, failed or unsupported pin reports nothing.
-  The desktop does not send it to the warehouse.
+- The desktop sends `computer_switched`, `computer_managed`, `session_pin_changed`, `side_question_asked`,
+  `harness_install_finished` and `transcript_prompts_opened` to the auth server with the same pinned parameters as the
+  phone. It never sends the desktop-link or CEO-call events, which only the phone shows.
 - A side question reports `side_question_asked` once per ask, when the bridge's result arrives, even if the side chat
   has closed meanwhile. It carries the session's pinned `harness` and an `outcome`: `answered` when the bridge stored
   an answer, `no_answer` when the model gave no usable one, `unavailable` for any other refusal (the harness can't,
   the session has no turn yet, the question is too long, or a reason the app doesn't know), and `failed` for a failed or
   timed-out request or a response kind the app doesn't know. It never carries the question, the answer, the session,
   the side chat, or a count. An ask the app never sends (an archived or unavailable session, blank text, or one asked
-  while another waits) reports nothing. The desktop does not send it to the warehouse yet, because the auth server's
-  product-event route doesn't accept it. Reporting reads it from the raw export: no curated view consumes it, so
+  while another waits) reports nothing. Reporting reads it from the raw export: no curated view consumes it, so
   adoption is read as asks per harness and the share of each outcome.
 - Edit and resend reports `session_message_edited` once per Resend that reaches an outcome, even if the session screen
   closed meanwhile, with the session's pinned `harness` and an `outcome`: `succeeded` when the bridge accepted the

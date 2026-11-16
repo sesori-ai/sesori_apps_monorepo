@@ -164,6 +164,12 @@ void main() {
       knownSubAgentSessionIds: const {},
     );
 
+    Iterable<PluginMessageError> stoppedRows() => events
+        .whereType<BridgeSseMessageUpdated>()
+        .map((event) => event.info)
+        .whereType<PluginMessageError>()
+        .where((row) => row.kind == PluginErrorKind.stopped);
+
     Matcher accepted({required bool subAgentsHandled}) => isA<PluginAbortAccepted>()
         .having((result) => result.workKept, "workKept", isFalse)
         .having((result) => result.subAgentsHandled, "subAgentsHandled", subAgentsHandled);
@@ -197,6 +203,7 @@ void main() {
     Future<PluginSession> setUpRootCancel({required Duration timeout}) async {
       await plugin.dispose();
       plugin = buildPlugin(closeTimeout: timeout);
+      plugin.events.listen(events.add);
       await connect();
       return await create("session-1");
     }
@@ -438,6 +445,20 @@ void main() {
       await waitForFrameCount(AcpMethods.sessionCancel, 1);
       respond(prompt, {"stopReason": "cancelled"});
       expect(await stopping, accepted(subAgentsHandled: false));
+      await pump();
+      expect(stoppedRows(), hasLength(1));
+    });
+
+    test("a shutdown interrupt of a root turn ends it with no stopped row", () async {
+      final session = await setUpRootCancel(timeout: const Duration(seconds: 1));
+      await send(session.id, "active turn");
+      final prompt = await waitForFrameCount(AcpMethods.sessionPrompt, 1);
+      final interrupting = plugin.interruptActiveWork(budget: const Duration(seconds: 1));
+      await waitForFrameCount(AcpMethods.sessionCancel, 1);
+      respond(prompt, {"stopReason": "cancelled"});
+      expect(await interrupting, {session.id});
+      await pump();
+      expect(stoppedRows(), isEmpty);
     });
 
     test("close timeout fails deletion and preserves local session state", () async {

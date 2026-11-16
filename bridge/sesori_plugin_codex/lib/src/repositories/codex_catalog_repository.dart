@@ -16,6 +16,7 @@ import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../api/models/codex_rollout_file_name.dart";
 import "mappers/codex_sub_agent_name_mapper.dart";
+import "models/codex_session_deletion.dart";
 import "models/codex_session_record.dart";
 
 /// Layer-2 aggregation, mapping, selection, and deletion for the rollout catalog.
@@ -280,25 +281,42 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
   }
 
   /// Deletes [sessionId]'s rollouts and its session index lines, rescanning
-  /// once when the last scan does not know the session. Returns false when
-  /// the rollouts' absence cannot be confirmed or a write fails.
-  Future<bool> deleteSession({required String sessionId}) async {
-    if (!_pathsById.containsKey(sessionId) && !await _rescan()) return false;
+  /// once when the last scan does not know the session.
+  ///
+  /// Keeps every rollout another thread's history still builds on, such as a
+  /// fork's base, where Codex's own delete would refuse.
+  Future<CodexSessionDeletion> deleteSession({required String sessionId}) async {
+    if (!_pathsById.containsKey(sessionId) && !await _rescan()) return CodexSessionDeletion.failed;
     final rolloutPath = _pathsById[sessionId];
+    var outcome = CodexSessionDeletion.deleted;
     if (rolloutPath != null) {
+      final owned = [...?_supersededPathsById[sessionId], rolloutPath];
+      final Set<String> kept;
+      try {
+        kept = _pathsOtherRolloutsBuildOn(owned: owned);
+      } on Object catch (error, stackTrace) {
+        Log.w("[codex] failed to read which rollouts build on $sessionId", error, stackTrace);
+        return CodexSessionDeletion.failed;
+      }
+      if (kept.isNotEmpty) outcome = CodexSessionDeletion.keptForForks;
       // The current rollout goes last: a failure part-way leaves the
       // session listed, so the delete can be retried.
-      final paths = [...?_supersededPathsById[sessionId], rolloutPath];
+      final paths = [
+        for (final path in owned)
+          if (!kept.contains(path)) path,
+      ];
       try {
         for (final path in paths) {
           _rolloutApi.deleteRollout(rolloutPath: path);
         }
       } on Object catch (error, stackTrace) {
         Log.w("[codex] failed to delete rollout for $sessionId", error, stackTrace);
-        return false;
+        return CodexSessionDeletion.failed;
       }
-      _rollouts.remove(rolloutPath);
-      _pathsById.remove(sessionId);
+      if (!kept.contains(rolloutPath)) {
+        _rollouts.remove(rolloutPath);
+        _pathsById.remove(sessionId);
+      }
       _deletedDuringScan.addAll(paths);
     }
 
@@ -307,13 +325,13 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       indexLines = _rolloutApi.readSessionIndexLines();
     } on Object catch (error, stackTrace) {
       Log.w("[codex] failed to read the session index", error, stackTrace);
-      return false;
+      return CodexSessionDeletion.failed;
     }
     final filtered = [
       for (final line in indexLines)
         if (line.entry?.id != sessionId) line.raw,
     ];
-    if (filtered.length == indexLines.length) return true;
+    if (filtered.length == indexLines.length) return outcome;
     try {
       _rolloutApi.writeSessionIndex(lines: filtered);
     } on Object catch (error, stackTrace) {
@@ -322,9 +340,45 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
         error,
         stackTrace,
       );
-      return false;
+      return CodexSessionDeletion.failed;
     }
-    return true;
+    return outcome;
+  }
+
+  /// Those of [owned] that another rollout, active or archived, still builds
+  /// on, directly or through the rollouts between, such as a deleted fork
+  /// kept and archived for a fork of its own. All of [owned] when a header
+  /// cannot be read, since it may name any of them.
+  Set<String> _pathsOtherRolloutsBuildOn({required List<String> owned}) {
+    var unreadable = false;
+    String? baseOf({required String path}) {
+      final parsed = _rollouts[path]?.parsed ?? _parseRollout(rolloutApi: _rolloutApi, rolloutPath: path);
+      if (parsed == null) unreadable = true;
+      return parsed?.metadata?.historyBaseRolloutId;
+    }
+
+    // Parses every archived header per delete; index them if a large archive
+    // makes deletes slow.
+    final others = {
+      ..._pathsById.values,
+      ..._supersededPathsById.values.expand((paths) => paths),
+      ..._rolloutApi.listArchivedRolloutPaths(),
+    }.difference(owned.toSet());
+    final pathsByRolloutId = {
+      for (final path in [...owned, ...others])
+        if (CodexRolloutFileName.tryParse(fileName: p.basename(path)) case final name?) name.rolloutId: path,
+    };
+    final pending = [for (final path in others) ?baseOf(path: path)];
+    final visited = <String>{};
+    final kept = <String>{};
+    while (pending.isNotEmpty) {
+      final rolloutId = pending.removeLast();
+      final path = pathsByRolloutId[rolloutId];
+      if (path == null || !visited.add(rolloutId)) continue;
+      if (owned.contains(path)) kept.add(path);
+      if (baseOf(path: path) case final base?) pending.add(base);
+    }
+    return unreadable ? owned.toSet() : kept;
   }
 
   /// Null when the rollout's header names another session.
@@ -534,6 +588,10 @@ class const _CodexSessionMetadata({
   required final String? agentPath,
   required final String? parentId,
   required final bool attachedThread,
+
+  /// The rollout id this rollout's history builds on, for a fork or a
+  /// reverted thread.
+  required final String? historyBaseRolloutId,
 });
 
 /// A parsed rollout header. Rollouts are append-only, so a header that filled
@@ -566,6 +624,7 @@ _ParsedRollout? _parseRollout({
   String? agentNickname;
   String? agentPath;
   String? parentId;
+  String? historyBaseRolloutId;
   var attachedThread = false;
   for (final line in header.lines) {
     switch (line) {
@@ -581,6 +640,7 @@ _ParsedRollout? _parseRollout({
         timestamp = _tryParseDate(raw: payload.timestamp);
         modelProvider = payload.modelProvider;
         attachedThread = payload.attachedThread;
+        historyBaseRolloutId = payload.historyBase?.rolloutId;
         if (payload.threadSource == CodexRolloutThreadSource.subagent) {
           parentId = payload.parentThreadId;
           agentNickname = payload.agentNickname;
@@ -610,6 +670,7 @@ _ParsedRollout? _parseRollout({
             agentPath: agentPath,
             parentId: parentId,
             attachedThread: attachedThread,
+            historyBaseRolloutId: historyBaseRolloutId,
           ),
     shortFileLength: header.reachedLineLimit ? null : header.fileLength,
   );

@@ -5,6 +5,7 @@ import "package:codex_plugin/src/api/models/codex_mcp_status_dto.dart";
 import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/repositories/codex_mcp_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_mcp_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_user_agent_mapper.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -38,11 +39,15 @@ class _Transport({required List<Object?> responses}) implements CodexAppServerTr
 
 CodexMcpRepository _repository({required _Transport transport}) => CodexMcpRepository(
   appServerApi: CodexAppServerApi(client: transport),
-  mapper: CodexMcpMapper(userAgent: "fixture/0.160.1 (fixture)"),
+  mapper: CodexMcpMapper(
+    codexVersion: const CodexUserAgentMapper().codexVersion(userAgent: "fixture/0.160.1 (fixture)"),
+  ),
 );
 
 PluginMcpServerSnapshot _mapped({required Map<String, Object?> server}) =>
-    CodexMcpMapper(userAgent: "fixture/0.160.1 (fixture)")
+    CodexMcpMapper(
+              codexVersion: const CodexUserAgentMapper().codexVersion(userAgent: "fixture/0.160.1 (fixture)"),
+            )
             .map(
               servers: [CodexMcpServerStatusDto.fromJson(server)],
               scope: const PluginMcpHarnessScope(),
@@ -344,7 +349,9 @@ void main() {
     ("fixture/0.161.0 (fixture)", true),
   ]) {
     test("session authentication uses verified native context support: $userAgent", () {
-      final mapper = CodexMcpMapper(userAgent: userAgent);
+      final mapper = CodexMcpMapper(
+        codexVersion: const CodexUserAgentMapper().codexVersion(userAgent: userAgent),
+      );
       for (final scope in [const PluginMcpHarnessScope(), const PluginMcpSessionScope(sessionId: "thread")]) {
         for (final authStatus in ["notLoggedIn", "unsupported", "future-auth"]) {
           final entry =
