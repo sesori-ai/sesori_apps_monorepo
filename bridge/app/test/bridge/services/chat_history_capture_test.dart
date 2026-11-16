@@ -2178,6 +2178,7 @@ void main() {
 
     group("handoff stamps", () {
       const sent = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Target");
+      const notSent = MessageHandoffNotSent(targetSessionId: "target", targetTitle: "Target");
       MessageWithParts stamped({required String id, required MessageHandoff? handoff}) {
         final message = _messageWithText(id: id, text: "Fixture request", createdAt: 100, promptId: null);
         return switch (message.info) {
@@ -2229,48 +2230,48 @@ void main() {
         }
       });
 
-      test("marking a send as not sent turns only a sent stamp, and announces that change", () async {
-        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
-        final refreshed = <String>[];
-        final refreshes = history.service.historyRefreshes.listen((refresh) => refreshed.add(refresh.sessionId));
-        addTearDown(refreshes.cancel);
-        const received = MessageHandoff.received(
-          sourceSessionId: "source",
-          sourceTitle: null,
-          summary: "Fixture summary",
-          transcriptPath: "/fixture/transcript.md",
-        );
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m1", handoff: sent),
-        );
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m2", handoff: received),
-        );
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m3", handoff: null),
-        );
+      test(
+        "marking a send as not sent replaces a sent stamp or stamps an unstamped request, and announces each",
+        () async {
+          final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
+          final refreshed = <String>[];
+          final refreshes = history.service.historyRefreshes.listen((refresh) => refreshed.add(refresh.sessionId));
+          addTearDown(refreshes.cancel);
+          const received = MessageHandoff.received(
+            sourceSessionId: "source",
+            sourceTitle: null,
+            summary: "Fixture summary",
+            transcriptPath: "/fixture/transcript.md",
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m1", handoff: sent),
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m2", handoff: received),
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m3", handoff: null),
+          );
 
-        for (final messageId in ["m1", "m2", "m3", "missing"]) {
-          await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId);
-        }
-        await pumpEventQueue();
-        // Only the marked request reloads the clients that show it.
-        expect(refreshed, ["ses_a"]);
-        // A later update of the turn keeps the replaced stamp.
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m1", handoff: null),
-        );
+          for (final messageId in ["m1", "m2", "m3", "missing"]) {
+            await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId, notSent: notSent);
+          }
+          await pumpEventQueue();
+          // Only the marked requests reload the clients that show them.
+          expect(refreshed, ["ses_a", "ses_a"]);
+          // A later update of the turn keeps the replaced stamp.
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m1", handoff: null),
+          );
 
-        expect(await storedHandoffs(history: history), [
-          const MessageHandoff.notSent(targetSessionId: "target", targetTitle: "Target"),
-          received,
-          null,
-        ]);
-      });
+          // The harness stored m3 without the echo that would have stamped it.
+          expect(await storedHandoffs(history: history), [notSent, received, notSent]);
+        },
+      );
     });
 
     test("semantic replay matching preserves repeated-message multiplicity", () async {
