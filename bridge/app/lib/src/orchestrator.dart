@@ -61,6 +61,7 @@ import "push/push_notification_client.dart";
 import "push/push_notification_content_builder.dart";
 import "push/push_rate_limiter.dart";
 import "push/push_session_state_tracker.dart";
+import "push/scheduled_task_failure_push_listener.dart";
 import "repositories/accepted_prompts_repository.dart";
 import "repositories/agent_repository.dart";
 import "repositories/attachment_thumbnail_builder.dart";
@@ -391,18 +392,19 @@ class Orchestrator({
       dao: SessionContinuationDao(database: _database),
       runtime: _pluginRuntime,
     );
+    final scheduledTaskRepository = ScheduledTaskRepository(dao: ScheduledTaskDao(database: _database));
     final sessionInterruptions = SessionInterruptionRepository(
       dao: SessionInterruptionDao(database: _database),
     );
     final sessionViews = SessionViewService(
       sessions: sessionRepository,
       continuations: sessionContinuations,
+      scheduledTasks: scheduledTaskRepository,
       interruptions: sessionInterruptions,
       resetBuffer: quotaResetBuffer,
     );
     final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
     final sideChatRepository = SideChatRepository(dao: SideChatDao(database: _database));
-    final scheduledTaskRepository = ScheduledTaskRepository(dao: ScheduledTaskDao(database: _database));
     const scheduledTaskOccurrenceCalculator = ScheduledTaskOccurrenceCalculator();
     final scheduledTaskService = ScheduledTaskService(
       repository: scheduledTaskRepository,
@@ -454,6 +456,7 @@ class Orchestrator({
       contentBuilder: pushContentBuilder,
       dispatcher: pushDispatcher,
       resolveSessionTitle: sessionRepository.getSessionTitle,
+      isUnattendedTaskRun: scheduledTaskRepository.isUnattendedRun,
     );
     final maintenanceListener = MaintenancePushListener(
       tracker: pushTracker,
@@ -626,6 +629,7 @@ class Orchestrator({
       sessionOptionsService: sessionOptionsService,
       promptPartDelivery: promptPartDeliveryService,
       chatHistory: chatHistoryService,
+      scheduledTasks: scheduledTaskRepository,
     );
     final sessionForkService = SessionForkService(
       sessionRepository: sessionRepository,
@@ -713,6 +717,7 @@ class Orchestrator({
       plugins: _pluginLifecycleService,
       clock: clock,
       summaryTimeout: const Duration(minutes: 15),
+      settleTimeout: const Duration(seconds: 10),
     );
     final sessionMutationListener = SessionMutationListener(
       source: sessionMutationDispatcher.mutations.asyncMap(
@@ -738,11 +743,19 @@ class Orchestrator({
       operations: sessionOperationDispatcher,
       yoloSettings: yoloSettingsService,
       sessions: sessionRepository,
+      lifecycle: sessionLifecycleService,
       sessionOptions: sessionOptionsService,
       calculator: scheduledTaskOccurrenceCalculator,
       clock: clock,
     );
     final scheduledTaskTimer = ScheduledTaskTimerListener(service: scheduledTaskRunService);
+    final scheduledTaskFailurePushListener = ScheduledTaskFailurePushListener(
+      source: scheduledTaskRunService.failures.map(
+        (failure) => (taskId: failure.taskId, taskName: failure.taskName, reason: failure.reason),
+      ),
+      contentBuilder: pushContentBuilder,
+      dispatcher: pushDispatcher,
+    );
     final pluginEventListener = PluginEventListener(
       source: _pluginRuntime.backendEvents,
       dispatcher: sessionEventDispatcher,
@@ -929,6 +942,7 @@ class Orchestrator({
       scheduledTaskService: scheduledTaskService,
       scheduledTaskRunService: scheduledTaskRunService,
       scheduledTaskTimer: scheduledTaskTimer,
+      scheduledTaskFailurePushListener: scheduledTaskFailurePushListener,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -1064,6 +1078,7 @@ class OrchestratorSession._({
   required final ScheduledTaskService _scheduledTaskService,
   required final ScheduledTaskRunService _scheduledTaskRunService,
   required final ScheduledTaskTimerListener _scheduledTaskTimer,
+  required final ScheduledTaskFailurePushListener _scheduledTaskFailurePushListener,
   required Stream<CatalogImportProgress> catalogImportProgress,
   required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
   required Stream<String> pluginManagementSnapshotTokens,
@@ -1223,6 +1238,7 @@ class OrchestratorSession._({
         .listen((sessionId) => _completionListener.clearPendingAbort(sessionId: sessionId))
         .addTo(_subscriptions);
     _completionListener.start();
+    _scheduledTaskFailurePushListener.start();
     _normalizedEventSubscription = _pluginEvents.listen(
       (source) {
         unawaited(_processPluginEventInOrder(source));
@@ -1480,6 +1496,7 @@ class OrchestratorSession._({
     await attempt(_projectActivityService.dispose);
     Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_completionListener.dispose);
+    await attempt(_scheduledTaskFailurePushListener.dispose);
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
     await Future.wait([

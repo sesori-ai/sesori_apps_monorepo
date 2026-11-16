@@ -33,6 +33,7 @@ import "repositories/codex_tool_lifecycle_tracker.dart";
 import "repositories/codex_tool_outcome_repository.dart";
 import "repositories/mappers/codex_mcp_mapper.dart";
 import "repositories/mappers/codex_question_mapper.dart";
+import "repositories/mappers/codex_user_agent_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_resumed_thread.dart";
 import "repositories/models/codex_thread_record.dart";
@@ -95,6 +96,7 @@ class CodexPlugin._({
     McpAuthenticationPluginApi,
     FormInteractionPluginApi,
     SessionExternalActionsPluginApi,
+    SessionForkPluginApi,
     SessionRewindPluginApi,
     SideQuestionPluginApi {
   @override
@@ -305,9 +307,10 @@ class CodexPlugin._({
         await _sessionService.hydratePersistedChildAncestry();
         final initialized = await client.connect();
         final appServerApi = CodexAppServerApi(client: client);
+        final codexVersion = const CodexUserAgentMapper().codexVersion(userAgent: initialized.userAgent);
         final inventory = CodexMcpRepository(
           appServerApi: appServerApi,
-          mapper: CodexMcpMapper(userAgent: initialized.userAgent),
+          mapper: CodexMcpMapper(codexVersion: codexVersion),
         );
         _mcpRepository = inventory;
         _mcpAuthentication = CodexMcpAuthenticationService(
@@ -319,7 +322,7 @@ class CodexPlugin._({
           ),
         );
         _sessionService.attachAppServerRepositories(
-          threadRepository: CodexThreadRepository(appServerApi: appServerApi),
+          threadRepository: CodexThreadRepository(appServerApi: appServerApi, codexVersion: codexVersion),
           modelRepository: CodexModelRepository(appServerApi: appServerApi),
           skillRepository: CodexSkillRepository(appServerApi: appServerApi),
         );
@@ -1131,6 +1134,23 @@ class CodexPlugin._({
       fastMode: fastMode,
       collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
     );
+  }
+
+  /// `thread/fork` through the native turn [throughMessageId] ends. Codex
+  /// announces the fork with `thread/started`, which emits its
+  /// session.created.
+  @override
+  Future<PluginSession> forkSession({required String sessionId, required String throughMessageId}) async {
+    await _connectedClient();
+    final thread = await _sessionService.forkThread(threadId: sessionId, throughMessageId: throughMessageId);
+    final threadId = thread.id;
+    _eventMapper.setThreadTime(record: thread);
+    _recordAuthoritativeThreadCreation(threadId: threadId);
+    _eventMapper.setThreadModel(threadId: threadId, model: thread.model);
+    _eventMapper.setThreadEffort(threadId: threadId, effort: thread.reasoningEffort);
+    final directory = thread.directory ?? _directoryForSession(sessionId: sessionId);
+    _recordThreadDirectory(threadId: threadId, directory: directory);
+    return _sessionService.toPluginSession(thread: thread, fallbackDirectory: directory, parentSessionId: null);
   }
 
   @override

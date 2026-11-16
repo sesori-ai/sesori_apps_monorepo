@@ -107,6 +107,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.TemporaryDirectoryProvider>(
       () => registerModule.temporaryDirectoryProvider,
     );
+    gh.lazySingleton<_i948.DeviceTimeZoneSource>(
+      () => registerModule.deviceTimeZoneSource,
+    );
     gh.lazySingleton<_i948.ImageClipboard>(() => registerModule.imageClipboard);
     gh.lazySingleton<_i948.ImageSharer>(() => registerModule.imageSharer);
     gh.lazySingleton<_i948.FeedbackPromptConfigSource>(

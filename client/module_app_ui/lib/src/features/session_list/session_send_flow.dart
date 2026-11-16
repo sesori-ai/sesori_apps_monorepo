@@ -13,8 +13,9 @@ const Duration _sendOutcomeAlertDuration = Duration(seconds: 8);
 
 /// Sends [source] into the session the user picks. A running source cannot
 /// write its summary, so it is answered with an alert that offers Stop. The
-/// alert presenter is captured first, so the outcome still shows after the
-/// user leaves the page.
+/// alert presenter and the archive owner are captured first, so the outcome
+/// still shows, and the source is still archived when the user asked, after
+/// the user leaves the page.
 void _sendToAnother({
   required BuildContext context,
   required SessionActionsCubit actions,
@@ -22,9 +23,11 @@ void _sendToAnother({
   required bool isRunning,
   required SessionSearchCubitFactory createSearch,
   required SentSessionOpener openSession,
+  required SessionDeletedRouteHandler? onSessionArchived,
 }) {
   final loc = context.loc;
   final presenter = PregoPopupAlertPresenter.of(context);
+  final archives = context.read<PendingSessionArchiveCubit>();
   final sourceName = _sessionName(loc: loc, session: source);
   if (isRunning) {
     presenter.show(
@@ -50,7 +53,15 @@ void _sendToAnother({
     return;
   }
   unawaited(() async {
-    final choice = await showSendSessionSheet(context: context, source: source, createSearch: createSearch);
+    final choice = await showSendSessionSheet(
+      context: context,
+      source: source,
+      actions: actions,
+      createSearch: createSearch,
+      // A running source never reaches the sheet.
+      confirmPinnedArchive: ({required context}) =>
+          _confirmArchive(context: context, session: source, isRunning: false),
+    );
     if (choice == null) return;
     final target = choice.target;
     final targetName = _sessionName(loc: loc, session: target.session);
@@ -58,7 +69,11 @@ void _sendToAnother({
       title: loc.sendSessionSending(sourceName, targetName),
       variant: PregoPopupAlertsNotificationsVariant.loading,
     );
-    final result = await actions.sendToSession(sourceSessionId: source.id, targetSessionId: target.session.id);
+    final result = await actions.sendToSession(
+      sourceSessionId: source.id,
+      sourcePluginId: source.pluginId,
+      targetSessionId: target.session.id,
+    );
     final open = PregoPopupAlertsNotificationsAction(
       label: loc.sendSessionOpen,
       onPressed: () {
@@ -71,6 +86,26 @@ void _sendToAnother({
       },
     );
     switch (result) {
+      case SendToSessionSent() when choice.archiveAfterSending:
+        // A pinned source was asked about before the send, so this doesn't ask.
+        archives.archive(session: source, deleteWorktree: source.hasWorktree, callerOffersUndo: true);
+        presenter.show(
+          title: loc.sendSessionSentArchived(targetName, sourceName),
+          variant: PregoPopupAlertsNotificationsVariant.success,
+          content: PregoPopupAlertContent(
+            primaryAction: open,
+            secondaryAction: PregoPopupAlertsNotificationsAction(
+              label: loc.sessionListArchiveUndo,
+              onPressed: () {
+                presenter.dismiss();
+                archives.undo(sessionId: source.id);
+              },
+            ),
+          ),
+          // Undo stands for the archive's window, so the alert ends with it.
+          duration: PendingSessionArchiveCubit.undoWindow,
+        );
+        if (context.mounted) onSessionArchived?.call(context: context, sessionId: source.id);
       case SendToSessionSent():
         presenter.show(
           title: loc.sendSessionSent(targetName),

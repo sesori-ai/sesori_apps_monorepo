@@ -152,6 +152,7 @@ Future<void> _pumpComposer({
             isBusy: false,
             hasMessages: true,
             canSend: true,
+            lockedNote: null,
             submitAction: submitAction,
             onSend: onSend,
             onVoiceTranscriptionFinished: null,

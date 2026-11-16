@@ -18,6 +18,9 @@ class CompletionPushListener({
   // root after it is pruned for idleness or the bridge restarts, which is
   // exactly when a returning user prompts a long-idle session.
   required final Future<String?> Function({required String sessionId}) _resolveSessionTitle,
+  // A scheduled run the user has not prompted into finishes without a push;
+  // only its needs-you and can't-start pushes reach the user.
+  required final Future<bool> Function({required String sessionId}) _isUnattendedTaskRun,
 }) {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   bool _isStarted = false;
@@ -59,6 +62,14 @@ class CompletionPushListener({
           final projectId = _tracker.getSessionProjectId(sessionId: rootSessionId);
 
           _tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: rootSessionId);
+          final unattended = await _isUnattendedTaskRun(sessionId: rootSessionId).onError((error, stackTrace) {
+            Log.w("[push] failed to read whether session $rootSessionId is a scheduled run", error, stackTrace);
+            return false;
+          });
+          if (unattended) {
+            Log.d("[push] no completion push for unattended scheduled run $rootSessionId");
+            return;
+          }
           final sessionTitle = await _resolveSessionTitle(sessionId: rootSessionId).onError((error, stackTrace) {
             Log.w("[push] failed to resolve title for session $rootSessionId", error, stackTrace);
             return null;

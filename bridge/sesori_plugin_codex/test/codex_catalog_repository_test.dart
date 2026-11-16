@@ -4,6 +4,7 @@ import "package:codex_plugin/src/api/codex_rollout_api.dart";
 import "package:codex_plugin/src/api/models/codex_desktop_state_dto.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
+import "package:codex_plugin/src/repositories/models/codex_session_deletion.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
@@ -217,7 +218,7 @@ void main() {
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
       );
 
-      expect(deleted, isFalse);
+      expect(deleted, CodexSessionDeletion.failed);
       expect(rolloutApi.wroteIndex, isFalse);
     });
 
@@ -226,7 +227,7 @@ void main() {
         rolloutApi: _EnumerationFailingRolloutApi(),
       );
 
-      expect(await repository.deleteSession(sessionId: "session-1"), isFalse);
+      expect(await repository.deleteSession(sessionId: "session-1"), CodexSessionDeletion.failed);
     });
 
     test("reports failure when the session index cannot be read", () async {
@@ -234,7 +235,7 @@ void main() {
         rolloutApi: _IndexReadFailingRolloutApi(),
       );
 
-      expect(await repository.deleteSession(sessionId: "session-1"), isFalse);
+      expect(await repository.deleteSession(sessionId: "session-1"), CodexSessionDeletion.failed);
     });
 
     test("reports failure when the session index cannot be updated", () async {
@@ -242,7 +243,7 @@ void main() {
         rolloutApi: _IndexWriteFailingRolloutApi(),
       );
 
-      expect(await repository.deleteSession(sessionId: "session-1"), isFalse);
+      expect(await repository.deleteSession(sessionId: "session-1"), CodexSessionDeletion.failed);
     });
 
     group("scan cache", () {
@@ -325,7 +326,7 @@ void main() {
 
         // The isolate has copied the API, so this scan still lists the rollout.
         final listing = repository.listSessionRecords();
-        expect(await repository.deleteSession(sessionId: _sessionId(3)), isTrue);
+        expect(await repository.deleteSession(sessionId: _sessionId(3)), CodexSessionDeletion.deleted);
 
         expect((await listing).map((record) => record.id), isNot(contains(_sessionId(3))));
         expect(repository.cachedSessionById(sessionId: _sessionId(3)), isNull);

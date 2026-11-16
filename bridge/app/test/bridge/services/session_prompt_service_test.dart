@@ -2,16 +2,18 @@ import "dart:async";
 import "dart:io";
 
 import "package:path/path.dart" as p;
-
 import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/foundation/session_archived_read_only_exception.dart";
 import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
@@ -65,6 +67,7 @@ void main() {
         sessionOptionsService: optionsService,
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
         chatHistory: createTestChatHistory().service,
+        scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       );
       await insertTestSession(
         db: db,
@@ -111,6 +114,82 @@ void main() {
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("extra args"));
       expect(plugin.lastSendCommandUserVisibleArguments, equals("extra args"));
+    });
+
+    group("scheduled runs", () {
+      late ScheduledTaskRepository tasks;
+
+      setUp(() async {
+        tasks = ScheduledTaskRepository(dao: ScheduledTaskDao(database: db));
+        final task = await tasks.create(
+          definition: const ScheduledTaskDefinition(
+            name: "Morning summary",
+            prompt: ScheduledTaskPrompt.text(text: "Summarize yesterday"),
+            projectId: "/repo",
+            pluginId: "fake",
+            agent: null,
+            model: null,
+            variant: null,
+            fastMode: false,
+            dedicatedWorktree: false,
+            schedule: TaskSchedule.daily(time: TaskTimeOfDay(hour: 9, minute: 0)),
+            timeZone: "UTC",
+            missedRunPolicy: TaskMissedRunPolicy.runWhenBack,
+            runMode: TaskRunMode.newSession(),
+            approvalMode: TaskApprovalMode.ask,
+          ),
+          nextDueAt: null,
+          now: DateTime.utc(2026, 11, 15),
+        );
+        final run = await tasks.recordRun(
+          taskId: task.id,
+          scheduledFor: const ScheduledTaskInstant(at: 0, offsetMinutes: 0),
+          outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: false),
+          firedAt: DateTime.utc(2026, 11, 15, 9),
+        );
+        await tasks.setRunSession(runId: run.id, sessionId: "s1");
+      });
+
+      Future<void> send({required bool byUser}) {
+        const parts = [PromptPart.text(text: "Also check the tests")];
+        return byUser
+            ? service.sendPrompt(
+                sessionId: "s1",
+                promptId: "prompt-user",
+                parts: parts,
+                variant: null,
+                fastMode: false,
+                agent: null,
+                model: null,
+                command: null,
+                commandSource: null,
+                handoff: null,
+              )
+            : service.sendPromptAlreadyReserved(
+                sessionId: "s1",
+                promptId: "prompt-bridge",
+                parts: parts,
+                variant: null,
+                fastMode: false,
+                agent: null,
+                model: null,
+                command: null,
+                commandSource: null,
+                handoff: null,
+              );
+      }
+
+      test("the user's own prompt hands a scheduled run back to the user", () async {
+        await send(byUser: true);
+
+        expect(await tasks.isUnattendedRun(sessionId: "s1"), isFalse);
+      });
+
+      test("the bridge's own send leaves the run unattended", () async {
+        await send(byUser: false);
+
+        expect(await tasks.isUnattendedRun(sessionId: "s1"), isTrue);
+      });
     });
 
     test("failed durable cancellation blocks a manual prompt; a projection failure does not", () async {
@@ -442,6 +521,7 @@ void main() {
         sessionOptionsService: optionsService,
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
         chatHistory: createTestChatHistory().service,
+        scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       );
       addTearDown(acknowledging.dispose);
       Future<void> sendHello() => acknowledging.sendPrompt(
@@ -507,6 +587,35 @@ void main() {
       expect(optionsService.explicitInvalidations.single, (pluginId: "fake", projectId: "/repo"));
     });
 
+    test("names the sent catalog ids and the plugin's reason in the stale refusal's log text", () async {
+      plugin.sendPromptError = const PluginStaleOptionsException(operation: "sendPrompt", message: "unsupported agent");
+
+      await expectLater(
+        service.sendPrompt(
+          commandSource: null,
+          fastMode: false,
+          promptId: "prompt-1",
+          sessionId: "s1",
+          parts: const [PromptPart.text(text: "Hello")],
+          variant: const SessionVariant(id: "high"),
+          agent: "removed-agent",
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-x"),
+          command: null,
+          handoff: null,
+        ),
+        throwsA(
+          isA<StaleSessionPromptOptionsException>().having(
+            (error) => error.toString(),
+            "toString",
+            allOf(
+              contains("agent removed-agent, model anthropic/claude-x, variant high"),
+              contains("unsupported agent"),
+            ),
+          ),
+        ),
+      );
+    });
+
     test("invalidates the options cache and rethrows when the plugin reports stale options", () async {
       plugin.sendPromptError = const PluginStaleOptionsException(operation: "sendPrompt", message: "unsupported agent");
 
@@ -535,6 +644,91 @@ void main() {
       expect(optionsService.explicitInvalidations.single, (pluginId: "fake", projectId: "/repo"));
       // The rejected selection is not persisted as the session's defaults.
       expect((await db.sessionDao.getSession(sessionId: "s1") ?? fail("missing stored session")).lastAgent, isNull);
+    });
+
+    group("a bridge prompt refused for stale options", () {
+      const staleDefaults = SessionPromptDefaults(
+        agent: "removed-agent",
+        model: AgentModel(providerID: "p", modelID: "m", variant: "removed"),
+        fastMode: false,
+      );
+      const staleRefusal = StaleSessionPromptOptionsException(
+        cause: PluginStaleOptionsException(operation: "sendPrompt", message: "unsupported agent"),
+        causeStackTrace: StackTrace.empty,
+        agent: null,
+        model: null,
+        variant: null,
+      );
+
+      Future<List<PromptSettings>> sendRefusingFirst({required SessionPromptDefaults defaults}) async {
+        final sent = <PromptSettings>[];
+        await service.sendWithDefaults(
+          sessionId: "s1",
+          defaults: defaults,
+          send: (settings) async {
+            sent.add(settings);
+            if (sent.length == 1) throw staleRefusal;
+          },
+        );
+        return sent;
+      }
+
+      test("is resent once with the agent and variant corrected against the rediscovered catalog", () async {
+        optionsService.refreshOutcome = SessionOptionsAvailable(response: _catalog(modelAvailable: true));
+
+        final sent = await sendRefusingFirst(defaults: staleDefaults);
+
+        expect(optionsService.explicitRefreshes.single, (pluginId: "fake", projectId: "/repo"));
+        expect(sent, hasLength(2));
+        expect(sent.last.agent, "build");
+        expect(sent.last.model, const PromptModel(providerID: "p", modelID: "m"));
+        expect(sent.last.variant, const SessionVariant(id: "high"));
+      });
+
+      test("is rethrown when the catalog no longer offers the model", () async {
+        optionsService.refreshOutcome = SessionOptionsAvailable(response: _catalog(modelAvailable: false));
+
+        await expectLater(sendRefusingFirst(defaults: staleDefaults), throwsA(same(staleRefusal)));
+      });
+
+      test("is rethrown when the catalog already offers every option", () async {
+        optionsService.refreshOutcome = SessionOptionsAvailable(response: _catalog(modelAvailable: true));
+        const current = SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "p", modelID: "m", variant: "high"),
+          fastMode: false,
+        );
+
+        await expectLater(sendRefusingFirst(defaults: current), throwsA(same(staleRefusal)));
+      });
+
+      test("is rethrown when the catalog can't be read", () async {
+        optionsService.refreshOutcome = const SessionOptionsCacheUnavailable();
+
+        await expectLater(sendRefusingFirst(defaults: staleDefaults), throwsA(same(staleRefusal)));
+      });
+    });
+  });
+
+  group("SessionPromptService.correctedDefaults", () {
+    test("keeps an unset agent unset and turns off a fast mode the model doesn't offer", () {
+      final corrected = SessionPromptService.correctedDefaults(
+        defaults: const SessionPromptDefaults(
+          agent: null,
+          model: AgentModel(providerID: "p", modelID: "m", variant: "low"),
+          fastMode: true,
+        ),
+        catalog: _catalog(modelAvailable: true),
+      );
+
+      expect(
+        corrected,
+        const SessionPromptDefaults(
+          agent: null,
+          model: AgentModel(providerID: "p", modelID: "m", variant: "low"),
+          fastMode: false,
+        ),
+      );
     });
   });
 
@@ -572,6 +766,7 @@ void main() {
         sessionOptionsService: FakeSessionOptionsService(),
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: uploadsRoot),
         chatHistory: createTestChatHistory().service,
+        scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       );
       await insertTestSession(
         db: db,
@@ -681,3 +876,37 @@ void main() {
 }
 
 Matcher _pluginText(Object? text) => isA<PluginPromptPartText>().having((part) => part.text, "text", text);
+
+SessionOptionsResponse _catalog({required bool modelAvailable}) => SessionOptionsResponse(
+  agents: const Agents(
+    agents: [
+      AgentInfo(name: "explore", description: null, model: null, mode: AgentMode.subagent),
+      AgentInfo(name: "build", description: null, model: null, mode: AgentMode.primary),
+    ],
+  ),
+  providers: ProviderListResponse(
+    items: [
+      ProviderInfo(
+        id: "p",
+        name: "Provider",
+        defaultModelID: "m",
+        models: {
+          "m": ProviderModel(
+            id: "m",
+            providerID: "p",
+            name: "Model",
+            variants: const ["low", "high"],
+            defaultVariant: "high",
+            family: null,
+            isAvailable: modelAvailable,
+            fastMode: null,
+            releaseDate: null,
+          ),
+        },
+      ),
+    ],
+    connectedOnly: false,
+  ),
+  commands: const CommandListResponse(items: []),
+  lastUsedPromptDefaults: null,
+);
