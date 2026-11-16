@@ -2550,7 +2550,10 @@ void main() {
       final actions = _MockSessionActionsCubit();
       final answer = Completer<bool>();
       when(
-        () => actions.movePin(sessionId: any(named: "sessionId"), afterSessionId: any(named: "afterSessionId")),
+        () => actions.movePin(
+          sessionId: any(named: "sessionId"),
+          afterSessionId: any(named: "afterSessionId"),
+        ),
       ).thenAnswer((_) => answer.future);
       final updates = StreamController<AllSessionsState>();
       addTearDown(updates.close);
@@ -2626,6 +2629,28 @@ void main() {
       expect(find.text("Couldn't save the pinned order"), findsOneWidget);
     });
 
+    testWidgets("a cancelled drag puts the row back and moves nothing", (tester) async {
+      final (actions, _, _) = await pumpPinned(tester);
+      final rest = roomTops(tester);
+
+      final drag = await tester.startGesture(tester.getCenter(find.text("Third")), kind: PointerDeviceKind.mouse);
+      await drag.moveBy(const Offset(0, -6));
+      await drag.moveBy(Offset(0, -2 * (rest[1] - rest[0])));
+      await tester.pump();
+      await settle(tester);
+      expect(roomTops(tester), isNot(rest));
+      await drag.cancel();
+      await settle(tester);
+      expect(roomTops(tester), rest);
+      expect(find.text("Third"), findsOneWidget);
+      verifyNever(
+        () => actions.movePin(
+          sessionId: any(named: "sessionId"),
+          afterSessionId: any(named: "afterSessionId"),
+        ),
+      );
+    });
+
     testWidgets("a click still opens the row instead of lifting it", (tester) async {
       final (actions, _, _) = await pumpPinned(tester);
 
@@ -2633,7 +2658,10 @@ void main() {
       await settle(tester);
       expect(find.text("Second"), findsOneWidget);
       verifyNever(
-        () => actions.movePin(sessionId: any(named: "sessionId"), afterSessionId: any(named: "afterSessionId")),
+        () => actions.movePin(
+          sessionId: any(named: "sessionId"),
+          afterSessionId: any(named: "afterSessionId"),
+        ),
       );
     });
   });

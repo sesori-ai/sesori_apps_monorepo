@@ -59,13 +59,8 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
   final _motionsAfterFrame = <({_RowMotion motion, bool opening})>[];
 
   /// Carries the rows an update reordered from where they stood to their new
-  /// places.
-  late final AnimationController _slide = AnimationController(
-    vsync: this,
-    duration: pregoAnimatedListSlideDuration,
-    value: 1,
-  );
-  late final CurvedAnimation _slideCurve = CurvedAnimation(parent: _slide, curve: Curves.easeOut);
+  /// places; made by the first update that reorders any.
+  ({AnimationController controller, CurvedAnimation curve})? _slide;
 
   @override
   void initState() {
@@ -174,8 +169,9 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
     }
     _setEntries(entries);
     if (context.findRenderObject() case final _RenderPregoAnimatedSliverList sliver when moved.isNotEmpty && animates) {
-      sliver.slide(indices: moved, progress: _slideCurve);
-      _slide.forward(from: 0);
+      final slide = _slide ?? _makeSlide();
+      sliver.slide(indices: moved, progress: slide.curve);
+      slide.controller.forward(from: 0);
     }
 
     // A scrolled list keeps its first visible row where it stands, so what
@@ -305,10 +301,17 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
     _indexByKey = {for (final (index, entry) in entries.indexed) entry.key: index};
   }
 
+  ({AnimationController controller, CurvedAnimation curve}) _makeSlide() {
+    final controller = AnimationController(vsync: this, duration: pregoAnimatedListSlideDuration);
+    return _slide = (controller: controller, curve: CurvedAnimation(parent: controller, curve: Curves.easeOut));
+  }
+
   @override
   void dispose() {
-    _slideCurve.dispose();
-    _slide.dispose();
+    if (_slide case (:final controller, :final curve)?) {
+      curve.dispose();
+      controller.dispose();
+    }
     for (final entry in _entries) {
       switch (entry) {
         case _ShownEntry(:final entering):
@@ -436,10 +439,16 @@ class _RenderPregoAnimatedSliverList({required super.childManager}) extends Rend
     }
     _slidFrom = from;
     if (!identical(progress, _slideProgress)) {
-      _slideProgress?.removeListener(markNeedsPaint);
-      _slideProgress = progress..addListener(markNeedsPaint);
+      _slideProgress?.removeListener(_onSlide);
+      _slideProgress = progress..addListener(_onSlide);
     }
     markNeedsLayout();
+  }
+
+  /// Paints the slide's next frame, and lets the rows go once it ends.
+  void _onSlide() {
+    if (_slideProgress?.isCompleted ?? false) _slides = const {};
+    markNeedsPaint();
   }
 
   double _slideOf(RenderBox child) => switch ((_slides[child], _slideProgress)) {
@@ -452,7 +461,7 @@ class _RenderPregoAnimatedSliverList({required super.childManager}) extends Rend
 
   @override
   void dispose() {
-    _slideProgress?.removeListener(markNeedsPaint);
+    _slideProgress?.removeListener(_onSlide);
     super.dispose();
   }
 
@@ -473,8 +482,7 @@ class _RenderPregoAnimatedSliverList({required super.childManager}) extends Rend
       _slidFrom = null;
       _slides = {
         for (var child = firstChild; child != null; child = childAfter(child))
-          if ((from[child], childScrollOffset(child)) case (final was?, final now?) when was != now)
-            child: was - now,
+          if ((from[child], childScrollOffset(child)) case (final was?, final now?) when was != now) child: was - now,
       };
     }
   }

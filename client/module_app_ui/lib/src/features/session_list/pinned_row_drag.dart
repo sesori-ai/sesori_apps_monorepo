@@ -73,17 +73,25 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
     if (_lift != null) return false;
     final rows = <_Slot>[];
     for (final id in _shown) {
-      // A pinned row scrolled far away is not built, and keeps its place.
+      // Only rows on screen are targets: one scrolled away, built or not,
+      // keeps its place.
       if (_rows[id]?.findRenderObject() case final RenderBox box? when box.attached && box.hasSize) {
-        rows.add((sessionId: id, top: box.localToGlobal(Offset.zero).dy, height: box.size.height));
+        final top = box.localToGlobal(Offset.zero).dy;
+        if (RenderAbstractViewport.maybeOf(box) case final RenderBox viewport?) {
+          final viewportTop = viewport.localToGlobal(Offset.zero).dy;
+          if (top + box.size.height <= viewportTop || top >= viewportTop + viewport.size.height) continue;
+        }
+        rows.add((sessionId: id, top: top, height: box.size.height));
       }
     }
     final index = rows.indexWhere((row) => row.sessionId == sessionId);
     if (index < 0) return false;
+    final firstShown = _shown.indexOf(rows.first.sessionId);
     final lifted = rows[index];
     final others = [...rows]..removeAt(index);
     _lift = _Lift(
       sessionId: sessionId,
+      aboveSessionId: firstShown > 0 ? _shown[firstShown - 1] : null,
       others: others,
       height: lifted.height,
       groupTop: rows.first.top,
@@ -104,6 +112,20 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
     lift.moveTo(pointerY: pointerY);
     liftedTop.value = lift.top;
     if (lift.index != index) notifyListeners();
+  }
+
+  /// Puts the lifted row back where it was lifted, for a drag the pointer
+  /// gave up on; the drop that follows then moves nothing.
+  void _cancel() {
+    if (_lift case final lift?) lift.index = lift.startIndex;
+  }
+
+  /// Lets go of [sessionId]'s lift when its row leaves the list mid-drag, so
+  /// later drags are not refused. Its list is rebuilding already.
+  void _abandon({required String sessionId}) {
+    if (_lift?.sessionId != sessionId) return;
+    _lift = null;
+    liftedTop.value = null;
   }
 
   /// Drops the lifted row where it stands and, when that moved it, asks
@@ -140,10 +162,14 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
 /// A pinned row's room as a drag started: its global top and its height.
 typedef _Slot = ({String sessionId, double top, double height});
 
-/// The lifted row: the other pinned rows as the drag started, top first,
-/// and the index among them the lifted one stands at.
+/// The lifted row: the other pinned rows on screen as the drag started, top
+/// first, and the index among them the lifted one stands at.
 final class _Lift({
   required final String sessionId,
+
+  /// The pinned row scrolled away right above the first one on screen, which
+  /// a row dropped first lands below; null when the first is the group's.
+  required final String? aboveSessionId,
   required final List<_Slot> others,
   required final double height,
   required final double groupTop,
@@ -158,13 +184,18 @@ final class _Lift({
   /// The floating copy's global top.
   double top = 0;
 
-  String? get afterSessionId => index == 0 ? null : others[index - 1].sessionId;
+  String? get afterSessionId => index == 0 ? aboveSessionId : others[index - 1].sessionId;
 
   /// Follows the pointer, held within the pinned rows, and stands the row
   /// before the first other row whose middle it has not passed, as those
-  /// rows now stand around its room.
+  /// rows now stand around its room. Held against either end, it stands
+  /// there, however its height compares with the row it meets.
   void moveTo({required double pointerY}) {
     top = (startTop + pointerY - startPointerY).clamp(groupTop, groupBottom - height);
+    if (top <= groupTop || top >= groupBottom - height) {
+      index = top <= groupTop ? 0 : others.length;
+      return;
+    }
     final middle = top + height / 2;
     var y = groupTop;
     var passed = 0;
@@ -236,6 +267,7 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
   @override
   void dispose() {
     widget.tracker._unregister(sessionId: widget.sessionId, context: context);
+    widget.tracker._abandon(sessionId: widget.sessionId);
     _lifted.dispose();
     _lift.dispose();
     _settling.dispose();
@@ -296,15 +328,22 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
           ..dragStartBehavior = DragStartBehavior.down
           ..onStart = _onStart
           ..onUpdate = _onUpdate
-          ..onEnd = ((_) => _onEnd())
-          ..onCancel = _onEnd,
+          // A pointer cancelled mid-drag also ends it; the listener below
+          // has put the row back by then.
+          ..onEnd = ((_) => _onEnd()),
       ),
     },
-    child: OverlayPortal(
-      controller: _portal,
-      overlayChildBuilder: _copy,
-      // Its room stays, empty, while the copy stands for it.
-      child: Opacity(opacity: _portal.isShowing ? 0 : 1, child: widget.child),
+    child: Listener(
+      onPointerCancel: (_) => widget.tracker._cancel(),
+      child: OverlayPortal(
+        controller: _portal,
+        overlayChildBuilder: _copy,
+        // Its room stays, empty and untouchable, while the copy stands for it.
+        child: IgnorePointer(
+          ignoring: _portal.isShowing,
+          child: Opacity(opacity: _portal.isShowing ? 0 : 1, child: widget.child),
+        ),
+      ),
     ),
   );
 
