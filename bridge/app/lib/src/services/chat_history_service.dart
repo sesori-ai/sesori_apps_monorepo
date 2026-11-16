@@ -1305,7 +1305,12 @@ class ChatHistoryService({
             observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
         final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
-        final interruption = (await _interruptions.readMany(sessionIds: {sessionId}))[sessionId];
+        // The row the session's last turn ends on when a bridge stop cut it
+        // off. Its running row stays until the plugin is ready to turn it into
+        // the interruption, which can come after the first read imports.
+        final interruptedAfterMessageId = await _interruptions.hasRunningTurn(sessionId: sessionId)
+            ? await _chatHistoryRepository.getNewestMessageId(sessionId: sessionId)
+            : (await _interruptions.readMany(sessionIds: {sessionId}))[sessionId]?.afterMessageId;
         final replacementIds = await _chatHistoryRepository.replaceSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
@@ -1314,7 +1319,7 @@ class ChatHistoryService({
           watermark: backendActivityAt,
           backendActivityAt: backendActivityAt,
           syncedAt: DateTime.now().millisecondsSinceEpoch,
-          interruptedAfterMessageId: interruption?.afterMessageId,
+          interruptedAfterMessageId: interruptedAfterMessageId,
         );
         await _reanchorInterruption(sessionId: sessionId, replacementIds: replacementIds);
         final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;

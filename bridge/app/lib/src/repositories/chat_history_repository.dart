@@ -783,9 +783,9 @@ class ChatHistoryRepository({
   /// internal parts hidden from clients do not affect visible equivalence. The
   /// imported row remains authoritative for replay metadata.
   ///
-  /// [interruptedAfterMessageId] is the stored row a bridge stop cut its turn
-  /// off after, if any. When that row is still the newest the store holds, it
-  /// matches by its previous neighbor and content alone (see
+  /// [interruptedAfterMessageId] is the stored row a bridge stop may have cut
+  /// its turn off after, if any. While that row is still the store's newest,
+  /// it matches by its previous neighbor and content alone (see
   /// [_interruptedTailPair]).
   ///
   /// Returns, for each stored row an imported row replaced under a different

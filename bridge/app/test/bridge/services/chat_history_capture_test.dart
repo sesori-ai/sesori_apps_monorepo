@@ -2865,6 +2865,36 @@ void main() {
       expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay-thinking");
     });
 
+    test("the first read matches that row before the plugin resolves the running turn", () async {
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Run it", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "replay-thinking", text: "Thinking", reasoning: null, createdAt: null),
+            _assistantMessageWithText(id: "replay-tool", text: "Ran it", reasoning: null, createdAt: null),
+          ],
+        ),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessages(
+        history: history,
+        messages: [
+          _messageWithText(id: "live-prompt", text: "Run it", createdAt: 100, promptId: "p1"),
+          _assistantMessageWithText(id: "live-thinking", text: "Thinking", reasoning: null, createdAt: null),
+        ],
+      );
+      await leftover(interruptions: interruptions);
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "replay-thinking", "replay-tool"],
+      );
+    });
+
     test("a re-import queued while a conversion is between its read and its write anchors to a stored row", () async {
       final interruptions = _GatedInterruptions(dao: SessionInterruptionDao(database: db));
       final history = createTestChatHistory(
