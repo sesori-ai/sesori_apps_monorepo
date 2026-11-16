@@ -45,9 +45,13 @@ Future<void> runSessionFork({
         duration: null,
       );
     });
-    final result = await fork(recreateFromBase: recreateFromBase);
-    progress.cancel();
-    if (progressShown) presenter.dismiss();
+    final SessionForkResult result;
+    try {
+      result = await fork(recreateFromBase: recreateFromBase);
+    } finally {
+      progress.cancel();
+      if (progressShown) presenter.dismiss();
+    }
     switch (result) {
       case SessionForked(:final session):
         // Left meanwhile: the fork waits in the session list.

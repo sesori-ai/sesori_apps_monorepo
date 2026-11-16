@@ -33,17 +33,14 @@ class SessionActionService({
   required final PluginRepository _pluginRepository,
 }) {
   /// The harnesses whose bridge declared fork in the latest plugin listing;
-  /// empty until one loads.
+  /// empty until one loads or after one fails.
   Set<String> _forkingPluginIds = const {};
   Future<void>? _forkCapabilityRefresh;
 
   /// Whether a session menu offers Fork for [session]: a top-level session
-  /// whose harness forks, archived or not. Answers from the latest listing
-  /// and refreshes it, so the next menu sees a bridge that changed.
-  bool canFork({required Session session}) {
-    unawaited(refreshForkCapabilities());
-    return session.parentID == null && _forkingPluginIds.contains(session.pluginId);
-  }
+  /// whose harness forks, archived or not, per the latest listing. Each
+  /// session screen refreshes it when it opens.
+  bool canFork({required Session session}) => session.parentID == null && _forkingPluginIds.contains(session.pluginId);
 
   /// Reads which harnesses fork from the bridge's plugin listing. Concurrent
   /// calls share one request.
@@ -59,9 +56,12 @@ class SessionActionService({
               if (plugin.sessionBranching.contains(SessionBranchingOperation.fork)) plugin.id,
           };
         case ErrorResponse(:final error):
+          // The bridge may have changed, so offer no Fork it might refuse.
+          _forkingPluginIds = const {};
           logw("[SessionActions] could not read which harnesses fork", error);
       }
     } on Object catch (error, stackTrace) {
+      _forkingPluginIds = const {};
       logw("[SessionActions] could not read which harnesses fork", error, stackTrace);
     }
   }

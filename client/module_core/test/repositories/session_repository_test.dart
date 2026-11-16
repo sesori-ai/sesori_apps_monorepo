@@ -350,6 +350,10 @@ void main() {
         await forkAnswering(refusal(code: SessionBranchErrorCode.refused, message: "archived")),
         isA<SessionForkRejected>().having((result) => result.reason, "reason", "archived"),
       );
+      expect(
+        await forkAnswering(refusal(code: SessionBranchErrorCode.sessionBusy, message: "turn running")),
+        isA<SessionForkRejected>().having((result) => result.reason, "reason", "turn running"),
+      );
     });
 
     test("an error without a structured refusal is a failure", () async {

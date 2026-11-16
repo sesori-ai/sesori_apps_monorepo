@@ -13,10 +13,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit {
-  @override
-  bool canFork({required Session session}) => false;
-}
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
 
 class _MockSearchCubit() extends MockCubit<SessionSearchState> implements SessionSearchCubit;
 
@@ -103,6 +100,7 @@ void main() {
                                           actions: actions,
                                           session: sending,
                                           isRunning: false,
+                                          canFork: false,
                                           readEntry: const SessionReadMenuNone(),
                                           surfaceEntries: const [],
                                         )

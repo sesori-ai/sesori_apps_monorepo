@@ -556,14 +556,15 @@ class SessionRepository({
             SessionForkUnavailable(reason: message),
           SessionBranchErrorResponse(code: SessionBranchErrorCode.worktreeBranchMissing) =>
             const SessionForkWorktreeBranchMissing(),
-          SessionBranchErrorResponse(code: SessionBranchErrorCode.refused, :final message) => SessionForkRejected(
-            reason: message,
-          ),
+          // A point inside a turn that started since the menu opened answers sessionBusy.
+          SessionBranchErrorResponse(
+            code: SessionBranchErrorCode.refused || SessionBranchErrorCode.sessionBusy,
+            :final message,
+          ) =>
+            SessionForkRejected(reason: message),
           // Edit-only codes never answer a fork.
           SessionBranchErrorResponse(
-            code: SessionBranchErrorCode.sessionBusy ||
-                SessionBranchErrorCode.staleSessionOptions ||
-                SessionBranchErrorCode.unknown,
+            code: SessionBranchErrorCode.staleSessionOptions || SessionBranchErrorCode.unknown,
           ) =>
             const SessionForkRejected(reason: null),
           null => SessionForkFailed(error: error),

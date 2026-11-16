@@ -43,15 +43,18 @@ final class const TranscriptTurns({
   /// edited and resent, or null when it can.
   MessageEditRefusal? editRefusal({required String messageId, required PromptTurnShape shape}) {
     if (shape is InvocationPromptTurnShape) return MessageEditRefusal.command;
-    final opensTurn = switch (turnIndexByMessageId[messageId]) {
-      final index? => switch (turns[index]) {
-        TranscriptPromptTurn(:final opener) => opener.info.id == messageId,
-        TranscriptPartialTurn() || TranscriptPreamble() => false,
-      },
-      null => false,
-    };
-    return opensTurn ? null : MessageEditRefusal.sentMidTurn;
+    return _opensTurn(messageId: messageId) ? null : MessageEditRefusal.sentMidTurn;
   }
+
+  bool _opensTurn({required String messageId}) => switch (_turnOf(messageId: messageId)) {
+    TranscriptPromptTurn(:final opener) => opener.info.id == messageId,
+    TranscriptPartialTurn() || TranscriptPreamble() || null => false,
+  };
+
+  TranscriptTurn? _turnOf({required String messageId}) => switch (turnIndexByMessageId[messageId]) {
+    final index? => turns[index],
+    null => null,
+  };
 
   /// Whether [messageId] is in the newest turn, the one a working session runs.
   bool inNewestTurn({required String messageId}) => turnIndexByMessageId[messageId] == turns.length - 1;
@@ -61,14 +64,14 @@ final class const TranscriptTurns({
   /// Null while its turn runs, as [working] says the newest one does.
   ForkPoint? userMessageForkPoint({required String messageId, required bool working}) {
     if (working && inNewestTurn(messageId: messageId)) return null;
-    final opensTurn = switch (turnIndexByMessageId[messageId]) {
-      final index? => switch (turns[index]) {
-        TranscriptPromptTurn(:final opener) => opener.info.id == messageId,
-        TranscriptPartialTurn() || TranscriptPreamble() => false,
-      },
-      null => false,
+    return switch (_turnOf(messageId: messageId)) {
+      // The bridge has no turn for a preamble.
+      TranscriptPreamble() || null => null,
+      TranscriptPromptTurn() || TranscriptPartialTurn() =>
+        _opensTurn(messageId: messageId)
+            ? ForkPoint.beforeMessage(messageId: messageId)
+            : ForkPoint.afterMessage(messageId: messageId),
     };
-    return opensTurn ? ForkPoint.beforeMessage(messageId: messageId) : ForkPoint.afterMessage(messageId: messageId);
   }
 
   /// Where "Fork from here" on the agent reply [messageId] cuts: after its
@@ -127,7 +130,8 @@ class const TranscriptTurnBuilder() {
           _ => false,
         },
       );
-      if (reply != null) finalReplyIds.add(reply.info.id);
+      // A fully loaded preamble is no turn the bridge can fork after.
+      if (reply != null && (segment is PromptSegment || hasOlderMessages)) finalReplyIds.add(reply.info.id);
       turns.add(switch (segment) {
         PromptSegment(:final opener) => TranscriptPromptTurn(opener: opener, messageIds: messageIds),
         LeadingPromptSegment() when hasOlderMessages => TranscriptPartialTurn(messageIds: messageIds),

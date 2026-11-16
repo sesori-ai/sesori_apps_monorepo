@@ -17,7 +17,7 @@ import "transcript_motion.dart";
 import "user_prompt_markdown_image.dart";
 
 /// A user message in the transcript, as a bubble or an invocation card, with
-/// its [TranscriptMessageMenu] when it has text or can be edited.
+/// its [TranscriptMessageMenu] when it has text or can be edited or forked.
 class const UserMessageCard({
   super.key,
   required final MessageWithParts message,

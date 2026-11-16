@@ -11,10 +11,7 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit {
-  @override
-  bool canFork({required shared.Session session}) => false;
-}
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
 
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
@@ -176,6 +173,7 @@ void main() {
                       actions: actions,
                       session: target,
                       isRunning: false,
+                      canFork: false,
                       readEntry: const SessionReadMenuNone(),
                       surfaceEntries: [
                         PregoMenuItem(
@@ -251,6 +249,7 @@ void main() {
                     actions: actions,
                     session: worktreeSession,
                     isRunning: false,
+                    canFork: false,
                     readEntry: const SessionReadMenuNone(),
                     surfaceEntries: const [],
                   )

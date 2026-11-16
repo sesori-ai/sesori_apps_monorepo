@@ -279,6 +279,32 @@ void main() {
       );
     });
 
+    test("a failed listing offers no Fork", () async {
+      when(() => plugins.listPlugins()).thenAnswer(
+        (_) async => ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: "bridge",
+            supportsSessionOptions: true,
+            supportsFileUploads: false,
+            supportsSideQuestions: false,
+            plugins: [
+              plugin(id: "claude", branching: {SessionBranchingOperation.fork}),
+            ],
+          ),
+        ),
+      );
+      await actions.refreshForkCapabilities();
+      when(() => plugins.listPlugins()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      await actions.refreshForkCapabilities();
+
+      expect(
+        actions.canFork(
+          session: testSession(id: "s1", pluginId: "claude"),
+        ),
+        isFalse,
+      );
+    });
+
     final outcomes = <(SessionForkResult, AnalyticsSessionForkOutcome)>[
       (SessionForked(session: testSession(id: "fork")), AnalyticsSessionForkOutcome.succeeded),
       (const SessionForkUnavailable(reason: null), AnalyticsSessionForkOutcome.branchPointUnavailable),

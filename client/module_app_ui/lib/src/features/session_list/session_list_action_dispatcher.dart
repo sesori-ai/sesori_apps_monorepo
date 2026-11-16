@@ -80,11 +80,13 @@ class const SessionListActionDispatcher({
   /// row: archive/delete can remove that row before their follow-up UI runs.
   /// [isRunning] is whether the session works right now, so archive asks first.
   /// [surfaceEntries] are a page's own actions, listed right after Pin.
+  /// [canFork] is whether [session]'s harness forks it.
   List<PregoMenuEntry> sessionMenuEntries({
     required BuildContext context,
     required SessionActionsCubit actions,
     required Session session,
     required bool isRunning,
+    required bool canFork,
     required SessionReadMenuEntry readEntry,
     required List<PregoMenuEntry> surfaceEntries,
   }) {
@@ -142,7 +144,7 @@ class const SessionListActionDispatcher({
             onSessionArchived: onSessionArchived,
           ),
         ),
-      ?forkMenuEntry(context: context, actions: actions, session: session),
+      ?forkMenuEntry(context: context, actions: actions, session: session, canFork: canFork),
       // Archiving is permanent, so an already-archived row has no archive
       // action left to offer.
       if (!isArchived)
@@ -265,13 +267,13 @@ class const SessionListActionDispatcher({
   }
 
   /// Fork, which [sessionMenuEntries] lists, archived sessions included, for
-  /// a page that lists no other session action; null when [session]'s
-  /// harness does not fork.
+  /// a page that lists no other session action; null unless [canFork].
   PregoMenuItem? forkMenuEntry({
     required BuildContext context,
     required SessionActionsCubit actions,
     required Session session,
-  }) => actions.canFork(session: session)
+    required bool canFork,
+  }) => canFork
       ? PregoMenuItem(
           leadingIcon: TablerRegular.git_fork,
           title: context.loc.sessionListFork,
@@ -284,8 +286,6 @@ class const SessionListActionDispatcher({
 
   /// Forks [session] after its latest finished reply and opens the fork.
   void _fork({required BuildContext context, required SessionActionsCubit actions, required Session session}) {
-    final loc = context.loc;
-    final projects = context.read<ProjectListCubit>().state;
     unawaited(
       runSessionFork(
         context: context,
@@ -293,14 +293,14 @@ class const SessionListActionDispatcher({
             actions.forkSession(session: session, recreateFromBase: recreateFromBase),
         open: ({required fork}) => openSession(
           projectId: fork.projectID,
-          projectName: switch (projects) {
+          projectName: switch (context.read<ProjectListCubit>().state) {
             ProjectListLoaded(:final projects) => switch (projects
                 .where((project) => project.id == fork.projectID)
                 .firstOrNull) {
-              final project? => projectDisplayName(loc: loc, project: project),
-              null => loc.projectListDefaultName,
+              final project? => projectDisplayName(loc: context.loc, project: project),
+              null => context.loc.projectListDefaultName,
             },
-            _ => loc.projectListDefaultName,
+            _ => context.loc.projectListDefaultName,
           },
           session: fork,
         ),
