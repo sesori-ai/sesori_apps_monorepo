@@ -338,9 +338,10 @@ reconnect or restart.
   replay, a notice shows Hermes's inline code without backticks
   (``run `hermes setup` `` reads "run hermes setup").
 - An OMP reply that was aborted before it produced anything replays as one
-  error notice with OMP's abort reason ("Interrupted by user" after a stop,
-  "Request was aborted" otherwise), never as a reply bubble. A reply that only
-  mentions those words stays a reply.
+  row, never as a reply bubble: "Interrupted by user" after a stop as the grey
+  Stopped line, folded into the live stop's line, and "Request was aborted"
+  otherwise as an error notice with that text. A reply that only mentions those
+  words stays a reply.
 - For any harness, a live error notice and the replayed error notice in the
   same place of the transcript are one notice even when they are worded
   differently. The error name is the notice's kind. A replayed notice of the
@@ -681,7 +682,7 @@ rules where supported.
   reason, repeats the generic saved row after the live reason, merges the
   failed prompt into the next one, or hides a reply.
 - A reloaded OMP session shows "Request was aborted" or "Interrupted by user"
-  as a normal assistant reply.
+  as a normal assistant reply, or a stop as a red row or two Stopped lines.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
   a nested tile to the root instead of its direct parent, changes live child
   activity, loses latest terminal metadata across pages, or collapses/reorders

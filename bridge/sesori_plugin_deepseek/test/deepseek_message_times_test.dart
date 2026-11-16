@@ -159,7 +159,9 @@ void main() {
       toolPartSuppression: null,
       separatesToolMessages: false,
     );
-    final halted = collector(({required text}) => const AcpHaltNotice(errorName: "halt"));
+    final halted = collector(
+      ({required text}) => const AcpHaltNotice(errorName: "halt", kind: PluginErrorKind.failure),
+    );
     halted.consume(
       notification({
         "sessionUpdate": "agent_message_chunk",
