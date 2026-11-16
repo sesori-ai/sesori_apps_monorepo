@@ -370,8 +370,13 @@ abstract class AcpPlugin({
     return update is! Map || update["sessionUpdate"] != "available_commands_update";
   }
 
+  /// Refuses a send, before it is accepted, whose [model], [variant] or
+  /// [agent] the harness no longer offers for [sessionId], by throwing
+  /// [PluginStaleOptionsException]. A selection rejected later, when the turn
+  /// applies it, can only fail that accepted turn. Base checks nothing.
   Future<void> validateTurnSelection({
     required String operation,
+    required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -1075,7 +1080,13 @@ abstract class AcpPlugin({
     // A session/new response is the authoritative source of the backend's
     // new-session default model/mode.
     captureSessionConfig(session, sessionId: session.sessionId, fromNewSession: true);
-    await validateTurnSelection(operation: "createSession", model: model, variant: variant, agent: agent);
+    await validateTurnSelection(
+      operation: "createSession",
+      sessionId: session.sessionId,
+      model: model,
+      variant: variant,
+      agent: agent,
+    );
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
     _sessionStatuses[session.sessionId] = const PluginSessionStatus.idle();
@@ -1167,7 +1178,13 @@ abstract class AcpPlugin({
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
-    await validateTurnSelection(operation: "sendPrompt", model: model, variant: variant, agent: agent);
+    await validateTurnSelection(
+      operation: "sendPrompt",
+      sessionId: sessionId,
+      model: model,
+      variant: variant,
+      agent: agent,
+    );
     _recordSessionActivity(sessionId);
     final text = parts
         .whereType<PluginPromptPartText>()
@@ -1236,7 +1253,13 @@ abstract class AcpPlugin({
     required ({String providerID, String modelID})? model,
   }) async {
     await _connectedClient();
-    await validateTurnSelection(operation: "sendCommand", model: model, variant: variant, agent: agent);
+    await validateTurnSelection(
+      operation: "sendCommand",
+      sessionId: sessionId,
+      model: model,
+      variant: variant,
+      agent: agent,
+    );
     _enqueueCommand(
       sessionId: sessionId,
       promptId: promptId,

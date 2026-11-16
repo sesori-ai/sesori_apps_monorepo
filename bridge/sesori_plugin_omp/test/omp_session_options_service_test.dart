@@ -159,6 +159,60 @@ void main() {
     );
   });
 
+  group("validateTurnSelection", () {
+    void validate({
+      String sessionId = "session",
+      String projectId = "/repo",
+      ({String providerID, String modelID})? model,
+      PluginSessionVariant? variant,
+      String? agent,
+    }) => service.validateTurnSelection(
+      sessionId: sessionId,
+      projectId: projectId,
+      model: model,
+      variant: variant,
+      agent: agent,
+    );
+
+    final isStale = throwsA(isA<PluginStaleOptionsException>());
+
+    test("refuses a mode, model or thinking level the catalog no longer offers", () {
+      expect(() => validate(agent: "build"), isStale);
+      expect(() => validate(model: (providerID: "gone", modelID: "gone/model")), isStale);
+      expect(
+        () => validate(
+          model: (providerID: "custom", modelID: "custom/team/model-v2"),
+          variant: const PluginSessionVariant(id: "max"),
+        ),
+        isStale,
+      );
+    });
+
+    test("accepts what the catalog offers, by mode name or value", () {
+      validate(
+        model: (providerID: "custom", modelID: "custom/team/model-v2"),
+        variant: const PluginSessionVariant(id: "high"),
+        agent: "Plan",
+      );
+      validate(agent: "default");
+    });
+
+    test("checks a thinking level against the session's current model", () {
+      service.captureSessionConfig(
+        _result(model: "custom/team/model-v2", mode: "default", thinking: "off"),
+        sessionId: "session",
+        fromNewSession: false,
+      );
+
+      validate(variant: const PluginSessionVariant(id: "high"));
+      expect(() => validate(variant: const PluginSessionVariant(id: "max")), isStale);
+    });
+
+    test("leaves the check to the turn when OMP has reported nothing for the session or project", () {
+      validate(sessionId: "unknown", projectId: "/elsewhere", agent: "build");
+    });
+  });
+
   test("thinking mapping prefers the exact config id over another thought-level option", () {
     final result = _result(model: "other/model", mode: "default", thinking: "off");
     final configs = result.configOptions;
