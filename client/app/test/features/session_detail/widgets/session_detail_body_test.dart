@@ -7269,7 +7269,10 @@ void main() {
       final strip = find.widgetWithText(GlassChip, "Side question");
       double borderOpacity(WidgetTester tester) => tester
           .widget<AnimatedOpacity>(
-            find.ancestor(of: find.byKey(PromptInput.sideQuestionBorderKey), matching: find.byType(AnimatedOpacity)),
+            // The nearest fade is the border's own.
+            find
+                .ancestor(of: find.byKey(PromptInput.sideQuestionBorderKey), matching: find.byType(AnimatedOpacity))
+                .first,
           )
           .opacity;
 
