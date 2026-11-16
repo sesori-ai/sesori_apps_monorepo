@@ -400,11 +400,7 @@ class const _History({
     ScheduledTaskRunFailed(:final reason) => () => unawaited(
       _showFailure(
         context: context,
-        details: labels.failureDetails(
-          reason: reason,
-          definition: task.definition,
-          project: _listedProject(context: context),
-        ),
+        details: labels.failureDetails(reason: reason),
         canEdit:
             editable &&
             switch (reason) {

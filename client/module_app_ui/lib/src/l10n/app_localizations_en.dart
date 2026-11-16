@@ -4460,27 +4460,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduledTaskRunFailureTitle => 'Why this run couldn’t start';
 
   @override
-  String scheduledTaskRunFailureProjectFolder(String project, String path) {
-    return 'The folder of $project wasn’t found at $path.';
-  }
+  String get scheduledTaskRunFailureProject => 'This task’s project folder wasn’t found on the computer.';
 
   @override
-  String get scheduledTaskRunFailureProjectUnlisted => 'This task’s project wasn’t found on this computer.';
+  String get scheduledTaskRunFailureHarness => 'This task’s harness wasn’t available on the computer.';
 
   @override
-  String scheduledTaskRunFailureHarness(String harness) {
-    return '$harness wasn’t available on this computer.';
-  }
-
-  @override
-  String scheduledTaskRunFailureModel(String harness, String model) {
-    return '$harness no longer offers $model.';
-  }
-
-  @override
-  String scheduledTaskRunFailureModelUnnamed(String harness) {
-    return '$harness no longer offers this task’s model.';
-  }
+  String get scheduledTaskRunFailureModel => 'The harness didn’t offer this task’s model anymore.';
 
   @override
   String get scheduledTaskRunFailureStart =>
@@ -4491,11 +4477,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The computer gave a reason this app doesn’t know. Update the app to see it.';
 
   @override
-  String get scheduledTaskRunFailureNextProjectFolder =>
-      'Put the folder back, or pick another project in the task editor.';
-
-  @override
-  String get scheduledTaskRunFailureNextProject => 'Pick another project in the task editor.';
+  String get scheduledTaskRunFailureNextProject => 'Put the folder back, or pick another project in the task editor.';
 
   @override
   String get scheduledTaskRunFailureNextHarness =>

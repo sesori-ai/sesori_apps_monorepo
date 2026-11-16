@@ -78,12 +78,11 @@ them or can't start. Same-session tasks can compact their session between runs (
   session row opens from the list; Back returns to the task. An archived run session opens read as archived.
 - A started run whose session was deleted has no arrow; a tap answers "This run's session was deleted."
 - A failed run's row keeps its short "Couldn't start: <reason>" line and carries an arrow. A tap opens a small sheet
-  (a dialog under a pointer) over the unmoved page, saying what went wrong with the specifics the app has: the
-  project's name and folder path while this computer still lists it (otherwise a generic line), the harness by name
-  ("Claude Code wasn't available on this computer"), the model id, and what to do next. For a project, harness or model
-  failure on a task this app can edit, the sheet offers Edit task. A start failure points at the bridge log and Run
-  now; a reason from a newer bridge asks for an app update. No bridge field carries these specifics: they come from the
-  task as it is now and the computer's project list, so a task edited since the run names its current choices.
+  (a dialog under a pointer) over the unmoved page, saying what went wrong and what to do next. It names no project,
+  harness or model: a run records only its reason and the task carries no edit time, so a task edited since the run
+  (often through this very sheet's Edit task) would otherwise be named wrongly. For a project, harness or model failure
+  on a task this app can edit, the sheet offers Edit task. A start failure points at the bridge log and Run now; a
+  reason from a newer bridge asks for an app update.
 - Skipped, missed and unknown rows have nothing more to show and no arrow.
 
 ### Approvals, marks, archiving and pushes
@@ -201,7 +200,7 @@ editor between one that can compact and one that can't. Use fixture projects and
 - A held run is recorded missed, waits past 10 minutes, or Run now compacts first or pushes its start failure.
 - The Auto-compact switch shows under New session, toggles on a harness that can't compact, or a tap on it does nothing.
 - A run row tap does nothing, opens the wrong session, or leaves Back somewhere other than the task page; a failed run's
-  sheet moves the page behind it or names a harness, model or folder the task doesn't have.
+  sheet moves the page behind it or names a project, harness or model, which may not be the one that run used.
 - A row jumps or snaps when a sheet's content changes, or the screen behind a sheet moves.
 - An older bridge shows an empty or broken Scheduled page instead of the update row, or an older app fails to decode.
 - An analytics event carries a prompt, name, project, harness or time, or fires for a refused save.

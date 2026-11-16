@@ -7723,35 +7723,23 @@ abstract class AppLocalizations {
   /// **'Why this run couldn’t start'**
   String get scheduledTaskRunFailureTitle;
 
-  /// Failed run details: the task's project folder was missing.
+  /// Failed run details: the task's project or its folder was missing. Names no project, since the task may have been edited since that run.
   ///
   /// In en, this message translates to:
-  /// **'The folder of {project} wasn’t found at {path}.'**
-  String scheduledTaskRunFailureProjectFolder(String project, String path);
+  /// **'This task’s project folder wasn’t found on the computer.'**
+  String get scheduledTaskRunFailureProject;
 
-  /// Failed run details: the task's project is no longer listed on the computer, so its name is unknown.
+  /// Failed run details: the task's harness was not available. Names no harness, since the task may have been edited since that run.
   ///
   /// In en, this message translates to:
-  /// **'This task’s project wasn’t found on this computer.'**
-  String get scheduledTaskRunFailureProjectUnlisted;
+  /// **'This task’s harness wasn’t available on the computer.'**
+  String get scheduledTaskRunFailureHarness;
 
-  /// Failed run details: the task's harness was not available.
+  /// Failed run details: the task's model was no longer offered. Names no model, since the task may have been edited since that run. A run never swaps in another model.
   ///
   /// In en, this message translates to:
-  /// **'{harness} wasn’t available on this computer.'**
-  String scheduledTaskRunFailureHarness(String harness);
-
-  /// Failed run details: the task's model is no longer offered. A run never swaps in another model.
-  ///
-  /// In en, this message translates to:
-  /// **'{harness} no longer offers {model}.'**
-  String scheduledTaskRunFailureModel(String harness, String model);
-
-  /// Failed run details: the task's model is no longer offered, for a task that names no model.
-  ///
-  /// In en, this message translates to:
-  /// **'{harness} no longer offers this task’s model.'**
-  String scheduledTaskRunFailureModelUnnamed(String harness);
+  /// **'The harness didn’t offer this task’s model anymore.'**
+  String get scheduledTaskRunFailureModel;
 
   /// Failed run details: starting the run's session failed.
   ///
@@ -7769,12 +7757,6 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'Put the folder back, or pick another project in the task editor.'**
-  String get scheduledTaskRunFailureNextProjectFolder;
-
-  /// Failed run details: what to do when the project was not found.
-  ///
-  /// In en, this message translates to:
-  /// **'Pick another project in the task editor.'**
   String get scheduledTaskRunFailureNextProject;
 
   /// Failed run details: what to do when the harness was not available.

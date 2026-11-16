@@ -256,12 +256,14 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 10));
     });
 
-    testWidgets("a failed run explains itself and offers the editor", (tester) async {
+    testWidgets("a failed run explains itself without naming what the task names now", (tester) async {
       var edits = 0;
+      // The task may have been edited since the run, so its model now need
+      // not be the one that run couldn't use.
       final task = _recurring.copyWith(
         definition: _recurring.definition.copyWith(
           pluginId: Harness.claude.name,
-          model: const PromptModel(providerID: "anthropic", modelID: "claude-old"),
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-new"),
         ),
       );
       await pumpTask(
@@ -282,13 +284,14 @@ void main() {
 
       await tester.tap(runRow(id: "failed"));
       await tester.pumpAndSettle();
-      expect(find.text("Claude Code no longer offers claude-old."), findsOneWidget);
+      expect(find.text("The harness didn’t offer this task’s model anymore."), findsOneWidget);
+      expect(find.textContaining("claude-new"), findsNothing);
       expect(find.text("Pick another model in the task editor."), findsOneWidget);
 
       await tester.tap(find.byKey(const Key("scheduled-task-run-failure-edit")));
       await tester.pumpAndSettle();
       expect(edits, 1);
-      expect(find.text("Claude Code no longer offers claude-old."), findsNothing);
+      expect(find.text("The harness didn’t offer this task’s model anymore."), findsNothing);
     });
 
     testWidgets("a run that didn't start offers no editor", (tester) async {

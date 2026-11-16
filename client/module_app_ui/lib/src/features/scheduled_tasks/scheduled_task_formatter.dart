@@ -1,9 +1,7 @@
 import "package:intl/intl.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_prego/module_prego.dart";
 
 import "../../l10n/app_localizations.dart";
-import "../project_list/project_path_labels.dart";
 
 /// The words the Scheduled page and task page use for schedules, times and
 /// run outcomes. Times read in the task zone's wall clock from the bridge's
@@ -91,50 +89,29 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
     TaskRunFailureReason.unknown => loc.scheduledTaskFailureUnknown,
   };
 
-  /// A failed run's details: what went wrong, naming what this app knows of
-  /// the task's harness, model and [project] (the task's project as this
-  /// computer lists it, null when it isn't listed), and what to do next.
+  /// A failed run's details: what went wrong and what to do next.
   ///
-  /// The names come from the task as it is now, which is what the run used
-  /// unless the task was edited since.
-  ({String detail, String? nextStep}) failureDetails({
-    required TaskRunFailureReason reason,
-    required ScheduledTaskDefinition definition,
-    required ProjectSummary? project,
-  }) {
-    final harness = PregoBrandLogo.displayNameFor(definition.pluginId);
-    return switch (reason) {
-      TaskRunFailureReason.projectMissing => switch (project) {
-        final project? => (
-          detail: loc.scheduledTaskRunFailureProjectFolder(
-            projectDisplayName(loc: loc, project: project),
-            project.path,
-          ),
-          nextStep: loc.scheduledTaskRunFailureNextProjectFolder,
-        ),
-        null => (
-          detail: loc.scheduledTaskRunFailureProjectUnlisted,
-          nextStep: loc.scheduledTaskRunFailureNextProject,
-        ),
-      },
-      TaskRunFailureReason.harnessUnavailable => (
-        detail: loc.scheduledTaskRunFailureHarness(harness),
-        nextStep: loc.scheduledTaskRunFailureNextHarness,
-      ),
-      TaskRunFailureReason.modelUnavailable => (
-        detail: switch (definition.model) {
-          final model? => loc.scheduledTaskRunFailureModel(harness, model.modelID),
-          null => loc.scheduledTaskRunFailureModelUnnamed(harness),
-        },
-        nextStep: loc.scheduledTaskRunFailureNextModel,
-      ),
-      TaskRunFailureReason.startFailed => (
-        detail: loc.scheduledTaskRunFailureStart,
-        nextStep: loc.scheduledTaskRunFailureNextStart,
-      ),
-      TaskRunFailureReason.unknown => (detail: loc.scheduledTaskRunFailureUnknown, nextStep: null),
-    };
-  }
+  /// They name no project, harness or model: a run records only its reason,
+  /// and the task may have been edited since, often to fix that very reason.
+  ({String detail, String? nextStep}) failureDetails({required TaskRunFailureReason reason}) => switch (reason) {
+    TaskRunFailureReason.projectMissing => (
+      detail: loc.scheduledTaskRunFailureProject,
+      nextStep: loc.scheduledTaskRunFailureNextProject,
+    ),
+    TaskRunFailureReason.harnessUnavailable => (
+      detail: loc.scheduledTaskRunFailureHarness,
+      nextStep: loc.scheduledTaskRunFailureNextHarness,
+    ),
+    TaskRunFailureReason.modelUnavailable => (
+      detail: loc.scheduledTaskRunFailureModel,
+      nextStep: loc.scheduledTaskRunFailureNextModel,
+    ),
+    TaskRunFailureReason.startFailed => (
+      detail: loc.scheduledTaskRunFailureStart,
+      nextStep: loc.scheduledTaskRunFailureNextStart,
+    ),
+    TaskRunFailureReason.unknown => (detail: loc.scheduledTaskRunFailureUnknown, nextStep: null),
+  };
 
   /// The instant's wall-clock fields, carried in a UTC value so formatting
   /// reads them unchanged.
