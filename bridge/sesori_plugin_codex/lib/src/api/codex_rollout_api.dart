@@ -137,6 +137,12 @@ class CodexRolloutApi({required final Map<String, String> _environment}) {
     return _listRolloutFiles(directory: root, recursive: true, test: (_) => true);
   }
 
+  List<String> listArchivedRolloutPaths() {
+    final root = archivedSessionsDirectory;
+    if (root == null) return const [];
+    return _listRolloutFiles(directory: root, recursive: true, test: (_) => true);
+  }
+
   /// [sessionId]'s newest rollout filed from [oldest] to [newest], or null,
   /// without listing every rollout. Codex files each rollout under
   /// `sessions/YYYY/MM/DD` for its own creation date, so a revert's rollout
