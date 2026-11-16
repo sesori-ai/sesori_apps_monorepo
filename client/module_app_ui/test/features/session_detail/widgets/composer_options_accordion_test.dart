@@ -11,6 +11,29 @@ import "package:theme_prego/module_prego.dart";
 Finder _tooltip(String message) => find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == message);
 
 void main() {
+  for (final showAttachImage in [true, false]) {
+    testWidgets("open with the side-question action, the pill is as wide as it says (attach: $showAttachImage)", (
+      tester,
+    ) async {
+      await _pumpAccordion(
+        tester: tester,
+        brightness: Brightness.light,
+        alwaysOpen: true,
+        actionsEnabled: true,
+        showAttachImage: showAttachImage,
+        attachSources: const [ComposerPickSource.photos],
+        onAttach: (_) {},
+        onSlashCommandsTap: () {},
+        sideQuestion: const ComposerSideQuestionPending(),
+      );
+
+      expect(
+        tester.getSize(find.byType(ComposerOptionsAccordion)).width,
+        ComposerOptionsAccordion.openWidth(showAttachImage: showAttachImage, showSideQuestion: true, pointer: false),
+      );
+    });
+  }
+
   testWidgets("under a pointer the actions are plain 32 pt glyphs on the composer", (tester) async {
     await _pumpAccordion(
       tester: tester,
@@ -121,7 +144,7 @@ void main() {
       await tester.pump();
       expect(
         tester.getSize(accordion).width,
-        ComposerOptionsAccordion.openWidth(showAttachImage: true, pointer: false),
+        ComposerOptionsAccordion.openWidth(showAttachImage: true, showSideQuestion: false, pointer: false),
         reason: "Nothing eases on.",
       );
       await tester.tap(_tooltip("Attach image"));
@@ -388,6 +411,7 @@ Future<void> _pumpAccordion({
   required ValueChanged<ComposerPickSource> onAttach,
   required VoidCallback onSlashCommandsTap,
   PregoInteractionMode mode = PregoInteractionMode.touch,
+  ComposerSideQuestion? sideQuestion,
 }) async {
   await tester.pumpWidget(
     PregoInteractionScope(
@@ -410,6 +434,7 @@ Future<void> _pumpAccordion({
               attachSources: attachSources,
               onAttach: onAttach,
               onSlashCommandsTap: onSlashCommandsTap,
+              sideQuestion: sideQuestion,
               onOpenChanged: (_) {},
             ),
           ),

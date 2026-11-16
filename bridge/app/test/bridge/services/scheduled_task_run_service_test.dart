@@ -531,6 +531,7 @@ Session _session({required String id, required SessionApprovalMode? approvalOver
   projectID: "/repo",
   directory: "/repo",
   parentID: null,
+  forkedFrom: null,
   title: null,
   time: null,
   promptDefaults: null,

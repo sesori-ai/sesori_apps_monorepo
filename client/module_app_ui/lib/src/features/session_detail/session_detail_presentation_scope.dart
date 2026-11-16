@@ -34,6 +34,10 @@ class const SessionDetailPresentationScope({
 
   /// Opens the settings that hold the connected bridge's YOLO toggle.
   required final VoidCallback openBridgeSettings,
+
+  /// Shows a session's side chats over its page; null on a shell with no
+  /// side-chat surface yet, which then offers no side-question entry.
+  required final SideChatOpener? openSideChat,
   required super.child,
 }) extends InheritedWidget {
   static SessionDetailPresentationScope of(BuildContext context) {
@@ -66,6 +70,7 @@ class const SessionDetailPresentationScope({
     openSession: openSession,
     openHarnessSettings: openHarnessSettings,
     openBridgeSettings: openBridgeSettings,
+    openSideChat: openSideChat,
     child: child,
   );
 
@@ -83,7 +88,8 @@ class const SessionDetailPresentationScope({
       openExternalLink != oldWidget.openExternalLink ||
       openSession != oldWidget.openSession ||
       openHarnessSettings != oldWidget.openHarnessSettings ||
-      openBridgeSettings != oldWidget.openBridgeSettings;
+      openBridgeSettings != oldWidget.openBridgeSettings ||
+      openSideChat != oldWidget.openSideChat;
 }
 
 typedef SessionDetailCapabilityProvider<T> = T Function();
@@ -95,4 +101,14 @@ typedef SessionDetailSessionOpener = void Function({
   required String sessionId,
   required String? sessionTitle,
   required bool readOnly,
+});
+
+/// Shows the side chats of [sessionId], read-only when [isArchived]. [context]
+/// is the entry's, under this scope.
+typedef SideChatOpener = void Function({
+  required BuildContext context,
+  required String sessionId,
+  required String pluginId,
+  required SideQuestionAvailability availability,
+  required bool isArchived,
 });

@@ -80,6 +80,7 @@ Widget _presentationScope({required Widget child, required bool canShareImages})
   return SessionDetailPresentationScope(
     openHarnessSettings: () {},
     openBridgeSettings: () {},
+    openSideChat: null,
     messageImageRepository: dependencies.get<MessageImageRepository>,
     imageSaver: dependencies.get<ImageSaver>,
     imageClipboard: dependencies.get<ImageClipboard>,
