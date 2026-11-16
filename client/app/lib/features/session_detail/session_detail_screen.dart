@@ -53,14 +53,17 @@ class const SessionDetailScreen({
         lifecycleSource: getIt<LifecycleSource>(),
         productAnalyticsService: getIt<ProductAnalyticsService>(),
         expectedDetailRoute: auditView ? AppRouteDef.archivedSessionDetail : AppRouteDef.sessionDetail,
-        child: _MobileSessionDetailBody(
-          auditView: auditView,
-          onBack: onBack,
-          projectId: projectId,
-          projectName: projectName,
-          sessionId: sessionId,
-          sessionTitle: sessionTitle,
-          readOnly: readOnly,
+        // The page holds its keyboard while a side chat covers it.
+        child: SideChatKeyboardHold(
+          child: _MobileSessionDetailBody(
+            auditView: auditView,
+            onBack: onBack,
+            projectId: projectId,
+            projectName: projectName,
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+            readOnly: readOnly,
+          ),
         ),
       ),
     );
@@ -174,74 +177,71 @@ class const _MobileSessionDetailBody({
                     ),
             );
           },
-      // The page holds its keyboard while a side chat covers it.
-      child: SideChatKeyboardHold(
-        child: SessionDetailBody(
-          projectId: projectId,
-          sessionId: sessionId,
-          sessionTitle: sessionTitle,
-          readOnly: readOnly,
-          banner: ConnectionBanner.maybeFor(context),
-          onBack:
-              onBack ??
-              (showLeading ? () => isImperative ? context.pop() : context.goRoute(const AppRoute.home()) : null),
-          onShowDiffs: auditView
-              ? null
-              : () => context.pushRoute(
-                  AppRoute.sessionDiffs(
-                    projectId: projectId,
-                    projectName: projectName,
-                    sessionId: sessionId,
-                  ),
+      child: SessionDetailBody(
+        projectId: projectId,
+        sessionId: sessionId,
+        sessionTitle: sessionTitle,
+        readOnly: readOnly,
+        banner: ConnectionBanner.maybeFor(context),
+        onBack:
+            onBack ??
+            (showLeading ? () => isImperative ? context.pop() : context.goRoute(const AppRoute.home()) : null),
+        onShowDiffs: auditView
+            ? null
+            : () => context.pushRoute(
+                AppRoute.sessionDiffs(
+                  projectId: projectId,
+                  projectName: projectName,
+                  sessionId: sessionId,
                 ),
-          pageChrome: null,
-          // Audit and read-only views retain read-only inventory without session mutations.
-          menuEntriesBuilder: ({required context, required session, required isBusy}) {
-            final pageEntries = [
-              if (context.read<SessionDetailCubit>().state.offersMcp)
-                PregoMenuItem(
-                  leadingIcon: TablerRegular.plug,
-                  title: context.loc.mcpMenuLabel,
-                  subtitle: null,
-                  isSelected: false,
-                  shortcutLabel: null,
-                  onTap: () async {
-                    final state = context.read<SessionDetailCubit>().state;
-                    await showMcpInventory(
-                      context: context,
-                      request: McpInventoryRequest(
-                        pluginId: session.pluginId,
-                        scope: McpSessionScope(sessionId: session.id),
-                      ),
-                      createService: getIt.call<McpService>,
-                      authenticationService: getIt.call<McpAuthenticationService>,
-                      mutationsAllowed:
-                          !readOnly &&
-                          !auditView &&
-                          session.parentID == null &&
-                          session.time?.archived == null &&
-                          !(state is SessionDetailLoaded && state.isArchived),
-                    );
-                  },
-                ),
-            ];
-            if (auditView || readOnly || session.parentID != null) return pageEntries;
-            return _sessionActions.sessionMenuEntries(
-              context: context,
-              actions: context.read<SessionActionsCubit>(),
-              session: session,
-              isRunning: isBusy,
-              readEntry: const SessionReadMenuMarkUnread(),
-              surfaceEntries: pageEntries,
-            );
-          },
-          bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
-              MobileSessionDetailComposerControls(
-                projectId: projectId,
-                sessionId: sessionId,
-                source: source,
               ),
-        ),
+        pageChrome: null,
+        // Audit and read-only views retain read-only inventory without session mutations.
+        menuEntriesBuilder: ({required context, required session, required isBusy}) {
+          final pageEntries = [
+            if (context.read<SessionDetailCubit>().state.offersMcp)
+              PregoMenuItem(
+                leadingIcon: TablerRegular.plug,
+                title: context.loc.mcpMenuLabel,
+                subtitle: null,
+                isSelected: false,
+                shortcutLabel: null,
+                onTap: () async {
+                  final state = context.read<SessionDetailCubit>().state;
+                  await showMcpInventory(
+                    context: context,
+                    request: McpInventoryRequest(
+                      pluginId: session.pluginId,
+                      scope: McpSessionScope(sessionId: session.id),
+                    ),
+                    createService: getIt.call<McpService>,
+                    authenticationService: getIt.call<McpAuthenticationService>,
+                    mutationsAllowed:
+                        !readOnly &&
+                        !auditView &&
+                        session.parentID == null &&
+                        session.time?.archived == null &&
+                        !(state is SessionDetailLoaded && state.isArchived),
+                  );
+                },
+              ),
+          ];
+          if (auditView || readOnly || session.parentID != null) return pageEntries;
+          return _sessionActions.sessionMenuEntries(
+            context: context,
+            actions: context.read<SessionActionsCubit>(),
+            session: session,
+            isRunning: isBusy,
+            readEntry: const SessionReadMenuMarkUnread(),
+            surfaceEntries: pageEntries,
+          );
+        },
+        bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
+            MobileSessionDetailComposerControls(
+              projectId: projectId,
+              sessionId: sessionId,
+              source: source,
+            ),
       ),
     );
   }
