@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/create_scheduled_task_handler.dart";
 import "package:sesori_bridge/src/routing/delete_scheduled_task_handler.dart";
 import "package:sesori_bridge/src/routing/get_scheduled_task_runs_handler.dart";
@@ -27,6 +28,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/fake_filesystem_api.dart";
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
@@ -85,6 +88,13 @@ void main() {
       yoloSettings: _UnusedYoloSettings(),
       lifecycle: _UnusedLifecycle(),
       sessions: sessions,
+      projects: singlePluginProjectRepository(
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
+        gitCliApi: FakeGitCliApi(),
+      ),
       sessionOptions: FakeSessionOptionsService(),
       calculator: const ScheduledTaskOccurrenceCalculator(),
       clock: clock,
