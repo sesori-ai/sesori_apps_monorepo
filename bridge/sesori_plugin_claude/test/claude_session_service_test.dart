@@ -1462,6 +1462,41 @@ void main() {
         },
       );
 
+      test("lists the edited prompt before busy, while the session respawns", () async {
+        unawaited(harness.enqueue("first"));
+        final first = await harness.firstProcess;
+        await waitForFrame(first, "user");
+        first.emit(_result());
+        await harness.waitForIdle();
+        harness.events.clear();
+
+        final hold = harness.holdRewind = Completer<void>();
+        final rewind = harness.rewind("edited");
+        while (harness.processes.length < 2) {
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+
+        // A client counts a busy session's working time from its newest prompt;
+        // busy before this one would count from a message the edit removes.
+        final updates = harness.events.where(
+          (event) => event is BridgeSseQueuedPromptsUpdated || event is BridgeSseSessionStatus,
+        );
+        expect(
+          updates.first,
+          isA<BridgeSseQueuedPromptsUpdated>().having(
+            (update) => update.prompts.map((prompt) => prompt.id),
+            "prompts",
+            ["prompt-edited"],
+          ),
+        );
+        expect(updates.whereType<BridgeSseSessionStatus>(), hasLength(1));
+
+        hold.complete();
+        await rewind;
+        await waitForFrame(harness.processes[1], "user");
+        expect(harness.service.queuedPrompts(sessionId: testSessionId).single.id, "prompt-edited");
+      });
+
       test("refuses a prompt with no resumable entry before touching the process", () async {
         unawaited(harness.enqueue("first"));
         final first = await harness.firstProcess;
@@ -1509,6 +1544,8 @@ void main() {
           ),
         );
         expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+        await pump();
+        expect(harness.events.whereType<BridgeSseQueuedPromptsUpdated>().lastOrNull?.prompts ?? const [], isEmpty);
         expect(harness.service.currentWorkState, PluginWorkState.idle);
       });
     });
