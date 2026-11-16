@@ -122,6 +122,9 @@ class _SideChatViewState() extends State<SideChatView> {
     final text = _questionController.text;
     if (text.trim().isEmpty) return;
     _questionController.clear();
+    // A question sent over the earlier chats goes to the shown chat, so the
+    // thread comes back to show it.
+    if (_showingEarlier) setState(() => _showingEarlier = false);
     unawaited(context.read<SideChatCubit>().ask(text: text));
   }
 
@@ -355,9 +358,17 @@ class _SideChatViewState() extends State<SideChatView> {
   }
 
   void _retry() {
-    // The question is asked again from Retry, so it leaves the field.
-    _questionController.clear();
-    unawaited(context.read<SideChatCubit>().retry());
+    final cubit = context.read<SideChatCubit>();
+    // The question is asked again from Retry, so it leaves the field, but a
+    // different draft typed meanwhile stays.
+    if (cubit.state
+        case SideChatReady(
+          ask: SideQuestionRefused(:final question) || SideQuestionFailed(:final question),
+        )
+        when _questionController.text == question) {
+      _questionController.clear();
+    }
+    unawaited(cubit.retry());
   }
 
   String _refusalMessage({required SideQuestionRefusal reason}) {
