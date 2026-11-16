@@ -48,7 +48,7 @@ class AcpStdioClient({
     logTag: _logTag,
     reapTimeout: const Duration(seconds: 5),
   );
-  final StreamController<AcpNotification> _notifications = StreamController.broadcast();
+  final StreamController<AcpNotification> _notifications = StreamController.broadcast(sync: true);
   final StreamController<AcpServerRequest> _serverRequests = StreamController.broadcast();
   StreamSubscription<JsonObject>? _frames;
   bool _disposed = false;
