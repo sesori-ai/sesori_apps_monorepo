@@ -866,23 +866,17 @@ final class ClaudeSessionService({
   }
 
   /// Ends the accept-edits grant from Always on a file edit, so the next edit
-  /// asks again. A process still in accept-edits leaves it at once, even
-  /// mid-turn, ordered after the session's queued dispatches.
+  /// asks again. A process in accept-edits leaves it first, at once even
+  /// mid-turn. If that fails, the grant stays and the error reaches the
+  /// caller, so Turn off can be tried again.
   Future<void> stopAcceptingEdits({required String sessionId}) async {
-    if (!_approvals.stopAcceptingEdits(sessionId: sessionId)) return;
-    final state = _turns[sessionId];
-    final switched = (state?.dispatchTail ?? Future<void>.value()).then((_) async {
-      if (_processes.appliedSelection(sessionId: sessionId)?.permissionMode != ClaudePermissionMode.acceptEdits) return;
-      await _processes.setPermissionMode(sessionId: sessionId, permissionMode: ClaudePermissionMode.standard);
-    });
-    state?.dispatchTail = switched.catchError((Object _) {});
-    try {
-      await switched;
-    } on Object catch (error, stack) {
-      // The grant is gone, so the next turn's selection switches the process
-      // out of accept-edits anyway.
-      Log.w("[claude] leaving accept-edits failed for $sessionId", error, stack);
-    }
+    if (!_approvals.acceptsEdits(sessionId: sessionId)) return;
+    await _processes.switchPermissionMode(
+      sessionId: sessionId,
+      from: ClaudePermissionMode.acceptEdits,
+      to: ClaudePermissionMode.standard,
+    );
+    _approvals.stopAcceptingEdits(sessionId: sessionId);
   }
 
   Future<void> deleteSession({required String sessionId}) async {

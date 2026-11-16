@@ -1639,6 +1639,12 @@ void main() {
       await pump();
       expect(harness.plugin.editsAutoAccepted(sessionId: testSessionId), isTrue);
 
+      // A switch that fails keeps the grant and reports the failure, so Turn
+      // off can be tried again.
+      process.failNextStdinWrite();
+      await expectLater(harness.plugin.stopAcceptingEdits(sessionId: testSessionId), throwsA(anything));
+      expect(harness.plugin.editsAutoAccepted(sessionId: testSessionId), isTrue);
+
       // Mid-turn, so the next edit of this same turn asks again.
       await harness.plugin.stopAcceptingEdits(sessionId: testSessionId);
       final permissionMode = await _waitForControl(process, "set_permission_mode");

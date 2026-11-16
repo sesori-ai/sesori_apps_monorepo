@@ -1576,7 +1576,10 @@ class SessionDetailCubit(
               sessionStatus: refreshedSessionStatus,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
-              editsAutoAccepted: snapshot.editsAutoAccepted,
+              // A live change that landed during the fetch is newer.
+              editsAutoAccepted: latest.editsAutoAccepted == current.editsAutoAccepted
+                  ? snapshot.editsAutoAccepted
+                  : latest.editsAutoAccepted,
               bridgeQueuedPrompts: bridgeQueuedPrompts,
               bridgePromptAttachments: queue.bridgePromptAttachments,
               assistantAgentModel: assistantAgentModel,

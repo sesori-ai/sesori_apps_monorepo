@@ -66,7 +66,8 @@ Owner decisions:
   the parent chat (2026-11-16; no app change, #2745 ships as is).
 - Q4: after Always on a Claude file edit, a small grey "Accepting edits · Turn off" line fades in above the
   composer on the phone and the desktop for that session; Turn off fades it out and the next edit asks again. An
-  older app shows no line (2026-11-16; step 7.f).
+  older app shows no line. Known limitation: when the plugin stops after its idle timeout the grant ends without
+  an event, so a connected app keeps the line until its next snapshot (2026-11-16; step 7.f).
 - Q5: a finished background sub-agent's Automation card shows its single step, one tap into the sub-agent's
   session, instead of "1 step", for every harness (2026-11-16; step 7.e).
 

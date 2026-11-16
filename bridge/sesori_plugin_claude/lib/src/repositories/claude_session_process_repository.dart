@@ -401,12 +401,21 @@ final class ClaudeSessionProcessRepository({
     await _applyFastMode(process: process, fastMode: fastMode);
   }
 
-  /// Switches [sessionId]'s resident process to [permissionMode] right away,
-  /// even mid-turn. A no-op when no process is resident.
-  Future<void> setPermissionMode({required String sessionId, required ClaudePermissionMode permissionMode}) async {
+  /// Switches [sessionId]'s process from [from] to [to] right away, even
+  /// mid-turn, once a relaunch in progress has settled. A no-op when no
+  /// process is resident or it runs another mode.
+  Future<void> switchPermissionMode({
+    required String sessionId,
+    required ClaudePermissionMode from,
+    required ClaudePermissionMode to,
+  }) async {
+    if (_connecting[sessionId] case final connecting?) {
+      // A failed relaunch leaves no process to switch; its caller reports it.
+      await connecting.catchError((Object _) {});
+    }
     final process = _resident[sessionId];
-    if (process == null) return;
-    await _applyPermissionMode(process: process, permissionMode: permissionMode);
+    if (process == null || process.appliedPermissionMode != from) return;
+    await _applyPermissionMode(process: process, permissionMode: to);
   }
 
   Future<void> _applyPermissionMode({
