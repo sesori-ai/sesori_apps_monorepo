@@ -2,10 +2,12 @@ import "dart:convert";
 import "dart:io" show FileSystemEntityType;
 
 import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
 import "package:sesori_bridge/src/repositories/models/history_window.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/worktree_repository.dart";
@@ -130,6 +132,7 @@ void main() {
       sessionOptionsService: FakeSessionOptionsService(),
       promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       chatHistory: history.service,
+      scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
     );
     addTearDown(prompts.dispose);
     return prompts;

@@ -5587,6 +5587,12 @@ abstract class AppLocalizations {
   /// **'The session didn\'t accept the edit. Nothing changed.'**
   String get sessionDetailEditRefusedBody;
 
+  /// Note shown when the user taps or types in the composer while an edited message is stopping the session or being sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending your edit. You can type again in a moment.'**
+  String get sessionDetailEditSendingLock;
+
   /// Alert shown when an edit named a model or agent the session no longer offers; the options were refreshed.
   ///
   /// In en, this message translates to:

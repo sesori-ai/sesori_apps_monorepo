@@ -896,6 +896,7 @@ class _ComposerHostState() extends State<_ComposerHost> {
         isBusy: false,
         hasMessages: true,
         canSend: true,
+        lockedNote: null,
         submitAction: null,
         onSend: ({required draft, required command, required attachments}) {},
         onVoiceTranscriptionFinished: ({required finish, required mode}) {},

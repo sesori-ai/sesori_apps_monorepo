@@ -45,10 +45,17 @@ void main() {
     for (final outcome in outcomes) {
       test("returns ${outcome.runtimeType.toString()}", () async {
         when(
-          () => actionService.sendToSession(sourceSessionId: "source", targetSessionId: "target"),
+          () => actionService.sendToSession(
+            sourceSessionId: "source",
+            sourcePluginId: "codex",
+            targetSessionId: "target",
+          ),
         ).thenAnswer((_) async => outcome);
 
-        expect(await cubit.sendToSession(sourceSessionId: "source", targetSessionId: "target"), same(outcome));
+        expect(
+          await cubit.sendToSession(sourceSessionId: "source", sourcePluginId: "codex", targetSessionId: "target"),
+          same(outcome),
+        );
       });
     }
   });
