@@ -743,6 +743,7 @@ Session _session({
   autoContinuation: null,
   approvalOverride: null,
   scheduledTask: null,
+  forkedFrom: null,
 );
 
 final class _Sessions() implements SessionRepository {
@@ -860,6 +861,8 @@ final class _Prompts() implements SessionPromptService {
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required String? command,
+    required CommandSource? commandSource,
     required MessageHandoff? handoff,
   }) async {
     if (summaryFailure case final failure?) throw failure;

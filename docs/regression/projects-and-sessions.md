@@ -613,8 +613,10 @@ state.
   Pinned heading holding the pinned top-level sessions by latest activity,
   above Today; with nothing pinned the heading is absent. A running pinned row
   stays in Pinned, and a launching row leads Today below it. A pinned row shows
-  a small grey pin after its title, in the status mark's slot style, so the
-  title never shifts as the pin comes or goes. Pin, or Unpin when pinned, is
+  a small grey pin before its title, centred on the title's line; pinning or
+  unpinning a row where it stands opens or closes the pin's room as it fades,
+  so the title slides over rather than snapping, at once under reduced motion.
+  Pin, or Unpin when pinned, is
   the first entry of the row menu and of both session-page menus, for an
   unarchived top-level session only; swipes and hover actions offer neither,
   and there is no limit. Pinning animates the row out where it stood and into
@@ -701,6 +703,8 @@ state.
 - A newly committed session can list before generated metadata. A later generated
   title reuses `session.updated`; lists and detail adopt the durable session facts without marking unseen or moving
   the worktree directory.
+- A fork lists as an ordinary root session in its origin's project; its title and `Session.forkedFrom` follow
+  session-edit-and-fork.md.
 - A Claude root session imported from its transcript is titled by its newest
   `/rename` (`custom-title`), else the CLI's newest `ai-title`, else the first
   prompt the user typed, on one line and cut to 100 characters with "…".

@@ -790,13 +790,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i709.SessionDetailLoadService>(
-      () => _i709.SessionDetailLoadService(
-        repository: gh<_i7.SessionRepository>(),
-        pluginRepository: gh<_i337.PluginRepository>(),
-        connectionService: gh<_i369.ConnectionService>(),
-      ),
-    );
     gh.lazySingleton<_i110.PluginManagementService>(
       () => _i110.PluginManagementService(
         pluginRepository: gh<_i337.PluginRepository>(),
@@ -822,6 +815,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i74.NewSessionOptionsService>(
       () => _i74.NewSessionOptionsService(
         sessionRepository: gh<_i7.SessionRepository>(),
+      ),
+    );
+    gh.lazySingleton<_i709.SessionDetailLoadService>(
+      () => _i709.SessionDetailLoadService(
+        repository: gh<_i7.SessionRepository>(),
+        pluginRepository: gh<_i337.PluginRepository>(),
+        sideChatRepository: gh<_i334.SideChatRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
       ),
     );
     gh.lazySingleton<_i426.PendingFormService>(

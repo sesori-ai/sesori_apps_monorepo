@@ -348,10 +348,18 @@ void main() {
   });
 
   group("read-only", () {
-    test("an archived session's side chats load but take no questions", () async {
+    test("an archived session opens on its newest chat and takes no questions", () async {
       final cubit = createCubit(isArchived: true);
       await ready(cubit);
 
+      expect(
+        cubit.state,
+        SideChatState.ready(
+          earlierChats: [_olderChat],
+          thread: SideChatThread.existing(chat: _newerChat),
+          ask: const SideQuestionAsk.idle(),
+        ),
+      );
       expect(cubit.canAsk, isFalse);
       await cubit.ask(text: "why?");
 

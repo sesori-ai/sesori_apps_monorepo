@@ -40,6 +40,23 @@ MessageWithParts _error(String id) => MessageWithParts(
   parts: const [],
 );
 
+/// A turn that ended early, with what it streamed before it ended.
+MessageWithParts _ended(String id, {required MessageErrorKind kind, required List<MessagePart> parts}) =>
+    MessageWithParts(
+      info: Message.error(
+        id: id,
+        sessionID: "s",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        errorName: "E",
+        errorMessage: "boom",
+        kind: kind,
+        time: null,
+      ),
+      parts: parts,
+    );
+
 MessagePart _text(String id, {String text = "words"}) =>
     MessagePart.text(id: id, sessionID: "s", messageID: "m", text: text);
 
@@ -87,6 +104,7 @@ Session _child(String id, {String? title}) => Session(
   lastUserActivityAt: null,
   autoContinuation: null,
   scheduledTask: null,
+  forkedFrom: null,
 );
 
 ToolState _taskState(ToolStatus status) =>
@@ -160,6 +178,70 @@ void main() {
       expect(_shape(transcript, "m2"), ["group(t2: t2)"]);
       expect(_shape(transcript, "m3"), ["group(t3: t3)"]);
       expect(transcript.blocksByMessageId.containsKey("u1"), isFalse);
+    });
+
+    group("a turn that ended early keeps what it streamed", () {
+      for (final kind in MessageErrorKind.values) {
+        test("${kind.name}: an OpenCode turn's last step message, live and after a reload", () {
+          // OpenCode ends the turn on its last step message: earlier steps sit
+          // in their own messages, and the ended one carries its thinking and
+          // text. Live, the text may still be streaming.
+          for (final streamingText in [
+            const <String, String>{},
+            {"x2": "half a sent"},
+          ]) {
+            final transcript = _build(
+              [
+                _user("u1"),
+                _assistant("m1", [_stepStart("s1"), _tool("t1"), _stepFinish("f1")]),
+                _ended("e1", kind: kind, parts: [_stepStart("s2"), _thought("r2"), _text("x2")]),
+              ],
+              streamingText: streamingText,
+            );
+
+            expect(_shape(transcript, "m1"), ["group(t1: t1,r2)"]);
+            expect(_shape(transcript, "e1"), ["parts[x2]"]);
+          }
+        });
+
+        test("${kind.name}: a Pi turn's one message, live and after a reload", () {
+          // Pi keeps the whole turn in one message: its text, then the tool it
+          // was running, which the bridge closes as failed.
+          for (final streamingText in [
+            const <String, String>{},
+            {"x1": "half a sent"},
+          ]) {
+            final transcript = _build(
+              [
+                _user("u1"),
+                _ended(
+                  "e1",
+                  kind: kind,
+                  parts: [
+                    _text("x1"),
+                    _tool("t1", status: ToolStatus.error),
+                  ],
+                ),
+              ],
+              streamingText: streamingText,
+            );
+
+            expect(_shape(transcript, "e1"), ["parts[x1]", "group(t1: t1)"]);
+            expect(_onlyGroup(transcript, "e1").steps.single.status, TranscriptStepStatus.failed);
+            expect(transcript.endsInOpenGroup, isFalse);
+          }
+        });
+      }
+
+      test("steps after an ended turn start a group of their own", () {
+        final transcript = _build([
+          _ended("e1", kind: MessageErrorKind.failure, parts: [_tool("t1")]),
+          _assistant("m2", [_tool("t2")]),
+        ]);
+
+        expect(_shape(transcript, "e1"), ["group(t1: t1)"]);
+        expect(_shape(transcript, "m2"), ["group(t2: t2)"]);
+      });
     });
 
     test("automation messages group only their own steps", () {

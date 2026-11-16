@@ -43,6 +43,7 @@ void main() {
             mcpScopes: null,
             supportsPromptAttachments: true,
             failureReason: null,
+            sessionBranching: {SessionBranchingOperation.rewind},
           ),
         ],
       );
@@ -51,6 +52,7 @@ void main() {
       service = SessionDetailLoadService(
         repository: repository,
         pluginRepository: pluginRepository,
+        sideChatRepository: MockSideChatRepository(),
         connectionService: connectionService,
       );
 
@@ -77,6 +79,7 @@ void main() {
       expect(loaded.snapshot.canonicalSessionTitle, "Canonical title");
       expect(loaded.snapshot.isArchived, isFalse);
       expect(loaded.snapshot.supportsPromptAttachments, isTrue);
+      expect(loaded.snapshot.supportsRewind, isTrue);
       verify(() => pluginRepository.listPlugins()).called(1);
       verify(
         () => repository.loadSessionOptions(
@@ -227,6 +230,7 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       expect((result as SessionDetailLoadResultLoaded).snapshot.supportsPromptAttachments, isNull);
       expect(result.snapshot.supportsFileUploads, isNull);
+      expect(result.snapshot.supportsRewind, isFalse);
       expect(result.snapshot.offersSessionMcp, isTrue);
     });
 
@@ -257,6 +261,7 @@ void main() {
               ),
             ],
           ),
+          sideChatRepository: MockSideChatRepository(),
           connectionService: connectionService,
         );
 
@@ -272,6 +277,7 @@ void main() {
       service = SessionDetailLoadService(
         repository: repository,
         pluginRepository: stubbedPluginRepository(plugins: const []),
+        sideChatRepository: MockSideChatRepository(),
         connectionService: connectionService,
       );
 
@@ -301,6 +307,7 @@ void main() {
       service = SessionDetailLoadService(
         repository: repository,
         pluginRepository: pluginRepository,
+        sideChatRepository: MockSideChatRepository(),
         connectionService: connectionService,
       );
 
@@ -352,6 +359,7 @@ void main() {
         service = SessionDetailLoadService(
           repository: repository,
           pluginRepository: stubbedPluginRepository(plugins: plugins, supportsSideQuestions: bridgeSupports),
+          sideChatRepository: MockSideChatRepository(),
           connectionService: connectionService,
         );
 
@@ -396,6 +404,7 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
       expect(snapshot.isArchived, isTrue);
+      expect(snapshot.supportsRewind, isFalse);
       expect(snapshot.agents, hasLength(1));
       expect(snapshot.providerData?.items, hasLength(1));
       expect(snapshot.supportsPromptAttachments, isNull);
@@ -442,6 +451,7 @@ void main() {
           ],
           supportsFileUploads: true,
         ),
+        sideChatRepository: MockSideChatRepository(),
         connectionService: connectionService,
       );
 
@@ -712,6 +722,44 @@ void main() {
           storedOnly: any(named: "storedOnly"),
         ),
       );
+    });
+  });
+
+  group("countSideChats", () {
+    late MockSideChatRepository sideChatRepository;
+    late SessionDetailLoadService service;
+
+    setUp(() {
+      sideChatRepository = MockSideChatRepository();
+      service = SessionDetailLoadService(
+        repository: MockSessionRepository(),
+        pluginRepository: stubbedPluginRepository(),
+        sideChatRepository: sideChatRepository,
+        connectionService: MockConnectionService(),
+      );
+    });
+
+    test("counts the session's side chats", () async {
+      when(() => sideChatRepository.listSideChats(sessionId: "session-1")).thenAnswer(
+        (_) async => ApiResponse.success(
+          const SideChatListResponse(
+            sideChats: [
+              SideChat(id: "chat-1", exchanges: []),
+              SideChat(id: "chat-2", exchanges: []),
+            ],
+          ),
+        ),
+      );
+
+      expect(await service.countSideChats(sessionId: "session-1"), 2);
+    });
+
+    test("counts none when the listing fails", () async {
+      when(
+        () => sideChatRepository.listSideChats(sessionId: "session-1"),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      expect(await service.countSideChats(sessionId: "session-1"), 0);
     });
   });
 }

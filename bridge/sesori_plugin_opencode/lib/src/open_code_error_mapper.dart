@@ -1,3 +1,7 @@
+/// The error name OpenCode records when a turn is aborted, as a user Stop
+/// does, so its error row is a stopped row.
+const openCodeAbortedErrorName = "MessageAbortedError";
+
 /// The name and message of an OpenCode message error.
 ///
 /// OpenCode's structured errors are `{ "name": ..., "data": { "message": ... } }`,

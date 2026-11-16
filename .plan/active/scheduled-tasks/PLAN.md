@@ -399,7 +399,11 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   would otherwise block the task for good. Exception: busy because of this
   task's own pending compaction (P10). Step 4.b tests that many skipped
   occurrences in a row (more than the 20-row trim) still leave the earlier
-  started run counted as active, so the next run is skipped too.
+  started run counted as active, so the next run is skipped too. A run whose
+  prompt went out less than 30 seconds ago (in a new or continued session)
+  counts as going whatever its session reads, since OpenCode, for one,
+  reports a new turn's busy status only after the prompt call returns. This wins over the compaction exception,
+  which cannot apply then: compaction waits for a quiet window (P10).
 - At most once: the run row and the advanced `nextDueAt` are written in one
   transaction before the create or send is attempted, like the quota
   `consumed` marker. A crash between write and send loses that run; it never
@@ -411,8 +415,6 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
 - Run now: same rules, does not move `nextDueAt`; when the previous run is
   still going it returns a typed refusal and the app explains it. It writes no
   task fields, so its row is written without the `updatedAt` condition.
-- Until step 5 lands, the tick leaves same-session tasks due and unfired, and
-  Run now refuses them with `unsupportedByBridge`.
 
 ### P7. Firing a run
 
@@ -432,6 +434,16 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   the run creates a fresh session and retargets (D9). Editing a same-session
   task's project, harness or worktree switch clears the target, so the next run
   starts fresh.
+- Step 5 as built: the run sets the override through
+  `YoloSettingsService.setSessionOverride` (its own lane operation), then
+  dispatches `sendPromptAlreadyReserved` on the target's lane as `sendPrompt`
+  or `sendCommand`. `sendPromptAlreadyReserved` takes `command` and
+  `commandSource` like `sendPrompt`, so a slash-command task continues with its
+  command. It is the bridge's own send and never writes `userPromptedAt`. The
+  overlap check needs no target-specific read: a continuing run records the
+  target as its session, so the latest started run is the target. With the
+  worktree switch on, the task keeps the target's worktree (D15) until a
+  retarget creates a fresh one.
 - Model check: before firing, the run checks the task's model against the
   harness's current option list when one is readable; a missing model fails
   the run with `modelUnavailable` rather than letting a harness fall back

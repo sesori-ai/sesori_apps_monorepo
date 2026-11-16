@@ -407,6 +407,7 @@ class _TranscriptStickyPromptOverlayState()
           text: copyText,
           // Inside the menu, which offers its long-press to a screen reader
           // around this node, as it does around every message.
+          actions: const [],
           builder: (_) => Semantics(
             container: true,
             button: true,

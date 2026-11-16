@@ -43,6 +43,7 @@ extension PluginMessageMapper on PluginMessage {
       :final providerID,
       :final errorName,
       :final errorMessage,
+      :final kind,
       :final time,
     ) =>
       Message.error(
@@ -53,8 +54,16 @@ extension PluginMessageMapper on PluginMessage {
         providerID: providerID,
         errorName: errorName,
         errorMessage: errorMessage,
+        kind: kind.toShared(),
         time: time.toShared(),
       ),
+  };
+}
+
+extension on PluginErrorKind {
+  MessageErrorKind toShared() => switch (this) {
+    PluginErrorKind.failure => MessageErrorKind.failure,
+    PluginErrorKind.stopped => MessageErrorKind.stopped,
   };
 }
 
