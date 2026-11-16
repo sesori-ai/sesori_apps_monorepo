@@ -7343,6 +7343,31 @@ void main() {
         );
       });
 
+      testWidgets("the composer keeps its height as the side chat takes the question", (tester) async {
+        final states = StreamController<SessionDetailState>();
+        addTearDown(states.close);
+        whenListen(cubit, states.stream, initialState: asking());
+        when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: "why so slow?"));
+        when(cubit.submitSideQuestion).thenReturn("why so slow?");
+        when(() => cubit.state).thenReturn(asking());
+        await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(EditableText));
+        await tester.pumpAndSettle();
+        final height = tester.getSize(find.byType(PromptInput)).height;
+
+        await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
+        final normal = withSideQuestions(SideQuestionAvailability.available);
+        when(() => cubit.state).thenReturn(normal);
+        states.add(normal);
+        await tester.pump();
+        // The sheet's field takes the focus.
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
+
+        expect(tester.getSize(find.byType(PromptInput)).height, height);
+      });
+
       Future<CommandPicker> openPicker(WidgetTester tester, {required SideQuestionAvailability availability}) async {
         await pumpComposer(tester, state: withSideQuestions(availability));
         await tester.tap(find.byIcon(TablerRegular.slash));

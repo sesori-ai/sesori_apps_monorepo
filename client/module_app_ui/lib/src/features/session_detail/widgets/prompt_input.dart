@@ -340,6 +340,11 @@ class _PromptInputState() extends State<PromptInput> {
   /// the picker's search takes focus, and a layout swap would drop the
   /// picker's anchor.
   bool _typingPinnedByPicker = false;
+
+  /// Keeps the typing layout after Send handed a side question to its side
+  /// chat: the composer behind the rising sheet keeps its height, so the
+  /// transcript above it stays put. Cleared once the field takes focus again.
+  bool _typingPinnedBySideChat = false;
   bool _optionsOpen = false;
 
   /// Whether the field holds sendable text. Mirrored into state so the
@@ -548,7 +553,11 @@ class _PromptInputState() extends State<PromptInput> {
     // resting pill.
     _updateComposerState(
       update: () {
-        if (!_focusNode.hasFocus) _typingRequested = false;
+        if (_focusNode.hasFocus) {
+          _typingPinnedBySideChat = false;
+        } else {
+          _typingRequested = false;
+        }
       },
     );
   }
@@ -564,6 +573,7 @@ class _PromptInputState() extends State<PromptInput> {
   bool get _showsTypingLayout =>
       _typingRequested ||
       _typingPinnedByPicker ||
+      _typingPinnedBySideChat ||
       _focusNode.hasFocus ||
       _hasText ||
       widget.stagedCommand != null ||
@@ -802,7 +812,10 @@ class _PromptInputState() extends State<PromptInput> {
     _controller.clear();
     widget.onDraftCleared();
     // The side chat that asks it takes the focus.
-    if (asksSideQuestion) return true;
+    if (asksSideQuestion) {
+      setState(() => _typingPinnedBySideChat = true);
+      return true;
+    }
     // Keep the keyboard up across a send only where it was already part of
     // the flow: when the field was focused, and after a typed send in
     // text-first. A dictation that sent itself never raises it — the composer
