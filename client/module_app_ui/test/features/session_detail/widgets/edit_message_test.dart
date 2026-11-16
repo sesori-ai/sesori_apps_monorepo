@@ -9,7 +9,12 @@ import "package:theme_prego/module_prego.dart";
 
 Future<void> _pump(WidgetTester tester, {required Widget Function(BuildContext context) builder}) async {
   final router = GoRouter(
-    routes: [GoRoute(path: "/", builder: (context, state) => Scaffold(body: Center(child: builder(context))))],
+    routes: [
+      GoRoute(
+        path: "/",
+        builder: (context, state) => Scaffold(body: Center(child: builder(context))),
+      ),
+    ],
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(

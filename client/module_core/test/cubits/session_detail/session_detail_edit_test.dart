@@ -67,15 +67,27 @@ void main() {
     when(
       () => loadService.loadPromptIndex(sessionId: _sessionId),
     ).thenAnswer((_) async => const SessionPromptIndexUnsupported());
-    final snapshot = SessionDetailLoadResult.loaded(snapshot: _snapshot(messages: [edited], status: status));
+    final snapshot = SessionDetailLoadResult.loaded(
+      snapshot: _snapshot(messages: [edited], status: status),
+    );
     when(
-      () => loadService.load(session: any(named: "session"), projectId: any(named: "projectId")),
+      () => loadService.load(
+        session: any(named: "session"),
+        projectId: any(named: "projectId"),
+      ),
     ).thenAnswer((_) async => snapshot);
     when(
-      () => loadService.reload(session: any(named: "session"), projectId: any(named: "projectId")),
+      () => loadService.reload(
+        session: any(named: "session"),
+        projectId: any(named: "projectId"),
+      ),
     ).thenAnswer((_) async => snapshot);
     when(() => restore.restore(sessionId: _sessionId, message: edited)).thenAnswer(
-      (_) async => RestoredComposer(draft: ComposerDraft.typed(text: "first prompt"), attachments: const [], leftOutCount: 1),
+      (_) async => RestoredComposer(
+        draft: ComposerDraft.typed(text: "first prompt"),
+        attachments: const [],
+        leftOutCount: 1,
+      ),
     );
     when(
       () => sessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
@@ -203,7 +215,10 @@ void main() {
     await cubit.resendEdit(text: "first prompt, edited", attachments: const []);
     await pumpEventQueue();
 
-    expect(notices.last, isA<SessionDetailEditRefused>().having((n) => n.reason, "reason", "No checkpoint for this message"));
+    expect(
+      notices.last,
+      isA<SessionDetailEditRefused>().having((n) => n.reason, "reason", "No checkpoint for this message"),
+    );
     expect((loaded().composerMode as SessionComposerEditing).phase, SessionEditPhase.composing);
 
     answerRewind(SessionRewindFailed(error: ApiError.generic()));
