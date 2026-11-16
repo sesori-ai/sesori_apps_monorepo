@@ -1,6 +1,7 @@
 import "package:material_ui/material_ui.dart";
 
 import "../../theme/prego_theme.dart";
+import "../prego_kept_suffix_text.dart";
 
 /// The centred title block of the app's top navigation bar, matching the
 /// `PregoTopNavigation` Figma component (node 338:3274, style "Glass", type
@@ -25,6 +26,10 @@ class const PregoNavTitle({
   /// Optional muted second line. A `null` or empty value renders the title on
   /// its own.
   final String? subtitle,
+
+  /// Kept whole when a long [title] ending with it is cut (see
+  /// [PregoKeptSuffixText]); null cuts the title at its end.
+  final String? titleKeptSuffix,
 }) extends StatelessWidget {
   /// Line-height multiplier for a two-line title/subtitle block, overriding the
   /// design tokens' body-text leading (`text-lg` 1.56×, `text-xs` 1.5×).
@@ -51,14 +56,13 @@ class const PregoNavTitle({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final subtitle = this.subtitle;
-    final titleText = Text(
-      title,
+    final titleText = PregoKeptSuffixText(
+      text: title,
+      keptSuffix: titleKeptSuffix,
       style: prego.textTheme.textLg.bold.copyWith(
         color: prego.colors.textPrimary,
         height: subtitle == null || subtitle.isEmpty ? _singleLineHeight : _lineHeight,
       ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
     );
     // A single line should receive the toolbar's bounds directly, rather than

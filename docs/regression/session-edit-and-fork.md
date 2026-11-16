@@ -248,6 +248,10 @@ first turn) succeeds today. Clients offer no Fork yet.
   origin clears the id and keeps the title. A harness session the catalog
   already imported keeps its row and gains the fork columns. The fork's
   history is backfilled once it is created.
+- A fork title too long for its line is cut before ` (fork)`, which stays
+  whole: in the phone session header, the session list row, the desktop
+  toolbar and breadcrumb, the command palette, the session picker and the
+  send-to-session sheet. Screen readers still read the whole title.
 - Archiving or deleting either session protects the shared worktree like any
   other sharing sessions.
 - An archived origin whose dedicated worktree was removed gets it back at the

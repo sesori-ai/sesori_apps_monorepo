@@ -83,6 +83,7 @@ class const DesktopNewSessionView({
             title: context.loc.sessionListNewSession,
             titleDetail: null,
             subtitle: null,
+            keptSuffix: null,
             actions: const [],
           ),
           // A page of its own, so opaque as it fades in over the one below.

@@ -944,6 +944,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     return PregoGlassScaffold(
       title: title,
       subtitleText: null,
+      titleKeptSuffix: sessionForkTitleSuffix,
       banner: banner,
       // A chat owns its own (reversed) scroll, so there is no top-anchored
       // scroll for a large title to collapse against. Use the fixed, centred

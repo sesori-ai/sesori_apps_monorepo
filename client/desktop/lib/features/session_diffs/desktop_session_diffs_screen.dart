@@ -2,6 +2,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show sessionForkTitleSuffix;
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
@@ -44,6 +45,7 @@ class const DesktopSessionDiffsScreen({
             title: title,
             titleDetail: null,
             subtitle: null,
+            keptSuffix: sessionForkTitleSuffix,
             actions: [
               if (summary case (:final files, :final additions, :final deletions)) ...[
                 PregoNavSubtitle(text: files),

@@ -592,6 +592,7 @@ void main() {
             title: "Fixture page",
             titleDetail: null,
             subtitle: null,
+            keptSuffix: null,
             actions: [],
           ),
         ),

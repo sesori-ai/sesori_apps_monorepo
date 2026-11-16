@@ -173,6 +173,7 @@ class _CommandPaletteState() extends State<_CommandPalette> {
                         child: _PaletteRow(
                           icon: command.icon,
                           title: command.label,
+                          keptSuffix: null,
                           detail: command.detail,
                           trailing: switch (command.shortcut) {
                             final shortcut? => desktopShortcutLabel(shortcut: shortcut),
@@ -189,6 +190,7 @@ class _CommandPaletteState() extends State<_CommandPalette> {
                         child: _PaletteRow(
                           icon: TablerRegular.folder,
                           title: project.name,
+                          keptSuffix: null,
                           detail: null,
                           trailing: null,
                           query: _query,
@@ -202,6 +204,7 @@ class _CommandPaletteState() extends State<_CommandPalette> {
                         child: _PaletteRow(
                           icon: TablerRegular.message,
                           title: match.session.title ?? loc.sessionListUntitled,
+                          keptSuffix: sessionForkTitleSuffix,
                           detail: desktopProjectDisplayName(context: context, project: match.project),
                           trailing: null,
                           query: _query,
@@ -224,6 +227,10 @@ class _CommandPaletteState() extends State<_CommandPalette> {
 class const _PaletteRow({
   required final IconData icon,
   required final String title,
+
+  /// Kept whole when a long [title] ending with it is cut (see
+  /// [PregoKeptSuffixText]); null cuts the title at its end.
+  required final String? keptSuffix,
   required final String? detail,
   required final String? trailing,
   required final String query,
@@ -233,31 +240,54 @@ class const _PaletteRow({
     final prego = context.prego;
     final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary);
     final quiet = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary);
-    final spans = <TextSpan>[];
-    var at = 0;
-    for (final range in titleMatchRanges(title: title, query: query)) {
-      spans
-        ..add(TextSpan(text: title.substring(at, range.start)))
-        ..add(
-          TextSpan(
-            text: title.substring(range.start, range.end),
-            style: TextStyle(fontWeight: FontWeight.w500, color: prego.colors.textBrandSecondary),
-          ),
-        );
-      at = range.end;
+    final matches = titleMatchRanges(title: title, query: query);
+    // The title from [from] to [to], its query matches highlighted.
+    TextSpan titleSpan({required int from, required int to}) {
+      final spans = <TextSpan>[];
+      var at = from;
+      for (final range in matches) {
+        final start = range.start.clamp(from, to);
+        final end = range.end.clamp(from, to);
+        if (start >= end) continue;
+        spans
+          ..add(TextSpan(text: title.substring(at, start)))
+          ..add(
+            TextSpan(
+              text: title.substring(start, end),
+              style: TextStyle(fontWeight: FontWeight.w500, color: prego.colors.textBrandSecondary),
+            ),
+          );
+        at = end;
+      }
+      spans.add(TextSpan(text: title.substring(at, to)));
+      return TextSpan(style: style, children: spans);
     }
-    spans.add(TextSpan(text: title.substring(at)));
+
     final trailing = this.trailing;
     return Row(
       children: [
         Icon(icon, size: PregoIconSize.sm, color: prego.colors.textSecondary),
         const SizedBox(width: PregoSpacing.sm),
         Expanded(
-          child: Text.rich(
-            TextSpan(style: style, children: spans),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          child: switch (PregoKeptSuffixText.split(text: title, keptSuffix: keptSuffix)) {
+            (:final base, suffix: _) => Semantics(
+              label: title,
+              excludeSemantics: true,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text.rich(
+                      titleSpan(from: 0, to: base.length),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text.rich(titleSpan(from: base.length, to: title.length), maxLines: 1),
+                ],
+              ),
+            ),
+            null => Text.rich(titleSpan(from: 0, to: title.length), maxLines: 1, overflow: TextOverflow.ellipsis),
+          },
         ),
         if (detail case final detail?)
           ConstrainedBox(

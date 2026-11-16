@@ -84,6 +84,10 @@ class const PregoGlassScaffold({
   /// the bar's own muted style. Inline mode only.
   final String? subtitleText,
 
+  /// Kept whole when a long inline [title] ending with it is cut (see
+  /// [PregoKeptSuffixText]). Inline mode only.
+  final String? titleKeptSuffix,
+
   /// How the bar presents its title — collapsing large title (default), fixed
   /// centred inline title, or the back-leading title block. See the class doc.
   final PregoTopNavigationTitleMode titleMode = PregoTopNavigationTitleMode.collapsing,
@@ -263,6 +267,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
       title: widget.title,
       subtitle: widget.subtitle,
       subtitleText: widget.subtitleText,
+      titleKeptSuffix: widget.titleKeptSuffix,
       titleMode: widget.titleMode,
       scrollController: _scrollController,
       actions: widget.actions,
