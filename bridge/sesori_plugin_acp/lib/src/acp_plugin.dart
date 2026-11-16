@@ -368,8 +368,13 @@ abstract class AcpPlugin({
     return update is! Map || update["sessionUpdate"] != "available_commands_update";
   }
 
+  /// Refuses a send, before it is accepted, whose [model], [variant] or
+  /// [agent] the harness no longer offers for [sessionId], by throwing
+  /// [PluginStaleOptionsException]. A selection rejected later, when the turn
+  /// applies it, can only fail that accepted turn. Base checks nothing.
   Future<void> validateTurnSelection({
     required String operation,
+    required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
@@ -443,9 +448,11 @@ abstract class AcpPlugin({
   /// Returns the normalized directory already attributed to [sessionId].
   /// Unknown sessions use the plugin's launch directory.
   String directoryForSession({required String sessionId}) =>
-      _knownSessionDirectory(sessionId: sessionId) ?? launchDirectory;
+      knownSessionDirectory(sessionId: sessionId) ?? launchDirectory;
 
-  String? _knownSessionDirectory({required String sessionId}) =>
+  /// The normalized directory attributed to [sessionId], or null while it is
+  /// unknown, for example for a persisted session not loaded since launch.
+  String? knownSessionDirectory({required String sessionId}) =>
       _sessionDirectories[sessionId] ?? _recoveredSessionDirectories[sessionId];
 
   /// Records an authoritative directory discovered by a harness-specific
@@ -1011,7 +1018,7 @@ abstract class AcpPlugin({
       if (directoryIsAuthoritative) _sessionDirectories[id] = directory;
       eventMapper.setSessionProject(
         sessionId: id,
-        directory: _knownSessionDirectory(sessionId: id) ?? directory,
+        directory: knownSessionDirectory(sessionId: id) ?? directory,
       );
       eventMapper.setSessionSnapshot(
         sessionId: id,
@@ -1020,7 +1027,7 @@ abstract class AcpPlugin({
         updatedMs: info.updatedAtMs,
       );
     }
-    final effectiveDirectory = id.isEmpty ? directory : _knownSessionDirectory(sessionId: id) ?? directory;
+    final effectiveDirectory = id.isEmpty ? directory : knownSessionDirectory(sessionId: id) ?? directory;
     final ts = info.updatedAtMs;
     return PluginSession(
       id: id,
@@ -1073,7 +1080,25 @@ abstract class AcpPlugin({
     // A session/new response is the authoritative source of the backend's
     // new-session default model/mode.
     captureSessionConfig(session, sessionId: session.sessionId, fromNewSession: true);
-    await validateTurnSelection(operation: "createSession", model: model, variant: variant, agent: agent);
+    try {
+      await validateTurnSelection(
+        operation: "createSession",
+        sessionId: session.sessionId,
+        model: model,
+        variant: variant,
+        agent: agent,
+      );
+    } on Object {
+      // Nothing was accepted, so the session session/new just made is closed
+      // and forgotten instead of being left behind beside the corrected retry.
+      _residentSessions.add(session.sessionId);
+      try {
+        await deleteSession(session.sessionId);
+      } on Object catch (error, stackTrace) {
+        Log.w("[$id] failed to close session ${session.sessionId} after its selection was refused", error, stackTrace);
+      }
+      rethrow;
+    }
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
     _sessionStatuses[session.sessionId] = const PluginSessionStatus.idle();
@@ -1165,7 +1190,13 @@ abstract class AcpPlugin({
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
-    await validateTurnSelection(operation: "sendPrompt", model: model, variant: variant, agent: agent);
+    await validateTurnSelection(
+      operation: "sendPrompt",
+      sessionId: sessionId,
+      model: model,
+      variant: variant,
+      agent: agent,
+    );
     _recordSessionActivity(sessionId);
     final text = parts
         .whereType<PluginPromptPartText>()
@@ -1234,7 +1265,13 @@ abstract class AcpPlugin({
     required ({String providerID, String modelID})? model,
   }) async {
     await _connectedClient();
-    await validateTurnSelection(operation: "sendCommand", model: model, variant: variant, agent: agent);
+    await validateTurnSelection(
+      operation: "sendCommand",
+      sessionId: sessionId,
+      model: model,
+      variant: variant,
+      agent: agent,
+    );
     _enqueueCommand(
       sessionId: sessionId,
       promptId: promptId,
@@ -1520,7 +1557,7 @@ abstract class AcpPlugin({
     // effect — the scan covers the unfiltered list plus every bridge-hinted
     // directory seen this run ([_hintedDirectories]); fail-soft, so at worst
     // the prior fallback behaviour remains.
-    if (_knownSessionDirectory(sessionId: sessionId) == null) {
+    if (knownSessionDirectory(sessionId: sessionId) == null) {
       await listAllSessions(knownDirectories: const {});
     }
     if (resumeSupported && (!loadSupported || residencyPreference == AcpResidencyPreference.resumeFirst)) {
@@ -2568,7 +2605,7 @@ abstract class AcpPlugin({
     // and the messages handler hits the plugin directly), so its directory may
     // be unknown and the load below would run in the launch directory. Warm
     // attribution first — same fail-soft enumeration the resume path uses.
-    if (_knownSessionDirectory(sessionId: sessionId) == null) {
+    if (knownSessionDirectory(sessionId: sessionId) == null) {
       await listAllSessions(knownDirectories: const {});
     }
     AcpReplayCollector collectorFactory({required AcpReplayToolPartSuppression? toolPartSuppression}) =>
