@@ -8,6 +8,9 @@ import "mappers/scheduled_task_mapper.dart";
 import "models/scheduled_task_record.dart";
 import "random_hex_id.dart";
 
+/// A task whose time has come, with the time it fell due.
+typedef DueScheduledTask = ({ScheduledTaskRecord task, DateTime dueAt});
+
 /// Stored tasks and their run history.
 class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   /// History rows kept per task, beyond the newest started run.
@@ -128,4 +131,56 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
     );
     return _mapper.runFromDto(row: row);
   }
+
+  /// Enabled tasks not yet done that are due at [now], earliest first.
+  Future<List<DueScheduledTask>> listDue({required DateTime now}) async => [
+    for (final row in await _dao.listDueTasks(now: now.millisecondsSinceEpoch))
+      if (row.nextDueAt case final dueAt?)
+        (task: _mapper.recordFromDto(row: row), dueAt: DateTime.fromMillisecondsSinceEpoch(dueAt, isUtc: true)),
+  ];
+
+  /// Writes a fire's history row together with the task's advanced next due
+  /// time and, for a one-off task, its completion, as [recordRun] trims. It
+  /// writes nothing and returns null when the task was edited, paused or
+  /// deleted since [task] was read, so that change wins.
+  Future<ScheduledTaskRun?> reserveRun({
+    required ScheduledTaskRecord task,
+    required DateTime? nextDueAt,
+    required DateTime? completedAt,
+    required ScheduledTaskInstant scheduledFor,
+    required ScheduledTaskRunOutcome outcome,
+    required DateTime firedAt,
+  }) async {
+    final row = _mapper.runToDto(
+      id: generateRandomHexId(secureRandom: _secureRandom, prefix: "str_", byteLength: 16),
+      taskId: task.id,
+      scheduledFor: scheduledFor,
+      outcome: outcome,
+      firedAt: firedAt,
+    );
+    final reserved = await _dao.reserveRun(
+      taskId: task.id,
+      expectedUpdatedAt: task.updatedAt.millisecondsSinceEpoch,
+      nextDueAt: nextDueAt?.millisecondsSinceEpoch,
+      completedAt: completedAt?.millisecondsSinceEpoch,
+      run: row,
+      keep: runHistoryLimit,
+    );
+    return reserved ? _mapper.runFromDto(row: row) : null;
+  }
+
+  /// The session of the task's newest run whose prompt went out, unless that
+  /// session has been deleted. Skipped, missed and failed rows have none, so
+  /// they never hide an earlier run that is still going.
+  Future<String?> latestStartedSessionId({required String taskId}) async =>
+      (await _dao.getLatestStartedRun(taskId: taskId))?.sessionId;
+
+  /// Records the session a started run created. False when the run is gone
+  /// with its deleted task.
+  Future<bool> setRunSession({required String runId, required String sessionId}) async =>
+      await _dao.setRunSession(runId: runId, sessionId: sessionId) > 0;
+
+  /// False when the run is gone with its deleted task.
+  Future<bool> markRunFailed({required String runId, required TaskRunFailureReason reason}) async =>
+      await _dao.markRunFailed(runId: runId, reason: reason) > 0;
 }
