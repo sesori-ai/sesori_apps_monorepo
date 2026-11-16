@@ -124,6 +124,14 @@ class const SessionDetailMessageList({
   /// A pinch in on the transcript, with its focal point in global
   /// coordinates: opens the Prompts screen, grown from there.
   required final void Function({required Offset focalPoint}) onPinchIn,
+
+  /// Edit and resend on a user message, with why it cannot be edited, or null
+  /// when it can. Null when the session offers no edit.
+  required final void Function({required MessageWithParts message, required MessageEditRefusal? refusal})?
+  onEditMessage,
+
+  /// The user message the composer is editing, which stands out, or null.
+  required final String? editingMessageId,
   final String? retryErrorMessage,
 
   /// Top inset (status bar + nav bar height) the list scrolls behind. Added as
@@ -286,6 +294,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// was dropped before it had opened.
   final Set<String> _easedInRowIds = {};
 
+  /// How each built row last looked, so a row whose message is removed can
+  /// fold away as it was.
+  final Map<String, Widget> _builtRows = {};
+
+  /// The rows of removed messages folding away where they were, as they last
+  /// looked. Each leaves the list once it has folded.
+  final Map<String, Widget> _leavingRows = {};
+
+  /// The rows of the messages the last update removed, for the next build.
+  Set<String> _removedRowIds = const {};
+
   /// The row that replaced the launch bubble. It keeps the launch row's key, so
   /// the swap eases in place like a queued prompt turning into its message.
   String? _launchSlotRowId;
@@ -352,6 +371,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The last build's unloaded prompt pinned above the rendered messages.
   SessionPromptIndexEntry? _unloadedPin;
 
+  /// The rendered messages' turns, as the last build split them.
+  TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {});
+
   /// The unloaded prompt a tap on its pin is loading, until that load ends.
   /// Its spinner keeps to this entry's side even once the pin itself clears.
   SessionPromptIndexEntry? _pinLoad;
@@ -398,6 +420,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // the list scrolls, its layout changes or a refresh ends.
     final refreshEnded = oldWidget.isRefreshing && !widget.isRefreshing;
     final oldestChanged = widget.messages.firstOrNull?.info.id != oldWidget.messages.firstOrNull?.info.id;
+    // Apart from a refresh, which replaces the transcript, messages only leave
+    // it when the harness removes them, as a rewind does. A refresh's messages
+    // can be another row's re-keyed twin or paged-back history it drops, so
+    // its rows go at once.
+    final removedMessages = refreshEnded ? const <Message>[] : _removedMessages(oldWidget: oldWidget);
+    _removedRowIds = {for (final info in removedMessages) _entryIdForMessage(info: info)};
     if (refreshEnded || oldestChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -417,7 +445,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // they scrolled back for it, and it is prepended *above* the viewport,
     // so rendering it cannot shift what is being read. Freezing it would
     // leave it loaded but invisible until the user returned to the newest
-    // message.
+    // message. Removed messages are the other: their rows fold away, holding
+    // the reader's rows where they are.
     if (_follow.following) return;
     final frozen = _snapshot;
     final transientSubmissionsChanged = !_transientSubmissionsMatch(oldWidget: oldWidget);
@@ -432,14 +461,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (frozen == null) return;
     final prepended = oldestChanged ? _prependedOlderMessages(frozen: frozen) : const <MessageWithParts>[];
     final delivered = _deliveredPromptMessages(frozen: frozen);
-    if (prepended.isEmpty && delivered.isEmpty) return;
+    final removedIds = {for (final info in removedMessages) info.id};
+    final kept = [
+      for (final message in frozen.messages)
+        if (!removedIds.contains(message.info.id)) message,
+    ];
+    if (prepended.isEmpty && delivered.isEmpty && kept.length == frozen.messages.length) return;
 
     // Take *only* the newly prepended prefix and the prompts delivered into
-    // rows already showing. Taking the whole live list would also pull in
-    // messages appended at the newest edge while detached, which is exactly
-    // the reflow the freeze exists to prevent. Everything else the snapshot
-    // holds — streaming text, children, statuses, retry state — stays frozen.
-    final merged = [...prepended, ...frozen.messages, ...delivered];
+    // rows already showing, less the removed messages. Taking the whole live
+    // list would also pull in messages appended at the newest edge while
+    // detached, which is exactly the reflow the freeze exists to prevent.
+    // Everything else the snapshot holds — streaming text, children, statuses,
+    // retry state — stays frozen.
+    final merged = [...prepended, ...kept, ...delivered];
     setState(() {
       _snapshot = (
         messages: List<MessageWithParts>.unmodifiable(merged),
@@ -493,6 +528,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     ];
   }
 
+  /// The messages [oldWidget] showed that this update took away.
+  List<Message> _removedMessages({required SessionDetailMessageList oldWidget}) {
+    if (identical(oldWidget.messages, widget.messages)) return const [];
+    final ids = {for (final message in widget.messages) message.info.id};
+    return [
+      for (final MessageWithParts(:info) in oldWidget.messages)
+        if (!ids.contains(info.id)) info,
+    ];
+  }
+
   void _onFollowChanged() {
     if (!mounted) return;
     setState(() {
@@ -524,7 +569,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   void _onRowMount({required String rowId, required BuildContext context}) => _rowContexts[rowId] = context;
 
-  void _onRowUnmount({required String rowId}) => _rowContexts.remove(rowId);
+  void _onRowUnmount({required String rowId}) {
+    _rowContexts.remove(rowId);
+    _builtRows.remove(rowId);
+    // Scrolled away before it had folded, it would not fold on coming back.
+    if (_leavingRows.containsKey(rowId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onRowLeft(rowId: rowId));
+    }
+  }
+
+  void _onRowLeft({required String rowId}) {
+    if (mounted && _leavingRows.containsKey(rowId)) setState(() => _leavingRows.remove(rowId));
+  }
 
   /// Where row [rowId] sits in the list's box, or null while it is not built.
   /// During the list's layout a row can be built but not yet laid out, or on
@@ -981,6 +1037,37 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     return arriving;
   }
 
+  /// [live] with each of the [leaving] rows where it was in [previous]: after
+  /// the rows before it there, and before any row new since, so a prompt sent
+  /// as an edit arrives below the rows its edit folds away.
+  static List<String> _withLeavingRows({
+    required List<String> live,
+    required List<String> previous,
+    required Set<String> leaving,
+  }) {
+    if (leaving.isEmpty) return live;
+    final liveIds = live.toSet();
+    final rows = <String>[];
+    final placed = <String>{};
+    var next = 0;
+    for (final rowId in previous) {
+      if (leaving.contains(rowId)) {
+        if (placed.add(rowId)) rows.add(rowId);
+      } else if (liveIds.contains(rowId) && !placed.contains(rowId)) {
+        // The live rows up to and including this one.
+        while (next < live.length) {
+          final candidate = live[next++];
+          if (placed.add(candidate)) rows.add(candidate);
+          if (candidate == rowId) break;
+        }
+      }
+    }
+    for (final candidate in live.skip(next)) {
+      if (placed.add(candidate)) rows.add(candidate);
+    }
+    return rows;
+  }
+
   static _TransientSubmission? _localSendRow({required LocalSendPhase localSend}) => switch (localSend) {
     LocalSendIdle() => null,
     LocalSendSending(:final submission) => (submission: submission, stage: _TransientStage.sending),
@@ -1031,7 +1118,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       children: children,
       childStatuses: childStatuses,
     );
-    final turns = const TranscriptTurnBuilder().build(
+    final turns = _turns = const TranscriptTurnBuilder().build(
       messages: messages,
       hasOlderMessages: widget.onLoadOlderMessages != null,
     );
@@ -1092,7 +1179,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       quietSinceIdle: quietSinceIdle,
       hasLaunchRow: hasLaunchRow,
     );
-    final rowIds = _rowIdsFor(
+    final liveRowIds = _rowIdsFor(
       messageRows: [
         for (final message in messages)
           if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
@@ -1101,6 +1188,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       wakingPromptRowId: wakingPromptRowId,
       hasLaunchRow: hasLaunchRow,
     );
+    final previousRowIndexById = _rowIndexById;
+    final previousRowIds = previousRowIndexById.keys.toList();
+    // A removed message's row folds away where it was, if the reader could
+    // see it; one not built goes at once, as nobody sees it go. A row whose
+    // message comes back stays.
+    final liveRowIdSet = liveRowIds.toSet();
+    _leavingRows.removeWhere((rowId, _) => liveRowIdSet.contains(rowId) || !previousRowIndexById.containsKey(rowId));
+    if (!context.isReducedMotion) {
+      for (final rowId in _removedRowIds) {
+        if (_builtRows[rowId] case final row? when !liveRowIdSet.contains(rowId)) _leavingRows[rowId] = row;
+      }
+    }
+    _removedRowIds = const {};
+    final rowIds = _withLeavingRows(live: liveRowIds, previous: previousRowIds, leaving: _leavingRows.keys.toSet());
     final knownRowIds = _knownRowIds;
     if (knownRowIds != null && knownRowIds.contains(_kLaunchRowId) && !rowIds.contains(_kLaunchRowId)) {
       _launchSlotRowId = rowIds
@@ -1110,8 +1211,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           )
           .firstOrNull;
     }
-    final previousRowIndexById = _rowIndexById;
-    final previousRowIds = previousRowIndexById.keys.toList();
     _updatePromptSentAt(
       pendingPromptRowIds: pendingPromptRowIds,
       transientSubmissions: transientSubmissions,
@@ -1207,6 +1306,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                     key: _kListViewKey,
                     onLaidOut: _layOutSticky,
                     detached: () => !_follow.following,
+                    rowsLeaving: () => _leavingRows.isNotEmpty,
                     onCarriedToNewestEnd: _follow.reattach,
                     reverse: true,
                     controller: _follow.scrollController,
@@ -1230,6 +1330,19 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                     },
                     itemBuilder: (context, index) {
                       final entryId = rowIds[rowIds.length - index - 1];
+                      final leavingRow = _leavingRows[entryId];
+                      final row = _builtRows[entryId] =
+                          leavingRow ??
+                          _buildRow(
+                            entryId: entryId,
+                            messages: messages,
+                            indexById: indexById,
+                            transientSubmissions: transientSubmissions,
+                            transcript: transcript,
+                            streamingText: streamingText,
+                            retryErrorMessage: retryErrorMessage,
+                            activity: activity,
+                          );
                       return TranscriptRowReporter(
                         key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
                         rowId: entryId,
@@ -1241,19 +1354,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                             arriving: !previousRowIndexById.containsKey(entryId),
                             child: TranscriptPresence(
                               entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
-                              exiting: false,
+                              exiting: leavingRow != null,
                               onEntered: () => _easedInRowIds.add(entryId),
-                              onExited: null,
-                              child: _buildRow(
-                                entryId: entryId,
-                                messages: messages,
-                                indexById: indexById,
-                                transientSubmissions: transientSubmissions,
-                                transcript: transcript,
-                                streamingText: streamingText,
-                                retryErrorMessage: retryErrorMessage,
-                                activity: activity,
-                              ),
+                              onExited: () => _onRowLeft(rowId: entryId),
+                              child: row,
                             ),
                           ),
                         ),
@@ -1516,10 +1620,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // The launch bubble's echo keeps easing like the bubble it replaced.
       MessageUser() when entryId == _launchSlotRowId => _deliveredPromptRow(message: message),
       MessageUser() => _userMessage(message: message, outlineFade: null),
-      MessageAssistant(sender: MessageSender.agent, :final id) => _agentReply(
+      MessageAssistant(sender: MessageSender.agent, :final id) => _agentRow(
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
         createdAtMs: createdAtMs,
+        end: null,
       ),
       MessageAssistant(:final id) => SystemMessageCard(
         projectId: widget.projectId,
@@ -1527,9 +1632,42 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         streamingText: streamingText,
         createdAtMs: createdAtMs,
       ),
-      final MessageError messageError => ErrorMessageCard(message: messageError),
+      final MessageError error => _agentRow(
+        blocks: transcript.blocksFor(messageId: error.id),
+        streamingText: streamingText,
+        createdAtMs: createdAtMs,
+        end: error,
+      ),
     };
     return _revealable(createdAtMs: createdAtMs, child: card);
+  }
+
+  /// An agent reply's row: what it streamed, then, once the turn stopped or
+  /// failed, the [end] row under it. A reply keeps its row when its turn ends,
+  /// so the end row grows in under it as the working row folds away.
+  Widget _agentRow({
+    required List<TranscriptBlock> blocks,
+    required Map<String, String> streamingText,
+    required int? createdAtMs,
+    required MessageError? end,
+  }) {
+    final showsReply = blocks.isNotEmpty || end == null;
+    return TranscriptPresenceColumn(
+      children: [
+        if (showsReply)
+          SizedBox(
+            key: const ValueKey("reply"),
+            width: double.infinity,
+            child: _agentReply(blocks: blocks, streamingText: streamingText, createdAtMs: createdAtMs),
+          ),
+        if (end != null)
+          SizedBox(
+            key: const ValueKey("end"),
+            width: double.infinity,
+            child: ErrorMessageCard(message: end, followsReply: showsReply),
+          ),
+      ],
+    );
   }
 
   /// An agent reply's card, with its message menu.
@@ -1540,6 +1678,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }) => TranscriptMessageMenu(
     spotlight: PregoMenuSpotlight.listRow,
     copyText: AssistantMessageCard.markdownOf(blocks: blocks, streamingText: streamingText),
+    actions: const [],
     builder: (context, selectionArea) => AssistantMessageCard(
       projectId: widget.projectId,
       blocks: blocks,
@@ -1559,6 +1698,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       message: message,
       shape: _messageShape(messageId: message.info.id),
       outlineFade: outlineFade,
+      editing: widget.editingMessageId == message.info.id,
+      onEdit: switch (widget.onEditMessage) {
+        null => null,
+        // The running turn offers no edit until it finishes, and the message
+        // being edited none over the changes the composer holds.
+        _ when widget.editingMessageId == message.info.id => null,
+        _ when widget.isBusy && _turns.inNewestTurn(messageId: message.info.id) => null,
+        final onEdit => () => onEdit(
+          message: message,
+          refusal: _turns.editRefusal(
+            messageId: message.info.id,
+            shape: _messageShape(messageId: message.info.id),
+          ),
+        ),
+      },
     ),
   );
 
@@ -1631,8 +1785,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   static bool _stepJoinsShownCard({required List<MessageWithParts> messages, required Transcript transcript}) =>
       transcript.endsInOpenGroup ||
       switch (messages.lastOrNull?.info) {
-        MessageAssistant(sender: MessageSender.agent, :final id) => transcript.blocksFor(messageId: id).isNotEmpty,
-        MessageUser() || MessageAssistant() || MessageError() || null => false,
+        MessageAssistant(sender: MessageSender.agent, :final id) ||
+        MessageError(:final id) => transcript.blocksFor(messageId: id).isNotEmpty,
+        MessageUser() || MessageAssistant() || null => false,
       };
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.

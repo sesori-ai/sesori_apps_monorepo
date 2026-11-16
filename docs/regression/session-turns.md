@@ -115,6 +115,16 @@ defaults and queued client sends coherent.
   another turn runs therefore returns in sub-seconds, and session-lane
   operations queued behind a send (abort, permission and question replies)
   are never blocked for the duration of a turn.
+- A user Stop ends the turn with a small grey "Stopped" line in the compaction row's quiet style, never a red row
+  or the harness's own abort wording. Pi and OpenCode (v1 and v2) mark their native abort record stopped, so the line
+  shows live and after a reload; the other harnesses are listed under "Stopped turns" in
+  [HARNESS_CAPABILITIES](../HARNESS_CAPABILITIES.md#stopped-turns). The text and steps the turn already streamed
+  stay, with the line under them where the reply ended; a failed turn likewise keeps them above its red error. The
+  Working row leaves as the stopped row arrives, before the session's idle lands, and the line grows in as it folds
+  away and stands exactly as tall, so the rows above hold still. Stopped mid-stream, with no Working row showing, the
+  line grows and fades in under the reply over the transcript's motion, like any new row, and a reader scrolled up
+  into the reply sees nothing they read move. Failures keep their verbatim red text. An older bridge sends no
+  kind, so its rows stay failures; an older app ignores the kind and keeps a red row.
 - A sent prompt stays on screen from send to delivered message. Scrolling while
   it is delivered, or a refresh whose fetch began before a queue event, must not
   blank its row. A wheel or trackpad touch that moves nothing at the newest edge
@@ -1061,6 +1071,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 
 ## Failure Signals
 
+- A user Stop on Pi or OpenCode shows a red row or the harness's abort text ("Pi response aborted", an OpenCode
+  abort message) instead of the grey "Stopped" line, live or after a reload; a real failure reads "Stopped"; a
+  stopped or failed turn loses the text or steps it streamed; or the rows above the line move when it replaces the
+  Working row.
 - A Claude compaction shows two rows, a row that stays running after its
   turn, a failure with no note or with the error repeated as a reply, or
   successful-compaction details missing after a reload.

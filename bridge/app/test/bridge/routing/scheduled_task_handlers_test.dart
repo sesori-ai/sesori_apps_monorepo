@@ -17,6 +17,9 @@ import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.
 import "package:sesori_bridge/src/services/scheduled_task_run_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_service.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
@@ -66,6 +69,9 @@ void main() {
     final runService = ScheduledTaskRunService(
       repository: repository,
       sessionCreation: _UnusedSessionCreation(),
+      prompts: _UnusedPrompts(),
+      operations: _UnusedOperations(),
+      yoloSettings: _UnusedYoloSettings(),
       sessions: sessions,
       sessionOptions: FakeSessionOptionsService(),
       calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -190,6 +196,21 @@ void main() {
 
 /// Run now refusals never reach session creation.
 class _UnusedSessionCreation() implements SessionCreationService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedPrompts() implements SessionPromptService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedOperations() implements SessionOperationDispatcher {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedYoloSettings() implements YoloSettingsService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

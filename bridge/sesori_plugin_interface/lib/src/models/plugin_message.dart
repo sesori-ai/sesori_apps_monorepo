@@ -322,12 +322,24 @@ enum PluginMessageSender() {
   unknown,
 }
 
+/// Why a [PluginMessageError] ended its turn.
+@JsonEnum()
+enum PluginErrorKind() {
+  /// The turn failed.
+  failure,
+
+  /// The user stopped the turn. A plugin marks only the stops its harness
+  /// reports as user aborts.
+  stopped,
+}
+
 /// Sealed class representing a plugin-level message.
 ///
 /// Three variants:
 /// - [PluginMessageUser]: a message sent by the user
 /// - [PluginMessageAssistant]: a non-user message with explicit sender attribution
-/// - [PluginMessageError]: an assistant message that failed with an error
+/// - [PluginMessageError]: a turn that failed with an error or that the user
+///   stopped
 ///
 /// The JSON serialization uses `"role"` as the union key.
 @Freezed(unionKey: "role")
@@ -374,6 +386,9 @@ sealed class PluginMessage with _$PluginMessage {
     /// Backend-provided error text must be preserved verbatim when present.
     /// A plugin may synthesize a fallback only when its backend supplied no text.
     required String errorMessage,
+
+    /// Whether the turn failed or the user stopped it.
+    required PluginErrorKind kind,
     required PluginMessageTime? time,
   }) = PluginMessageError;
 }

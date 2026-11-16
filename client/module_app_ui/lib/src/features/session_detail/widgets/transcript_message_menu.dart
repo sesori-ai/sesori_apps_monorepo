@@ -28,6 +28,9 @@ class const TranscriptMessageMenu({
   /// text has not arrived keeps its menu, so the reply is never rebuilt).
   required final String? copyText,
 
+  /// The message's own actions, ahead of Copy and Select text.
+  required final List<PregoMenuItem> actions,
+
   /// The sharp cut-out a long-press menu keeps around the message.
   required final PregoMenuSpotlight spotlight,
 
@@ -40,17 +43,20 @@ class const TranscriptMessageMenu({
   /// text sizes, without spanning the message it is anchored to.
   static const double _menuWidth = 240;
 
-  /// The message [builder] builds, with its menu when it has [text] to copy,
-  /// and without one when it has none: nothing in it could be copied.
+  /// The message [builder] builds, with its menu when it has [text] to copy
+  /// or [actions], and without one when it has neither: the menu would be
+  /// empty.
   static Widget wrap({
     required PregoMenuSpotlight spotlight,
     required String? text,
+    required List<PregoMenuItem> actions,
     required Widget Function(GlobalKey<PregoReadableSelectionAreaState>? selectionArea) builder,
   }) {
-    if (text == null || text.isEmpty) return builder(null);
+    if ((text == null || text.isEmpty) && actions.isEmpty) return builder(null);
     return TranscriptMessageMenu(
       spotlight: spotlight,
       copyText: text,
+      actions: actions,
       builder: (context, selectionArea) => builder(selectionArea),
     );
   }
@@ -92,6 +98,7 @@ class _TranscriptMessageMenuState() extends State<TranscriptMessageMenu> {
     final selected = area?.selectedText;
     final copyText = selected ?? widget.copyText;
     return [
+      ...widget.actions,
       if (copyText != null && copyText.isNotEmpty)
         PregoMenuItem(
           leadingIcon: TablerRegular.copy,
