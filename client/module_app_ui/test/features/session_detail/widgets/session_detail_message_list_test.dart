@@ -569,6 +569,7 @@ Future<void> _pumpPointerTurns(
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
         openHarnessSettings: () {},
         openBridgeSettings: () {},
+        openSideChat: null,
         child: _SessionDetailMessageListHarness(
           initialMessages: messages,
           initialStreamingText: const {},

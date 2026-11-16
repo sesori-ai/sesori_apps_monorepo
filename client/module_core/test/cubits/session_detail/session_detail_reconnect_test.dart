@@ -43,6 +43,7 @@ void main() {
     final loadService = SessionDetailLoadService(
       repository: mockSessionRepository,
       pluginRepository: stubbedPluginRepository(),
+      sideChatRepository: MockSideChatRepository(),
       connectionService: mockConnectionService,
     );
     final promptDispatcher = mockSessionRepository;
