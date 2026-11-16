@@ -583,5 +583,8 @@ final class _RecordingRewindMutations() implements SessionMutationDispatcher {
   }
 
   @override
+  Future<void> acknowledgeInterruption({required String sessionId}) async {}
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

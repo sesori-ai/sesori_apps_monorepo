@@ -1,18 +1,14 @@
 import "package:clock/clock.dart";
-import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "../../../widgets/defer_until_route_open.dart";
-import "../../../widgets/markdown_styles.dart";
-import "../session_detail_presentation_scope.dart";
-import "text_part_widget.dart";
 import "transcript_duration_formatter.dart";
 import "transcript_elapsed_time.dart";
 import "transcript_latest_words.dart";
 import "transcript_live_row.dart";
+import "transcript_markdown_sheet.dart";
 import "transcript_motion.dart";
 import "transcript_token_count_formatter.dart";
 
@@ -153,31 +149,10 @@ class const CompactionPartWidget({
     );
   }
 
-  static Future<void> _showSummary({required BuildContext context, required String summary}) {
-    final openExternalLink = SessionDetailPresentationScope.read(context).openExternalLink;
-    return showPregoModal<void>(
-      context: context,
-      title: context.loc.sessionDetailCompactionSummaryTitle,
-      width: PregoModalWidth.reading,
-      builder: (modalContext) {
-        final prego = modalContext.prego;
-        return DeferUntilRouteOpen(
-          contentLength: summary.length,
-          child: PregoReadableSelectionArea(
-            child: MarkdownBody(
-              data: summary,
-              selectable: false,
-              blockSyntaxes: sessionMarkdownBlockSyntaxes,
-              imageBuilder: (uri, title, alt) => MarkdownMessageImage(uri: uri, semanticLabel: alt),
-              onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
-              styleSheet: buildSessionMarkdownStyleSheet(
-                prego: prego,
-                paragraphStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  static Future<void> _showSummary({required BuildContext context, required String summary}) =>
+      showTranscriptMarkdownSheet(
+        context: context,
+        title: context.loc.sessionDetailCompactionSummaryTitle,
+        markdown: summary,
+      );
 }

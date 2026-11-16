@@ -2029,6 +2029,21 @@ class SessionDetailCubit(
     };
   }
 
+  /// The session a handoff marker or card links to, read from the bridge so
+  /// the page can open it in its own project; null when it can't be read, as
+  /// when it was deleted or the bridge is unreachable.
+  Future<Session?> linkedSession({required String sessionId}) async {
+    switch (await _loadService.loadMetadata(sessionId: sessionId)) {
+      case SessionDetailMetadataFound(:final session):
+        return session;
+      case SessionDetailMetadataWaitingForConnection():
+        return null;
+      case SessionDetailMetadataFailed(:final error, :final stackTrace):
+        logw("Could not read linked session $sessionId to open it", error, stackTrace);
+        return null;
+    }
+  }
+
   /// Reports that the Prompts screen opened from [entry].
   void reportPromptsOpened({required AnalyticsPromptsEntry entry}) =>
       _reportProductEvent(event: ProductAnalyticsEvent.transcriptPromptsOpened(entry: entry));

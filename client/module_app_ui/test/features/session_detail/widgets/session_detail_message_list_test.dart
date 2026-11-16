@@ -3552,6 +3552,7 @@ void main() {
         lastUserActivityAt: null,
         autoContinuation: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
       harness.setChildren(children: [child], childStatuses: const {"child-1": SessionStatus.busy(since: null)});
