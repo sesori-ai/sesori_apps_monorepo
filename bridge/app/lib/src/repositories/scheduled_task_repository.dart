@@ -252,6 +252,15 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
       _dao.setLatestRunUserPromptedAt(sessionId: sessionId, userPromptedAt: at.millisecondsSinceEpoch);
 
   /// False when the run is gone with its deleted task.
-  Future<bool> markRunFailed({required String runId, required TaskRunFailureReason reason}) async =>
-      await _dao.markRunFailed(runId: runId, reason: reason) > 0;
+  Future<bool> markRunFailed({
+    required String runId,
+    required TaskRunFailureReason reason,
+    required ScheduledTaskRunAttempt? attempt,
+  }) async =>
+      await _dao.markRunFailed(
+        runId: runId,
+        reason: reason,
+        attemptJson: _mapper.attemptToJson(attempt: attempt),
+      ) >
+      0;
 }

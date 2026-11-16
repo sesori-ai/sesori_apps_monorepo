@@ -69,4 +69,26 @@ void main() {
       "Sunday",
     ]);
   });
+
+  group("a failed run's details", () {
+    const attempt = ScheduledTaskRunAttempt(
+      pluginId: "claude",
+      model: PromptModel(providerID: "anthropic", modelID: "claude-old"),
+      projectPath: "/code/sesori",
+    );
+
+    test("name what the run tried to use", () {
+      String detail(TaskRunFailureReason reason) => formatter.failureDetails(reason: reason, attempt: attempt).detail;
+      expect(detail(TaskRunFailureReason.projectMissing), "The folder /code/sesori wasn’t found on the computer.");
+      expect(detail(TaskRunFailureReason.harnessUnavailable), "Claude Code wasn’t available on the computer.");
+      expect(detail(TaskRunFailureReason.modelUnavailable), "Claude Code didn’t offer claude-old anymore.");
+    });
+
+    test("read generic lines for a run that recorded nothing, such as one from an older bridge", () {
+      String detail(TaskRunFailureReason reason) => formatter.failureDetails(reason: reason, attempt: null).detail;
+      expect(detail(TaskRunFailureReason.projectMissing), "This task’s project folder wasn’t found on the computer.");
+      expect(detail(TaskRunFailureReason.harnessUnavailable), "This task’s harness wasn’t available on the computer.");
+      expect(detail(TaskRunFailureReason.modelUnavailable), "The harness didn’t offer this task’s model anymore.");
+    });
+  });
 }

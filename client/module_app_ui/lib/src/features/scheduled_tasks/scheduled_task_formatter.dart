@@ -1,5 +1,6 @@
 import "package:intl/intl.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../l10n/app_localizations.dart";
 
@@ -89,29 +90,47 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
     TaskRunFailureReason.unknown => loc.scheduledTaskFailureUnknown,
   };
 
-  /// A failed run's details: what went wrong and what to do next.
-  ///
-  /// They name no project, harness or model: a run records only its reason,
-  /// and the task may have been edited since, often to fix that very reason.
-  ({String detail, String? nextStep}) failureDetails({required TaskRunFailureReason reason}) => switch (reason) {
-    TaskRunFailureReason.projectMissing => (
-      detail: loc.scheduledTaskRunFailureProject,
-      nextStep: loc.scheduledTaskRunFailureNextProject,
-    ),
-    TaskRunFailureReason.harnessUnavailable => (
-      detail: loc.scheduledTaskRunFailureHarness,
-      nextStep: loc.scheduledTaskRunFailureNextHarness,
-    ),
-    TaskRunFailureReason.modelUnavailable => (
-      detail: loc.scheduledTaskRunFailureModel,
-      nextStep: loc.scheduledTaskRunFailureNextModel,
-    ),
-    TaskRunFailureReason.startFailed => (
-      detail: loc.scheduledTaskRunFailureStart,
-      nextStep: loc.scheduledTaskRunFailureNextStart,
-    ),
-    TaskRunFailureReason.unknown => (detail: loc.scheduledTaskRunFailureUnknown, nextStep: null),
-  };
+  /// A failed run's details: what went wrong and what to do next, naming
+  /// what the run tried to use when it recorded that. A run recorded before
+  /// bridges kept its [attempt] reads a generic line instead, since the task
+  /// may have been edited since.
+  ({String detail, String? nextStep}) failureDetails({
+    required TaskRunFailureReason reason,
+    required ScheduledTaskRunAttempt? attempt,
+  }) {
+    String harness({required ScheduledTaskRunAttempt attempt}) => PregoBrandLogo.displayNameFor(attempt.pluginId);
+    return switch (reason) {
+      TaskRunFailureReason.projectMissing => (
+        detail: switch (attempt?.projectPath) {
+          final path? => loc.scheduledTaskRunFailureProjectAt(path),
+          null => loc.scheduledTaskRunFailureProject,
+        },
+        nextStep: loc.scheduledTaskRunFailureNextProject,
+      ),
+      TaskRunFailureReason.harnessUnavailable => (
+        detail: switch (attempt) {
+          final attempt? => loc.scheduledTaskRunFailureHarnessNamed(harness(attempt: attempt)),
+          null => loc.scheduledTaskRunFailureHarness,
+        },
+        nextStep: loc.scheduledTaskRunFailureNextHarness,
+      ),
+      TaskRunFailureReason.modelUnavailable => (
+        detail: switch (attempt) {
+          ScheduledTaskRunAttempt(:final model?) => loc.scheduledTaskRunFailureModelNamed(
+            harness(attempt: attempt),
+            model.modelID,
+          ),
+          _ => loc.scheduledTaskRunFailureModel,
+        },
+        nextStep: loc.scheduledTaskRunFailureNextModel,
+      ),
+      TaskRunFailureReason.startFailed => (
+        detail: loc.scheduledTaskRunFailureStart,
+        nextStep: loc.scheduledTaskRunFailureNextStart,
+      ),
+      TaskRunFailureReason.unknown => (detail: loc.scheduledTaskRunFailureUnknown, nextStep: null),
+    };
+  }
 
   /// The instant's wall-clock fields, carried in a UTC value so formatting
   /// reads them unchanged.

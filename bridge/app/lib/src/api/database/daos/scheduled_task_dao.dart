@@ -217,11 +217,16 @@ class ScheduledTaskDao({required AppDatabase database})
 
   /// Turns a started run into one that could not start. Returns the rows
   /// changed.
-  Future<int> markRunFailed({required String runId, required TaskRunFailureReason reason}) {
+  Future<int> markRunFailed({
+    required String runId,
+    required TaskRunFailureReason reason,
+    required String? attemptJson,
+  }) {
     return (update(scheduledTaskRunsTable)..where((row) => row.id.equals(runId))).write(
       ScheduledTaskRunsTableCompanion(
         outcome: const Value(ScheduledTaskRunOutcomeKind.failed),
         reason: Value(reason),
+        attemptJson: Value(attemptJson),
         late: const Value(false),
       ),
     );

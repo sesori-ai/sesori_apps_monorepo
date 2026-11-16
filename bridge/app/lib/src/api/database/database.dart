@@ -55,7 +55,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 29;
+  int get schemaVersion => 30;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -401,6 +401,11 @@ class AppDatabase(super.e) extends _$AppDatabase {
           "WHERE pinned = 1",
         );
         await m.dropColumn(schema.sessionsTable, "pinned");
+      },
+      from29To30: (m, schema) async {
+        // Earlier failed runs never recorded what they tried to use, so they
+        // keep no attempt.
+        await m.addColumn(schema.scheduledTaskRuns, schema.scheduledTaskRuns.attemptJson);
       },
     ),
     beforeOpen: (details) async {

@@ -102,6 +102,10 @@ class ProjectRepository({
     return row == null || await _directoryMissing(row.path);
   }
 
+  /// The folder of [projectId], or null when no project is stored under it.
+  Future<String?> projectPath({required String projectId}) async =>
+      (await _projectsDao.getProject(projectId: projectId))?.path;
+
   /// Resolves [path] locally, retaining any durable identity already recorded
   /// for the same canonical directory.
   ///

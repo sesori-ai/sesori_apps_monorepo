@@ -39,6 +39,10 @@ class ScheduledTaskRunsTable() extends Table {
   /// Set only for a failed run.
   TextColumn get reason => textEnum<TaskRunFailureReason>().nullable()();
 
+  /// What a failed run tried to use, as JSON. Null for other outcomes and for
+  /// failed runs recorded before the bridge kept it.
+  TextColumn get attemptJson => text().nullable()();
+
   /// Set only for a started run.
   BoolColumn get late => boolean()();
 

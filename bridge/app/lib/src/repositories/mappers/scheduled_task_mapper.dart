@@ -95,6 +95,10 @@ class const ScheduledTaskMapper() {
       ScheduledTaskRunOutcomeKind.missed => const ScheduledTaskRunOutcome.missed(),
       ScheduledTaskRunOutcomeKind.failed => ScheduledTaskRunOutcome.failed(
         reason: row.reason ?? TaskRunFailureReason.unknown,
+        attempt: switch (row.attemptJson) {
+          final json? => ScheduledTaskRunAttempt.fromJson(jsonDecodeMap(json)),
+          null => null,
+        },
       ),
     },
   );
@@ -106,16 +110,23 @@ class const ScheduledTaskMapper() {
     required ScheduledTaskRunOutcome outcome,
     required DateTime firedAt,
   }) {
-    final (kind, sessionId, late, reason) = switch (outcome) {
+    final (kind, sessionId, late, reason, attempt) = switch (outcome) {
       ScheduledTaskRunStarted(:final sessionId, :final late) => (
         ScheduledTaskRunOutcomeKind.started,
         sessionId,
         late,
         null,
+        null,
       ),
-      ScheduledTaskRunSkipped() => (ScheduledTaskRunOutcomeKind.skipped, null, false, null),
-      ScheduledTaskRunMissed() => (ScheduledTaskRunOutcomeKind.missed, null, false, null),
-      ScheduledTaskRunFailed(:final reason) => (ScheduledTaskRunOutcomeKind.failed, null, false, reason),
+      ScheduledTaskRunSkipped() => (ScheduledTaskRunOutcomeKind.skipped, null, false, null, null),
+      ScheduledTaskRunMissed() => (ScheduledTaskRunOutcomeKind.missed, null, false, null, null),
+      ScheduledTaskRunFailed(:final reason, :final attempt) => (
+        ScheduledTaskRunOutcomeKind.failed,
+        null,
+        false,
+        reason,
+        attempt,
+      ),
       ScheduledTaskRunOutcomeUnknown() => throw ArgumentError.value(outcome, "outcome", "unknown run outcome"),
     };
     return ScheduledTaskRunDto(
@@ -127,6 +138,7 @@ class const ScheduledTaskMapper() {
       firedAt: firedAt.millisecondsSinceEpoch,
       outcome: kind,
       reason: reason,
+      attemptJson: attemptToJson(attempt: attempt),
       late: late,
       userPromptedAt: null,
       compactRequestedAt: null,
@@ -135,4 +147,7 @@ class const ScheduledTaskMapper() {
 
   static DateTime? _instantOrNull(int? milliseconds) =>
       milliseconds == null ? null : DateTime.fromMillisecondsSinceEpoch(milliseconds, isUtc: true);
+
+  String? attemptToJson({required ScheduledTaskRunAttempt? attempt}) =>
+      attempt == null ? null : jsonEncode(attempt.toJson());
 }

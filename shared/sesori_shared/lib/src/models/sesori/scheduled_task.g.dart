@@ -343,6 +343,11 @@ ScheduledTaskRunFailed _$ScheduledTaskRunFailedFromJson(Map json) =>
         json['reason'],
         unknownValue: TaskRunFailureReason.unknown,
       ),
+      attempt: json['attempt'] == null
+          ? null
+          : ScheduledTaskRunAttempt.fromJson(
+              Map<String, dynamic>.from(json['attempt'] as Map),
+            ),
       $type: json['kind'] as String?,
     );
 
@@ -350,6 +355,7 @@ Map<String, dynamic> _$ScheduledTaskRunFailedToJson(
   ScheduledTaskRunFailed instance,
 ) => <String, dynamic>{
   'reason': _$TaskRunFailureReasonEnumMap[instance.reason]!,
+  'attempt': ?instance.attempt?.toJson(),
   'kind': instance.$type,
 };
 
@@ -368,6 +374,25 @@ ScheduledTaskRunOutcomeUnknown _$ScheduledTaskRunOutcomeUnknownFromJson(
 Map<String, dynamic> _$ScheduledTaskRunOutcomeUnknownToJson(
   ScheduledTaskRunOutcomeUnknown instance,
 ) => <String, dynamic>{'kind': instance.$type};
+
+_ScheduledTaskRunAttempt _$ScheduledTaskRunAttemptFromJson(Map json) =>
+    _ScheduledTaskRunAttempt(
+      pluginId: json['pluginId'] as String,
+      model: json['model'] == null
+          ? null
+          : PromptModel.fromJson(
+              Map<String, dynamic>.from(json['model'] as Map),
+            ),
+      projectPath: json['projectPath'] as String?,
+    );
+
+Map<String, dynamic> _$ScheduledTaskRunAttemptToJson(
+  _ScheduledTaskRunAttempt instance,
+) => <String, dynamic>{
+  'pluginId': instance.pluginId,
+  'model': ?instance.model?.toJson(),
+  'projectPath': ?instance.projectPath,
+};
 
 _SessionScheduledTaskMark _$SessionScheduledTaskMarkFromJson(Map json) =>
     _SessionScheduledTaskMark(

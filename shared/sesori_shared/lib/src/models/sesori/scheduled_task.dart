@@ -225,12 +225,33 @@ sealed class ScheduledTaskRunOutcome with _$ScheduledTaskRunOutcome {
   /// The run could not start. The task stays enabled and tries again next time.
   const factory failed({
     @JsonKey(unknownEnumValue: TaskRunFailureReason.unknown) required TaskRunFailureReason reason,
+
+    /// What the run tried to use, which the task may no longer name. Null for
+    /// a run recorded before bridges kept it.
+    required ScheduledTaskRunAttempt? attempt,
   }) = ScheduledTaskRunFailed;
 
   /// An outcome from a newer peer.
   const factory unknown() = ScheduledTaskRunOutcomeUnknown;
 
   factory fromJson(Map<String, dynamic> json) => _$ScheduledTaskRunOutcomeFromJson(json);
+}
+
+/// The harness, model and project folder a run that could not start tried to
+/// use, as the task named them then.
+@Freezed(fromJson: true, toJson: true)
+sealed class ScheduledTaskRunAttempt with _$ScheduledTaskRunAttempt {
+  const factory({
+    required String pluginId,
+
+    /// Null when the task left the model to the harness.
+    required PromptModel? model,
+
+    /// Null when the computer no longer had the project at all.
+    required String? projectPath,
+  }) = _ScheduledTaskRunAttempt;
+
+  factory fromJson(Map<String, dynamic> json) => _$ScheduledTaskRunAttemptFromJson(json);
 }
 
 enum TaskRunFailureReason() {

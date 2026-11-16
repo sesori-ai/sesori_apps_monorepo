@@ -148,7 +148,10 @@ class ScheduledTaskRunService({
       scheduledFor: _instant(at: now, timeZone: task.definition.timeZone),
       outcome: blocker == null
           ? const ScheduledTaskRunOutcome.started(sessionId: null, late: false)
-          : ScheduledTaskRunOutcome.failed(reason: blocker),
+          : ScheduledTaskRunOutcome.failed(
+              reason: blocker,
+              attempt: await _attempt(task: task),
+            ),
       firedAt: now,
     );
     return await _afterReserved(task: task, run: run, scheduled: false);
@@ -159,8 +162,19 @@ class ScheduledTaskRunService({
     final blocker = await _startBlocker(task: task);
     return blocker == null
         ? ScheduledTaskRunOutcome.started(sessionId: null, late: late)
-        : ScheduledTaskRunOutcome.failed(reason: blocker);
+        : ScheduledTaskRunOutcome.failed(
+            reason: blocker,
+            attempt: await _attempt(task: task),
+          );
   }
+
+  /// What [task] has a run try to use, recorded with a run that cannot start
+  /// so its details still name them after the task is edited.
+  Future<ScheduledTaskRunAttempt> _attempt({required ScheduledTaskRecord task}) async => ScheduledTaskRunAttempt(
+    pluginId: task.definition.pluginId,
+    model: task.definition.model,
+    projectPath: await _projects.projectPath(projectId: task.definition.projectId),
+  );
 
   /// Whether the session of the task's latest started run is still going.
   Future<bool> _isPreviousRunActive({required String taskId}) async {
@@ -277,8 +291,11 @@ class ScheduledTaskRunService({
         error,
         stackTrace,
       );
-      final failed = run.copyWith(outcome: ScheduledTaskRunOutcome.failed(reason: reason));
-      if (!await _repository.markRunFailed(runId: run.id, reason: reason)) return failed;
+      final attempt = await _attempt(task: task);
+      final failed = run.copyWith(
+        outcome: ScheduledTaskRunOutcome.failed(reason: reason, attempt: attempt),
+      );
+      if (!await _repository.markRunFailed(runId: run.id, reason: reason, attempt: attempt)) return failed;
       _changes.add(null);
       if (scheduled) {
         _failures.add(ScheduledTaskRunFailure(taskId: task.id, taskName: definition.name, reason: reason));

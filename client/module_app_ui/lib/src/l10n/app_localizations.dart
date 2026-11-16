@@ -7723,23 +7723,41 @@ abstract class AppLocalizations {
   /// **'Why this run couldn’t start'**
   String get scheduledTaskRunFailureTitle;
 
-  /// Failed run details: the task's project or its folder was missing. Names no project, since the task may have been edited since that run.
+  /// Failed run details: the task's project or its folder was missing. For a run that recorded no project folder.
   ///
   /// In en, this message translates to:
   /// **'This task’s project folder wasn’t found on the computer.'**
   String get scheduledTaskRunFailureProject;
 
-  /// Failed run details: the task's harness was not available. Names no harness, since the task may have been edited since that run.
+  /// Failed run details: the task's harness was not available. For a run that recorded no harness.
   ///
   /// In en, this message translates to:
   /// **'This task’s harness wasn’t available on the computer.'**
   String get scheduledTaskRunFailureHarness;
 
-  /// Failed run details: the task's model was no longer offered. Names no model, since the task may have been edited since that run. A run never swaps in another model.
+  /// Failed run details: the task's model was no longer offered. For a run that recorded no model. A run never swaps in another model.
   ///
   /// In en, this message translates to:
   /// **'The harness didn’t offer this task’s model anymore.'**
   String get scheduledTaskRunFailureModel;
+
+  /// Failed run details: the folder of the project that run tried to use was missing.
+  ///
+  /// In en, this message translates to:
+  /// **'The folder {path} wasn’t found on the computer.'**
+  String scheduledTaskRunFailureProjectAt(String path);
+
+  /// Failed run details: the harness that run tried to use was not available.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} wasn’t available on the computer.'**
+  String scheduledTaskRunFailureHarnessNamed(String harness);
+
+  /// Failed run details: the model that run tried to use was no longer offered. A run never swaps in another model.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} didn’t offer {model} anymore.'**
+  String scheduledTaskRunFailureModelNamed(String harness, String model);
 
   /// Failed run details: starting the run's session failed.
   ///

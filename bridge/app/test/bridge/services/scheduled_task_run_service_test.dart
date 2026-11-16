@@ -56,6 +56,17 @@ final _sameSession = _daily.copyWith(runMode: const TaskRunMode.sameSession(auto
 
 const _model = PromptModel(providerID: "anthropic", modelID: "opus");
 
+/// A failed outcome recording what a task like [_daily] tried to use.
+ScheduledTaskRunOutcome _failed({
+  required TaskRunFailureReason reason,
+  String pluginId = "fake",
+  PromptModel? model,
+  String? projectPath = "/repo",
+}) => ScheduledTaskRunOutcome.failed(
+  reason: reason,
+  attempt: ScheduledTaskRunAttempt(pluginId: pluginId, model: model, projectPath: projectPath),
+);
+
 void main() {
   setUpAll(tz_data.initializeTimeZones);
 
@@ -399,7 +410,7 @@ void main() {
 
       expect(
         (await outcomes(task.id)).first,
-        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.modelUnavailable),
+        _failed(reason: TaskRunFailureReason.modelUnavailable, model: _model),
       );
       expect(prompts.sends, isEmpty);
       expect(await targetOf(task.id), "ses_1");
@@ -413,7 +424,7 @@ void main() {
 
       expect(
         (await outcomes(task.id)).first,
-        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.startFailed),
+        _failed(reason: TaskRunFailureReason.startFailed),
       );
       expect(failures.single.reason, TaskRunFailureReason.startFailed);
       expect(await targetOf(task.id), "ses_1");
@@ -675,7 +686,7 @@ void main() {
       await service.runDue();
 
       expect(await outcomes(task.id), [
-        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.modelUnavailable),
+        _failed(reason: TaskRunFailureReason.modelUnavailable, model: _model),
       ]);
       expect(failures.single.reason, TaskRunFailureReason.modelUnavailable);
     });
@@ -689,7 +700,7 @@ void main() {
       await service.runDue();
 
       expect(await outcomes(task.id), [
-        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.projectMissing),
+        _failed(reason: TaskRunFailureReason.projectMissing, projectPath: null),
       ]);
       expect(creation.calls, isEmpty);
       expect(failures.single.reason, TaskRunFailureReason.projectMissing);
@@ -703,7 +714,7 @@ void main() {
       await service.runDue();
 
       expect(await outcomes(task.id), [
-        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.projectMissing),
+        _failed(reason: TaskRunFailureReason.projectMissing),
       ]);
       expect(creation.calls, isEmpty);
       expect(failures.single.reason, TaskRunFailureReason.projectMissing);
@@ -720,7 +731,7 @@ void main() {
       await service.runDue();
 
       expect(await outcomes(task.id), [
-        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.projectMissing),
+        _failed(reason: TaskRunFailureReason.projectMissing),
       ]);
       expect(failures.single.reason, TaskRunFailureReason.projectMissing);
     });
@@ -734,7 +745,7 @@ void main() {
       await service.runDue();
 
       expect(await outcomes(task.id), [
-        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.harnessUnavailable),
+        _failed(reason: TaskRunFailureReason.harnessUnavailable, pluginId: "other"),
       ]);
     });
 
@@ -748,7 +759,7 @@ void main() {
       await service.runDue();
 
       expect(await outcomes(task.id), [
-        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.modelUnavailable),
+        _failed(reason: TaskRunFailureReason.modelUnavailable, model: _model),
       ]);
       expect(creation.calls, isEmpty);
       expect(options.explicitRefreshes, isEmpty);
@@ -776,7 +787,7 @@ void main() {
       await service.runDue();
 
       expect(await outcomes(task.id), [
-        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.startFailed),
+        _failed(reason: TaskRunFailureReason.startFailed),
       ]);
       expect(failures.single.reason, TaskRunFailureReason.startFailed);
       expect((await repository.get(taskId: task.id))?.nextDueAt, DateTime.utc(2026, 11, 16, 9));
@@ -792,8 +803,8 @@ void main() {
       creation.error = StateError("backend down");
       final refused = await service.runNow(taskId: task.id);
 
-      expect(blocked.outcome, const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.projectMissing));
-      expect(refused.outcome, const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.startFailed));
+      expect(blocked.outcome, _failed(reason: TaskRunFailureReason.projectMissing));
+      expect(refused.outcome, _failed(reason: TaskRunFailureReason.startFailed));
       expect(failures, isEmpty);
     });
 
