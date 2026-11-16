@@ -4,7 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// created.
 enum CodexForkRefusal({required final String userFacingReason}) {
   /// The app-server has no `thread/fork {lastTurnId}`. Codex before 0.143.0
-  /// ignores the field and would fork the whole thread.
+  /// drops the unknown field and would fork the whole thread.
   runtimeTooOld(userFacingReason: "Update Codex to fork sessions."),
 
   /// Codex has no rollout for the session any more.
