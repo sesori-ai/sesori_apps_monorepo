@@ -497,11 +497,9 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
 - Bridge core reaches it only through a new `SessionRepository.compactSession`
   (via `_useSessionPlugin`, with a new `SessionOperation`), never the plugin
   directly.
-- `getQuotaContinuationReadiness` gains its second consumer (quietness, P6);
-  rename it to a neutral `getSessionReadiness` in the same step, including
-  `SessionOperation.getQuotaContinuationReadiness`,
-  `PluginQuotaContinuationReadiness` and `SessionContinuationReadiness`. A
-  mechanical rename across the interface, Claude, Pi and the quota service.
+- Readiness has two consumers, the quota service and quietness (P6), so step
+  10 renamed it to the neutral `getSessionReadiness`, `PluginSessionReadiness`
+  and `SessionReadiness`; step 4.a's quietness reads that API.
 
 ### P10. Auto-compact policy (step 11)
 
@@ -725,8 +723,8 @@ consecutive-failure auto-pause, a new push category.
 
 ## Cleanup Assessment
 
-- Rename `getQuotaContinuationReadiness` and its types to neutral names when
-  they gain their second consumer (step 10).
+- Step 10 renamed `getQuotaContinuationReadiness` and its types to neutral
+  `getSessionReadiness` names for their second consumer (done).
 - No other code becomes obsolete. The quota timer stays separate on purpose
   (P6); `bridge/app` never sends the `compact` command today, so the new typed
   method replaces nothing.
