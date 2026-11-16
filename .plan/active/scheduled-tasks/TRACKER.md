@@ -38,8 +38,8 @@ mirror PR state; live status is on GitHub:
 | 2 | `scheduled-tasks/contract` | ⚙️ [scheduled-tasks] Add the task contract and schedule times [step 2/13] | ≤ 1,500 authored, generated Freezed extra | 1 |
 | 3.a | `scheduled-tasks/storage` | 🚧 [scheduled-tasks] Store tasks on the bridge [step 3.a/14] | ≤ 1,200 authored, generated Drift extra | 2 |
 | 3.b | `scheduled-tasks/routes` | ⚙️ [scheduled-tasks] Serve the task routes [step 3.b/15] | ≤ 500 | 3.a |
-| 4.a | `scheduled-tasks/session-quietness` | ⚙️ [scheduled-tasks] Read session quietness and start scheduled-run sessions [step 4.a/17] | ≤ 400 | 3.b |
-| 4.b | `scheduled-tasks/new-session-runs` | 🚧 [scheduled-tasks] Run new-session tasks on the bridge [step 4.b/17] | ≤ 1,000 | 4.a |
+| 4.a | `scheduled-tasks/session-quietness` | ⚙️ [scheduled-tasks] Read session quietness and start scheduled-run sessions [step 4.a/15] | ≤ 400 | 3.b |
+| 4.b | `scheduled-tasks/new-session-runs` | 🚧 [scheduled-tasks] Run new-session tasks on the bridge [step 4.b/15] | ≤ 1,000 | 4.a |
 | 5 | `scheduled-tasks/same-session-runs` | 🚧 [scheduled-tasks] Continue same-session tasks [step 5/17] | ≤ 700 | 4.b |
 | 6 | `scheduled-tasks/marks-archive-pushes` | ⚙️ [scheduled-tasks] Mark task runs, archive old runs and limit pushes [step 6/17] | ≤ 900 | 5 |
 | 7 | `scheduled-tasks/composer-reuse` | ⚙️ [scheduled-tasks] Let the new-session composer serve a task editor [step 7/14] | ≤ 900 | 1 |
@@ -56,4 +56,4 @@ Step 2 and 3.a targets count authored lines; their Freezed and Drift output is
 reported separately in the PR body (AGENTS.md generated-churn rule).
 Steps 1 and 2 merged before step 3 split, so their titles keep the old total
 of 13; 3.a, 7 and 10 merged before step 4 split and keep 14.
-3.b merged before step 8 split twice and keeps 15.
+3.b, 4.a and 4.b merged before step 8 split twice and keep 15.
