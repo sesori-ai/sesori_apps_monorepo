@@ -19,7 +19,6 @@ class ScheduledTasksCubit({
   required final DeviceTimeZoneSource _timeZoneSource,
 }) extends Cubit<ScheduledTasksState> {
   late final ScheduledTaskRefreshDispatcher _queue = ScheduledTaskRefreshDispatcher(refresh: _refresh);
-  late final Future<String?> _deviceTimeZone = readDeviceTimeZone(source: _timeZoneSource);
   late final StreamSubscription<void> _signals;
 
   /// The tasks as the bridge last listed them.
@@ -79,7 +78,7 @@ class ScheduledTasksCubit({
     switch (result) {
       case ScheduledTaskSuccess(:final value):
         _tasks = value;
-        _shownDeviceTimeZone = await _deviceTimeZone;
+        _shownDeviceTimeZone = await readDeviceTimeZone(source: _timeZoneSource);
         _emitLoaded();
         return true;
       case ScheduledTaskBridgeOutdated():

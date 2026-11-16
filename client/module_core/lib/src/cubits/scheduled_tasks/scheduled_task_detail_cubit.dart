@@ -21,7 +21,6 @@ class ScheduledTaskDetailCubit({
   required final String taskId,
 }) extends Cubit<ScheduledTaskDetailState> {
   late final ScheduledTaskRefreshDispatcher _queue = ScheduledTaskRefreshDispatcher(refresh: _refresh);
-  late final Future<String?> _deviceTimeZone = readDeviceTimeZone(source: _timeZoneSource);
   late final StreamSubscription<void> _signals;
 
   /// The task and its runs as the bridge last gave them; null until loaded.
@@ -122,7 +121,7 @@ class ScheduledTaskDetailCubit({
           emit(const ScheduledTaskDetailGone());
         } else {
           _shown = (task: task, runs: runs);
-          _shownDeviceTimeZone = await _deviceTimeZone;
+          _shownDeviceTimeZone = await readDeviceTimeZone(source: _timeZoneSource);
           _emitShown();
         }
         return true;
