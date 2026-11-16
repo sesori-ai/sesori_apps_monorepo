@@ -398,20 +398,26 @@ class const _HeaderButton({
   @override
   Widget build(BuildContext context) {
     final count = this.count;
-    return PregoButtonsIconGlass(
-      icon: icon,
-      size: PregoButtonsIconGlassSize.md,
-      semanticLabel: count == null ? label : "$label, $count",
-      iconColor: waiting ? context.prego.colors.textDisabled : null,
-      trailing: count == null
-          ? null
-          : Text(
-              "$count",
-              style: context.prego.textTheme.textSm.medium.copyWith(
-                color: waiting ? context.prego.colors.textDisabled : context.prego.colors.textPrimary,
+    // Fades in when it appears, as the chat loads or its first answer lands.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _fadeDuration,
+      builder: (context, opacity, child) => Opacity(opacity: opacity, child: child),
+      child: PregoButtonsIconGlass(
+        icon: icon,
+        size: PregoButtonsIconGlassSize.md,
+        semanticLabel: count == null ? label : "$label, $count",
+        iconColor: waiting ? context.prego.colors.textDisabled : null,
+        trailing: count == null
+            ? null
+            : Text(
+                "$count",
+                style: context.prego.textTheme.textSm.medium.copyWith(
+                  color: waiting ? context.prego.colors.textDisabled : context.prego.colors.textPrimary,
+                ),
               ),
-            ),
-      onPressed: waiting ? onPressedWhileWaiting : onPressed,
+        onPressed: waiting ? onPressedWhileWaiting : onPressed,
+      ),
     );
   }
 }
