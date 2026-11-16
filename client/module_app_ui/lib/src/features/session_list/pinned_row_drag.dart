@@ -30,6 +30,15 @@ const double _edgeScrollZone = 40;
 /// right at its edge or past it; it scrolls slower the farther in it is held.
 const double _edgeScrollMaxSpeed = 1000;
 
+/// The global top of the part of a list that nothing covers: below a
+/// phone's glass bar, which the list scrolls on under, or the list's own
+/// top at [viewportTop].
+double pinnedListUncoveredTop({required BuildContext listContext, required double viewportTop}) =>
+    switch (pregoTopBarGeometryOf(context: listContext)) {
+      (:final baseInset, :final bannerHeight)? => math.max(viewportTop, baseInset + bannerHeight.value),
+      null => viewportTop,
+    };
+
 /// The drag and drop that reorders a list's pinned rows: which row is lifted,
 /// where the list should show it meanwhile, and where the lifted copy
 /// floats. The list lists its pinned rows by [place] and wraps each in a
@@ -43,7 +52,12 @@ const double _edgeScrollMaxSpeed = 1000;
 /// the list shows stand that way, which the window's optimistic order brings
 /// at once, or until the move is answered; a refused move slides the rows
 /// back.
-final class PinnedRowDragTracker() extends ChangeNotifier {
+final class PinnedRowDragTracker({
+  /// The global bottom of what the list holds over its top, such as its
+  /// Pinned heading while editing, if anything; read as a held row nears
+  /// the top, so the list scrolls when the row meets it.
+  required final double? Function() heldOverTop,
+}) extends ChangeNotifier {
   final Map<String, BuildContext> _rows = {};
 
   /// The pinned rows the list shows, top first, as their sessions order them.
@@ -71,6 +85,16 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
       final at = sessionIds.indexOf(sessionId);
       if (at == 0 ? afterSessionId == null : at > 0 && sessionIds[at - 1] == afterSessionId) _pending = null;
     }
+  }
+
+  /// The global bottom of the last pinned row shown, as last laid out:
+  /// infinite while the built ones end above it, and null while none is
+  /// built.
+  double? pinnedBottom() {
+    final boxes = [for (final sessionId in _rows.keys) ?_box(sessionId: sessionId)];
+    if (boxes.isEmpty) return null;
+    if (_shown.isNotEmpty && _box(sessionId: _shown.last) == null) return double.infinity;
+    return boxes.map((box) => box.localToGlobal(Offset(0, box.size.height)).dy).reduce(math.max);
   }
 
   void _register({required String sessionId, required BuildContext context}) => _rows[sessionId] = context;
@@ -103,10 +127,7 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
     // A phone list scrolls on under its glass bar and the home indicator, so
     // its edges are where those leave it uncovered.
     final listContext = scrollable.context;
-    final barBottom = switch (pregoTopBarGeometryOf(context: listContext)) {
-      (:final baseInset, :final bannerHeight)? => baseInset + bannerHeight.value,
-      null => viewportTop,
-    };
+    final uncoveredTop = pinnedListUncoveredTop(listContext: listContext, viewportTop: viewportTop);
     final screen = listContext.getInheritedWidgetOfExactType<MediaQuery>()?.data;
     final uncoveredBottom = switch (screen) {
       final screen? => screen.size.height - screen.padding.bottom,
@@ -116,7 +137,7 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
       sessionId: sessionId,
       position: position,
       viewportTop: viewportTop,
-      edgeTop: math.max(viewportTop, barBottom),
+      edgeTop: () => math.max(uncoveredTop, heldOverTop() ?? uncoveredTop),
       edgeBottom: math.min(viewportTop + viewport.size.height, uncoveredBottom),
       height: room.size.height,
       groupTop: top - viewportTop + position.pixels,
@@ -260,7 +281,7 @@ final class _Lift({
 
   /// The global top and bottom of the list's uncovered part, whose edges the
   /// copy is held at to scroll it.
-  required final double edgeTop,
+  required final double Function() edgeTop,
   required final double edgeBottom,
   required final double height,
 
@@ -345,6 +366,7 @@ final class _Lift({
   /// it nears [limit], so it stops within a pixel of it rather than creep on.
   ({double speed, double limit})? edgeScroll() {
     final pixels = position.pixels;
+    final edgeTop = this.edgeTop();
     final fromTop = top - edgeTop;
     if (fromTop < _edgeScrollZone) {
       final limit = math.max(position.minScrollExtent, groupTop - _edgeScrollZone - (edgeTop - viewportTop));
@@ -612,10 +634,12 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
 
   Widget _copy(BuildContext context) {
     final prego = context.prego;
-    return _FloatAt(
+    return FloatAt(
       origin: _copyOrigin,
       repaint: Listenable.merge([widget.tracker.liftedTop, _settling]),
       width: _width,
+      interactive: false,
+      clipAbove: null,
       child: AnimatedBuilder(
         animation: _lifted,
         builder: (context, child) => Transform.scale(
@@ -662,30 +686,43 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
 
 /// Paints its child at a global position read as it paints, and repaints
 /// whenever [repaint] changes, so a copy can follow the pointer without
-/// rebuilding and can track a list row that is still sliding.
-class const _FloatAt({
-  required final Offset Function() origin,
+/// rebuilding and can track a list row that is still sliding. A null origin
+/// paints nothing, and nothing paints above [clipAbove]'s global y, if any.
+class const FloatAt({
+  super.key,
+  required final Offset? Function() origin,
   required final Listenable repaint,
   required final double width,
+
+  /// Whether the child takes the taps on it, as a held heading's button
+  /// does; otherwise the copy only keeps them from what is beneath it.
+  required final bool interactive,
+  required final double Function()? clipAbove,
   super.child,
 }) extends SingleChildRenderObjectWidget {
   @override
-  _RenderFloatAt createRenderObject(BuildContext context) =>
-      _RenderFloatAt(origin: origin, repaint: repaint, width: width);
+  RenderFloatAt createRenderObject(BuildContext context) =>
+      RenderFloatAt(origin: origin, repaint: repaint, width: width, interactive: interactive, clipAbove: clipAbove);
 
   @override
-  void updateRenderObject(BuildContext context, _RenderFloatAt renderObject) => renderObject
+  void updateRenderObject(BuildContext context, RenderFloatAt renderObject) => renderObject
     ..origin = origin
     ..repaint = repaint
-    ..width = width;
+    ..width = width
+    ..interactive = interactive
+    ..clipAbove = clipAbove;
 }
 
-final class _RenderFloatAt({
-  required Offset Function() origin,
+final class RenderFloatAt({
+  required Offset? Function() origin,
   required Listenable repaint,
   required double width,
+  required bool interactive,
+  required double Function()? clipAbove,
 }) extends RenderProxyBox {
-  Offset Function() origin = origin;
+  Offset? Function() origin = origin;
+  bool interactive = interactive;
+  double Function()? clipAbove = clipAbove;
   Listenable _repaint = repaint;
   double _width = width;
 
@@ -724,18 +761,62 @@ final class _RenderFloatAt({
     size = constraints.biggest;
   }
 
-  /// The copy takes the pointer from the rows beneath it, so they show no
-  /// hover or title tooltip while a row is carried over them.
+  /// A copy takes the pointer from the rows beneath it, so they show no
+  /// hover or title tooltip while a row is carried over them; an
+  /// [interactive] one hands it to its child.
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
     final child = this.child;
-    if (child == null || !(globalToLocal(origin()) & child.size).contains(position)) return false;
+    final origin = this.origin();
+    if (child == null || origin == null) return false;
+    final at = globalToLocal(origin);
+    if (!(at & child.size).contains(position) || position.dy < _clipTop) return false;
+    if (interactive) {
+      return result.addWithPaintOffset(
+        offset: at,
+        position: position,
+        hitTest: (result, position) => child.hitTest(result, position: position),
+      );
+    }
     result.add(BoxHitTestEntry(this, position));
     return true;
   }
 
+  /// The child stands where it paints, for its taps and for whoever locates it.
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    if (origin() case final origin?) {
+      final at = globalToLocal(origin);
+      transform.translateByDouble(at.dx, at.dy, 0, 1);
+    }
+  }
+
+  /// Where the copy is cut off, in local terms.
+  double get _clipTop => switch (clipAbove) {
+    final clipAbove? => globalToLocal(Offset(0, clipAbove())).dy,
+    null => double.negativeInfinity,
+  };
+
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (child case final child?) context.paintChild(child, offset + globalToLocal(origin()));
+    final (child, origin) = (this.child, this.origin());
+    if (child == null || origin == null) return;
+    final at = globalToLocal(origin);
+    if (clipAbove == null) return context.paintChild(child, offset + at);
+    _clip.layer = context.pushClipRect(
+      needsCompositing,
+      offset,
+      Rect.fromLTRB(0, _clipTop, size.width, size.height),
+      (context, offset) => context.paintChild(child, offset + at),
+      oldLayer: _clip.layer,
+    );
+  }
+
+  final LayerHandle<ClipRectLayer> _clip = LayerHandle();
+
+  @override
+  void dispose() {
+    _clip.layer = null;
+    super.dispose();
   }
 }

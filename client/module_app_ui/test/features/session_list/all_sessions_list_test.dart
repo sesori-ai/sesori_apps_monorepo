@@ -2777,6 +2777,47 @@ void main() {
         await tester.tap(find.text("Unpinned"));
         expect(tapped, ["Unpinned"]);
       });
+
+      testWidgets("while editing, Pinned and Done stay at the top as the pinned rows scroll on, moving nothing", (
+        tester,
+      ) async {
+        final many = [for (var at = 0; at < 20; at++) pinnedRow(title: "Pin $at", pinOrder: 100 - at)];
+        await pumpPinned(tester, rows: [...many, unpinned], interaction: PregoInteractionMode.touch);
+        final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+        final listTop = tester.getTopLeft(find.byType(Scrollable).first).dy;
+        // The held heading paints over the list from its own layer, wherever
+        // the list's top has scrolled.
+        Finder held(String text) => find.text(text, skipOffstage: false).hitTestable();
+        double rowTop() => tester.getTopLeft(find.text("Pin 8")).dy;
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+
+        position.jumpTo(400);
+        await tester.pump();
+        // The heading the list scrolled away is held at its top, over the rows.
+        expect(tester.getTopLeft(held("Pinned")).dy, greaterThanOrEqualTo(listTop));
+        expect(tester.getTopLeft(held("Pinned")).dy, lessThan(listTop + 40));
+        final scrolled = rowTop();
+
+        await tester.tap(held("Done"));
+        await settle(tester);
+        expect(handleOpacity(tester, "Pin 8"), 0);
+        // It fades out where it stood, and nothing in the list moved.
+        expect(held("Pinned"), findsNothing);
+        expect(position.pixels, 400);
+        expect(rowTop(), scrolled);
+
+        // Back at the top, the heading is the list's own again.
+        position.jumpTo(0);
+        await tester.pump();
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+        expect(held("Done"), findsOneWidget);
+        position.jumpTo(400);
+        await tester.pump();
+        expect(rowTop(), scrolled);
+        expect(held("Done"), findsOneWidget);
+      });
     });
 
     group("held at the list's edge", () {

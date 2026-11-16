@@ -262,11 +262,31 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   bool _noteLeaving = false;
 
   /// The pinned rows' drag and drop, which places a dragged row ahead of the
-  /// sessions' order.
-  final PinnedRowDragTracker _dragTracker = PinnedRowDragTracker();
+  /// sessions' order. A held row scrolls the list as it meets the held
+  /// Pinned heading.
+  late final PinnedRowDragTracker _dragTracker = PinnedRowDragTracker(
+    heldOverTop: () => switch (_heldHeading()) {
+      (:final origin, :final height, coveredTop: _)? => origin.dy + height,
+      null => null,
+    },
+  );
 
   /// Whether a touch list shows its pinned rows' handles, reordering them.
   bool _editingPinned = false;
+
+  /// While editing, Pinned's heading, with Done, stays under the list's top
+  /// as its pinned rows scroll on beneath it: a copy over the list takes
+  /// over from the heading as it scrolls under the top, so nothing in the
+  /// list moves, and fades out once editing ends.
+  final GlobalKey _pinnedHeadingKey = GlobalKey(debugLabel: "pinned-heading");
+  final OverlayPortalController _heldHeadingPortal = OverlayPortalController()..show();
+  late final AnimationController _heldFade = AnimationController(vsync: this, duration: transcriptMotionDuration);
+  late final CurvedAnimation _heldOpacity = CurvedAnimation(
+    parent: _heldFade,
+    curve: transcriptMotionCurve,
+    reverseCurve: transcriptMotionCurve.flipped,
+  );
+  ScrollableState? _scrollable;
 
   @override
   void initState() {
@@ -282,6 +302,37 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   }
 
   void _onDragTracker() => setState(() {});
+
+  /// Where the held Pinned heading stands, globally, and the top of the
+  /// list's uncovered part, above which it is cut off: at that top once its
+  /// own heading scrolls under it, pushed up by the last pinned row, and
+  /// nowhere while its heading shows or the pinned rows have scrolled away.
+  /// Read as it paints, once the list has laid out.
+  ({Offset origin, double height, double coveredTop})? _heldHeading() {
+    final scrollable = _scrollable;
+    if (_heldFade.isDismissed || scrollable == null || !scrollable.mounted) return null;
+    final RenderBox viewport;
+    switch (scrollable.context.findRenderObject()) {
+      case final RenderBox box when box.attached && box.hasSize:
+        viewport = box;
+      case _:
+        return null;
+    }
+    final viewportOrigin = viewport.localToGlobal(Offset.zero);
+    final coveredTop = pinnedListUncoveredTop(listContext: scrollable.context, viewportTop: viewportOrigin.dy);
+    if (_pinnedHeadingKey.currentContext?.findRenderObject() case final RenderBox heading
+        when heading.attached && heading.hasSize && heading.localToGlobal(Offset.zero).dy >= coveredTop) {
+      return null;
+    }
+    final pinnedBottom = _dragTracker.pinnedBottom();
+    if (pinnedBottom == null) return null;
+    final height = SessionListHeadingSkeleton.heightOf(context: context, isFirst: true);
+    return (
+      origin: Offset(viewportOrigin.dx, math.min(coveredTop, pinnedBottom - height)),
+      height: height,
+      coveredTop: coveredTop,
+    );
+  }
 
   /// Fades the content in where the skeleton stands, timed from the next
   /// frame: this one mounts the content and can be slow enough to use up the
@@ -299,6 +350,8 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     _dragTracker
       ..removeListener(_onDragTracker)
       ..dispose();
+    _heldOpacity.dispose();
+    _heldFade.dispose();
     _contentOpacity.dispose();
     _handOff.dispose();
     _chipsOpacity.dispose();
@@ -457,6 +510,20 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     final heldUnderFailure = handingOff && state.failure != null && _skeletonUnderFailure;
     final heldAboveFailure = handingOff && !heldUnderFailure;
     final motion = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
+    _scrollable = Scrollable.maybeOf(context);
+    _heldFade.duration = motion;
+    if (_editingPinned && !_heldFade.isForwardOrCompleted) {
+      _heldFade.forward();
+    } else if (!_editingPinned && _heldFade.isForwardOrCompleted) {
+      _heldFade.reverse();
+    }
+    // Pinned's Edit, or Done, on a touch list with rows to reorder.
+    final pinnedAction = !pointer && reorders && pinnedShown >= 2
+        ? (
+            label: _editingPinned ? loc.sessionListPinnedEditDone : loc.sessionListPinnedEdit,
+            onTap: () => setState(() => _editingPinned = !_editingPinned),
+          )
+        : null;
     // Rows narrowed to a new search or chip may still be joined by the
     // bridge's answer, so their emptiness says nothing yet.
     final settled = !isLoading && !state.awaitingAnswer && state.failure == null && entries.isEmpty;
@@ -618,6 +685,29 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
 
     return SliverMainAxisGroup(
       slivers: [
+        if (!pointer && isActive)
+          SliverToBoxAdapter(
+            key: const ValueKey("all-sessions-held-heading"),
+            child: OverlayPortal(
+              controller: _heldHeadingPortal,
+              overlayChildBuilder: (_) => FloatAt(
+                origin: () => _heldHeading()?.origin,
+                repaint: Listenable.merge([?_scrollable?.position, _heldFade, _dragTracker, _dragTracker.liftedTop]),
+                // ponytail: a phone list spans the screen.
+                width: MediaQuery.sizeOf(context).width,
+                interactive: true,
+                clipAbove: () => _heldHeading()?.coveredTop ?? double.negativeInfinity,
+                child: FadeTransition(
+                  opacity: _heldOpacity,
+                  child: ColoredBox(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    child: SessionListHeading(heading: loc.sessionListPinned, isFirst: true, action: pinnedAction),
+                  ),
+                ),
+              ),
+              child: const SizedBox.shrink(),
+            ),
+          ),
         // Keyed, so the header keeps its state as the boxes around it come and go.
         if (searchShown && list.showsSearchField)
           SliverToBoxAdapter(
@@ -801,24 +891,20 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                 }
                 final bottomPadding = index == shownEntries.length - 1 ? endPadding : 0.0;
                 return switch (entry) {
+                  SessionListHeadingEntry(:final heading)
+                      when index + 1 < shownEntries.length &&
+                          switch (shownEntries[index + 1]) {
+                            SessionListItemEntry(item: _SessionItem(:final row)) => row.session.pinned,
+                            _ => false,
+                          } =>
+                    KeyedSubtree(
+                      key: _pinnedHeadingKey,
+                      child: SessionListHeading(heading: heading, isFirst: index == 0, action: pinnedAction),
+                    ),
                   SessionListHeadingEntry(:final heading) => SessionListHeading(
                     heading: heading,
                     isFirst: index == 0,
-                    // Pinned's heading, on a touch list with rows to reorder.
-                    action:
-                        !pointer &&
-                            reorders &&
-                            pinnedShown >= 2 &&
-                            index + 1 < shownEntries.length &&
-                            switch (shownEntries[index + 1]) {
-                              SessionListItemEntry(item: _SessionItem(:final row)) => row.session.pinned,
-                              _ => false,
-                            }
-                        ? (
-                            label: _editingPinned ? loc.sessionListPinnedEditDone : loc.sessionListPinnedEdit,
-                            onTap: () => setState(() => _editingPinned = !_editingPinned),
-                          )
-                        : null,
+                    action: null,
                   ),
                   SessionListItemEntry(item: _LaunchItem(:final launch)) => IgnorePointer(
                     ignoring: _replacing,

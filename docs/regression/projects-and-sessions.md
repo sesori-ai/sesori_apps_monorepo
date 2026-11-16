@@ -672,7 +672,12 @@ state.
   and above the home indicator. While editing, pinned rows neither open, swipe
   nor show their long-press menu, and a finger on a row still scrolls the
   list; other rows are untouched. Done, a search, a chip, too few pinned rows
-  or leaving the screen ends editing.
+  or leaving the screen ends editing. While editing, the Pinned heading with
+  Done stays right under the glass bar as the pinned rows scroll on beneath
+  it, the last pinned row pushing it up as Pinned ends, and the edge scroll
+  starts below it; Edit or Done moves no row and no scroll offset, and once
+  editing ends a held heading fades out where it stands while the list's own
+  heading scrolls on.
 - Above the active session list, on the phone and the sidebar alike, chips
   read All, Running and Unread with the bridge's counts under the project
   filter and the search, whatever chip is chosen. A chip narrows the loaded
