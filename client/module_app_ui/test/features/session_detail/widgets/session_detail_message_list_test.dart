@@ -6451,6 +6451,20 @@ void main() {
       expect(_position(tester).pixels, 0);
     });
 
+    testWidgets("comes back if its message does before it has folded", (tester) async {
+      final harness = await pump(tester);
+      final removed = _userMessages(count: 12).last;
+
+      harness.removeMessage("user-11");
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      harness.appendNewestMessage(removed);
+      await tester.pumpAndSettle();
+
+      expect(_messageKey("user-11"), findsOneWidget);
+      expect(_leavingRows(tester), isEmpty);
+    });
+
     testWidgets("an edit watched from another surface moves the rows above one way only", (tester) async {
       final harness = await pump(tester);
       final tops = <double>[];
@@ -6487,20 +6501,6 @@ void main() {
       expect(tops.last, greaterThan(tops.first));
       expect(_messageKey("user-11"), findsNothing);
       expect(_position(tester).pixels, 0);
-    });
-
-    testWidgets("comes back if its message does before it has folded", (tester) async {
-      final harness = await pump(tester);
-      final removed = _userMessages(count: 12).last;
-
-      harness.removeMessage("user-11");
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
-      harness.appendNewestMessage(removed);
-      await tester.pumpAndSettle();
-
-      expect(_messageKey("user-11"), findsOneWidget);
-      expect(_leavingRows(tester), isEmpty);
     });
   });
 
