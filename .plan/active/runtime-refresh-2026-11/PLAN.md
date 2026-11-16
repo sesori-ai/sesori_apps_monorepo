@@ -18,38 +18,42 @@ All 11 `knownPlugins` entries in `bridge/app/lib/src/runtime/plugin_registry.dar
 | Claude Code | 2.1.322 | 2.1.325 (`715ff104`) | 2.1.221 | npm `latest`; probed archive matches `SHASUMS256.txt` | Step 4 | `--help` flags and unauthenticated handshake pass; live probes in step 7 |
 | Hermes Agent | 0.23.1 | 0.23.1 | 0.20.0 | Already the newest stable | None | — |
 | Pi | 1.5.2 | 1.5.2 | 0.99.0 | Already the newest stable | None | — |
-| Oh My Pi | 18.19.0 | 18.21.0 (`6f03614d`) | 17.2.13 | 8 binaries match `SHA256SUMS.txt` and GitHub digests | Step 4 | Managed install and offline initialize pass; busy-window probe in step 7 |
+| Oh My Pi | 18.19.0 | 18.21.0 (`6f03614d`) | 17.2.13 | 8 binaries match `SHA256SUMS.txt` and GitHub digests | Step 4, merged (#2741) | Managed install and offline initialize pass; live busy-window probe passes (7.c) |
 | DeepSeek | adapter 0.2.2 (dsh 0.2.2-rc.2) | adapter 0.2.3 (dsh 0.2.2-rc.3, `38a6a5c9`) | 0.1.5 | Producer release `v0.2.3` | Steps 5–6 | `npm run check` and darwin-arm64 packaged smoke pass; six-platform release CI |
 | Grok Build | 1.0.77 | 1.0.77 | 1.0.5 | Already the newest stable (`x.ai/cli/stable`) | None | — |
 
 ## Steps
 
 1. Publish this plan.
-2. OpenCode 2.3.0 with regenerated models (#2738).
+2. OpenCode 2.3.0 with regenerated models (#2738, merged).
 3. Antigravity 1.5.0 (#2737, merged).
-4. Copilot 1.0.112, Cursor 2026.11.13-eacade1, OMP 18.21.0, Claude Code 2.1.325 (#2741).
-5. DeepSeek adapter: move to dsh 0.2.2-rc.3 and release `v0.2.3` (sesori-deepseek-acp#25). Also fixes the
-   Windows arm64 packaging step, whose `Expand-Archive` broke on the current `windows-11-arm` runner image.
+4. Copilot 1.0.112, Cursor 2026.11.13-eacade1, OMP 18.21.0, Claude Code 2.1.325 (#2741, merged).
+5. DeepSeek adapter: move to dsh 0.2.2-rc.3 and release `v0.2.3` (sesori-deepseek-acp#25, merged and tagged
+   `v0.2.3`). Also fixes the Windows arm64 packaging step, whose `Expand-Archive` broke on the current
+   `windows-11-arm` runner image.
 6. Pin the DeepSeek consumer to adapter 0.2.3 from the published assets.
 7. Live follow-up probes against the local test endpoint, the fixes they show are needed, doc reconciliation,
-   skill corrections, then retire this plan. Fixes that need code get their own PRs inside this step.
+   skill corrections, then retire this plan. Fixes that need code get their own PRs inside this step:
+   - 7.a Claude "Always" shown with nothing to save.
+   - 7.b OpenCode 2.3.0 background sub-agent report rows in the parent session.
+   - 7.c OMP 18.21.0 busy-window docs and comments, plus the skill corrections below (this PR).
 
-## Findings to resolve in step 7
-
-Fixes that follow from the update (done without a separate decision once a probe confirms them):
+## Findings from step 7
 
 - Claude 2.1.325 only sends a saveable rule suggestion when saving would allow the command again; Sesori may still
-  show "Always" with nothing to save (`claude_approval_registry.dart`).
-- OMP 18.21.0 keeps a turn open until background jobs or live sub-agents can no longer resume it (upstream marks
-  it breaking). Probe steering, Stop and history in that window and fix or document what changes.
+  show "Always" with nothing to save (`claude_approval_registry.dart`). Fix in 7.a.
+- OMP 18.21.0 keeps a prompt open until background jobs or live sub-agents can no longer resume it. Probed live on
+  2026-11-16: steering answers `promptRequired` (the follow-up queues), Stop ends the prompt but not the job, and
+  history falls back to stored history. No code change; documented in 7.c.
 - Claude `supersedes` now also names a reply discarded for an unparsable tool call; Sesori ignores the field.
-- Claude may now support rewinding behind a compaction; Sesori refuses it today.
+- Claude rewinding behind a compaction still fails on 2.1.325, so Sesori's refusal stays.
+- Antigravity 1.5.0 telemetry needs no change: it only sends for business OAuth with a project, and Sesori allows
+  only personal OAuth.
+- OpenCode 2.3.0 background sub-agent report rows in the parent session: handled in 7.b.
 
-Owner decisions (asked on the review page):
+Owner decisions still open:
 
 - Raise the OMP floor to 18.20.1, which would delete two workarounds for upstream bugs fixed there.
-- Turn off Antigravity 1.5.0's new client telemetry in Sesori's isolated profile.
-- How OpenCode 2.3.0's background sub-agent reports show in the parent session.
 
 Track only: OpenCode first-token timing, Copilot `--resume` marking sessions in use, Claude sandbox prompts and
 `auto` permission-mode fallback, OMP late background results carried into the next prompt.
@@ -61,7 +65,7 @@ Track only: OpenCode first-token timing, Copilot `--resume` marking sessions in 
 
 ## Skill corrections
 
-Collected from the implementers and applied in step 7: OMP form field naming and fix versions, Antigravity
-allowlist and embedded-source audit tip, Copilot musl archives and compressed JS, Cursor bundle string diffing,
-DeepSeek lockfile regeneration, compare-API truncation workarounds, probes needing a PATH without user installs,
-running package tests after OpenCode regeneration (the analyzer skips generated files).
+Applied in 7.c: OMP form field naming, fix versions and busy-window probe, Antigravity allowlist, embedded-source
+audit tip and telemetry recheck, Copilot musl archives and compressed JS, Cursor bundle string diffing, DeepSeek
+lockfile regeneration and packaging, Claude proxy base URL and compaction-rewind recheck, compare-API truncation
+workarounds, probes needing a PATH without user installs, and running package tests after OpenCode regeneration.
