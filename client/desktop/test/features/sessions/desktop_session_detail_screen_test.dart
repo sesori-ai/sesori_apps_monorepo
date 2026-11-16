@@ -1172,6 +1172,39 @@ void main() {
         expect(panel, findsNothing);
       });
 
+      testWidgets("a /btw question replaces the open panel's chat with a new one asking it", (tester) async {
+        final states = StreamController<SessionDetailState>();
+        addTearDown(states.close);
+        await pumpPage(tester, session: root, initialState: sideChatState(), states: states.stream);
+        final answer = Completer<ApiResponse<AskSideQuestionResponse>>();
+        when(
+          () => sideChats.askSideQuestion(
+            sessionId: any(named: "sessionId"),
+            sideChatId: any(named: "sideChatId"),
+            question: any(named: "question"),
+          ),
+        ).thenAnswer((_) => answer.future);
+        await openFromComposer(tester);
+        final shown = createdSideChats.single;
+
+        // The composer enters side-question mode with a question typed.
+        states.add(sideChatState().copyWith(composerMode: const SessionComposerMode.sideQuestion()));
+        await tester.pump();
+        final composer = find.byType(SessionDetailComposerControls);
+        await tester.enterText(find.descendant(of: composer, matching: find.byType(EditableText)), "why so slow?");
+        when(cubit.submitSideQuestion).thenReturn("why so slow?");
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(createdSideChats, hasLength(2));
+        expect(shown.isClosed, isTrue);
+        expect(find.descendant(of: panel, matching: find.text("why so slow?")), findsOneWidget);
+        verify(
+          () => sideChats.askSideQuestion(sessionId: "session-1", sideChatId: null, question: "why so slow?"),
+        ).called(1);
+      });
+
       testWidgets("an archived session's Side chats link opens its newest chat read-only in the panel", (
         tester,
       ) async {
