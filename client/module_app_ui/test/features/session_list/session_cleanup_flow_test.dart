@@ -37,6 +37,8 @@ void main() {
       onSessionArchived: ({required context, required sessionId}) => archived.add(sessionId),
       onSessionDeleted: null,
       onSessionMarkedUnread: null,
+      openSession: _openNothing,
+      createSessionSearch: _searchNothing,
     );
     await tester.pumpWidget(
       MaterialApp.router(
@@ -150,6 +152,8 @@ void main() {
       onSessionArchived: null,
       onSessionDeleted: null,
       onSessionMarkedUnread: null,
+      openSession: _openNothing,
+      createSessionSearch: _searchNothing,
     );
 
     /// The menu entries for [target], kept in [entries] once built.
@@ -226,6 +230,8 @@ void main() {
       onSessionArchived: null,
       onSessionDeleted: null,
       onSessionMarkedUnread: null,
+      openSession: _openNothing,
+      createSessionSearch: _searchNothing,
     );
     late List<String> titles;
     await tester.pumpWidget(
@@ -311,6 +317,8 @@ void main() {
         onSessionArchived: null,
         onSessionDeleted: null,
         onSessionMarkedUnread: null,
+        openSession: _openNothing,
+        createSessionSearch: _searchNothing,
       );
       await tester.pumpWidget(
         MaterialApp.router(
@@ -513,3 +521,11 @@ void main() {
     });
   });
 }
+
+void _openNothing({required String projectId, required String projectName, required shared.Session session}) {}
+
+SessionSearchCubit _searchNothing({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) => throw UnimplementedError("These tests do not send sessions");

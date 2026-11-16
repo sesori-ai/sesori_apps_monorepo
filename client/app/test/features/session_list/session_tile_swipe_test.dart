@@ -44,6 +44,8 @@ void main() {
           onSessionArchived: null,
           onSessionDeleted: null,
           onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session.id),
+          openSession: _openNothing,
+          createSessionSearch: _searchNothing,
         ),
         session: session,
       ),
@@ -241,3 +243,11 @@ void main() {
     expect(find.widgetWithText(InkWell, "Delete"), findsOneWidget);
   });
 }
+
+void _openNothing({required String projectId, required String projectName, required Session session}) {}
+
+SessionSearchCubit _searchNothing({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) => throw UnimplementedError("These tests do not send sessions");

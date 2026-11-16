@@ -1217,6 +1217,7 @@ class _ScreenState() extends State<_Screen> {
 
   Widget _row({required String text}) {
     final bubble = UserMessageBubble(
+      selectionArea: null,
       markdown: wrapDictatedText(text: text),
       attachments: const [],
       outlined: false,

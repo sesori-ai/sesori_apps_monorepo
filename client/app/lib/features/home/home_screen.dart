@@ -66,6 +66,8 @@ class const _HomeView({
       onSessionArchived: closeDeletedSessionRoute,
       onSessionDeleted: closeDeletedSessionRoute,
       onSessionMarkedUnread: null,
+      openSession: openSentSession,
+      createSessionSearch: createSendSessionSearch,
     ),
     createActions: ({required window}) => createSessionActionsCubit(locator: getIt, window: window),
     onNewSession: onNewSession,

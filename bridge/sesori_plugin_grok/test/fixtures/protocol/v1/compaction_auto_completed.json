@@ -1,0 +1,17 @@
+{
+  "method": "_x.ai/session_notification",
+  "params": {
+    "sessionId": "01a00000-0000-7000-8000-000000000001",
+    "update": {
+      "sessionUpdate": "auto_compact_completed",
+      "tokens_before": 21022,
+      "tokens_after": 18671,
+      "elapsed_ms": 14780,
+      "summary_preview": null
+    },
+    "_meta": {
+      "eventId": "01a00000-0000-7000-8000-000000000001-15",
+      "agentTimestampMs": 1790000000000
+    }
+  }
+}

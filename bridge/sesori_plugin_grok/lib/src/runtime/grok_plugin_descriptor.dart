@@ -293,6 +293,7 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
         processes: host.processes,
         environment: host.environment,
       ),
+      clock: host.clock,
     );
     return await AcpBridgePlugin.start(plugin: grok, host: host, connectBudget: _connectBudget);
   }
