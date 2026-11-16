@@ -12,6 +12,9 @@ final class const NoSessionInterruptions() implements SessionInterruptionReposit
   Future<bool> reanchor({required String sessionId, required Map<String, String> replacementIds}) async => false;
 
   @override
+  Future<bool> hasRunningTurn({required String sessionId}) async => false;
+
+  @override
   Future<Map<String, SessionInterruptionDto>> readMany({required Set<String> sessionIds}) async => const {};
 
   @override

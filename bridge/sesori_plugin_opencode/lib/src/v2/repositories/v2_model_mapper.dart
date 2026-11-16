@@ -59,6 +59,7 @@ class const V2ModelMapper({required final String _pluginId}) {
     lastUserActivityAt: null,
     autoContinuation: null,
     approvalOverride: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,

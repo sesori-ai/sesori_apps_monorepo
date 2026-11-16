@@ -366,6 +366,72 @@ void main() {
       );
     });
 
+    test("replays a user interrupt as a stopped row and drops the CLI's filler reply", () async {
+      _writeTranscript(
+        temp: temp,
+        records: [
+          _messageRecord(
+            type: "user",
+            uuid: "prompt",
+            content: const [
+              {"type": "text", "text": "write an essay"},
+            ],
+          ),
+          _messageRecord(
+            type: "assistant",
+            uuid: "partial-record",
+            messageId: "partial",
+            model: "claude-test-model",
+            content: const [
+              {"type": "text", "text": "Rivers"},
+            ],
+          ),
+          _messageRecord(
+            type: "user",
+            uuid: "interrupt",
+            timestamp: "2026-08-09T10:00:05Z",
+            content: const [
+              {"type": "text", "text": "[Request interrupted by user]"},
+            ],
+          ),
+          _messageRecord(
+            type: "assistant",
+            uuid: "filler",
+            messageId: "filler-message",
+            model: "<synthetic>",
+            isApiErrorMessage: false,
+            content: const [
+              {"type": "text", "text": "No response requested."},
+            ],
+          ),
+          _messageRecord(
+            type: "user",
+            uuid: "tool-interrupt",
+            content: const [
+              {"type": "text", "text": "[Request interrupted by user for tool use]"},
+            ],
+          ),
+        ],
+      );
+
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        agentId: null,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        commands: const [],
+        residentTaskToolUseIds: const {},
+        catalogModelId: null,
+      );
+
+      expect(messages.map((message) => message.info.id), ["prompt", "partial", "interrupt", "tool-interrupt"]);
+      final stopped = messages.map((message) => message.info).whereType<PluginMessageError>().toList();
+      expect(stopped.map((error) => error.kind), [PluginErrorKind.stopped, PluginErrorKind.stopped]);
+      expect(stopped.first.errorMessage, "[Request interrupted by user]");
+      expect(stopped.first.modelID, "claude-test-model");
+      expect(stopped.first.time?.created, DateTime.utc(2026, 8, 9, 10, 0, 5).millisecondsSinceEpoch);
+      expect(messages.where((message) => message.info.id == "interrupt").single.parts, isEmpty);
+    });
+
     test("replays CLI API failures as one error instead of a synthetic assistant", () async {
       _writeTranscript(
         temp: temp,

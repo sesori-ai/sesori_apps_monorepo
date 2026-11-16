@@ -62,7 +62,10 @@ final class const ClaudeHistoryMapper({
         case ClaudeTranscriptAssistantRecord():
           if (skip(record)) continue;
           final blocks = _content.map(content: record.content);
-          if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
+          if (_content.containsInternalCommandOutput(blocks: blocks) ||
+              _content.isNoResponseFiller(model: record.model, blocks: blocks)) {
+            continue;
+          }
           if (record.model case final model? when model != "<synthetic>") lastRealModel = model;
           final assistant = assistantsByMessageId.putIfAbsent(record.id, () {
             final created = _AssistantHistoryMessage(
@@ -179,6 +182,17 @@ final class const ClaudeHistoryMapper({
               for (final result in toolResults) ?assistantsByToolId[result.toolUseId],
             };
             if (targets.length == 1) targets.single.content.add(record.content);
+            continue;
+          }
+          final stopped = _content.userInterruptMessage(
+            sessionId: sessionId,
+            messageId: record.id,
+            modelId: modelId(lastRealModel),
+            time: _messageTime(record.timestamp),
+            blocks: blocks,
+          );
+          if (stopped != null) {
+            entries.add(_MappedHistoryMessage(message: stopped));
             continue;
           }
           final message = _userTurn(
@@ -400,7 +414,8 @@ final class const ClaudeHistoryMapper({
 
 sealed class const _ClaudeHistoryEntry();
 
-/// A message fully mapped from one record: a user turn or a compaction row.
+/// A message fully mapped from one record: a user turn, a stopped turn's row or
+/// a compaction row.
 final class const _MappedHistoryMessage({required final PluginMessageWithParts message}) extends _ClaudeHistoryEntry;
 
 final class _ApiErrorHistoryMessage({

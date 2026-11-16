@@ -60,7 +60,7 @@ TranscriptHandoffs _build({
   List<QueuedSessionPrompt> queuedPrompts = const [],
 }) => const TranscriptHandoffBuilder().build(
   messages: messages,
-  turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: false),
+  turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: false, turnEndMessageIds: const {}),
   isBusy: isBusy,
   queuedPrompts: queuedPrompts,
 );

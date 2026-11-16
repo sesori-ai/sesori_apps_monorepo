@@ -67,7 +67,9 @@ seams:
 - **Composer mode.** The edit-and-fork plan's edit mode also takes over the
   composer header. Whichever plan lands first adds one sealed composer mode in
   `SessionDetailCubit` (normal, editing, side question), so the two modes can't
-  overlap; entering one leaves the other.
+  overlap. Starting an edit leaves a side question, its words kept as plain
+  text. A side question can't start while editing (Cancel the edit first), so
+  it never silently discards an edit in progress.
 
 ## Verified facts (pinned versions, 2026-11-14)
 
@@ -571,7 +573,9 @@ sits in the composer's options pill next to `+` and `/`.
 switches it into side-question mode.
 
 - **Where it lives.** The mode is the `sideQuestion` variant of the sealed
-  composer mode in `SessionDetailCubit` (see the composer-mode seam). The
+  composer mode in `SessionDetailCubit` (see the composer-mode seam). The cubit
+  holds one private sealed override (an edit or a side question), so the two
+  modes never overlap, and one entry check guards both ways in. The
   cubit enters it when the composer text starts with "/btw " and the session is
   `available`. Matching is on the exact prefix "/btw " (any letter case), at
   the start of the text only.
@@ -603,8 +607,13 @@ switches it into side-question mode.
   "Thinking…" until the whole answer arrives at once (no harness streams side
   answers; see Behaviour).
 - **The `/` picker.** On `available` sessions, the command picker also lists a
-  Sesori row, "btw: ask a side question", above the harness's commands.
-  Picking it enters the same mode with an empty field.
+  Sesori row, "btw: ask a side question", above the harness's commands; once
+  a search is typed it follows the matching commands, so Enter keeps picking
+  the best command match.
+  Picking it enters the same mode and keeps whatever the field already holds,
+  so no typed words are lost. While a command or images are staged, neither
+  way enters the mode and the row is hidden, because a side question takes
+  neither.
 - **Unavailable sessions.** On a session that isn't `available`, "/btw " stays
   plain text and goes to the harness like anything else typed, and the picker
   has no btw row. The button still answers a tap with the reason, so the

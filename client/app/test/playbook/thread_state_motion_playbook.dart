@@ -211,6 +211,7 @@ class _ThreadStateMotionPlaybookState() extends State<ThreadStateMotionPlaybook>
     isArchived: false,
     isRunning: working,
     unseen: true,
+    isInterrupted: false,
     onTap: () {},
     menuEntries: () => const [],
     onArchive: () {},

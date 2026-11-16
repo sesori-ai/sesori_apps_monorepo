@@ -70,11 +70,12 @@ the per-harness persistence is exactly the decided one:
 | Pi | `stopReason: aborted` → stopped | Same |
 | OpenCode v1 / v2 | `MessageAbortedError` / v2 abort error type → stopped | Same |
 | Codex | `turn/completed` `interrupted` for a turn Sesori interrupted → stopped | rollout `turn_aborted` → stopped |
-| Claude Code | interrupted branch of the result handler → stopped | the two `[Request interrupted by user…]` records → stopped instead of a user bubble |
+| Claude Code | the echoed `[Request interrupted by user…]` record → stopped | the two `[Request interrupted by user…]` records → stopped instead of a user bubble |
 
 Synthesized rows use `errorMessage: "Stopped"`; native rows keep their text. Only a stop requested through
-`abortSession` (Stop, Stop on archive) produces a live stopped row; shutdown's `interruptActiveWork` does not, so a
-bridge shutdown never says Stopped live.
+`abortSession` (Stop, Stop on archive) produces a live stopped row. Shutdown's `interruptActiveWork` does not, except
+in Claude Code, whose shutdown runs the same `abort` as Stop and can record a live stopped row; Step 6's supersession
+rule hides it behind the Interrupted line.
 
 A reload must never show two Stopped lines for one stop. `errorName` and `errorMessage` take no part in
 `replaceSessionMessages` pairing (they only choose which wording survives), so each synthesized live row needs a real
@@ -84,8 +85,8 @@ pairing key with its replay:
   "until re-read" behaviour).
 - omp: the live row and the replayed "Interrupted by user" notice are both id-less halt-notice rows; they pair the way
   Hermes and Cursor halt notices pair today (content-free error in the same visible context). Step 3 proves it.
-- Claude Code: the live row carries the id of the CLI's interrupt record when the stream reports it, otherwise the
-  replay pairs by the record's timestamp. Step 4 chooses after checking what stream-json echoes.
+- Claude Code: stream-json echoes the CLI's interrupt record with its transcript uuid, so the live row is that record
+  and pairs with its replay by id.
 - Codex: the live row's id derives from the interrupted turn id, which the rollout `turn_aborted` carries, so live and
   replay share the id.
 
@@ -172,8 +173,8 @@ the `Session` wire.
 - The interruption closes its turn. A bridge death before any output leaves the prompt unanswered, and
   `splitPromptTurns` would fold the Continue prompt into it, moving the line below the continued reply and offering
   Continue again. `splitPromptTurns` therefore takes the message ids after which a turn has ended (required named
-  parameter; the bridge's prompt index passes none), and the calculator passes `afterMessageId`. The calculator tests
-  cover an interruption before the first output followed by Continue.
+  parameter; the bridge's rewind, fork and prompt index pass the stored interruption), and the calculator passes
+  `afterMessageId`. The calculator tests cover an interruption before the first output followed by Continue.
 - Motion: both lines enter through `TranscriptPresence`. The live Stopped row takes the place of the folding Working
   row in the same frame, so the rows above hold still. Nothing above the line moves when it appears or when the
   Continue button leaves.
@@ -280,8 +281,11 @@ exactly one stopped row. ~500 lines.
 ### Step 4: Stopped on Claude Code and Codex
 
 Workspaces: `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_codex`, docs. Claude: map the two interrupt records to
-stopped rows in the history mapper and the live stream; emit the live row
-from the interrupted branch, folded with the replayed record. Codex: parse rollout `turn_aborted` (and its reason
+stopped rows in the history mapper and the live stream. Verified (claude 2.1.325): stream-json echoes the
+interrupt record with its transcript uuid before the `error_during_execution` result, so the live row is that record
+itself and pairs by id; a user Stop waits (bounded) for it before teardown. The CLI's synthetic assistant reply
+"No response requested." (model `<synthetic>`, one text block) is written to the transcript only on resume, never to
+stdout, so the history mapper drops it. Codex: parse rollout `turn_aborted` (and its reason
 when present) into a stopped row on replay; emit it live for a turn `abortSession` interrupted, with the id derived from
 the turn id. Tests per mapper plus a
 reload-after-live-stop test per harness asserting exactly one stopped row. ~600 lines.
@@ -308,6 +312,14 @@ Workspaces: `shared/sesori_shared` (`splitPromptTurns` turn-end ids), `bridge/ap
 `SessionTile` label (D7). Calculator and cubit tests without Flutter, including an interruption before the first output
 followed by Continue. Simulator recording of the Continue flow and the list label for the PR. Docs:
 projects-and-sessions and session-turns. ~700 lines.
+
+- Claude Code and Codex record a bridge shutdown like a user Stop, so a reload shows a stopped row in the cut-off turn,
+  sometimes after the interrupted message. Every stopped row in that turn is superseded: only the Interrupted line shows,
+  never both. A calculator test covers it.
+- #2651 thread 8: a phone left open on the session can reconnect while resolution starts the plugin, so its view
+  declaration arrives before the conversion and the list keeps "Interrupted" although the user is looking. The open
+  `SessionDetailCubit` re-sends its view declaration (the existing acknowledgement route) when a session update brings a
+  new unacknowledged interruption. A cubit test covers it.
 
 ### Step 7: reconcile regression docs and harness rows
 

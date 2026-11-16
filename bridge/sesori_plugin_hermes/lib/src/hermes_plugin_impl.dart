@@ -91,6 +91,29 @@ class HermesPlugin({
     _hermesSessionOptionsService.forgetSession(sessionId: sessionId);
   }
 
+  /// Hermes keeps a `session/cancel` that reaches an idle session and refuses
+  /// that session's next prompt with "Stopped waiting for another Hermes
+  /// process on this session. Your message was not processed." (verified
+  /// 0.21.5). A stop with no turn running or queued and no sub-agent work has
+  /// nothing to cancel, so it doesn't reach Hermes.
+  @override
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
+  }) async {
+    if (!hasPendingTurn(sessionId: sessionId) && !childSessionTracker.hasActiveWorkForRoot(sessionId: sessionId)) {
+      return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+    }
+    return await super.abortSession(
+      sessionId: sessionId,
+      subAgents: subAgents,
+      useAtomicStop: useAtomicStop,
+      knownSubAgentSessionIds: knownSubAgentSessionIds,
+    );
+  }
+
   @override
   void onConnectionReset() => _hermesSessionOptionsService.resetConnection();
 

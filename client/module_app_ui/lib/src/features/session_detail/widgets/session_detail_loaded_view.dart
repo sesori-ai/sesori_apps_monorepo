@@ -237,6 +237,7 @@ class SessionDetailLoadedView extends StatelessWidget {
                       pluginId: pluginId,
                       availability: state.sideQuestions,
                       isArchived: true,
+                      initialQuestion: null,
                     ),
                     _ => null,
                   },
@@ -348,13 +349,17 @@ class SessionDetailLoadedView extends StatelessWidget {
             }),
       editingMessageId: switch (state.composerMode) {
         SessionComposerEditing(:final messageId) => messageId,
-        SessionComposerNormal() => null,
+        SessionComposerNormal() || SessionComposerSideQuestion() => null,
       },
       streamingText: state.streamingText,
       children: state.children,
       childStatuses: state.childStatuses,
       isBusy: _isBusy(state: state),
       mainAgentRunning: state.mainAgentRunning,
+      interruptedTurn: state.interruptedTurn,
+      onContinueInterruptedTurn: readOnly || !state.interaction.canInteract
+          ? null
+          : context.read<SessionDetailCubit>().continueInterruptedTurn,
       // Null once the start of the transcript is loaded,
       // so the list stops asking for more.
       onLoadOlderMessages: state.olderMessagesCursor == null

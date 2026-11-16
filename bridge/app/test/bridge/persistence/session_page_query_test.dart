@@ -33,7 +33,7 @@ void main() {
     int? archivedAt,
     String? title,
     String? catalogTitle,
-    bool pinned = false,
+    int? pinOrder,
   }) {
     return db
         .into(db.sessionTable)
@@ -55,7 +55,7 @@ void main() {
             pluginId: "claude",
             title: Value(title),
             catalogTitle: Value(catalogTitle),
-            pinned: Value(pinned),
+            pinOrder: Value(pinOrder),
           ),
         );
   }
@@ -110,22 +110,26 @@ void main() {
     // Equal times fall back to the id, newest first.
     expect([for (final row in rows) row.sessionId], ["s3", "s2", "s1", "s0", "s4"]);
     final cursorAfterFirst = await page(limit: 1);
-    expect(cursorAfterFirst.nextKey, (pinned: false, sortAt: 15, sessionId: "s3"));
+    expect(cursorAfterFirst.nextKey, (pinOrder: null, sortAt: 15, sessionId: "s3"));
   });
 
-  test("pinnedFirst lists pinned roots first; without it the order is time only", () async {
-    await insert(id: "old-pin", updatedAt: 1, pinned: true);
-    await insert(id: "new", updatedAt: 30);
-    await insert(id: "pin", updatedAt: 10, pinned: true);
-    await insert(id: "mid", updatedAt: 20);
+  test(
+    "pinnedFirst lists pinned roots first by pin order, whatever their activity; without it the order is time only",
+    () async {
+      await insert(id: "old-pin", updatedAt: 1, pinOrder: 2);
+      await insert(id: "new", updatedAt: 30);
+      await insert(id: "pin", updatedAt: 10, pinOrder: 1);
+      await insert(id: "mid", updatedAt: 20);
 
-    expect(ids(rows: await page(pinnedFirst: true)), ["pin", "old-pin", "new", "mid"]);
-    expect(ids(rows: await page()), ["new", "mid", "pin", "old-pin"]);
-  });
+      expect(ids(rows: await page(pinnedFirst: true)), ["old-pin", "pin", "new", "mid"]);
+      expect(ids(rows: await page()), ["new", "mid", "pin", "old-pin"]);
+    },
+  );
 
   test("pinned-first pages continue across the pinned boundary", () async {
-    await insert(id: "pin-a", updatedAt: 10, pinned: true);
-    await insert(id: "pin-b", updatedAt: 5, pinned: true);
+    // Pin order wins over activity inside the pinned group.
+    await insert(id: "pin-a", updatedAt: 5, pinOrder: 9);
+    await insert(id: "pin-b", updatedAt: 10, pinOrder: 4);
     await insert(id: "rest-a", updatedAt: 30);
     await insert(id: "rest-b", updatedAt: 20);
     await insert(id: "rest-c", updatedAt: 1);
@@ -142,15 +146,15 @@ void main() {
 
     expect(seen, ["pin-a", "pin-b", "rest-a", "rest-b", "rest-c"]);
     expect(keys, [
-      (pinned: true, sortAt: 5, sessionId: "pin-b"),
-      (pinned: false, sortAt: 20, sessionId: "rest-b"),
+      (pinOrder: 4, sortAt: 10, sessionId: "pin-b"),
+      (pinOrder: null, sortAt: 20, sessionId: "rest-b"),
       null,
     ]);
     // A page that ends inside the pinned group continues with its rest.
     final afterFirstPin = await page(
       pinnedFirst: true,
       limit: 2,
-      after: (pinned: true, sortAt: 10, sessionId: "pin-a"),
+      after: (pinOrder: 9, sortAt: 5, sessionId: "pin-a"),
     );
     expect(ids(rows: afterFirstPin), ["pin-b", "rest-a"]);
   });
@@ -182,7 +186,7 @@ void main() {
     }
     final first = await page(limit: 2);
     expect(ids(rows: first), ["s4", "s3"]);
-    expect(first.nextKey, (pinned: false, sortAt: 30, sessionId: "s3"));
+    expect(first.nextKey, (pinOrder: null, sortAt: 30, sessionId: "s3"));
 
     // A newer row and a row that sorts inside the already-sent range do not
     // shift the next page.
@@ -202,7 +206,7 @@ void main() {
 
     final archived = await page(mode: SessionPageMode.archived, limit: 1);
     expect(ids(rows: archived), ["recent"]);
-    expect(archived.nextKey, (pinned: false, sortAt: 20, sessionId: "recent"));
+    expect(archived.nextKey, (pinOrder: null, sortAt: 20, sessionId: "recent"));
     expect(
       ids(
         rows: await page(mode: SessionPageMode.archived, after: archived.nextKey),

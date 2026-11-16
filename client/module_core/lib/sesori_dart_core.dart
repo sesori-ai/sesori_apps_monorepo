@@ -128,6 +128,7 @@ export "src/cubits/scheduled_tasks/scheduled_task_detail_cubit.dart";
 export "src/cubits/scheduled_tasks/scheduled_task_detail_state.dart";
 export "src/cubits/scheduled_tasks/scheduled_tasks_cubit.dart";
 export "src/cubits/scheduled_tasks/scheduled_tasks_state.dart";
+export "src/cubits/session_detail/interrupted_turn.dart";
 export "src/cubits/session_detail/load_through_outcome.dart";
 export "src/cubits/session_detail/local_send_phase.dart";
 export "src/cubits/session_detail/pending_form_cubit.dart";

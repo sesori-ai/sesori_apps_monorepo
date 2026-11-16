@@ -78,10 +78,17 @@ class const TranscriptTurnBuilder() {
     /// Whether older pages remain, so the leading messages may belong to a
     /// turn whose prompt has not loaded.
     required bool hasOlderMessages,
+
+    /// The messages after which a turn ended without a reply, as
+    /// `InterruptedTurnView.turnEndMessageIds` gives them.
+    required Set<String> turnEndMessageIds,
   }) {
     final turns = <TranscriptTurn>[];
     final turnIndexByMessageId = <String, int>{};
-    for (final (index, segment) in splitPromptTurns(messages: messages).indexed) {
+    for (final (index, segment) in splitPromptTurns(
+      messages: messages,
+      turnEndMessageIds: turnEndMessageIds,
+    ).indexed) {
       final messageIds = List<String>.unmodifiable([for (final message in segment.messages) message.info.id]);
       for (final id in messageIds) {
         turnIndexByMessageId[id] = index;

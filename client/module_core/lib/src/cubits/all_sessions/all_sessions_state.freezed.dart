@@ -15,7 +15,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AllSessionsRow {
 
- Session get session; ProjectSummary get project; bool get isRunning; bool get isUnseen; bool get isAwaitingInput; bool get isRetrying; int get backgroundTaskCount;
+ Session get session; ProjectSummary get project; bool get isRunning; bool get isUnseen; bool get isAwaitingInput; bool get isRetrying;/// A bridge stop cut the session's last turn off and the user has not
+/// opened the session or sent anything since; never while it runs again.
+ bool get isInterrupted; int get backgroundTaskCount;
 /// Create a copy of AllSessionsRow
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +29,20 @@ $AllSessionsRowCopyWith<AllSessionsRow> get copyWith => _$AllSessionsRowCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as AllSessionsRow;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AllSessionsRow&&(identical(other.session, _this.session) || other.session == _this.session)&&(identical(other.project, _this.project) || other.project == _this.project)&&(identical(other.isRunning, _this.isRunning) || other.isRunning == _this.isRunning)&&(identical(other.isUnseen, _this.isUnseen) || other.isUnseen == _this.isUnseen)&&(identical(other.isAwaitingInput, _this.isAwaitingInput) || other.isAwaitingInput == _this.isAwaitingInput)&&(identical(other.isRetrying, _this.isRetrying) || other.isRetrying == _this.isRetrying)&&(identical(other.backgroundTaskCount, _this.backgroundTaskCount) || other.backgroundTaskCount == _this.backgroundTaskCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AllSessionsRow&&(identical(other.session, _this.session) || other.session == _this.session)&&(identical(other.project, _this.project) || other.project == _this.project)&&(identical(other.isRunning, _this.isRunning) || other.isRunning == _this.isRunning)&&(identical(other.isUnseen, _this.isUnseen) || other.isUnseen == _this.isUnseen)&&(identical(other.isAwaitingInput, _this.isAwaitingInput) || other.isAwaitingInput == _this.isAwaitingInput)&&(identical(other.isRetrying, _this.isRetrying) || other.isRetrying == _this.isRetrying)&&(identical(other.isInterrupted, _this.isInterrupted) || other.isInterrupted == _this.isInterrupted)&&(identical(other.backgroundTaskCount, _this.backgroundTaskCount) || other.backgroundTaskCount == _this.backgroundTaskCount));
 }
 
 
 @override
 int get hashCode {
   final _this = this as AllSessionsRow;
-  return Object.hash(runtimeType,_this.session,_this.project,_this.isRunning,_this.isUnseen,_this.isAwaitingInput,_this.isRetrying,_this.backgroundTaskCount);
+  return Object.hash(runtimeType,_this.session,_this.project,_this.isRunning,_this.isUnseen,_this.isAwaitingInput,_this.isRetrying,_this.isInterrupted,_this.backgroundTaskCount);
 }
 
 @override
 String toString() {
   final _this = this as AllSessionsRow;
-  return 'AllSessionsRow(session: ${_this.session}, project: ${_this.project}, isRunning: ${_this.isRunning}, isUnseen: ${_this.isUnseen}, isAwaitingInput: ${_this.isAwaitingInput}, isRetrying: ${_this.isRetrying}, backgroundTaskCount: ${_this.backgroundTaskCount})';
+  return 'AllSessionsRow(session: ${_this.session}, project: ${_this.project}, isRunning: ${_this.isRunning}, isUnseen: ${_this.isUnseen}, isAwaitingInput: ${_this.isAwaitingInput}, isRetrying: ${_this.isRetrying}, isInterrupted: ${_this.isInterrupted}, backgroundTaskCount: ${_this.backgroundTaskCount})';
 }
 
 
@@ -51,7 +53,7 @@ abstract mixin class $AllSessionsRowCopyWith<$Res>  {
   factory $AllSessionsRowCopyWith(AllSessionsRow value, $Res Function(AllSessionsRow) _then) = _$AllSessionsRowCopyWithImpl;
 @useResult
 $Res call({
- Session session, ProjectSummary project, bool isRunning, bool isUnseen, bool isAwaitingInput, bool isRetrying, int backgroundTaskCount
+ Session session, ProjectSummary project, bool isRunning, bool isUnseen, bool isAwaitingInput, bool isRetrying, bool isInterrupted, int backgroundTaskCount
 });
 
 
@@ -68,7 +70,7 @@ class _$AllSessionsRowCopyWithImpl<$Res>
 
 /// Create a copy of AllSessionsRow
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? session = null,Object? project = null,Object? isRunning = null,Object? isUnseen = null,Object? isAwaitingInput = null,Object? isRetrying = null,Object? backgroundTaskCount = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? session = null,Object? project = null,Object? isRunning = null,Object? isUnseen = null,Object? isAwaitingInput = null,Object? isRetrying = null,Object? isInterrupted = null,Object? backgroundTaskCount = null,}) {
   return _then(AllSessionsRow(
 session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
 as Session,project: null == project ? _self.project : project // ignore: cast_nullable_to_non_nullable
@@ -76,6 +78,7 @@ as ProjectSummary,isRunning: null == isRunning ? _self.isRunning : isRunning // 
 as bool,isUnseen: null == isUnseen ? _self.isUnseen : isUnseen // ignore: cast_nullable_to_non_nullable
 as bool,isAwaitingInput: null == isAwaitingInput ? _self.isAwaitingInput : isAwaitingInput // ignore: cast_nullable_to_non_nullable
 as bool,isRetrying: null == isRetrying ? _self.isRetrying : isRetrying // ignore: cast_nullable_to_non_nullable
+as bool,isInterrupted: null == isInterrupted ? _self.isInterrupted : isInterrupted // ignore: cast_nullable_to_non_nullable
 as bool,backgroundTaskCount: null == backgroundTaskCount ? _self.backgroundTaskCount : backgroundTaskCount // ignore: cast_nullable_to_non_nullable
 as int,
   ));
@@ -107,7 +110,7 @@ $ProjectSummaryCopyWith<$Res> get project {
 
 
 class _AllSessionsRow implements AllSessionsRow {
-  const _AllSessionsRow({required this.session, required this.project, required this.isRunning, required this.isUnseen, required this.isAwaitingInput, required this.isRetrying, required this.backgroundTaskCount});
+  const _AllSessionsRow({required this.session, required this.project, required this.isRunning, required this.isUnseen, required this.isAwaitingInput, required this.isRetrying, required this.isInterrupted, required this.backgroundTaskCount});
   
 
 @override final  Session session;
@@ -116,6 +119,9 @@ class _AllSessionsRow implements AllSessionsRow {
 @override final  bool isUnseen;
 @override final  bool isAwaitingInput;
 @override final  bool isRetrying;
+/// A bridge stop cut the session's last turn off and the user has not
+/// opened the session or sent anything since; never while it runs again.
+@override final  bool isInterrupted;
 @override final  int backgroundTaskCount;
 
 /// Create a copy of AllSessionsRow
@@ -128,18 +134,18 @@ _$AllSessionsRowCopyWith<_AllSessionsRow> get copyWith => __$AllSessionsRowCopyW
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AllSessionsRow&&(identical(other.session, session) || other.session == session)&&(identical(other.project, project) || other.project == project)&&(identical(other.isRunning, isRunning) || other.isRunning == isRunning)&&(identical(other.isUnseen, isUnseen) || other.isUnseen == isUnseen)&&(identical(other.isAwaitingInput, isAwaitingInput) || other.isAwaitingInput == isAwaitingInput)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AllSessionsRow&&(identical(other.session, session) || other.session == session)&&(identical(other.project, project) || other.project == project)&&(identical(other.isRunning, isRunning) || other.isRunning == isRunning)&&(identical(other.isUnseen, isUnseen) || other.isUnseen == isUnseen)&&(identical(other.isAwaitingInput, isAwaitingInput) || other.isAwaitingInput == isAwaitingInput)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&(identical(other.isInterrupted, isInterrupted) || other.isInterrupted == isInterrupted)&&(identical(other.backgroundTaskCount, backgroundTaskCount) || other.backgroundTaskCount == backgroundTaskCount));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,session,project,isRunning,isUnseen,isAwaitingInput,isRetrying,backgroundTaskCount);
+    return Object.hash(runtimeType,session,project,isRunning,isUnseen,isAwaitingInput,isRetrying,isInterrupted,backgroundTaskCount);
 }
 
 @override
 String toString() {
-    return 'AllSessionsRow(session: $session, project: $project, isRunning: $isRunning, isUnseen: $isUnseen, isAwaitingInput: $isAwaitingInput, isRetrying: $isRetrying, backgroundTaskCount: $backgroundTaskCount)';
+    return 'AllSessionsRow(session: $session, project: $project, isRunning: $isRunning, isUnseen: $isUnseen, isAwaitingInput: $isAwaitingInput, isRetrying: $isRetrying, isInterrupted: $isInterrupted, backgroundTaskCount: $backgroundTaskCount)';
 }
 
 
@@ -150,7 +156,7 @@ abstract mixin class _$AllSessionsRowCopyWith<$Res> implements $AllSessionsRowCo
   factory _$AllSessionsRowCopyWith(_AllSessionsRow value, $Res Function(_AllSessionsRow) _then) = __$AllSessionsRowCopyWithImpl;
 @override @useResult
 $Res call({
- Session session, ProjectSummary project, bool isRunning, bool isUnseen, bool isAwaitingInput, bool isRetrying, int backgroundTaskCount
+ Session session, ProjectSummary project, bool isRunning, bool isUnseen, bool isAwaitingInput, bool isRetrying, bool isInterrupted, int backgroundTaskCount
 });
 
 
@@ -167,7 +173,7 @@ class __$AllSessionsRowCopyWithImpl<$Res>
 
 /// Create a copy of AllSessionsRow
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? session = null,Object? project = null,Object? isRunning = null,Object? isUnseen = null,Object? isAwaitingInput = null,Object? isRetrying = null,Object? backgroundTaskCount = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? session = null,Object? project = null,Object? isRunning = null,Object? isUnseen = null,Object? isAwaitingInput = null,Object? isRetrying = null,Object? isInterrupted = null,Object? backgroundTaskCount = null,}) {
   return _then(_AllSessionsRow(
 session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
 as Session,project: null == project ? _self.project : project // ignore: cast_nullable_to_non_nullable
@@ -175,6 +181,7 @@ as ProjectSummary,isRunning: null == isRunning ? _self.isRunning : isRunning // 
 as bool,isUnseen: null == isUnseen ? _self.isUnseen : isUnseen // ignore: cast_nullable_to_non_nullable
 as bool,isAwaitingInput: null == isAwaitingInput ? _self.isAwaitingInput : isAwaitingInput // ignore: cast_nullable_to_non_nullable
 as bool,isRetrying: null == isRetrying ? _self.isRetrying : isRetrying // ignore: cast_nullable_to_non_nullable
+as bool,isInterrupted: null == isInterrupted ? _self.isInterrupted : isInterrupted // ignore: cast_nullable_to_non_nullable
 as bool,backgroundTaskCount: null == backgroundTaskCount ? _self.backgroundTaskCount : backgroundTaskCount // ignore: cast_nullable_to_non_nullable
 as int,
   ));

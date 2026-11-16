@@ -314,20 +314,25 @@ class ScheduledTaskRunService({
   Future<Session> _createSession({required ScheduledTaskRecord task}) {
     final definition = task.definition;
     final (:command, :commandSource, :parts) = _promptOf(definition: definition);
-    return _sessionCreation.createScheduledRunSession(
-      request: CreateSessionRequest(
-        projectId: definition.projectId,
-        pluginId: definition.pluginId,
-        parts: parts,
-        agent: definition.agent,
-        model: definition.model,
-        command: command,
-        commandSource: commandSource,
-        variant: definition.variant,
-        fastMode: definition.fastMode,
-        dedicatedWorktree: definition.dedicatedWorktree,
+    return _prompts.sendWithSettingsIn(
+      pluginId: definition.pluginId,
+      projectId: definition.projectId,
+      settings: _settingsOf(definition: definition),
+      send: (settings) => _sessionCreation.createScheduledRunSession(
+        request: CreateSessionRequest(
+          projectId: definition.projectId,
+          pluginId: definition.pluginId,
+          parts: parts,
+          agent: settings.agent,
+          model: settings.model,
+          command: command,
+          commandSource: commandSource,
+          variant: settings.variant,
+          fastMode: settings.fastMode,
+          dedicatedWorktree: definition.dedicatedWorktree,
+        ),
+        scheduledRun: (taskId: task.id, approvalOverride: _approvalOverride(mode: definition.approvalMode)),
       ),
-      scheduledRun: (taskId: task.id, approvalOverride: _approvalOverride(mode: definition.approvalMode)),
     );
   }
 
@@ -342,20 +347,32 @@ class ScheduledTaskRunService({
     await _operations.dispatch(
       sessionId: sessionId,
       operation: command == null ? SessionOperation.sendPrompt : SessionOperation.sendCommand,
-      body: () => _prompts.sendPromptAlreadyReserved(
-        sessionId: sessionId,
-        promptId: SessionPromptService.generatePromptId(),
-        parts: parts,
-        variant: definition.variant,
-        fastMode: definition.fastMode,
-        agent: definition.agent,
-        model: definition.model,
-        command: command,
-        commandSource: commandSource,
-        handoff: null,
+      body: () => _prompts.sendWithSettingsIn(
+        pluginId: definition.pluginId,
+        projectId: definition.projectId,
+        settings: _settingsOf(definition: definition),
+        send: (settings) => _prompts.sendPromptAlreadyReserved(
+          sessionId: sessionId,
+          promptId: SessionPromptService.generatePromptId(),
+          parts: parts,
+          variant: settings.variant,
+          fastMode: settings.fastMode,
+          agent: settings.agent,
+          model: settings.model,
+          command: command,
+          commandSource: commandSource,
+          handoff: null,
+        ),
       ),
     );
   }
+
+  static PromptSettings _settingsOf({required ScheduledTaskDefinition definition}) => (
+    variant: definition.variant,
+    fastMode: definition.fastMode,
+    agent: definition.agent,
+    model: definition.model,
+  );
 
   /// Archives [taskId]'s finished run sessions beyond the newest
   /// [keptFinishedRuns] (D10). Pinned sessions are never candidates, and a

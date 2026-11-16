@@ -190,6 +190,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Session history and recovery](session-history-and-recovery.md)
 - [Session sending](session-sending.md)
 - [Session turns](session-turns.md)
+- [Side questions](side-questions.md)
 - [Tools and file changes](tools-and-file-changes.md)
 - [Transcript turn navigation](transcript-turn-navigation.md)
 - [Voice input](voice-input.md)
