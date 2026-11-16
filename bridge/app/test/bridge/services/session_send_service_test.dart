@@ -743,6 +743,7 @@ Session _session({
   autoContinuation: null,
   approvalOverride: null,
   scheduledTask: null,
+  interruption: null,
   forkedFrom: null,
 );
 

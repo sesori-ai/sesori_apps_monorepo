@@ -22,6 +22,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginSessionActivityAvailable,
         PluginSessionActivityUnavailable,
         PluginSessionReadiness,
+        PluginSessionStatus,
         PluginSessionVariant,
         PluginSideExchange,
         SessionForkPluginApi,
@@ -1737,26 +1738,15 @@ class SessionRepository({
     final results = await Future.wait(
       _runtime.eligiblePluginIds.map((pluginId) async {
         try {
-          final pluginStatuses = await _runtime.useIfActive(
-            pluginId: pluginId,
-            operation: SessionOperation.getSessionStatuses,
-            body: (plugin, _) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
-          );
-          if (pluginStatuses == null) return (pluginId: pluginId, statuses: null);
-          final bindings = await _sessionDao.getSessionsByBackendIds(
-            pluginId: pluginId,
-            backendSessionIds: pluginStatuses.keys.toList(growable: false),
-          );
+          final pluginStatuses = await _readPluginSessionStatuses(pluginId: pluginId);
           return (
             pluginId: pluginId,
-            statuses: {
-              for (final entry in pluginStatuses.entries)
-                if (bindings[entry.key] case final binding?)
-                  binding.sessionId: _stampSnapshotStatus(
-                    sessionId: binding.sessionId,
-                    status: entry.value.toSharedSessionStatus(),
-                  ),
-            },
+            statuses: pluginStatuses == null
+                ? null
+                : {
+                    for (final MapEntry(key: sessionId, value: status) in pluginStatuses.entries)
+                      sessionId: _stampSnapshotStatus(sessionId: sessionId, status: status),
+                  },
           );
         } on Object catch (error, stackTrace) {
           Log.w("Could not read session statuses from plugin $pluginId", error, stackTrace);
@@ -1773,6 +1763,45 @@ class SessionRepository({
           if (result.statuses == null) result.pluginId,
       ],
     );
+  }
+
+  /// [pluginId]'s session statuses keyed by bridge session id, as its plugin
+  /// reports them. A plugin that is not running yet is started for a
+  /// short-lived generation, since only it can say whether a turn is still
+  /// running. Throws when the plugin cannot start or the read fails.
+  Future<Map<String, SessionStatus>> getPluginSessionStatuses({required String pluginId}) async {
+    final (:value, generation: _) = await _runtime.useWithGeneration(
+      pluginId: pluginId,
+      operation: SessionOperation.getSessionStatuses,
+      residency: PluginGenerationResidency.transient,
+      body: (plugin) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
+    );
+    return await _toBridgeStatuses(pluginId: pluginId, pluginStatuses: value);
+  }
+
+  /// Null when [pluginId] is not active.
+  Future<Map<String, SessionStatus>?> _readPluginSessionStatuses({required String pluginId}) async {
+    final pluginStatuses = await _runtime.useIfActive(
+      pluginId: pluginId,
+      operation: SessionOperation.getSessionStatuses,
+      body: (plugin, _) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
+    );
+    if (pluginStatuses == null) return null;
+    return await _toBridgeStatuses(pluginId: pluginId, pluginStatuses: pluginStatuses);
+  }
+
+  Future<Map<String, SessionStatus>> _toBridgeStatuses({
+    required String pluginId,
+    required Map<String, PluginSessionStatus> pluginStatuses,
+  }) async {
+    final bindings = await _sessionDao.getSessionsByBackendIds(
+      pluginId: pluginId,
+      backendSessionIds: pluginStatuses.keys.toList(growable: false),
+    );
+    return {
+      for (final entry in pluginStatuses.entries)
+        if (bindings[entry.key] case final binding?) binding.sessionId: entry.value.toSharedSessionStatus(),
+    };
   }
 
   /// [status] as a client receives it live: a busy or retry status carries when
