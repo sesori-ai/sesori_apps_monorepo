@@ -3553,6 +3553,24 @@ abstract class AppLocalizations {
   /// **'Could not change approval for this session. Try again.'**
   String get sessionApprovalUpdateFailed;
 
+  /// Quiet line above the composer while the session's file edits run without asking, after the user chose Always on an edit. Followed by a dot and the Turn off action.
+  ///
+  /// In en, this message translates to:
+  /// **'Accepting edits'**
+  String get sessionEditsAutoAccepted;
+
+  /// Action beside 'Accepting edits' that makes the session's next file edit ask again.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get sessionEditsAutoAcceptedTurnOff;
+
+  /// Error alert when the bridge did not acknowledge turning off auto-accepted edits for the session.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not turn off accepting edits. Try again.'**
+  String get sessionStopAcceptingEditsFailed;
+
   /// Title of the sheet or dialog opened by tapping the YOLO chip on the session page.
   ///
   /// In en, this message translates to:

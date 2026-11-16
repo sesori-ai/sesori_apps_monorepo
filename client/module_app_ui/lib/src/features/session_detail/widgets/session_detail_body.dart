@@ -518,6 +518,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         PregoPopupAlertsNotificationsVariant.error,
         const Duration(seconds: 5),
       ),
+      SessionDetailStopAcceptingEditsFailed() => (
+        context.loc.sessionStopAcceptingEditsFailed,
+        null,
+        PregoPopupAlertsNotificationsVariant.error,
+        const Duration(seconds: 5),
+      ),
       SessionDetailAutoContinuationAlreadySubmitted() => (
         context.loc.sessionAutoContinuationAlreadySubmitted,
         null,

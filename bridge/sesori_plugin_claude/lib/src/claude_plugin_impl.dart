@@ -42,6 +42,7 @@ final class ClaudePlugin({
         McpManagementPluginApi,
         McpAuthenticationPluginApi,
         FormInteractionPluginApi,
+        SessionEditsAutoAcceptPluginApi,
         SessionExternalActionsPluginApi,
         SessionRewindPluginApi,
         SessionForkPluginApi,
@@ -752,6 +753,12 @@ final class ClaudePlugin({
       fastMode: applied.fastMode,
     );
   }
+
+  @override
+  bool editsAutoAccepted({required String sessionId}) => _approvals.acceptsEdits(sessionId: sessionId);
+
+  @override
+  Future<void> stopAcceptingEdits({required String sessionId}) => _sessions.stopAcceptingEdits(sessionId: sessionId);
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>

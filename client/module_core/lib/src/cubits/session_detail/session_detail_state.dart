@@ -190,6 +190,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// Whether a change to the session's approval mode awaits the bridge.
     @Default(false) bool isUpdatingApproval,
 
+    /// Whether the session's file edits run without asking for the rest of
+    /// the session, as the bridge last reported it.
+    @Default(false) bool editsAutoAccepted,
+
     /// The taken launch's first message, kept until [SessionDetailLoadedLaunch.showsLaunchReplacement]
     /// holds; see [SessionDetailLoading.launchHandoff].
     required SessionLaunchHandoff? launchHandoff,

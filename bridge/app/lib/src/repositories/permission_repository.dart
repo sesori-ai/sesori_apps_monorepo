@@ -52,6 +52,43 @@ class PermissionRepository({
     return pending ?? const [];
   }
 
+  /// Whether [sessionId]'s file edits run without asking for the rest of the
+  /// session. Like [getPendingPermissions], never wakes a stopped backend: a
+  /// stopped backend holds no such grant.
+  Future<bool> editsAutoAccepted({required String sessionId}) async {
+    final binding = await _pendingSupport.requireBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.getEditsAutoAccepted,
+    );
+    final accepted = await _runtime.useIfActive(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.getEditsAutoAccepted,
+      body: (plugin, _) async => switch (plugin) {
+        final SessionEditsAutoAcceptPluginApi api => api.editsAutoAccepted(sessionId: binding.backendSessionId),
+        _ => false,
+      },
+    );
+    return accepted ?? false;
+  }
+
+  /// Makes [sessionId]'s next file edit ask again. A no-op when its backend is
+  /// stopped or never auto-accepts edits, since it then holds no grant.
+  Future<void> stopAcceptingEdits({required String sessionId}) async {
+    final binding = await _pendingSupport.requireBinding(
+      sessionId: sessionId,
+      operation: SessionOperation.stopAcceptingEdits,
+    );
+    await _runtime.useIfActive(
+      pluginId: binding.pluginId,
+      operation: SessionOperation.stopAcceptingEdits,
+      body: (plugin, _) async {
+        if (plugin case final SessionEditsAutoAcceptPluginApi api) {
+          await api.stopAcceptingEdits(sessionId: binding.backendSessionId);
+        }
+      },
+    );
+  }
+
   bool _isVisible({required PluginPendingPermission permission, required Set<String> tombstoned}) =>
       _pendingSupport.isVisible(
         sessionId: permission.sessionID,

@@ -415,6 +415,39 @@ void main() {
     verify(() => cubit.setAutoContinuation(enabled: true)).called(1);
   });
 
+  testWidgets("the accepting-edits line fades in and out above a composer that stays put", (tester) async {
+    final idle = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(cubit, states.stream, initialState: idle);
+    when(cubit.stopAcceptingEdits).thenAnswer((_) async {});
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final turnOff = find.byKey(const Key("session-edits-auto-accepted-turn-off"));
+    final composerBottom = tester.getBottomLeft(find.byType(PromptInput)).dy;
+    expect(turnOff, findsNothing);
+
+    states.add(idle.copyWith(editsAutoAccepted: true));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    // Mid-fade: already there, still growing in.
+    expect(find.text("Accepting edits ·"), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(tester.getBottomLeft(find.byType(PromptInput)).dy, composerBottom);
+
+    await tester.tap(turnOff);
+    verify(cubit.stopAcceptingEdits).called(1);
+
+    states.add(idle);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    // It folds away as it last looked rather than vanishing.
+    expect(find.text("Accepting edits ·"), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text("Accepting edits ·"), findsNothing);
+    expect(tester.getBottomLeft(find.byType(PromptInput)).dy, composerBottom);
+  });
+
   testWidgets("an archived chat without timestamps still hides auto continuation", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       isArchived: true,

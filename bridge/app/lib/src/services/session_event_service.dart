@@ -296,6 +296,7 @@ class SessionEventService({
           BridgeSseCommandCatalogUpdated() ||
           BridgeSseSessionOptionsChanged() ||
           BridgeSseSessionQuotaBlocked() ||
+          BridgeSseSessionEditsAutoAcceptedChanged() ||
           BridgeSseSessionPromptDefaultsChanged() ||
           BridgeSseSessionDeleted() ||
           BridgeSseSessionDiff() ||
@@ -572,6 +573,7 @@ class SessionEventService({
       BridgeSseCommandCatalogUpdated() ||
       BridgeSseSessionOptionsChanged() ||
       BridgeSseSessionQuotaBlocked() ||
+      BridgeSseSessionEditsAutoAcceptedChanged() ||
       BridgeSseSessionDeleted() ||
       BridgeSseSessionDiff() ||
       BridgeSseSessionError() ||
@@ -653,6 +655,7 @@ class SessionEventService({
       BridgeSseCommandCatalogUpdated() ||
       BridgeSseSessionOptionsChanged() ||
       BridgeSseSessionQuotaBlocked() ||
+      BridgeSseSessionEditsAutoAcceptedChanged() ||
       BridgeSseSessionPromptDefaultsChanged() ||
       BridgeSseSessionDiff() ||
       BridgeSseSessionError() ||

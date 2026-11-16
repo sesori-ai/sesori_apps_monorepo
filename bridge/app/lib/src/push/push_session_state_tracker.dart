@@ -98,6 +98,7 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
           SesoriSessionHistoryRefreshed() ||
           SesoriSessionPromptSettled() ||
           SesoriSessionPromptDefaultsChanged() ||
+          SesoriSessionEditsAutoAccepted() ||
           SesoriCommandExecuted() ||
           SesoriSessionQueuedPrompts() ||
           SesoriMessagePartDelta() ||

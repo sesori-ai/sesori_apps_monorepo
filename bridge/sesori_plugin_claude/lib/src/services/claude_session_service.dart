@@ -549,6 +549,13 @@ final class ClaudeSessionService({
         fastMode: fastMode,
         allowedTools: _approvals.allowedToolsForSession(sessionId: sessionId),
       );
+      // Turn off can land while that relaunches the process in accept-edits,
+      // after the mode above was read: leave it now that the grant is gone.
+      await _processes.switchPermissionMode(
+        sessionId: sessionId,
+        from: ClaudePermissionMode.acceptEdits,
+        to: _approvals.permissionModeFor(sessionId: sessionId, requested: permissionMode),
+      );
       if (!_isCurrent(sessionId: sessionId, state: state, generation: generation) ||
           _isCancelled(mode: mode, state: state)) {
         mode.settleUnaccepted();
@@ -863,6 +870,20 @@ final class ClaudeSessionService({
       }
       return Set<String>.unmodifiable(activeSessionIds);
     }().timeout(budget);
+  }
+
+  /// Ends the accept-edits grant from Always on a file edit, so the next edit
+  /// asks again. A process in accept-edits leaves it first, at once even
+  /// mid-turn. If that fails, the grant stays and the error reaches the
+  /// caller, so Turn off can be tried again.
+  Future<void> stopAcceptingEdits({required String sessionId}) async {
+    if (!_approvals.acceptsEdits(sessionId: sessionId)) return;
+    await _processes.switchPermissionMode(
+      sessionId: sessionId,
+      from: ClaudePermissionMode.acceptEdits,
+      to: ClaudePermissionMode.standard,
+    );
+    _approvals.stopAcceptingEdits(sessionId: sessionId);
   }
 
   Future<void> deleteSession({required String sessionId}) async {

@@ -1070,9 +1070,15 @@ to a settings file. On a file edit, whose only suggestion is switching to
 accept-edits mode, Always switches the session to accept-edits, as Claude Code's
 own terminal does, so later edits in that session run without asking
 (implemented). An explicit Plan selection still applies, and the grant lives in
-bridge memory, so a bridge restart ends it. No mode is shown in the app yet; a
-follow-up adds the line. Commands Claude cannot save a rule for get no Always (not supported),
-only Once and Reject.
+bridge memory, so a bridge restart ends it. The app shows an "Accepting edits ·
+Turn off" line above the composer while the bridge reports the grant, and Turn
+off makes the next edit ask again (implemented, through the backend-neutral
+`SessionEditsAutoAcceptPluginApi`). When the plugin stops after its idle
+timeout, the grant ends without an event, so a connected app keeps the line
+until its next snapshot (known limitation). Only Claude Code reports this session-wide
+grant: other harnesses' Always grants are per-rule, so they never show the line
+(not supported). Commands Claude cannot save a rule for get no Always (not
+supported), only Once and Reject.
 
 Antigravity deliberately omits every persistent `allow_always` choice because
 Sesori's current permission contract cannot safely represent persistent approval.

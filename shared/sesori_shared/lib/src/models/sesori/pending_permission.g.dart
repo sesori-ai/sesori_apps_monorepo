@@ -14,11 +14,15 @@ _PendingPermissionResponse _$PendingPermissionResponseFromJson(Map json) =>
                 PendingPermission.fromJson(Map<String, dynamic>.from(e as Map)),
           )
           .toList(),
+      editsAutoAccepted: json['editsAutoAccepted'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$PendingPermissionResponseToJson(
   _PendingPermissionResponse instance,
-) => <String, dynamic>{'data': instance.data.map((e) => e.toJson()).toList()};
+) => <String, dynamic>{
+  'data': instance.data.map((e) => e.toJson()).toList(),
+  'editsAutoAccepted': instance.editsAutoAccepted,
+};
 
 _PendingPermission _$PendingPermissionFromJson(Map json) => _PendingPermission(
   id: json['id'] as String,

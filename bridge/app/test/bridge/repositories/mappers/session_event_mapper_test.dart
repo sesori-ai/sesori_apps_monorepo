@@ -26,6 +26,14 @@ void main() {
       expect(mapper.map(event: event, sessionIdsByBackendId: const {}), isNull);
     });
 
+    test("keeps the edits auto-accepted value while rewriting its session", () {
+      const event = BridgeSseSessionEditsAutoAcceptedChanged(sessionID: "backend-session", editsAutoAccepted: false);
+      final mapped = mapper.map(event: event, sessionIdsByBackendId: ids);
+      if (mapped is! BridgeSseSessionEditsAutoAcceptedChanged) fail("expected an edits event, got $mapped");
+      expect(mapped.sessionID, "ses-session");
+      expect(mapped.editsAutoAccepted, isFalse);
+    });
+
     test("rewrites every session-bearing event variant", () {
       final sessionInfo = _sessionInfo(
         sessionId: "backend-session",
@@ -79,6 +87,11 @@ void main() {
         (
           name: "prompt settled",
           event: const BridgeSsePromptSettled(sessionID: "backend-session", promptID: "prompt"),
+          expectedBackendIds: {"backend-session"},
+        ),
+        (
+          name: "edits auto-accepted changed",
+          event: const BridgeSseSessionEditsAutoAcceptedChanged(sessionID: "backend-session", editsAutoAccepted: true),
           expectedBackendIds: {"backend-session"},
         ),
         (

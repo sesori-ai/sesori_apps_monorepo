@@ -49,6 +49,7 @@ class const SessionEventMapper() {
     BridgeSseSessionUpdated() ||
     BridgeSseSessionOptionsChanged() ||
     BridgeSseSessionPromptDefaultsChanged() ||
+    BridgeSseSessionEditsAutoAcceptedChanged() ||
     BridgeSseSessionDeleted() ||
     BridgeSseSessionDiff() ||
     BridgeSseSessionError() ||
@@ -88,6 +89,7 @@ class const SessionEventMapper() {
       BridgeSseSessionOptionsChanged() ||
       BridgeSseSessionQuotaBlocked() ||
       BridgeSseSessionPromptDefaultsChanged() ||
+      BridgeSseSessionEditsAutoAcceptedChanged() ||
       BridgeSseSessionDiff() ||
       BridgeSseSessionError() ||
       BridgeSseSessionCompacted() ||
@@ -128,6 +130,7 @@ class const SessionEventMapper() {
       BridgeSseSessionQuotaBlocked(:final sessionID) ||
       BridgeSsePromptSettled(:final sessionID) ||
       BridgeSseSessionPromptDefaultsChanged(:final sessionID) ||
+      BridgeSseSessionEditsAutoAcceptedChanged(:final sessionID) ||
       BridgeSseSessionStatus(:final sessionID) ||
       BridgeSseSessionIdle(:final sessionID) ||
       BridgeSseCommandExecuted(:final sessionID) ||
@@ -183,6 +186,7 @@ class const SessionEventMapper() {
     BridgeSseSessionOptionsChanged() ||
     BridgeSseSessionQuotaBlocked() ||
     BridgeSseSessionPromptDefaultsChanged() ||
+    BridgeSseSessionEditsAutoAcceptedChanged() ||
     BridgeSseSessionDeleted() ||
     BridgeSseSessionDiff() ||
     BridgeSseSessionError() ||
@@ -287,6 +291,15 @@ class const SessionEventMapper() {
           ),
           null => null,
         },
+      BridgeSseSessionEditsAutoAcceptedChanged(:final sessionID, :final editsAutoAccepted) => switch (mapped(
+        sessionID,
+      )) {
+        final sessionId? => BridgeSseSessionEditsAutoAcceptedChanged(
+          sessionID: sessionId,
+          editsAutoAccepted: editsAutoAccepted,
+        ),
+        null => null,
+      },
       BridgeSseSessionStatus(:final sessionID, :final status) => switch (mapped(sessionID)) {
         final sessionId? => BridgeSseSessionStatus(sessionID: sessionId, status: status),
         null => null,

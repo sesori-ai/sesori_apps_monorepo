@@ -1,5 +1,6 @@
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/routing/get_session_permissions_handler.dart";
+import "package:sesori_bridge/src/routing/stop_accepting_edits_handler.dart";
 import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -94,6 +95,32 @@ void main() {
 
       expect(response, const PendingPermissionResponse(data: []));
       expect(autoApprovalService.resolveCalls.single.single.id, "p-1");
+    });
+
+    test("reports and ends a plugin's edits auto-accept grant through the backend session id", () async {
+      final editsPlugin = _EditsAutoAcceptPlugin()..acceptingSessions.add("backend-root");
+      addTearDown(editsPlugin.close);
+      final repository = singlePluginPermissionRepository(plugin: editsPlugin, sessionDao: db.sessionDao);
+      final permissionsHandler = GetSessionPermissionsHandler(
+        permissionRepository: repository,
+        permissionAutoApprovalService: autoApprovalService,
+      );
+      final stopHandler = StopAcceptingEditsHandler(permissionRepository: repository);
+      Future<PendingPermissionResponse> fetch() => permissionsHandler.handle(
+        request: makeRequest("POST", "/session/permissions"),
+        body: const SessionIdRequest(sessionId: "root"),
+      );
+
+      expect((await fetch()).editsAutoAccepted, isTrue);
+
+      expect(stopHandler.canHandle(makeRequest("POST", "/session/stop-accepting-edits")), isTrue);
+      await stopHandler.handle(
+        request: makeRequest("POST", "/session/stop-accepting-edits"),
+        body: const SessionIdRequest(sessionId: "root"),
+      );
+
+      expect(editsPlugin.stopCalls, ["backend-root"]);
+      expect((await fetch()).editsAutoAccepted, isFalse);
     });
 
     test("maps plugin permissions to shared, preserving displaySessionId", () async {
@@ -309,6 +336,20 @@ void main() {
       expect(derivedPlugin.permissionReplyCalls, isZero);
     });
   });
+}
+
+class _EditsAutoAcceptPlugin() extends FakeBridgePlugin implements SessionEditsAutoAcceptPluginApi {
+  final Set<String> acceptingSessions = {};
+  final List<String> stopCalls = [];
+
+  @override
+  bool editsAutoAccepted({required String sessionId}) => acceptingSessions.contains(sessionId);
+
+  @override
+  Future<void> stopAcceptingEdits({required String sessionId}) async {
+    stopCalls.add(sessionId);
+    acceptingSessions.remove(sessionId);
+  }
 }
 
 class _FakePermissionAutoApprovalService() implements PermissionAutoApprovalService {

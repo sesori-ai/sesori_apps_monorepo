@@ -41,6 +41,7 @@ class SessionOptionsChangedRefreshListener({
           BridgeSseSessionCreated() ||
           BridgeSseSessionUpdated() ||
           BridgeSseSessionQuotaBlocked() ||
+          BridgeSseSessionEditsAutoAcceptedChanged() ||
           BridgeSseSessionPromptDefaultsChanged() ||
           BridgeSseSessionDeleted() ||
           BridgeSseSessionDiff() ||

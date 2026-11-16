@@ -33,6 +33,7 @@ class GetSessionPermissionsHandler({
     final permissions = await _permissionRepository.getPendingPermissions(sessionId: sessionId);
     return PendingPermissionResponse(
       data: await _permissionAutoApprovalService.resolveSnapshot(permissions: permissions),
+      editsAutoAccepted: await _permissionRepository.editsAutoAccepted(sessionId: sessionId),
     );
   }
 }

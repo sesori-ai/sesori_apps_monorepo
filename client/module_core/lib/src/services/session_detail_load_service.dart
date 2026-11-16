@@ -241,11 +241,11 @@ class SessionDetailLoadService({
           return <PendingQuestion>[];
         }(),
       };
-      final pendingPermissions = switch (permissionsResponse) {
-        SuccessResponse(:final data) => data.data,
+      final (pendingPermissions, editsAutoAccepted) = switch (permissionsResponse) {
+        SuccessResponse(:final data) => (data.data, data.editsAutoAccepted),
         ErrorResponse(:final error) => () {
           logw("Failed to load pending permissions; treating the session as having none", error);
-          return <PendingPermission>[];
+          return (<PendingPermission>[], false);
         }(),
       };
       // An error is also the old-bridge (unknown route) path: no queue info.
@@ -284,6 +284,7 @@ class SessionDetailLoadService({
           cannotContinueMessage: messagesPage.cannotContinueMessage,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
+          editsAutoAccepted: editsAutoAccepted,
           bridgeQueuedPrompts: bridgeQueuedPrompts,
           childSessions: childSessions,
           statuses: statuses,
@@ -541,6 +542,10 @@ class const SessionDetailSnapshot({
   required final List<PendingQuestion> pendingQuestions,
   required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
   required final List<PendingPermission> pendingPermissions,
+
+  /// Whether the session's file edits run without asking for the rest of the
+  /// session. False when the bridge could not say.
+  required final bool editsAutoAccepted,
   required final List<Session> childSessions,
   required final Map<String, SessionStatus> statuses,
   required final List<AgentInfo> agents,

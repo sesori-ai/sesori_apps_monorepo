@@ -16,7 +16,11 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PendingPermissionResponse {
 
- List<PendingPermission> get data;
+ List<PendingPermission> get data;/// Whether the session's file edits currently run without asking, because
+/// the user allowed them for the rest of the session from an edit's
+/// approval. `POST /session/stop-accepting-edits` makes the next edit ask
+/// again.
+ bool get editsAutoAccepted;
 /// Create a copy of PendingPermissionResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +34,20 @@ $PendingPermissionResponseCopyWith<PendingPermissionResponse> get copyWith => _$
 @override
 bool operator ==(Object other) {
   final _this = this as PendingPermissionResponse;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingPermissionResponse&&const DeepCollectionEquality().equals(other.data, _this.data));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingPermissionResponse&&const DeepCollectionEquality().equals(other.data, _this.data)&&(identical(other.editsAutoAccepted, _this.editsAutoAccepted) || other.editsAutoAccepted == _this.editsAutoAccepted));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as PendingPermissionResponse;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data));
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data),_this.editsAutoAccepted);
 }
 
 @override
 String toString() {
   final _this = this as PendingPermissionResponse;
-  return 'PendingPermissionResponse(data: ${_this.data})';
+  return 'PendingPermissionResponse(data: ${_this.data}, editsAutoAccepted: ${_this.editsAutoAccepted})';
 }
 
 
@@ -54,7 +58,7 @@ abstract mixin class $PendingPermissionResponseCopyWith<$Res>  {
   factory $PendingPermissionResponseCopyWith(PendingPermissionResponse value, $Res Function(PendingPermissionResponse) _then) = _$PendingPermissionResponseCopyWithImpl;
 @useResult
 $Res call({
- List<PendingPermission> data
+ List<PendingPermission> data, bool editsAutoAccepted
 });
 
 
@@ -71,10 +75,11 @@ class _$PendingPermissionResponseCopyWithImpl<$Res>
 
 /// Create a copy of PendingPermissionResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? data = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? data = null,Object? editsAutoAccepted = null,}) {
   return _then(PendingPermissionResponse(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
-as List<PendingPermission>,
+as List<PendingPermission>,editsAutoAccepted: null == editsAutoAccepted ? _self.editsAutoAccepted : editsAutoAccepted // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -86,7 +91,7 @@ as List<PendingPermission>,
 @JsonSerializable()
 
 class _PendingPermissionResponse implements PendingPermissionResponse {
-  const _PendingPermissionResponse({required  List<PendingPermission> data}): _data = data;
+  const _PendingPermissionResponse({required  List<PendingPermission> data, this.editsAutoAccepted = false}): _data = data;
   factory _PendingPermissionResponse.fromJson(Map<String, dynamic> json) => _$PendingPermissionResponseFromJson(json);
 
  final  List<PendingPermission> _data;
@@ -96,6 +101,11 @@ class _PendingPermissionResponse implements PendingPermissionResponse {
   return EqualUnmodifiableListView(_data);
 }
 
+/// Whether the session's file edits currently run without asking, because
+/// the user allowed them for the rest of the session from an edit's
+/// approval. `POST /session/stop-accepting-edits` makes the next edit ask
+/// again.
+@override@JsonKey() final  bool editsAutoAccepted;
 
 /// Create a copy of PendingPermissionResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -110,18 +120,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingPermissionResponse&&const DeepCollectionEquality().equals(other.data, _data));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingPermissionResponse&&const DeepCollectionEquality().equals(other.data, _data)&&(identical(other.editsAutoAccepted, editsAutoAccepted) || other.editsAutoAccepted == editsAutoAccepted));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data),editsAutoAccepted);
 }
 
 @override
 String toString() {
-    return 'PendingPermissionResponse(data: $data)';
+    return 'PendingPermissionResponse(data: $data, editsAutoAccepted: $editsAutoAccepted)';
 }
 
 
@@ -132,7 +142,7 @@ abstract mixin class _$PendingPermissionResponseCopyWith<$Res> implements $Pendi
   factory _$PendingPermissionResponseCopyWith(_PendingPermissionResponse value, $Res Function(_PendingPermissionResponse) _then) = __$PendingPermissionResponseCopyWithImpl;
 @override @useResult
 $Res call({
- List<PendingPermission> data
+ List<PendingPermission> data, bool editsAutoAccepted
 });
 
 
@@ -149,10 +159,11 @@ class __$PendingPermissionResponseCopyWithImpl<$Res>
 
 /// Create a copy of PendingPermissionResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? data = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? data = null,Object? editsAutoAccepted = null,}) {
   return _then(_PendingPermissionResponse(
 data: null == data ? _self._data : data // ignore: cast_nullable_to_non_nullable
-as List<PendingPermission>,
+as List<PendingPermission>,editsAutoAccepted: null == editsAutoAccepted ? _self.editsAutoAccepted : editsAutoAccepted // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

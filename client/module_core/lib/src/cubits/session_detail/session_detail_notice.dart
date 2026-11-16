@@ -31,6 +31,10 @@ final class const SessionDetailAutoContinuationAlreadySubmitted() extends Sessio
 /// The bridge did not acknowledge a change to the session's approval mode.
 final class const SessionDetailApprovalUpdateFailed() extends SessionDetailNotice;
 
+/// The bridge did not acknowledge turning off auto-accepted edits, so they
+/// still run without asking.
+final class const SessionDetailStopAcceptingEditsFailed() extends SessionDetailNotice;
+
 /// An edit's Resend found the session running a turn. The shell offers to
 /// stop it first; see `SessionDetailCubit.stopAndResendEdit`.
 final class const SessionDetailEditBusy() extends SessionDetailNotice;

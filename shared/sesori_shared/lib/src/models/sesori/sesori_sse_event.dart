@@ -191,6 +191,15 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required List<QueuedSessionPrompt> prompts,
   }) = SesoriSessionQueuedPrompts;
 
+  /// Whether the session's file edits now run without asking. Carries the full
+  /// value, like `editsAutoAccepted` in `POST /session/permissions`.
+  @FreezedUnionValue("session.edits-auto-accepted")
+  @Implements<SesoriSessionEvent>()
+  const factory sessionEditsAutoAccepted({
+    required String sessionID,
+    required bool editsAutoAccepted,
+  }) = SesoriSessionEditsAutoAccepted;
+
   // ---------------------------------------------------------------------------
   // Message — all implement SesoriSessionEvent
   // ---------------------------------------------------------------------------

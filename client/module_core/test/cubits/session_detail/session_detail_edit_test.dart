@@ -471,6 +471,7 @@ SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, requi
       awaitingHarnessSync: false,
       pendingQuestions: const [],
       pendingPermissions: const [],
+      editsAutoAccepted: false,
       childSessions: const [],
       statuses: {_sessionId: status},
       agents: const [],

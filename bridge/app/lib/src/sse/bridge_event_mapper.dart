@@ -30,6 +30,8 @@ class BridgeEventMapper({
         BridgeSseSessionQuotaBlocked() => null,
         // Published by SessionPromptService with the session's stored fast mode.
         BridgeSseSessionPromptDefaultsChanged() => null,
+        BridgeSseSessionEditsAutoAcceptedChanged(:final sessionID, :final editsAutoAccepted) =>
+          SesoriSseEvent.sessionEditsAutoAccepted(sessionID: sessionID, editsAutoAccepted: editsAutoAccepted),
         BridgeSseSessionDeleted(:final info) => _tryParseSseEvent({"type": "session.deleted", "info": info}),
         BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),
         BridgeSseSessionError(:final sessionID) => SesoriSseEvent.sessionError(sessionID: sessionID),
