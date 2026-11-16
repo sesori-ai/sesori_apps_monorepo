@@ -1579,7 +1579,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         if (_handoffs.queuedMarkers[prompt.id] case final marker?) {
           return _revealable(
             createdAtMs: prompt.createdAt,
-            child: HandoffMarkerRow(marker: marker),
+            child: _endingInterruptedTurn(messageId: null, child: HandoffMarkerRow(marker: marker)),
           );
         }
         final card = _handoffs.queuedCards[prompt.id];
