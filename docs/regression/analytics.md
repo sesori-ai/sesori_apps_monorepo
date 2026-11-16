@@ -100,6 +100,13 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   nothing. The desktop does not send it to the warehouse yet, because the auth server's product-event route doesn't
   accept it. Reporting reads it from the raw export: adoption is read as sends per harness and the share of each
   outcome.
+- Saving a scheduled task reports `scheduled_task_saved` once per save the bridge accepted, with `action` (`created`,
+  `edited`), `repeat_kind` (`once`, `daily`, `weekdays`, `weekly`, `every_hours`), `run_mode` (`new_session`,
+  `same_session`), `approval_mode` (`ask`, `approve_all`), `missed_run_policy` (`run_when_back`, `wait_for_next`)
+  only for a repeating task (Once omits it), and `auto_compact` only for a same-session task. It never carries the prompt, name, project, harness, model or times, and a
+  refused or failed save reports nothing. The Scheduled page and a task's page report `scheduled_tasks` and
+  `scheduled_task_detail`; the task editor reports no screen, and the desktop does not send the event, until the auth
+  server accepts both. Run outcomes are not tracked. See [Scheduled tasks](scheduled-tasks.md).
 - The CEO call invitation reports `founder_call_shown` and `founder_call_declined` with `surface`
   `computer_connected_sheet`, and `founder_call_link_opened` with `computer_connected_sheet` or `settings`; see
   [founder call](founder-call.md).
@@ -210,6 +217,7 @@ account against a real property.
 - `session_forked` fires for a fork the app never requested, or carries anything beyond `harness` and `outcome`.
 - `session_sent_to_session` fires for a send the app never made, fires twice for one send, reports the target's harness,
   or carries anything beyond `harness` and `outcome`.
+- `scheduled_task_saved` fires for a refused or failed save, or carries anything beyond its pinned parameters.
 - `prompt_files_sent` fires for a failed, locally queued or image-only prompt, fires twice for one accepted prompt, or
   carries anything beyond its two pinned parameters.
 - A delayed Remote Config response holds the native splash or first product frame; automatic screen reporting is

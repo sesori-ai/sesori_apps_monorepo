@@ -1184,6 +1184,12 @@ works without a bridge change. A freshly started agent process has advertised
 no commands yet, so the plugin first loads the quiet session, as its next turn
 would, and then reads them.
 
+The task editor's Auto-compact switch follows the descriptor flag: it is off
+and inert for Antigravity, and a tap says the harness can't compact on request.
+OpenCode declares the flag for v1 too, so a v1 task saves auto-compact on and
+its runs' requests answer unsupported. See
+[Scheduled tasks](regression/scheduled-tasks.md) for the policy's coverage.
+
 ### Prompt-cache life
 
 Each plugin answers `getPromptCacheLife` with how long its harness keeps a
