@@ -55,8 +55,7 @@ const _definitions = [
 ];
 
 bool _isChecked(String library) =>
-    (library.startsWith(_themePrego) || library.startsWith(_appUi)) &&
-    !_definitions.any(library.startsWith);
+    (library.startsWith(_themePrego) || library.startsWith(_appUi)) && !_definitions.any(library.startsWith);
 
 class _Visitor extends SimpleAstVisitor<void> {
   _Visitor(this.rule);
@@ -77,11 +76,7 @@ class _Visitor extends SimpleAstVisitor<void> {
     final element = node.element;
     if (element is GetterElement &&
         element.name == 'isDesktopScale' &&
-        _isClass(
-          element.enclosingElement,
-          name: 'PregoDesignSystem',
-          package: _themePrego,
-        )) {
+        _isClass(element.enclosingElement, name: 'PregoDesignSystem', package: _themePrego)) {
       rule.reportAtNode(node);
       return;
     }
@@ -89,17 +84,9 @@ class _Visitor extends SimpleAstVisitor<void> {
     final constant = element.variable;
     if (constant is! FieldElement || !constant.isEnumConstant) return;
     final reference = _constantReference(node);
-    if (_isClass(
-      constant.enclosingElement,
-      name: 'ComposerPresentation',
-      package: _appUi,
-    )) {
+    if (_isClass(constant.enclosingElement, name: 'ComposerPresentation', package: _appUi)) {
       rule.reportAtNode(reference);
-    } else if (_isClass(
-          constant.enclosingElement,
-          name: 'PregoInteractionMode',
-          package: _themePrego,
-        ) &&
+    } else if (_isClass(constant.enclosingElement, name: 'PregoInteractionMode', package: _themePrego) &&
         !_isMatchedAgainstScopeRead(reference)) {
       // A mode handed in as a value. Compared with, or switched on against, a
       // scope read, it is part of that read's finding.
@@ -116,32 +103,20 @@ bool _isScopeRead(MethodInvocation node) {
     final element = node.methodName.element;
     return element is MethodElement &&
         element.isStatic &&
-        _isClass(
-          element.enclosingElement,
-          name: 'PregoInteractionScope',
-          package: _themePrego,
-        );
+        _isClass(element.enclosingElement, name: 'PregoInteractionScope', package: _themePrego);
   }
   if (!name.endsWith('InheritedWidgetOfExactType')) return false;
   // Resolved, so a type argument inferred from the declared type counts too.
   final typeArguments = node.typeArgumentTypes ?? const [];
   return typeArguments.length == 1 &&
-      _isClass(
-        typeArguments.first.element,
-        name: 'PregoInteractionScope',
-        package: _themePrego,
-      );
+      _isClass(typeArguments.first.element, name: 'PregoInteractionScope', package: _themePrego);
 }
 
 /// Whether [expression] is a scope read, or the `mode` of an inherited-widget
 /// lookup.
 bool _readsScope(Expression expression) => switch (expression.unParenthesized) {
   final MethodInvocation invocation => _isScopeRead(invocation),
-  PropertyAccess(
-    :final target?,
-    propertyName: SimpleIdentifier(name: 'mode'),
-  ) =>
-    _readsScope(target),
+  PropertyAccess(:final target?, propertyName: SimpleIdentifier(name: 'mode')) => _readsScope(target),
   _ => false,
 };
 
@@ -150,22 +125,16 @@ bool _readsScope(Expression expression) => switch (expression.unParenthesized) {
 bool _isMatchedAgainstScopeRead(AstNode reference) {
   final parent = reference.parent;
   if (parent is BinaryExpression) {
-    final other = identical(parent.leftOperand, reference)
-        ? parent.rightOperand
-        : parent.leftOperand;
+    final other = identical(parent.leftOperand, reference) ? parent.rightOperand : parent.leftOperand;
     return _readsScope(other);
   }
   if (parent is! ConstantPattern) return false;
   AstNode? node = parent;
-  while (node is DartPattern ||
-      node is GuardedPattern ||
-      node is SwitchExpressionCase ||
-      node is SwitchPatternCase) {
+  while (node is DartPattern || node is GuardedPattern || node is SwitchExpressionCase || node is SwitchPatternCase) {
     node = node?.parent;
   }
   return switch (node) {
-    SwitchExpression(:final expression) ||
-    SwitchStatement(:final expression) => _readsScope(expression),
+    SwitchExpression(:final expression) || SwitchStatement(:final expression) => _readsScope(expression),
     _ => false,
   };
 }
@@ -173,19 +142,11 @@ bool _isMatchedAgainstScopeRead(AstNode reference) {
 /// The whole reference to the enum constant named by [node]:
 /// `PregoInteractionMode.pointer`, its import-prefixed form, or `.pointer`.
 AstNode _constantReference(SimpleIdentifier node) => switch (node.parent) {
-  final PrefixedIdentifier parent when identical(parent.identifier, node) =>
-    parent,
-  final PropertyAccess parent when identical(parent.propertyName, node) =>
-    parent,
+  final PrefixedIdentifier parent when identical(parent.identifier, node) => parent,
+  final PropertyAccess parent when identical(parent.propertyName, node) => parent,
   final DotShorthandPropertyAccess parent => parent,
   _ => node,
 };
 
-bool _isClass(
-  Element? element, {
-  required String name,
-  required String package,
-}) =>
-    element is InterfaceElement &&
-    element.name == name &&
-    element.library.uri.toString().startsWith(package);
+bool _isClass(Element? element, {required String name, required String package}) =>
+    element is InterfaceElement && element.name == name && element.library.uri.toString().startsWith(package);

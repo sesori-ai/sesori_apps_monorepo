@@ -328,8 +328,7 @@ String describe(Result r) => switch (r) {
 ''');
   }
 
-  void
-  test_noErrorForSealedClassSwitchStatementWithSubtypeVariableCases() async {
+  void test_noErrorForSealedClassSwitchStatementWithSubtypeVariableCases() async {
     await assertNoDiagnostics(r'''
 sealed class Result {}
 class Success extends Result {}

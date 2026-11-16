@@ -101,8 +101,7 @@ class PreferSpecificTypeRule extends NoSlopRule {
   /// checks itself, as in `T Function(dynamic json) fromJson`.
   bool _isJsonDecodeCallbackParameter(NamedType node) {
     final parameter = node.parent;
-    return parameter is RegularFormalParameter &&
-        parameter.name?.lexeme == 'json';
+    return parameter is RegularFormalParameter && parameter.name?.lexeme == 'json';
   }
 
   bool _isInExternalDeclaration(AstNode node) {
@@ -170,9 +169,7 @@ class PreferSpecificTypeRule extends NoSlopRule {
       }
 
       if (current is VariableDeclarationList) {
-        return current.variables.every(
-          (variable) => _isErrorName(variable.name.lexeme),
-        );
+        return current.variables.every((variable) => _isErrorName(variable.name.lexeme));
       }
 
       // Stop at declaration boundaries

@@ -23,8 +23,7 @@ abstract class NoSlopRule extends AnalysisRule {
     if (ignoreTestFiles && _isTestFile(currentPath)) return true;
     final libraryElement = _context?.libraryElement;
     if (libraryElement == null) return false;
-    final isAnalyzed = libraryElement.session.analysisContext.contextRoot
-        .isAnalyzed(currentPath);
+    final isAnalyzed = libraryElement.session.analysisContext.contextRoot.isAnalyzed(currentPath);
     return isAnalyzed == false;
   }
 
@@ -44,9 +43,7 @@ abstract class NoSlopRule extends AnalysisRule {
 }
 
 /// Separators are normalised so the `test/` check also matches Windows paths.
-bool _isTestFile(String path) =>
-    path.endsWith('_test.dart') ||
-    path.replaceAll(r'\', '/').contains('/test/');
+bool _isTestFile(String path) => path.endsWith('_test.dart') || path.replaceAll(r'\', '/').contains('/test/');
 
 abstract class NoSlopMultiRule extends MultiAnalysisRule {
   NoSlopMultiRule({
@@ -67,8 +64,7 @@ abstract class NoSlopMultiRule extends MultiAnalysisRule {
     if (ignoreTestFiles && _isTestFile(currentPath)) return true;
     final libraryElement = _context?.libraryElement;
     if (libraryElement == null) return false;
-    final isAnalyzed = libraryElement.session.analysisContext.contextRoot
-        .isAnalyzed(currentPath);
+    final isAnalyzed = libraryElement.session.analysisContext.contextRoot.isAnalyzed(currentPath);
     return isAnalyzed == false;
   }
 

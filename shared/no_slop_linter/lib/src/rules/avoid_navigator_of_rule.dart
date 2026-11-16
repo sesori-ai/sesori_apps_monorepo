@@ -32,8 +32,7 @@ class AvoidNavigatorOfRule extends NoSlopRule {
   static const code = LintCode(
     'avoid_navigator_of',
     'Avoid direct Navigator usage. Use GoRouter instead.',
-    correctionMessage:
-        'Use context.pushRoute/goRoute/pop() from GoRouter extensions.',
+    correctionMessage: 'Use context.pushRoute/goRoute/pop() from GoRouter extensions.',
   );
 
   @override

@@ -138,9 +138,7 @@ final refresh = material.RefreshIndicator.noSpinner;
         'material.CircularProgressIndicator.new'.length,
       ),
       lint(
-        source.indexOf(
-          'cupertino.CupertinoActivityIndicator.partiallyRevealed',
-        ),
+        source.indexOf('cupertino.CupertinoActivityIndicator.partiallyRevealed'),
         'cupertino.CupertinoActivityIndicator.partiallyRevealed'.length,
       ),
     ]);

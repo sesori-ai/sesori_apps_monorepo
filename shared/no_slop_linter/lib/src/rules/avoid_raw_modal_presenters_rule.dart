@@ -46,11 +46,7 @@ const _presenters = {
   'showCupertinoSheet',
 };
 
-const _presenterPackages = [
-  'package:flutter/',
-  'package:material_ui/',
-  'package:cupertino_ui/',
-];
+const _presenterPackages = ['package:flutter/', 'package:material_ui/', 'package:cupertino_ui/'];
 
 class _Visitor extends SimpleAstVisitor<void> {
   _Visitor(this.rule);

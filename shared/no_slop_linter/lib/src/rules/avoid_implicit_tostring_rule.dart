@@ -23,28 +23,20 @@ import 'package:analyzer/error/error.dart';
 /// - `"value: ${obj.toStringShort()}"` - custom formatting method
 class AvoidImplicitTostringRule extends NoSlopRule {
   AvoidImplicitTostringRule({required super.ignoreTestFiles})
-    : super(
-        name: code.lowerCaseName,
-        description:
-            'Detects implicit toString() calls in string interpolation.',
-      );
+    : super(name: code.lowerCaseName, description: 'Detects implicit toString() calls in string interpolation.');
 
   static const code = LintCode(
     'avoid_implicit_tostring',
     'Implicit toString() call in string interpolation. '
         'The interpolated value is not a String.',
-    correctionMessage:
-        'Call .toString() explicitly or use a formatting method.',
+    correctionMessage: 'Call .toString() explicitly or use a formatting method.',
   );
 
   @override
   DiagnosticCode get diagnosticCode => code;
 
   @override
-  void registerRuleProcessors(
-    RuleVisitorRegistry registry,
-    RuleContext context,
-  ) {
+  void registerRuleProcessors(RuleVisitorRegistry registry, RuleContext context) {
     registry.addInterpolationExpression(this, _Visitor(this));
   }
 
@@ -92,10 +84,7 @@ class _Visitor extends SimpleAstVisitor<void> {
 
     if (staticType == null) return;
     if (staticType.isDartCoreString) return;
-    if (staticType.isDartCoreInt ||
-        staticType.isDartCoreDouble ||
-        staticType.isDartCoreBool)
-      return;
+    if (staticType.isDartCoreInt || staticType.isDartCoreDouble || staticType.isDartCoreBool) return;
     if (staticType is DynamicType) return;
     if (rule._isExplicitToStringCall(expression)) return;
     if (rule._isInsideLoggingCall(node)) return;

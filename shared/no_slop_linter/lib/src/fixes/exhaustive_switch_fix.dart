@@ -49,12 +49,9 @@ mixin _ExhaustiveSwitchFixHelpers {
       }
     }
 
-    final missingValues = missingIndices
-        .map((i) => allValuesShorthand[i])
-        .toList();
+    final missingValues = missingIndices.map((i) => allValuesShorthand[i]).toList();
 
-    final isNullable =
-        expressionType.nullabilitySuffix == NullabilitySuffix.question;
+    final isNullable = expressionType.nullabilitySuffix == NullabilitySuffix.question;
     if (isNullable && !nullHandled) {
       missingValues.add('null');
     }
@@ -65,17 +62,17 @@ mixin _ExhaustiveSwitchFixHelpers {
   }
 
   /// Extracts the missing values and default body from a switch statement default case.
-  ({List<String> missingValues, String defaultStatements})?
-  _analyzeStatementCase(SwitchDefault defaultCase, SwitchStatement switchStmt) {
+  ({List<String> missingValues, String defaultStatements})? _analyzeStatementCase(
+    SwitchDefault defaultCase,
+    SwitchStatement switchStmt,
+  ) {
     final expressionType = switchStmt.expression.staticType;
     if (expressionType == null) return null;
 
     final element = expressionType.element;
     if (element == null) return null;
 
-    final defaultStatements = defaultCase.statements
-        .map((s) => s.toSource())
-        .join('\n');
+    final defaultStatements = defaultCase.statements.map((s) => s.toSource()).join('\n');
 
     final handledCases = <String>{};
     var nullHandled = false;
@@ -109,12 +106,9 @@ mixin _ExhaustiveSwitchFixHelpers {
       }
     }
 
-    final missingValues = missingIndices
-        .map((i) => allValuesShorthand[i])
-        .toList();
+    final missingValues = missingIndices.map((i) => allValuesShorthand[i]).toList();
 
-    final isNullable =
-        expressionType.nullabilitySuffix == NullabilitySuffix.question;
+    final isNullable = expressionType.nullabilitySuffix == NullabilitySuffix.question;
     if (isNullable && !nullHandled) {
       missingValues.add('null');
     }
@@ -124,11 +118,7 @@ mixin _ExhaustiveSwitchFixHelpers {
     return (missingValues: missingValues, defaultStatements: defaultStatements);
   }
 
-  void _extractHandledPatterns(
-    DartPattern pattern,
-    Set<String> handledCases,
-    DartType? switchType,
-  ) {
+  void _extractHandledPatterns(DartPattern pattern, Set<String> handledCases, DartType? switchType) {
     if (pattern is ConstantPattern) {
       final expr = pattern.expression;
       final source = expr.toSource();
@@ -202,17 +192,12 @@ mixin _ExhaustiveSwitchFixHelpers {
       return pattern.expression is NullLiteral;
     }
     if (pattern is LogicalOrPattern) {
-      return _isNullPattern(pattern.leftOperand) ||
-          _isNullPattern(pattern.rightOperand);
+      return _isNullPattern(pattern.leftOperand) || _isNullPattern(pattern.rightOperand);
     }
     return false;
   }
 
-  List<String> _getAllValues(
-    Element element,
-    DartType type, {
-    bool useShorthand = true,
-  }) {
+  List<String> _getAllValues(Element element, DartType type, {bool useShorthand = true}) {
     if (element is EnumElement) {
       return element.fields
           .where((f) => f.isEnumConstant)
@@ -230,10 +215,7 @@ mixin _ExhaustiveSwitchFixHelpers {
   List<String> _getAllValuesFullForm(Element element, DartType type) {
     if (element is EnumElement) {
       final enumName = element.name;
-      return element.fields
-          .where((f) => f.isEnumConstant)
-          .map((f) => '$enumName.${f.name}')
-          .toList();
+      return element.fields.where((f) => f.isEnumConstant).map((f) => '$enumName.${f.name}').toList();
     }
 
     if (element is ClassElement && element.isSealed) {
@@ -292,8 +274,7 @@ mixin _ExhaustiveSwitchFixHelpers {
 /// A quick fix that replaces default/wildcard cases with a combined case pattern.
 ///
 /// Example: `default:` -> `case EnumA.a || EnumA.b:`
-class ExhaustiveSwitchCombinedFix extends ResolvedCorrectionProducer
-    with _ExhaustiveSwitchFixHelpers {
+class ExhaustiveSwitchCombinedFix extends ResolvedCorrectionProducer with _ExhaustiveSwitchFixHelpers {
   ExhaustiveSwitchCombinedFix({required super.context});
 
   static const _fixKind = FixKind(
@@ -303,8 +284,7 @@ class ExhaustiveSwitchCombinedFix extends ResolvedCorrectionProducer
   );
 
   @override
-  CorrectionApplicability get applicability =>
-      CorrectionApplicability.singleLocation;
+  CorrectionApplicability get applicability => CorrectionApplicability.singleLocation;
 
   @override
   FixKind get fixKind => _fixKind;
@@ -313,8 +293,7 @@ class ExhaustiveSwitchCombinedFix extends ResolvedCorrectionProducer
   Future<void> compute(ChangeBuilder builder) async {
     final targetNode = node;
 
-    if (targetNode is SwitchExpressionCase &&
-        targetNode.guardedPattern.pattern is WildcardPattern) {
+    if (targetNode is SwitchExpressionCase && targetNode.guardedPattern.pattern is WildcardPattern) {
       final switchExpr = targetNode.parent;
       if (switchExpr is! SwitchExpression) return;
 
@@ -349,8 +328,7 @@ class ExhaustiveSwitchCombinedFix extends ResolvedCorrectionProducer
 /// A quick fix that replaces default/wildcard cases with individual cases.
 ///
 /// Example: `default:` -> `case EnumA.a:` + `case EnumA.b:`
-class ExhaustiveSwitchIndividualFix extends ResolvedCorrectionProducer
-    with _ExhaustiveSwitchFixHelpers {
+class ExhaustiveSwitchIndividualFix extends ResolvedCorrectionProducer with _ExhaustiveSwitchFixHelpers {
   ExhaustiveSwitchIndividualFix({required super.context});
 
   static const _fixKind = FixKind(
@@ -360,8 +338,7 @@ class ExhaustiveSwitchIndividualFix extends ResolvedCorrectionProducer
   );
 
   @override
-  CorrectionApplicability get applicability =>
-      CorrectionApplicability.singleLocation;
+  CorrectionApplicability get applicability => CorrectionApplicability.singleLocation;
 
   @override
   FixKind get fixKind => _fixKind;
@@ -370,17 +347,14 @@ class ExhaustiveSwitchIndividualFix extends ResolvedCorrectionProducer
   Future<void> compute(ChangeBuilder builder) async {
     final targetNode = node;
 
-    if (targetNode is SwitchExpressionCase &&
-        targetNode.guardedPattern.pattern is WildcardPattern) {
+    if (targetNode is SwitchExpressionCase && targetNode.guardedPattern.pattern is WildcardPattern) {
       final switchExpr = targetNode.parent;
       if (switchExpr is! SwitchExpression) return;
 
       final analysis = _analyzeExpressionCase(targetNode, switchExpr);
       if (analysis == null || analysis.missingValues.length <= 1) return;
 
-      final cases = analysis.missingValues
-          .map((v) => '$v => ${analysis.defaultBody}')
-          .join(',\n');
+      final cases = analysis.missingValues.map((v) => '$v => ${analysis.defaultBody}').join(',\n');
       await builder.addDartFileEdit(file, (builder) {
         builder.addSimpleReplacement(
           SourceRange(targetNode.offset, targetNode.length),
@@ -394,9 +368,7 @@ class ExhaustiveSwitchIndividualFix extends ResolvedCorrectionProducer
       final analysis = _analyzeStatementCase(targetNode, switchStmt);
       if (analysis == null || analysis.missingValues.length <= 1) return;
 
-      final cases = analysis.missingValues
-          .map((v) => 'case $v:\n${analysis.defaultStatements}')
-          .join('\n');
+      final cases = analysis.missingValues.map((v) => 'case $v:\n${analysis.defaultStatements}').join('\n');
       await builder.addDartFileEdit(file, (builder) {
         builder.addSimpleReplacement(
           SourceRange(targetNode.offset, targetNode.length),
