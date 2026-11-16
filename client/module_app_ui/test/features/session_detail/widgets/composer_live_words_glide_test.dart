@@ -590,6 +590,7 @@ void main() {
               bridgeQueuedPrompts: [
                 QueuedSessionPrompt(
                   commandSource: null,
+                  handoff: null,
                   id: "prm_sent",
                   text: wrapDictatedText(text: "spoken words"),
                   command: null,

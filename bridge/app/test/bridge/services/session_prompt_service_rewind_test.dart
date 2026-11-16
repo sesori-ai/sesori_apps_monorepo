@@ -1,10 +1,12 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/foundation/session_archived_read_only_exception.dart";
 import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
 import "package:sesori_bridge/src/repositories/models/history_window.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/rewind_session_handler.dart";
@@ -65,6 +67,7 @@ void main() {
       sessionOptionsService: FakeSessionOptionsService(),
       promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
       chatHistory: history.service,
+      scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
     );
   }
 
@@ -581,6 +584,9 @@ final class _RecordingRewindMutations() implements SessionMutationDispatcher {
   void messagesRewound({required Session session, required List<String> removedMessageIds}) {
     rewound.add((sessionId: session.id, removedMessageIds: removedMessageIds));
   }
+
+  @override
+  Future<void> acknowledgeInterruption({required String sessionId}) async {}
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

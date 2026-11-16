@@ -183,6 +183,35 @@ void main() {
         expect(harness.dispatcher.dispatchedRootSessionIds, equals(["root"]));
       });
     });
+
+    test("an unattended scheduled run finishes without a push; other sessions still push", () {
+      fakeAsync((async) {
+        final harness = _newHarness(unattendedTaskRuns: {"task-run"});
+        harness.listener.start();
+
+        harness.emitCompletion(rootSessionId: "task-run");
+        harness.emitCompletion(rootSessionId: "session-a");
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        expect(harness.dispatcher.dispatchedRootSessionIds, equals(["session-a"]));
+      });
+    });
+
+    test("a scheduled-run check that fails pushes the completion", () {
+      fakeAsync((async) {
+        final harness = _newHarness(unattendedTaskRunError: StateError("database closed"));
+        harness.listener.start();
+
+        harness.emitCompletion(rootSessionId: "task-run");
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        expect(harness.dispatcher.dispatchedRootSessionIds, equals(["task-run"]));
+      });
+    });
   });
 }
 
@@ -220,7 +249,11 @@ class _Harness({
   }
 }
 
-_Harness _newHarness({Map<String, String> storedTitles = const {}}) {
+_Harness _newHarness({
+  Map<String, String> storedTitles = const {},
+  Set<String> unattendedTaskRuns = const {},
+  Object? unattendedTaskRunError,
+}) {
   final tracker = PushSessionStateTracker(now: DateTime.now);
   final notifier = CompletionNotifier(
     tracker: tracker,
@@ -233,6 +266,10 @@ _Harness _newHarness({Map<String, String> storedTitles = const {}}) {
     contentBuilder: const PushNotificationContentBuilder(),
     dispatcher: dispatcher,
     resolveSessionTitle: ({required String sessionId}) async => storedTitles[sessionId],
+    isUnattendedTaskRun: ({required String sessionId}) async {
+      if (unattendedTaskRunError case final error?) throw error;
+      return unattendedTaskRuns.contains(sessionId);
+    },
   );
   return _Harness(
     tracker: tracker,
@@ -264,6 +301,11 @@ class _FakePushDispatcher() implements PushDispatcher {
   void dispatchImmediateIfApplicable({required SesoriSseEvent event}) {
     immediateEvents.add(event);
   }
+
+  @override
+  void dispatchScheduledTaskFailure({required String taskId, required String title, required String body}) {
+    throw UnimplementedError();
+  }
 }
 
 Session _session({
@@ -287,6 +329,7 @@ Session _session({
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    interruption: null,
     forkedFrom: null,
   );
 }

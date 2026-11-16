@@ -250,6 +250,31 @@ enum AnalyticsMessageEditOutcome({required final String wireValue}) {
   failed(wireValue: "failed"),
 }
 
+/// How the bridge answered one send of a session into another.
+enum AnalyticsSessionSendOutcome({required final String wireValue}) {
+  /// The target accepted the handoff with the source's summary.
+  sent(wireValue: "sent"),
+
+  /// The source was running, or waiting for the user's answer, so nothing
+  /// was sent.
+  refusedBusy(wireValue: "refused_busy"),
+
+  /// The bridge did not send for another reason: the summary or transcript
+  /// failed, a harness no longer offers the session's options, the target
+  /// refused, or a reason this app doesn't know.
+  refusedOther(wireValue: "refused_other"),
+
+  /// The request failed before the bridge could send, or with an answer that
+  /// is not a refusal.
+  failed(wireValue: "failed"),
+
+  /// The bridge predates sending sessions.
+  unsupported(wireValue: "unsupported"),
+
+  /// The answer never arrived, so the send may or may not have finished.
+  unconfirmed(wireValue: "unconfirmed"),
+}
+
 /// How one side question ended.
 enum AnalyticsSideQuestionOutcome({required final String wireValue}) {
   /// The bridge stored an answer.
@@ -398,6 +423,10 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsHarness harness,
     required AnalyticsMessageEditOutcome outcome,
   }) = SessionMessageEditedEvent;
+  const factory sessionSentToSession({
+    required AnalyticsHarness harness,
+    required AnalyticsSessionSendOutcome outcome,
+  }) = SessionSentToSessionEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -871,6 +900,19 @@ final class const SessionMessageEditedEvent({
 }) extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_message_edited";
+
+  @override
+  Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};
+}
+
+/// The bridge answered a send of one session into another. [harness] is the
+/// source's. The sessions, their titles and the summary stay off the wire.
+final class const SessionSentToSessionEvent({
+  required final AnalyticsHarness harness,
+  required final AnalyticsSessionSendOutcome outcome,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "session_sent_to_session";
 
   @override
   Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};

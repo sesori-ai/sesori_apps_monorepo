@@ -22,6 +22,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginSessionActivityAvailable,
         PluginSessionActivityUnavailable,
         PluginSessionReadiness,
+        PluginSessionStatus,
         PluginSessionVariant,
         PluginSideExchange,
         SessionForkPluginApi,
@@ -119,7 +120,14 @@ typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 typedef ScheduledRunSessionLink = ({String taskId, SessionApprovalMode approvalOverride});
 
 /// The deleted root as clients see it, plus every session id removed with it.
-typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
+/// [projectId] and [worktreePath] are the deleted root's stored keys, for
+/// cleanup that must wait until its row is gone.
+typedef DeletedSessionSubtree = ({
+  Session session,
+  List<String> sessionIds,
+  String projectId,
+  String? worktreePath,
+});
 
 typedef SessionPage = ({List<Session> items, SessionPageCursor? nextCursor, SessionPageCounts counts});
 
@@ -679,21 +687,21 @@ class SessionRepository({
     }
   }
 
-  /// [prompts] with the source of each command this bridge sent to [sessionId].
-  List<QueuedSessionPrompt> stampQueuedCommandSources({
+  /// [prompts] with the stamps this bridge recorded for its sends to
+  /// [sessionId]: the source of each command, and the handoff of each prompt
+  /// that sends one session into another, so a client never shows a handoff
+  /// prompt as a plain message while it waits for its echo.
+  List<QueuedSessionPrompt> stampQueuedPrompts({
     required String sessionId,
     required List<QueuedSessionPrompt> prompts,
   }) => [
     for (final prompt in prompts)
-      if (prompt.command != null && prompt.commandSource == null)
-        prompt.copyWith(
-          commandSource: switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
-            PromptStampCommand(:final invocation) => invocation.source,
-            PromptStampHandoff() || null => null,
-          },
-        )
-      else
-        prompt,
+      switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
+        PromptStampCommand(:final invocation) when prompt.command != null && prompt.commandSource == null =>
+          prompt.copyWith(commandSource: invocation.source),
+        PromptStampHandoff(:final handoff) => prompt.copyWith(handoff: handoff),
+        PromptStampCommand() || null => prompt,
+      },
   ];
 
   /// Sends [parts] as the prompt [promptId]. A [handoff] is remembered under
@@ -901,7 +909,7 @@ class SessionRepository({
       body: (plugin, _) async =>
           (await plugin.getQueuedPrompts(sessionId: binding.backendSessionId)).toSharedQueuedPrompts(),
     );
-    return stampQueuedCommandSources(sessionId: sessionId, prompts: prompts ?? const []);
+    return stampQueuedPrompts(sessionId: sessionId, prompts: prompts ?? const []);
   }
 
   /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
@@ -1011,6 +1019,11 @@ class SessionRepository({
               PluginCompactionResult.unsupported => SessionCompactionResult.unsupported,
             },
       );
+
+  /// The sessions [taskId]'s runs started that are neither archived nor
+  /// pinned, newest first: the candidates for archiving old runs.
+  Future<List<String>> listArchivableScheduledRunSessionIds({required String taskId}) =>
+      _sessionDao.listUnarchivedUnpinnedScheduledRunSessionIds(scheduledTaskId: taskId);
 
   /// Whether [sessionId] is between turns with nothing waiting on the user.
   /// The one owner of that question for scheduled runs.
@@ -1282,7 +1295,12 @@ class SessionRepository({
         return [for (final binding in subtree) binding.sessionId];
       },
     );
-    return (session: deletionSnapshot, sessionIds: sessionIds);
+    return (
+      session: deletionSnapshot,
+      sessionIds: sessionIds,
+      projectId: binding.projectId,
+      worktreePath: binding.worktreePath,
+    );
   }
 
   /// Tombstones the harness session of every row in [root]'s subtree, so
@@ -1737,26 +1755,15 @@ class SessionRepository({
     final results = await Future.wait(
       _runtime.eligiblePluginIds.map((pluginId) async {
         try {
-          final pluginStatuses = await _runtime.useIfActive(
-            pluginId: pluginId,
-            operation: SessionOperation.getSessionStatuses,
-            body: (plugin, _) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
-          );
-          if (pluginStatuses == null) return (pluginId: pluginId, statuses: null);
-          final bindings = await _sessionDao.getSessionsByBackendIds(
-            pluginId: pluginId,
-            backendSessionIds: pluginStatuses.keys.toList(growable: false),
-          );
+          final pluginStatuses = await _readPluginSessionStatuses(pluginId: pluginId);
           return (
             pluginId: pluginId,
-            statuses: {
-              for (final entry in pluginStatuses.entries)
-                if (bindings[entry.key] case final binding?)
-                  binding.sessionId: _stampSnapshotStatus(
-                    sessionId: binding.sessionId,
-                    status: entry.value.toSharedSessionStatus(),
-                  ),
-            },
+            statuses: pluginStatuses == null
+                ? null
+                : {
+                    for (final MapEntry(key: sessionId, value: status) in pluginStatuses.entries)
+                      sessionId: _stampSnapshotStatus(sessionId: sessionId, status: status),
+                  },
           );
         } on Object catch (error, stackTrace) {
           Log.w("Could not read session statuses from plugin $pluginId", error, stackTrace);
@@ -1773,6 +1780,45 @@ class SessionRepository({
           if (result.statuses == null) result.pluginId,
       ],
     );
+  }
+
+  /// [pluginId]'s session statuses keyed by bridge session id, as its plugin
+  /// reports them. A plugin that is not running yet is started for a
+  /// short-lived generation, since only it can say whether a turn is still
+  /// running. Throws when the plugin cannot start or the read fails.
+  Future<Map<String, SessionStatus>> getPluginSessionStatuses({required String pluginId}) async {
+    final (:value, generation: _) = await _runtime.useWithGeneration(
+      pluginId: pluginId,
+      operation: SessionOperation.getSessionStatuses,
+      residency: PluginGenerationResidency.transient,
+      body: (plugin) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
+    );
+    return await _toBridgeStatuses(pluginId: pluginId, pluginStatuses: value);
+  }
+
+  /// Null when [pluginId] is not active.
+  Future<Map<String, SessionStatus>?> _readPluginSessionStatuses({required String pluginId}) async {
+    final pluginStatuses = await _runtime.useIfActive(
+      pluginId: pluginId,
+      operation: SessionOperation.getSessionStatuses,
+      body: (plugin, _) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
+    );
+    if (pluginStatuses == null) return null;
+    return await _toBridgeStatuses(pluginId: pluginId, pluginStatuses: pluginStatuses);
+  }
+
+  Future<Map<String, SessionStatus>> _toBridgeStatuses({
+    required String pluginId,
+    required Map<String, PluginSessionStatus> pluginStatuses,
+  }) async {
+    final bindings = await _sessionDao.getSessionsByBackendIds(
+      pluginId: pluginId,
+      backendSessionIds: pluginStatuses.keys.toList(growable: false),
+    );
+    return {
+      for (final entry in pluginStatuses.entries)
+        if (bindings[entry.key] case final binding?) binding.sessionId: entry.value.toSharedSessionStatus(),
+    };
   }
 
   /// [status] as a client receives it live: a busy or retry status carries when
@@ -1927,6 +1973,30 @@ class SessionRepository({
       worktreePath: worktreePath,
     );
     return sessions.isNotEmpty;
+  }
+
+  /// Whether a session other than [sessionId], archived or not, still names
+  /// [worktreePath].
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) {
+    return _sessionDao.hasOtherSessionsNamingWorktree(
+      sessionId: sessionId,
+      projectId: projectId,
+      worktreePath: worktreePath,
+    );
+  }
+
+  /// Records the branch a removed worktree was on, or null for a detached
+  /// HEAD, on every session that names it, so a fork can check it out again.
+  Future<void> recordWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) {
+    return _sessionDao.setWorktreeBranch(projectId: projectId, worktreePath: worktreePath, branchName: branchName);
   }
 
   /// The project's recorded live directory, suitable as a git/CLI working

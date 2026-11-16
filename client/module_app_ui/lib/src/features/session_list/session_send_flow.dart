@@ -58,7 +58,11 @@ void _sendToAnother({
       title: loc.sendSessionSending(sourceName, targetName),
       variant: PregoPopupAlertsNotificationsVariant.loading,
     );
-    final result = await actions.sendToSession(sourceSessionId: source.id, targetSessionId: target.session.id);
+    final result = await actions.sendToSession(
+      sourceSessionId: source.id,
+      sourcePluginId: source.pluginId,
+      targetSessionId: target.session.id,
+    );
     final open = PregoPopupAlertsNotificationsAction(
       label: loc.sendSessionOpen,
       onPressed: () {
@@ -130,6 +134,7 @@ String _refusalText({
   SendToSessionErrorCode.sourceBusy => loc.sendSessionFailedSourceBusy(sourceName),
   SendToSessionErrorCode.sourceAwaitingInput => loc.sendSessionFailedSourceAwaitingInput(sourceName),
   SendToSessionErrorCode.sourceUnavailable => loc.sendSessionFailedSourceUnavailable(sourceName),
+  SendToSessionErrorCode.sourceOptionsUnavailable => loc.sendSessionFailedSourceOptionsUnavailable(sourceName),
   SendToSessionErrorCode.sourceEmpty => loc.sendSessionFailedSourceEmpty(sourceName),
   SendToSessionErrorCode.summaryStopped => loc.sendSessionFailedSummaryStopped,
   SendToSessionErrorCode.summaryFailed => loc.sendSessionFailedSummaryFailed,
@@ -140,5 +145,6 @@ String _refusalText({
     null => loc.sendSessionFailedTargetRefused(targetName),
     final reason => loc.sendSessionFailedTargetRefusedReason(reason),
   },
+  SendToSessionErrorCode.targetOptionsUnavailable => loc.sendSessionFailedTargetOptionsUnavailable(targetName),
   SendToSessionErrorCode.unknown => loc.sendSessionFailed(sourceName),
 };

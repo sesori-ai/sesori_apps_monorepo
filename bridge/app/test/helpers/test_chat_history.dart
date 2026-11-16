@@ -10,10 +10,15 @@ import "package:sesori_bridge/src/repositories/attachment_thumbnail_builder.dart
 import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
 import "package:sesori_bridge/src/repositories/models/history_window.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/chat_history_service.dart";
+import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+import "session_continuation_test_support.dart";
+import "session_interruption_test_support.dart";
 
 typedef TestChatHistory = ({
   ChatHistoryDatabase database,
@@ -36,6 +41,8 @@ TestChatHistory createTestChatHistory({
   AttachmentThumbnailBuilder attachmentThumbnailBuilder = const AttachmentThumbnailBuilder(),
   int? storedSessionArchivedAt,
   BridgeIdProvider bridgeIdProvider = const _TestBridgeIdProvider("br_test1234"),
+  SessionInterruptionRepository interruptions = const NoSessionInterruptions(),
+  SessionMutationDispatcher mutations = const UnusedContinuationMutations(),
 }) {
   final directory = Directory.systemTemp.createTempSync("sesori_chat_history_test");
   final database = ChatHistoryDatabase(NativeDatabase.memory());
@@ -64,6 +71,8 @@ TestChatHistory createTestChatHistory({
       sessionRepository: sessionRepository ?? _UnusedSessionRepository(archivedAt: storedSessionArchivedAt),
       attachmentThumbnailBuilder: attachmentThumbnailBuilder,
       bridgeIdProvider: bridgeIdProvider,
+      interruptions: interruptions,
+      mutations: mutations,
     ),
     directory: directory,
   );
@@ -109,6 +118,8 @@ class TestChatHistoryService({
   required super.sessionRepository,
   required super.attachmentThumbnailBuilder,
   required super.bridgeIdProvider,
+  required super.interruptions,
+  required super.mutations,
 }) extends ChatHistoryService {
   @override
   Future<SessionMessagesPage> getSessionMessages({

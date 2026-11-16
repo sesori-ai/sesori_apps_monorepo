@@ -7,6 +7,13 @@ import "package:material_ui/material_ui.dart";
 /// The holder of a [GlobalKey] to its [PregoReadableSelectionAreaState] can
 /// read what is selected and select all of it, as a context menu's Copy and
 /// Select text do.
+///
+/// An area inside another one is a part of it rather than an island of its
+/// own: a selection runs from it into the text around it, as a drag runs from
+/// one transcript message into the next, and copying takes the text of the
+/// nested areas in screen order. [PregoSelectionOnlyInNestedAreas] keeps the
+/// rest of a subtree, such as a row's chrome, out of the outer area's selection.
+/// An area under a [SelectionContainer.disabled] is an island again.
 class const PregoReadableSelectionArea({
   super.key,
   required final Widget child,
@@ -37,23 +44,68 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
     preserveEmptyLines: widget.preserveEmptyLines,
   );
   final _selectionArea = GlobalKey<SelectionAreaState>();
+  final _content = GlobalKey();
   final _focusNode = _KeepingFocusNode(debugLabel: "PregoReadableSelectionArea");
 
-  /// The selected text, as copying it gives it, or null when none is selected.
-  String? get selectedText => _selectionDelegate.getSelectedContent()?.plainText;
+  /// The area this one is nested in, which owns the selection; null when
+  /// this one is outermost.
+  PregoReadableSelectionAreaState? _outer;
+
+  /// The selected text, as copying it gives it, or null when none of it is
+  /// in this area. In a nested area, that is all of the outer area's
+  /// selection, which may run beyond this one.
+  String? get selectedText => switch (_outer) {
+    final outer? => _selectionDelegate.getSelectedContent() == null ? null : outer.selectedText,
+    null => _selectionDelegate.getSelectedContent()?.plainText,
+  };
 
   /// Keeps the selection while [keep] is on, though the area loses the focus,
   /// as it does to a menu opened on its text. Losing the focus otherwise
   /// clears it. The region never sees the loss, so its selection stays whole
   /// and a shift-click afterwards extends it.
-  void keepSelection({required bool keep}) => _focusNode.keeps = keep;
+  void keepSelection({required bool keep}) {
+    if (_outer case final outer?) return outer.keepSelection(keep: keep);
+    _focusNode.keeps = keep;
+  }
 
-  /// Selects all of the area's text and shows the selection's handles and
-  /// toolbar, taking the focus as a long-press selection does, so tapping
-  /// elsewhere clears it.
+  /// Selects all of the area's text, and only it in a nested area, and shows
+  /// the selection's handles and toolbar, taking the focus as a long-press
+  /// selection does, so tapping elsewhere clears it.
   void selectAll() {
+    if (_outer case final outer?) return outer._selectOnly(nested: _selectionDelegate);
     _focusNode.requestFocus();
     _selectionArea.currentState?.selectableRegion.selectAll(SelectionChangedCause.toolbar);
+  }
+
+  /// Selects all of [nested]'s text and nothing else. Selecting everything
+  /// first shows the handles and toolbar, then a word selection at [nested]'s
+  /// text narrows it to that area. A scrollable between them takes a
+  /// select-all only as selecting all it holds, and records the edges of a
+  /// word selection, which a handle dragged into another area needs.
+  void _selectOnly({required _ReadableSelectionContainerDelegate nested}) {
+    final anchor = nested.textAnchor;
+    if (anchor == null) return;
+    selectAll();
+    _selectionDelegate.only = nested;
+    try {
+      _selectionDelegate.dispatchSelectionEvent(SelectWordSelectionEvent(globalPosition: anchor));
+    } finally {
+      _selectionDelegate.only = null;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Where the outer area's selection does not reach, under a
+    // [SelectionContainer.disabled], this area selects on its own.
+    final reached = SelectionContainer.maybeOf(context) != null || _NestedAreaRegistrarScope.maybeOf(context) != null;
+    final outer = reached ? _OuterSelectionAreaScope.maybeOf(context) : null;
+    if (outer == _outer) return;
+    _outer?._selectionDelegate.nested.remove(_selectionDelegate);
+    outer?._selectionDelegate.nested.add(_selectionDelegate);
+    _selectionDelegate.outer = outer?._selectionDelegate;
+    _outer = outer;
   }
 
   @override
@@ -66,6 +118,7 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
 
   @override
   void dispose() {
+    _outer?._selectionDelegate.nested.remove(_selectionDelegate);
     _selectionDelegate.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -73,15 +126,131 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
 
   @override
   Widget build(BuildContext context) {
-    return SelectionArea(
-      key: _selectionArea,
-      focusNode: _focusNode,
-      child: SelectionContainer(
+    if (_outer != null) {
+      return SelectionContainer(
+        // Under a [PregoSelectionOnlyInNestedAreas] there is no ambient
+        // registrar, so the area joins the one that subtree hides.
+        registrar: SelectionContainer.maybeOf(context) ?? _NestedAreaRegistrarScope.maybeOf(context),
         delegate: _selectionDelegate,
-        child: widget.child,
+        // Marks where a press may start the outer area's gestures: wherever
+        // this area's own selection region took it.
+        child: MetaData(metaData: _nestedAreaMark, behavior: HitTestBehavior.translucent, child: widget.child),
+      );
+    }
+    return _OuterSelectionAreaScope(
+      area: this,
+      child: _GesturesOnlyOnNestedAreas(
+        nested: _selectionDelegate.nested,
+        content: _content,
+        child: SelectionArea(
+          key: _selectionArea,
+          focusNode: _focusNode,
+          child: SelectionContainer(
+            delegate: _selectionDelegate,
+            child: KeyedSubtree(key: _content, child: widget.child),
+          ),
+        ),
       ),
     );
   }
+}
+
+/// What a nested area marks its box with, for [_GesturesOnlyOnNestedAreas].
+const _nestedAreaMark = Object();
+
+/// While areas are nested in the outer one, lets a press reach the outer
+/// area's selection gestures only where it lands on one of them, where each
+/// one's own selection region used to take it. Elsewhere the press goes
+/// straight to [content], so a touch scroll or swipe over the space between
+/// them meets the same gestures as before they shared a selection.
+class const _GesturesOnlyOnNestedAreas({
+  /// The nested areas, live: none means the area stands alone and every
+  /// press reaches its gestures.
+  required final Set<Object> nested,
+  required final GlobalKey content,
+  required super.child,
+}) extends SingleChildRenderObjectWidget {
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderGesturesOnlyOnNestedAreas(nested: nested, content: content);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderGesturesOnlyOnNestedAreas renderObject) => renderObject
+    ..nested = nested
+    ..content = content;
+}
+
+class _RenderGesturesOnlyOnNestedAreas({required Set<Object> nested, required GlobalKey content})
+    extends RenderProxyBox {
+  Set<Object> nested = nested;
+  GlobalKey content = content;
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    final box = content.currentContext?.findRenderObject();
+    if (nested.isEmpty || box is! RenderBox || !size.contains(position)) {
+      return super.hitTest(result, position: position);
+    }
+    bool hitContent(BoxHitTestResult result) => result.addWithPaintTransform(
+      transform: box.getTransformTo(this),
+      position: position,
+      hitTest: (result, position) => box.hitTest(result, position: position),
+    );
+    final probe = BoxHitTestResult();
+    hitContent(probe);
+    final onNestedArea = probe.path.any(
+      (entry) => switch (entry.target) {
+        RenderMetaData(:final metaData) => identical(metaData, _nestedAreaMark),
+        _ => false,
+      },
+    );
+    if (onNestedArea) return super.hitTest(result, position: position);
+    final hit = hitContent(result);
+    if (hit) result.add(BoxHitTestEntry(this, position));
+    return hit;
+  }
+}
+
+/// Keeps [child] out of the selection of the [PregoReadableSelectionArea]
+/// around it, apart from the areas nested in [child], which stay part of that
+/// selection. A transcript row uses it so a drag selects its messages' text
+/// but not its timestamp or status lines.
+class const PregoSelectionOnlyInNestedAreas({super.key, required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final registrar = SelectionContainer.maybeOf(context);
+    if (registrar == null) return child;
+    return _NestedAreaRegistrarScope(
+      registrar: registrar,
+      child: SelectionContainer.disabled(child: child),
+    );
+  }
+}
+
+/// The outermost [PregoReadableSelectionArea], which the areas nested in it
+/// join.
+class const _OuterSelectionAreaScope({
+  required final PregoReadableSelectionAreaState area,
+  required super.child,
+}) extends InheritedWidget {
+  static PregoReadableSelectionAreaState? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_OuterSelectionAreaScope>()?.area;
+
+  @override
+  bool updateShouldNotify(_OuterSelectionAreaScope oldWidget) => area != oldWidget.area;
+}
+
+/// The registrar a [PregoSelectionOnlyInNestedAreas] hides from its subtree,
+/// which the areas nested in it register with.
+class const _NestedAreaRegistrarScope({
+  required final SelectionRegistrar registrar,
+  required super.child,
+}) extends InheritedWidget {
+  static SelectionRegistrar? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_NestedAreaRegistrarScope>()?.registrar;
+
+  @override
+  bool updateShouldNotify(_NestedAreaRegistrarScope oldWidget) => registrar != oldWidget.registrar;
 }
 
 /// Reports the focus while [keeps] is on, so the selection region does not
@@ -97,6 +266,28 @@ class _ReadableSelectionContainerDelegate({required bool preserveEmptyLines}) ex
   static const _sameLineTolerance = 3.0;
   bool _preserveEmptyLines = preserveEmptyLines;
 
+  /// The delegates of the areas nested in this one's. While there are any,
+  /// the text sits in them, and copying takes it from them in screen order:
+  /// the scrollable between them would join it without line breaks.
+  final nested = <_ReadableSelectionContainerDelegate>{};
+
+  /// The outer area's delegate, while this one's area is nested in it.
+  _ReadableSelectionContainerDelegate? outer;
+
+  /// The nested delegate a word selection selects all of, while it runs.
+  _ReadableSelectionContainerDelegate? only;
+
+  /// A point on this area's first text, in global coordinates, or null when
+  /// it has none laid out.
+  Offset? get textAnchor {
+    for (final selectable in selectables) {
+      if (selectable.boundingBoxes case [final box, ...]) {
+        return MatrixUtils.transformPoint(selectable.getTransformTo(null), box.center);
+      }
+    }
+    return null;
+  }
+
   void update({required bool preserveEmptyLines}) {
     if (_preserveEmptyLines == preserveEmptyLines) return;
     _preserveEmptyLines = preserveEmptyLines;
@@ -104,17 +295,45 @@ class _ReadableSelectionContainerDelegate({required bool preserveEmptyLines}) ex
   }
 
   @override
+  SelectionResult handleSelectWord(SelectWordSelectionEvent event) {
+    if (only != null) {
+      // Cleared within the same event, the region never sees the selection
+      // empty, which would drop its handles and toolbar.
+      handleClearSelection(const ClearSelectionEvent());
+    } else if (outer?.only == this) {
+      handleSelectAll(const SelectAllSelectionEvent());
+      return SelectionResult.end;
+    }
+    return super.handleSelectWord(event);
+  }
+
+  @override
   SelectedContent? getSelectedContent() {
-    final parts = <({Selectable selectable, String text})>[
-      for (final selectable in selectables)
-        if (selectable.getSelectedContent() case final SelectedContent content)
-          if (_selectedText(selectable: selectable, content: content) case final text?
-              when text.isNotEmpty ||
-                  _preserveEmptyLines &&
-                      (content.plainText == PregoReadableSelectionArea.emptyLineMarker ||
-                          selectable.value.hasSelection))
-            (selectable: selectable, text: text),
-    ];
+    final List<({Selectable selectable, String text})> parts;
+    if (nested.isEmpty) {
+      parts = _selectedParts();
+    } else {
+      final areas = [
+        for (final area in nested)
+          if (area._selectedParts() case final areaParts when areaParts.isNotEmpty) areaParts,
+      ]..sort((a, b) => compareOrder(a.first.selectable, b.first.selectable));
+      parts = [for (final areaParts in areas) ...areaParts];
+    }
+    return _join(parts: parts);
+  }
+
+  /// This area's own selected text widgets, in order, with their text.
+  List<({Selectable selectable, String text})> _selectedParts() => [
+    for (final selectable in selectables)
+      if (selectable.getSelectedContent() case final SelectedContent content)
+        if (_selectedText(selectable: selectable, content: content) case final text?
+            when text.isNotEmpty ||
+                _preserveEmptyLines &&
+                    (content.plainText == PregoReadableSelectionArea.emptyLineMarker || selectable.value.hasSelection))
+          (selectable: selectable, text: text),
+  ];
+
+  SelectedContent? _join({required List<({Selectable selectable, String text})> parts}) {
     if (parts.isEmpty) return null;
 
     final buffer = StringBuffer();

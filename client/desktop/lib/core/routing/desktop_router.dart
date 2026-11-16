@@ -293,7 +293,8 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                   context: context,
                   route: AppRoute.sessionDetail(
                     projectId: projectId,
-                    projectName: route.projectName,
+                    // A handoff can name a session in another project.
+                    projectName: projectId == route.projectId ? route.projectName : null,
                     sessionId: sessionId,
                     sessionTitle: sessionTitle,
                     readOnly: readOnly,

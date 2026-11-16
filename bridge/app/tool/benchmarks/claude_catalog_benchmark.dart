@@ -25,6 +25,7 @@ import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
@@ -34,7 +35,9 @@ import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/models/session_page_cursor.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
+import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/session_view_service.dart";
@@ -148,10 +151,12 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
     );
     final sessionViews = SessionViewService(
       sessions: sessions,
+      scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: database)),
       continuations: SessionContinuationRepository(
         dao: SessionContinuationDao(database: database),
         runtime: runtime,
       ),
+      interruptions: SessionInterruptionRepository(dao: SessionInterruptionDao(database: database)),
       resetBuffer: const Duration(minutes: 2),
     );
     var totalBytes = 0;
