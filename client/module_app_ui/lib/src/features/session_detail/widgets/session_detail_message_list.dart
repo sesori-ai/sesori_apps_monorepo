@@ -670,7 +670,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required bool following,
   }) {
     final now = clock.now();
-    if (rowsJoined) _joinedAt = now;
+    if (following && rowsJoined) _joinedAt = now;
     final joinedLately = switch (_joinedAt) {
       final joinedAt? => now.difference(joinedAt) < transcriptMotionDuration,
       null => false,
