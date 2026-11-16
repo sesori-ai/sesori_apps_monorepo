@@ -113,7 +113,8 @@ Never report:
   changes the privacy contract. The one approved exception is the pinned
   `AnalyticsHarness` enum (`harness`) on `session_message_sent` and
   `session_created_with_message`, sent by mobile and desktop, and on
-  `side_question_asked` and `session_message_edited`; unknown plugin
+  `side_question_asked`, `session_message_edited` and `session_sent_to_session`
+  (the source's harness); unknown plugin
   IDs report `other`, never the raw ID. It does not extend to any other event or name.
 
 Account-linked events use only the pseudonymous custom `user_key` produced in

@@ -45,6 +45,7 @@ AcpReplayCollector _collector({required AcpEventMapper mapper}) => AcpReplayColl
   haltClassifier: null,
   toolPartReplacement: null,
   toolPartSuppression: null,
+  separatesToolMessages: false,
 );
 
 Map<String, dynamic> _envelope({required Map<String, dynamic> update}) => {

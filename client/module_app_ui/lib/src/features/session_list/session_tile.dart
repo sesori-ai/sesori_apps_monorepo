@@ -309,24 +309,26 @@ class const SessionTile({
           textBaseline: TextBaseline.alphabetic,
           spacing: PregoSpacing.xs,
           children: [
-            // Centred on the title's line box rather than on its baseline,
-            // and the row still sits on the title's baseline.
+            // The pin and the mark are centred on the title's line box at any
+            // text size, and the time still sits on the title's baseline.
             Expanded(
               child: Row(
                 children: [
                   _LeadingPin(pinned: session.pinned, pointer: true),
                   Expanded(child: _title(context: context, pointer: true)),
+                  if (state != null)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                      child: SizedBox.square(
+                        dimension: _markSize,
+                        child: Center(
+                          child: Semantics(label: state.label, child: state.mark),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
-            if (state != null)
-              SizedBox(
-                width: _markSize,
-                height: _titleLineHeightOf(pointer: true),
-                child: Center(
-                  child: Semantics(label: state.label, child: state.mark),
-                ),
-              ),
             ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, holdsColumn: state != null),
           ],
         ),
@@ -996,10 +998,8 @@ class _PointerRevealState() extends State<_PointerReveal> {
   );
 }
 
-/// The row's line boxes, from the type it renders: a 16/24 title over a 12/18
-/// meta line with 20px minimum height under a finger, and a 13.5/19 title over
-/// a 12/16 meta line under a pointer.
-double _titleLineHeightOf({required bool pointer}) => pointer ? 19 : 24;
+/// The meta line's minimum line box at 1x: a 12/18 meta line with 20px minimum
+/// height under a finger, and a 12/16 meta line under a pointer.
 double _metaLineHeightOf({required bool pointer}) => pointer ? 16 : 20;
 const double _lineGap = PregoSpacing.xxs;
 

@@ -20,6 +20,7 @@ _NotificationData _$NotificationDataFromJson(Map json) => _NotificationData(
   sessionId: json['sessionId'] as String?,
   projectId: json['projectId'] as String?,
   bridgeId: json['bridgeId'] as String?,
+  taskId: json['taskId'] as String?,
 );
 
 Map<String, dynamic> _$NotificationDataToJson(_NotificationData instance) =>
@@ -29,6 +30,7 @@ Map<String, dynamic> _$NotificationDataToJson(_NotificationData instance) =>
       'sessionId': ?instance.sessionId,
       'projectId': ?instance.projectId,
       'bridgeId': ?instance.bridgeId,
+      'taskId': ?instance.taskId,
     };
 
 const _$NotificationCategoryEnumMap = {
@@ -45,5 +47,6 @@ const _$NotificationEventTypeEnumMap = {
   NotificationEventType.installationUpdateAvailable:
       'installation_update_available',
   NotificationEventType.agentTurnCompleted: 'agent_turn_completed',
+  NotificationEventType.scheduledTaskRunFailed: 'scheduled_task_run_failed',
   NotificationEventType.unknown: 'unknown',
 };

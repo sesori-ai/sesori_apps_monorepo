@@ -2,19 +2,23 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-MessageWithParts _user({required String id, MessageHandoff? handoff, String text = "Fix the build"}) =>
-    MessageWithParts(
-      info: Message.user(
-        invocation: null,
-        handoff: handoff,
-        id: id,
-        sessionID: "s",
-        agent: null,
-        time: null,
-        promptId: null,
-      ),
-      parts: [MessagePart.text(id: "$id-text", sessionID: "s", messageID: id, text: text)],
-    );
+MessageWithParts _user({
+  required String id,
+  MessageHandoff? handoff,
+  String text = "Fix the build",
+  String? promptId,
+}) => MessageWithParts(
+  info: Message.user(
+    invocation: null,
+    handoff: handoff,
+    id: id,
+    sessionID: "s",
+    agent: null,
+    time: null,
+    promptId: promptId,
+  ),
+  parts: [MessagePart.text(id: "$id-text", sessionID: "s", messageID: id, text: text)],
+);
 
 MessageWithParts _agent({required String id, required List<MessagePart> parts}) => MessageWithParts(
   info: Message.assistant(
@@ -43,16 +47,33 @@ MessagePart _runningTool() => const MessagePart.tool(
 const _sent = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Fix login");
 const _notSent = MessageHandoff.notSent(targetSessionId: "target", targetTitle: null);
 
-TranscriptHandoffs _build({required List<MessageWithParts> messages, required bool isBusy}) =>
-    const TranscriptHandoffBuilder().build(
-      messages: messages,
-      turns: const TranscriptTurnBuilder().build(
-        messages: messages,
-        hasOlderMessages: false,
-        turnEndMessageIds: const {},
-      ),
-      isBusy: isBusy,
-    );
+const _received = MessageHandoff.received(
+  sourceSessionId: "source",
+  sourceTitle: "Old work",
+  summary: "Goal: fix",
+  transcriptPath: "/tmp/t.md",
+);
+
+TranscriptHandoffs _build({
+  required List<MessageWithParts> messages,
+  required bool isBusy,
+  List<QueuedSessionPrompt> queuedPrompts = const [],
+}) => const TranscriptHandoffBuilder().build(
+  messages: messages,
+  turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: false, turnEndMessageIds: const {}),
+  isBusy: isBusy,
+  queuedPrompts: queuedPrompts,
+);
+
+QueuedSessionPrompt _queued({required String id, required MessageHandoff? handoff}) => QueuedSessionPrompt(
+  id: id,
+  dispatchState: QueuedPromptDispatchState.dispatched,
+  text: "Sesori is sending this conversation",
+  command: null,
+  commandSource: null,
+  handoff: handoff,
+  createdAt: 0,
+);
 
 void main() {
   group("TranscriptHandoffBuilder", () {
@@ -306,6 +327,74 @@ void main() {
       expect(handoffs.cards, isEmpty);
       expect(handoffs.foldedMessageIds, isEmpty);
       expect(handoffs.writing, isFalse);
+    });
+
+    test("a queued summary request shows as a writing marker before its message arrives", () {
+      final handoffs = _build(
+        messages: [_user(id: "earlier")],
+        isBusy: false,
+        queuedPrompts: [_queued(id: "request", handoff: _sent)],
+      );
+
+      final marker = handoffs.queuedMarkers["request"];
+      expect(marker?.status, TranscriptHandoffMarkerStatus.writing);
+      expect(marker?.targetSessionId, "target");
+      expect(marker?.targetTitle, "Fix login");
+      expect(marker?.summary, isNull);
+      expect(handoffs.writing, isTrue);
+      expect(handoffs.markers, isEmpty);
+    });
+
+    test("a queued request the bridge marked not sent shows as not sent", () {
+      final handoffs = _build(
+        messages: const [],
+        isBusy: false,
+        queuedPrompts: [_queued(id: "request", handoff: _notSent)],
+      );
+
+      expect(handoffs.queuedMarkers["request"]?.status, TranscriptHandoffMarkerStatus.notSent);
+      expect(handoffs.writing, isFalse);
+    });
+
+    test("a queued handoff prompt shows as its card before its message arrives", () {
+      final handoffs = _build(
+        messages: const [],
+        isBusy: true,
+        queuedPrompts: [_queued(id: "handoff", handoff: _received)],
+      );
+
+      final card = handoffs.queuedCards["handoff"];
+      expect(card?.sourceSessionId, "source");
+      expect(card?.summary, "Goal: fix");
+      expect(card?.transcriptPath, "/tmp/t.md");
+      expect(handoffs.queuedMarkers, isEmpty);
+      expect(handoffs.writing, isFalse);
+    });
+
+    test("a queued prompt with no handoff adds nothing", () {
+      final handoffs = _build(
+        messages: const [],
+        isBusy: false,
+        queuedPrompts: [
+          _queued(id: "plain", handoff: null),
+          _queued(id: "later", handoff: const MessageHandoff.unknown()),
+        ],
+      );
+
+      expect(handoffs.queuedMarkers, isEmpty);
+      expect(handoffs.queuedCards, isEmpty);
+      expect(handoffs.writing, isFalse);
+    });
+
+    test("a queued request keeps its marker while its message has no parts to show yet", () {
+      final handoffs = _build(
+        messages: [_user(id: "request-message", handoff: _sent, promptId: "request")],
+        isBusy: true,
+        queuedPrompts: [_queued(id: "request", handoff: _sent)],
+      );
+
+      expect(handoffs.queuedMarkers["request"]?.status, TranscriptHandoffMarkerStatus.writing);
+      expect(handoffs.markers.keys, ["request-message"]);
     });
   });
 }

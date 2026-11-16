@@ -349,7 +349,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   final ValueNotifier<double> _topReserve = ValueNotifier(0);
 
   /// The handoffs among the rows, from the last build.
-  TranscriptHandoffs _handoffs = const TranscriptHandoffs(markers: {}, foldedMessageIds: {}, cards: {});
+  TranscriptHandoffs _handoffs = const TranscriptHandoffs(
+    markers: {},
+    foldedMessageIds: {},
+    cards: {},
+    queuedMarkers: {},
+    queuedCards: {},
+  );
 
   /// The attached user message bubbles, by message id.
   final _promptSlots = TranscriptPromptSlots();
@@ -1166,6 +1172,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       messages: messages,
       turns: turns,
       isBusy: isBusy,
+      queuedPrompts: widget.bridgeQueuedPrompts,
     );
     // A summary being written shows its own live line in place of the working row.
     final activity = handoffs.writing
@@ -1332,125 +1339,138 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               final TranscriptMessageMenuOpened menu => _onMessageMenuOpened(menu),
               _ => _onScrollNotification(notification),
             },
-            child: PregoHorizontalDragGestureDetector(
-              behavior: HitTestBehavior.translucent,
-              supportedDevices: _kRevealPointerDevices,
-              onHorizontalDragDown: _onRevealDragDown,
-              onHorizontalDragStart: _onRevealDragStart,
-              onHorizontalDragUpdate: _onRevealDragUpdate,
-              onHorizontalDragEnd: _onRevealDragEnd,
-              onHorizontalDragCancel: _onRevealDragCancel,
-              pendingRejectionSlop: _kRevealPendingRejectionSlop,
-              direction: PregoHorizontalDragDirection.left,
-              dragStartBehavior: DragStartBehavior.down,
-              child: Stack(
-                children: [
-                  TranscriptLaidOutListView(
-                    key: _kListViewKey,
-                    onLaidOut: _layOutSticky,
-                    detached: () => !_follow.following,
-                    rowsLeaving: () => _leavingRows.isNotEmpty,
-                    onCarriedToNewestEnd: _follow.reattach,
-                    reverse: true,
-                    controller: _follow.scrollController,
-                    padding: EdgeInsetsDirectional.only(
-                      start: widget.horizontalInset,
-                      end: widget.horizontalInset,
-                      top: 8 + widget.topInset + _topReserve.value,
-                      // The list view adds the floating controls' height itself.
-                      bottom: 8,
-                    ),
-                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: rowIds.length,
-                    findChildIndexCallback: (key) {
-                      if (key case ValueKey<String>(value: final keyValue)) {
-                        final rowId = keyValue == _kLaunchRowId ? _launchSlotRowId ?? keyValue : keyValue;
-                        final domainIndex = rowIds.indexOf(rowId);
-                        return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
-                      }
-                      return null;
-                    },
-                    itemBuilder: (context, index) {
-                      final entryId = rowIds[rowIds.length - index - 1];
-                      final leavingRow = _leavingRows[entryId];
-                      final row = _builtRows[entryId] =
-                          leavingRow ??
-                          _buildRow(
-                            entryId: entryId,
-                            messages: messages,
-                            indexById: indexById,
-                            transientSubmissions: transientSubmissions,
-                            transcript: transcript,
-                            streamingText: streamingText,
-                            retryErrorMessage: retryErrorMessage,
-                            activity: activity,
-                          );
-                      return TranscriptRowReporter(
-                        key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
-                        rowId: entryId,
-                        onMount: _onRowMount,
-                        onUnmount: _onRowUnmount,
-                        child: SentBubbleArrival(
-                          // Not the old rows a glide back to the latest edge builds on its way.
-                          arriving: !previousRowIndexById.containsKey(entryId),
-                          child: TranscriptPresence(
-                            entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
-                            exiting: leavingRow != null,
-                            onEntered: () => _easedInRowIds.add(entryId),
-                            onExited: () => _onRowLeft(rowId: entryId),
-                            child: row,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  Positioned.fill(
-                    // The copies' code blocks scroll sideways; the list must not
-                    // read their scrolls as its own.
-                    child: NotificationListener<Notification>(
-                      onNotification: (notification) =>
-                          notification is ScrollNotification || notification is ScrollMetricsNotification,
-                      child: ValueListenableBuilder(
-                        valueListenable: _stickyOpenerIds,
-                        builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
-                          key: _stickyKey,
-                          messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
-                          // The rows' own shapes, frozen with them while detached, so a pin never disagrees with its row.
-                          promptTurnShapes: switch (snap) {
-                            final frozen? => widget.promptTurnShapes.copyWith(messages: frozen.messageShapes),
-                            null => widget.promptTurnShapes,
-                          },
-                          unloaded: unloadedPin,
-                          horizontalInset: widget.horizontalInset,
-                          onLayout: _layOutSticky,
-                          onTap: _onPinTap,
-                        ),
+            // One selection across the messages, so a drag runs from one into
+            // the next; each row keeps all but its messages' text out of it.
+            // Around the peek, so a finger's horizontal drag peeks rather than
+            // the selection's, which only a double-tap drag uses.
+            child: PregoReadableSelectionArea(
+              child: PregoHorizontalDragGestureDetector(
+                behavior: HitTestBehavior.translucent,
+                supportedDevices: _kRevealPointerDevices,
+                onHorizontalDragDown: _onRevealDragDown,
+                onHorizontalDragStart: _onRevealDragStart,
+                onHorizontalDragUpdate: _onRevealDragUpdate,
+                onHorizontalDragEnd: _onRevealDragEnd,
+                onHorizontalDragCancel: _onRevealDragCancel,
+                pendingRejectionSlop: _kRevealPendingRejectionSlop,
+                direction: PregoHorizontalDragDirection.left,
+                dragStartBehavior: DragStartBehavior.down,
+                child: Stack(
+                  children: [
+                    TranscriptLaidOutListView(
+                      key: _kListViewKey,
+                      onLaidOut: _layOutSticky,
+                      detached: () => !_follow.following,
+                      rowsLeaving: () => _leavingRows.isNotEmpty,
+                      onCarriedToNewestEnd: _follow.reattach,
+                      reverse: true,
+                      controller: _follow.scrollController,
+                      padding: EdgeInsetsDirectional.only(
+                        start: widget.horizontalInset,
+                        end: widget.horizontalInset,
+                        top: 8 + widget.topInset + _topReserve.value,
+                        // The list view adds the floating controls' height itself.
+                        bottom: 8,
                       ),
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: rowIds.length,
+                      findChildIndexCallback: (key) {
+                        if (key case ValueKey<String>(value: final keyValue)) {
+                          final rowId = keyValue == _kLaunchRowId ? _launchSlotRowId ?? keyValue : keyValue;
+                          final domainIndex = rowIds.indexOf(rowId);
+                          return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
+                        }
+                        return null;
+                      },
+                      itemBuilder: (context, index) {
+                        final entryId = rowIds[rowIds.length - index - 1];
+                        final leavingRow = _leavingRows[entryId];
+                        final row = _builtRows[entryId] =
+                            leavingRow ??
+                            _buildRow(
+                              entryId: entryId,
+                              messages: messages,
+                              indexById: indexById,
+                              transientSubmissions: transientSubmissions,
+                              transcript: transcript,
+                              streamingText: streamingText,
+                              retryErrorMessage: retryErrorMessage,
+                              activity: activity,
+                            );
+                        return TranscriptRowReporter(
+                          key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
+                          rowId: entryId,
+                          onMount: _onRowMount,
+                          onUnmount: _onRowUnmount,
+                          child: PregoSelectionOnlyInNestedAreas(
+                            child: SentBubbleArrival(
+                              // Not the old rows a glide back to the latest edge builds on its way.
+                              arriving: !previousRowIndexById.containsKey(entryId),
+                              child: TranscriptPresence(
+                                entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
+                                exiting: leavingRow != null,
+                                onEntered: () => _easedInRowIds.add(entryId),
+                                onExited: () => _onRowLeft(rowId: entryId),
+                                child: row,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                  // Beside the pin, clear of its bubble, which keeps to the right, or
-                  // of its card, which keeps to the left.
-                  if (_pinLoad case final pinLoad?)
-                    Positioned(
-                      left: pinLoad.invocation == null ? widget.horizontalInset + UserMessageBubble.margin.left : null,
-                      right: pinLoad.invocation == null
-                          ? null
-                          : widget.horizontalInset + UserMessageBubble.margin.right,
-                      top: widget.topInset + _kPinGap + UserMessageBubble.padding,
-                      child: IgnorePointer(
-                        child: AnimatedOpacity(
-                          opacity: _showsPinLoadSpinner ? 1 : 0,
-                          duration: transcriptMotionDuration,
-                          child: Semantics(
-                            liveRegion: _showsPinLoadSpinner,
-                            label: _showsPinLoadSpinner ? loc.transcriptPromptsLoading : null,
-                            child: const SizedBox.square(dimension: 16, child: PregoActivityIndicator(color: null)),
+                    Positioned.fill(
+                      // The copies' code blocks scroll sideways; the list must not
+                      // read their scrolls as its own.
+                      child: SelectionContainer.disabled(
+                        // The pins select on their own, apart from the rows they copy.
+                        child: NotificationListener<Notification>(
+                          onNotification: (notification) =>
+                              notification is ScrollNotification || notification is ScrollMetricsNotification,
+                          child: ValueListenableBuilder(
+                            valueListenable: _stickyOpenerIds,
+                            builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
+                              key: _stickyKey,
+                              messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
+                              // The rows' own shapes, frozen with them while detached, so a pin never disagrees with its row.
+                              promptTurnShapes: switch (snap) {
+                                final frozen? => widget.promptTurnShapes.copyWith(messages: frozen.messageShapes),
+                                null => widget.promptTurnShapes,
+                              },
+                              unloaded: unloadedPin,
+                              horizontalInset: widget.horizontalInset,
+                              onLayout: _layOutSticky,
+                              onTap: _onPinTap,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                ],
+                    // Beside the pin, clear of its bubble, which keeps to the right, or
+                    // of its card, which keeps to the left.
+                    if (_pinLoad case final pinLoad?)
+                      Positioned(
+                        left: pinLoad.invocation == null
+                            ? widget.horizontalInset + UserMessageBubble.margin.left
+                            : null,
+                        right: pinLoad.invocation == null
+                            ? null
+                            : widget.horizontalInset + UserMessageBubble.margin.right,
+                        top: widget.topInset + _kPinGap + UserMessageBubble.padding,
+                        child: IgnorePointer(
+                          child: AnimatedOpacity(
+                            opacity: _showsPinLoadSpinner ? 1 : 0,
+                            duration: transcriptMotionDuration,
+                            child: Semantics(
+                              liveRegion: _showsPinLoadSpinner,
+                              label: _showsPinLoadSpinner ? loc.transcriptPromptsLoading : null,
+                              child: const SizedBox.square(dimension: 16, child: PregoActivityIndicator(color: null)),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1521,6 +1541,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         child: _animatedPromptRow(
           deliveredMessageId: null,
           child: QueuedMessageBubble(
+            body: null,
             displayText: submission.displayText,
             isCommand: submission is NewSessionCommandSubmissionSnapshot,
             shape: widget.promptTurnShapes.launch,
@@ -1546,21 +1567,29 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         final message = messages[index];
         return _revealable(
           createdAtMs: message.info.time?.created,
-          child: switch (_handoffRow(message: message)) {
-            final handoff? => _endingInterruptedTurn(messageId: message.info.id, child: handoff),
-            null => _deliveredPromptRow(message: message),
-          },
+          child: _handoffRow(message: message) ?? _deliveredPromptRow(message: message),
         );
       }
       final promptId = entryId.substring(_kPromptRowPrefix.length);
       final prompt = widget.bridgeQueuedPrompts.where((candidate) => candidate.id == promptId).firstOrNull;
       if (prompt != null) {
+        // A handoff shows as it will once delivered, in the same row. The source's
+        // marker offers no Cancel, as the source must be idle to hand off; the
+        // target's card waits under the same status line a message would.
+        if (_handoffs.queuedMarkers[prompt.id] case final marker?) {
+          return _revealable(
+            createdAtMs: prompt.createdAt,
+            child: HandoffMarkerRow(marker: marker),
+          );
+        }
+        final card = _handoffs.queuedCards[prompt.id];
         final onCancel = widget.onCancelBridgeQueuedPrompt;
         return _revealable(
           createdAtMs: prompt.createdAt,
           child: _animatedPromptRow(
             deliveredMessageId: null,
             child: QueuedMessageBubble(
+              body: card == null ? null : HandoffCard(messageId: prompt.id, card: card),
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               shape: widget.promptTurnShapes.ofPrompt(promptId: prompt.id),
@@ -1596,6 +1625,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         child: _animatedPromptRow(
           deliveredMessageId: null,
           child: QueuedMessageBubble(
+            body: null,
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             shape: widget.promptTurnShapes.ofPrompt(promptId: submission.promptId),
@@ -1621,6 +1651,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         child: _animatedPromptRow(
           deliveredMessageId: null,
           child: QueuedMessageBubble(
+            body: null,
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             shape: widget.promptTurnShapes.ofPrompt(promptId: submission.promptId),
@@ -1673,12 +1704,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return const SizedBox.shrink();
     }
     final createdAtMs = message.info.time?.created;
-    if (_handoffRow(message: message) case final handoff?) {
-      return _revealable(
-        createdAtMs: createdAtMs,
-        child: _endingInterruptedTurn(messageId: message.info.id, child: handoff),
-      );
-    }
+    if (_handoffRow(message: message) case final handoff?) return _revealable(createdAtMs: createdAtMs, child: handoff);
     final card = switch (message.info) {
       // The launch bubble's echo keeps easing like the bubble it replaced.
       MessageUser() when entryId == _launchSlotRowId => _deliveredPromptRow(message: message),
@@ -1839,11 +1865,29 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   );
 
   /// A handoff's marker or card in place of its prompt's bubble, or null for
-  /// any other prompt.
+  /// any other prompt. The card carries on from the queued card's row, so the
+  /// status line it waited under sees out its fade.
   Widget? _handoffRow({required MessageWithParts message}) {
     final id = message.info.id;
-    if (_handoffs.markers[id] case final marker?) return HandoffMarkerRow(marker: marker);
-    if (_handoffs.cards[id] case final card?) return HandoffCard(messageId: id, card: card);
+    if (_handoffs.markers[id] case final marker?) {
+      return _endingInterruptedTurn(messageId: id, child: HandoffMarkerRow(marker: marker));
+    }
+    if (_handoffs.cards[id] case final card?) {
+      return _animatedPromptRow(
+        deliveredMessageId: id,
+        child: QueuedMessageBubble(
+          body: null,
+          displayText: null,
+          isCommand: false,
+          shape: _messageShape(messageId: id),
+          attachmentCount: 0,
+          localAttachments: const [],
+          presentation: QueuedMessageBubblePresentation.delivered(
+            message: ({required outlineFade}) => HandoffCard(messageId: id, card: card),
+          ),
+        ),
+      );
+    }
     return null;
   }
 
@@ -1853,6 +1897,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   Widget _deliveredPromptRow({required MessageWithParts message}) => _animatedPromptRow(
     deliveredMessageId: message.info.id,
     child: QueuedMessageBubble(
+      body: null,
       displayText: null,
       isCommand: false,
       shape: _messageShape(messageId: message.info.id),

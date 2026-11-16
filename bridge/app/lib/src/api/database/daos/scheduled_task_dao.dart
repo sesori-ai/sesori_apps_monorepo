@@ -4,10 +4,11 @@ import "package:sesori_shared/sesori_shared.dart" show TaskRunFailureReason;
 import "../database.dart";
 import "../tables/scheduled_task_runs_table.dart";
 import "../tables/scheduled_tasks_table.dart";
+import "../tables/session_table.dart";
 
 part "scheduled_task_dao.g.dart";
 
-@DriftAccessor(tables: [ScheduledTasksTable, ScheduledTaskRunsTable])
+@DriftAccessor(tables: [ScheduledTasksTable, ScheduledTaskRunsTable, SessionTable])
 class ScheduledTaskDao({required AppDatabase database})
     extends DatabaseAccessor<AppDatabase>
     with _$ScheduledTaskDaoMixin {
@@ -153,6 +154,43 @@ class ScheduledTaskDao({required AppDatabase database})
           ..orderBy(_newestFirst)
           ..limit(1))
         .getSingleOrNull();
+  }
+
+  /// The task that started each of [sessionIds] that a task started, in one
+  /// join.
+  Future<List<({String sessionId, ScheduledTaskDto task})>> listTasksOfSessions({
+    required Set<String> sessionIds,
+  }) async {
+    final query = select(sessionTable).join([
+      innerJoin(scheduledTasksTable, scheduledTasksTable.id.equalsExp(sessionTable.scheduledTaskId)),
+    ])..where(sessionTable.sessionId.isIn(sessionIds));
+    return [
+      for (final row in await query.get())
+        (sessionId: row.readTable(sessionTable).sessionId, task: row.readTable(scheduledTasksTable)),
+    ];
+  }
+
+  /// The newest run that went to [sessionId].
+  Future<ScheduledTaskRunDto?> getLatestRunOfSession({required String sessionId}) {
+    return (select(scheduledTaskRunsTable)
+          ..where((row) => row.sessionId.equals(sessionId))
+          ..orderBy(_newestFirst)
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  /// Sets the user-prompted time of the newest run that went to [sessionId],
+  /// unless it is already set. Returns the rows changed.
+  Future<int> setLatestRunUserPromptedAt({required String sessionId, required int userPromptedAt}) {
+    final taskRuns = scheduledTaskRunsTable;
+    final latest = selectOnly(taskRuns)
+      ..addColumns([taskRuns.id])
+      ..where(taskRuns.sessionId.equals(sessionId))
+      ..orderBy(_newestFirstColumns(taskRuns))
+      ..limit(1);
+    return (update(taskRuns)..where((run) => run.id.isInQuery(latest) & run.userPromptedAt.isNull())).write(
+      ScheduledTaskRunsTableCompanion(userPromptedAt: Value(userPromptedAt)),
+    );
   }
 
   /// Points the task at [sessionId], only while its update time is still

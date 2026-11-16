@@ -13,6 +13,12 @@ class DeletionWorktreeServiceFake({final List<String>? operationLog}) implements
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
 
+  /// The branch [keepWorktreeHead] reports, or the error it throws.
+  String? keptBranch;
+  Object? keepError;
+  final keptHeads = <String>[];
+  final releasedHeads = <String>[];
+
   @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({required String worktreePath, required String? baseCommit}) async {
     checkCallCount++;
@@ -35,6 +41,20 @@ class DeletionWorktreeServiceFake({final List<String>? operationLog}) implements
     lastRemoveWorktreePath = worktreePath;
     lastRemoveForce = force;
     return removeResult;
+  }
+
+  @override
+  Future<String?> keepWorktreeHead({required String projectId, required String worktreePath}) async {
+    operationLog?.add("keepHead");
+    keptHeads.add(worktreePath);
+    if (keepError case final error?) throw error;
+    return keptBranch;
+  }
+
+  @override
+  Future<void> releaseWorktreeHead({required String projectId, required String worktreePath}) async {
+    operationLog?.add("releaseHead");
+    releasedHeads.add(worktreePath);
   }
 
   @override

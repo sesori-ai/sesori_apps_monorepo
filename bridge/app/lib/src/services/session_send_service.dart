@@ -49,6 +49,10 @@ class SessionSendService({
 
   /// How long the source may take to write the summary.
   required final Duration _summaryTimeout,
+
+  /// How long a source whose summary turn failed may take to settle before
+  /// its stored history is searched for a request it never echoed.
+  required final Duration _settleTimeout,
 }) {
   /// Fails every summary wait still open, so bridge shutdown does not wait
   /// out the summary timeout.
@@ -79,12 +83,42 @@ class SessionSendService({
     Log.i("Sending session ${source.id} to ${target.id}; requesting the summary as prompt $promptId");
     // Watching starts before the send, so the echo cannot be missed.
     final requestText = _summaryRequestText(targetTitle: target.title);
+    final notSent = MessageHandoffNotSent(
+      targetSessionId: target.id,
+      targetTitle: _nonBlank(text: target.title),
+    );
     final turn = _watchSummaryTurn(sessionId: source.id, promptId: promptId);
+    var summaryRequested = false;
     try {
       await _requestSummary(source: source, target: target, promptId: promptId, requestText: requestText);
-      await _finishAfterSummaryRequest(source: source, target: target, turn: turn, requestText: requestText);
+      summaryRequested = true;
+      await _finishAfterSummaryRequest(
+        source: source,
+        target: target,
+        turn: turn,
+        requestText: requestText,
+        notSent: notSent,
+      );
     } on Object {
-      await _markSummaryNotSent(sessionId: source.id, promptId: promptId, requestMessageId: turn.requestMessageId());
+      // A send that did not complete keeps its summary exchange hidden behind
+      // its marker: the request's stamp turns to not sent, first for an echo
+      // that has yet to arrive, then in the stored history.
+      _sessions.markHandoffNotSent(sessionId: source.id, promptId: promptId);
+      switch (turn.requestMessageId()) {
+        case final messageId?:
+          await _markStoredRequestNotSent(sessionId: source.id, messageId: messageId, notSent: notSent);
+        case null when summaryRequested:
+          await _markUnechoedRequestNotSent(
+            sessionId: source.id,
+            promptId: promptId,
+            turn: turn,
+            requestText: requestText,
+            notSent: notSent,
+          );
+        // A refused request, or a check that failed before it, left no stamp.
+        case null:
+          break;
+      }
       rethrow;
     } finally {
       await turn.stop();
@@ -99,6 +133,7 @@ class SessionSendService({
     required Session target,
     required _SummaryTurn turn,
     required String requestText,
+    required MessageHandoffNotSent notSent,
   }) async {
     final String summaryRequestMessageId;
     try {
@@ -119,28 +154,53 @@ class SessionSendService({
       // The refresh can have replaced the live echo with a replayed message
       // under another id, which carries the stamp now.
       if (storedRequestMessageId != summaryRequestMessageId) {
-        await _markStoredRequestNotSent(sessionId: source.id, messageId: storedRequestMessageId);
+        await _markStoredRequestNotSent(sessionId: source.id, messageId: storedRequestMessageId, notSent: notSent);
       }
       rethrow;
     }
   }
 
-  /// Keeps the summary exchange of a send that did not complete hidden behind
-  /// its marker: the request's stamp turns to not sent, both for an echo that
-  /// has yet to arrive and in the stored history once it has. Without a stamp
-  /// (a refused request, or a check that failed before it) nothing changes.
-  Future<void> _markSummaryNotSent({
+  /// Marks a summary request the source stored without echoing it live, so
+  /// no prompt id names it: Claude records a request it was stopped before
+  /// echoing. Once the source has settled, the request is the last user
+  /// message with its exact text in the refreshed history, as in the split.
+  /// A stamped match is an earlier send's request, kept as it is.
+  Future<void> _markUnechoedRequestNotSent({
     required String sessionId,
     required String promptId,
-    required String? requestMessageId,
+    required _SummaryTurn turn,
+    required String requestText,
+    required MessageHandoffNotSent notSent,
   }) async {
-    _sessions.markHandoffNotSent(sessionId: sessionId, promptId: promptId);
-    if (requestMessageId != null) await _markStoredRequestNotSent(sessionId: sessionId, messageId: requestMessageId);
+    try {
+      await turn.settled.timeout(_settleTimeout);
+    } on TimeoutException {
+      Log.w("Session $sessionId did not settle after its summary turn failed; looking up prompt $promptId anyway");
+    }
+    if (_shuttingDown) return;
+    final List<MessageWithParts> messages;
+    try {
+      messages = await _refreshedHistory(sessionId: sessionId);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not read session $sessionId to mark summary prompt $promptId as not sent", error, stackTrace);
+      return;
+    }
+    final request = messages.where((message) => _isRequest(message: message, requestText: requestText)).lastOrNull;
+    if (request?.info case MessageUser(:final id, handoff: null)) {
+      Log.i("Marking summary request $id of session $sessionId, stored without its echo, as not sent");
+      await _markStoredRequestNotSent(sessionId: sessionId, messageId: id, notSent: notSent);
+    } else {
+      Log.i("Session $sessionId stored no unstamped summary request for prompt $promptId");
+    }
   }
 
-  Future<void> _markStoredRequestNotSent({required String sessionId, required String messageId}) async {
+  Future<void> _markStoredRequestNotSent({
+    required String sessionId,
+    required String messageId,
+    required MessageHandoffNotSent notSent,
+  }) async {
     try {
-      await _history.markHandoffNotSent(sessionId: sessionId, messageId: messageId);
+      await _history.markHandoffNotSent(sessionId: sessionId, messageId: messageId, notSent: notSent);
     } on Object catch (error, stackTrace) {
       Log.w("Could not mark summary request $messageId of session $sessionId as not sent", error, stackTrace);
     }
@@ -233,25 +293,28 @@ class SessionSendService({
   /// starts. [_SummaryTurn.ended] completes with the id of the user message
   /// that carried the prompt, once the source goes idle after it, and fails
   /// when the source is stopped or reports a session error.
+  /// [_SummaryTurn.settled] completes at the source's first idle once the
+  /// wait has ended, so a failed wait can tell when the turn it left is over.
   _SummaryTurn _watchSummaryTurn({required String sessionId, required String promptId}) {
     final ended = Completer<String>();
     // Stop or an error can arrive before anyone awaits the outcome.
     ended.future.ignore();
+    final settled = Completer<void>();
+    void settle() {
+      if (!settled.isCompleted) settled.complete();
+    }
+
     String? summaryRequestMessageId;
     void fail({required SendToSessionErrorCode code}) {
       if (!ended.isCompleted) ended.completeError(_rejected(code: code));
     }
 
     void observe({required NormalizedBridgeEvent event}) {
-      if (ended.isCompleted) return;
       final (payload, forcedStop) = switch (event) {
         NormalizedTerminalHandoff(:final payload) => (payload, true),
         final NormalizedBridgePayload payload => (payload, false),
       };
       switch (payload) {
-        case NormalizedMessageEvent(message: MessageUser(:final id, :final sessionID, promptId: final echoed))
-            when sessionID == sessionId && echoed == promptId:
-          summaryRequestMessageId = id;
         // Harnesses report the end of a turn as either event.
         case NormalizedStatusEvent(sessionId: final idleSessionId, status: SessionStatusIdle()) ||
                 NormalizedOtherEvent(event: BridgeSseSessionIdle(sessionID: final idleSessionId))
@@ -259,9 +322,15 @@ class SessionSendService({
           // A plugin stopping mid-turn ends it without a finished summary.
           if (forcedStop) {
             fail(code: SendToSessionErrorCode.summaryFailed);
-          } else if (summaryRequestMessageId case final messageId?) {
+          } else if (summaryRequestMessageId case final messageId? when !ended.isCompleted) {
             ended.complete(messageId);
           }
+          if (ended.isCompleted) settle();
+        case _ when ended.isCompleted:
+          break;
+        case NormalizedMessageEvent(message: MessageUser(:final id, :final sessionID, promptId: final echoed))
+            when sessionID == sessionId && echoed == promptId:
+          summaryRequestMessageId = id;
         case NormalizedOtherEvent(event: BridgeSseSessionError(:final sessionID)) when sessionID == sessionId:
           fail(code: SendToSessionErrorCode.summaryFailed);
         // Some harnesses end a failed turn with an error message and a plain idle.
@@ -288,10 +357,15 @@ class SessionSendService({
     final abortSubscription = _aborts.abortStartedSessions.listen((stopped) {
       if (stopped == sessionId) fail(code: SendToSessionErrorCode.summaryStopped);
     });
-    void onShutdown() => fail(code: SendToSessionErrorCode.summaryStopped);
+    void onShutdown() {
+      fail(code: SendToSessionErrorCode.summaryStopped);
+      settle();
+    }
+
     _shutdownHooks.add(onShutdown);
     return (
       ended: ended.future,
+      settled: settled.future,
       requestMessageId: () => summaryRequestMessageId,
       stop: () async {
         _shutdownHooks.remove(onShutdown);
@@ -313,28 +387,9 @@ class SessionSendService({
     required String summaryRequestMessageId,
     required String requestText,
   }) async {
-    // The live capture of the reply's parts can trail the idle event, so the
-    // store is brought current first, as archive export does. A backend that
-    // cannot replay leaves the store as the live stream filled it.
-    try {
-      await _history.backfillSession(sessionId: sessionId);
-    } on Object catch (error, stackTrace) {
-      Log.w(
-        "Could not refresh the history of session $sessionId before sending it; using stored history",
-        error,
-        stackTrace,
-      );
-    }
     final List<MessageWithParts> messages;
     try {
-      messages = (await _history.getSessionMessages(
-        sessionId: sessionId,
-        window: const HistoryWindowAll(),
-        attachmentDelivery: MessageAttachmentDelivery.storedReference,
-        toolOutputDelivery: ToolOutputDelivery.inline,
-        storedOnly: false,
-        backgroundRefresh: false,
-      )).messages;
+      messages = await _refreshedHistory(sessionId: sessionId);
     } on Object catch (error, stackTrace) {
       throw SessionSendRejectedException(
         code: SendToSessionErrorCode.transcriptUnavailable,
@@ -346,9 +401,7 @@ class SessionSendService({
     final echoIndex = messages.indexWhere((message) => message.info.id == summaryRequestMessageId);
     final requestIndex = echoIndex >= 0
         ? echoIndex
-        : messages.lastIndexWhere(
-            (message) => message.info is MessageUser && _textOf(message: message) == requestText,
-          );
+        : messages.lastIndexWhere((message) => _isRequest(message: message, requestText: requestText));
     if (requestIndex < 0) {
       Log.w(
         "Session $sessionId history (${messages.length} messages) lacks summary request message "
@@ -372,6 +425,35 @@ class SessionSendService({
       storedRequestMessageId: messages[requestIndex].info.id,
     );
   }
+
+  /// The source's whole history, after a refresh from the backend.
+  Future<List<MessageWithParts>> _refreshedHistory({required String sessionId}) async {
+    // The live capture of the reply's parts can trail the idle event, so the
+    // store is brought current first, as archive export does. A backend that
+    // cannot replay leaves the store as the live stream filled it.
+    try {
+      await _history.backfillSession(sessionId: sessionId);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "Could not refresh the history of session $sessionId before sending it; using stored history",
+        error,
+        stackTrace,
+      );
+    }
+    return (await _history.getSessionMessages(
+      sessionId: sessionId,
+      window: const HistoryWindowAll(),
+      attachmentDelivery: MessageAttachmentDelivery.storedReference,
+      toolOutputDelivery: ToolOutputDelivery.inline,
+      storedOnly: false,
+      backgroundRefresh: false,
+    )).messages;
+  }
+
+  /// Whether [message] is the summary request [requestText], as a replay
+  /// under another id or a request stored without its echo reads.
+  static bool _isRequest({required MessageWithParts message, required String requestText}) =>
+      message.info is MessageUser && _textOf(message: message) == requestText;
 
   /// [messages] without the summary exchanges of earlier sends: each request
   /// Sesori wrote to the source, and the replies up to the next user message.
@@ -507,6 +589,12 @@ class SessionSendService({
 }
 
 /// The summary turn being watched: [ended] completes with the summary
-/// request's user message id, [requestMessageId] reads that id once its echo
-/// has arrived, and [stop] ends the watch. Stopping twice is harmless.
-typedef _SummaryTurn = ({Future<String> ended, String? Function() requestMessageId, Future<void> Function() stop});
+/// request's user message id, [settled] once the source is idle after the
+/// wait ended, [requestMessageId] reads that id once its echo has arrived,
+/// and [stop] ends the watch. Stopping twice is harmless.
+typedef _SummaryTurn = ({
+  Future<String> ended,
+  Future<void> settled,
+  String? Function() requestMessageId,
+  Future<void> Function() stop,
+});

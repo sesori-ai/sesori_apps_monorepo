@@ -11,6 +11,8 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/compaction_part_widget.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/handoff_card.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/handoff_marker_row.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/invocation_card.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
@@ -565,23 +567,7 @@ Future<void> _pumpPointerTurns(
   await tester.pumpWidget(
     PregoInteractionScope(
       mode: PregoInteractionMode.pointer,
-      child: SessionDetailPresentationScope(
-        messageImageRepository: _UnpreviewedImageRepository.new,
-        imageSaver: () => throw UnimplementedError("Saving images is not under test"),
-        imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
-        imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
-        sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
-        createExternalActionCubit: ({required requestId, required sessionId}) =>
-            throw UnimplementedError("External actions are not under test"),
-        createPendingFormCubit: ({required requestId, required sessionId}) =>
-            throw UnimplementedError("Forms are not under test"),
-        createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
-        canShareImages: false,
-        openExternalLink: ({required url, required mode}) async => false,
-        openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-        openHarnessSettings: () {},
-        openBridgeSettings: () {},
-        openSideChat: null,
+      child: _presented(
         child: _SessionDetailMessageListHarness(
           initialMessages: messages,
           initialStreamingText: const {},
@@ -593,6 +579,27 @@ Future<void> _pumpPointerTurns(
   );
   await tester.pumpAndSettle();
 }
+
+/// [child] on a session page, for rows that read its presentation scope.
+Widget _presented({required Widget child}) => SessionDetailPresentationScope(
+  messageImageRepository: _UnpreviewedImageRepository.new,
+  imageSaver: () => throw UnimplementedError("Saving images is not under test"),
+  imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
+  imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
+  sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
+  createExternalActionCubit: ({required requestId, required sessionId}) =>
+      throw UnimplementedError("External actions are not under test"),
+  createPendingFormCubit: ({required requestId, required sessionId}) =>
+      throw UnimplementedError("Forms are not under test"),
+  createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
+  canShareImages: false,
+  openExternalLink: ({required url, required mode}) async => false,
+  openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+  openHarnessSettings: () {},
+  openBridgeSettings: () {},
+  openSideChat: null,
+  child: child,
+);
 
 /// Previews no attachment, so an image keeps its placeholder: a tile the size
 /// its preview takes.
@@ -793,6 +800,7 @@ void main() {
 
     const listed = QueuedSessionPrompt(
       commandSource: null,
+      handoff: null,
       id: "prm_sent",
       text: "Fresh",
       command: null,
@@ -1289,6 +1297,7 @@ void main() {
     QueuedSessionPrompt listed({QueuedPromptDispatchState state = QueuedPromptDispatchState.queued}) =>
         QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_sent",
           text: "Fresh",
           command: null,
@@ -1759,6 +1768,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -1767,6 +1777,7 @@ void main() {
           ),
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_2",
             text: "src",
             command: "review",
@@ -1821,6 +1832,7 @@ void main() {
       );
       final prompt = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: submission.promptId,
         text: submission.displayText,
         command: null,
@@ -1911,6 +1923,7 @@ void main() {
     );
     const prompt = QueuedSessionPrompt(
       commandSource: null,
+      handoff: null,
       id: "image-prompt",
       text: "Review this image",
       command: null,
@@ -2071,6 +2084,7 @@ void main() {
             child: SizedBox(
               width: 280,
               child: QueuedMessageBubble(
+                body: null,
                 displayText: "first",
                 isCommand: false,
                 attachmentCount: 0,
@@ -2114,6 +2128,7 @@ void main() {
               child: SizedBox(
                 width: 280,
                 child: QueuedMessageBubble(
+                  body: null,
                   displayText: "first",
                   isCommand: false,
                   attachmentCount: 0,
@@ -2355,6 +2370,7 @@ void main() {
       prompts: const [
         QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_wake",
           text: "wake it",
           command: null,
@@ -2377,6 +2393,138 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("a bridge-queued summary request shows its writing marker from the start and keeps it on arrival", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _presented(
+        child: _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: [
+            _message(messageId: "user-0", role: "user", text: "Earlier"),
+            _message(messageId: "assistant-0", role: "assistant", text: "Earlier reply"),
+          ],
+          initialStreamingText: const {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final harness = harnessKey.harness;
+    const handoff = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Codex review");
+    const requestText = "Fixture summary request";
+    final marker = find.byType(HandoffMarkerRow);
+    void expectNoRawRequest({required String reason}) {
+      // Offstage too: a row is measured before it eases in.
+      expect(find.byType(HandoffMarkerRow, skipOffstage: false), findsOneWidget, reason: reason);
+      expect(find.text(requestText, skipOffstage: false), findsNothing, reason: reason);
+      expect(find.byType(TranscriptWorkingRow, skipOffstage: false), findsNothing, reason: reason);
+    }
+
+    harness.updateBridgeQueue(
+      prompts: const [
+        QueuedSessionPrompt(
+          commandSource: null,
+          handoff: handoff,
+          id: "prm_request",
+          text: requestText,
+          command: null,
+          createdAt: 100,
+          dispatchState: QueuedPromptDispatchState.dispatched,
+        ),
+      ],
+      attachments: const {},
+    );
+    await tester.pump();
+    expectNoRawRequest(reason: "queued");
+    harness.setBusy(true);
+    for (var frame = 0; frame < 40; frame++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      expectNoRawRequest(reason: "queued frame $frame");
+    }
+    expect(find.text("Writing a summary for Codex review…"), findsWidgets);
+    final markerTop = tester.getTopLeft(marker).dy;
+    final markerRow = tester.element(marker);
+
+    final request = _message(messageId: "request", role: "user", text: requestText, promptId: "prm_request");
+    final requestInfo = switch (request.info) {
+      final MessageUser user => user.copyWith(handoff: handoff),
+      final other => other,
+    };
+    // The user message can land before its parts, while the bridge still lists the prompt.
+    harness.appendNewestMessage(MessageWithParts(info: requestInfo, parts: const []));
+    for (var frame = 0; frame < 4; frame++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      expectNoRawRequest(reason: "partless frame $frame");
+    }
+    harness.removeMessage("request");
+    harness.deliverBridgePrompt(
+      promptId: "prm_request",
+      message: MessageWithParts(info: requestInfo, parts: request.parts),
+      insertionIndex: 2,
+    );
+    for (var frame = 0; frame < 12; frame++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      expectNoRawRequest(reason: "delivered frame $frame");
+      expect(tester.getTopLeft(marker).dy, moreOrLessEquals(markerTop, epsilon: 0.5), reason: "frame $frame");
+    }
+    expect(tester.element(marker), same(markerRow));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("a bridge-queued handoff prompt shows as its card, never as a bubble, and can be cancelled", (
+    tester,
+  ) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _presented(
+        child: _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: [_message(messageId: "assistant-0", role: "assistant", text: "Earlier reply")],
+          initialStreamingText: const {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    const promptText = "Fixture handoff prompt";
+    harnessKey.harness.updateBridgeQueue(
+      prompts: const [
+        QueuedSessionPrompt(
+          commandSource: null,
+          handoff: MessageHandoff.received(
+            sourceSessionId: "source",
+            sourceTitle: "Relay retries",
+            summary: "Fixture summary",
+            transcriptPath: "/tmp/fixture/transcript.md",
+          ),
+          id: "prm_handoff",
+          text: promptText,
+          command: null,
+          createdAt: 100,
+          dispatchState: QueuedPromptDispatchState.queued,
+        ),
+      ],
+      attachments: const {},
+    );
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      // Offstage too: a row is measured before it eases in.
+      expect(find.byType(HandoffCard, skipOffstage: false), findsOneWidget, reason: "frame $frame");
+      expect(find.text(promptText, skipOffstage: false), findsNothing, reason: "frame $frame");
+      expect(find.byType(UserMessageBubble, skipOffstage: false), findsNothing, reason: "frame $frame");
+    }
+    expect(find.byType(HandoffCard), findsOneWidget);
+    // The source has finished its part, so only the target can withdraw the card.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Cancel"));
+    await tester.pumpAndSettle();
+    expect(harnessKey.harness.cancelledBridgePromptIds, ["prm_handoff"]);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets("a prompt from another surface that wakes the session sits above Working… when busy lands first", (
     tester,
   ) async {
@@ -2395,6 +2543,7 @@ void main() {
       prompts: const [
         QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_remote",
           text: "from the desktop",
           command: null,
@@ -2575,6 +2724,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "thanks",
             command: null,
@@ -2642,6 +2792,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -2686,6 +2837,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -2723,6 +2875,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -4545,6 +4698,7 @@ void main() {
         prompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_other",
             text: "From elsewhere",
             command: null,
@@ -6898,6 +7052,123 @@ void main() {
       expect(_position(tester).pixels, offset);
       expect(find.byKey(_jumpToLatestKey), findsNothing);
     });
+  });
+
+  group("a text selection", () {
+    const first = "The first reply's text";
+    const second = "The second reply's text";
+    final replies = [
+      // Timestamped, so each row has one beside it to leave out.
+      _message(messageId: "u0", role: "user", text: "A prompt", createdAtMs: 1700000000000),
+      _message(messageId: "a0", role: "assistant", text: first, createdAtMs: 1700000001000),
+      _message(messageId: "a1", role: "assistant", text: second, createdAtMs: 1700000002000),
+    ];
+
+    PregoReadableSelectionAreaState transcriptArea(WidgetTester tester) => tester.state(
+      find.ancestor(
+        of: find.byKey(const Key("session-detail-message-list-view")),
+        matching: find.byType(PregoReadableSelectionArea),
+      ),
+    );
+
+    PregoReadableSelectionAreaState messageArea(WidgetTester tester, String text) =>
+        tester.state(find.ancestor(of: find.text(text), matching: find.byType(PregoReadableSelectionArea)).first);
+
+    /// Drags from the start of the first reply to the end of the second.
+    Future<void> dragFromFirstIntoSecond(WidgetTester tester) async {
+      final start = tester.getTopLeft(find.text(first)) + const Offset(1, 5);
+      final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+      await tester.pump();
+      await drag.moveTo(tester.getCenter(find.text(second)));
+      await tester.pump();
+      await drag.moveTo(tester.getTopRight(find.text(second)) + const Offset(-1, 5));
+      await tester.pump();
+      await drag.up();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      "dragged with a mouse runs from one message into the next, and copies their text in order",
+      (tester) async {
+        await _pumpPointerTurns(tester, messages: replies);
+
+        await dragFromFirstIntoSecond(tester);
+
+        // Line by line, without the prompt above or either row's timestamp,
+        // and each message's menu copies all of it.
+        expect(messageArea(tester, first).selectedText, "$first\n$second");
+        expect(messageArea(tester, second).selectedText, "$first\n$second");
+        expect(transcriptArea(tester).selectedText, "$first\n$second");
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+    );
+
+    testWidgets(
+      "a right-click on it offers Copy selected text, and a message outside it still offers Copy",
+      (tester) async {
+        await _pumpPointerTurns(tester, messages: replies);
+        await dragFromFirstIntoSecond(tester);
+        final selected = transcriptArea(tester).selectedText;
+
+        await tester.tapAt(
+          tester.getCenter(find.text(first)),
+          buttons: kSecondaryButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text("Copy selected text"), findsOneWidget);
+        expect(transcriptArea(tester).selectedText, selected, reason: "the open menu keeps the selection");
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+
+        await tester.tapAt(
+          tester.getCenter(find.text("A prompt")),
+          buttons: kSecondaryButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text("Copy"), findsOneWidget);
+        expect(find.text("Copy selected text"), findsNothing);
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+    );
+
+    testWidgets("Select text selects only its own message, with the selection's toolbar", (tester) async {
+      await _pumpTurns(tester, messages: replies);
+
+      await tester.longPress(find.text(second));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Select text"));
+      await tester.pumpAndSettle();
+
+      expect(transcriptArea(tester).selectedText, second);
+      expect(messageArea(tester, first).selectedText, isNull);
+      expect(find.byType(AdaptiveTextSelectionToolbar), findsOneWidget);
+    });
+
+    testWidgets(
+      "after Select text, the start handle runs into the message above",
+      (tester) async {
+        await _pumpTurns(tester, messages: replies);
+        await tester.longPress(find.text(second));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text("Select text"));
+        await tester.pumpAndSettle();
+
+        // The start handle stands on the selection's first character.
+        final handle = await tester.startGesture(tester.getTopLeft(find.text(second)) + const Offset(0, 4));
+        await tester.pump();
+        await handle.moveTo(tester.getCenter(find.text(second)) - const Offset(0, 20));
+        await tester.pump();
+        await handle.moveTo(tester.getTopLeft(find.text(first)) + const Offset(1, 5));
+        await tester.pump();
+        await handle.up();
+        await tester.pumpAndSettle();
+
+        expect(transcriptArea(tester).selectedText, "$first\n$second");
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
   });
 
   group("a turn that ends early", () {

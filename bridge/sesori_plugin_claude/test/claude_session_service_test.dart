@@ -680,6 +680,13 @@ void main() {
       unawaited(harness.enqueue("second"));
       await pump();
 
+      // The prompt is listed before busy, so a client never shows work without it.
+      expect(
+        harness.events
+            .where((event) => event is BridgeSseQueuedPromptsUpdated || event is BridgeSseSessionStatus)
+            .first,
+        isA<BridgeSseQueuedPromptsUpdated>(),
+      );
       expect(
         harness.service.queuedPrompts(sessionId: testSessionId).map((prompt) => prompt.id),
         ["prompt-first", "prompt-second"],

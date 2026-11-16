@@ -5611,6 +5611,12 @@ abstract class AppLocalizations {
   /// **'The session didn\'t accept the edit. Nothing changed.'**
   String get sessionDetailEditRefusedBody;
 
+  /// Note shown when the user taps or types in the composer while an edited message is stopping the session or being sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending your edit. You can type again in a moment.'**
+  String get sessionDetailEditSendingLock;
+
   /// Alert shown when an edit named a model or agent the session no longer offers; the options were refreshed.
   ///
   /// In en, this message translates to:
@@ -7200,6 +7206,348 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get mcpCancel;
+
+  /// Title of the Scheduled page, which lists the computer's scheduled tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled'**
+  String get scheduledTasksTitle;
+
+  /// Accessibility label of the desktop Scheduled page's close button.
+  ///
+  /// In en, this message translates to:
+  /// **'Close Scheduled'**
+  String get scheduledTasksClose;
+
+  /// Scheduled page heading over the tasks that run on repeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Recurring'**
+  String get scheduledTasksRecurringHeading;
+
+  /// Scheduled page heading over the tasks that run one time.
+  ///
+  /// In en, this message translates to:
+  /// **'Once'**
+  String get scheduledTasksOnceHeading;
+
+  /// Scheduled page text when the computer has no tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'No scheduled tasks on this computer yet.'**
+  String get scheduledTasksEmpty;
+
+  /// Scheduled page and task page row when the tasks failed to load.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load scheduled tasks'**
+  String get scheduledTasksLoadFailed;
+
+  /// Button that reloads the scheduled tasks after a failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get scheduledTasksRetry;
+
+  /// Scheduled page row when the computer's bridge predates scheduled tasks; a tap opens the update steps.
+  ///
+  /// In en, this message translates to:
+  /// **'Update this computer to schedule tasks'**
+  String get scheduledTasksBridgeOutdated;
+
+  /// Alert after a task's on/off switch went back because the computer did not take the change.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t change “{name}”. Try again.'**
+  String scheduledTasksToggleFailed(String name);
+
+  /// Summary of a task that runs daily; time is a localized time of day.
+  ///
+  /// In en, this message translates to:
+  /// **'Every day at {time}'**
+  String scheduledTaskDaily(String time);
+
+  /// Summary of a task that runs Monday to Friday.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays at {time}'**
+  String scheduledTaskWeekdays(String time);
+
+  /// Summary of a task that runs on chosen days; days is a list of short weekday names.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} at {time}'**
+  String scheduledTaskWeekly(String days, String time);
+
+  /// Summary of a task that runs every few hours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours, plural, =1{Every hour} other{Every {hours} hours}}'**
+  String scheduledTaskEveryHours(int hours);
+
+  /// Summary of a task whose schedule this app does not know, and the task page's note that it can only be edited on a newer app.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit on a newer app'**
+  String get scheduledTaskNewerApp;
+
+  /// Subtitle or next-run value of a paused task.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get scheduledTaskPaused;
+
+  /// Day of a task time that falls today in the task's zone.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get scheduledTaskToday;
+
+  /// Day of a task time that falls tomorrow in the task's zone.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get scheduledTaskTomorrow;
+
+  /// Day of a task time that fell yesterday in the task's zone.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get scheduledTaskYesterday;
+
+  /// A task time: its day (Today, Tomorrow or a date) and time of day.
+  ///
+  /// In en, this message translates to:
+  /// **'{day}, {time}'**
+  String scheduledTaskDayAndTime(String day, String time);
+
+  /// A task time in a zone other than this device's, naming the zone's city.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} ({zone})'**
+  String scheduledTaskInZone(String time, String zone);
+
+  /// Task page row label for the task's schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get scheduledTaskWhen;
+
+  /// Task page row label for when the task runs next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next run'**
+  String get scheduledTaskNextRun;
+
+  /// Task page next-run value when nothing is left to run.
+  ///
+  /// In en, this message translates to:
+  /// **'Not scheduled'**
+  String get scheduledTaskNoNextRun;
+
+  /// Task page action that starts a run now without moving the schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Run now'**
+  String get scheduledTaskRunNow;
+
+  /// Alert after Run now started a run.
+  ///
+  /// In en, this message translates to:
+  /// **'Run started'**
+  String get scheduledTaskRunStarted;
+
+  /// Alert after Run now failed for an unexpected reason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t start the run. Try again.'**
+  String get scheduledTaskRunNowFailed;
+
+  /// Alert after Run now was refused because the previous run has not finished.
+  ///
+  /// In en, this message translates to:
+  /// **'The previous run is still going. Try again once it finishes.'**
+  String get scheduledTaskPreviousRunActive;
+
+  /// Alert after Run now was refused because the computer's bridge does not support this task's settings.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer can’t run this task yet.'**
+  String get scheduledTaskRunNowUnsupported;
+
+  /// Task page action that stops the task from running on its schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get scheduledTaskPause;
+
+  /// Task page action that puts a paused task back on its schedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get scheduledTaskResume;
+
+  /// Alert after pausing a task failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t pause the task. Try again.'**
+  String get scheduledTaskPauseFailed;
+
+  /// Alert after resuming a task failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t resume the task. Try again.'**
+  String get scheduledTaskResumeFailed;
+
+  /// Task page action that renames the task.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get scheduledTaskRename;
+
+  /// Title of the sheet that renames a task.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename task'**
+  String get scheduledTaskRenameTitle;
+
+  /// Hint of the rename sheet's field.
+  ///
+  /// In en, this message translates to:
+  /// **'Task name'**
+  String get scheduledTaskRenameHint;
+
+  /// Alert after renaming a task failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t rename the task'**
+  String get scheduledTaskRenameFailed;
+
+  /// Task page action that deletes the task.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete task'**
+  String get scheduledTaskDelete;
+
+  /// Title of the confirmation before deleting a task.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}”?'**
+  String scheduledTaskDeleteTitle(String name);
+
+  /// Body of the confirmation before deleting a task.
+  ///
+  /// In en, this message translates to:
+  /// **'It won’t run again. Sessions it already started stay.'**
+  String get scheduledTaskDeleteMessage;
+
+  /// Button that keeps the task.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get scheduledTaskDeleteCancel;
+
+  /// Destructive button that deletes the task.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get scheduledTaskDeleteConfirm;
+
+  /// Alert after deleting a task failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t delete the task. Try again.'**
+  String get scheduledTaskDeleteFailed;
+
+  /// Task page note on a task with parts from a newer app, which can still be run, paused and deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'This task uses settings this app doesn’t know. Edit it on a newer app.'**
+  String get scheduledTaskReadOnly;
+
+  /// Task page text after the task was deleted or, for a one-off task, ran.
+  ///
+  /// In en, this message translates to:
+  /// **'This task is no longer scheduled.'**
+  String get scheduledTaskGone;
+
+  /// Task page heading over the run history.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs'**
+  String get scheduledTaskRunsHeading;
+
+  /// Task page text when the task has never run.
+  ///
+  /// In en, this message translates to:
+  /// **'No runs yet'**
+  String get scheduledTaskNoRuns;
+
+  /// Run history outcome: the run started.
+  ///
+  /// In en, this message translates to:
+  /// **'Ran'**
+  String get scheduledTaskRunRan;
+
+  /// Run history outcome: the run started after its time, such as when the computer was off.
+  ///
+  /// In en, this message translates to:
+  /// **'Ran late'**
+  String get scheduledTaskRunRanLate;
+
+  /// Run history outcome: the run did not start because the previous one had not finished.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped: the previous run was still going'**
+  String get scheduledTaskRunSkipped;
+
+  /// Run history outcome: the computer was off or asleep and the task waited for its next time.
+  ///
+  /// In en, this message translates to:
+  /// **'Missed: the computer was off'**
+  String get scheduledTaskRunMissed;
+
+  /// Run history outcome, and Run now's alert, when the run could not start.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t start: {reason}'**
+  String scheduledTaskRunFailed(String reason);
+
+  /// Run history outcome from a newer computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated app needed to show this run'**
+  String get scheduledTaskRunUnknown;
+
+  /// Reason a run could not start: its project no longer exists.
+  ///
+  /// In en, this message translates to:
+  /// **'the project is gone'**
+  String get scheduledTaskFailureProjectMissing;
+
+  /// Reason a run could not start: its harness is not available on the computer.
+  ///
+  /// In en, this message translates to:
+  /// **'the harness isn’t available'**
+  String get scheduledTaskFailureHarnessUnavailable;
+
+  /// Reason a run could not start: its model is no longer offered. A run never swaps in another model.
+  ///
+  /// In en, this message translates to:
+  /// **'its model isn’t offered anymore'**
+  String get scheduledTaskFailureModelUnavailable;
+
+  /// Reason a run could not start: starting the session failed.
+  ///
+  /// In en, this message translates to:
+  /// **'the session didn’t start'**
+  String get scheduledTaskFailureStartFailed;
+
+  /// Reason a run could not start, from a newer computer.
+  ///
+  /// In en, this message translates to:
+  /// **'an unknown reason'**
+  String get scheduledTaskFailureUnknown;
 
   /// Label of the composer's side-question button, and the hint of the side chat's question field. A side question is answered from what the session knows, without interrupting it.
   ///

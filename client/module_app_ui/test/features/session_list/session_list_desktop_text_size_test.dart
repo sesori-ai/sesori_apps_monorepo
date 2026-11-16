@@ -154,6 +154,40 @@ void main() {
     expect(status.didExceedMaxLines, isTrue, reason: "the status shortens to its line");
   });
 
+  for (final scale in [0.9, 1.0, 1.3]) {
+    testWidgets("the status mark sits centred on the title's line at $scale", (tester) async {
+      await pumpAt(
+        tester,
+        scale: scale,
+        width: 280,
+        child: Column(
+          children: [
+            tile(title: "Running", isRunning: true),
+            tile(title: "Asks a question", awaitingInput: true),
+            tile(title: "Unread", unseen: true),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      for (final (title, mark) in [
+        ("Running", find.byType(PregoAiLoader).first),
+        (
+          "Asks a question",
+          find.byWidgetPredicate(
+            (widget) => switch (widget) {
+              Container(decoration: BoxDecoration(shape: BoxShape.circle)) => true,
+              _ => false,
+            },
+          ),
+        ),
+        ("Unread", find.byType(PregoAiLoader).last),
+      ]) {
+        expect(tester.getCenter(mark).dy, closeTo(tester.getCenter(find.text(title)).dy, 0.5), reason: title);
+      }
+    });
+  }
+
   for (final mode in PregoInteractionMode.values) {
     for (final (scale, spacingOverrides) in [(0.9, false), (1.15, false), (1.3, false), (1.15, true)]) {
       final overridden = spacingOverrides ? ", spacing overrides" : "";

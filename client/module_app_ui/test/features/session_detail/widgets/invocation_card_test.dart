@@ -51,6 +51,7 @@ Future<void> _pump(WidgetTester tester, {required Widget child, double width = 3
 
 QueuedMessageBubble _queued({required QueuedMessageBubblePresentation presentation, required PromptTurnShape shape}) =>
     QueuedMessageBubble(
+      body: null,
       key: const ValueKey("row"),
       displayText: "/fixture-greeter Greet the team\nin two lines",
       isCommand: true,

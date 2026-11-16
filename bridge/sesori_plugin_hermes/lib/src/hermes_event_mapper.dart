@@ -2,11 +2,12 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "hermes_turn_failure_copy.dart";
+import "models/hermes_session_update_dto.dart";
 
 /// Hermes's event mapper: the standard ACP mapping from [AcpEventMapper], plus
 /// Hermes's notices for a failed turn, without its live-only queue
-/// acknowledgement and with its `/compress` reply as a compaction row (see
-/// [map]).
+/// acknowledgement and with its `/compress` reply and a session split as
+/// compaction rows (see [map]).
 ///
 /// Live, Hermes sends a failure's explanation as its ordinary final response,
 /// so on the wire the notice looks like a reply, and then fails
@@ -72,8 +73,25 @@ class HermesEventMapper({
   /// Shows Hermes's `/compress` reply as the compaction row
   /// (`acp_adapter/commands.py::_cmd_compress`, verified v0.21.5). Hermes's
   /// history keeps no record of a `/compress`, so the row is live only.
+  ///
+  /// With `compression.in_place: false`, an automatic compaction moves the
+  /// session onto a new internal session, and Hermes reports that move once,
+  /// after the turn's reply, as a `session_info_update` whose provenance has
+  /// `reason: "compression"` (`acp_adapter/server.py`, verified v0.21.5). One
+  /// report covers every compaction of the turn, so it shows one completed
+  /// row. The replay keeps the turns from before the move and no summary, so
+  /// the row is live only.
   @override
   List<BridgeSseEvent> map(AcpNotification notification) {
+    if (_splitCompactionSessionId(notification: notification) case final String sessionId) {
+      return [
+        ...super.map(notification),
+        ..._compactionRow(
+          sessionId: sessionId,
+          state: const .completed(summary: null, freedTokens: null, trigger: .auto),
+        ),
+      ];
+    }
     if (notification.params
         case {
           "sessionId": final String sessionId,
@@ -91,6 +109,26 @@ class HermesEventMapper({
       }
     }
     return super.map(notification);
+  }
+
+  static String? _splitCompactionSessionId({required AcpNotification notification}) {
+    final params = notification.params;
+    final update = params["update"];
+    final sessionId = params["sessionId"];
+    if (notification.method != AcpMethods.sessionUpdate ||
+        sessionId is! String ||
+        update is! Map<String, dynamic> ||
+        update["sessionUpdate"] != "session_info_update") {
+      return null;
+    }
+    final HermesSessionUpdateDto dto;
+    try {
+      dto = HermesSessionUpdateDto.fromJson(update);
+    } on Object catch (error, stackTrace) {
+      Log.w("[hermes] read a session info update without its provenance", error, stackTrace);
+      return null;
+    }
+    return dto.meta?.hermes?.sessionProvenance?.reason == "compression" ? sessionId : null;
   }
 
   static final RegExp _queuedAcknowledgement = RegExp(r"^Queued for the next turn\. \(\d+ queued\)$");
