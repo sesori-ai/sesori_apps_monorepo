@@ -912,15 +912,6 @@ extension GetItInjectableX on _i174.GetIt {
         routeDispatcher: gh<_i951.RouteDispatcher>(),
       ),
     );
-    gh.lazySingleton<_i119.SessionActionService>(
-      () => _i119.SessionActionService(
-        sessionRepository: gh<_i7.SessionRepository>(),
-        sessionCleanupService: gh<_i692.SessionCleanupService>(),
-        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
-        failureReporter: gh<_i553.FailureReporter>(),
-        selectedComputerService: gh<_i370.SelectedComputerService>(),
-      ),
-    );
     gh.lazySingleton<_i888.AnalyticsRouteListener>(
       () => _i888.AnalyticsRouteListener(
         routeSource: gh<_i366.RouteSource>(),
@@ -1017,6 +1008,16 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i119.SessionActionService>(
+      () => _i119.SessionActionService(
+        sessionRepository: gh<_i7.SessionRepository>(),
+        sessionCleanupService: gh<_i692.SessionCleanupService>(),
+        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
+        failureReporter: gh<_i553.FailureReporter>(),
+        selectedComputerService: gh<_i370.SelectedComputerService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+      ),
     );
     return this;
   }

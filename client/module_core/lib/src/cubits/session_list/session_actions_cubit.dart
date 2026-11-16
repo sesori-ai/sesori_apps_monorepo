@@ -54,8 +54,15 @@ class SessionActionsCubit({
       _actionService.markSessionSeen(projectId: projectId, sessionId: sessionId, read: read);
 
   /// Completes once the bridge answers, which waits for the source's summary.
-  Future<SendToSessionResult> sendToSession({required String sourceSessionId, required String targetSessionId}) =>
-      _actionService.sendToSession(sourceSessionId: sourceSessionId, targetSessionId: targetSessionId);
+  Future<SendToSessionResult> sendToSession({
+    required String sourceSessionId,
+    required String sourcePluginId,
+    required String targetSessionId,
+  }) => _actionService.sendToSession(
+    sourceSessionId: sourceSessionId,
+    sourcePluginId: sourcePluginId,
+    targetSessionId: targetSessionId,
+  );
 
   /// The send sheet's last "Archive this session after sending" choice; on
   /// until the user turns it off.

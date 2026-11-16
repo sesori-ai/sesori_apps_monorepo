@@ -220,6 +220,7 @@ void _registerDependencies({
       sessionUnseenTracker: FakeSessionUnseenTracker(),
       failureReporter: failureReporter,
       selectedComputerService: FakeSelectedComputerService(),
+      productAnalyticsService: productAnalyticsService,
     ),
   );
 }

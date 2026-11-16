@@ -1,6 +1,7 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/repositories/models/send_to_session_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
 import "package:sesori_dart_core/src/services/models/session_cleanup_outcome.dart";
@@ -24,8 +25,10 @@ void main() {
   late MockFailureReporter failureReporter;
   late SessionActionService actions;
   late _MockSelectedComputerService selectedComputer;
+  late MockProductAnalyticsService analytics;
 
   setUp(() {
+    analytics = stubbedProductAnalyticsService();
     selectedComputer = _MockSelectedComputerService();
     when(() => selectedComputer.targetBridgeId()).thenAnswer((_) async => "computer-a");
     sessionRepository = MockSessionRepository();
@@ -47,6 +50,7 @@ void main() {
       sessionUnseenTracker: unseen,
       failureReporter: failureReporter,
       selectedComputerService: selectedComputer,
+      productAnalyticsService: analytics,
     );
   });
 
@@ -133,37 +137,89 @@ void main() {
   });
 
   group("sendToSession", () {
-    // Each outcome reaches the caller as the repository gave it.
-    final outcomes = <SendToSessionResult>[
-      const SendToSessionSent(),
-      const SendToSessionRefused(code: SendToSessionErrorCode.sourceBusy, message: null),
-      SendToSessionFailed(error: ApiError.generic()),
-      const SendToSessionUnsupported(),
-      SendToSessionUnconfirmed(error: ApiError.generic()),
+    void stubSend(Future<SendToSessionResult> Function() answer) => when(
+      () => sessionRepository.sendToSession(sourceSessionId: "source", targetSessionId: "target"),
+    ).thenAnswer((_) => answer());
+
+    Future<SendToSessionResult> send() =>
+        actions.sendToSession(sourceSessionId: "source", sourcePluginId: "claude", targetSessionId: "target");
+
+    List<ProductAnalyticsEvent> reportedEvents() => verify(
+      () => analytics.logEvent(
+        event: captureAny(named: "event"),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    ).captured.cast<ProductAnalyticsEvent>();
+
+    // Each outcome reaches the caller as the repository gave it, and is
+    // reported once with the source's harness.
+    final outcomes = <(SendToSessionResult, AnalyticsSessionSendOutcome)>[
+      (const SendToSessionSent(), AnalyticsSessionSendOutcome.sent),
+      (
+        const SendToSessionRefused(code: SendToSessionErrorCode.sourceBusy, message: null),
+        AnalyticsSessionSendOutcome.refusedBusy,
+      ),
+      (
+        const SendToSessionRefused(code: SendToSessionErrorCode.sourceAwaitingInput, message: null),
+        AnalyticsSessionSendOutcome.refusedBusy,
+      ),
+      (
+        const SendToSessionRefused(code: SendToSessionErrorCode.targetRefused, message: "No."),
+        AnalyticsSessionSendOutcome.refusedOther,
+      ),
+      (
+        const SendToSessionRefused(code: SendToSessionErrorCode.targetOptionsUnavailable, message: null),
+        AnalyticsSessionSendOutcome.refusedOther,
+      ),
+      (
+        const SendToSessionRefused(code: SendToSessionErrorCode.unknown, message: null),
+        AnalyticsSessionSendOutcome.refusedOther,
+      ),
+      (SendToSessionFailed(error: ApiError.generic()), AnalyticsSessionSendOutcome.failed),
+      (const SendToSessionUnsupported(), AnalyticsSessionSendOutcome.unsupported),
+      (SendToSessionUnconfirmed(error: ApiError.generic()), AnalyticsSessionSendOutcome.unconfirmed),
     ];
-    for (final outcome in outcomes) {
-      test("returns ${outcome.runtimeType.toString()}", () async {
-        when(
-          () => sessionRepository.sendToSession(sourceSessionId: "source", targetSessionId: "target"),
-        ).thenAnswer((_) async => outcome);
+    for (final (result, outcome) in outcomes) {
+      test("returns and reports ${result.runtimeType.toString()} as ${outcome.wireValue}", () async {
+        stubSend(() async => result);
 
-        final result = await actions.sendToSession(sourceSessionId: "source", targetSessionId: "target");
+        expect(await send(), same(result));
 
-        expect(result, same(outcome));
+        expect(reportedEvents(), [
+          isA<SessionSentToSessionEvent>()
+              .having((e) => e.harness, "harness", AnalyticsHarness.claudeCode)
+              .having((e) => e.outcome, "outcome", outcome),
+        ]);
       });
     }
 
-    test("hides the outcome when the app moved to another computer meanwhile", () async {
-      when(
-        () => sessionRepository.sendToSession(sourceSessionId: "source", targetSessionId: "target"),
-      ).thenAnswer((_) async {
+    test("hides the outcome when the app moved to another computer meanwhile, but still reports it", () async {
+      stubSend(() async {
         when(() => selectedComputer.targetBridgeId()).thenAnswer((_) async => "computer-b");
         return SendToSessionUnconfirmed(error: ApiError.generic());
       });
 
-      final result = await actions.sendToSession(sourceSessionId: "source", targetSessionId: "target");
+      expect(await send(), isA<SendToSessionComputerSwitched>());
 
-      expect(result, isA<SendToSessionComputerSwitched>());
+      expect(reportedEvents(), [
+        isA<SessionSentToSessionEvent>().having(
+          (e) => e.outcome,
+          "outcome",
+          AnalyticsSessionSendOutcome.unconfirmed,
+        ),
+      ]);
+    });
+
+    test("an analytics failure doesn't change the send's result", () async {
+      when(
+        () => analytics.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).thenAnswer((_) async => throw StateError("analytics down"));
+      stubSend(() async => const SendToSessionSent());
+
+      expect(await send(), isA<SendToSessionSent>());
     });
   });
 }

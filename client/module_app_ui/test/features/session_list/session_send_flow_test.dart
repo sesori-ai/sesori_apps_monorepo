@@ -130,7 +130,7 @@ void main() {
   }
 
   void answerSend(Future<SendToSessionResult> Function() answer) => when(
-    () => actions.sendToSession(sourceSessionId: "source", targetSessionId: "target"),
+    () => actions.sendToSession(sourceSessionId: "source", sourcePluginId: source.pluginId, targetSessionId: "target"),
   ).thenAnswer((_) => answer());
 
   Future<void> tapSend(WidgetTester tester) async {
@@ -211,19 +211,28 @@ void main() {
 
     await tapSend(tester);
     expect(find.text("Archive a pinned session?"), findsOneWidget);
-    verifyNever(() => actions.sendToSession(sourceSessionId: "source", targetSessionId: "target"));
+    verifyNever(
+      () =>
+          actions.sendToSession(sourceSessionId: "source", sourcePluginId: source.pluginId, targetSessionId: "target"),
+    );
 
     await tester.tap(find.widgetWithText(PregoButtonsSolid, "Cancel"));
     await tester.pumpAndSettle();
     expect(find.text("Archive a pinned session?"), findsNothing);
     expect(find.byKey(const Key("send_session_send")), findsOneWidget);
-    verifyNever(() => actions.sendToSession(sourceSessionId: "source", targetSessionId: "target"));
+    verifyNever(
+      () =>
+          actions.sendToSession(sourceSessionId: "source", sourcePluginId: source.pluginId, targetSessionId: "target"),
+    );
 
     await tapSend(tester);
     await tester.tap(find.widgetWithText(PregoButtonsSolid, "Archive"));
     await tester.pumpAndSettle();
 
-    verify(() => actions.sendToSession(sourceSessionId: "source", targetSessionId: "target")).called(1);
+    verify(
+      () =>
+          actions.sendToSession(sourceSessionId: "source", sourcePluginId: source.pluginId, targetSessionId: "target"),
+    ).called(1);
     // Asked once, before the send; the archive after it doesn't ask again.
     expect(find.text("Archive a pinned session?"), findsNothing);
     expect(archives.state.hiddenIds, {"source"});
@@ -237,7 +246,10 @@ void main() {
     await tapSend(tester);
 
     expect(find.text("Archive a pinned session?"), findsNothing);
-    verify(() => actions.sendToSession(sourceSessionId: "source", targetSessionId: "target")).called(1);
+    verify(
+      () =>
+          actions.sendToSession(sourceSessionId: "source", sourcePluginId: source.pluginId, targetSessionId: "target"),
+    ).called(1);
     expect(archives.state.hiddenIds, isEmpty);
     await archives.close();
   });

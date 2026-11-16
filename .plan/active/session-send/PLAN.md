@@ -449,6 +449,8 @@ does not change.
 - The outcome values are `sent`, `refused_busy`, `refused_other`, `failed`, `unsupported` and `unconfirmed`.
 - It is reported from `SessionActionService.sendToSession` once the bridge's answer arrives. `ProductAnalyticsService`
   becomes a new dependency of that service.
+- The service holds no sessions, so the send flow passes the source's plugin id through `SessionActionsCubit`. A
+  send that ends after a computer switch is still reported: it ran on the computer the app left.
 - Follow the `add-analytics` skill checklist.
 
 ### D11. The handoff marker, stamped by the bridge on every harness
