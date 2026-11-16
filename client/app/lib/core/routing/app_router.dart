@@ -12,6 +12,7 @@ import "../../features/home/home_sidebar_footer.dart";
 import "../../features/home/onboarding/bridge_onboarding.dart";
 import "../../features/login/login_screen.dart";
 import "../../features/new_session/new_session_screen.dart";
+import "../../features/scheduled_tasks/scheduled_tasks_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_diffs/session_diffs_screen.dart";
 import "../../features/session_list/archived_sessions_artwork.dart";
@@ -120,6 +121,8 @@ extension on AppRoute {
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSettingsComputers() => const ComputersScreen(),
       AppRouteSettingsProjects() => const ProjectsSettingsScreen(),
+      AppRouteScheduledTasks() => const ScheduledTasksScreen(),
+      AppRouteScheduledTaskDetail(:final taskId) => ScheduledTaskDetailScreen(taskId: taskId),
       AppRouteNewSession(:final projectId, :final projectName, :final entry) => NewSessionScreen(
         projectId: projectId,
         projectName: projectName,
@@ -441,6 +444,14 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
       ],
     ),
     buildArchivedSessionsRoute(),
+    AppRouteDef.scheduledTasks.toGoRoute(
+      routes: [
+        GoRoute(
+          path: ":$taskIdPathParam",
+          builder: (context, state) => AppRouteDef.scheduledTaskDetail._buildScreen(context: context, state: state),
+        ),
+      ],
+    ),
     buildHarnessSettingsRoute(),
     AppRouteDef.settings.toGoRoute(
       routes: [

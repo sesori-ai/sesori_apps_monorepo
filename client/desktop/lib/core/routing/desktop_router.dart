@@ -163,6 +163,35 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         ),
       ),
       GoRoute(
+        path: AppRouteDef.scheduledTasks.path,
+        builder: (BuildContext context, GoRouterState state) => ScheduledTasksView(
+          createCubit: () => ScheduledTasksCubit(
+            repository: getIt<ScheduledTaskRepository>(),
+            connectionService: getIt<ConnectionService>(),
+          ),
+          exit: ScheduledPageExit.close,
+          onExit: () => _popRouteOrGo(context: context, fallback: const AppRoute.home()),
+          onOpenTask: ({required taskId}) =>
+              _pushRoute(context: context, route: AppRoute.scheduledTaskDetail(taskId: taskId)),
+        ),
+      ),
+      GoRoute(
+        path: AppRouteDef.scheduledTaskDetail.path,
+        builder: (BuildContext context, GoRouterState state) {
+          final route = AppRouteScheduledTaskDetail.fromParams(pathParams: state.pathParameters);
+          void leave() => _popRouteOrGo(context: context, fallback: const AppRoute.scheduledTasks());
+          return ScheduledTaskDetailView(
+            createCubit: () => ScheduledTaskDetailCubit(
+              repository: getIt<ScheduledTaskRepository>(),
+              connectionService: getIt<ConnectionService>(),
+              taskId: route.taskId,
+            ),
+            onBack: leave,
+            onDeleted: leave,
+          );
+        },
+      ),
+      GoRoute(
         path: AppRouteDef.newSession.path,
         // Every desktop entry names its project; one without goes home.
         redirect: (_, state) =>
