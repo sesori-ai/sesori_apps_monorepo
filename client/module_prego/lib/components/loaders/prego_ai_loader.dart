@@ -106,8 +106,6 @@ class const PregoAiLoader({
 class _PregoAiLoaderState()
     extends State<PregoAiLoader>
     with TickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
-  static const _nativeViewType = "sesori/native-ai-loader";
-
   // The Figma example contains several seconds of loading and a long idle
   // hold. Only the finish is a UI transition: preserve its fill and rotational
   // overshoot in 700ms, without delaying the actual thread state or input.
@@ -126,7 +124,6 @@ class _PregoAiLoaderState()
     fill: const Color(0x00B2D1FF),
     stroke: context.prego.colors.textPrimary,
   );
-  MethodChannel? _nativeChannel;
 
   bool get _usesNativeRenderer =>
       !PregoAiLoader.debugForceFlutterRenderer &&
@@ -218,34 +215,9 @@ class _PregoAiLoaderState()
       _fill.stop();
       _fill.value = 0;
       syncMotion();
-      if (_usesNativeRenderer && !prefersReducedMotion(context) && TickerMode.valuesOf(context).enabled) {
-        unawaited(_updateNativeLoading());
-      }
     } else if (oldWidget.fillMode != widget.fillMode || oldWidget.color != widget.color) {
       stopMotion();
       syncMotion();
-    }
-  }
-
-  // ignore: no_slop_linter/prefer_required_named_parameters, platform-view callback signature
-  void _nativeViewCreated(int id) {
-    _nativeChannel = MethodChannel("$_nativeViewType/$id");
-    // The row may have finished while the platform was creating its view.
-    unawaited(_updateNativeLoading());
-  }
-
-  Future<void> _updateNativeLoading() async {
-    try {
-      await _nativeChannel?.invokeMethod<void>("setLoading", widget.animate);
-    } on Object catch (error, stackTrace) {
-      FlutterError.reportError(
-        FlutterErrorDetails(
-          exception: error,
-          stack: stackTrace,
-          library: "theme_prego",
-          context: ErrorDescription("updating native AI loader state"),
-        ),
-      );
     }
   }
 
@@ -283,37 +255,91 @@ class _PregoAiLoaderState()
   }
 
   Widget _nativeSparkle({required PregoColors colors}) {
-    // StandardMessageCodec carries ARGB integers and a bool.
-    // ignore: no_slop_linter/prefer_specific_type, heterogeneous native codec payload
-    final params = <String, Object>{
-      "solid": colors.textPrimaryOnBrand.toARGB32(),
-      "outline": colors.textPrimary.toARGB32(),
-      "loading": widget.animate,
-    };
-    final nativeView = defaultTargetPlatform == TargetPlatform.iOS
-        ? UiKitView(
-            viewType: _nativeViewType,
-            creationParams: params,
-            creationParamsCodec: const StandardMessageCodec(),
-            onPlatformViewCreated: _nativeViewCreated,
-            hitTestBehavior: PlatformViewHitTestBehavior.transparent,
-          )
-        : AppKitView(
-            viewType: _nativeViewType,
-            creationParams: params,
-            creationParamsCodec: const StandardMessageCodec(),
-            onPlatformViewCreated: _nativeViewCreated,
-            hitTestBehavior: PlatformViewHitTestBehavior.transparent,
-          );
+    final solid = colors.textPrimaryOnBrand.toARGB32();
+    final outline = colors.textPrimary.toARGB32();
     return SizedBox.square(
       dimension: widget.size,
       // State must not replace the renderer at completion. Colours
       // are creation-time data, so a theme change does create the new palette.
       child: KeyedSubtree(
-        key: ValueKey(Object.hash(params["solid"], params["outline"])),
-        child: nativeView,
+        key: ValueKey(Object.hash(solid, outline)),
+        child: _NativeAiLoaderView(solid: solid, outline: outline, loading: widget.animate),
       ),
     );
+  }
+}
+
+/// The Darwin sparkle. Its state lives exactly as long as its platform view, so
+/// `setLoading` only reaches a view that exists: when Flutter tears the view
+/// down (a covering route disables TickerMode, Reduce Motion, a new palette)
+/// and a turn starts or finishes before the replacement reports creation, the
+/// replacement takes the state from its creation params instead.
+class const _NativeAiLoaderView({
+  required final int solid,
+  required final int outline,
+  required final bool loading,
+}) extends StatefulWidget {
+  @override
+  State<_NativeAiLoaderView> createState() => _NativeAiLoaderViewState();
+}
+
+class _NativeAiLoaderViewState() extends State<_NativeAiLoaderView> {
+  static const _viewType = "sesori/native-ai-loader";
+
+  MethodChannel? _channel;
+
+  @override
+  void didUpdateWidget(_NativeAiLoaderView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.loading != widget.loading) unawaited(_updateLoading());
+  }
+
+  // ignore: no_slop_linter/prefer_required_named_parameters, platform-view callback signature
+  void _viewCreated(int id) {
+    _channel = MethodChannel("$_viewType/$id");
+    // The row may have finished while the platform was creating its view.
+    unawaited(_updateLoading());
+  }
+
+  Future<void> _updateLoading() async {
+    try {
+      await _channel?.invokeMethod<void>("setLoading", widget.loading);
+    } on Object catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: "theme_prego",
+          context: ErrorDescription("updating native AI loader state"),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // StandardMessageCodec carries ARGB integers and a bool.
+    // ignore: no_slop_linter/prefer_specific_type, heterogeneous native codec payload
+    final params = <String, Object>{
+      "solid": widget.solid,
+      "outline": widget.outline,
+      "loading": widget.loading,
+    };
+    return defaultTargetPlatform == TargetPlatform.iOS
+        ? UiKitView(
+            viewType: _viewType,
+            creationParams: params,
+            creationParamsCodec: const StandardMessageCodec(),
+            onPlatformViewCreated: _viewCreated,
+            hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+          )
+        : AppKitView(
+            viewType: _viewType,
+            creationParams: params,
+            creationParamsCodec: const StandardMessageCodec(),
+            onPlatformViewCreated: _viewCreated,
+            hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+          );
   }
 }
 
