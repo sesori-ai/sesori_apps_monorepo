@@ -634,22 +634,25 @@ void main() {
       // no prompt id, and keeps the not-sent stamp by its message id.
       const notSent = MessageHandoffNotSent(targetSessionId: "target", targetTitle: "Target");
       repository.markRequestNotSent(sessionId: "s1", messageId: "unechoed", notSent: notSent);
-      MessageHandoff? promptlessHandoff({required String messageId}) => switch (repository.stampNotSentRequest(
-        message: Message.user(
-          id: messageId,
-          sessionID: "s1",
-          agent: null,
-          time: null,
-          promptId: null,
-          invocation: null,
-          handoff: null,
-        ),
-      )) {
-        MessageUser(:final handoff) => handoff,
-        _ => fail("expected a user message"),
-      };
+      MessageHandoff? promptlessHandoff({required String messageId, MessageHandoff? handoff}) =>
+          switch (repository.stampNotSentRequest(
+            message: Message.user(
+              id: messageId,
+              sessionID: "s1",
+              agent: null,
+              time: null,
+              promptId: null,
+              invocation: null,
+              handoff: handoff,
+            ),
+          )) {
+            MessageUser(:final handoff) => handoff,
+            _ => fail("expected a user message"),
+          };
       expect(promptlessHandoff(messageId: "unechoed"), notSent);
       expect(promptlessHandoff(messageId: "other"), isNull);
+      // An echo stamped sent before the stop marked it, delivered after.
+      expect(promptlessHandoff(messageId: "unechoed", handoff: sent), notSent);
 
       // The queued prompt waiting for that echo carries the same stamp.
       QueuedSessionPrompt queued({required String id}) => QueuedSessionPrompt(

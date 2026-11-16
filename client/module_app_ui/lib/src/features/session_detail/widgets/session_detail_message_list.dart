@@ -1200,7 +1200,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       isBusy: isBusy,
       queuedPrompts: widget.bridgeQueuedPrompts,
     );
-    // A summary request's marker shows its own live line in place of the working row.
+    // A summary being written, or a stopped send still ending, shows its marker
+    // in place of the working row.
     final activity = handoffs.showsWork
         ? const TranscriptActivityIdle()
         : const TranscriptActivityBuilder().build(

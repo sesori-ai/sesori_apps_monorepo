@@ -687,9 +687,10 @@ class SessionRepository({
   /// [message] stamped as not sent when it is a summary request
   /// [markRequestNotSent] recorded. Applied as the update leaves the bridge,
   /// not when it is normalized: the harness can report the request before the
-  /// send marks it, and the update can wait behind the stop until after.
+  /// send marks it, and the update can wait behind the stop until after, even
+  /// an echo already stamped sent.
   Message stampNotSentRequest({required Message message}) {
-    if (message case MessageUser(:final sessionID, :final id, handoff: null)) {
+    if (message case MessageUser(:final sessionID, :final id, handoff: MessageHandoffSent() || null)) {
       if (_stamps.notSentRequestFor(sessionId: sessionID, messageId: id) case final notSent?) {
         return message.copyWith(handoff: notSent);
       }

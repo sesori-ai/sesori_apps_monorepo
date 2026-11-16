@@ -413,6 +413,18 @@ void main() {
           }).ignore();
         };
 
+        // A prompt the user queued while the summary was written.
+        sessions.harnessQueue = [
+          const QueuedSessionPrompt(
+            id: "user-prompt",
+            text: "Fixture follow-up",
+            command: null,
+            commandSource: null,
+            handoff: null,
+            dispatchState: QueuedPromptDispatchState.queued,
+            createdAt: 0,
+          ),
+        ];
         final queues = watchQueues();
 
         expect(await refusalOf(send()), code);
@@ -420,12 +432,12 @@ void main() {
         expect(history.backfilled, [_source]);
         expect(history.notSentMessages, ["stored-unechoed"]);
         // The queued request turns not sent at once, and leaves once the
-        // stored request carries the marker.
+        // stored request carries the marker. The user's prompt stays listed.
         final promptId = prompts.sends.first.promptId;
         expect(queues, [
           [(promptId, sent)],
-          [(promptId, notSent)],
-          <(String, MessageHandoff?)>[],
+          [("user-prompt", null), (promptId, notSent)],
+          [("user-prompt", null)],
         ]);
         // Its later live updates name no prompt, so they are stamped by id.
         expect(sessions.notSentRequests, ["stored-unechoed"]);
@@ -942,6 +954,15 @@ final class _Sessions() implements SessionRepository {
 
   @override
   void releaseRequest({required String sessionId}) => held = null;
+
+  /// Prompts the source's harness itself still queues.
+  List<QueuedSessionPrompt> harnessQueue = const [];
+
+  @override
+  Future<List<QueuedSessionPrompt>> getQueuedPrompts({required String sessionId}) async => [
+    ...harnessQueue,
+    ?held,
+  ];
 
   void reparent({required String sessionId}) {
     final session = byId[sessionId];

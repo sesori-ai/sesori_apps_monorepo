@@ -125,10 +125,14 @@ class SessionSendService({
         case final messageId?:
           await _markStoredRequestNotSent(sessionId: source.id, messageId: messageId, notSent: notSent);
         case null when summaryRequested:
-          // Its marker stays listed until the marked message replaces it.
+          // Its marker stays listed, beside any prompt the user queued
+          // meanwhile, until the marked message replaces it.
           final request = _queuedRequest(promptId: promptId, requestText: requestText, handoff: notSent);
           _sessions.holdRequest(sessionId: source.id, request: request);
-          _announceQueue(sessionId: source.id, prompts: [request]);
+          _announceQueue(
+            sessionId: source.id,
+            prompts: await _sessions.getQueuedPrompts(sessionId: source.id),
+          );
           await _markUnechoedRequestNotSent(
             sessionId: source.id,
             promptId: promptId,
@@ -137,7 +141,10 @@ class SessionSendService({
             notSent: notSent,
           );
           _sessions.releaseRequest(sessionId: source.id);
-          _announceQueue(sessionId: source.id, prompts: const []);
+          _announceQueue(
+            sessionId: source.id,
+            prompts: await _sessions.getQueuedPrompts(sessionId: source.id),
+          );
         // A refused request, or a check that failed before it, left no stamp.
         case null:
           break;
