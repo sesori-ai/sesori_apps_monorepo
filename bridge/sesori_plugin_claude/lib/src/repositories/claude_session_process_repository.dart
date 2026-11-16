@@ -421,10 +421,15 @@ final class ClaudeSessionProcessRepository({
     process.appliedFastMode = fastMode;
   }
 
+  /// Writes a turn to the session's stdin. With [echoAtOnce] the prompt is
+  /// echoed right away, under the uuid it is sent with, exactly as the CLI
+  /// will echo it, and the CLI's own echo is dropped: a new process echoes
+  /// only once it has started up, seconds later.
   ClaudeTurnDispatch sendTurn({
     required String sessionId,
     required List<PluginPromptPart> parts,
     required String? promptId,
+    required bool echoAtOnce,
   }) {
     final process = _resident[sessionId];
     if (process == null) throw StateError("Claude session is not resident: $sessionId");
@@ -454,6 +459,18 @@ final class ClaudeSessionProcessRepository({
       rethrow;
     }
     _startedSessions.add(sessionId);
+    if (echoAtOnce && !_events.isClosed) {
+      if (_earlyEcho(sessionId: sessionId, process: process, pending: pending, content: content) case final echo?) {
+        _events.add(
+          ClaudeSessionProcessMessage(
+            sessionId: sessionId,
+            message: echo,
+            interrupted: process.interrupted,
+            promptId: promptId,
+          ),
+        );
+      }
+    }
     return ClaudeTurnDispatch(
       messageId: pending.messageId,
       outcome: pending.outcome.future,
@@ -693,24 +710,36 @@ final class ClaudeSessionProcessRepository({
     // A prompt sent mid-turn joins it only at the next tool boundary, so a
     // compaction now is the running turn's, not that prompt's.
     if (promptId == null || content == null || (!opener.started && process.turnActive)) return null;
+    final echo = _earlyEcho(sessionId: sessionId, process: process, pending: opener, content: content);
+    if (echo == null) return null;
+    return (echo: echo, promptId: promptId);
+  }
+
+  /// [pending]'s echo, made before the CLI's own, which is then dropped.
+  ClaudeUserMessage? _earlyEcho({
+    required String sessionId,
+    required _ResidentProcess process,
+    required _PendingTurn pending,
+    required List<Map<String, Object?>> content,
+  }) {
     final echo = ClaudeStreamMessage.parse({
       "type": "user",
       "message": {"role": "user", "content": content},
       "session_id": sessionId,
       "parent_tool_use_id": null,
-      "uuid": opener.messageId,
-      "timestamp": opener.dispatchedAt.toUtc().toIso8601String(),
+      "uuid": pending.messageId,
+      "timestamp": pending.dispatchedAt.toUtc().toIso8601String(),
       "isReplay": true,
     });
     if (echo is! ClaudeUserMessage) return null;
-    opener
+    pending
       ..replayObserved = true
       ..started = true;
     process
       ..turnActive = true
-      ..earlyEchoIds.add(opener.messageId);
+      ..earlyEchoIds.add(pending.messageId);
     _removeSettledReplays(process: process);
-    return (echo: echo, promptId: promptId);
+    return echo;
   }
 
   String? _trackTurnMessage({required _ResidentProcess process, required ClaudeStreamMessage message}) {
