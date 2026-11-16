@@ -1045,9 +1045,11 @@ class ChatHistoryRepository({
         storedNamedTurns[index] = storedIndex;
       }
       final notice = _reconciledNotice(imported: imported, stored: stored, sameIdentity: exactStoredIndex != null);
-      // The stored row's stamps survive the import that replaces it, unless
-      // the import carries its own.
-      final reconciled = notice ?? _withStoredStamps(update: imported, stored: stored);
+      // The stored row's stamps and time survive the import that replaces it,
+      // unless the import carries its own: a replay that can't date a row
+      // keeps the time it was captured live with.
+      final dated = imported.time == null && stored.time != null ? imported.copyWith(time: stored.time) : imported;
+      final reconciled = notice ?? _withStoredStamps(update: dated, stored: stored);
       if (!identical(reconciled, imported)) {
         importedMessageRows[index] = importedMessageRows[index].copyWith(infoJson: jsonEncode(reconciled.toJson()));
       }

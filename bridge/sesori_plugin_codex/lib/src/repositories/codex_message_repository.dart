@@ -854,7 +854,10 @@ class CodexMessageRepository({
             _toolMessage(
               messageId: messageId,
               sessionId: sessionId,
-              info: assistantInfo(id: messageId, time: messageTime),
+              info: assistantInfo(
+                id: messageId,
+                time: _assistantReplyTime(persistedId: id, lineTime: messageTime),
+              ),
               tool: "web_search",
               title: action?.query,
               status: PluginToolStatus.completed,
@@ -880,7 +883,10 @@ class CodexMessageRepository({
             _toolMessage(
               messageId: messageId,
               sessionId: sessionId,
-              info: assistantInfo(id: messageId, time: messageTime),
+              info: assistantInfo(
+                id: messageId,
+                time: _assistantReplyTime(persistedId: generation.id, lineTime: messageTime),
+              ),
               tool: "image_generation",
               title: null,
               status:
@@ -906,7 +912,10 @@ class CodexMessageRepository({
           );
           messages.add(
             PluginMessageWithParts(
-              info: assistantInfo(id: messageId, time: messageTime),
+              info: assistantInfo(
+                id: messageId,
+                time: _assistantReplyTime(persistedId: id, lineTime: messageTime),
+              ),
               parts: [
                 PluginMessagePart.reasoning(
                   id: "$messageId-reasoning",
@@ -964,7 +973,10 @@ class CodexMessageRepository({
                   promptId: null,
                   invocation: null,
                 )
-              : assistantInfo(id: messageId, time: messageTime);
+              : assistantInfo(
+                  id: messageId,
+                  time: _assistantReplyTime(persistedId: id, lineTime: messageTime),
+                );
           messages.add(
             _textMessage(
               info: info,
@@ -1098,6 +1110,20 @@ class CodexMessageRepository({
         ),
       ],
     );
+  }
+
+  /// A replayed assistant row's time: the rollout line's, unless the row has
+  /// no persisted id.
+  PluginMessageTime? _assistantReplyTime({required String? persistedId, required PluginMessageTime? lineTime}) {
+    final persisted = persistedId?.trim();
+    if (persisted != null && persisted.isNotEmpty) return lineTime;
+    // COMPATIBILITY 2026-11-16 (v1.14.0): Codex 0.139.0 records neither the
+    // item id nor the start of an assistant row, and its rollout line is
+    // written when the row finishes, so the line time conflicts with the start
+    // the live row carries. Without a time, the store pairs the live row with
+    // this replay by content and keeps the live time, instead of showing both.
+    // Remove with the `m-N` fallback ids below.
+    return null;
   }
 
   String _persistedOrLegacyMessageId({
