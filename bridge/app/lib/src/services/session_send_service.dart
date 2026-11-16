@@ -82,7 +82,10 @@ class SessionSendService({
     Log.i("Sending session ${source.id} to ${target.id}; requesting the summary as prompt $promptId");
     // Watching starts before the send, so the echo cannot be missed.
     final requestText = _summaryRequestText(targetTitle: target.title);
-    final notSent = MessageHandoffNotSent(targetSessionId: target.id, targetTitle: _nonBlank(text: target.title));
+    final notSent = MessageHandoffNotSent(
+      targetSessionId: target.id,
+      targetTitle: _nonBlank(text: target.title),
+    );
     final turn = _watchSummaryTurn(sessionId: source.id, promptId: promptId);
     var summaryRequested = false;
     try {
