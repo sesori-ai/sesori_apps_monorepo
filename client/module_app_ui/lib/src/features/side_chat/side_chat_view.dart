@@ -37,6 +37,10 @@ class const SideChatView({
   /// The session's harness, named in its refusals.
   required final String harnessName,
   required final VoidCallback onClose,
+
+  /// Whether the question field takes the focus once it shows, for a surface
+  /// opened to type into at once, such as the desktop panel.
+  required final bool autofocusQuestion,
 }) extends StatefulWidget {
   /// Finds the question field in widget and integration tests.
   static const questionFieldKey = ValueKey("sideChat.questionField");
@@ -230,6 +234,7 @@ class _SideChatViewState() extends State<SideChatView> {
             cubit.canAsk
                 ? _SideChatInput(
                     controller: _questionController,
+                    autofocus: widget.autofocusQuestion,
                     waiting: state.ask is SideQuestionWaiting,
                     onSend: _send,
                     onSendWhileWaiting: _sayWaitForAnswer,
@@ -681,6 +686,7 @@ class const _SideChatLoadFailed({super.key, required final VoidCallback onRetry}
 /// looks disabled and says why when tapped.
 class const _SideChatInput({
   required final TextEditingController controller,
+  required final bool autofocus,
   required final bool waiting,
   required final VoidCallback onSend,
   required final VoidCallback onSendWhileWaiting,
@@ -709,6 +715,7 @@ class const _SideChatInput({
                   child: TextField(
                     key: SideChatView.questionFieldKey,
                     controller: controller,
+                    autofocus: autofocus,
                     minLines: 1,
                     maxLines: 4,
                     textInputAction: TextInputAction.send,

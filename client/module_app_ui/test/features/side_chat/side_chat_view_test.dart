@@ -81,7 +81,12 @@ void main() {
         home: Scaffold(
           body: BlocProvider.value(
             value: cubit,
-            child: SideChatView(scrollController: scrollController, harnessName: "Claude Code", onClose: () {}),
+            child: SideChatView(
+              scrollController: scrollController,
+              harnessName: "Claude Code",
+              onClose: () {},
+              autofocusQuestion: false,
+            ),
           ),
         ),
       ),

@@ -217,6 +217,16 @@ The main pane hosts one full-width routed page.
   timestamp gutter still fits inside the designed window; past that width the peek degrades to the phone's
   behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
   floating glass bar and one full-width transcript and composer.
+- Side chats open in a panel that floats over the session page's trailing
+  edge, 380 pt wide and full height under the toolbar, inset from the window's edge and bottom. The composer's
+  side-question button and an archived session's "Side chats (N)" link open it, where the phone opens its sheet. It
+  slides in from the window's edge by transform with the sidebar's timing and curve; the transcript and composer
+  neither move nor reflow, and the page around it keeps taking clicks, scrolls and typing. Opening moves the focus
+  into the panel (its question field, or the panel itself when the chat is read-only). Its close button slides it
+  out; Escape, with the focus anywhere in the session page, closes it at once, as keyboard toggles of the sidebar
+  are answered, and hands the focus back to where it was. Reduced motion opens and closes it at once. Opening it
+  again while it shows keeps its chat. Switching sessions closes it with the page that holds it; a page kept under
+  a pushed subtask or Changes keeps its panel for the return.
 - Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project",
   else the newest session's project), so returning from a session or restarting lands on that default again, as
   `session-creation-and-options.md` details: the project holds once it lands, another filter or a header pick moves
@@ -411,6 +421,11 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   the title only while the session runs, session actions disabled until the session is hydrated,
   Mark unread sending unread and leaving the page from the menu (which shows its shortcut) and from
   Shift+Cmd/Ctrl+U, and a menu without Mark as read.
+- The side-chat panel (`desktop_session_detail_screen_test`): the composer's button slides it in to its place
+  under the toolbar without moving the transcript, mid-slide and settled, with the question field focused and the
+  page still taking clicks; the close button slides it out and ends its chat after the slide; Escape closes it at
+  once from its field and from the page's composer, which keeps its focus; a session switch closes it; an archived
+  session's link opens it read-only, and Escape closes it with no field focused.
 - The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, every
   project's sessions whatever the sidebar's filter, search and chip, filtering with No matches, Enter
   opening a session or filtering the sidebar to a project and bringing it back, Down skipping a heading,
@@ -478,6 +493,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
 - Archived from the sidebar: the page fades in over the open page with nothing closing first, a row opens
   read-only, Cmd/Ctrl+[ comes back, and the close returns to the opener.
+- The side-chat panel on a live session: it slides in while the main turn streams with nothing in the transcript
+  moving, a question and a follow-up are answered in it, the main chat scrolls and takes clicks beside it, Escape
+  and its close button close it, and picking another session in the sidebar closes it.
 - The full-height sidebar in light and dark: the hairline edge, and its light following the pointer and tapering off.
   Dragging the edge in and out, clicking it, and dragging far past the minimum and releasing.
 - Collapse and restore by the toggle and Cmd/Ctrl+B: the panel slides whole while
