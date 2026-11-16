@@ -147,7 +147,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   configuration; startup revalidates the effective PATH or explicit `--hermes-bin` executable
   while preserving an explicit path as authoritative.
   A pending Hermes self-update does not stall the `hermes status` probe: the probe skips
-  Hermes' launch-time update completion, which the `hermes acp` launch still runs.
+  Hermes' launch-time update completion, which the `hermes acp` launch still runs; that
+  launch waits up to 10 minutes for the ACP handshake so the update can finish.
   Provider setup remains an out-of-band Hermes CLI action, so authentication-required
   Hermes entries give local setup guidance rather than offering bridge-managed login.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its

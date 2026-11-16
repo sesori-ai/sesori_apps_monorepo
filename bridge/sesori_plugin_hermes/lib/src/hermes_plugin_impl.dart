@@ -32,6 +32,15 @@ class HermesPlugin({
         agentDisplayName: HermesPluginIdentity.displayName,
       );
 
+  /// A self-updating Hermes finishes an interrupted source update (dependency
+  /// sync plus TUI, web and desktop builds) before `hermes acp` answers
+  /// `initialize`, which can outlast the stock 60 s deadline. Killing it there
+  /// restarts the update on the next launch, so it never finishes. A failed
+  /// build ends the update and Hermes starts on its previous dependencies, so
+  /// this bound only has to cover one full update run.
+  @override
+  Duration get initializeTimeout => const Duration(minutes: 10);
+
   @override
   void captureSessionConfig(
     AcpNewSessionResult result, {
