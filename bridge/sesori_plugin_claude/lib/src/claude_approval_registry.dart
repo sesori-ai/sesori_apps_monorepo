@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/claude_stream_message.dart";
 import "claude_form_schema.dart";
+import "models/claude_permission_mode.dart";
 
 typedef ClaudeApprovalResponder = bool Function({
   required String sessionId,
@@ -24,11 +25,32 @@ final class const _PendingPermission({
   required final String description,
   required final Map<String, Object?> input,
 
-  /// The rules an Always answer saves, already scoped to the session; empty
-  /// when Claude suppresses Always or suggests no rule to save.
-  required final List<Map<String, Object?>> sessionRules,
+  /// What an Always answer grants; null when Claude suppresses Always or
+  /// suggests nothing Sesori can grant for the session.
+  required final _AlwaysGrant? alwaysGrant,
 }) extends _PendingApproval {
-  bool get allowAlways => sessionRules.isNotEmpty;
+  bool get allowAlways => alwaysGrant != null;
+}
+
+/// What Always grants for the rest of the session, sent back to Claude as
+/// `updatedPermissions`.
+sealed class const _AlwaysGrant() {
+  List<Map<String, Object?>> get updatedPermissions;
+}
+
+/// Allow rules Claude suggested, already scoped to the session.
+final class const _SessionRulesGrant({required final List<Map<String, Object?>> rules}) extends _AlwaysGrant {
+  @override
+  List<Map<String, Object?>> get updatedPermissions => rules;
+}
+
+/// Switching the session to accept-edits, Claude's only suggestion for a file
+/// edit, as Always does in Claude Code's own terminal.
+final class const _AcceptEditsGrant() extends _AlwaysGrant {
+  @override
+  List<Map<String, Object?>> get updatedPermissions => [
+    {"type": "setMode", "mode": ClaudePermissionMode.acceptEdits.controlValue, "destination": "session"},
+  ];
 }
 
 final class const _PendingExternalAction({
@@ -126,6 +148,9 @@ final class ClaudeApprovalRegistry({
 }) {
   final Map<String, _PendingApproval> _pending = {};
   final Map<String, Set<String>> _allowedTools = {};
+
+  /// Sessions whose Always on a file edit switched them to accept-edits.
+  final Set<String> _acceptEditsSessions = {};
   int _sequence = 0;
 
   void handle({required String sessionId, required ClaudeControlRequestMessage message}) {
@@ -190,9 +215,9 @@ final class ClaudeApprovalRegistry({
       tool: tool,
       description: _description(request),
       input: input,
-      sessionRules: request["suppress_always_allow_rule"] == true
-          ? const []
-          : _sessionRules(suggestions: request["permission_suggestions"]),
+      alwaysGrant: request["suppress_always_allow_rule"] == true
+          ? null
+          : _alwaysGrant(suggestions: request["permission_suggestions"]),
     );
     _pending[id] = pending;
     _emitActivity(
@@ -419,6 +444,16 @@ final class ClaudeApprovalRegistry({
   List<String> allowedToolsForSession({required String sessionId}) =>
       List.unmodifiable(_allowedTools[sessionId] ?? const <String>{});
 
+  /// The mode [sessionId]'s process runs in when the client asks for
+  /// [requested]. After Always on a file edit, the asking default, or no
+  /// mode at all as in a bridge-started send without remembered defaults,
+  /// stays accept-edits, so neither the next turn nor a relaunched process
+  /// puts it back; an explicit other mode, such as plan, still applies.
+  ClaudePermissionMode? permissionModeFor({required String sessionId, required ClaudePermissionMode? requested}) =>
+      (requested == null || requested == ClaudePermissionMode.standard) && _acceptEditsSessions.contains(sessionId)
+      ? ClaudePermissionMode.acceptEdits
+      : requested;
+
   bool hasPendingInput({required String sessionId}) => _pending.values.any((entry) => entry.sessionId == sessionId);
 
   bool hasPermission({required String id}) => _pending[id] is _PendingPermission;
@@ -435,17 +470,24 @@ final class ClaudeApprovalRegistry({
       PluginPermissionReply.always => <String, Object?>{
         "behavior": "allow",
         "updatedInput": entry.input,
-        if (entry.sessionRules.isNotEmpty) "updatedPermissions": entry.sessionRules,
+        if (entry.alwaysGrant case final grant?) "updatedPermissions": grant.updatedPermissions,
       },
       PluginPermissionReply.reject => <String, Object?>{"behavior": "deny", "message": "User denied permission."},
     };
     if (!_respond(sessionId: entry.sessionId, requestId: entry.requestId, payload: payload)) return false;
-    if (reply == PluginPermissionReply.always && entry.sessionRules.isNotEmpty) {
-      final allowedTools = _allowedTools.putIfAbsent(entry.sessionId, () => {});
-      for (final rule in entry.sessionRules) {
-        allowedTools.addAll(_allowedToolRules(rule));
+    if (reply == PluginPermissionReply.always) {
+      switch (entry.alwaysGrant) {
+        case _SessionRulesGrant(:final rules):
+          final allowedTools = _allowedTools.putIfAbsent(entry.sessionId, () => {});
+          for (final rule in rules) {
+            allowedTools.addAll(_allowedToolRules(rule));
+          }
+          if (allowedTools.isEmpty) _allowedTools.remove(entry.sessionId);
+        case _AcceptEditsGrant():
+          _acceptEditsSessions.add(entry.sessionId);
+        case null:
+          break;
       }
-      if (allowedTools.isEmpty) _allowedTools.remove(entry.sessionId);
     }
     _pending.remove(id);
     _emitActivity(
@@ -524,12 +566,14 @@ final class ClaudeApprovalRegistry({
     final entries = _pending.values.toList(growable: false);
     _pending.clear();
     _allowedTools.clear();
+    _acceptEditsSessions.clear();
     entries.forEach(_cancel);
   }
 
   void forgetSession({required String sessionId}) {
     cancelForSession(sessionId: sessionId);
     _allowedTools.remove(sessionId);
+    _acceptEditsSessions.remove(sessionId);
   }
 
   void _cancel(_PendingApproval entry) {
@@ -589,12 +633,30 @@ final class ClaudeApprovalRegistry({
   );
 }
 
+/// Suggested allow rules win over a mode switch when Claude offers both. A file
+/// edit's only suggestion is `setMode` to accept-edits, which Always grants;
+/// any other mode, such as `bypassPermissions`, is never offered. Verified live
+/// on 2026-11-16 with Claude Code 2.1.325: the edit's `setMode` returned with
+/// the `session` destination switched the process to accept-edits (reported on
+/// `system/status`), the next edit ran without a request, and no settings file
+/// was written.
+_AlwaysGrant? _alwaysGrant({required Object? suggestions}) {
+  final rules = _sessionRules(suggestions: suggestions);
+  if (rules.isNotEmpty) return _SessionRulesGrant(rules: rules);
+  final acceptsEdits = _maps(suggestions).any(
+    (suggestion) =>
+        suggestion["type"] == "setMode" &&
+        ClaudePermissionMode.tryParse(_nonEmptyString(suggestion["mode"])) == ClaudePermissionMode.acceptEdits,
+  );
+  return acceptsEdits ? const _AcceptEditsGrant() : null;
+}
+
 /// Claude suggests saving most allow rules to a settings file: Bash and Skill
 /// rules go to `localSettings`. Sesori grants only session-scoped approvals, so
 /// a rule from any destination is sent back with the `session`
 /// destination, which Claude applies to the running process without writing a
 /// file. Other suggestion types (`setMode`, `addDirectories`, ...) are not
-/// rules and are never sent. Verified live on 2026-11-16 with Claude Code
+/// rules; see [_alwaysGrant] for the one mode switch Always sends. Verified live on 2026-11-16 with Claude Code
 /// 2.1.325: a `localSettings` Bash rule returned as `session` let the same
 /// command run again in that process without a second request, and no settings
 /// file was written.

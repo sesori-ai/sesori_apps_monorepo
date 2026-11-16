@@ -736,6 +736,21 @@ final class ClaudePlugin({
         message: "Claude rejected the permission response",
       );
     }
+    if (reply != PluginPermissionReply.always) return;
+    // Always on a file edit has Claude switch itself to accept-edits. Record
+    // that, so the next turn neither sets the mode again nor waits on the
+    // running turn as a selection change would.
+    final applied = _processes.appliedSelection(sessionId: sessionId);
+    if (applied == null) return;
+    final permissionMode = _approvals.permissionModeFor(sessionId: sessionId, requested: applied.permissionMode);
+    if (permissionMode == applied.permissionMode) return;
+    _processes.recordAppliedSelection(
+      sessionId: sessionId,
+      model: applied.model,
+      effort: applied.effort,
+      permissionMode: permissionMode,
+      fastMode: applied.fastMode,
+    );
   }
 
   @override

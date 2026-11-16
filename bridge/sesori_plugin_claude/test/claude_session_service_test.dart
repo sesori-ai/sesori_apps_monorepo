@@ -433,6 +433,49 @@ void main() {
       expect(harness.specs.last.allowedTools, ["Write"]);
     });
 
+    test("a process resumed after Always on a file edit starts in accept-edits", () async {
+      unawaited(harness.enqueue("first", permissionMode: ClaudePermissionMode.standard));
+      final first = await harness.firstProcess;
+      await waitForFrame(first, "user");
+      expect(harness.specs.first.arguments, containsAllInOrder(["--permission-mode", "manual"]));
+      first.emit({
+        "type": "control_request",
+        "request_id": "permission-1",
+        "session_id": testSessionId,
+        "request": {
+          "subtype": "can_use_tool",
+          "tool_name": "Write",
+          "input": {"file_path": "a.dart"},
+          "permission_suggestions": [
+            {"type": "setMode", "mode": "acceptEdits", "destination": "session"},
+          ],
+        },
+      });
+      await pump();
+      expect(harness.approvals.replyPermission(id: "br-1", reply: PluginPermissionReply.always), isTrue);
+      first.emit(_result());
+      await harness.waitForIdle();
+
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+
+      unawaited(harness.enqueue("second", permissionMode: ClaudePermissionMode.standard));
+      final second = await harness.processAt(1);
+      await waitForFrame(second, "user");
+
+      expect(harness.specs.last.arguments, containsAllInOrder(["--permission-mode", "acceptEdits"]));
+      expect(
+        second.written.where(
+          (frame) => switch (frame["request"]) {
+            {"subtype": "set_permission_mode"} => true,
+            _ => false,
+          },
+        ),
+        isEmpty,
+      );
+    });
+
     test("aborting an idle session preserves its scheduled reap", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
