@@ -10,15 +10,34 @@ import "desktop_page_toolbar.dart";
 /// session's side chats, covers as it slides in and out.
 ///
 /// The shell's connection pill keeps clear of it, so it moves with the panel.
-/// The page sets it from its panel's own motion, and back to 0 as it goes.
+/// The page on top sets it from its panel's own motion; a page kept under a
+/// pushed one, or going away, clears only what it set itself.
 ///
 /// It holds its notifier rather than being one, so a plain provider shares it
 /// without rebuilding the page as it changes.
 class DesktopTrailingPanelCover() {
-  /// The covered width; 0 while nothing covers the edge.
-  final ValueNotifier<double> width = ValueNotifier(0);
+  final _width = ValueNotifier<double>(0);
 
-  void dispose() => width.dispose();
+  /// Who set [width] last, so another page's leaving keeps it.
+  Object? _coveredBy;
+
+  /// The covered width; 0 while nothing covers the edge.
+  ValueListenable<double> get width => _width;
+
+  /// Sets the covered width for [by], the page whose panel covers the edge.
+  void cover({required Object by, required double width}) {
+    _coveredBy = by;
+    _width.value = width;
+  }
+
+  /// Clears the cover when [by] set it last.
+  void release({required Object by}) {
+    if (_coveredBy != by) return;
+    _coveredBy = null;
+    _width.value = 0;
+  }
+
+  void dispose() => _width.dispose();
 }
 
 /// The shell's connection pill, under the toolbar at the page's trailing edge

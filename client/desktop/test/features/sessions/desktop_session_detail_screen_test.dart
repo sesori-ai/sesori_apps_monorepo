@@ -483,6 +483,9 @@ void main() {
     late List<SideChatCubit> createdSideChats;
     late _MockConnectionOverlayCubit overlay;
 
+    /// Another session page, as a subtask pushed over the one under test.
+    late Widget Function() pushablePage;
+
     Future<void> pumpPage(
       WidgetTester tester, {
       required Session session,
@@ -530,6 +533,61 @@ void main() {
         const Stream<LocalBridgeStartupState>.empty(),
         initialState: LocalBridgeStartupState.settled,
       );
+      Widget page({required Key? key}) => _composerScope(
+        imageClipboard: _MockImageClipboard.new,
+        child: DesktopSessionDetailView(
+          key: key,
+          onOpenHarnessSettings: () {},
+          onOpenBridgeSettings: () {},
+          projectId: "project-1",
+          projectName: null,
+          sessionId: "session-1",
+          sessionTitle: "Desktop session",
+          sessionActions: SessionListActionDispatcher(
+            deleteConfirmation: SessionDeleteConfirmation.sheet,
+            onSessionArchived: null,
+            onSessionDeleted: null,
+            onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
+            openSession: _openNothing,
+            createSessionSearch: _searchNothing,
+          ),
+          onMarkedUnread: () => leftPage++,
+          readOnly: readOnly,
+          onOpenParentSession: ({required parentSessionId}) => openedParents.add(parentSessionId),
+          onShowDiffs: () {},
+          onOpenSession: ({
+            required projectId,
+            required sessionId,
+            required sessionTitle,
+            required readOnly,
+          }) {},
+          messageImageRepository: _MockMessageImageRepository.new,
+          imageSaver: _MockImageSaver.new,
+          imageClipboard: _MockImageClipboard.new,
+          imageSharer: _MockImageSharer.new,
+          sessionRepository: _MockSessionRepository.new,
+          createPendingFormCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture form"),
+          createFilePreviewCubit: ({required reference}) =>
+              throw UnimplementedError("File previews are not under test"),
+          createExternalActionCubit: ({required requestId, required sessionId}) =>
+              throw UnimplementedError("External actions are not under test"),
+          createSideChatCubit: ({required sessionId, required pluginId, required availability, required isArchived}) {
+            final sideChat = SideChatCubit(
+              repository: sideChats,
+              productAnalyticsService: MockProductAnalyticsService(),
+              sessionId: sessionId,
+              pluginId: pluginId,
+              availability: availability,
+              isArchived: isArchived,
+              initialQuestion: null,
+            );
+            createdSideChats.add(sideChat);
+            return sideChat;
+          },
+          canShareImages: true,
+        ),
+      );
+      pushablePage = () => page(key: null);
       await tester.binding.setSurfaceSize(const Size(1400, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -553,68 +611,15 @@ void main() {
               ),
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: _composerScope(
-                imageClipboard: _MockImageClipboard.new,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    DesktopSessionDetailView(
-                      key: pageKey,
-                      onOpenHarnessSettings: () {},
-                      onOpenBridgeSettings: () {},
-                      projectId: "project-1",
-                      projectName: null,
-                      sessionId: "session-1",
-                      sessionTitle: "Desktop session",
-                      sessionActions: SessionListActionDispatcher(
-                        deleteConfirmation: SessionDeleteConfirmation.sheet,
-                        onSessionArchived: null,
-                        onSessionDeleted: null,
-                        onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
-                        openSession: _openNothing,
-                        createSessionSearch: _searchNothing,
-                      ),
-                      onMarkedUnread: () => leftPage++,
-                      readOnly: readOnly,
-                      onOpenParentSession: ({required parentSessionId}) => openedParents.add(parentSessionId),
-                      onShowDiffs: () {},
-                      onOpenSession: ({
-                        required projectId,
-                        required sessionId,
-                        required sessionTitle,
-                        required readOnly,
-                      }) {},
-                      messageImageRepository: _MockMessageImageRepository.new,
-                      imageSaver: _MockImageSaver.new,
-                      imageClipboard: _MockImageClipboard.new,
-                      imageSharer: _MockImageSharer.new,
-                      sessionRepository: _MockSessionRepository.new,
-                      createPendingFormCubit: ({required requestId, required sessionId}) =>
-                          throw StateError("Unused fixture form"),
-                      createFilePreviewCubit: ({required reference}) =>
-                          throw UnimplementedError("File previews are not under test"),
-                      createExternalActionCubit: ({required requestId, required sessionId}) =>
-                          throw UnimplementedError("External actions are not under test"),
-                      createSideChatCubit:
-                          ({required sessionId, required pluginId, required availability, required isArchived}) {
-                            final sideChat = SideChatCubit(
-                              repository: sideChats,
-                              productAnalyticsService: MockProductAnalyticsService(),
-                              sessionId: sessionId,
-                              pluginId: pluginId,
-                              availability: availability,
-                              isArchived: isArchived,
-                              initialQuestion: null,
-                            );
-                            createdSideChats.add(sideChat);
-                            return sideChat;
-                          },
-                      canShareImages: true,
-                    ),
-                    const Positioned.fill(child: DesktopConnectionPillSlot()),
-                  ],
-                ),
+              // The shell's pill floats over every page, as the cockpit's does.
+              builder: (context, child) => Stack(
+                fit: StackFit.expand,
+                children: [
+                  ?child,
+                  const Positioned.fill(child: DesktopConnectionPillSlot()),
+                ],
               ),
+              home: page(key: pageKey),
             ),
           ),
         ),
@@ -1076,6 +1081,38 @@ void main() {
         await tester.pump(const Duration(milliseconds: 200));
         expect(panel, findsNothing, reason: "the close button took the click");
         expect(tester.getRect(pill), resting);
+      });
+
+      testWidgets("a subtask pushed over the open panel takes the pill back, and returning hands it over again", (
+        tester,
+      ) async {
+        await pumpPage(
+          tester,
+          session: root,
+          initialState: sideChatState(),
+          connection: const ConnectionOverlayState.connectionLost(),
+        );
+        final pill = find.byKey(const Key("desktop-connection-pill"));
+        final resting = tester.getRect(pill);
+        await openFromComposer(tester);
+        final aside = tester.getRect(pill);
+        expect(aside.right, lessThan(resting.right));
+
+        final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+        navigator.push(MaterialPageRoute<void>(builder: (_) => pushablePage()));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(tester.getRect(pill), resting, reason: "the subtask shows no panel");
+
+        navigator.pop();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(panel, findsOneWidget);
+        expect(tester.getRect(pill), aside, reason: "the leaving subtask keeps the parent's cover");
+        await tester.tap(find.descendant(of: panel, matching: find.byIcon(TablerRegular.x)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(panel, findsNothing);
       });
 
       testWidgets("Escape closes the panel at once, from its field or from the page's composer", (tester) async {
