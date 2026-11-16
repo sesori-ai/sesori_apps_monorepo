@@ -77,20 +77,26 @@ class const ScheduledTaskDetailView({
                   hasScrollBody: false,
                   child: Center(child: _SecondaryText(text: context.loc.scheduledTaskGone)),
                 ),
-                ScheduledTaskDetailLoaded(:final task, :final runs, :final editable) => SliverList.list(
-                  children: [
-                    if (!editable)
-                      Padding(
-                        key: const Key("scheduled-task-read-only"),
-                        padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
-                        child: _SecondaryText(text: context.loc.scheduledTaskReadOnly),
-                      ),
-                    _Summary(task: task),
-                    _Actions(task: task, editable: editable, onDeleted: onDeleted, onEdit: onEdit),
-                    SessionListHeading(heading: context.loc.scheduledTaskRunsHeading, isFirst: false),
-                    _History(task: task, runs: runs),
-                  ],
-                ),
+                ScheduledTaskDetailLoaded(
+                  :final task,
+                  :final runs,
+                  :final editable,
+                  :final deviceTimeZone,
+                ) =>
+                  SliverList.list(
+                    children: [
+                      if (!editable)
+                        Padding(
+                          key: const Key("scheduled-task-read-only"),
+                          padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
+                          child: _SecondaryText(text: context.loc.scheduledTaskReadOnly),
+                        ),
+                      _Summary(task: task, deviceTimeZone: deviceTimeZone),
+                      _Actions(task: task, editable: editable, onDeleted: onDeleted, onEdit: onEdit),
+                      SessionListHeading(heading: context.loc.scheduledTaskRunsHeading, isFirst: false),
+                      _History(task: task, runs: runs),
+                    ],
+                  ),
               },
             ),
           ],
@@ -101,7 +107,8 @@ class const ScheduledTaskDetailView({
   );
 }
 
-class const _Summary({required final ScheduledTask task}) extends StatelessWidget {
+class const _Summary({required final ScheduledTask task, required final String? deviceTimeZone})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -113,7 +120,7 @@ class const _Summary({required final ScheduledTask task}) extends StatelessWidge
           PregoGroupedRow(
             icon: task.definition.schedule is TaskScheduleOnce ? TablerRegular.clock : TablerRegular.repeat,
             title: Text(loc.scheduledTaskWhen),
-            subtitle: Text(labels.schedule(task: task)),
+            subtitle: Text(labels.schedule(task: task, deviceTimeZone: deviceTimeZone)),
           ),
           PregoGroupedRow(
             icon: TablerRegular.calendar_time,

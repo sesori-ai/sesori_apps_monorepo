@@ -4,6 +4,7 @@ import "package:bloc/bloc.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
+import "../../foundation/platform/device_time_zone_source.dart";
 import "../../logging/logging.dart";
 import "../../repositories/models/scheduled_task_result.dart";
 import "../../repositories/scheduled_task_repository.dart";
@@ -15,12 +16,14 @@ import "scheduled_tasks_state.dart";
 class ScheduledTasksCubit({
   required final ScheduledTaskRepository _repository,
   required final ConnectionService _connectionService,
+  required final DeviceTimeZoneSource _timeZoneSource,
 }) extends Cubit<ScheduledTasksState> {
   late final ScheduledTaskRefreshDispatcher _queue = ScheduledTaskRefreshDispatcher(refresh: _refresh);
   late final StreamSubscription<void> _signals;
 
   /// The tasks as the bridge last listed them.
   List<ScheduledTask> _tasks = const [];
+  String? _shownDeviceTimeZone;
 
   /// Switch positions sent but not yet answered, by task id. They override
   /// [_tasks], so a refresh that lands meanwhile does not flick a switch back.
@@ -75,6 +78,7 @@ class ScheduledTasksCubit({
     switch (result) {
       case ScheduledTaskSuccess(:final value):
         _tasks = value;
+        _shownDeviceTimeZone = await readDeviceTimeZone(source: _timeZoneSource);
         _emitLoaded();
         return true;
       case ScheduledTaskBridgeOutdated():
@@ -107,6 +111,7 @@ class ScheduledTasksCubit({
           for (final task in tasks)
             if (task.definition.schedule is TaskScheduleOnce) task,
         ]..sort(_soonestFirst),
+        deviceTimeZone: _shownDeviceTimeZone,
       ),
     );
   }

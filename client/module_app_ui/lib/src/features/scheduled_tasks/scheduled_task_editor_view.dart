@@ -53,13 +53,16 @@ class const ScheduledTaskEditorView({
             title: title,
             topBar: chrome?.topBar,
             onBack: onBack,
-            child: const Center(child: PregoActivityIndicator(color: null)),
+            sliver: const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: PregoActivityIndicator(color: null)),
+            ),
           ),
           ScheduledTaskEditorUnavailable(:final reason) => _StatusFrame(
             title: title,
             topBar: chrome?.topBar,
             onBack: onBack,
-            child: _Unavailable(reason: reason),
+            sliver: SliverToBoxAdapter(child: _Unavailable(reason: reason)),
           ),
           ScheduledTaskEditorReady(:final editing) => _TaskComposer(
             editing: editing,
@@ -79,17 +82,23 @@ class const ScheduledTaskEditorView({
 }
 
 /// A page with nothing to compose yet: loading, or why the task cannot open.
+/// Its insets are the Scheduled and task pages', so a status row sits as there.
 class const _StatusFrame({
   required final String title,
   required final Widget? topBar,
   required final VoidCallback onBack,
-  required final Widget child,
+  required final Widget sliver,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final body = SliverPadding(
-      padding: const EdgeInsets.all(PregoSpacing.xl),
-      sliver: SliverFillRemaining(hasScrollBody: false, child: child),
+      padding: EdgeInsetsDirectional.fromSTEB(
+        PregoSpacing.xl,
+        0,
+        PregoSpacing.xl,
+        PregoSpacing.xl + MediaQuery.paddingOf(context).bottom,
+      ),
+      sliver: sliver,
     );
     if (topBar case final topBar?) {
       return Scaffold(
@@ -105,7 +114,7 @@ class const _StatusFrame({
     return PregoGlassScaffold(
       title: title,
       onBack: onBack,
-      titleMode: PregoTopNavigationTitleMode.backLeading,
+      titleMode: PregoTopNavigationTitleMode.inline,
       subtitle: null,
       banner: null,
       slivers: [body],
@@ -118,33 +127,30 @@ class const _Unavailable({required final ScheduledTaskEditorUnavailableReason re
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    return Align(
-      alignment: Alignment.topCenter,
-      child: switch (reason) {
-        ScheduledTaskEditorUnavailableReason.loadFailed => ScheduledTaskStatusRow(
-          key: const Key("scheduled-task-editor-failed"),
-          icon: TablerRegular.alert_circle,
-          title: loc.scheduledTasksLoadFailed,
-          trailing: PregoButtonsSolid(
-            label: loc.scheduledTasksRetry,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: () => unawaited(context.read<ScheduledTaskEditorCubit>().retry()),
-          ),
-          onTap: null,
+    return switch (reason) {
+      ScheduledTaskEditorUnavailableReason.loadFailed => ScheduledTaskStatusRow(
+        key: const Key("scheduled-task-editor-failed"),
+        icon: TablerRegular.alert_circle,
+        title: loc.scheduledTasksLoadFailed,
+        trailing: PregoButtonsSolid(
+          label: loc.scheduledTasksRetry,
+          hierarchy: PregoButtonsSolidHierarchy.secondary,
+          size: PregoButtonsSolidSize.sm,
+          onPressed: () => unawaited(context.read<ScheduledTaskEditorCubit>().retry()),
         ),
-        ScheduledTaskEditorUnavailableReason.bridgeOutdated => const ScheduledTasksBridgeOutdatedRow(),
-        ScheduledTaskEditorUnavailableReason.taskGone => _Note(text: loc.scheduledTaskGone),
-        ScheduledTaskEditorUnavailableReason.newerApp => _Note(text: loc.scheduledTaskReadOnly),
-      },
-    );
+        onTap: null,
+      ),
+      ScheduledTaskEditorUnavailableReason.bridgeOutdated => const ScheduledTasksBridgeOutdatedRow(),
+      ScheduledTaskEditorUnavailableReason.taskGone => _Note(text: loc.scheduledTaskGone),
+      ScheduledTaskEditorUnavailableReason.newerApp => _Note(text: loc.scheduledTaskReadOnly),
+    };
   }
 }
 
 class const _Note({required final String text}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xl),
+    padding: const EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
     child: Text(
       text,
       textAlign: TextAlign.center,
@@ -199,6 +205,7 @@ class _TaskComposerState() extends State<_TaskComposer> {
       null => NewSessionProjectPrompt(
         key: const Key("scheduled-task-editor-project"),
         title: widget.title,
+        titleMode: PregoTopNavigationTitleMode.inline,
         onProjectSelected: ({required projectId, required projectName}) => setState(() {
           _selection = newTaskComposerSelection(
             project: NewSessionProject(
@@ -235,6 +242,7 @@ class _TaskComposerState() extends State<_TaskComposer> {
           child: Builder(
             builder: (context) => NewSessionView(
               title: widget.title,
+              composingTitleMode: PregoTopNavigationTitleMode.inline,
               onProjectSelected: ({required projectId, required projectName}) =>
                   context.read<NewSessionCubit>().selectProject(
                     project: NewSessionProject(
@@ -298,7 +306,12 @@ class const _TaskLines() extends StatelessWidget {
                 icon: TablerRegular.calendar_time,
                 title: Text(loc.scheduledTaskWhen),
                 subtitle: Text(
-                  whenProblem ?? labels.draftSchedule(schedule: ready.schedule, editing: ready.editing),
+                  whenProblem ??
+                      labels.draftSchedule(
+                        schedule: ready.schedule,
+                        editing: ready.editing,
+                        deviceTimeZone: ready.deviceTimeZone,
+                      ),
                   style: whenProblem == null ? null : TextStyle(color: prego.colors.textErrorPrimary),
                 ),
                 trailing: const Icon(TablerRegular.chevron_right),

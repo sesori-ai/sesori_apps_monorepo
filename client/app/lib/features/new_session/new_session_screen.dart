@@ -3,6 +3,7 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/routing/app_router.dart";
@@ -25,6 +26,7 @@ class const NewSessionScreen({
     if (projectId == null) {
       return NewSessionProjectPrompt(
         title: context.loc.sessionListNewSession,
+        titleMode: PregoTopNavigationTitleMode.backLeading,
         onProjectSelected: ({required projectId, required projectName}) {
           context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry));
         },
@@ -53,6 +55,7 @@ class const NewSessionScreen({
   Widget _build({required BuildContext context}) {
     return NewSessionView(
       title: context.loc.sessionListNewSession,
+      composingTitleMode: PregoTopNavigationTitleMode.backLeading,
       onProjectSelected: ({required projectId, required projectName}) => context.read<NewSessionCubit>().selectProject(
         project: NewSessionProject(
           id: projectId,

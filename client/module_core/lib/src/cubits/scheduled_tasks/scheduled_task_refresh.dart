@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
+import "../../foundation/platform/device_time_zone_source.dart";
 import "../../logging/logging.dart";
 import "../../repositories/models/scheduled_task_result.dart";
 
@@ -89,5 +90,16 @@ void logScheduledTaskFailure({required String message, required ScheduledTaskRes
       logw("$message: the bridge predates scheduled tasks");
     case ScheduledTaskFailure(:final error):
       logw(message, error);
+  }
+}
+
+/// This device's IANA zone, for naming a task's zone only when it is another;
+/// null after logging when the platform cannot report it.
+Future<String?> readDeviceTimeZone({required DeviceTimeZoneSource source}) async {
+  try {
+    return await source.currentZoneName();
+  } on Object catch (error, stackTrace) {
+    logw("Could not read the device time zone for scheduled tasks", error, stackTrace);
+    return null;
   }
 }

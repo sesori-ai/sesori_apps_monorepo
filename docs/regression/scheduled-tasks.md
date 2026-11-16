@@ -43,7 +43,8 @@ them or can't start. Same-session tasks can compact their session between runs (
   a time that happens twice at fall-back runs once, at the first instant. Every few hours is a fixed real-time interval
   from its start and drifts across days when 24 is not a multiple of it.
 - The list and task page show times in the task zone's wall clock, adding the zone name when its offset differs from
-  the viewing device's. History rows keep the offset they were written with.
+  the viewing device's. A paused task that never ran has no offset to compare, so it names its zone unless the zone is
+  the device's own. History rows keep the offset they were written with.
 - A fire within 2 minutes of its time is on time; later is "Ran late". A task first seen due later than that (bridge
   off or machine asleep) follows its policy: **Run when it's back** (default) fires once, marked late; **Wait for the
   next time** writes one "Missed" row. Either way the next run is the first time after now, so a week away gives one

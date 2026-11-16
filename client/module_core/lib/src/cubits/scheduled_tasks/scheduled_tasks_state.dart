@@ -12,6 +12,9 @@ final class const ScheduledTasksLoaded({
 
   /// One-off tasks, soonest first.
   required final List<ScheduledTask> once,
+
+  /// This device's IANA zone; null when the platform cannot report it.
+  required final String? deviceTimeZone,
 }) extends ScheduledTasksState;
 
 final class const ScheduledTasksFailed() extends ScheduledTasksState;

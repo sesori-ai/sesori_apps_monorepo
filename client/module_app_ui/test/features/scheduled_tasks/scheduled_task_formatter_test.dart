@@ -22,11 +22,13 @@ void main() {
         outcome: const ScheduledTaskRunOutcome.skipped(),
       ),
     );
-    expect(formatter.schedule(task: task), "Every day at 9:00\u202FAM");
+    expect(formatter.schedule(task: task, deviceTimeZone: "Europe/Bucharest"), "Every day at 9:00\u202FAM");
   });
 
-  test("a paused task with no run to read an offset from names its zone", () {
-    expect(formatter.schedule(task: paused), "Every day at 9:00\u202FAM (UTC)");
+  test("a paused task that never ran names its zone unless it is the device's", () {
+    expect(formatter.schedule(task: paused, deviceTimeZone: "Europe/Bucharest"), "Every day at 9:00\u202FAM (UTC)");
+    expect(formatter.schedule(task: paused, deviceTimeZone: "UTC"), "Every day at 9:00\u202FAM");
+    expect(formatter.schedule(task: paused, deviceTimeZone: null), "Every day at 9:00\u202FAM (UTC)");
   });
 
   test("a paused one-off task writes out its date", () {
@@ -37,7 +39,7 @@ void main() {
         ),
       ),
     );
-    expect(formatter.schedule(task: task), startsWith("Nov 16"));
+    expect(formatter.schedule(task: task, deviceTimeZone: null), startsWith("Nov 16"));
   });
 
   test("a new task's When line names no zone, while an edited task in another zone does", () {
@@ -45,8 +47,14 @@ void main() {
       days: {TaskWeekday.monday, TaskWeekday.friday},
       time: TaskTimeOfDay(hour: 9, minute: 0),
     );
-    expect(formatter.draftSchedule(schedule: schedule, editing: null), "Mon, Fri at 9:00\u202FAM");
-    expect(formatter.draftSchedule(schedule: schedule, editing: paused), "Mon, Fri at 9:00\u202FAM (UTC)");
+    expect(
+      formatter.draftSchedule(schedule: schedule, editing: null, deviceTimeZone: "UTC"),
+      "Mon, Fri at 9:00\u202FAM",
+    );
+    expect(
+      formatter.draftSchedule(schedule: schedule, editing: paused, deviceTimeZone: "Europe/Bucharest"),
+      "Mon, Fri at 9:00\u202FAM (UTC)",
+    );
   });
 
   test("each weekday reads as its own initial and full name", () {

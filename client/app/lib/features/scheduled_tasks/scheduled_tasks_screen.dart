@@ -16,6 +16,7 @@ class const ScheduledTasksScreen({super.key}) extends StatelessWidget {
     createCubit: () => ScheduledTasksCubit(
       repository: getIt<ScheduledTaskRepository>(),
       connectionService: getIt<ConnectionService>(),
+      timeZoneSource: getIt<DeviceTimeZoneSource>(),
     ),
     exit: ScheduledPageExit.back,
     onExit: () => _leave(context: context),
@@ -31,6 +32,7 @@ class const ScheduledTaskDetailScreen({super.key, required final String taskId})
     createCubit: () => ScheduledTaskDetailCubit(
       repository: getIt<ScheduledTaskRepository>(),
       connectionService: getIt<ConnectionService>(),
+      timeZoneSource: getIt<DeviceTimeZoneSource>(),
       taskId: taskId,
     ),
     onBack: () => _leave(context: context),
