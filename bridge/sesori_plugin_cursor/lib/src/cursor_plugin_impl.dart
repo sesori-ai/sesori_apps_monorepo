@@ -310,21 +310,13 @@ class CursorPlugin._({
     required String configId,
     required String value,
   }) async {
+    final AcpNewSessionResult? result;
     try {
-      final result = await configRepository.setConfigOption(
+      result = await configRepository.setConfigOption(
         sessionId: sessionId,
         configId: configId,
         value: value,
       );
-      if (result != null) {
-        final capture = _catalogService.captureSessionConfig(
-          result: result,
-          fromNewSession: false,
-          thoughtLevelModelId: configId == _catalogTracker.modelConfigId ? value : null,
-          captureThoughtLevelDefault: configId == _catalogTracker.modelConfigId,
-        );
-        _applyCaptureToEventMapper(capture: capture, sessionId: sessionId);
-      }
     } on Object catch (error, stack) {
       Error.throwWithStackTrace(
         PluginStaleOptionsException(
@@ -335,6 +327,14 @@ class CursorPlugin._({
         stack,
       );
     }
+    if (result == null) return;
+    final capture = _catalogService.captureSessionConfig(
+      result: result,
+      fromNewSession: false,
+      thoughtLevelModelId: configId == _catalogTracker.modelConfigId ? value : null,
+      captureThoughtLevelDefault: configId == _catalogTracker.modelConfigId,
+    );
+    _applyCaptureToEventMapper(capture: capture, sessionId: sessionId);
   }
 
   @override
