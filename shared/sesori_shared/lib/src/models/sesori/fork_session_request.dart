@@ -26,8 +26,8 @@ sealed class ForkPoint with _$ForkPoint {
   @FreezedUnionValue("afterMessage")
   const factory afterMessage({required String messageId}) = ForkPointAfterMessage;
 
-  /// Keeps everything before the turn that [messageId], a user message that
-  /// opens a turn, opens. On the session's first turn that is nothing.
+  /// Keeps everything before the turn opened by [messageId], the user message
+  /// that starts that turn. On the session's first turn, this keeps nothing.
   @FreezedUnionValue("beforeMessage")
   const factory beforeMessage({required String messageId}) = ForkPointBeforeMessage;
 

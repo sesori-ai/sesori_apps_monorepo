@@ -65,6 +65,11 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   @FreezedUnionValue("mcp.authentication.changed")
   const factory mcpAuthenticationChanged() = SesoriMcpAuthenticationChanged;
 
+  /// Invalidation only: the computer's scheduled tasks or a task's run history
+  /// changed, so open task screens refetch.
+  @FreezedUnionValue("scheduledTasks.changed")
+  const factory scheduledTasksChanged() = SesoriScheduledTasksChanged;
+
   /// Progress of a phone-triggered managed runtime install for one plugin.
   /// [percent] is only meaningful while [PluginInstallPhase.downloading] with a
   /// known total; [message] carries a sanitized failure description only on

@@ -170,6 +170,10 @@ void main() {
     when(() => refreshService.scan).thenAnswer((_) => BehaviorSubject.seeded(const CatalogRescanState.idle()));
     when(refreshService.refresh).thenAnswer((_) async => true);
     activity = MockSseEventTracker();
+    // The palette's session search reads both.
+    GetIt.instance
+      ..registerSingleton<SseEventTracker>(activity)
+      ..registerSingleton<PluginRepository>(stubbedPluginRepository());
     repository = _MockRepository();
     when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout());
     when(() => repository.writeSidebarLayout(layout: any(named: "layout"))).thenAnswer((_) async {});

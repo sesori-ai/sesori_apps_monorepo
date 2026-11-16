@@ -90,6 +90,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
               streamingText: _streamingText,
               createdAtMs: widget.message.info.time?.created,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              selectionArea: null,
             ),
           ),
         ),
@@ -178,6 +179,27 @@ void main() {
       authSession: authSession,
       attachmentThumbnailStorage: _MockAttachmentThumbnailStorage(),
     );
+  });
+
+  test("the reply's Markdown joins its text parts, streamed text first, and skips the rest", () {
+    final message = _assistantMessage(
+      parts: [
+        _textPart(id: "first", text: "# Plan"),
+        _toolPart(id: "tool", toolName: "bash"),
+        _textPart(id: "empty", text: ""),
+        _textPart(id: "streaming", text: "Do"),
+      ],
+    );
+    const streamingText = {"streaming": "Done **now**."};
+    final blocks = const TranscriptBuilder()
+        .build(messages: [message], streamingText: streamingText, children: const [], childStatuses: const {})
+        .blocksFor(messageId: message.info.id);
+
+    expect(
+      AssistantMessageCard.markdownOf(blocks: blocks, streamingText: streamingText),
+      "# Plan\n\nDone **now**.",
+    );
+    expect(AssistantMessageCard.markdownOf(blocks: const [], streamingText: const {}), isNull);
   });
 
   testWidgets("renders one SelectionArea and two markdown parts for assistant text", (tester) async {

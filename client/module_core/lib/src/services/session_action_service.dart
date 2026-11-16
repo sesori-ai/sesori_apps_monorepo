@@ -5,21 +5,25 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 
 import "../logging/logging.dart";
+import "../repositories/models/send_to_session_result.dart";
 import "../repositories/models/session_cleanup_rejection.dart";
 import "../repositories/session_repository.dart";
 import "models/session_cleanup_outcome.dart";
 import "models/session_delete_result.dart";
+import "selected_computer_service.dart";
 import "session_cleanup_service.dart";
 import "session_unseen_tracker.dart";
 
-/// Deletes sessions and marks them read or unread. The rows they change live
-/// in the session windows and the trackers; this holds nothing a list shows.
+/// Deletes sessions, marks them read or unread, and sends one into another.
+/// The rows they change live in the session windows and the trackers; this
+/// holds nothing a list shows.
 @lazySingleton
 class SessionActionService({
   required final SessionRepository _sessionRepository,
   required final SessionCleanupService _sessionCleanupService,
   required final SessionUnseenTracker _sessionUnseenTracker,
   required final FailureReporter _failureReporter,
+  required final SelectedComputerService _selectedComputerService,
 }) {
   /// Marks a session read (clears its bold) or unread (forces bold). Applied
   /// optimistically to the tracker so the row updates immediately; the bridge
@@ -57,6 +61,35 @@ class SessionActionService({
       );
       restore();
     }
+  }
+
+  /// Sends [sourceSessionId] into [targetSessionId]: the source writes a
+  /// summary, then the target receives it with the source's transcript. This
+  /// can take minutes, while the source writes.
+  Future<SendToSessionResult> sendToSession({required String sourceSessionId, required String targetSessionId}) async {
+    final computer = await _selectedComputerService.targetBridgeId();
+    final result = await _sessionRepository.sendToSession(
+      sourceSessionId: sourceSessionId,
+      targetSessionId: targetSessionId,
+    );
+    final description = "session $sourceSessionId to $targetSessionId";
+    if (await _selectedComputerService.targetBridgeId() != computer) {
+      logw("[SessionActions] sending $description ended after a computer switch: ${result.runtimeType}");
+      return const SendToSessionComputerSwitched();
+    }
+    switch (result) {
+      case SendToSessionSent() || SendToSessionComputerSwitched():
+        break;
+      case SendToSessionUnsupported():
+        logw("[SessionActions] could not send $description: the bridge predates sending sessions");
+      case SendToSessionRefused(:final code):
+        logd("[SessionActions] did not send $description: ${code.name}");
+      case SendToSessionFailed(:final error):
+        loge("Failed to send $description", error);
+      case SendToSessionUnconfirmed(:final error):
+        logw("Could not confirm sending $description", error);
+    }
+    return result;
   }
 
   /// Deletes a session permanently. [deleteSessionFolder] also removes a
