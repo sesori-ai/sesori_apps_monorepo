@@ -107,6 +107,7 @@ const _$SideQuestionRefusalEnumMap = {
   SideQuestionRefusal.noTurnYet: 'noTurnYet',
   SideQuestionRefusal.tooLong: 'tooLong',
   SideQuestionRefusal.noAnswer: 'noAnswer',
+  SideQuestionRefusal.repeatedRunningReply: 'repeatedRunningReply',
   SideQuestionRefusal.unknown: 'unknown',
 };
 

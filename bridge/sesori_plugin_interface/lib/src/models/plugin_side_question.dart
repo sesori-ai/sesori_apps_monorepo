@@ -19,6 +19,10 @@ enum PluginSideRefusal() {
 
   /// The model tried a tool, gave no text, or gave a stand-in answer.
   noAnswer,
+
+  /// The harness returned the reply of the turn running beside the question
+  /// instead of an answer to it.
+  repeatedRunningReply,
 }
 
 sealed class const PluginSideAnswer();

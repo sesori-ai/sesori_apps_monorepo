@@ -8023,6 +8023,12 @@ abstract class AppLocalizations {
   /// **'No answer came back.'**
   String get sideChatRefusedNoAnswer;
 
+  /// Shown in place of an answer, above a Retry button, when the harness sent back the reply of the turn it was running instead of answering the side question.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} answered with its running reply instead. Ask again.'**
+  String sideChatRefusedRepeatedRunningReply(String harness);
+
   /// Shown in place of an answer when the bridge refused for a reason this app doesn't know.
   ///
   /// In en, this message translates to:

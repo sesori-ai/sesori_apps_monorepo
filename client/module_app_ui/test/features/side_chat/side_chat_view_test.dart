@@ -279,6 +279,19 @@ void main() {
     await settle(tester);
   });
 
+  testWidgets("a repeated running reply is named and offers Retry", (tester) async {
+    await pumpView(tester);
+    await ask(tester, "Where is the cache?");
+
+    answer.complete(
+      ApiResponse.success(const AskSideQuestionResponse.refused(reason: SideQuestionRefusal.repeatedRunningReply)),
+    );
+    await settle(tester);
+
+    expect(find.text("Claude Code answered with its running reply instead. Ask again."), findsOneWidget);
+    expect(find.text("Retry"), findsOneWidget);
+  });
+
   testWidgets("a chat too long to continue offers no Retry", (tester) async {
     await pumpView(tester);
     await ask(tester, "Where is the cache?");

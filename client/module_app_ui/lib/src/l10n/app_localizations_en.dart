@@ -4627,6 +4627,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sideChatRefusedNoAnswer => 'No answer came back.';
 
   @override
+  String sideChatRefusedRepeatedRunningReply(String harness) {
+    return '$harness answered with its running reply instead. Ask again.';
+  }
+
+  @override
   String get sideChatRefusedUnknown => 'This side question couldn\'t be answered.';
 
   @override

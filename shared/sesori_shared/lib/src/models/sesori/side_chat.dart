@@ -76,6 +76,10 @@ enum SideQuestionRefusal() {
   /// The model gave no usable answer.
   noAnswer,
 
+  /// The harness returned the reply of the turn running beside the question
+  /// instead of an answer to it. An older app reads this as [unknown].
+  repeatedRunningReply,
+
   /// A reason this app does not know yet.
   unknown,
 }

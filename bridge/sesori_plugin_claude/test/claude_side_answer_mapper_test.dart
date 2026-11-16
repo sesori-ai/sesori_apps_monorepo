@@ -5,7 +5,30 @@ import "package:test/test.dart";
 void main() {
   const mapper = ClaudeSideAnswerMapper();
 
-  PluginSideAnswer map(Map<String, Object?> json) => mapper.map(response: ClaudeSideQuestionResponseDto.fromJson(json));
+  PluginSideAnswer map(Map<String, Object?> json, {List<String> turnRepliesDuringAsk = const []}) =>
+      mapper.map(response: ClaudeSideQuestionResponseDto.fromJson(json), turnRepliesDuringAsk: turnRepliesDuringAsk);
+
+  test("refuses an answer that repeats a reply ending during the ask", () {
+    const reply = "1. The ocean covers most of the planet.\n2. It holds most of its life.";
+    final answer = map(
+      {"response": reply, "synthetic": false},
+      turnRepliesDuringAsk: ["\n$reply\n"],
+    );
+
+    expect(
+      answer,
+      isA<PluginSideRefused>().having((r) => r.reason, "reason", PluginSideRefusal.repeatedRunningReply),
+    );
+  });
+
+  test("keeps an answer that differs from every reply ending during the ask", () {
+    final answer = map(
+      {"response": "4", "synthetic": false},
+      turnRepliesDuringAsk: ["1. The ocean covers most of the planet."],
+    );
+
+    expect(answer, isA<PluginSideAnswered>().having((a) => a.text, "text", "4"));
+  });
 
   test("maps a real answer with no notice", () {
     final answer = map({"response": "  Only the parser.\n", "synthetic": false});

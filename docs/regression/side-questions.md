@@ -33,7 +33,8 @@ declaration into a `SideQuestionAvailability`: `available`,
   first.
 - An answer is stored with its question and optional notice and returned with
   its side chat id. A refusal (`harnessUnsupported`, `harnessUpdateRequired`,
-  `noTurnYet`, `tooLong`, `noAnswer`) and a failure store nothing. A refusal
+  `noTurnYet`, `tooLong`, `noAnswer`, `repeatedRunningReply`) and a failure
+  store nothing. A refusal
   reason from a newer bridge reads as `unknown` on an older app.
 - Closing the client while an ask waits does not cancel it: the answer is
   still stored. Claude Code's ask ends with a cancel after Sesori's 3-minute
@@ -118,7 +119,7 @@ declaration into a `SideQuestionAvailability`: `available`,
 | Level | Additional coverage |
 | --- | --- |
 | L1 Smoke | Not included. |
-| L2 Routine | Automated: bridge route, repository and migration tests (`side_question_handlers_test`, `side_chat_repository_test`, `side_chat_exchanges_migration_test`) cover the routes, refusals, storage, history order, archived read-only and delete cascade; Claude Code (`claude_stream_client_test`, `claude_side_answer_mapper_test`) and Codex (`codex_side_questions_test`, `codex_side_question_prompt_builder_test`) plugin tests against fakes; client `side_chat_cubit_test`, `session_detail_side_question_test`, `side_chat_view_test`, `prego_detent_sheet_test`, `side_chat_keyboard_hold_test`, `command_picker_test` and `desktop_session_detail_screen_test`; one `side_question_asked` per ask with bounded parameters. |
+| L2 Routine | Automated: bridge route, repository and migration tests (`side_question_handlers_test`, `side_chat_repository_test`, `side_chat_exchanges_migration_test`) cover the routes, refusals, storage, history order, archived read-only and delete cascade; Claude Code (`claude_stream_client_test`, `claude_side_answer_mapper_test`, `claude_session_process_repository_test` for the running-reply echo) and Codex (`codex_side_questions_test`, `codex_side_question_prompt_builder_test`) plugin tests against fakes; client `side_chat_cubit_test`, `session_detail_side_question_test`, `side_chat_view_test`, `prego_detent_sheet_test`, `side_chat_keyboard_hold_test`, `command_picker_test` and `desktop_session_detail_screen_test`; one `side_question_asked` per ask with bounded parameters. |
 | L3 Release | Live Claude Code and Codex: ask while the main turn streams and check it finishes normally; a follow-up uses the history; an ask after a cold resume answers; the `.jsonl` and the rollout are unchanged, and an over-budget Codex history is trimmed. On a headless iOS simulator, against Claude Code and Codex: both entries (button, and "/btw " with ✕ back keeping the text, and the picker row); sheet heights and drag; ask during streaming and follow up; reopen an earlier chat; close while waiting and reopen to see the answer; no main-transcript jump; the tap reason on an unsupported harness and on an older bridge. On macOS: the panel slides in without the transcript moving, answers a question and a follow-up, and closes on Escape and on a session switch. |
 | L4 Extended | Very long questions and answers, the largest text size, a reopened chat with many exchanges, and an ask on a session with no turn yet. |
 | L5 Full | No additional coverage. |
@@ -148,6 +149,7 @@ bridge first.
 - "/btw " is sent to the harness as a prompt on an `available` session, or
   composer text is lost when leaving the mode.
 - A refused or failed ask is stored, or loses the typed question.
+- A Claude Code side answer shows the main turn's reply word for word.
 - An archived session accepts a new ask, or a deleted session leaves side
   chats behind.
 
@@ -156,11 +158,15 @@ bridge first.
 - Only Claude Code and Codex answer side questions. Other harnesses answer the
   button tap with the reason; a fork-based fallback is a later phase.
 - Answers never stream: every harness returns the whole answer at once.
-- On Claude Code, a mid-turn ask sends the model the running turn's prompt
-  as well. A non-Claude model behind a proxy sometimes answers that prompt
-  instead of the question (see HARNESS_CAPABILITIES.md). Run the mid-turn
-  Claude Code check with a real Claude model before reading such an answer
-  as a Sesori failure.
+- On Claude Code, a mid-turn ask fails occasionally, also with a real Claude
+  model (verified on 2.1.325, 2026-11-16, upstream
+  [anthropics/claude-code#110490](https://github.com/anthropics/claude-code/issues/110490)):
+  an ask sent early in the stream comes back after the main turn ends,
+  holding the main turn's reply. Sesori catches that echo and shows "Claude
+  Code answered with its running reply instead. Ask again." with Retry,
+  instead of the reply. A non-Claude model behind a proxy hits it more often,
+  and can also answer the running turn's prompt in its own words, which
+  Sesori can't tell from an answer (see HARNESS_CAPABILITIES.md).
 - The side chat input takes no voice, attachments or commands.
 
 ## Sources

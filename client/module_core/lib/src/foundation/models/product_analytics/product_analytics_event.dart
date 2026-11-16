@@ -295,7 +295,7 @@ enum AnalyticsSideQuestionOutcome({required final String wireValue}) {
   /// The bridge stored an answer.
   answered(wireValue: "answered"),
 
-  /// The model gave no usable answer.
+  /// The model gave no usable answer, or repeated its running reply.
   noAnswer(wireValue: "no_answer"),
 
   /// The bridge refused before the model answered: the harness can't, the

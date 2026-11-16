@@ -3152,6 +3152,11 @@
   "@sideChatRefusedTooLong": {"description": "Shown in place of an answer when the side chat's history is too long for the harness."},
   "sideChatRefusedNoAnswer": "No answer came back.",
   "@sideChatRefusedNoAnswer": {"description": "Shown in place of an answer when the model gave no usable answer."},
+  "sideChatRefusedRepeatedRunningReply": "{harness} answered with its running reply instead. Ask again.",
+  "@sideChatRefusedRepeatedRunningReply": {
+    "description": "Shown in place of an answer, above a Retry button, when the harness sent back the reply of the turn it was running instead of answering the side question.",
+    "placeholders": {"harness": {"type": "String", "example": "Claude Code"}}
+  },
   "sideChatRefusedUnknown": "This side question couldn't be answered.",
   "@sideChatRefusedUnknown": {"description": "Shown in place of an answer when the bridge refused for a reason this app doesn't know."},
   "sideChatAskFailed": "Couldn't reach your computer to ask.",
