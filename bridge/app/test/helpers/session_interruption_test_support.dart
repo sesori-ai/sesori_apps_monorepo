@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/repositories/models/session_interruption_record.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 
@@ -12,7 +12,7 @@ final class const NoSessionInterruptions() implements SessionInterruptionReposit
   Future<bool> reanchor({required String sessionId, required Map<String, String> replacementIds}) async => false;
 
   @override
-  Future<Map<String, SessionInterruptionRecord>> readMany({required Set<String> sessionIds}) async => const {};
+  Future<Map<String, SessionInterruptionDto>> readMany({required Set<String> sessionIds}) async => const {};
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -6287,8 +6287,8 @@ mixin $SessionRunningTurnsTableTableToColumns
     implements Insertable<SessionRunningTurnDto> {
   String get sessionId;
 
-  /// UTC milliseconds of when this bridge run first saw the turn running, or
-  /// adopted it from an earlier run.
+  /// UTC milliseconds of when this bridge run last saw the turn running, or
+  /// adopted it from an earlier run. Every busy status re-stamps it.
   int get startedAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6394,8 +6394,8 @@ class SessionRunningTurnDto extends DataClass
   @override
   final String sessionId;
 
-  /// UTC milliseconds of when this bridge run first saw the turn running, or
-  /// adopted it from an earlier run.
+  /// UTC milliseconds of when this bridge run last saw the turn running, or
+  /// adopted it from an earlier run. Every busy status re-stamps it.
   @override
   final int startedAt;
   const SessionRunningTurnDto({

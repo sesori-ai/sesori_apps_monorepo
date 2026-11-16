@@ -1,14 +1,11 @@
 import "../api/database/daos/session_interruption_dao.dart";
-import "mappers/session_interruption_mapper.dart";
-import "models/session_interruption_record.dart";
+import "../api/database/database.dart";
 import "models/session_running_turn_record.dart";
 
 /// Sole owner of the running-turn and interruption records. A running row
 /// says a turn is in flight; one left from an earlier bridge run says that
 /// run stopped during the turn, and becomes the session's interruption.
 class const SessionInterruptionRepository({required final SessionInterruptionDao _dao}) {
-  static const _mapper = SessionInterruptionMapper();
-
   /// Records that the session has a turn running as of [at]. A row an earlier
   /// bridge run left takes the new time, so it is no longer left over.
   Future<void> markRunning({required String sessionId, required DateTime at}) =>
@@ -60,9 +57,7 @@ class const SessionInterruptionRepository({required final SessionInterruptionDao
     await _dao.deleteRunning(sessionId: sessionId);
     if (afterMessageId == null) return false;
     await _dao.upsertInterruption(
-      row: _mapper.toDto(
-        record: SessionInterruptionRecord(sessionId: sessionId, afterMessageId: afterMessageId, acknowledged: false),
-      ),
+      row: SessionInterruptionDto(sessionId: sessionId, afterMessageId: afterMessageId, acknowledged: false),
     );
     return true;
   });
@@ -86,8 +81,8 @@ class const SessionInterruptionRepository({required final SessionInterruptionDao
         0;
   }
 
-  Future<Map<String, SessionInterruptionRecord>> readMany({required Set<String> sessionIds}) async => {
-    for (final row in await _dao.readInterruptions(sessionIds: sessionIds)) row.sessionId: _mapper.fromDto(row: row),
+  Future<Map<String, SessionInterruptionDto>> readMany({required Set<String> sessionIds}) async => {
+    for (final row in await _dao.readInterruptions(sessionIds: sessionIds)) row.sessionId: row,
   };
 
   Future<bool> _isUnchanged({required SessionRunningTurnRecord leftover}) async {

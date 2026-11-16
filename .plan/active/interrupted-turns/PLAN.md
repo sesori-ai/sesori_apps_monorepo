@@ -103,8 +103,8 @@ the `Session` wire.
 
 ### D3. Detecting an interrupted turn
 
-- Data owner: `SessionInterruptionDao` and `SessionInterruptionRepository` (with a record model and mapper, as the
-  `session_continuation_*` family) own both new tables, in one new `sesori.db` schema version:
+- Data owner: `SessionInterruptionDao` and `SessionInterruptionRepository` (interruptions as the Drift DTO, which a record
+  would only copy) own both new tables, in one new `sesori.db` schema version:
   `session_running_turns(sessionId PK, FK cascade, startedAt)` and
   `session_interruptions(sessionId PK, FK cascade, afterMessageId, acknowledged)`. The repository exposes mark
   running, clear running, leftover rows of a plugin started before a time (joined with sessions on `pluginId`), a

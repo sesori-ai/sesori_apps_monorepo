@@ -833,8 +833,9 @@ pagination cursor; client detail load service and cubit. Claude's active-branch 
 `claude_transcript_active_branch_test.dart` over transcripts recorded live on Claude Code 2.1.322 in
 `bridge/sesori_plugin_claude/test/fixtures/transcripts/`.
 
-Interrupted turns: `RunningTurnListener`, `InterruptedTurnListener`,
-`InterruptedTurnService` and `SessionInterruptionRepository` in `bridge/app/lib/src/`,
+Interrupted turns: `RunningTurnListener` and `InterruptedTurnListener` in `bridge/app/lib/src/listeners/`,
+`InterruptedTurnService` in `bridge/app/lib/src/services/` and `SessionInterruptionRepository` in
+`bridge/app/lib/src/repositories/`,
 with `running_turn_listener_test.dart`, `interrupted_turn_service_test.dart`,
 `session_interruption_repository_test.dart`, the anchor group in
 `chat_history_capture_test.dart` and `session_interruptions_migration_test.dart`.
