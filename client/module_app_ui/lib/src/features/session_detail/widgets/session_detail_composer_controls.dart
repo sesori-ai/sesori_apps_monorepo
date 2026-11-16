@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -13,12 +14,14 @@ import "agent_model_buttons.dart";
 import "background_tasks_bar.dart";
 import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
+import "edit_message_banner.dart";
 import "prompt_input.dart";
 import "session_abort_scope_dialog.dart";
 import "session_approval_chip.dart";
 import "session_auto_continuation_chip.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
+import "transcript_motion.dart";
 import "yolo_chip.dart";
 
 /// Shared session composer controls injected below the transcript view.
@@ -95,6 +98,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         sideQuestion: SessionDetailPresentationScope.of(context).openSideChat == null
             ? null
             : const ComposerSideQuestionPending(),
+        composerMode: const SessionComposerMode.normal(),
       ),
     };
   }
@@ -123,7 +127,8 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         ? const []
         : context.read<SessionDetailCubit>().restoredAttachments,
     onInitialAttachmentsConsumed: context.read<SessionDetailCubit>().acknowledgeRestoredAttachments,
-    autofocus: false,
+    // Editing a message takes the keyboard to it.
+    autofocus: state.composerMode is SessionComposerEditing,
     initialSelection: null,
     optionsReadOnly: false,
     agents: state.availableAgents,
@@ -146,9 +151,11 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
               childStatuses: state.childStatuses,
             ),
           ),
-    availableCommands: state.availableCommands,
+    // An edit resends text and attachments only.
+    availableCommands: state.composerMode is SessionComposerEditing ? const [] : state.availableCommands,
     stagedCommand: state.stagedCommand,
     sideQuestion: _sideQuestion(context: context, state: state),
+    composerMode: state.composerMode,
   );
 
   /// Null where side questions don't apply: a shell without a side chat, and
@@ -202,8 +209,14 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required List<CommandInfo> availableCommands,
     required CommandInfo? stagedCommand,
     required ComposerSideQuestion? sideQuestion,
+    required SessionComposerMode composerMode,
   }) {
     final composerCapabilities = ComposerPresentationScope.of(context);
+    final cubit = context.read<SessionDetailCubit>();
+    final editing = switch (composerMode) {
+      final SessionComposerEditing editing => editing,
+      SessionComposerNormal() => null,
+    };
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = composerCapabilities.presentation == ComposerPresentation.pointer;
     return Column(
@@ -211,69 +224,80 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: PromptInput(
-            draftIdentity: widget.sessionId,
-            restorationKey: restorationKey,
-            initialDraft: context.read<SessionDetailCubit>().composerDraft,
-            initialSelection: initialSelection,
-            initialAttachments: initialAttachments,
-            onInitialAttachmentsConsumed: onInitialAttachmentsConsumed,
-            onAttachmentsChanged: (attachments) =>
-                context.read<SessionDetailCubit>().trackComposerAttachments(attachments: attachments),
-            onSelectionChanged: null,
-            onBusyChanged: null,
-            autofocus: autofocus,
-            hasMessages: hasMessages,
-            attachmentsSupported: attachmentsSupported,
-            fileUploadsSupported: fileUploadsSupported,
-            isBusy: isBusy,
-            canSend: true,
-            submitAction: null,
-            onSend: ({required draft, required command, required attachments}) =>
-                context.read<SessionDetailCubit>().sendMessage(
-                  text: draft.text,
-                  command: command,
-                  inputMode: command == null ? draft.inputMode : ComposerInputMode.typed,
-                  attachments: attachments,
-                ),
-            onVoiceTranscriptionFinished: composerCapabilities.voiceSupport.isSupported
-                ? context.read<SessionDetailCubit>().reportVoiceTranscriptionCompleted
-                : null,
-            onDraftChanged: (draft) => context.read<SessionDetailCubit>().saveComposerDraft(draft: draft),
-            onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
-            onAbort: () => stopSessionWithScope(
-              context: context,
-              cubit: context.read<SessionDetailCubit>(),
-            ),
-            surfaceStyleController: _composerSurfaceStyle,
-            header: null,
-            sideQuestion: sideQuestion,
-            composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
-              valueListenable: _composerSurfaceStyle,
-              builder: (context, surfaceStyle, _) => AgentModelButtons(
-                surfaceStyle: surfaceStyle,
-                agents: agents,
-                selectedAgent: selectedAgent,
-                onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
-                providers: providers,
-                selectedAgentModel: selectedAgentModel,
-                onModelSelected: context.read<SessionDetailCubit>().selectModel,
-                availableVariants: availableVariants,
-                onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
-                modelOrbits: modelOrbits,
-                fastModeControl: fastModeControl,
-                decideFastModeToggle: context.read<SessionDetailCubit>().fastModeToggleDecision,
-                onFastModeChanged: context.read<SessionDetailCubit>().setFastMode,
-                compact: pointer,
-                readOnly: optionsReadOnly,
-                trailing: statusChips(surfaceStyle: surfaceStyle, pointer: pointer),
+          child: CallbackShortcuts(
+            bindings: {
+              if (editing != null) const SingleActivator(LogicalKeyboardKey.escape): cubit.cancelEditing,
+            },
+            child: PromptInput(
+              draftIdentity: widget.sessionId,
+              restorationKey: restorationKey,
+              initialDraft: context.read<SessionDetailCubit>().composerDraft,
+              initialSelection: initialSelection,
+              initialAttachments: initialAttachments,
+              onInitialAttachmentsConsumed: onInitialAttachmentsConsumed,
+              onAttachmentsChanged: (attachments) =>
+                  context.read<SessionDetailCubit>().trackComposerAttachments(attachments: attachments),
+              onSelectionChanged: null,
+              onBusyChanged: null,
+              autofocus: autofocus,
+              hasMessages: hasMessages,
+              attachmentsSupported: attachmentsSupported,
+              fileUploadsSupported: fileUploadsSupported,
+              isBusy: isBusy,
+              canSend: editing == null || editing.phase == SessionEditPhase.composing,
+              // An edit stays in the composer until the bridge takes it.
+              submitAction: editing == null
+                  ? null
+                  : PromptSubmitAction(label: context.loc.sessionDetailEditResend, icon: TablerRegular.arrow_up),
+              onSend: ({required draft, required command, required attachments}) => editing == null
+                  ? cubit.sendMessage(
+                      text: draft.text,
+                      command: command,
+                      inputMode: command == null ? draft.inputMode : ComposerInputMode.typed,
+                      attachments: attachments,
+                    )
+                  : cubit.resendEdit(text: draft.text, attachments: attachments),
+              onVoiceTranscriptionFinished: composerCapabilities.voiceSupport.isSupported
+                  ? context.read<SessionDetailCubit>().reportVoiceTranscriptionCompleted
+                  : null,
+              onDraftChanged: (draft) => context.read<SessionDetailCubit>().saveComposerDraft(draft: draft),
+              onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
+              onAbort: () => stopSessionWithScope(
+                context: context,
+                cubit: context.read<SessionDetailCubit>(),
               ),
+              surfaceStyleController: _composerSurfaceStyle,
+              header: AnimatedBanner(
+                banner: editing == null ? null : EditMessageBanner(editing: editing, onCancel: cubit.cancelEditing),
+              ),
+              sideQuestion: sideQuestion,
+              composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                valueListenable: _composerSurfaceStyle,
+                builder: (context, surfaceStyle, _) => AgentModelButtons(
+                  surfaceStyle: surfaceStyle,
+                  agents: agents,
+                  selectedAgent: selectedAgent,
+                  onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
+                  providers: providers,
+                  selectedAgentModel: selectedAgentModel,
+                  onModelSelected: context.read<SessionDetailCubit>().selectModel,
+                  availableVariants: availableVariants,
+                  onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                  modelOrbits: modelOrbits,
+                  fastModeControl: fastModeControl,
+                  decideFastModeToggle: context.read<SessionDetailCubit>().fastModeToggleDecision,
+                  onFastModeChanged: context.read<SessionDetailCubit>().setFastMode,
+                  compact: pointer,
+                  readOnly: optionsReadOnly,
+                  trailing: statusChips(surfaceStyle: surfaceStyle, pointer: pointer),
+                ),
+              ),
+              composerTrailing: composerTrailing,
+              availableCommands: availableCommands,
+              stagedCommand: stagedCommand,
+              onCommandSelected: context.read<SessionDetailCubit>().stageCommand,
+              onCommandCleared: context.read<SessionDetailCubit>().clearStagedCommand,
             ),
-            composerTrailing: composerTrailing,
-            availableCommands: availableCommands,
-            stagedCommand: stagedCommand,
-            onCommandSelected: context.read<SessionDetailCubit>().stageCommand,
-            onCommandCleared: context.read<SessionDetailCubit>().clearStagedCommand,
           ),
         ),
       ],

@@ -124,6 +124,14 @@ class const SessionDetailMessageList({
   /// A pinch in on the transcript, with its focal point in global
   /// coordinates: opens the Prompts screen, grown from there.
   required final void Function({required Offset focalPoint}) onPinchIn,
+
+  /// Edit and resend on a user message, with why it cannot be edited, or null
+  /// when it can. Null when the session offers no edit.
+  required final void Function({required MessageWithParts message, required MessageEditRefusal? refusal})?
+  onEditMessage,
+
+  /// The user message the composer is editing, which stands out, or null.
+  required final String? editingMessageId,
   final String? retryErrorMessage,
 
   /// Top inset (status bar + nav bar height) the list scrolls behind. Added as
@@ -351,6 +359,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// The last build's unloaded prompt pinned above the rendered messages.
   SessionPromptIndexEntry? _unloadedPin;
+
+  /// The rendered messages' turns, as the last build split them.
+  TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {});
 
   /// The unloaded prompt a tap on its pin is loading, until that load ends.
   /// Its spinner keeps to this entry's side even once the pin itself clears.
@@ -1031,7 +1042,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       children: children,
       childStatuses: childStatuses,
     );
-    final turns = const TranscriptTurnBuilder().build(
+    final turns = _turns = const TranscriptTurnBuilder().build(
       messages: messages,
       hasOlderMessages: widget.onLoadOlderMessages != null,
     );
@@ -1527,6 +1538,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }) => TranscriptMessageMenu(
     spotlight: PregoMenuSpotlight.listRow,
     copyText: AssistantMessageCard.markdownOf(blocks: blocks, streamingText: streamingText),
+    actions: const [],
     builder: (context, selectionArea) => AssistantMessageCard(
       projectId: widget.projectId,
       blocks: blocks,
@@ -1546,6 +1558,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       message: message,
       shape: _messageShape(messageId: message.info.id),
       outlineFade: outlineFade,
+      editing: widget.editingMessageId == message.info.id,
+      onEdit: switch (widget.onEditMessage) {
+        null => null,
+        // The running turn offers no edit until it finishes, and the message
+        // being edited none over the changes the composer holds.
+        _ when widget.editingMessageId == message.info.id => null,
+        _ when widget.isBusy && _turns.inNewestTurn(messageId: message.info.id) => null,
+        final onEdit => () => onEdit(
+          message: message,
+          refusal: _turns.editRefusal(
+            messageId: message.info.id,
+            shape: _messageShape(messageId: message.info.id),
+          ),
+        ),
+      },
     ),
   );
 

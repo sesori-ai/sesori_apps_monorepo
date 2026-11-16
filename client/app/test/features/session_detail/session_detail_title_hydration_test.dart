@@ -93,6 +93,7 @@ SessionDetailLoadResult _loadedResult({required bool isArchived, required bool o
       isArchived: isArchived,
       cannotContinueMessage: null,
       namesCommandInvocations: false,
+      supportsRewind: false,
     ),
   );
 }
@@ -124,6 +125,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       isArchived: false,
       cannotContinueMessage: null,
       namesCommandInvocations: false,
+      supportsRewind: false,
     ),
   );
 }
@@ -162,6 +164,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       isArchived: false,
       cannotContinueMessage: null,
       namesCommandInvocations: false,
+      supportsRewind: false,
     ),
   );
 }
@@ -206,6 +209,7 @@ void _registerDependencies({
   );
   getIt.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
   getIt.registerSingleton<FileReferenceOpenService>(MockFileReferenceOpenService());
+  getIt.registerSingleton<MessageComposerRestoreService>(MockMessageComposerRestoreService());
   getIt.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
   // The page's own action service runs its menu actions.
   getIt.registerSingleton<SessionActionService>(

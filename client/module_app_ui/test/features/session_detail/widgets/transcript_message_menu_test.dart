@@ -40,6 +40,7 @@ void main() {
                 child: TranscriptMessageMenu(
                   spotlight: PregoMenuSpotlight.listRow,
                   copyText: _markdown,
+                  actions: const [],
                   builder: (context, selectionArea) =>
                       PregoReadableSelectionArea(key: selectionArea, child: const Text(_text)),
                 ),
@@ -69,6 +70,43 @@ void main() {
     expect(copied, [_markdown]);
     expect(find.text("Copied to clipboard"), findsOneWidget);
     await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
+  });
+
+  testWidgets("a message with nothing to copy keeps a menu for its own actions", (tester) async {
+    var edits = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Center(
+            child: TranscriptMessageMenu.wrap(
+              spotlight: PregoMenuSpotlight.listRow,
+              text: null,
+              actions: [
+                PregoMenuItem(
+                  leadingIcon: null,
+                  title: "Edit and resend",
+                  subtitle: null,
+                  isSelected: false,
+                  shortcutLabel: null,
+                  onTap: () => edits++,
+                ),
+              ],
+              builder: (_) => const Text("attachment only"),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.longPress(find.text("attachment only"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Edit and resend"));
+    await tester.pumpAndSettle();
+
+    expect(edits, 1);
   });
 
   testWidgets("Select text closes the menu and selects the message's text", (tester) async {

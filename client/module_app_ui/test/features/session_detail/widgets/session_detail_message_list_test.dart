@@ -286,6 +286,8 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SessionDetailMessageList(
+          onEditMessage: null,
+          editingMessageId: null,
           bridgeQueuedPrompts: _bridgeQueuedPrompts,
           bridgePromptAttachments: _bridgePromptAttachments,
           onCancelBridgeQueuedPrompt: (promptId) {

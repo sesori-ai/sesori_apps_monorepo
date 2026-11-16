@@ -136,6 +136,7 @@ void main() {
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
+      composerRestore: MockMessageComposerRestoreService(),
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
