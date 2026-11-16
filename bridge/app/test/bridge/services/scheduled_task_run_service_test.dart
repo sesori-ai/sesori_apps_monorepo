@@ -373,6 +373,7 @@ class _FakeSessionCreation({required final AppDatabase _database}) implements Se
       projectID: request.projectId,
       directory: request.projectId,
       parentID: null,
+      forkedFrom: null,
       title: null,
       time: null,
       promptDefaults: null,

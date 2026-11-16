@@ -6,10 +6,12 @@ void main() {
   group("TranscriptLaidOutListView bottom edge", () {
     late ScrollController controller;
     late int carriedToNewestEnd;
+    late bool rowsLeaving;
 
     setUp(() {
       controller = ScrollController();
       carriedToNewestEnd = 0;
+      rowsLeaving = false;
     });
     tearDown(() => controller.dispose());
 
@@ -34,6 +36,7 @@ void main() {
                   itemCount: 100,
                   onLaidOut: () {},
                   detached: () => detached,
+                  rowsLeaving: () => rowsLeaving,
                   onCarriedToNewestEnd: () => carriedToNewestEnd++,
                   itemBuilder: (context, index) =>
                       SizedBox(key: ValueKey(index), height: 50, child: Text("row $index")),
@@ -61,6 +64,18 @@ void main() {
       expect(rowTop(tester, index: 15), top);
       expect(controller.offset, 540);
       expect(carriedToNewestEnd, 0);
+    });
+
+    testWidgets("detached while rows fold away, the rows stay put as the inset grows", (tester) async {
+      rowsLeaving = true;
+      await pumpList(tester, inset: 0, detached: true, keyboard: 0);
+      controller.jumpTo(500);
+      await tester.pump();
+      final top = rowTop(tester, index: 15);
+
+      await pumpList(tester, inset: 20, detached: true, keyboard: 0);
+      expect(rowTop(tester, index: 15), top);
+      expect(controller.offset, 520);
     });
 
     testWidgets("detached, the rows stay put as the keyboard opens and closes", (tester) async {
