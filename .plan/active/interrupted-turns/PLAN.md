@@ -130,6 +130,8 @@ the `Session` wire.
   interruption (unacknowledged, anchored to that message, replacing an older one) and delete the running row in one
   transaction. A session with no stored message only loses its running row. `InterruptedTurnService` then emits
   `SessionInterruptionUpdated` (D4).
+- Convert and adopt are compare-and-set on the leftover row's `startedAt` as read: marking running upserts the row's
+  time, so a turn this run started after the status read has a newer time and the resolution leaves its row alone.
 - Re-import replaces stored ids with imported ones (ACP fallback ids differ live and on replay), so
   `ChatHistoryService`, inside the queued replacement that computes the stored→imported mapping, re-anchors the
   session's interruption through the repository. Resolution and the hydration import fire on the same readiness;
