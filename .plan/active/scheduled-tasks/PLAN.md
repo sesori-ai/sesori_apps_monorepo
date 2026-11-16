@@ -896,9 +896,12 @@ parallel with the bridge chain.
        history, Run now, Pause/Resume, Rename and Delete; the older-bridge
        state; screen analytics mapping. Entry points stay unwired. [8.a.1]
    - 8.b 🌿 **Run marks and task pushes.** Repeat/clock marks with the task
-     name in the row meta line, rendered from the merged `Session.scheduledTask`
-     field; the push tap to a task page through `NotificationOpenDispatcher`,
-     which needs step 6's `taskId` payload. [6, 8.a.2]
+     name in the row meta line, after the state and before the project,
+     rendered from the merged `Session.scheduledTask` field; the push tap to a
+     task page through `NotificationOpenDispatcher`, which needs step 6's
+     `taskId` payload. A notification open now carries a sealed
+     `NotificationOpenTarget` (session or task); a task opens over the
+     Scheduled page, so Back passes through the list. [6, 8.a.2]
 9. Split in two because the editor ran over the soft cap.
    - 9.a 🚧 **Task editor core, time fields and device time zone.**
      `ScheduledTaskEditorCubit` (P13 defaults, validation, create and edit,

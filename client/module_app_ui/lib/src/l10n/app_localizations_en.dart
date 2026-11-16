@@ -2547,6 +2547,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListWaiting => 'Waiting';
 
   @override
+  String sessionListRecurringTaskRun(String name) {
+    return 'Run of recurring task $name';
+  }
+
+  @override
+  String sessionListScheduledTaskRun(String name) {
+    return 'Run of scheduled task $name';
+  }
+
+  @override
+  String sessionListOnceTaskRun(String name) {
+    return 'Run of one-time task $name';
+  }
+
+  @override
   String sessionListBackgroundTasks(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

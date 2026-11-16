@@ -4447,6 +4447,24 @@ abstract class AppLocalizations {
   /// **'Waiting'**
   String get sessionListWaiting;
 
+  /// Screen-reader label for the session-list mark on a session a recurring scheduled task started
+  ///
+  /// In en, this message translates to:
+  /// **'Run of recurring task {name}'**
+  String sessionListRecurringTaskRun(String name);
+
+  /// Screen-reader label for the session-list mark on a session a scheduled task of a kind this app does not know started
+  ///
+  /// In en, this message translates to:
+  /// **'Run of scheduled task {name}'**
+  String sessionListScheduledTaskRun(String name);
+
+  /// Screen-reader label for the session-list mark on a session a one-time scheduled task started
+  ///
+  /// In en, this message translates to:
+  /// **'Run of one-time task {name}'**
+  String sessionListOnceTaskRun(String name);
+
   /// Label showing the number of active background tasks for a session
   ///
   /// In en, this message translates to:

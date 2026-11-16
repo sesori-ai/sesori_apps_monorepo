@@ -1843,6 +1843,33 @@
   "@sessionListWaiting": {
     "description": "Amber word leading a session row's meta line while the session waits for the user's answer or permission"
   },
+  "sessionListRecurringTaskRun": "Run of recurring task {name}",
+  "@sessionListRecurringTaskRun": {
+    "description": "Screen-reader label for the session-list mark on a session a recurring scheduled task started",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionListScheduledTaskRun": "Run of scheduled task {name}",
+  "@sessionListScheduledTaskRun": {
+    "description": "Screen-reader label for the session-list mark on a session a scheduled task of a kind this app does not know started",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionListOnceTaskRun": "Run of one-time task {name}",
+  "@sessionListOnceTaskRun": {
+    "description": "Screen-reader label for the session-list mark on a session a one-time scheduled task started",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "sessionListBackgroundTasks": "{count, plural, =1{1 background task} other{{count} background tasks}}",
   "@sessionListBackgroundTasks": {
     "description": "Label showing the number of active background tasks for a session",
