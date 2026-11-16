@@ -333,7 +333,8 @@ after it leave the session, then the edited message is sent. Files are never
 touched. An edit of a session's first message has no native point before it,
 so the bridge swaps in a new harness session instead, on every harness. Edits run only
 on a message that opens a turn; a follow-up sent while the agent was working is
-refused with a reason.
+refused with a reason (⬜ for Claude Code, which can cut at a single message;
+🚫 for Codex, which cuts only between turns).
 
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|

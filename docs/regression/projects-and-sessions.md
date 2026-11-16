@@ -470,10 +470,10 @@ state.
   "Jump to latest" pill is neutral. Text fields show no required-field asterisk,
   and their placeholders are tertiary.
 - The phone's open root session page offers the row's actions from a menu in its glass bar: Changes with its
-  line counts, then Rename, Mark as unread, Send to another session…, Archive and Delete, from the shared
+  line counts, then Rename, Mark as unread, Send to another session…, Fork, Archive and Delete, from the shared
   dispatcher. Mark as unread always sends unread, whatever local state says.
   Archive, Delete and Mark as unread return to the session list. A sub-agent's page offers no row actions,
-  and the read-only archived view offers neither those nor Changes.
+  and the read-only archived view offers neither those nor Changes, but keeps Fork.
 - Every live root session offers "Send to another session…" after Mark as read or unread and before Archive,
   in the phone's row menu and session page menu and in the desktop sidebar's row menu and session page menu,
   all from the shared dispatcher. Archived and sub-agent sessions don't offer it. See
@@ -481,8 +481,8 @@ state.
 - Beside the centred title, the phone's session bar carries only Back, Prompts and that menu, so the
   title keeps the rest of the row at 320 px and under large text scaling. It shows no Changes button and no
   busy spinner; the transcript, the composer and the sub-agents bar report the session's progress. The
-  archived page is the same bar with no menu: Back returns to the archived list, whose own Back leaves the
-  flow, so the page carries no close control.
+  archived page is the same bar, its menu holding only entries that leave the session unchanged, such as
+  Fork: Back returns to the archived list, whose own Back leaves the flow, so the page carries no close control.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are
@@ -736,8 +736,11 @@ state.
 - A newly committed session can list before generated metadata. A later generated
   title reuses `session.updated`; lists and detail adopt the durable session facts without marking unseen or moving
   the worktree directory.
-- A fork lists as an ordinary root session in its origin's project; its title and `Session.forkedFrom` follow
-  session-edit-and-fork.md.
+- A fork lists as an ordinary root session in its origin's project, titled `<origin title> (fork)`; its title and
+  `Session.forkedFrom` follow session-edit-and-fork.md.
+- Fork sits after "Send to another session…" and before Archive in the phone's and the desktop's row menus and
+  session page menus, for a top-level session whose harness declares `fork`, archived sessions included. It forks
+  after the latest finished reply ([session edit and fork](session-edit-and-fork.md)).
 - A Claude root session imported from its transcript is titled by its newest
   `/rename` (`custom-title`), else the CLI's newest `ai-title`, else the first
   prompt the user typed, on one line and cut to 100 characters with "…".

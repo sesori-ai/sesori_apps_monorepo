@@ -519,8 +519,10 @@ reconnect or restart.
   rollout already read, leaves only the later history, with a warning in the
   bridge log. A fork keeps the source's turn and item ids for
   the inherited turns. Deleting a reverted thread removes every rollout it
-  owns. Legacy rollouts keep their single-file layout and `thread_rolled_back`
-  replay.
+  owns except those another thread's `history_base` still builds on, such as a
+  fork's base, which it keeps and `thread/archive`s, so the fork reads the same
+  before and after its origin is deleted. Legacy rollouts keep their
+  single-file layout and `thread_rolled_back` replay.
 - Codex replay keys a user prompt by the `item_completed/UserMessage` item
   written after its response item, with that item's start time, which is the
   id and time the live `userMessage` row carries. A re-import therefore
@@ -579,6 +581,10 @@ reconnect or restart.
   prompt sits within the catalog's bounded header read. A linear transcript
   reads exactly as before. A store that imported both branches before this
   converges on the next re-read of the session.
+- A first-message edit moves the session onto a new harness session and
+  tombstones the old one with its sub-agents, so catalog import and startup
+  cleanup never bring the old conversation back as a second session
+  ([session edit and fork](session-edit-and-fork.md)).
 - Pi history follows the active `leafId` branch while retaining visible
   pre-compaction messages, applies thinking-level changes to later assistant and
   error messages on that branch, and omits compaction and branch-summary
@@ -820,11 +826,6 @@ rules where supported.
   The re-read moves the watermark to that time, so it converges. Measured live
   on 2026-11-12 with Pi `1.5.2` and Codex `0.167.2`: no extra re-read after a
   Sesori-run turn; Claude Code and OpenCode are not measured for that case.
-- Known gap until the session-edit-fork plan's Codex native fork step:
-  deleting a Codex thread from Sesori removes its rollouts even when a fork
-  reads its prefix through `history_base`, so the fork then shows only its own
-  turns. That step keeps every rollout another thread's `history_base` still
-  references, so deleting an origin leaves its fork intact.
 - A Codex revert made outside Sesori is picked up at the next catalog scan;
   until then the catalog reads the thread's previous rollout.
 - A session already open on screen picks up an outside turn on the next app
