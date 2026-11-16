@@ -3,11 +3,14 @@ import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/scheduled_task_record.dart";
+import "package:sesori_bridge/src/repositories/models/session_compaction_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/services/scheduled_task_activity_tracker.dart";
+import "package:sesori_bridge/src/services/scheduled_task_compaction_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
 import "package:sesori_bridge/src/services/scheduled_task_request_exception.dart";
 import "package:sesori_bridge/src/services/scheduled_task_run_failure.dart";
@@ -61,6 +64,7 @@ void main() {
   late _FakeOperations operations;
   late _FakeYoloSettings yolo;
   late _FakeLifecycle lifecycle;
+  late ScheduledTaskActivityTracker activity;
   late ScheduledTaskRunService service;
   late List<ScheduledTaskRunFailure> failures;
   late DateTime now;
@@ -77,8 +81,17 @@ void main() {
     operations = _FakeOperations();
     yolo = _FakeYoloSettings();
     lifecycle = _FakeLifecycle();
+    final clock = Clock(() => now);
+    activity = ScheduledTaskActivityTracker(clock: clock);
     service = ScheduledTaskRunService(
       repository: repository,
+      compaction: ScheduledTaskCompactionService(
+        repository: repository,
+        sessions: sessions,
+        operations: operations,
+        activity: activity,
+        clock: clock,
+      ),
       sessionCreation: creation,
       prompts: prompts,
       operations: operations,
@@ -87,7 +100,7 @@ void main() {
       lifecycle: lifecycle,
       sessionOptions: options,
       calculator: const ScheduledTaskOccurrenceCalculator(),
-      clock: Clock(() => now),
+      clock: clock,
     );
     failures = [];
     final subscription = service.failures.listen(failures.add);
@@ -384,6 +397,140 @@ void main() {
       );
       expect(failures.single.reason, TaskRunFailureReason.startFailed);
       expect(await targetOf(task.id), "ses_1");
+    });
+  });
+
+  group("auto-compact", () {
+    final autoCompact = _daily.copyWith(runMode: const TaskRunMode.sameSession(autoCompact: true));
+
+    /// Runs the task's first run at 9:01, with activity in its session then.
+    Future<ScheduledTaskRecord> firstRun({ScheduledTaskDefinition? definition}) async {
+      final task = await createTask(definition: definition ?? autoCompact, nextDueAt: DateTime.utc(2026, 11, 15, 9));
+      await service.runDue();
+      activity.recordEvent(
+        event: const SesoriSseEvent.sessionStatus(sessionID: "ses_1", status: SessionStatus.idle()),
+      );
+      return task;
+    }
+
+    Future<void> runDueAt(Duration sinceFirstRun) {
+      now = DateTime.utc(2026, 11, 15, 9, 1).add(sinceFirstRun);
+      return service.runDue();
+    }
+
+    test("a quiet session compacts once, 2 minutes before its cache goes cold", () async {
+      sessions
+        ..promptCacheLife = const Duration(minutes: 5)
+        ..compactionResult = SessionCompactionResult.accepted;
+      await firstRun();
+
+      await runDueAt(const Duration(minutes: 2, seconds: 59));
+      expect(sessions.compacted, isEmpty);
+      await runDueAt(const Duration(minutes: 3));
+      await runDueAt(const Duration(minutes: 4));
+
+      expect(sessions.compacted, ["ses_1"]);
+      expect(operations.calls.last, ("ses_1", SessionOperation.compactSession));
+    });
+
+    test("activity pushes the window back, and an unknown cache life waits 25 minutes", () async {
+      sessions.compactionResult = SessionCompactionResult.accepted;
+      await firstRun();
+      now = DateTime.utc(2026, 11, 15, 9, 21);
+      activity.recordEvent(
+        event: const SesoriSseEvent.sessionStatus(sessionID: "ses_1", status: SessionStatus.idle()),
+      );
+
+      await runDueAt(const Duration(minutes: 44, seconds: 59));
+      expect(sessions.compacted, isEmpty);
+      await runDueAt(const Duration(minutes: 45));
+      expect(sessions.compacted, ["ses_1"]);
+    });
+
+    test("a busy session waits, and a busy answer is asked again on a later pass", () async {
+      sessions.compactionResult = SessionCompactionResult.sessionBusy;
+      await firstRun();
+      sessions.quietness["ses_1"] = SessionQuietness.awaitingUser;
+
+      await runDueAt(const Duration(minutes: 30));
+      expect(sessions.compacted, isEmpty);
+      sessions.quietness.remove("ses_1");
+      await runDueAt(const Duration(minutes: 31));
+      await runDueAt(const Duration(minutes: 32));
+      expect(sessions.compacted, ["ses_1", "ses_1"]);
+    });
+
+    test("a prompt of the user's own, or auto-compact off, leaves the session alone", () async {
+      await firstRun();
+      await repository.recordUserPrompted(sessionId: "ses_1", at: now);
+      await createTask(definition: _sameSession, nextDueAt: DateTime.utc(2026, 11, 15, 9));
+      await service.runDue();
+
+      await runDueAt(const Duration(hours: 1));
+
+      expect(sessions.compacted, isEmpty);
+    });
+
+    test("a run due before the window compacts first and fires late, never missed, once it ends", () async {
+      sessions.compactionResult = SessionCompactionResult.accepted;
+      final task = await firstRun(definition: autoCompact.copyWith(missedRunPolicy: TaskMissedRunPolicy.waitForNext));
+
+      await runDueAt(const Duration(days: 1));
+      expect(sessions.compacted, ["ses_1"]);
+      sessions.quietness["ses_1"] = SessionQuietness.working;
+      await runDueAt(const Duration(days: 1, minutes: 5));
+      expect(await outcomes(task.id), hasLength(1));
+      sessions.quietness.remove("ses_1");
+      await runDueAt(const Duration(days: 1, minutes: 6));
+
+      expect((await outcomes(task.id)).first, const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: true));
+      expect(prompts.sends.single.sessionId, "ses_1");
+      expect(sessions.compacted, ["ses_1"]);
+    });
+
+    test("a run seen past the grace after a compaction that held nothing follows its policy", () async {
+      sessions
+        ..promptCacheLife = const Duration(minutes: 5)
+        ..compactionResult = SessionCompactionResult.accepted;
+      final task = await firstRun(definition: autoCompact.copyWith(missedRunPolicy: TaskMissedRunPolicy.waitForNext));
+      // The session stays busy until 8:52 the next day, then compacts at 8:55,
+      // 5 minutes before its next run.
+      sessions.quietness["ses_1"] = SessionQuietness.working;
+      await runDueAt(const Duration(hours: 12));
+      sessions.quietness.remove("ses_1");
+      now = DateTime.utc(2026, 11, 16, 8, 52);
+      activity.recordEvent(
+        event: const SesoriSseEvent.sessionStatus(sessionID: "ses_1", status: SessionStatus.idle()),
+      );
+      await runDueAt(const Duration(hours: 23, minutes: 54));
+      expect(sessions.compacted, ["ses_1"]);
+
+      // The bridge slept through the next due time.
+      await runDueAt(const Duration(days: 1, minutes: 30));
+
+      expect((await outcomes(task.id)).first, const ScheduledTaskRunOutcome.missed());
+      expect(prompts.sends, isEmpty);
+    });
+
+    test("a compaction still going 10 minutes after it was asked for skips the run", () async {
+      sessions.compactionResult = SessionCompactionResult.accepted;
+      final task = await firstRun();
+      await runDueAt(const Duration(days: 1));
+      sessions.quietness["ses_1"] = SessionQuietness.working;
+
+      await runDueAt(const Duration(days: 1, minutes: 9));
+      expect(await outcomes(task.id), hasLength(1));
+      await runDueAt(const Duration(days: 1, minutes: 10));
+      expect((await outcomes(task.id)).first, const ScheduledTaskRunOutcome.skipped());
+    });
+
+    test("a harness that can't compact fires the due run straight away", () async {
+      final task = await firstRun();
+
+      await runDueAt(const Duration(days: 1));
+
+      expect(sessions.compacted, ["ses_1"]);
+      expect((await outcomes(task.id)).first, const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false));
     });
   });
 

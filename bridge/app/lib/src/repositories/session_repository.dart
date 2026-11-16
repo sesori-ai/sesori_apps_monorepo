@@ -1051,6 +1051,26 @@ class SessionRepository({
     }
   }
 
+  /// How long [sessionId]'s prompt cache stays warm after its last use, or
+  /// null when its harness cannot tell or is not running.
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async {
+    try {
+      final binding = await _sessionDao.getSession(sessionId: sessionId);
+      if (binding == null) return null;
+      return await _runtime.useIfActive<Duration?>(
+        pluginId: binding.pluginId,
+        operation: SessionOperation.getPromptCacheLife,
+        body: (plugin, _) {
+          _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+          return plugin.getPromptCacheLife(sessionId: binding.backendSessionId);
+        },
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not read session $sessionId's prompt-cache life", error, stackTrace);
+      return null;
+    }
+  }
+
   Future<SessionQuietness> _readQuietness({required BridgePluginApi plugin, required String backendSessionId}) async {
     for (final summary in plugin.getActiveSessionsSummary()) {
       for (final active in summary.activeSessions) {
