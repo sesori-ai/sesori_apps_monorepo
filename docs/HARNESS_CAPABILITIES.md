@@ -946,12 +946,15 @@ those installs is worse than the stale ready state this capability replaces.
 
 Hermes reads its model and provider from `hermes status`. A self-updating
 Hermes checkout with an unfinished source update rebuilds its TUI, web and
-desktop products in front of every command except `--version`/`--help`, which
-takes 50 s or more and outlived the 10 s probe timeout, so each probe killed
-and restarted the update. The status probe now sets Hermes' documented
+desktop products in front of every command except `--version`/`--help`. That
+rebuild takes 50 s or more and outlived the 10 s probe timeout, so each probe
+killed and restarted the update. The status probe now sets Hermes' documented
 install-probe policy `HERMES_DISABLE_LAZY_INSTALLS=1`, which skips that
 launch-time completion; `hermes acp` does not, so the agent launch still
 finishes the update (verified against the Hermes canary source, 2026-11-15).
+The agent launch answers ACP `initialize` only after the rebuild, so Hermes
+raises its handshake deadline from the stock 60 s to 10 minutes; a shorter
+deadline killed the agent mid-update and the next launch started over.
 
 The marks above cover setup inspection only. A plugin that raises
 `PluginAuthenticationRequiredException` while running blocks further starts and
