@@ -13,7 +13,7 @@
 | 8 Handoff marker and card in the chats | In PR | #2629 |
 | 8.a Queued handoff prompts stay hidden; a failed send updates live | Not started | |
 | 9 Archive the source after sending | Not started | |
-| 10 Analytics | In PR | |
+| 10 Analytics | In PR | #2661 |
 | 11 Reconcile docs and harness rows | Not started | |
 | 12 Verify and retire | Not started | |
 
