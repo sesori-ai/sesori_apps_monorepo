@@ -14,7 +14,7 @@
 | 8.a Queued handoff prompts stay hidden; a failed send updates live | Done | #2654 |
 | 9 Archive the source after sending | Done | #2669 |
 | 10 Analytics | Done | #2661 |
-| 11 Reconcile docs and harness rows | In PR | |
+| 11 Reconcile docs and harness rows | In PR | #2682 |
 | 12 Verify and retire | Not started | |
 
 Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 7.a←7; 8←4; 8.a←8;
