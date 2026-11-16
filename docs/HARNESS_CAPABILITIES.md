@@ -667,9 +667,13 @@ Claude Code (2.1.325) and Codex (0.169.0) record the interrupt a bridge shutdown
 such a turn reads Stopped after a reload although it showed no Stopped line live. A Claude Code Stop waits up to 2
 seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds.
 
-Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it. The bridge
-snapshots that text live and its chat history keeps it while the replay holds the stopped turn, so it survives a
-reload; a session the bridge did not watch live shows only the Stopped line after the prompt.
+Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so the bridge
+snapshots that text live.
+
+The bridge's chat history keeps a stopped turn's live rows that the replay lacks, its streamed reply and its Stopped
+row alike, for as long as the replay still holds the turn's prompt. A Stopped line shown live therefore stays after a
+reload on every harness, including those that record no stop; a rollback that removes the prompt removes them too. A
+session the bridge did not watch live shows only what the harness recorded.
 
 ## Pre-start catalog import
 

@@ -2065,38 +2065,57 @@ void main() {
       });
     });
 
-    // Codex records none of the reply it was streaming when a Stop landed,
-    // only the stopped turn.
-    group("a stopped turn's streamed reply", () {
-      List<MessageWithParts> replay({required bool holdsStoppedTurn}) => [
-        _messageWithText(id: "h1-user", text: "Write a list", createdAt: 100, promptId: null),
-        if (holdsStoppedTurn) _stoppedMessage(id: "turn-stopped", createdAt: 300),
-      ];
+    // A stopped turn keeps what the replay doesn't hold of it: Codex records
+    // none of the reply it was streaming, and most ACP harnesses no stop.
+    group("a stopped turn's live-only rows", () {
       final live = [
         _messageWithText(id: "h1-user", text: "Write a list", createdAt: 100, promptId: "p1"),
         _assistantMessageWithText(id: "live-partial", text: "1. Apples", reasoning: null, createdAt: 200),
         _stoppedMessage(id: "turn-stopped", createdAt: 300),
       ];
+      final prompt = _messageWithText(id: "h1-user", text: "Write a list", createdAt: 100, promptId: null);
 
-      test("stays across later imports while the replay holds the stopped turn", () async {
-        final transcript = replay(holdsStoppedTurn: true);
-        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+      Future<List<String>> idsAfterTwoImports({required List<MessageWithParts> replay}) async {
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: replay));
         await _captureMessages(history: history, messages: live);
-
-        for (final generation in ["first", "second"]) {
+        for (var import = 0; import < 2; import++) {
           await Future<void>.delayed(const Duration(milliseconds: 2));
           await history.service.backfillSession(sessionId: "ses_a");
-
-          expect(
-            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
-            ["h1-user", "live-partial", "turn-stopped"],
-            reason: "$generation import",
-          );
         }
+        return [for (final message in await _storedMessages(history: history, sessionId: "ses_a")) message.info.id];
+      }
+
+      test("keeps the streamed reply the replay lacks before the stopped row it holds", () async {
+        expect(
+          await idsAfterTwoImports(
+            replay: [
+              prompt,
+              _stoppedMessage(id: "turn-stopped", createdAt: 300),
+            ],
+          ),
+          ["h1-user", "live-partial", "turn-stopped"],
+        );
       });
 
-      test("leaves with the stopped turn when the harness rolls the turn back", () async {
-        final transcript = replay(holdsStoppedTurn: true);
+      test("keeps a live-only stopped row while the replay holds its prompt", () async {
+        expect(await idsAfterTwoImports(replay: [prompt]), ["h1-user", "live-partial", "turn-stopped"]);
+      });
+
+      test("leaves an unstopped turn's live-only rows to the replay", () async {
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: [prompt]));
+        await _captureMessages(history: history, messages: live.sublist(0, 2));
+        for (var import = 0; import < 2; import++) {
+          await Future<void>.delayed(const Duration(milliseconds: 2));
+          await history.service.backfillSession(sessionId: "ses_a");
+        }
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          ["h1-user"],
+        );
+      });
+
+      test("leaves with its prompt when the harness rolls the turn back", () async {
+        final transcript = [prompt];
         final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
         await _captureMessages(history: history, messages: live);
         await Future<void>.delayed(const Duration(milliseconds: 2));
@@ -2104,13 +2123,13 @@ void main() {
 
         transcript
           ..clear()
-          ..addAll(replay(holdsStoppedTurn: false));
+          ..add(_messageWithText(id: "h2-user", text: "Something else", createdAt: 400, promptId: null));
         await Future<void>.delayed(const Duration(milliseconds: 2));
         await history.service.backfillSession(sessionId: "ses_a");
 
         expect(
           (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
-          ["h1-user"],
+          ["h2-user"],
         );
       });
     });
