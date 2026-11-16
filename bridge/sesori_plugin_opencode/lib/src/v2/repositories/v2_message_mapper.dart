@@ -56,6 +56,13 @@ class const V2MessageMapper() {
 
   static String partId({required String messageId, required int ordinal}) => "$messageId:$ordinal";
 
+  /// An assistant text part's id; [ordinal] counts text parts only, so it
+  /// never meets a reasoning part's id.
+  static String textPartId({required String messageId, required int ordinal}) => "$messageId:text:$ordinal";
+
+  /// An assistant reasoning part's id; [ordinal] counts reasoning parts only.
+  static String reasoningPartId({required String messageId, required int ordinal}) => "$messageId:reasoning:$ordinal";
+
   static String retryPartId({required String messageId}) => "$messageId:retry";
 
   PluginMessageWithParts? mapMessage({
@@ -128,8 +135,7 @@ class const V2MessageMapper() {
                 errorMessage: error.message,
               );
         parts = [
-          for (final (ordinal, content) in message.content.indexed)
-            ?mapContent(sessionId: sessionId, messageId: message.id, ordinal: ordinal, content: content),
+          ..._mapContent(sessionId: sessionId, messageId: message.id, content: message.content),
           if (message.retry case final retry?)
             PluginMessagePart.retry(
               id: retryPartId(messageId: message.id),
@@ -277,33 +283,45 @@ class const V2MessageMapper() {
     );
   }
 
-  PluginMessagePart? mapContent({
+  /// Maps an assistant message's content in order. OpenCode numbers text and
+  /// reasoning separately, in the order each started, so counting each kind
+  /// gives a part the same id its live events carry.
+  Iterable<PluginMessagePart> _mapContent({
     required String sessionId,
     required String messageId,
-    required int ordinal,
-    required SessionMessageAssistantContent content,
-  }) => switch (content) {
-    SessionMessageAssistantText() => PluginMessagePart.text(
-      id: partId(messageId: messageId, ordinal: ordinal),
-      sessionID: sessionId,
-      messageID: messageId,
-      text: content.text,
-    ),
-    SessionMessageAssistantReasoning() => PluginMessagePart.reasoning(
-      id: partId(messageId: messageId, ordinal: ordinal),
-      sessionID: sessionId,
-      messageID: messageId,
-      text: content.text,
-    ),
-    SessionMessageAssistantTool() => PluginMessagePart.tool(
-      id: content.id,
-      sessionID: sessionId,
-      messageID: messageId,
-      tool: content.name,
-      state: mapToolState(toolName: content.name, state: content.state),
-    ),
-    _ => _unsupportedContent(),
-  };
+    required List<SessionMessageAssistantContent> content,
+  }) sync* {
+    var texts = 0;
+    var reasonings = 0;
+    for (final item in content) {
+      switch (item) {
+        case SessionMessageAssistantText():
+          yield PluginMessagePart.text(
+            id: textPartId(messageId: messageId, ordinal: texts++),
+            sessionID: sessionId,
+            messageID: messageId,
+            text: item.text,
+          );
+        case SessionMessageAssistantReasoning():
+          yield PluginMessagePart.reasoning(
+            id: reasoningPartId(messageId: messageId, ordinal: reasonings++),
+            sessionID: sessionId,
+            messageID: messageId,
+            text: item.text,
+          );
+        case SessionMessageAssistantTool():
+          yield PluginMessagePart.tool(
+            id: item.id,
+            sessionID: sessionId,
+            messageID: messageId,
+            tool: item.name,
+            state: mapToolState(toolName: item.name, state: item.state),
+          );
+        default:
+          _unsupportedContent();
+      }
+    }
+  }
 
   PluginToolState mapToolState({required String toolName, required SessionMessageToolState state}) {
     final (status, input, metadata, content, error) = switch (state) {

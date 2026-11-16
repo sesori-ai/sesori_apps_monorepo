@@ -31,7 +31,7 @@ PluginMessageWithParts mapped({required Map<String, dynamic> json}) =>
     fail("expected a mapped message");
 
 void main() {
-  test("keeps content ordinals and native tool IDs stable", () {
+  test("numbers text and reasoning per kind, as live events do, and keeps native tool IDs", () {
     final result = mapped(
       json: assistant(
         content: <Object>[
@@ -55,7 +55,7 @@ void main() {
         ],
       ),
     );
-    expect(result.parts.map((part) => part.id), <String>["message:0", "message:2", "tool-1"]);
+    expect(result.parts.map((part) => part.id), <String>["message:text:0", "message:reasoning:0", "tool-1"]);
     final info = result.info as PluginMessageAssistant;
     expect(info.sender, PluginMessageSender.agent);
     expect(info.agent, "Build");
@@ -105,7 +105,7 @@ void main() {
           },
         },
       );
-      expect(result.parts.take(count).map((part) => part.id), [for (var i = 0; i < count; i++) "message:$i"]);
+      expect(result.parts.take(count).map((part) => part.id), [for (var i = 0; i < count; i++) "message:text:$i"]);
       final retry = result.parts.last as PluginMessagePartRetry;
       expect(retry.id, "message:retry");
       expect(retry.attempt, 2);
