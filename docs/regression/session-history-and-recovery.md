@@ -118,6 +118,13 @@ reconnect or restart.
   re-import: the card and the expanded text both shown, a reply shown twice,
   the next prompt shown both above and below the card, the card below the
   last reply, or the card or its reply gone.
+- A replay under fresh ids on every load (OMP) still matches each live turn
+  once on a later re-import, including a turn sent after an earlier import:
+  the earlier imported rows around it shape its match. A live reply the replay
+  never holds (OMP drops a reply whose model call failed) stays after its own
+  turn and does not separate the replayed turns around it. Failure signals
+  after a reload or forced re-import: a live prompt shown twice, or all
+  replayed prompts first and the live turns repeated below them.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
