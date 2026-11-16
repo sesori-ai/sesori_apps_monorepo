@@ -746,6 +746,8 @@ rules where supported.
   bridge store, an OMP prompt template run shows its expanded text without a
   name and a text-only OMP skill run has no row, since OMP records neither
   name.
+- OMP never replays an errored reply, so a later forced re-import drops the
+  error replies stored before the previous import.
 - A first-ever open or a stale re-read still needs the backend; if it is
   unavailable and cannot auto-start, that read fails. A store-only read avoids
   that at the cost of a possibly incomplete transcript. A store-only read also
