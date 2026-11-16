@@ -49,7 +49,10 @@ sub-agent parts, plus the signal that a tool changed files.
 - Consecutive tool, thinking and sub-agent parts collapse into one summary row
   that reads only the count of its finished steps, “N steps”: every thinking
   block, tool call and sub-agent is one step, failed ones included, and a lone
-  finished step reads “1 step” like any group. Tapping or
+  finished step reads “1 step” like any group. An Automation card holding one
+  step shows that step's own row in place of “1 step”,
+  so a lone background report opens, or expands, in one tap; a card with two or
+  more steps keeps the count. Tapping or
   keyboard-activating the summary opens its finished steps outside the
   transcript, so the transcript's layout never changes: on desktop an anchored
   popover below the summary, 560 px wide and capped at 480 px tall, whose steps
@@ -482,8 +485,9 @@ guarantee.
   reduced motion.
 - A step that finishes before its live row has eased in raises a framework
   assertion or breaks the transcript instead of folding into the summary.
-- A group line shows more than its finished-step count, a lone finished step
-  shows its own row instead of “1 step”, or a summary names a backend tool.
+- A group line shows more than its finished-step count, a lone finished step in
+  an agent turn shows its own row instead of “1 step”, an Automation card's lone
+  step hides behind “1 step”, or a summary names a backend tool.
 - A finished compaction shows no row, shows its summary inline as a user or
   assistant message, shows a `compact` tool card beside the row, or opens an
   empty modal; tapping a long summary stalls before the ripple, skips the
