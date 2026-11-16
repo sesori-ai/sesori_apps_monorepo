@@ -243,6 +243,7 @@ void main() {
                 onOpenSettings: _noOp,
                 onOpenArchived: _noOp,
                 onOpenScheduled: _noOp,
+                onNewTask: _noOp,
                 onGoBack: _noOp,
                 child: GestureDetector(
                   key: const Key("cockpit-content"),
@@ -447,6 +448,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenScheduled: _noOp,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: SizedBox.expand(
             key: const Key("cockpit-content"),
@@ -525,6 +527,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenScheduled: _noOp,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.expand(key: Key("cockpit-content")),
         ),
@@ -581,6 +584,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenScheduled: _noOp,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: DesktopPageToolbar(
             breadcrumb: null,
@@ -688,6 +692,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: () => archivedOpens++,
           onOpenScheduled: () => scheduledOpens++,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.expand(key: Key("cockpit-content")),
         ),
@@ -752,6 +757,7 @@ void main() {
           onOpenSettings: () => settingsOpens++,
           onOpenArchived: _noOp,
           onOpenScheduled: _noOp,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.shrink(),
         ),
@@ -1194,6 +1200,7 @@ void main() {
           onOpenSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenScheduled: _noOp,
+          onNewTask: _noOp,
           onGoBack: _noOp,
           child: const TextField(autofocus: true),
         ),
@@ -1627,6 +1634,7 @@ void main() {
     final opened = <String>[];
     var backs = 0;
     var archivedOpens = 0;
+    var newTasks = 0;
     var scheduledOpens = 0;
     await tester.pumpWidget(
       PregoInteractionScope(
@@ -1645,6 +1653,7 @@ void main() {
             onOpenSettings: _noOp,
             onOpenArchived: () => archivedOpens++,
             onOpenScheduled: () => scheduledOpens++,
+            onNewTask: () => newTasks++,
             onGoBack: () => backs++,
             child: const SizedBox.expand(),
           ),
@@ -1730,13 +1739,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(archivedOpens, 1);
 
-    // So does Scheduled.
+    // So do Scheduled and New task.
     await press(LogicalKeyboardKey.keyK);
     await type("scheduled");
     expect(inPalette("Scheduled"), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     expect(scheduledOpens, 1);
+    await press(LogicalKeyboardKey.keyK);
+    await type("new task");
+    expect(inPalette("New task"), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(newTasks, 1);
 
     // A project filters the sidebar's list, and a hidden sidebar opens to show it.
     await press(LogicalKeyboardKey.keyK);

@@ -234,6 +234,11 @@ class ScheduledTaskEditorCubit({
   /// when back, a new session each run, and approvals as new sessions on this
   /// computer get them.
   Future<ScheduledTaskEditorState> _newTask() async {
+    // An older computer cannot take a task, whichever way the editor opened;
+    // say so before anything is filled in.
+    if (await _repository.listTasks() is ScheduledTaskBridgeOutdated) {
+      return const ScheduledTaskEditorState.unavailable(reason: ScheduledTaskEditorUnavailableReason.bridgeOutdated);
+    }
     final String timeZone;
     try {
       timeZone = await _timeZoneSource.currentZoneName();
