@@ -25,7 +25,9 @@ The one bounded exception is the harness. On the mobile and desktop apps,
 or `codex`) ran the message. Any plugin ID the app does not recognize, including
 one a newer bridge advertises, is sent as `other`; the raw ID never is. The
 mobile app's `side_question_asked` carries the same value, beside the side
-question's bounded outcome and never its text. No other event carries it, and
+question's bounded outcome and never its text, and so does its
+`session_message_edited`, beside the edit's bounded outcome and never the
+prompt. No other event carries it, and
 model, provider, agent, tool, and command names stay excluded. App versions from before it send none; reporting counts those as
 `unknown`, a value no client sends.
 

@@ -61,6 +61,7 @@ void main() {
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
         pluginRepository: stubbedPluginRepository(),
+        sideChatRepository: MockSideChatRepository(),
         connectionService: mockConnectionService,
       );
       promptDispatcher = mockSessionRepository;
@@ -844,6 +845,7 @@ SessionDetailCubit _buildCubit({
     bridgeSettingsService: stubbedBridgeSettingsService(),
     sseEventTracker: MockSseEventTracker(),
     fileReferenceOpenService: MockFileReferenceOpenService(),
+    composerRestore: MockMessageComposerRestoreService(),
     window: idleSessionWindow(),
     sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
   );

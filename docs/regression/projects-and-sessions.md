@@ -613,8 +613,10 @@ state.
   Pinned heading holding the pinned top-level sessions by latest activity,
   above Today; with nothing pinned the heading is absent. A running pinned row
   stays in Pinned, and a launching row leads Today below it. A pinned row shows
-  a small grey pin after its title, in the status mark's slot style, so the
-  title never shifts as the pin comes or goes. Pin, or Unpin when pinned, is
+  a small grey pin before its title, centred on the title's line; pinning or
+  unpinning a row where it stands opens or closes the pin's room as it fades,
+  so the title slides over rather than snapping, at once under reduced motion.
+  Pin, or Unpin when pinned, is
   the first entry of the row menu and of both session-page menus, for an
   unarchived top-level session only; swipes and hover actions offer neither,
   and there is no limit. Pinning animates the row out where it stood and into

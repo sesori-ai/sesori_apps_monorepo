@@ -1,8 +1,11 @@
 import "package:clock/clock.dart";
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/scheduled_task_record.dart";
+import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
+import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
@@ -10,7 +13,10 @@ import "package:sesori_bridge/src/services/scheduled_task_request_exception.dart
 import "package:sesori_bridge/src/services/scheduled_task_run_failure.dart";
 import "package:sesori_bridge/src/services/scheduled_task_run_service.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
+import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_options_service.dart";
+import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
@@ -36,30 +42,42 @@ const _daily = ScheduledTaskDefinition(
   approvalMode: TaskApprovalMode.approveAll,
 );
 
+final _sameSession = _daily.copyWith(runMode: const TaskRunMode.sameSession(autoCompact: false));
+
 const _model = PromptModel(providerID: "anthropic", modelID: "opus");
 
 void main() {
   setUpAll(tz_data.initializeTimeZones);
 
+  late AppDatabase db;
   late ScheduledTaskRepository repository;
-  late FakeSessionRepository sessions;
+  late _Sessions sessions;
   late FakeSessionOptionsService options;
   late _FakeSessionCreation creation;
+  late _FakePrompts prompts;
+  late _FakeOperations operations;
+  late _FakeYoloSettings yolo;
   late ScheduledTaskRunService service;
   late List<ScheduledTaskRunFailure> failures;
   late DateTime now;
 
   setUp(() {
-    final db = createTestDatabase();
+    db = createTestDatabase();
     addTearDown(db.close);
     now = DateTime.utc(2026, 11, 15, 9, 1);
     repository = ScheduledTaskRepository(dao: ScheduledTaskDao(database: db));
-    sessions = FakeSessionRepository(plugin: FakeBridgePlugin())..projectPathResult = "/repo";
+    sessions = _Sessions(database: db)..projectPathResult = "/repo";
     options = FakeSessionOptionsService();
     creation = _FakeSessionCreation(database: db);
+    prompts = _FakePrompts();
+    operations = _FakeOperations();
+    yolo = _FakeYoloSettings();
     service = ScheduledTaskRunService(
       repository: repository,
       sessionCreation: creation,
+      prompts: prompts,
+      operations: operations,
+      yoloSettings: yolo,
       sessions: sessions,
       sessionOptions: options,
       calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -147,18 +165,162 @@ void main() {
 
       expect(creation.calls, hasLength(1));
     });
+  });
 
-    test("same-session tasks are not fired yet and stay due", () async {
-      final task = await createTask(
-        definition: _daily.copyWith(runMode: const TaskRunMode.sameSession(autoCompact: false)),
-        nextDueAt: DateTime.utc(2026, 11, 15, 9),
+  group("same-session tasks", () {
+    Future<ScheduledTaskRecord> firstRun({ScheduledTaskDefinition? definition}) async {
+      final task = await createTask(definition: definition ?? _sameSession, nextDueAt: DateTime.utc(2026, 11, 15, 9));
+      await service.runDue();
+      now = now.add(const Duration(days: 1));
+      return task;
+    }
+
+    Future<String?> targetOf(String taskId) async => (await repository.get(taskId: taskId))?.targetSessionId;
+
+    test("the first run creates the session and targets it", () async {
+      final task = await firstRun();
+
+      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false)]);
+      expect(await targetOf(task.id), "ses_1");
+      expect(creation.calls.single.$2, (taskId: task.id, approvalOverride: SessionApprovalMode.yolo));
+      expect(prompts.sends, isEmpty);
+    });
+
+    test("later runs send on the target's lane with the task's current options and approval mode", () async {
+      options.dynamicOutcome = _offering(models: ["opus"], stale: false);
+      final task = await firstRun();
+      final edited = _sameSession.copyWith(
+        agent: "build",
+        model: _model,
+        variant: const SessionVariant(id: "high"),
+        fastMode: true,
+        approvalMode: TaskApprovalMode.ask,
+      );
+      await repository.updateDefinition(
+        taskId: task.id,
+        definition: edited,
+        nextDueAt: DateTime.utc(2026, 11, 16, 9),
+        clearTarget: false,
+        now: now,
       );
 
       await service.runDue();
+      await repository.updateDefinition(
+        taskId: task.id,
+        definition: edited.copyWith(
+          prompt: const ScheduledTaskPrompt.command(name: "review", source: CommandSource.skill, arguments: "main"),
+        ),
+        nextDueAt: null,
+        clearTarget: false,
+        now: now.add(const Duration(minutes: 1)),
+      );
+      now = now.add(ScheduledTaskRunService.startupGrace);
+      await service.runNow(taskId: task.id);
 
-      expect(await outcomes(task.id), isEmpty);
-      expect((await repository.get(taskId: task.id))?.nextDueAt, DateTime.utc(2026, 11, 15, 9));
-      await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.unsupportedByBridge));
+      expect(creation.calls, hasLength(1));
+      expect(operations.calls, [("ses_1", SessionOperation.sendPrompt), ("ses_1", SessionOperation.sendCommand)]);
+      expect(yolo.overrides, [("ses_1", SessionApprovalMode.ask), ("ses_1", SessionApprovalMode.ask)]);
+      final [text, command] = prompts.sends;
+      expect(text.sessionId, "ses_1");
+      expect(text.parts, [const PromptPart.text(text: "Summarize yesterday")]);
+      expect(text.command, isNull);
+      expect((text.agent, text.model, text.variant, text.fastMode), ("build", _model, edited.variant, true));
+      expect((command.command, command.commandSource), ("review", CommandSource.skill));
+      expect(command.parts, [const PromptPart.text(text: "main")]);
+      expect(await outcomes(task.id), [
+        for (var i = 0; i < 3; i++) const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false),
+      ]);
+    });
+
+    test("an archived target is replaced by a fresh session", () async {
+      final task = await firstRun();
+      await db.sessionDao.setArchived(sessionId: "ses_1", archivedAt: 2, updatedAt: 2, projectionUpdatedAt: 2);
+
+      await service.runDue();
+
+      expect(creation.calls, hasLength(2));
+      expect(await targetOf(task.id), "ses_2");
+      expect(prompts.sends, isEmpty);
+    });
+
+    test("a deleted target is replaced by a fresh session", () async {
+      final task = await firstRun();
+      await db.sessionDao.deleteSession(sessionId: "ses_1");
+      expect(await targetOf(task.id), isNull);
+
+      await service.runDue();
+
+      expect(creation.calls, hasLength(2));
+      expect(await targetOf(task.id), "ses_2");
+    });
+
+    test("an edit made while the first run starts its session keeps the target it left", () async {
+      final task = await createTask(definition: _sameSession, nextDueAt: DateTime.utc(2026, 11, 15, 9));
+      creation.onCreate = () async {
+        await repository.updateDefinition(
+          taskId: task.id,
+          definition: _sameSession.copyWith(name: "Renamed"),
+          nextDueAt: DateTime.utc(2026, 11, 16, 9),
+          clearTarget: false,
+          now: now,
+        );
+      };
+
+      await service.runDue();
+
+      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false)]);
+      expect(await targetOf(task.id), isNull);
+    });
+
+    test("a run is skipped while the target is busy", () async {
+      final task = await firstRun();
+      sessions.quietness["ses_1"] = SessionQuietness.working;
+
+      await service.runDue();
+
+      expect((await outcomes(task.id)).first, const ScheduledTaskRunOutcome.skipped());
+      await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.previousRunActive));
+      expect(prompts.sends, isEmpty);
+      expect(yolo.overrides, isEmpty);
+    });
+
+    test("a Run now right after a continued run is refused before the harness reports the turn", () async {
+      final task = await firstRun();
+      await service.runDue();
+
+      // The target still reads quiet: its busy status has not arrived yet.
+      now = now.add(const Duration(seconds: 3));
+      await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.previousRunActive));
+      expect(prompts.sends, hasLength(1));
+    });
+
+    test("a model the harness no longer offers fails the run without prompting the target", () async {
+      options.dynamicOutcome = _offering(models: ["opus"], stale: false);
+      final task = await firstRun(definition: _sameSession.copyWith(model: _model));
+      options.dynamicOutcome = _offering(models: [], stale: false);
+
+      await service.runDue();
+
+      expect(
+        (await outcomes(task.id)).first,
+        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.modelUnavailable),
+      );
+      expect(prompts.sends, isEmpty);
+      expect(await targetOf(task.id), "ses_1");
+    });
+
+    test("a refused send fails the run and keeps the target", () async {
+      final task = await firstRun();
+      prompts.error = StateError("backend down");
+
+      await service.runDue();
+
+      expect(
+        (await outcomes(task.id)).first,
+        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.startFailed),
+      );
+      expect(failures.single.reason, TaskRunFailureReason.startFailed);
+      expect(await targetOf(task.id), "ses_1");
     });
   });
 
@@ -296,9 +458,26 @@ void main() {
       final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 16, 9));
       await service.runNow(taskId: task.id);
       sessions.quietness["ses_1"] = SessionQuietness.working;
+      now = now.add(const Duration(minutes: 5));
 
       await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.previousRunActive));
       expect(creation.calls, hasLength(1));
+    });
+
+    test("a second tap right after a run started is refused before the harness reports the turn", () async {
+      final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 16, 9));
+      // A slow create must not use up the grace.
+      creation.onCreate = () async => now = now.add(const Duration(minutes: 1));
+      await service.runNow(taskId: task.id);
+      creation.onCreate = null;
+
+      // The session still reads quiet: its busy status has not arrived yet.
+      now = now.add(const Duration(seconds: 3));
+      await expectLater(service.runNow(taskId: task.id), _refusedWith(ScheduledTaskErrorCode.previousRunActive));
+
+      now = now.add(ScheduledTaskRunService.startupGrace);
+      await service.runNow(taskId: task.id);
+      expect(creation.calls, hasLength(2));
     });
 
     test("is refused for a missing task", () async {
@@ -364,21 +543,112 @@ class _FakeSessionCreation({required final AppDatabase _database}) implements Se
       projectId: request.projectId,
       parentSessionId: null,
     );
-    return Session(
-      approvalOverride: scheduledRun.approvalOverride,
-      autoContinuation: null,
-      branchName: null,
-      id: id,
-      pluginId: request.pluginId,
-      projectID: request.projectId,
-      directory: request.projectId,
-      parentID: null,
-      title: null,
-      time: null,
-      promptDefaults: null,
-      lastUserActivityAt: null,
-      scheduledTask: null,
-    );
+    return _session(id: id, approvalOverride: scheduledRun.approvalOverride);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+Session _session({required String id, required SessionApprovalMode? approvalOverride}) => Session(
+  approvalOverride: approvalOverride,
+  autoContinuation: null,
+  branchName: null,
+  id: id,
+  pluginId: "fake",
+  projectID: "/repo",
+  directory: "/repo",
+  parentID: null,
+  forkedFrom: null,
+  title: null,
+  time: null,
+  promptDefaults: null,
+  lastUserActivityAt: null,
+  scheduledTask: null,
+  interruption: null,
+);
+
+/// Reads stored sessions from the test database the session fakes write.
+class _Sessions({required final AppDatabase _database}) extends FakeSessionRepository {
+  this : super(plugin: FakeBridgePlugin());
+
+  @override
+  Future<StoredSession?> getStoredSession({required String sessionId}) async =>
+      (await _database.sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
+}
+
+typedef _Send = ({
+  String sessionId,
+  List<PromptPart> parts,
+  SessionVariant? variant,
+  bool fastMode,
+  String? agent,
+  PromptModel? model,
+  String? command,
+  CommandSource? commandSource,
+});
+
+class _FakePrompts() implements SessionPromptService {
+  final List<_Send> sends = [];
+  Object? error;
+
+  @override
+  Future<void> sendPromptAlreadyReserved({
+    required String sessionId,
+    required String promptId,
+    required List<PromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+    required String? command,
+    required CommandSource? commandSource,
+    required MessageHandoff? handoff,
+  }) async {
+    if (error case final error?) throw error;
+    sends.add((
+      sessionId: sessionId,
+      parts: parts,
+      variant: variant,
+      fastMode: fastMode,
+      agent: agent,
+      model: model,
+      command: command,
+      commandSource: commandSource,
+    ));
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeOperations() implements SessionOperationDispatcher {
+  final List<(String, SessionOperation)> calls = [];
+
+  @override
+  Future<T> dispatch<T>({
+    required String sessionId,
+    required SessionOperation operation,
+    required Future<T> Function() body,
+  }) {
+    calls.add((sessionId, operation));
+    return body();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeYoloSettings() implements YoloSettingsService {
+  final List<(String, SessionApprovalMode?)> overrides = [];
+
+  @override
+  Future<Session> setSessionOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) async {
+    overrides.add((sessionId, approvalOverride));
+    return _session(id: sessionId, approvalOverride: approvalOverride);
   }
 
   @override

@@ -233,6 +233,7 @@ AcpReplayCollector _collector() => AcpReplayCollector(
   haltClassifier: null,
   toolPartReplacement: null,
   toolPartSuppression: null,
+  separatesToolMessages: false,
 );
 
 final class _RecordingReplayCollector() extends AcpReplayCollector {
@@ -249,6 +250,7 @@ final class _RecordingReplayCollector() extends AcpReplayCollector {
         haltClassifier: null,
         toolPartReplacement: null,
         toolPartSuppression: null,
+        separatesToolMessages: false,
       );
   final List<AcpNotification> notifications = [];
   @override

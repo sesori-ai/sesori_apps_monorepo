@@ -340,6 +340,7 @@ class CodexEventMapper({
       modelID: _threadModel[threadId] ?? config.model,
       providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
       variant: _threadEffort[threadId],
+      kind: PluginErrorKind.failure,
       errorName: "CodexError",
       errorMessage: message,
       time: _turnMessageTime(turn: turn),
@@ -359,6 +360,7 @@ class CodexEventMapper({
       modelID: _threadModel[threadId] ?? config.model,
       providerID: _threadProvider[threadId] ?? config.effectiveModelProvider,
       variant: _threadEffort[threadId],
+      kind: PluginErrorKind.failure,
       errorName: "CodexError",
       errorMessage: message,
       time: _rolloutMessageTime(raw: timestamp),
@@ -874,6 +876,7 @@ class CodexEventMapper({
       promptDefaults: null,
       lastUserActivityAt: null,
       scheduledTask: null,
+      interruption: null,
       forkedFrom: null,
     );
   }
@@ -926,6 +929,7 @@ class CodexEventMapper({
       promptDefaults: null,
       lastUserActivityAt: null,
       scheduledTask: null,
+      interruption: null,
       forkedFrom: null,
     );
   }

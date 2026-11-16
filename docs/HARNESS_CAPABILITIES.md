@@ -283,7 +283,7 @@ leaves a running turn alone and is never written to the main transcript.
 | Harness | Native seam | Sesori availability |
 |---|---|---|
 | Claude Code | `side_question` control request in `-p` stream-json, with `history` (verified 2.1.322) | ✅ Native, mid-turn, no tools, no transcript write. CLIs without the handler get "update Claude Code" |
-| Codex | Experimental `thread/sample` (mid-turn from 0.169.0) | ⬜ Native from step 5 of the side-questions plan. History goes in the 4,000-byte prompt. PATH Codex 0.139–0.168 gets "update Codex" |
+| Codex | Experimental `thread/sample` (since 0.164.0; mid-turn with `allowInProgressTurn` from 0.169.0) | ✅ Native, mid-turn, no tools, no rollout write. History goes in the 4,000-byte prompt, oldest text trimmed first. PATH Codex before 0.164 always gets "update Codex"; 0.164 to 0.168 answer only between turns |
 | OpenCode | `/btw` only on its dev branch; session fork exists | ⬜ Phase-2 fork fallback |
 | Pi | No side question; RPC `fork`/`clone` | ⬜ Phase-2 fork fallback |
 | Oh My Pi | RPC-only `btw`, not over ACP; ACP `session/fork` | ⬜ Phase-2 fork fallback |
@@ -307,6 +307,18 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
 - `control_cancel_request` ends the ask with "Side question cancelled". Sesori
   sends it when its own 3-minute wait ends, below the CLI's 11-minute deadline.
 
+Codex (live probe against 0.169.0 with a local test provider, 2026-11-15):
+
+- A mid-turn ask answered in about 1.3 s while the turn kept running and then
+  completed normally. The rollout never contained the side question.
+- An idle ask and a follow-up with history in the prompt both answered from
+  the conversation. The rollout stayed byte-identical and no rollout file was
+  added.
+- An over-budget history was trimmed to exactly 4,000 bytes and still answered
+  from the newest exchange.
+- A stale turn id fails with "sample source turn must be the latest turn",
+  which shows as a failed ask with Retry.
+
 ## Edit and fork
 
 Editing rewinds the conversation in place: the edited message and everything
@@ -320,7 +332,7 @@ refused with a reason.
 |---|---|---|
 | Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ✅ Sesori writes the kept active branch, through the kept turn's last record, to `<new id>.jsonl` under the fork's id; the first prompt then runs `--resume=<new id>`. Verified live on 2026-11-15 with Claude Code 2.1.322. The origin is only read, so it may be running. A point before the latest compaction is 🚫 and refused with a reason, as for edit; a message off the active branch and an origin without a transcript are refused too. Sub-agent transcripts stay with the origin |
 | Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ⬜ `thread/fork {lastTurnId}` |
-| Every other harness | ⬜ Not implemented yet; the bridge refuses the edit | ⬜ Not implemented yet |
+| Every other harness | ⬜ Not implemented yet for in-place rewinds; the bridge accepts a first-message swap, but the app shows no Edit because the harness does not declare `rewind` | ⬜ Not implemented yet |
 
 Claude Code (live probes against 2.1.221 and 2.1.322 in a scratch config
 directory, 2026-11-15):
@@ -638,6 +650,26 @@ archive would refuse is refused before the stop, leaving the session running.
 | Grok | ✅ The root and a snapshot of its running descendants. |
 | DeepSeek | ✅ Native subtree stop. |
 | Pi, and Antigravity, Copilot, Hermes, OMP (no sub-agents exposed) | ✅ The turn. |
+
+## Stopped turns
+
+A user Stop ends the turn with a quiet grey "Stopped" line instead of a red error row. The plugin that sees the
+harness's own stop record marks its error row `kind: stopped`; the line never shows the harness's wording. An older
+app ignores `kind` and shows the row's text in red.
+
+| Harness | Live | After reload |
+|---|---|---|
+| Pi | ✅ `stopReason: aborted`. | ✅ The same record. |
+| OpenCode v1 | ✅ `MessageAbortedError`. | ✅ The same record. |
+| OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
+| OMP | ⬜ | ⬜ |
+| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ⬜ | ⬜ |
+| Claude Code | ⬜ | ⬜ |
+| Codex | ⬜ | ⬜ |
+
+Pi and OpenCode do not tell a user Stop from another abort of the turn, so any abort they record reads Stopped.
+OpenCode v2 (2.2.7 source) records the same `aborted` error when the user declines a permission, which ends the turn
+too.
 
 ## Pre-start catalog import
 
@@ -1049,10 +1081,10 @@ harness exposes it.
 | Codex | ✅ Live from `item/started`, timed from `startedAtMs` or the bridge's stamp, settling in place at `item/completed`. Codex reports no failure, tokens or trigger, so a missing completion is left to the bridge sweep's note and the row has no details. | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
 | DeepSeek | ✅ Live only, from `compaction_started`, timed from the bridge's stamp and settling at `compaction_completed`. The statuses carry no ids, tokens, trigger or failure kind, and DeepSeek's history has no compaction record, so the row has no details, a warning or turn end leaves it to the bridge sweep's note, and it survives one history re-import, then disappears. | ⬜ The runtime reports no summary. |
 | OMP | ✅ Automatic compaction only, live from `_omp/compaction/start`, timed from the bridge's stamp (OMP sends no time), settling in place at `_omp/compaction/end` as completed with "· auto", or as a failure note reading "stopped" for an abort, "nothing to compact yet" for OMP's benign skip, and no reason for an error (logged locally). A compaction outside a prompt (the opt-in idle compaction) reports the session busy to status reads until it ends, so a history read keeps the row running, but sends no live busy status and so no completion notification; OMP holds a prompt sent meanwhile until it ends. When a method fails and OMP falls back to the next preferred one, the fallback gets its own row under the failure note. No freed count (OMP reports only the tokens before), and the row is live only. 🚫 A manual `/compact` sends no ACP signal, so it shows no row. | ⬜ The ACP notifications carry no summary; what history replay shows of OMP's stored summary was not verified. |
-| Grok | ✅ Live only. An automatic compaction shows from `_x.ai/session_notification` `auto_compact_started`, timed from the bridge's stamp (Grok sends no time), settling in place at `auto_compact_completed` with the freed `tokens_before − tokens_after` and "· auto"; `auto_compact_failed` becomes a failure note with no reason (the error is logged locally), and the retry Grok makes of a failed request gets its own row. A manual `/compact` sends no start, so its row shows from the `_x.ai/queue/changed` entry that runs it and settles at the same completion, with no trigger label. A count is shown only when tokens were freed. A failed manual compaction fails its prompt instead, and a Stop sends no end, so both leave the running row to the bridge sweep's note. History replay carries the same frames but is not mapped, so the row survives one history re-import, then disappears (verified on 1.0.30). | ⬜ `summary_preview` was null in every probe. |
+| Grok | ✅ An automatic compaction shows from `_x.ai/session_notification` `auto_compact_started`, timed from its `_meta.agentTimestampMs`, settling in place at `auto_compact_completed` with the freed `tokens_before − tokens_after` and "· auto"; `auto_compact_failed` becomes a failure note with no reason (the error is logged locally), and the retry Grok makes of a failed request gets its own row. A manual `/compact` sends no start, so its row shows from the `_x.ai/queue/changed` entry that runs it, timed from the bridge's stamp (the entry carries no time), and settles at the same completion, with no trigger label. A count is shown only when tokens were freed. A failed manual compaction fails its prompt instead, and a Stop sends no end, so both leave the running row to the bridge sweep's note. History replay (`_x.ai/session/update`) carries the same frames; an automatic row keeps the start's `_meta.eventId` and a manual one its `/compact` prompt id, so the replayed row replaces the live one under the same id and survives every re-import. Replay sends a manual completion before its `/compact`, so that row is placed at the `/compact` turn's end (verified on 1.0.30). | ⬜ `summary_preview` was null in every probe. |
 | Cursor | 🚫 The ACP adapter (2026.07.23) sends no compaction update or extension notification, so `/summarize` behind Sesori's `compact` command arrives as ordinary agent text. | 🚫 |
-| Hermes | ⬜ No start signal: an automatic compaction that splits the session sends a `session_info_update` whose `_meta.hermes.sessionProvenance` has `reason: "compression"`, only at the end of its turn, and `/compress` answers with plain text. History replay marks a summary chunk with `_meta.hermes.compactionSummary`. Sesori maps neither yet (source of v0.21.4, not probed live). | ⬜ The replayed summary chunk. |
-| Antigravity, Copilot | ⬜ The ACP session updates Sesori consumes have no compaction variant. Copilot's own SDK protocol has `session.compaction_start` and `session.compaction_complete` events; whether its ACP mode forwards them was not probed. Antigravity was not probed for a signal. | ⬜ |
+| Hermes | ✅ From history and `/compress` only. Hermes compacts automatically in place by default (`compression.in_place`) and sends no live signal for it. By its source, the end-of-turn `session_info_update` with `reason: "compression"` comes only from a compaction that splits the session (`in_place: false`, not probed), and Sesori does not map it. History replay then shows the summary, marked `_meta.hermes.compactionSummary`, in place of the compacted turns; it becomes a completed row with no time, tokens or trigger. A `/compress` reply becomes a live completed row with "· manual" and the freed tokens when Hermes's estimate fell, or a "nothing to compact" note; its history keeps no record of it, so that row is live only. A summary Hermes merges into a reply (`containsCompactionSummary`) stays text (verified on v0.21.5). | ✅ History rows show the summary without Hermes's instructions to the model. |
+| Antigravity, Copilot | ⬜ Not probed: neither is installed on the probe machine. The ACP session updates Sesori consumes have no compaction variant. Copilot's own SDK protocol has `session.compaction_start` and `session.compaction_complete` events; whether its ACP mode forwards them is unknown. | ⬜ |
 
 A row without a summary is inert. Apps at v1.9.0 or older ignore the
 compaction state and show no row.
@@ -1140,6 +1172,22 @@ end with `session.prompt-settled` so clients can remove its optimistic row.
 The explicit event is additive across the client/bridge wire boundary. Older
 clients ignore it and converge on refresh; newer clients retain snapshot
 reconciliation when connected to an older bridge.
+
+## Tool calls in replayed history
+
+The live stream gives every visible ACP tool call its own message. When a
+harness stamps its reasoning and text chunks with a message id, the shared
+replay groups the next tool call into that stamped message, which no longer
+matches the live rows, so a re-import shows the tool call twice: inside the
+replayed assistant message and as the live tool row.
+
+| Harness | Status |
+|---|---|
+| Oh My Pi | ✅ Replays each tool call as its own message. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
+| Hermes | ✅ Not affected: Hermes's history replays its chunks without message ids, so each replayed tool call already gets its own message. |
+| DeepSeek | ✅ Its history read replays each tool call as its own message. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
+| Cursor, Grok | ⚠️ Not verified live: they need a real account, which the test proxy can't serve. |
+| Copilot, Antigravity | ⚠️ Not verified live: runtime not installed on the test machine. |
 
 ## Failed-turn notices sent as text
 

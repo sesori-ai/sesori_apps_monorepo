@@ -2715,6 +2715,69 @@ void main() {
     expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, compactionMessageId);
   });
 
+  test("a stop turns the streaming response into a stopped row live", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-stop",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "write")],
+      userVisibleText: "write",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt.requestId, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    final abort = service.abort(sessionId: "session");
+    final abortCommand = await waitForCommand(process: process, type: "abort");
+    final eventsBeforeStop = events.length;
+    // The prompt's own end can land after the stop; its prompt is settled by
+    // then, so forwarding it would add a user message without its prompt id.
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": <String, Object?>{
+          "role": "user",
+          "content": "write",
+          "timestamp": DateTime.utc(2026, 11, 15).millisecondsSinceEpoch,
+        },
+      },
+    );
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": <String, Object?>{
+          "role": "assistant",
+          "stopReason": "aborted",
+          "content": <Object?>[],
+          "timestamp": DateTime.utc(2026, 11, 15).millisecondsSinceEpoch,
+          "errorMessage": "Request was aborted",
+        },
+      },
+    );
+    process.emit(frame: {"type": "agent_end"});
+    process.emitResponse(id: abortCommand.requestId, command: "abort");
+    await abort;
+
+    final stopped = events
+        .whereType<BridgeSseMessageUpdated>()
+        .map((event) => event.info)
+        .whereType<PluginMessageError>();
+    expect(stopped.single.kind, PluginErrorKind.stopped);
+    expect(
+      events.skip(eventsBeforeStop).whereType<BridgeSseMessageUpdated>().map((event) => event.info),
+      isNot(contains(isA<PluginMessageUser>())),
+    );
+  });
+
   test("a stopping session reads running in the list and the chat until the stop lands", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);

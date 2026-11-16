@@ -14,13 +14,17 @@ import "package:claude_plugin/claude_plugin.dart"
         ClaudeToolTracker,
         ClaudeTranscriptApi,
         ClaudeTranscriptCatalogRepository;
+import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/listeners/chat_history_listener.dart";
 import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_to_shared_mapping.dart";
 import "package:sesori_bridge/src/repositories/models/normalized_bridge_event.dart";
+import "package:sesori_bridge/src/repositories/models/session_running_turn_record.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/chat_history_reconcile_service.dart";
 import "package:sesori_bridge/src/services/session_event_dispatcher.dart";
@@ -29,7 +33,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_chat_history.dart";
+import "../../helpers/test_database.dart";
 
 void main() {
   group("chat history capture", () {
@@ -865,6 +871,7 @@ void main() {
         haltClassifier: null,
         toolPartReplacement: null,
         toolPartSuppression: null,
+        separatesToolMessages: false,
       );
       final liveUpdates = [
         {
@@ -2770,6 +2777,79 @@ void main() {
     });
   });
 
+  group("chat history interruption anchor", () {
+    late AppDatabase db;
+    late RecordingInterruptionMutations mutations;
+    final earlierRun = DateTime.utc(2026, 11, 15, 10);
+
+    setUp(() async {
+      db = createTestDatabase();
+      mutations = RecordingInterruptionMutations();
+      await insertTestSessionInDirectory(
+        db: db,
+        sessionId: "ses_a",
+        pluginId: "opencode",
+        projectId: "p1",
+        directory: "/repo",
+      );
+    });
+
+    tearDown(() => db.close());
+
+    // The live row the bridge captured, and the replay that replaces it under
+    // another id.
+    final live = _messageWithText(id: "live", text: "same content", createdAt: 200, promptId: "prompt-live");
+    final replay = _messageWithText(id: "replay", text: "same content", createdAt: 200, promptId: null);
+
+    Future<SessionRunningTurnRecord> leftover({required SessionInterruptionRepository interruptions}) async {
+      await interruptions.markRunning(sessionId: "ses_a", at: earlierRun);
+      return (await interruptions.readLeftovers(pluginId: "opencode", startedBefore: DateTime.utc(2027))).single;
+    }
+
+    test("a re-import that replaces the anchor moves the interruption onto the replacement", () async {
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(transcript: [replay]),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessageWithParts(history: history, message: live);
+      expect(
+        await history.service.convertInterruptedTurn(leftover: await leftover(interruptions: interruptions)),
+        isTrue,
+      );
+      expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "live");
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay");
+      expect(mutations.updated, ["ses_a"]);
+    });
+
+    test("a re-import queued while a conversion is between its read and its write anchors to a stored row", () async {
+      final interruptions = _GatedInterruptions(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(transcript: [replay]),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessageWithParts(history: history, message: live);
+      final conversion = history.service.convertInterruptedTurn(leftover: await leftover(interruptions: interruptions));
+      // The conversion has read "live" as the newest message.
+      expect(await interruptions.reached.future, "live");
+
+      final reimport = history.service.backfillSession(sessionId: "ses_a");
+      await pumpEventQueue();
+      interruptions.gate.complete();
+      await (conversion, reimport).wait;
+
+      final stored = await _storedMessages(history: history, sessionId: "ses_a");
+      final anchor = (await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId;
+      expect(anchor, "replay");
+      expect(stored.map((message) => message.info.id), contains(anchor));
+    });
+  });
+
   group("chat history reconcile", () {
     test("purges history whose session left the catalog and keeps the rest", () async {
       final repository = _FakeSessionRepository(transcript: const [], existingSessionIds: {"ses_known"});
@@ -3088,4 +3168,17 @@ class _FakeSessionRepository({
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Pauses a conversion after it read its anchor and before it writes.
+final class _GatedInterruptions({required super.dao}) extends SessionInterruptionRepository {
+  final Completer<String?> reached = Completer();
+  final Completer<void> gate = Completer();
+
+  @override
+  Future<bool> convertLeftover({required SessionRunningTurnRecord leftover, required String? afterMessageId}) async {
+    reached.complete(afterMessageId);
+    await gate.future;
+    return await super.convertLeftover(leftover: leftover, afterMessageId: afterMessageId);
+  }
 }

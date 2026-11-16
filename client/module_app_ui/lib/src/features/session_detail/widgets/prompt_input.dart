@@ -182,6 +182,10 @@ class const PromptInput({
   required final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
   required final Widget? composerHeader,
 
+  /// The options pill's side-question action; null where the composer offers
+  /// none.
+  required final ComposerSideQuestion? sideQuestion,
+
   /// Kept at the trailing edge of the strip above the input in every state,
   /// while a staged command or the voice controls take [composerHeader]'s place.
   required final Widget? composerTrailing,
@@ -228,7 +232,8 @@ class const PromptInput({
   required final ValueChanged<bool>? onBusyChanged,
 
   /// Takes keyboard focus on the first frame, for a composer that continues
-  /// one which had it.
+  /// one which had it, and as it takes up a restored draft, for one the user
+  /// filled on purpose, such as with a message to edit.
   required final bool autofocus,
 
   /// Optional widget rendered inside the composer, above the text-field row.
@@ -810,6 +815,10 @@ class _PromptInputState() extends State<PromptInput> {
       _attachments.clear();
       _applyDraft(draft: widget.initialDraft, notify: false);
       _restoreInitialAttachments();
+      if (restorationRequested && widget.autofocus) {
+        _typingRequested = true;
+        _focusComposerField();
+      }
     }
     // Switching the new-session harness to one that drops image parts strands
     // the images staged for the previous pick, and a bridge that turns out not
@@ -2101,7 +2110,11 @@ class _PromptInputState() extends State<PromptInput> {
           // Open, the options reach past the room the words keep from the row's
           // actions. On both sides, so that words with room to spare stay put.
           extraSideWidth: _optionsOpen && _voicePresentation == _VoicePresentation.idle
-              ? ComposerOptionsAccordion.openWidth(showAttachImage: _offersAttachImage, pointer: _pointerShell) -
+              ? ComposerOptionsAccordion.openWidth(
+                      showAttachImage: _offersAttachImage,
+                      showSideQuestion: widget.sideQuestion != null,
+                      pointer: _pointerShell,
+                    ) -
                     _actionButtonSize
               : 0,
         ),
@@ -2248,6 +2261,7 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildPointerCaptionHint(BuildContext context, {required Widget hint}) {
     final optionsWidth = ComposerOptionsAccordion.openWidth(
       showAttachImage: _offersAttachImage,
+      showSideQuestion: widget.sideQuestion != null,
       pointer: _pointerShell,
     );
     return ExcludeSemantics(
@@ -2875,6 +2889,7 @@ class _PromptInputState() extends State<PromptInput> {
         },
         attachSources: attachSources,
         onAttach: (source) => unawaited(_handleAttach(source: source)),
+        sideQuestion: widget.sideQuestion,
         onOpenChanged: (isOpen) {
           if (isOpen != _optionsOpen) setState(() => _optionsOpen = isOpen);
         },

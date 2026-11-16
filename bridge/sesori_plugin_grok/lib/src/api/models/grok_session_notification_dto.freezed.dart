@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$GrokSessionNotificationDto {
 
- String get sessionId; GrokSubagentUpdate get update;
+ String get sessionId; GrokSubagentUpdate get update;@JsonKey(name: "_meta") GrokEventMetaDto? get meta;
 /// Create a copy of GrokSessionNotificationDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,20 +28,20 @@ $GrokSessionNotificationDtoCopyWith<GrokSessionNotificationDto> get copyWith => 
 @override
 bool operator ==(Object other) {
   final _this = this as GrokSessionNotificationDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSessionNotificationDto&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.update, _this.update) || other.update == _this.update));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSessionNotificationDto&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.update, _this.update) || other.update == _this.update)&&(identical(other.meta, _this.meta) || other.meta == _this.meta));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as GrokSessionNotificationDto;
-  return Object.hash(runtimeType,_this.sessionId,_this.update);
+  return Object.hash(runtimeType,_this.sessionId,_this.update,_this.meta);
 }
 
 @override
 String toString() {
   final _this = this as GrokSessionNotificationDto;
-  return 'GrokSessionNotificationDto(sessionId: ${_this.sessionId}, update: ${_this.update})';
+  return 'GrokSessionNotificationDto(sessionId: ${_this.sessionId}, update: ${_this.update}, meta: ${_this.meta})';
 }
 
 
@@ -52,11 +52,11 @@ abstract mixin class $GrokSessionNotificationDtoCopyWith<$Res>  {
   factory $GrokSessionNotificationDtoCopyWith(GrokSessionNotificationDto value, $Res Function(GrokSessionNotificationDto) _then) = _$GrokSessionNotificationDtoCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, GrokSubagentUpdate update
+ String sessionId, GrokSubagentUpdate update,@JsonKey(name: "_meta") GrokEventMetaDto? meta
 });
 
 
-$GrokSubagentUpdateCopyWith<$Res> get update;
+$GrokSubagentUpdateCopyWith<$Res> get update;$GrokEventMetaDtoCopyWith<$Res>? get meta;
 
 }
 /// @nodoc
@@ -69,11 +69,12 @@ class _$GrokSessionNotificationDtoCopyWithImpl<$Res>
 
 /// Create a copy of GrokSessionNotificationDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? update = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? update = null,Object? meta = freezed,}) {
   return _then(GrokSessionNotificationDto(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,update: null == update ? _self.update : update // ignore: cast_nullable_to_non_nullable
-as GrokSubagentUpdate,
+as GrokSubagentUpdate,meta: freezed == meta ? _self.meta : meta // ignore: cast_nullable_to_non_nullable
+as GrokEventMetaDto?,
   ));
 }
 /// Create a copy of GrokSessionNotificationDto
@@ -85,6 +86,18 @@ $GrokSubagentUpdateCopyWith<$Res> get update {
   return $GrokSubagentUpdateCopyWith<$Res>(_self.update, (value) {
     return _then(_self.copyWith(update: value));
   });
+}/// Create a copy of GrokSessionNotificationDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokEventMetaDtoCopyWith<$Res>? get meta {
+    if (_self.meta == null) {
+    return null;
+  }
+
+  return $GrokEventMetaDtoCopyWith<$Res>(_self.meta!, (value) {
+    return _then(_self.copyWith(meta: value));
+  });
 }
 }
 
@@ -94,11 +107,12 @@ $GrokSubagentUpdateCopyWith<$Res> get update {
 @JsonSerializable(createToJson: false)
 
 class _GrokSessionNotificationDto implements GrokSessionNotificationDto {
-  const _GrokSessionNotificationDto({required this.sessionId, required this.update});
+  const _GrokSessionNotificationDto({required this.sessionId, required this.update, @JsonKey(name: "_meta") required this.meta});
   factory _GrokSessionNotificationDto.fromJson(Map<String, dynamic> json) => _$GrokSessionNotificationDtoFromJson(json);
 
 @override final  String sessionId;
 @override final  GrokSubagentUpdate update;
+@override@JsonKey(name: "_meta") final  GrokEventMetaDto? meta;
 
 /// Create a copy of GrokSessionNotificationDto
 /// with the given fields replaced by the non-null parameter values.
@@ -110,18 +124,18 @@ _$GrokSessionNotificationDtoCopyWith<_GrokSessionNotificationDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokSessionNotificationDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.update, update) || other.update == update));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokSessionNotificationDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.update, update) || other.update == update)&&(identical(other.meta, meta) || other.meta == meta));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,sessionId,update);
+    return Object.hash(runtimeType,sessionId,update,meta);
 }
 
 @override
 String toString() {
-    return 'GrokSessionNotificationDto(sessionId: $sessionId, update: $update)';
+    return 'GrokSessionNotificationDto(sessionId: $sessionId, update: $update, meta: $meta)';
 }
 
 
@@ -132,11 +146,11 @@ abstract mixin class _$GrokSessionNotificationDtoCopyWith<$Res> implements $Grok
   factory _$GrokSessionNotificationDtoCopyWith(_GrokSessionNotificationDto value, $Res Function(_GrokSessionNotificationDto) _then) = __$GrokSessionNotificationDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, GrokSubagentUpdate update
+ String sessionId, GrokSubagentUpdate update,@JsonKey(name: "_meta") GrokEventMetaDto? meta
 });
 
 
-@override $GrokSubagentUpdateCopyWith<$Res> get update;
+@override $GrokSubagentUpdateCopyWith<$Res> get update;@override $GrokEventMetaDtoCopyWith<$Res>? get meta;
 
 }
 /// @nodoc
@@ -149,11 +163,12 @@ class __$GrokSessionNotificationDtoCopyWithImpl<$Res>
 
 /// Create a copy of GrokSessionNotificationDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? update = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? update = null,Object? meta = freezed,}) {
   return _then(_GrokSessionNotificationDto(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,update: null == update ? _self.update : update // ignore: cast_nullable_to_non_nullable
-as GrokSubagentUpdate,
+as GrokSubagentUpdate,meta: freezed == meta ? _self.meta : meta // ignore: cast_nullable_to_non_nullable
+as GrokEventMetaDto?,
   ));
 }
 
@@ -165,6 +180,18 @@ $GrokSubagentUpdateCopyWith<$Res> get update {
   
   return $GrokSubagentUpdateCopyWith<$Res>(_self.update, (value) {
     return _then(_self.copyWith(update: value));
+  });
+}/// Create a copy of GrokSessionNotificationDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokEventMetaDtoCopyWith<$Res>? get meta {
+    if (_self.meta == null) {
+    return null;
+  }
+
+  return $GrokEventMetaDtoCopyWith<$Res>(_self.meta!, (value) {
+    return _then(_self.copyWith(meta: value));
   });
 }
 }
@@ -770,7 +797,7 @@ String toString() {
 /// @nodoc
 mixin _$GrokQueueChangedDto {
 
- String get sessionId; String? get runningText;
+ String get sessionId; String? get runningPromptId; String? get runningText;
 /// Create a copy of GrokQueueChangedDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -782,20 +809,20 @@ $GrokQueueChangedDtoCopyWith<GrokQueueChangedDto> get copyWith => _$GrokQueueCha
 @override
 bool operator ==(Object other) {
   final _this = this as GrokQueueChangedDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokQueueChangedDto&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.runningText, _this.runningText) || other.runningText == _this.runningText));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokQueueChangedDto&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.runningPromptId, _this.runningPromptId) || other.runningPromptId == _this.runningPromptId)&&(identical(other.runningText, _this.runningText) || other.runningText == _this.runningText));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as GrokQueueChangedDto;
-  return Object.hash(runtimeType,_this.sessionId,_this.runningText);
+  return Object.hash(runtimeType,_this.sessionId,_this.runningPromptId,_this.runningText);
 }
 
 @override
 String toString() {
   final _this = this as GrokQueueChangedDto;
-  return 'GrokQueueChangedDto(sessionId: ${_this.sessionId}, runningText: ${_this.runningText})';
+  return 'GrokQueueChangedDto(sessionId: ${_this.sessionId}, runningPromptId: ${_this.runningPromptId}, runningText: ${_this.runningText})';
 }
 
 
@@ -806,7 +833,7 @@ abstract mixin class $GrokQueueChangedDtoCopyWith<$Res>  {
   factory $GrokQueueChangedDtoCopyWith(GrokQueueChangedDto value, $Res Function(GrokQueueChangedDto) _then) = _$GrokQueueChangedDtoCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, String? runningText
+ String sessionId, String? runningPromptId, String? runningText
 });
 
 
@@ -823,10 +850,11 @@ class _$GrokQueueChangedDtoCopyWithImpl<$Res>
 
 /// Create a copy of GrokQueueChangedDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? runningText = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? runningPromptId = freezed,Object? runningText = freezed,}) {
   return _then(GrokQueueChangedDto(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
-as String,runningText: freezed == runningText ? _self.runningText : runningText // ignore: cast_nullable_to_non_nullable
+as String,runningPromptId: freezed == runningPromptId ? _self.runningPromptId : runningPromptId // ignore: cast_nullable_to_non_nullable
+as String?,runningText: freezed == runningText ? _self.runningText : runningText // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -839,10 +867,11 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _GrokQueueChangedDto implements GrokQueueChangedDto {
-  const _GrokQueueChangedDto({required this.sessionId, required this.runningText});
+  const _GrokQueueChangedDto({required this.sessionId, required this.runningPromptId, required this.runningText});
   factory _GrokQueueChangedDto.fromJson(Map<String, dynamic> json) => _$GrokQueueChangedDtoFromJson(json);
 
 @override final  String sessionId;
+@override final  String? runningPromptId;
 @override final  String? runningText;
 
 /// Create a copy of GrokQueueChangedDto
@@ -855,18 +884,18 @@ _$GrokQueueChangedDtoCopyWith<_GrokQueueChangedDto> get copyWith => __$GrokQueue
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokQueueChangedDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.runningText, runningText) || other.runningText == runningText));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokQueueChangedDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.runningPromptId, runningPromptId) || other.runningPromptId == runningPromptId)&&(identical(other.runningText, runningText) || other.runningText == runningText));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,sessionId,runningText);
+    return Object.hash(runtimeType,sessionId,runningPromptId,runningText);
 }
 
 @override
 String toString() {
-    return 'GrokQueueChangedDto(sessionId: $sessionId, runningText: $runningText)';
+    return 'GrokQueueChangedDto(sessionId: $sessionId, runningPromptId: $runningPromptId, runningText: $runningText)';
 }
 
 
@@ -877,7 +906,7 @@ abstract mixin class _$GrokQueueChangedDtoCopyWith<$Res> implements $GrokQueueCh
   factory _$GrokQueueChangedDtoCopyWith(_GrokQueueChangedDto value, $Res Function(_GrokQueueChangedDto) _then) = __$GrokQueueChangedDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, String? runningText
+ String sessionId, String? runningPromptId, String? runningText
 });
 
 
@@ -894,11 +923,151 @@ class __$GrokQueueChangedDtoCopyWithImpl<$Res>
 
 /// Create a copy of GrokQueueChangedDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? runningText = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? runningPromptId = freezed,Object? runningText = freezed,}) {
   return _then(_GrokQueueChangedDto(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
-as String,runningText: freezed == runningText ? _self.runningText : runningText // ignore: cast_nullable_to_non_nullable
+as String,runningPromptId: freezed == runningPromptId ? _self.runningPromptId : runningPromptId // ignore: cast_nullable_to_non_nullable
+as String?,runningText: freezed == runningText ? _self.runningText : runningText // ignore: cast_nullable_to_non_nullable
 as String?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$GrokEventMetaDto {
+
+ String? get eventId; int? get agentTimestampMs;
+/// Create a copy of GrokEventMetaDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokEventMetaDtoCopyWith<GrokEventMetaDto> get copyWith => _$GrokEventMetaDtoCopyWithImpl<GrokEventMetaDto>(this as GrokEventMetaDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as GrokEventMetaDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokEventMetaDto&&(identical(other.eventId, _this.eventId) || other.eventId == _this.eventId)&&(identical(other.agentTimestampMs, _this.agentTimestampMs) || other.agentTimestampMs == _this.agentTimestampMs));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as GrokEventMetaDto;
+  return Object.hash(runtimeType,_this.eventId,_this.agentTimestampMs);
+}
+
+@override
+String toString() {
+  final _this = this as GrokEventMetaDto;
+  return 'GrokEventMetaDto(eventId: ${_this.eventId}, agentTimestampMs: ${_this.agentTimestampMs})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokEventMetaDtoCopyWith<$Res>  {
+  factory $GrokEventMetaDtoCopyWith(GrokEventMetaDto value, $Res Function(GrokEventMetaDto) _then) = _$GrokEventMetaDtoCopyWithImpl;
+@useResult
+$Res call({
+ String? eventId, int? agentTimestampMs
+});
+
+
+
+
+}
+/// @nodoc
+class _$GrokEventMetaDtoCopyWithImpl<$Res>
+    implements $GrokEventMetaDtoCopyWith<$Res> {
+  _$GrokEventMetaDtoCopyWithImpl(this._self, this._then);
+
+  final GrokEventMetaDto _self;
+  final $Res Function(GrokEventMetaDto) _then;
+
+/// Create a copy of GrokEventMetaDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? eventId = freezed,Object? agentTimestampMs = freezed,}) {
+  return _then(GrokEventMetaDto(
+eventId: freezed == eventId ? _self.eventId : eventId // ignore: cast_nullable_to_non_nullable
+as String?,agentTimestampMs: freezed == agentTimestampMs ? _self.agentTimestampMs : agentTimestampMs // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GrokEventMetaDto implements GrokEventMetaDto {
+  const _GrokEventMetaDto({required this.eventId, required this.agentTimestampMs});
+  factory _GrokEventMetaDto.fromJson(Map<String, dynamic> json) => _$GrokEventMetaDtoFromJson(json);
+
+@override final  String? eventId;
+@override final  int? agentTimestampMs;
+
+/// Create a copy of GrokEventMetaDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GrokEventMetaDtoCopyWith<_GrokEventMetaDto> get copyWith => __$GrokEventMetaDtoCopyWithImpl<_GrokEventMetaDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokEventMetaDto&&(identical(other.eventId, eventId) || other.eventId == eventId)&&(identical(other.agentTimestampMs, agentTimestampMs) || other.agentTimestampMs == agentTimestampMs));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,eventId,agentTimestampMs);
+}
+
+@override
+String toString() {
+    return 'GrokEventMetaDto(eventId: $eventId, agentTimestampMs: $agentTimestampMs)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GrokEventMetaDtoCopyWith<$Res> implements $GrokEventMetaDtoCopyWith<$Res> {
+  factory _$GrokEventMetaDtoCopyWith(_GrokEventMetaDto value, $Res Function(_GrokEventMetaDto) _then) = __$GrokEventMetaDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String? eventId, int? agentTimestampMs
+});
+
+
+
+
+}
+/// @nodoc
+class __$GrokEventMetaDtoCopyWithImpl<$Res>
+    implements _$GrokEventMetaDtoCopyWith<$Res> {
+  __$GrokEventMetaDtoCopyWithImpl(this._self, this._then);
+
+  final _GrokEventMetaDto _self;
+  final $Res Function(_GrokEventMetaDto) _then;
+
+/// Create a copy of GrokEventMetaDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? eventId = freezed,Object? agentTimestampMs = freezed,}) {
+  return _then(_GrokEventMetaDto(
+eventId: freezed == eventId ? _self.eventId : eventId // ignore: cast_nullable_to_non_nullable
+as String?,agentTimestampMs: freezed == agentTimestampMs ? _self.agentTimestampMs : agentTimestampMs // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

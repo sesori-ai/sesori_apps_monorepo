@@ -108,14 +108,30 @@ void main() {
             fileClipboard: null,
             droppedPaths: null,
             attachKind: ComposerAttachKind.photosAndFiles,
-            child: Scaffold(
-              body: BlocBuilder<SessionDetailCubit, SessionDetailState>(
-                builder: (context, state) => Align(
-                  alignment: Alignment.bottomCenter,
-                  child: SessionDetailComposerControls(
-                    projectId: "project-1",
-                    sessionId: "session-1",
-                    source: LoadedSessionComposerSource(state: state is SessionDetailLoaded ? state : initial),
+            child: SessionDetailPresentationScope(
+              messageImageRepository: () => throw UnimplementedError(),
+              imageSaver: () => throw UnimplementedError(),
+              imageClipboard: () => throw UnimplementedError(),
+              imageSharer: () => throw UnimplementedError(),
+              sessionRepository: () => throw UnimplementedError(),
+              createPendingFormCubit: ({required requestId, required sessionId}) => throw UnimplementedError(),
+              createFilePreviewCubit: ({required reference}) => throw UnimplementedError(),
+              createExternalActionCubit: ({required requestId, required sessionId}) => throw UnimplementedError(),
+              canShareImages: false,
+              openExternalLink: ({required url, required mode}) async => true,
+              openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+              openHarnessSettings: () {},
+              openBridgeSettings: () {},
+              openSideChat: null,
+              child: Scaffold(
+                body: BlocBuilder<SessionDetailCubit, SessionDetailState>(
+                  builder: (context, state) => Align(
+                    alignment: Alignment.bottomCenter,
+                    child: SessionDetailComposerControls(
+                      projectId: "project-1",
+                      sessionId: "session-1",
+                      source: LoadedSessionComposerSource(state: state is SessionDetailLoaded ? state : initial),
+                    ),
                   ),
                 ),
               ),

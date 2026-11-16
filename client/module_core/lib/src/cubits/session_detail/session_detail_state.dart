@@ -17,6 +17,7 @@ import "../../services/session_selection_calculator.dart";
 import "local_send_phase.dart";
 import "prompt_turn_shape.dart";
 import "seeded_composer.dart";
+import "session_composer_mode.dart";
 import "tool_output_fetch.dart";
 
 part "session_detail_state.freezed.dart";
@@ -101,6 +102,12 @@ sealed class SessionDetailState with _$SessionDetailState {
     required bool namesCommandInvocations,
     // Whether the session can ask side questions, and if not, why.
     required SideQuestionAvailability sideQuestions,
+
+    /// Whether the bridge can edit and resend this session's earlier messages.
+    @Default(false) bool supportsRewind,
+
+    /// What Send does: add a prompt, or resend an edited earlier message.
+    @Default(SessionComposerMode.normal()) SessionComposerMode composerMode,
     // Model from the latest assistant message.
     required AgentModel? assistantAgentModel,
     // Background tasks (child sessions).
@@ -110,6 +117,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     // `false` = child, `null` = unknown (metadata lookup failed).
     required bool? isRootSession,
     required bool isArchived,
+
+    /// How many side chats an archived session's notice offers to read. It is
+    /// counted after the load, so it stays 0 until then, for a session that
+    /// isn't archived, on a bridge without side chats, or when the count fails.
+    @Default(0) int archivedSideChatCount,
 
     /// The harness's explanation of why this session can no longer be
     /// continued, shown above the transcript; null when nothing restricts it.
@@ -283,6 +295,9 @@ extension SessionDetailLoadedX on SessionDetailLoaded {
   /// Whether the next prompt runs in fast mode.
   bool get runsFastMode =>
       _selection.resolvedFastMode(providers: availableProviders, model: selectedAgentModel, requested: fastMode);
+
+  /// Whether the transcript offers to edit and resend earlier messages.
+  bool get editsMessages => supportsRewind && !isArchived && cannotContinueMessage == null;
 
   /// What the composer offers for this session's permission approval.
   SessionApprovalControl get approvalControl => _approval.control(bridge: bridgeYolo, session: session);

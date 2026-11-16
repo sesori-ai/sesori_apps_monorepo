@@ -147,12 +147,20 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
             kind: _TextKind.reasoning,
           ),
         ],
-        V2SessionTextDelta(:final sessionID, :final assistantMessageID, :final ordinal, :final delta) ||
+        V2SessionTextDelta(:final sessionID, :final assistantMessageID, :final ordinal, :final delta) => [
+          BridgeSseMessagePartDelta(
+            sessionID: sessionID,
+            messageID: assistantMessageID,
+            partID: V2MessageMapper.textPartId(messageId: assistantMessageID, ordinal: ordinal),
+            field: "text",
+            delta: delta,
+          ),
+        ],
         V2SessionReasoningDelta(:final sessionID, :final assistantMessageID, :final ordinal, :final delta) => [
           BridgeSseMessagePartDelta(
             sessionID: sessionID,
             messageID: assistantMessageID,
-            partID: V2MessageMapper.partId(messageId: assistantMessageID, ordinal: ordinal),
+            partID: V2MessageMapper.reasoningPartId(messageId: assistantMessageID, ordinal: ordinal),
             field: "text",
             delta: delta,
           ),
@@ -533,12 +541,16 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     required String text,
     required _TextKind kind,
   }) {
-    final id = V2MessageMapper.partId(messageId: messageId, ordinal: ordinal);
     return BridgeSseMessagePartUpdated(
       part: switch (kind) {
-        _TextKind.text => PluginMessagePart.text(id: id, sessionID: sessionId, messageID: messageId, text: text),
+        _TextKind.text => PluginMessagePart.text(
+          id: V2MessageMapper.textPartId(messageId: messageId, ordinal: ordinal),
+          sessionID: sessionId,
+          messageID: messageId,
+          text: text,
+        ),
         _TextKind.reasoning => PluginMessagePart.reasoning(
-          id: id,
+          id: V2MessageMapper.reasoningPartId(messageId: messageId, ordinal: ordinal),
           sessionID: sessionId,
           messageID: messageId,
           text: text,

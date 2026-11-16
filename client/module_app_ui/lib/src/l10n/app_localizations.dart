@@ -3139,6 +3139,66 @@ abstract class AppLocalizations {
   /// **'This prompt is no longer in the session'**
   String get transcriptPromptsGone;
 
+  /// One-line marker in a session's transcript while its agent writes the summary Sesori asked for, to send the session into another one. target is the receiving session's title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing a summary for {target}…'**
+  String transcriptHandoffWriting(String target);
+
+  /// One-line marker in a session's transcript once its summary was sent into another session; an Open action follows it. target is the receiving session's title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary sent to {target}'**
+  String transcriptHandoffSent(String target);
+
+  /// One-line marker in a session's transcript when sending it into another session did not complete. target is the receiving session's title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send to {target}'**
+  String transcriptHandoffNotSent(String target);
+
+  /// Action after transcriptHandoffSent that opens the session the summary was sent to.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get transcriptHandoffOpen;
+
+  /// Stands in for a session title in the handoff marker and card when the session had none, as in 'Summary sent to another session'.
+  ///
+  /// In en, this message translates to:
+  /// **'another session'**
+  String get transcriptHandoffAnotherSession;
+
+  /// Title of the sheet that shows the summary a session wrote to be sent into another session.
+  ///
+  /// In en, this message translates to:
+  /// **'Handoff summary'**
+  String get transcriptHandoffSummaryTitle;
+
+  /// Header of the card that shows a session sent in from another one; tapping it opens that session. source is its title, or transcriptHandoffAnotherSession.
+  ///
+  /// In en, this message translates to:
+  /// **'From {source}'**
+  String transcriptHandoffFrom(String source);
+
+  /// Expands the summary on the card of a session sent in from another one.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get transcriptHandoffShowAll;
+
+  /// Collapses the expanded summary on the card of a session sent in from another one.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get transcriptHandoffShowLess;
+
+  /// Alert when a session linked from a handoff marker or card could not be read, for example because it was deleted or the computer is offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open that session'**
+  String get transcriptHandoffSessionUnavailable;
+
   /// Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped.
   ///
   /// In en, this message translates to:
@@ -3907,6 +3967,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t send: “{source}” didn\'t respond.'**
   String sendSessionFailedSourceUnavailable(String source);
 
+  /// Error alert when the sent session's harness no longer offers the model, agent or variant that session last used, so it refused the summary request.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{source}” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.'**
+  String sendSessionFailedSourceOptionsUnavailable(String source);
+
   /// Error alert when the sent session has no conversation yet.
   ///
   /// In en, this message translates to:
@@ -3954,6 +4020,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t send: {reason}'**
   String sendSessionFailedTargetRefusedReason(String reason);
+
+  /// Error alert when the receiving session's harness no longer offers the model, agent or variant that session last used, so it refused the prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send: “{target}” uses a model or setting that\'s no longer available. Send it a message with another model, then try again.'**
+  String sendSessionFailedTargetOptionsUnavailable(String target);
 
   /// Extra line of the delete question when the session being deleted is pinned.
   ///
@@ -5371,6 +5443,12 @@ abstract class AppLocalizations {
   /// **'stopped'**
   String get sessionDetailCompactionCancelled;
 
+  /// Quiet line that ends an agent turn the user stopped with the Stop button. Not an error.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get sessionDetailTurnStopped;
+
   /// Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator.
   ///
   /// In en, this message translates to:
@@ -5406,6 +5484,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select text'**
   String get sessionDetailSelectText;
+
+  /// Item of a user message's long-press or right-click menu that puts the message back into the composer to change and resend it.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit and resend'**
+  String get sessionDetailEditAndResend;
+
+  /// Label of the composer's send button while it holds an edit of an earlier message.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get sessionDetailEditResend;
+
+  /// Title of the banner over the composer while it holds an edit of an earlier message.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing your message'**
+  String get sessionDetailEditBannerTitle;
+
+  /// Title of the edit banner while the session stops so the edit can be resent.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping the session…'**
+  String get sessionDetailEditBannerStopping;
+
+  /// Title of the edit banner while the edit awaits the computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Resending…'**
+  String get sessionDetailEditBannerSending;
+
+  /// Explains under the edit banner's title that resending removes the edited message and the later conversation, but does not undo changes to files.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend replaces it and everything after it. Files stay as they are.'**
+  String get sessionDetailEditBannerBody;
+
+  /// Button of the edit banner that ends the edit without sending it and gives the composer back what it held.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionDetailEditCancel;
+
+  /// Button that closes the explanation of why a message cannot be edited.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get sessionDetailEditUnavailableOk;
+
+  /// Title of the explanation shown when Edit and resend is tapped on a message sent while the agent was working.
+  ///
+  /// In en, this message translates to:
+  /// **'This message can\'t be edited'**
+  String get sessionDetailEditMidTurnTitle;
+
+  /// Explains why a message sent mid-turn cannot be edited.
+  ///
+  /// In en, this message translates to:
+  /// **'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead.'**
+  String get sessionDetailEditMidTurnBody;
+
+  /// Title of the explanation shown when Edit and resend is tapped on a command, skill or MCP prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands can\'t be edited'**
+  String get sessionDetailEditCommandTitle;
+
+  /// Explains why a command, skill or MCP prompt turn cannot be edited.
+  ///
+  /// In en, this message translates to:
+  /// **'An edit resends text and attachments only, so it can\'t run a command, skill or MCP prompt again. Run it again from the composer instead.'**
+  String get sessionDetailEditCommandBody;
+
+  /// Title of the dialog shown when an edit is resent while the session runs a turn.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent is still working'**
+  String get sessionDetailEditBusyTitle;
+
+  /// Body of the dialog shown when an edit is resent while the session runs a turn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resending replaces this conversation from the edited message on, so the session has to stop first.'**
+  String get sessionDetailEditBusyBody;
+
+  /// Button that stops the running turn and then resends the edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop and resend'**
+  String get sessionDetailEditStopAndResend;
+
+  /// Title of the alert shown when the computer refused an edit; nothing changed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t edit this message'**
+  String get sessionDetailEditRefused;
+
+  /// Alert body for a refused edit when the agent gave no reason.
+  ///
+  /// In en, this message translates to:
+  /// **'The session didn\'t accept the edit. Nothing changed.'**
+  String get sessionDetailEditRefusedBody;
+
+  /// Alert shown when an edit named a model or agent the session no longer offers; the options were refreshed.
+  ///
+  /// In en, this message translates to:
+  /// **'The available models or agents changed. Check your selection and resend.'**
+  String get sessionDetailEditOptionsChanged;
+
+  /// Alert shown when Stop and resend could not stop the session.
+  ///
+  /// In en, this message translates to:
+  /// **'The session didn\'t stop, so the edit wasn\'t sent.'**
+  String get sessionDetailEditStopFailed;
+
+  /// Alert shown when the computer's answer to an edit never arrived, so it may or may not have gone through.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the edit. Resend to try again; it won\'t apply twice.'**
+  String get sessionDetailEditFailed;
+
+  /// Line of the edit banner counting the edited message's attachments the computer could no longer provide.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 attachment couldn\'t be brought back} other{{count} attachments couldn\'t be brought back}}'**
+  String sessionDetailEditBannerLeftOut(int count);
 
   /// Confirmation shown after Copy in a transcript message's menu copied the message, or the text selected in it.
   ///
@@ -6972,6 +7176,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get mcpCancel;
+
+  /// Label of the composer's side-question button, and the hint of the side chat's question field. A side question is answered from what the session knows, without interrupting it.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a side question'**
+  String get sideQuestionAsk;
+
+  /// Shown when the side-question button is tapped on a session whose bridge is too old for side questions.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori on this computer to ask side questions.'**
+  String get sideQuestionBridgeUpdateRequired;
+
+  /// Shown when the side-question button is tapped, or a side question is refused, because the session's harness can't answer side questions.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} can\'t answer side questions in Sesori yet.'**
+  String sideQuestionHarnessUnsupported(String harness);
+
+  /// Title of the side-chat sheet while it shows a new side chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Side question'**
+  String get sideChatTitle;
+
+  /// Title of the side-chat sheet's list of the session's earlier side chats, and the label of the header button that opens it (followed by their count).
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier side chats'**
+  String get sideChatEarlier;
+
+  /// Label of the side-chat sheet's header button that starts a new side chat.
+  ///
+  /// In en, this message translates to:
+  /// **'New side chat'**
+  String get sideChatNew;
+
+  /// Shown when the user taps Send, New or Earlier in the side chat while a side question is still being answered.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for the answer to arrive first.'**
+  String get sideChatWaitForAnswer;
+
+  /// Under an earlier side chat's first question in the list of earlier side chats: how many questions it holds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 question} other{{count} questions}}'**
+  String sideChatQuestionCount(int count);
+
+  /// Quiet caption at the top of a side chat explaining what side questions do.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers from what this session already knows. No tools, and nothing is added to the chat.'**
+  String get sideChatFootnote;
+
+  /// Shown in place of the side chat's question field when the session is archived.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is archived. Its side chats are read-only.'**
+  String get sideChatArchived;
+
+  /// Shown in the side-chat sheet when the session's side chats could not be loaded, above a Retry button.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the side chats.'**
+  String get sideChatLoadFailed;
+
+  /// Button that tries a failed side-chat load or a side question again.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sideChatRetry;
+
+  /// Tooltip of the copy button under a side question's answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy answer'**
+  String get sideChatCopyAnswer;
+
+  /// Shown in place of an answer when the installed harness is too old to answer side questions.
+  ///
+  /// In en, this message translates to:
+  /// **'Update {harness} on this computer to ask side questions.'**
+  String sideChatRefusedHarnessUpdateRequired(String harness);
+
+  /// Shown in place of an answer when the session has no turn yet to answer from.
+  ///
+  /// In en, this message translates to:
+  /// **'Send this session a message first. Side questions answer from what it already knows.'**
+  String get sideChatRefusedNoTurnYet;
+
+  /// Shown in place of an answer when the side chat's history is too long for the harness.
+  ///
+  /// In en, this message translates to:
+  /// **'This side chat is too long to continue. Start a new one.'**
+  String get sideChatRefusedTooLong;
+
+  /// Shown in place of an answer when the model gave no usable answer.
+  ///
+  /// In en, this message translates to:
+  /// **'No answer came back.'**
+  String get sideChatRefusedNoAnswer;
+
+  /// Shown in place of an answer when the bridge refused for a reason this app doesn't know.
+  ///
+  /// In en, this message translates to:
+  /// **'This side question couldn\'t be answered.'**
+  String get sideChatRefusedUnknown;
+
+  /// Shown in place of an answer when the side question could not be sent to the bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach your computer to ask.'**
+  String get sideChatAskFailed;
+
+  /// Link on an archived session's notice that opens its side chats read-only, with how many there are.
+  ///
+  /// In en, this message translates to:
+  /// **'Side chats ({count})'**
+  String sessionDetailArchivedSideChats(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

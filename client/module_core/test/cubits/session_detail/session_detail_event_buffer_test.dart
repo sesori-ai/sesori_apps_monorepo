@@ -109,6 +109,7 @@ void main() {
         bridgeSettingsService: stubbedBridgeSettingsService(),
         sseEventTracker: MockSseEventTracker(),
         fileReferenceOpenService: MockFileReferenceOpenService(),
+        composerRestore: MockMessageComposerRestoreService(),
         window: idleSessionWindow(),
         sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       );
@@ -175,6 +176,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -239,6 +241,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -296,6 +299,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
       globalEvents.add(
@@ -334,6 +338,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -410,6 +415,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -471,6 +477,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -549,6 +556,7 @@ void main() {
           isArchived: false,
           cannotContinueMessage: null,
           namesCommandInvocations: false,
+          supportsRewind: false,
         );
       }
 
@@ -623,6 +631,7 @@ void main() {
           isArchived: false,
           cannotContinueMessage: null,
           namesCommandInvocations: false,
+          supportsRewind: false,
         );
       }
 
@@ -694,6 +703,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
       when(
         () => mockLoadService.load(
@@ -820,6 +830,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -892,6 +903,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
       when(
         () => mockLoadService.load(
@@ -987,6 +999,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
       const unsupportedSnapshot = SessionDetailSnapshot(
         areOptionsStale: false,
@@ -1013,6 +1026,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
       when(
         () => mockLoadService.load(
@@ -1147,6 +1161,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
       when(
         () => mockLoadService.load(
@@ -1280,6 +1295,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -1365,6 +1381,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -1410,6 +1427,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -1488,6 +1506,7 @@ void main() {
         isArchived: false,
         cannotContinueMessage: null,
         namesCommandInvocations: false,
+        supportsRewind: false,
       );
 
       when(
@@ -1563,6 +1582,87 @@ void main() {
         ("part-before-refresh", "fresh snapshot"),
         ("part-during-refresh", "live"),
       ]);
+    });
+
+    group("archived side chats", () {
+      Future<(SessionDetailCubit, MockSessionDetailLoadService)> load({
+        required SideQuestionAvailability sideQuestions,
+      }) async {
+        final mockLoadService = MockSessionDetailLoadService();
+        when(
+          () => mockLoadService.load(
+            session: any(named: "session"),
+            projectId: any(named: "projectId"),
+          ),
+        ).thenAnswer(
+          (_) async => SessionDetailLoadResult.loaded(
+            snapshot: _snapshot(messages: const [], isArchived: true, sideQuestions: sideQuestions),
+          ),
+        );
+        when(() => mockLoadService.countSideChats(sessionId: _sessionId)).thenAnswer((_) async => 2);
+        final cubit = createCubit(loadService: mockLoadService);
+        await _awaitLoaded(cubit);
+        return (cubit, mockLoadService);
+      }
+
+      test("are counted after the load while the bridge stores them", () async {
+        for (final availability in [SideQuestionAvailability.available, SideQuestionAvailability.harnessUnsupported]) {
+          final (cubit, _) = await load(sideQuestions: availability);
+          await _awaitCondition(
+            () => switch (cubit.state) {
+              SessionDetailLoaded(:final archivedSideChatCount) => archivedSideChatCount == 2,
+              _ => false,
+            },
+          );
+          await cubit.close();
+        }
+      });
+
+      test("keep their count through a reload until counted again", () async {
+        final (cubit, loadService) = await load(sideQuestions: SideQuestionAvailability.available);
+        await _awaitCondition(
+          () => switch (cubit.state) {
+            SessionDetailLoaded(:final archivedSideChatCount) => archivedSideChatCount == 2,
+            _ => false,
+          },
+        );
+        when(
+          () => loadService.reload(
+            session: any(named: "session"),
+            projectId: any(named: "projectId"),
+          ),
+        ).thenAnswer(
+          (_) async => SessionDetailLoadResult.loaded(
+            snapshot: _snapshot(
+              messages: const [],
+              isArchived: true,
+              sideQuestions: SideQuestionAvailability.available,
+            ),
+          ),
+        );
+        final recount = Completer<int>();
+        when(() => loadService.countSideChats(sessionId: _sessionId)).thenAnswer((_) => recount.future);
+        final loadedCounts = cubit.stream
+            .whereType<SessionDetailLoaded>()
+            .map((state) => state.archivedSideChatCount)
+            .first;
+        await cubit.reload();
+        expect(await loadedCounts, 2);
+        recount.complete(2);
+        await cubit.close();
+      });
+
+      test("aren't counted on a bridge without them or with no known harness", () async {
+        for (final availability in [
+          SideQuestionAvailability.bridgeUpdateRequired,
+          SideQuestionAvailability.unresolved,
+        ]) {
+          final (cubit, loadService) = await load(sideQuestions: availability);
+          await pumpEventQueue();
+          verifyNever(() => loadService.countSideChats(sessionId: any(named: "sessionId")));
+          await cubit.close();
+        }
+      });
     });
 
     group("live changes during a silent refresh", () {
@@ -1922,6 +2022,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -1993,6 +2094,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2088,6 +2190,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2172,6 +2275,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2258,6 +2362,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2335,6 +2440,7 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
             namesCommandInvocations: false,
+            supportsRewind: false,
           ),
         ),
       );
@@ -2430,33 +2536,38 @@ MessageWithParts _assistantMessage({required List<MessagePart> parts}) => Messag
   parts: parts,
 );
 
-SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, int? olderMessagesCursor}) =>
-    SessionDetailSnapshot(
-      areOptionsStale: false,
-      bridgeQueuedPrompts: const [],
-      pluginId: "opencode",
-      supportsPromptAttachments: false,
-      supportsFileUploads: false,
-      offersSessionMcp: true,
-      sideQuestions: SideQuestionAvailability.unresolved,
-      messages: messages,
-      olderMessagesCursor: olderMessagesCursor,
-      userMessagesBefore: null,
-      awaitingHarnessSync: false,
-      pendingQuestions: const <PendingQuestion>[],
-      pendingPermissions: const <PendingPermission>[],
-      childSessions: const <Session>[],
-      statuses: const <String, SessionStatus>{},
-      agents: const <AgentInfo>[],
-      providerData: null,
-      commands: const <CommandInfo>[],
-      canonicalSessionTitle: null,
-      promptDefaults: null,
-      isRootSession: true,
-      isArchived: false,
-      cannotContinueMessage: null,
-      namesCommandInvocations: false,
-    );
+SessionDetailSnapshot _snapshot({
+  required List<MessageWithParts> messages,
+  int? olderMessagesCursor,
+  bool isArchived = false,
+  SideQuestionAvailability sideQuestions = SideQuestionAvailability.unresolved,
+}) => SessionDetailSnapshot(
+  areOptionsStale: false,
+  bridgeQueuedPrompts: const [],
+  pluginId: "opencode",
+  supportsPromptAttachments: false,
+  supportsFileUploads: false,
+  offersSessionMcp: true,
+  sideQuestions: sideQuestions,
+  messages: messages,
+  olderMessagesCursor: olderMessagesCursor,
+  userMessagesBefore: null,
+  awaitingHarnessSync: false,
+  pendingQuestions: const <PendingQuestion>[],
+  pendingPermissions: const <PendingPermission>[],
+  childSessions: const <Session>[],
+  statuses: const <String, SessionStatus>{},
+  agents: const <AgentInfo>[],
+  providerData: null,
+  commands: const <CommandInfo>[],
+  canonicalSessionTitle: null,
+  promptDefaults: null,
+  isRootSession: true,
+  isArchived: isArchived,
+  cannotContinueMessage: null,
+  namesCommandInvocations: false,
+  supportsRewind: false,
+);
 
 Future<void> _awaitStreamingText(SessionDetailCubit cubit, {required String partId, required String text}) async {
   await awaitState(

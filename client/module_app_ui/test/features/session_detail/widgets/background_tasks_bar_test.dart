@@ -22,6 +22,7 @@ void main() {
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    interruption: null,
     forkedFrom: null,
   );
 
@@ -57,6 +58,7 @@ void main() {
               openedSessionIds.add(sessionId),
           openHarnessSettings: () {},
           openBridgeSettings: () {},
+          openSideChat: null,
           child: Scaffold(
             body: Align(
               alignment: alignment,

@@ -78,6 +78,26 @@ const _sessionActions = SessionListActionDispatcher(
   createSessionSearch: createSendSessionSearch,
 );
 
+void _openSideChat({
+  required BuildContext context,
+  required String sessionId,
+  required String pluginId,
+  required SideQuestionAvailability availability,
+  required bool isArchived,
+}) => showSideChatSheet(
+  context: context,
+  pluginId: pluginId,
+  createCubit: () => SideChatCubit(
+    repository: getIt<SideChatRepository>(),
+    productAnalyticsService: getIt<ProductAnalyticsService>(),
+    sessionId: sessionId,
+    pluginId: pluginId,
+    availability: availability,
+    isArchived: isArchived,
+    initialQuestion: null,
+  ),
+);
+
 void _leaveMarkedUnreadSession({required BuildContext context, required Session session}) =>
     closeDeletedSessionRoute(context: context, sessionId: session.id);
 
@@ -121,6 +141,7 @@ class const _MobileSessionDetailBody({
       canShareImages: true,
       openExternalLink: openExternalLink,
       openBridgeSettings: () => context.pushRoute(const AppRoute.settings()),
+      openSideChat: _openSideChat,
       openHarnessSettings: () => context.pushRoute(
         const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
       ),
@@ -130,23 +151,28 @@ class const _MobileSessionDetailBody({
             required sessionId,
             required sessionTitle,
             required readOnly,
-          }) => context.pushRoute(
-            auditView
-                ? AppRoute.archivedSessionDetail(
-                    projectId: projectId,
-                    projectName: projectName,
-                    sessionId: sessionId,
-                    sessionTitle: sessionTitle,
-                  )
-                : AppRoute.sessionDetail(
-                    projectId: projectId,
-                    projectName: projectName,
-                    sessionId: sessionId,
-                    readOnly: readOnly,
-                    sessionTitle: sessionTitle,
-                    fromLaunch: false,
-                  ),
-          ),
+          }) {
+            // A handoff can name a session in another project, whose name this screen doesn't know.
+            final linkedProjectName = projectId == this.projectId ? projectName : null;
+            // A live session a handoff names opens live, even from the archive.
+            context.pushRoute(
+              auditView && readOnly
+                  ? AppRoute.archivedSessionDetail(
+                      projectId: projectId,
+                      projectName: linkedProjectName,
+                      sessionId: sessionId,
+                      sessionTitle: sessionTitle,
+                    )
+                  : AppRoute.sessionDetail(
+                      projectId: projectId,
+                      projectName: linkedProjectName,
+                      sessionId: sessionId,
+                      readOnly: readOnly,
+                      sessionTitle: sessionTitle,
+                      fromLaunch: false,
+                    ),
+            );
+          },
       child: SessionDetailBody(
         projectId: projectId,
         sessionId: sessionId,
@@ -166,7 +192,7 @@ class const _MobileSessionDetailBody({
                 ),
               ),
         pageChrome: null,
-        // Audit views retain read-only inventory without session mutations.
+        // Audit and read-only views retain read-only inventory without session mutations.
         menuEntriesBuilder: ({required context, required session, required isBusy}) {
           final pageEntries = [
             if (context.read<SessionDetailCubit>().state.offersMcp)
@@ -196,7 +222,7 @@ class const _MobileSessionDetailBody({
                 },
               ),
           ];
-          if (auditView || session.parentID != null) return pageEntries;
+          if (auditView || readOnly || session.parentID != null) return pageEntries;
           return _sessionActions.sessionMenuEntries(
             context: context,
             actions: context.read<SessionActionsCubit>(),
