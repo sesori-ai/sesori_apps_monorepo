@@ -53,14 +53,17 @@ class const SessionDetailScreen({
         lifecycleSource: getIt<LifecycleSource>(),
         productAnalyticsService: getIt<ProductAnalyticsService>(),
         expectedDetailRoute: auditView ? AppRouteDef.archivedSessionDetail : AppRouteDef.sessionDetail,
-        child: _MobileSessionDetailBody(
-          auditView: auditView,
-          onBack: onBack,
-          projectId: projectId,
-          projectName: projectName,
-          sessionId: sessionId,
-          sessionTitle: sessionTitle,
-          readOnly: readOnly,
+        // The page holds its keyboard while a side chat covers it.
+        child: SideChatKeyboardHold(
+          child: _MobileSessionDetailBody(
+            auditView: auditView,
+            onBack: onBack,
+            projectId: projectId,
+            projectName: projectName,
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+            readOnly: readOnly,
+          ),
         ),
       ),
     );
@@ -84,6 +87,7 @@ void _openSideChat({
   required String pluginId,
   required SideQuestionAvailability availability,
   required bool isArchived,
+  required String? initialQuestion,
 }) => showSideChatSheet(
   context: context,
   pluginId: pluginId,
@@ -94,7 +98,7 @@ void _openSideChat({
     pluginId: pluginId,
     availability: availability,
     isArchived: isArchived,
-    initialQuestion: null,
+    initialQuestion: initialQuestion,
   ),
 );
 

@@ -4437,6 +4437,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sideChatAskFailed => 'Couldn\'t reach your computer to ask.';
 
   @override
+  String get sideQuestionComposerLabel => 'Side question';
+
+  @override
+  String get sideQuestionComposerLeave => 'Back to a message';
+
+  @override
+  String get sideQuestionComposerHint => 'Ask a side question…';
+
+  @override
+  String get sideQuestionCommandDescription => 'Ask a side question';
+
+  @override
+  String get sideQuestionCommandSource => 'Sesori';
+
+  @override
   String sessionDetailArchivedSideChats(int count) {
     return 'Side chats ($count)';
   }

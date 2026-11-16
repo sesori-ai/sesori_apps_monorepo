@@ -7663,6 +7663,36 @@ abstract class AppLocalizations {
   /// **'Couldn\'t reach your computer to ask.'**
   String get sideChatAskFailed;
 
+  /// Label above the session composer while typing /btw switched it to ask a side question instead of sending a message.
+  ///
+  /// In en, this message translates to:
+  /// **'Side question'**
+  String get sideQuestionComposerLabel;
+
+  /// Screen-reader label of the ✕ on the composer's Side question label, which returns the composer to sending a message and keeps the text.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to a message'**
+  String get sideQuestionComposerLeave;
+
+  /// Placeholder of the session composer while it asks a side question.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a side question…'**
+  String get sideQuestionComposerHint;
+
+  /// Description of the /btw row at the top of the composer's command picker, which switches the composer to ask a side question.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a side question'**
+  String get sideQuestionCommandDescription;
+
+  /// Tag on the /btw row of the command picker, saying the command comes from Sesori rather than the coding agent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori'**
+  String get sideQuestionCommandSource;
+
   /// Link on an archived session's notice that opens its side chats read-only, with how many there are.
   ///
   /// In en, this message translates to:

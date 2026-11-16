@@ -231,6 +231,7 @@ SideChatCubit _unusedSideChatCubit({
   required String pluginId,
   required SideQuestionAvailability availability,
   required bool isArchived,
+  required String? initialQuestion,
 }) => throw UnimplementedError("Side chats are not under test");
 
 const _sideChat = SideChat(
@@ -574,19 +575,26 @@ void main() {
               throw UnimplementedError("File previews are not under test"),
           createExternalActionCubit: ({required requestId, required sessionId}) =>
               throw UnimplementedError("External actions are not under test"),
-          createSideChatCubit: ({required sessionId, required pluginId, required availability, required isArchived}) {
-            final sideChat = SideChatCubit(
-              repository: sideChats,
-              productAnalyticsService: MockProductAnalyticsService(),
-              sessionId: sessionId,
-              pluginId: pluginId,
-              availability: availability,
-              isArchived: isArchived,
-              initialQuestion: null,
-            );
-            createdSideChats.add(sideChat);
-            return sideChat;
-          },
+          createSideChatCubit:
+              ({
+                required sessionId,
+                required pluginId,
+                required availability,
+                required isArchived,
+                required initialQuestion,
+              }) {
+                final sideChat = SideChatCubit(
+                  repository: sideChats,
+                  productAnalyticsService: MockProductAnalyticsService(),
+                  sessionId: sessionId,
+                  pluginId: pluginId,
+                  availability: availability,
+                  isArchived: isArchived,
+                  initialQuestion: initialQuestion,
+                );
+                createdSideChats.add(sideChat);
+                return sideChat;
+              },
           canShareImages: true,
         ),
       );
