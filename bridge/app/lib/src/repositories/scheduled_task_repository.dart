@@ -139,8 +139,10 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
       keep: runHistoryLimit,
       alwaysKeepNewest: ScheduledTaskRunOutcomeKind.started,
     );
-    // A new row has no session yet.
-    return _mapper.runFromDto(row: row, sessionProjectId: null);
+    return _mapper.runFromDto(
+      row: row,
+      sessionProjectId: _sessionProjectId(outcome: outcome),
+    );
   }
 
   /// Enabled tasks not yet done that are due at [now], earliest first.
@@ -177,9 +179,18 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
       run: row,
       keep: runHistoryLimit,
     );
-    // A new row has no session yet.
-    return reserved ? _mapper.runFromDto(row: row, sessionProjectId: null) : null;
+    return reserved
+        ? _mapper.runFromDto(
+            row: row,
+            sessionProjectId: _sessionProjectId(outcome: outcome),
+          )
+        : null;
   }
+
+  static String? _sessionProjectId({required ScheduledTaskRunOutcome outcome}) => switch (outcome) {
+    ScheduledTaskRunStarted(:final session?) => session.projectId,
+    _ => null,
+  };
 
   /// The session of the task's newest run whose prompt went out, unless that
   /// session has been deleted. Skipped, missed and failed rows have none, so
