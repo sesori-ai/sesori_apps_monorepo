@@ -5371,6 +5371,12 @@ abstract class AppLocalizations {
   /// **'stopped'**
   String get sessionDetailCompactionCancelled;
 
+  /// Quiet line that ends an agent turn the user stopped with the Stop button. Not an error.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get sessionDetailTurnStopped;
+
   /// Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator.
   ///
   /// In en, this message translates to:
@@ -5406,6 +5412,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select text'**
   String get sessionDetailSelectText;
+
+  /// Item of a user message's long-press or right-click menu that puts the message back into the composer to change and resend it.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit and resend'**
+  String get sessionDetailEditAndResend;
+
+  /// Label of the composer's send button while it holds an edit of an earlier message.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get sessionDetailEditResend;
+
+  /// Title of the banner over the composer while it holds an edit of an earlier message.
+  ///
+  /// In en, this message translates to:
+  /// **'Editing your message'**
+  String get sessionDetailEditBannerTitle;
+
+  /// Title of the edit banner while the session stops so the edit can be resent.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping the session…'**
+  String get sessionDetailEditBannerStopping;
+
+  /// Title of the edit banner while the edit awaits the computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Resending…'**
+  String get sessionDetailEditBannerSending;
+
+  /// Explains under the edit banner's title that resending removes the edited message and the later conversation, but does not undo changes to files.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend replaces it and everything after it. Files stay as they are.'**
+  String get sessionDetailEditBannerBody;
+
+  /// Button of the edit banner that ends the edit without sending it and gives the composer back what it held.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionDetailEditCancel;
+
+  /// Button that closes the explanation of why a message cannot be edited.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get sessionDetailEditUnavailableOk;
+
+  /// Title of the explanation shown when Edit and resend is tapped on a message sent while the agent was working.
+  ///
+  /// In en, this message translates to:
+  /// **'This message can\'t be edited'**
+  String get sessionDetailEditMidTurnTitle;
+
+  /// Explains why a message sent mid-turn cannot be edited.
+  ///
+  /// In en, this message translates to:
+  /// **'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead.'**
+  String get sessionDetailEditMidTurnBody;
+
+  /// Title of the explanation shown when Edit and resend is tapped on a command, skill or MCP prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands can\'t be edited'**
+  String get sessionDetailEditCommandTitle;
+
+  /// Explains why a command, skill or MCP prompt turn cannot be edited.
+  ///
+  /// In en, this message translates to:
+  /// **'An edit resends text and attachments only, so it can\'t run a command, skill or MCP prompt again. Run it again from the composer instead.'**
+  String get sessionDetailEditCommandBody;
+
+  /// Title of the dialog shown when an edit is resent while the session runs a turn.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent is still working'**
+  String get sessionDetailEditBusyTitle;
+
+  /// Body of the dialog shown when an edit is resent while the session runs a turn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resending replaces this conversation from the edited message on, so the session has to stop first.'**
+  String get sessionDetailEditBusyBody;
+
+  /// Button that stops the running turn and then resends the edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop and resend'**
+  String get sessionDetailEditStopAndResend;
+
+  /// Title of the alert shown when the computer refused an edit; nothing changed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t edit this message'**
+  String get sessionDetailEditRefused;
+
+  /// Alert body for a refused edit when the agent gave no reason.
+  ///
+  /// In en, this message translates to:
+  /// **'The session didn\'t accept the edit. Nothing changed.'**
+  String get sessionDetailEditRefusedBody;
+
+  /// Alert shown when an edit named a model or agent the session no longer offers; the options were refreshed.
+  ///
+  /// In en, this message translates to:
+  /// **'The available models or agents changed. Check your selection and resend.'**
+  String get sessionDetailEditOptionsChanged;
+
+  /// Alert shown when Stop and resend could not stop the session.
+  ///
+  /// In en, this message translates to:
+  /// **'The session didn\'t stop, so the edit wasn\'t sent.'**
+  String get sessionDetailEditStopFailed;
+
+  /// Alert shown when the computer's answer to an edit never arrived, so it may or may not have gone through.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the edit. Resend to try again; it won\'t apply twice.'**
+  String get sessionDetailEditFailed;
+
+  /// Line of the edit banner counting the edited message's attachments the computer could no longer provide.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 attachment couldn\'t be brought back} other{{count} attachments couldn\'t be brought back}}'**
+  String sessionDetailEditBannerLeftOut(int count);
 
   /// Confirmation shown after Copy in a transcript message's menu copied the message, or the text selected in it.
   ///

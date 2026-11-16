@@ -463,6 +463,7 @@ HermesPlugin _plugin({
       pluginId: "hermes",
       configurationTracker: configurationTracker,
       childSessions: childSessionTracker,
+      clock: const ServerClock(),
     ),
     commandTracker: commandTracker,
     processFactory: (_) async => fake,

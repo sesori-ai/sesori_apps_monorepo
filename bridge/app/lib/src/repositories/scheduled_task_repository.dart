@@ -175,8 +175,19 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   Future<String?> latestStartedSessionId({required String taskId}) async =>
       (await _dao.getLatestStartedRun(taskId: taskId))?.sessionId;
 
-  /// Records the session a started run created. False when the run is gone
-  /// with its deleted task.
+  /// Makes [sessionId] the session a same-session task continues in. It writes
+  /// nothing and returns false when the task was edited, paused or deleted
+  /// since [task] was read, so that change wins.
+  Future<bool> setTargetSession({required ScheduledTaskRecord task, required String sessionId}) async =>
+      await _dao.setTargetSession(
+        taskId: task.id,
+        expectedUpdatedAt: task.updatedAt.millisecondsSinceEpoch,
+        sessionId: sessionId,
+      ) >
+      0;
+
+  /// Records the session a started run created or continued. False when the
+  /// run is gone with its deleted task.
   Future<bool> setRunSession({required String runId, required String sessionId}) async =>
       await _dao.setRunSession(runId: runId, sessionId: sessionId) > 0;
 

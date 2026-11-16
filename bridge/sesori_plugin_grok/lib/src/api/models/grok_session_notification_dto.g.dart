@@ -12,6 +12,11 @@ _GrokSessionNotificationDto _$GrokSessionNotificationDtoFromJson(Map json) =>
       update: GrokSubagentUpdate.fromJson(
         Map<String, dynamic>.from(json['update'] as Map),
       ),
+      meta: json['_meta'] == null
+          ? null
+          : GrokEventMetaDto.fromJson(
+              Map<String, dynamic>.from(json['_meta'] as Map),
+            ),
     );
 
 GrokSubagentSpawned _$GrokSubagentSpawnedFromJson(Map json) =>
@@ -79,8 +84,14 @@ GrokSubagentUpdateUnknown _$GrokSubagentUpdateUnknownFromJson(Map json) =>
 _GrokQueueChangedDto _$GrokQueueChangedDtoFromJson(Map json) =>
     _GrokQueueChangedDto(
       sessionId: json['sessionId'] as String,
+      runningPromptId: json['runningPromptId'] as String?,
       runningText: json['runningText'] as String?,
     );
+
+_GrokEventMetaDto _$GrokEventMetaDtoFromJson(Map json) => _GrokEventMetaDto(
+  eventId: json['eventId'] as String?,
+  agentTimestampMs: (json['agentTimestampMs'] as num?)?.toInt(),
+);
 
 _GrokToolCallMetaDto _$GrokToolCallMetaDtoFromJson(Map json) =>
     _GrokToolCallMetaDto(
