@@ -284,6 +284,49 @@ void main() {
     expect(failed.heldSessionIds, isEmpty);
   });
 
+  group("with pinned sessions leading the list", () {
+    final pinned = testSession(id: "pinned", pinOrder: 1);
+
+    test("a session listed right below the pinned ones takes its launching row's place", () {
+      final waiting = resolve(
+        previous: resolve(
+          previous: LaunchRows.none,
+          launching: const [],
+          sessionIds: const {},
+          sessions: [pinned, existing],
+        ),
+        launching: [launch],
+        sessionIds: const {},
+        sessions: [pinned, existing],
+      );
+      expect(waiting.placeholders, [launch]);
+
+      final promoted = resolve(
+        previous: waiting,
+        launching: const [],
+        sessionIds: const {"launch-1": "created"},
+        sessions: [pinned, created, existing],
+      );
+      expect(promoted.placeholders, isEmpty, reason: "the launching rows are drawn below the pinned rows");
+      expect(promoted.heldSessionIds, isEmpty);
+      expect(promoted.rowKeys, {"created": "launch-1"});
+    });
+
+    test("a list opened mid-launch never holds a pinned session as the launch's", () {
+      final opened = resolve(
+        previous: LaunchRows.none,
+        launching: [launch],
+        sessionIds: const {},
+        sessions: [
+          testSession(id: "pinned", createdAt: 300, pinOrder: 1),
+          testSession(id: "older", createdAt: 200),
+        ],
+      );
+
+      expect(opened.heldSessionIds, {"older"}, reason: "a new session is never pinned");
+    });
+  });
+
   group("per-project rows", () {
     Map<String, LaunchRows> resolveProject({
       required Map<String, LaunchRows> previous,

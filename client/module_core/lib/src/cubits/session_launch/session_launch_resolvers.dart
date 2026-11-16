@@ -63,20 +63,22 @@ final class const LaunchRows({
 /// Decides which [sessions] a surface leaves out while launches settle, and
 /// which launching rows it keeps drawing.
 ///
-/// The launching rows lead the list, so a session takes its row's place
-/// without moving anything only when the rows below the ones still waiting
-/// all have their sessions, at the list's head, in the rows' order. Those
+/// The launching rows lead the list right below its pinned sessions, so a
+/// session takes its row's place without moving anything only when the rows
+/// below the ones still waiting all have their sessions, first below the
+/// pinned ones, in the rows' order. Those
 /// settle together; any other launch's session is held, so one launch never
 /// shows two rows. A newer launch whose session is in place but for older
 /// launches below it still waiting keeps its row until those settle or fail,
 /// then takes its place. If the sessions update after the one that brought
 /// any other session in still does not place it, it goes where it belongs as
 /// an ordinary change. While a project has a launch still waiting, a session
-/// the surface has not shown before is held too: it may be that launch's
-/// session, arriving before the reply that names it (D12).
+/// the surface has not shown before is held too, unless pinned: it may be
+/// that launch's session, arriving before the reply that names it (D12).
 ///
 /// [launching] holds only the launches this surface draws rows for, and
-/// [sessions] is the surface's list in order, which the launching rows lead.
+/// [sessions] is the surface's list in order, which the launching rows lead
+/// below its pinned sessions.
 LaunchRows resolveHeldLaunchSessions({
   required LaunchRows previous,
   required List<LaunchingSession> launching,
@@ -106,6 +108,9 @@ LaunchRows _resolveHeldLaunchSessionsOnce({
   required List<Session> sessions,
 }) {
   final listed = [for (final session in sessions) session.id];
+  // Pinned sessions lead the list above the launching rows, and a new session
+  // is never pinned, so the rows' places start below them.
+  final belowPinned = [for (final session in sessions.skipWhile((session) => session.pinned)) session.id];
   final present = listed.toSet();
   final sessionsChanged = !const ListEquality<String>().equals(previous.listedSessionIds, listed);
   final waiting = {for (final launch in launching) launch.launchId};
@@ -128,7 +133,7 @@ LaunchRows _resolveHeldLaunchSessionsOnce({
   }
   rows.sort((a, b) => _newestFirst(a: a, b: b));
 
-  final kept = rows.length - _inPlaceCount(rows: rows, resolved: resolved, sessions: listed);
+  final kept = rows.length - _inPlaceCount(rows: rows, resolved: resolved, sessions: belowPinned);
   // The rows that would take their places were the rows whose sessions have
   // not reached the list yet gone: still waiting (bounded by the create
   // timeout), or named with the session still on its way. They wait those out.
@@ -138,7 +143,7 @@ LaunchRows _resolveHeldLaunchSessionsOnce({
   ];
   final inPlaceOnceSettled = {
     for (final row in listedRows.skip(
-      listedRows.length - _inPlaceCount(rows: listedRows, resolved: resolved, sessions: listed),
+      listedRows.length - _inPlaceCount(rows: listedRows, resolved: resolved, sessions: belowPinned),
     ))
       row.launchId,
   };
@@ -163,7 +168,7 @@ LaunchRows _resolveHeldLaunchSessionsOnce({
   }
 
   // The first update has shown nothing before it, so there it holds as many
-  // of a project's newest unnamed sessions as the project has launches
+  // of a project's newest unnamed unpinned sessions as it has launches
   // waiting. An older session hidden until the launch resolves costs a
   // moment; a launch's session shown beside its own row shows it twice.
   final waitingPerProject = <String, int>{};
@@ -174,7 +179,7 @@ LaunchRows _resolveHeldLaunchSessionsOnce({
   final settled = {...sessionIds.values, ...rowKeys.keys, ...held};
   final unnamed = [
     for (final session in sessions)
-      if (waitingPerProject.containsKey(session.projectID) && !settled.contains(session.id)) session,
+      if (!session.pinned && waitingPerProject.containsKey(session.projectID) && !settled.contains(session.id)) session,
   ];
   if (shown == null) {
     final newestFirst = unnamed.sorted((a, b) => (b.time?.created ?? 0).compareTo(a.time?.created ?? 0));
