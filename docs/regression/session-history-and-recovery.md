@@ -72,9 +72,10 @@ reconnect or restart.
   composer stays enabled. Any other backfill failure still fails the read.
 - OMP replays history for a session its live `omp acp` process holds on that
   process (`session/load` returns the in-memory session and writes nothing),
-  never through a second process: from 18.19.0 a second process that loads a
-  held session writes an "open-elsewhere" copy when it exits, which shows up
-  as a duplicate "Untitled session". A session the live process does not hold
+  never through a second process: on 18.19.0 and 18.20.0 a second process
+  that loads a held session writes an "open-elsewhere" copy when it exits,
+  which shows up as a duplicate "Untitled session" (fixed upstream in 18.20.1,
+  `cb8eb7ac`; the rule stays for those PATH versions). A session the live process does not hold
   still replays on a short-lived process. While a turn on a held session runs,
   the plugin reports `PluginSessionHistoryBusyException`. The read then serves
   the store with `awaitingHarnessSync` and no `cannotContinueMessage`, and writes nothing, so

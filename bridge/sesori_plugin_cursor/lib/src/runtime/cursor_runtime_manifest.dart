@@ -41,7 +41,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
   static final CalendarRuntimeVersion _minPathVersion = CalendarRuntimeVersion.parse(value: "2026.09.23");
 
   /// The latest official-installer Cursor build targeted by this plugin.
-  static const String targetVersion = "2026.11.11-b912975";
+  static const String targetVersion = "2026.11.13-eacade1";
 
   /// The exact Cursor CLI build the managed runtime installs, preserved
   /// verbatim: [CalendarRuntimeVersion] keeps the publisher's string, so the
@@ -65,7 +65,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "darwin/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "2c60b58fb7d9a54c7cb9460f0cbb10d451d4af025d4451f252e5f1d956f8c66f",
+        sha256: "087220ccf1e124dcdf2753601422892042a45a2c577ef0ea25b8a5b0e47bb691",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -73,7 +73,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "darwin/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "38578cf7f2a7c67679cffaf95818b58fa3e21ff95f8883ad0af012b5d5460489",
+        sha256: "ba86b7c0ea7e456f9d33232e9e1ebf6cac56aac36bea299fdb6da2d4d8ab6a00",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -83,7 +83,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "linux/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "f068af64ed91b5304605976586f690579679f740a41f388091a6b3a2e776987c",
+        sha256: "e4ba0611045a24d1cf78f021d34c19461680fc7234c19c1f981f1cc169f70cdc",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -91,7 +91,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "linux/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "be01f42ad334f81d05a9992fcf060a52cc746f52cc451e849eb652146a6e3c91",
+        sha256: "c02e4321f20d691ee03af94d29948dc3a81c6c34e7328da7bb1afade4c75812f",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
