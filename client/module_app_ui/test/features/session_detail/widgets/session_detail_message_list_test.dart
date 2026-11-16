@@ -7303,6 +7303,49 @@ void main() {
     );
 
     testWidgets(
+      "dragged across messages, paints one highlight through the gap between them, which follows a scroll",
+      (tester) async {
+        await _pumpPointerTurns(tester, messages: replies);
+        await dragFromFirstIntoSecond(tester);
+
+        expect(
+          tester
+              .renderObject<RenderParagraph>(find.descendant(of: find.text(first), matching: find.byType(RichText)))
+              .selectionColor
+              ?.a,
+          0,
+          reason: "the text paints no patches of its own",
+        );
+        final highlight = tester.renderObject<RenderBox>(find.byType(PregoNestedSelectionHighlight));
+        final firstText = tester.getRect(find.text(first));
+        final secondText = tester.getRect(find.text(second));
+        final gap = Offset(secondText.right - 4, (firstText.bottom + secondText.top) / 2);
+        final beforeStart = Offset(firstText.left - 4, firstText.center.dy);
+        expect(
+          highlight,
+          paints..path(
+            color: DefaultSelectionStyle.of(
+              tester.element(find.byType(PregoNestedSelectionHighlight)),
+            ).selectionColor,
+            includes: [
+              highlight.globalToLocal(firstText.centerRight + const Offset(20, 0)),
+              highlight.globalToLocal(gap),
+            ],
+            excludes: [highlight.globalToLocal(beforeStart)],
+          ),
+        );
+
+        // A scroll lays the rows out, and that layout repaints the highlight in
+        // the same frame, not after it as the selection's own update would.
+        _position(tester).jumpTo(_position(tester).pixels + 10);
+        highlight.owner?.flushLayout();
+        expect(highlight.debugNeedsPaint, isTrue);
+        await tester.pump();
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+    );
+
+    testWidgets(
       "a right-click on it offers Copy selected text, and a message outside it still offers Copy",
       (tester) async {
         await _pumpPointerTurns(tester, messages: replies);

@@ -222,6 +222,11 @@ final class _TurnAnchor({
   required final Completer<void>? landed,
 });
 
+/// A notifier that only says something happened.
+class _Pulse() extends ChangeNotifier {
+  void pulse() => notifyListeners();
+}
+
 class _SessionDetailMessageListState() extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
   static const _kJumpToLatestKey = Key("session-detail-jump-to-latest");
@@ -423,6 +428,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// which are the built ones and the one just above them.
   final ValueNotifier<List<String>> _stickyOpenerIds = ValueNotifier(const []);
 
+  /// Fires each time the rows lay out, which every frame that scrolls them does.
+  final _rowsLaidOut = _Pulse();
+
+  /// What moves the rows' text while a selection in it stays the same: their
+  /// layout, and the timestamp peek sliding them sideways. The selection
+  /// highlight follows both.
+  late final Listenable _rowsMoved = Listenable.merge([_rowsLaidOut, _revealController]);
+
   /// The built rows by id. Only built rows are here, so every scan stays
   /// bounded by the viewport and its cache extent.
   final Map<String, BuildContext> _rowContexts = {};
@@ -497,6 +510,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     widget.jumpNotifier.removeListener(_onJumpRequested);
     _revealController.dispose();
     _stickyOpenerIds.dispose();
+    _rowsLaidOut.dispose();
     _pinLoadSpinner?.cancel();
     _foldWait?.cancel();
     _streamEndGrace?.cancel();
@@ -898,6 +912,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// Places the pinned messages from where the user message bubbles are. Runs
   /// while the transcript lays out, once the rows have and once the pins
   /// have, so whichever lays out last places them with both current.
+  void _onRowsLaidOut() {
+    _layOutSticky();
+    _rowsLaidOut.pulse();
+  }
+
   void _layOutSticky() {
     // The pins lay out before the list when both have to, and a rebuild that
     // moved the rows has them out of place until the list does. Its pass, later
@@ -1496,67 +1515,70 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                 dragStartBehavior: DragStartBehavior.down,
                 child: Stack(
                   children: [
-                    TranscriptLaidOutListView(
-                      key: _kListViewKey,
-                      onLaidOut: _layOutSticky,
-                      detached: () => !_follow.following,
-                      rowsLeaving: () => _leavingRows.isNotEmpty,
-                      onCarriedToNewestEnd: _follow.reattach,
-                      reverse: true,
-                      controller: _follow.scrollController,
-                      padding: EdgeInsetsDirectional.only(
-                        start: widget.horizontalInset,
-                        end: widget.horizontalInset,
-                        top: 8 + widget.topInset + _topReserve.value,
-                        // The list view adds the floating controls' height itself.
-                        bottom: 8,
-                      ),
-                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: rowIds.length,
-                      findChildIndexCallback: (key) {
-                        if (key case ValueKey<String>(value: final keyValue)) {
-                          final rowId = keyValue == _kLaunchRowId ? _launchSlotRowId ?? keyValue : keyValue;
-                          final domainIndex = rowIds.indexOf(rowId);
-                          return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
-                        }
-                        return null;
-                      },
-                      itemBuilder: (context, index) {
-                        final entryId = rowIds[rowIds.length - index - 1];
-                        final leavingRow = _leavingRows[entryId];
-                        final row = _builtRows[entryId] =
-                            leavingRow ??
-                            _buildRow(
-                              entryId: entryId,
-                              messages: messages,
-                              indexById: indexById,
-                              transientSubmissions: transientSubmissions,
-                              transcript: transcript,
-                              streamingText: streamingText,
-                              retryErrorMessage: retryErrorMessage,
-                              activity: activity,
-                            );
-                        return TranscriptRowReporter(
-                          key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
-                          rowId: entryId,
-                          onMount: _onRowMount,
-                          onUnmount: _onRowUnmount,
-                          child: PregoSelectionOnlyInNestedAreas(
-                            child: SentBubbleArrival(
-                              // Not the old rows a glide back to the latest edge builds on its way.
-                              arriving: !previousRowIndexById.containsKey(entryId),
-                              child: TranscriptPresence(
-                                entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
-                                exiting: leavingRow != null && !_waitingRowIds.contains(entryId),
-                                onEntered: () => _easedInRowIds.add(entryId),
-                                onExited: () => _onRowLeft(rowId: entryId),
-                                child: row,
+                    PregoNestedSelectionHighlight(
+                      moved: _rowsMoved,
+                      child: TranscriptLaidOutListView(
+                        key: _kListViewKey,
+                        onLaidOut: _onRowsLaidOut,
+                        detached: () => !_follow.following,
+                        rowsLeaving: () => _leavingRows.isNotEmpty,
+                        onCarriedToNewestEnd: _follow.reattach,
+                        reverse: true,
+                        controller: _follow.scrollController,
+                        padding: EdgeInsetsDirectional.only(
+                          start: widget.horizontalInset,
+                          end: widget.horizontalInset,
+                          top: 8 + widget.topInset + _topReserve.value,
+                          // The list view adds the floating controls' height itself.
+                          bottom: 8,
+                        ),
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: rowIds.length,
+                        findChildIndexCallback: (key) {
+                          if (key case ValueKey<String>(value: final keyValue)) {
+                            final rowId = keyValue == _kLaunchRowId ? _launchSlotRowId ?? keyValue : keyValue;
+                            final domainIndex = rowIds.indexOf(rowId);
+                            return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
+                          }
+                          return null;
+                        },
+                        itemBuilder: (context, index) {
+                          final entryId = rowIds[rowIds.length - index - 1];
+                          final leavingRow = _leavingRows[entryId];
+                          final row = _builtRows[entryId] =
+                              leavingRow ??
+                              _buildRow(
+                                entryId: entryId,
+                                messages: messages,
+                                indexById: indexById,
+                                transientSubmissions: transientSubmissions,
+                                transcript: transcript,
+                                streamingText: streamingText,
+                                retryErrorMessage: retryErrorMessage,
+                                activity: activity,
+                              );
+                          return TranscriptRowReporter(
+                            key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
+                            rowId: entryId,
+                            onMount: _onRowMount,
+                            onUnmount: _onRowUnmount,
+                            child: PregoSelectionOnlyInNestedAreas(
+                              child: SentBubbleArrival(
+                                // Not the old rows a glide back to the latest edge builds on its way.
+                                arriving: !previousRowIndexById.containsKey(entryId),
+                                child: TranscriptPresence(
+                                  entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
+                                  exiting: leavingRow != null && !_waitingRowIds.contains(entryId),
+                                  onEntered: () => _easedInRowIds.add(entryId),
+                                  onExited: () => _onRowLeft(rowId: entryId),
+                                  child: row,
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                     Positioned.fill(
                       // The copies' code blocks scroll sideways; the list must not
