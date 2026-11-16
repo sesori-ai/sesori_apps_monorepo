@@ -306,6 +306,13 @@ Claude Code (live probe against 2.1.322 with haiku, 2026-11-15):
   only 2.1.322 was probed live.
 - `control_cancel_request` ends the ask with "Side question cancelled". Sesori
   sends it when its own 3-minute wait ends, below the CLI's 11-minute deadline.
+- A mid-turn ask sends the model the running turn's prompt as well as the
+  question. With a non-Claude model behind a proxy (2026-11-16), some mid-turn
+  asks got an answer to that prompt instead of the question, on 2.1.322,
+  2.1.323 and 2.1.325 alike. That answer took as long as the main reply, so it
+  looked as if the ask had waited for the turn. The request is built inside
+  the CLI, so Sesori can't shape it. Mid-turn asks with a real Claude model
+  were checked only on 2.1.322.
 
 Codex (live probe against 0.169.0 with a local test provider, 2026-11-15):
 
@@ -484,6 +491,18 @@ V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the 
 | Custom-command correlation | Not supported by the native command route: no caller ID or result ID is exposed. Command dispatch still waits for native acceptance. |
 | Option catalog change events | Implemented for `agent.updated`, `command.updated`, `provider.updated` and `model.updated` (empty payloads in 2.2.7): each rereads the options of every project the bridge already holds a catalog for, so the next picker open shows the change. 2.2.7 sends them when a cold location finishes loading and after it notices an edited `opencode.json`, agent or command file; credential changes announce `provider.updated` per its source, which was not probed live. The bridge opens a project and new sessions by the project's real path, because 2.2.7 watches only that path and misses file edits in a location opened through a symlink (for example macOS `/tmp`); the project keeps the path the user opened, and a path that no longer exists is sent unchanged. A session or loaded location keeps the directory OpenCode reports, so a session created through the symlink earlier still reads that location's options until OpenCode reloads it. `skill.updated` refreshes the same way, so an added or edited skill shows up too (verified live on 2.2.7 by adding a project skill). |
 | Shared background server | Implemented. When OpenCode's own `opencode serve --service` is registered, healthy and 2.0.11 or newer, the bridge uses it instead of spawning a private server. When none is running in managed mode without an explicit `--opencode-bin`, the bridge runs `opencode service start` with the selected runtime and uses that service, which keeps running after the bridge stops, as one started by the TUI does. The phone, TUI and desktop then share one server's turns, events, permissions, forms and Stop. When the service stops or moves, the plugin fails after a 5-second debounce and the next request re-attaches, starting the service again if needed. Turn it off with `--opencode-no-shared-service`, an explicit `--opencode-bin`, or OpenCode's `opencode service set disabled true`. When the selected runtime is older than the 2.0.11 floor (including OpenCode 1), or the start fails or times out, the bridge spawns its own server, and a service started later on the same database can resume that server's in-flight turns a second time. OpenCode-specific: no other harness has a shared server, and OpenCode 1 has no service. |
+
+## Processes a harness leaves running
+
+When the bridge stops a harness process it started to end with it (bridge shutdown, plugin restart), it signals that
+process and everything descending from it at that moment, detached processes included, for every harness. Windows
+does this with `taskkill /T`; POSIX reads one `ps` snapshot just before each signal. A process that already left the
+tree (its parent exited earlier) or started after the snapshot is not reached, and when the `ps` snapshot fails
+only the process itself is signalled. After `kill -9` of the bridge nothing is cleaned up on POSIX.
+
+| Harness | Detail |
+| --- | --- |
+| Oh My Pi | 🚫 OMP keeps named services past its own exit by design: in ACP mode it forces `launch.persist` on, so a `bash` call with a `name` runs as a service under the project's shared daemon broker (`__omp_worker_daemon_broker`), which OMP spawns detached so it outlives the `omp` process that started it, and which exits on its own once no client or persistent service remains. ✅ When Sesori's `omp` process spawned the broker, stopping that process ends the broker and its services. Ordinary tool commands end with OMP's own SIGTERM handling as well. ⬜ A broker another `omp` process spawned (a terminal session in the same project) is outside the tree, so services Sesori's process started there keep running until stopped with `omp ps stop <name>`; conversely, stopping Sesori's process also ends services a terminal session started in a broker Sesori's process spawned. Verified live on OMP 18.20.2, macOS, 2026-11-16. |
 
 ## Managed runtime
 
@@ -694,6 +713,22 @@ harness recorded.
 On the ACP harnesses a shutdown, a plugin restart or a follow-up that replaces the running turn cancels it without a
 Stopped line, and so does a Stop that lands before the prompt reached the agent. A turn that already showed a failed-turn
 notice (see [Failed-turn notices sent as text](#failed-turn-notices-sent-as-text)) keeps that notice as its one row.
+
+Hermes 0.21.5 keeps a `session/cancel` that reaches an idle session and refuses that session's next prompt with "Stopped
+waiting for another Hermes process on this session. Your message was not processed." So the Hermes plugin sends no
+cancel while the session has no turn running or queued and no sub-agent work. Verified live on 2026-11-16 on the test
+proxy: after a Stop on an idle session, the next prompt is answered. ⚠️ A Stop that reaches Hermes just after its turn
+ended can still cost the next prompt, which then needs resending.
+
+## Interrupted turns
+
+The bridge records a running turn for every harness from the session's busy and idle status, with no plugin
+involvement. After a restart it resolves each leftover turn from the owning plugin's session status: still busy is
+adopted, idle becomes Interrupted (see [session-history-and-recovery.md](regression/session-history-and-recovery.md)).
+OpenCode 2 on the shared background server keeps running a
+turn after the bridge dies: a turn still busy at restart is adopted and shows no Interrupted line, but one that finished
+while the bridge was down reads idle and shows Interrupted with Continue although it completed. No harness-neutral
+signal tells the two apart.
 
 ## Pre-start catalog import
 
@@ -921,6 +956,18 @@ credentials is not equivalent: a harness with bundled free models or an
 environment-supplied key is usable with an empty credential store, and blocking
 those installs is worse than the stale ready state this capability replaces.
 
+Hermes reads its model and provider from `hermes status`. A self-updating
+Hermes checkout with an unfinished source update rebuilds its TUI, web and
+desktop products in front of every command except `--version`/`--help`. That
+rebuild takes 50 s or more and outlived the 10 s probe timeout, so each probe
+killed and restarted the update. The status probe now sets Hermes' documented
+install-probe policy `HERMES_DISABLE_LAZY_INSTALLS=1`, which skips that
+launch-time completion; `hermes acp` does not, so the agent launch still
+finishes the update (verified against the Hermes canary source, 2026-11-15).
+The agent launch answers ACP `initialize` only after the rebuild, so Hermes
+raises its handshake deadline from the stock 60 s to 10 minutes; a shorter
+deadline killed the agent mid-update and the next launch started over.
+
 The marks above cover setup inspection only. A plugin that raises
 `PluginAuthenticationRequiredException` while running blocks further starts and
 moves the slot to the state its `recovery` selects: `authenticationRequired` for
@@ -1116,8 +1163,11 @@ compaction state and show no row.
 ## Compaction on request
 
 The bridge can ask a harness to compact a session's context without a client
-command, through `compactSession`, for scheduled tasks to call before a run
-resumes a quiet session (no scheduled-task consumer calls it yet). It only starts a compaction on a quiet session: a session that
+command, through `compactSession`. Same-session scheduled tasks with auto-compact on
+call it once a run's session has been quiet for `min(cache life - 2 minutes,
+25 minutes)` (25 minutes when the life is unknown), or before the next run
+when that comes first. It only starts a compaction on a
+quiet session: a session that
 is running, retrying, holding queued prompts or waiting for input answers
 "busy", and the request never stops or queues behind that work. A harness that
 cannot compact answers "unsupported". Each plugin's descriptor declares
@@ -1133,7 +1183,7 @@ plugin's answer is authoritative.
 | Pi | ✅ RPC `compact`, even when a Pi command is named `compact`. |
 | Cursor | ✅ Native `/summarize`. |
 | Copilot | ✅ `/compact`, advertised and verified after a real turn on 1.0.109 ("Compacted conversation history"). |
-| Hermes | ✅ `/compress`, verified on v0.21.5. A real compression may start a new Hermes session id; this was not observed. |
+| Hermes | ✅ `/compress`, verified on v0.21.5. `/compress` keeps the ACP session id (live-verified on v0.21.5+2453); only Hermes' internal head id rotates on automatic compression, and Sesori never uses it. |
 | OMP | ✅ `/compact`, handled natively on 18.20.2. A compaction with real history was not exercised; an empty session answers "Nothing to compact". |
 | Grok | ✅ `/compact`, verified on an idle session on 1.0.30. |
 | DeepSeek | ✅ `compact` from `deepseek/catalog` on 0.2.2. A compaction with real history was not exercised; an empty session answers "No compactable history yet." |
@@ -1145,6 +1195,30 @@ answer unsupported otherwise, so an Antigravity version that adds `/compact`
 works without a bridge change. A freshly started agent process has advertised
 no commands yet, so the plugin first loads the quiet session, as its next turn
 would, and then reads them.
+
+The task editor's Auto-compact switch follows the descriptor flag: it is off
+and inert for Antigravity, and a tap says the harness can't compact on request.
+OpenCode declares the flag for v1 too, so a v1 task saves auto-compact on and
+its runs' requests answer unsupported. See
+[Scheduled tasks](regression/scheduled-tasks.md) for the policy's coverage.
+
+### Prompt-cache life
+
+Each plugin answers `getPromptCacheLife` with how long its harness keeps a
+session's prompt cache after the last use, so the bridge can compact a quiet
+scheduled-task session while the cache is still warm. Null means unknown.
+
+| Harness | Prompt-cache life |
+|---|---|
+| Claude | Read from the init handshake's account: 1 hour when it reports `subscriptionType` (even with `apiProvider`), 5 minutes when it reports `apiProvider` without one (API key, Bedrock or Vertex), and 1 hour when it reports neither. |
+| Codex | 30 minutes. |
+| OpenCode v2 | 5 minutes for an Anthropic model (OpenCode sends no cache lifetime); unknown for other providers. |
+| OpenCode v1 | Unknown; v1 does not compact on request. |
+| Pi | 5 minutes (Pi's default "short" retention). |
+| Cursor | 5 minutes for an Anthropic model; unknown for the others, which cache for 30 minutes or longer. |
+| Hermes | 5 minutes (the default `cache_ttl`; Sesori does not read the user's Hermes config). |
+| OMP | 5 minutes. An Anthropic subscription seat caches for an hour, but the seat is not visible over ACP, so the shorter life is answered. |
+| Copilot, Grok, DeepSeek, Antigravity | Unknown: not published, or evicted without a fixed lifetime. |
 
 ## Command limitations
 
@@ -1159,6 +1233,40 @@ notifications and an input dialog, although `login` opens its browser on the
 bridge host. A sandboxed, credential-free Pi 1.0.4 RPC probe on macOS arm64
 (2026-10-06) confirmed both sources, the `/mcp` status reply and the hidden
 `/llama`; OAuth sign-in against a real MCP server was not exercised.
+
+Native commands that change a setting a composer picker owns (the model, the
+effort level, fast mode or the session's approval mode) are hidden, and sending
+one is rejected as a stale option, so the harness cannot drift from what Sesori
+sends:
+
+| Harness | Hidden | Evidence |
+|---|---|---|
+| Claude | `/model`, `/effort`, `/fast` | CLI 2.1.325 lists all three as non-interactive built-ins. |
+| OMP | `/model`, `/switch`, `/effort` | Captured ACP command list. |
+| Hermes | `/model` | Captured ACP command list. |
+| GitHub Copilot | `/model`, `/allow-all`, `/permissions` | `/allow-all` and `/permissions` (`default`, `allow-all`, `show`) are in a captured 1.0.109 ACP list. `/model` is a CLI 1.0.78 built-in that no capture confirms is advertised. |
+| Grok | `/always-approve` | Captured 1.0.30 ACP list. |
+
+Commands no picker covers stay listed: OMP's `/fast` and `/slow` (OMP's picker
+has no fast toggle) and `/modelpreset`, Claude's `/config` and `/output-style`,
+DeepSeek's `/permission` (its presets also switch the sandbox), Copilot's
+`/autopilot` and `/reset-allowed-tools`, and every harness's plan command (the
+composer has no plan-mode picker).
+
+The other harnesses advertise nothing a picker owns (checked 2026-11-15):
+
+- Codex: the plugin builds the list itself from skills plus a synthesized
+  `/compact`.
+- OpenCode: the server's `/command` list holds configured commands, MCP prompts
+  and skills, plus the synthesized `/compact`.
+- Pi 1.5.2: RPC `get_commands` returns extension, prompt-template and skill
+  commands. Its bundled extensions, read from the installed package, register
+  only `/llama` (already excluded), `/mcp` and `/name`.
+- Cursor 2026.07.23: the installed agent's `sendAvailableCommands` sends
+  `/copy-request-id` plus user commands and skills (read from source, no live
+  capture).
+- DeepSeek 0.2.2: read from the installed command registry, no live capture.
+- Antigravity 1.4.5: from this document's command list, no live capture.
 
 ## Pi extension startup dialogs
 
@@ -1312,9 +1420,10 @@ and the picker still shows the plain "Running" label instead of the warning. A
 steer that OMP admits as `promptRequired` runs as the next turn, without
 cancelling the current one.
 
-² Hermes ignored the first question after an aborted turn, answering "Stopped
-waiting for another Hermes process on this session. Your message was not
-processed."; the same question sent again was read and answered.
+² A first check found that Hermes ignored the first question after a Stop,
+answering "Stopped waiting for another Hermes process on this session. Your
+message was not processed." A Stop on an idle session no longer does this; a
+Stop that lands just after a turn ends still can. See [Stopped turns](#stopped-turns).
 
 Checked live on 2026-11-16 (UTC) against a source-run bridge on its local debug
 server, with one Pi session as the source and a fresh session of each installed
@@ -1329,13 +1438,16 @@ source showed "Summary sent to … · Open" and "Couldn't send to …" markers a
 the "Handoff summary" sheet. The Codex target showed the "From …" card, which
 Show all expanded.
 
-On the ACP plugin, a target whose saved agent or mode the harness rejects when
-the turn starts accepts the handoff and then drops the turn
-(`applyTurnSelection … failed; dropping turn` in the bridge log). The app
-reports Sent while the target receives nothing. This was seen on an OMP session
-whose saved agent OMP did not offer, and it applies to every ACP harness,
-because the plugin fails closed after accepting the prompt rather than refusing
-it as stale.
+Stale saved options on the target, a model, mode or reasoning level the harness
+no longer lists:
+
+| Harness | When the stale option is caught |
+|---|---|
+| Copilot, Grok, Antigravity (ACP) | ✅ Refused before the prompt is accepted, against the options each harness last reported. |
+| OMP (ACP) | ✅ Refused before the prompt is accepted, so the bridge's stale-option correction runs or the send fails visibly. |
+| Cursor (ACP) | ✅ Refused before the prompt is accepted, against the catalog Cursor last reported. An option kind Cursor has not reported yet is not checked. An option the catalog still lists but Cursor rejects when the turn applies it fails that turn with a session error, instead of running on the previous settings. |
+| Hermes (ACP) | ✅ A model the catalog no longer lists is refused before the prompt is accepted (checked live on 0.21.5 through the test proxy). Hermes applies no reasoning level or mode, so neither is checked. A model Hermes rejects when the turn applies it fails that turn with a session error. |
+| DeepSeek (ACP) | ✅ A model or reasoning level missing from the last `deepseek/catalog` result for the project is refused before the prompt is accepted; a model that lists no reasoning levels refuses any. Without a catalog for the project, only the model is checked, against the list the session itself reported. Before either was reported, nothing is checked, and a rejection when the turn applies it fails that turn with a session error. Not checked live: the runtime needs a DeepSeek account. |
 
 ## Sub-agents
 

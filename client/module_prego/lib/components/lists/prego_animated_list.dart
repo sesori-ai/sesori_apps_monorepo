@@ -31,7 +31,12 @@ class const PregoAnimatedList<T>({
       primary: false,
       physics: const NeverScrollableScrollPhysics(),
       slivers: [
-        PregoAnimatedSliverList<T>(items: items, itemKey: itemKey, itemBuilder: itemBuilder),
+        PregoAnimatedSliverList<T>(
+          items: items,
+          itemKey: itemKey,
+          itemBuilder: itemBuilder,
+          slidesWhenMoved: (_) => false,
+        ),
       ],
     );
   }

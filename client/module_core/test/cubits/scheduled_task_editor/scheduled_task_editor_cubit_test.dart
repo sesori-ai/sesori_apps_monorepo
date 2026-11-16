@@ -18,18 +18,22 @@ class _FakeTimeZoneSource() implements DeviceTimeZoneSource {
 /// Monday 2026-11-16, 10:30 on the device's clock.
 final _now = DateTime(2026, 11, 16, 10, 30);
 
-TaskComposerSubmission _submission({String prompt = "Summarize yesterday", CommandInfo? command}) =>
-    TaskComposerSubmission(
-      project: const NewSessionProject(id: "fixture-project", name: "Fixture", kind: ProjectKind.folder),
-      pluginId: "fixture",
-      agent: "build",
-      model: const PromptModel(providerID: "provider", modelID: "model"),
-      variant: null,
-      fastMode: false,
-      dedicatedWorktree: true,
-      prompt: prompt,
-      command: command,
-    );
+TaskComposerSubmission _submission({
+  String prompt = "Summarize yesterday",
+  CommandInfo? command,
+  bool compactsOnRequest = true,
+}) => TaskComposerSubmission(
+  project: const NewSessionProject(id: "fixture-project", name: "Fixture", kind: ProjectKind.folder),
+  pluginId: "fixture",
+  compactsOnRequest: compactsOnRequest,
+  agent: "build",
+  model: const PromptModel(providerID: "provider", modelID: "model"),
+  variant: null,
+  fastMode: false,
+  dedicatedWorktree: true,
+  prompt: prompt,
+  command: command,
+);
 
 void main() {
   setUpAll(() {
@@ -50,6 +54,7 @@ void main() {
     yolo = BehaviorSubject.seeded(const YoloSettingsResponse(enabled: false));
     analytics = stubbedProductAnalyticsService();
     when(() => bridgeSettings.yoloSettings).thenAnswer((_) => yolo.stream);
+    when(() => repository.listTasks()).thenAnswer((_) async => const ScheduledTaskSuccess(value: <ScheduledTask>[]));
     addTearDown(yolo.close);
   });
 
@@ -107,6 +112,15 @@ void main() {
       expect((await ready(createCubit())).approvalMode, TaskApprovalMode.approveAll);
     });
 
+    test("says an older computer cannot take a task before one is filled in", () async {
+      when(() => repository.listTasks()).thenAnswer((_) async => const ScheduledTaskBridgeOutdated());
+
+      expect(
+        await settled(createCubit()),
+        const ScheduledTaskEditorState.unavailable(reason: ScheduledTaskEditorUnavailableReason.bridgeOutdated),
+      );
+    });
+
     test("cannot open without the device zone", () async {
       timeZones.zone = null;
 
@@ -142,7 +156,7 @@ void main() {
           schedule: TaskSchedule.daily(time: TaskTimeOfDay(hour: 7, minute: 15)),
           timeZone: "Europe/Bucharest",
           missedRunPolicy: TaskMissedRunPolicy.runWhenBack,
-          runMode: TaskRunMode.sameSession(autoCompact: false),
+          runMode: TaskRunMode.sameSession(autoCompact: true),
           approvalMode: TaskApprovalMode.approveAll,
         ),
       );
@@ -154,7 +168,7 @@ void main() {
           runMode: AnalyticsScheduledTaskRunMode.sameSession,
           approvalMode: AnalyticsScheduledTaskApprovalMode.approveAll,
           missedRunPolicy: AnalyticsScheduledTaskMissedRunPolicy.runWhenBack,
-          autoCompact: false,
+          autoCompact: true,
         ),
       ]);
     });
@@ -328,9 +342,66 @@ void main() {
     });
   });
 
+  group("auto-compact", () {
+    test("is off for a new session and cannot be turned on there", () async {
+      final cubit = createCubit();
+      await ready(cubit);
+
+      cubit.setAutoCompact(autoCompact: true);
+
+      expect(current(cubit).runMode, const TaskRunMode.newSession());
+    });
+
+    test("saves as switched", () async {
+      answerCreate(ScheduledTaskSuccess(value: scheduledTaskFixture(id: "task")));
+      final cubit = createCubit();
+      await ready(cubit);
+      cubit
+        ..setSameSession(sameSession: true)
+        ..setAutoCompact(autoCompact: false);
+
+      await cubit.save(submission: _submission());
+
+      expect(createdDefinition().runMode, const TaskRunMode.sameSession(autoCompact: false));
+    });
+
+    test("saves off on a harness that cannot compact on request, keeping the choice", () async {
+      answerCreate(ScheduledTaskSuccess(value: scheduledTaskFixture(id: "task")));
+      final cubit = createCubit();
+      await ready(cubit);
+      cubit.setSameSession(sameSession: true);
+
+      await cubit.save(submission: _submission(compactsOnRequest: false));
+
+      expect(createdDefinition().runMode, const TaskRunMode.sameSession(autoCompact: false));
+      expect(current(cubit).runMode, const TaskRunMode.sameSession(autoCompact: true));
+    });
+  });
+
   group("edit", () {
     void answerList(List<ScheduledTask> tasks) =>
         when(() => repository.listTasks()).thenAnswer((_) async => ScheduledTaskSuccess(value: tasks));
+
+    test(
+      "keeps a same-session task's auto-compact as saved, and turns it on for one that started new sessions",
+      () async {
+        answerList([
+          scheduledTaskFixture(id: "off", runMode: const TaskRunMode.sameSession(autoCompact: false)),
+          scheduledTaskFixture(id: "new", runMode: const TaskRunMode.newSession()),
+        ]);
+        final off = createCubit(taskId: "off");
+        await ready(off);
+        off
+          ..setSameSession(sameSession: false)
+          ..setSameSession(sameSession: true);
+        final fresh = createCubit(taskId: "new");
+        await ready(fresh);
+        fresh.setSameSession(sameSession: true);
+
+        expect(current(off).runMode, const TaskRunMode.sameSession(autoCompact: false));
+        expect(current(fresh).runMode, const TaskRunMode.sameSession(autoCompact: true));
+      },
+    );
 
     test("opens on the task's own choices and zone", () async {
       final task = scheduledTaskFixture(

@@ -27,7 +27,7 @@ class CopilotPlugin._({
     required AcpProcessFactory processFactory,
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
-    final commandTracker = AcpCommandTracker();
+    final commandTracker = AcpCommandTracker(selectionCommands: CopilotCatalogRepository.selectionCommands);
     final childSessionTracker = AcpChildSessionTracker();
     final launchSpec = CopilotBinary.launchSpec(
       binary: binaryPath,
@@ -94,6 +94,7 @@ class CopilotPlugin._({
   @override
   Future<void> validateTurnSelection({
     required String operation,
+    required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,

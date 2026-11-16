@@ -2173,6 +2173,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListUnpinFailed => 'Failed to unpin session';
 
   @override
+  String get sessionListPinMoveFailed => 'Couldn\'t save the pinned order';
+
+  @override
   String get sessionListSendToSession => 'Send to another session…';
 
   @override
@@ -2345,7 +2348,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListDeleteWorktreeNotice => 'Its worktree will be deleted too. The branch is kept.';
 
   @override
-  String get sessionListDeleteFolderNotice => 'Its folder and every file in it will be deleted too.';
+  String get sessionListDeleteFolderNotice =>
+      'Its folder and every file in it will be deleted too, unless a fork of it still uses the folder.';
 
   @override
   String get sessionListDeleted => 'Session deleted';
@@ -3242,6 +3246,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead.';
 
   @override
+  String get sessionDetailEditMidTurnForkBody =>
+      'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead, or fork from here to send it again in a new session.';
+
+  @override
+  String transcriptForkedFrom(String title) {
+    return 'Forked from $title';
+  }
+
+  @override
+  String get transcriptForkedFromUntitled => 'Forked from an untitled session';
+
+  @override
   String get sessionDetailEditCommandTitle => 'Commands can\'t be edited';
 
   @override
@@ -3287,6 +3303,43 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sessionDetailForkFromHere => 'Fork from here';
+
+  @override
+  String get sessionListFork => 'Fork';
+
+  @override
+  String get sessionForkForking => 'Forking…';
+
+  @override
+  String get sessionForkNothingToFork => 'Nothing to fork yet';
+
+  @override
+  String get sessionForkNothingToForkBody => 'The session hasn\'t finished a reply yet.';
+
+  @override
+  String get sessionForkRefused => 'Couldn\'t fork this session';
+
+  @override
+  String get sessionForkRefusedBody => 'The session didn\'t accept the fork. Nothing changed.';
+
+  @override
+  String get sessionForkFailed => 'Couldn\'t confirm the fork. Check your session list before trying again.';
+
+  @override
+  String get sessionForkWorktreeMissingTitle => 'This session\'s worktree is gone';
+
+  @override
+  String get sessionForkWorktreeMissingBody =>
+      'Its earlier work can\'t be restored. The fork can start in a new worktree from where this session began.';
+
+  @override
+  String get sessionForkWorktreeMissingCreate => 'Create new worktree';
+
+  @override
+  String get sessionForkCancel => 'Cancel';
 
   @override
   String get sessionDetailMessageCopied => 'Copied to clipboard';
@@ -4451,6 +4504,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scheduledTaskContinuesSession => 'Continue in the same session';
+
+  @override
+  String get scheduledTaskAutoCompact => 'Auto-compact';
+
+  @override
+  String get scheduledTaskAutoCompactDetail =>
+      'Compacts the session before its prompt cache goes cold, so the next run starts small.';
+
+  @override
+  String scheduledTaskAutoCompactUnsupported(String harness) {
+    return '$harness can\'t compact on request';
+  }
 
   @override
   String get scheduledTaskApprovalsHeading => 'Approvals';

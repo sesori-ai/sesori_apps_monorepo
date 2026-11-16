@@ -133,22 +133,17 @@ void main() {
       });
 
       test("sets the prompt-cache lifetime from the account's billing route", () {
-        PluginFastModeSupport? fastModeFor({required Object? account}) => repository
-            .map(
-              skillNames: const {},
-              handshake: {
-                "models": [
-                  {"value": "opus", "supportsFastMode": true},
-                ],
-                "account": account,
-              },
-            )
-            .providers
-            .providers
-            .single
-            .models
-            .single
-            .fastMode;
+        ClaudeBackendCatalog catalogFor({required Object? account}) => repository.map(
+          skillNames: const {},
+          handshake: {
+            "models": [
+              {"value": "opus", "supportsFastMode": true},
+            ],
+            "account": account,
+          },
+        );
+        PluginFastModeSupport? fastModeFor({required Object? account}) =>
+            catalogFor(account: account).providers.providers.single.models.single.fastMode;
 
         // Account shapes captured from CLI 2.1.325, identity fields omitted.
         const expected = <String, (Object?, int)>{
@@ -163,6 +158,12 @@ void main() {
           expect(
             fastModeFor(account: account),
             PluginFastModeSupport.available(promptCacheTtlSeconds: ttl),
+            reason: route,
+          );
+          // Auto-compaction's quiet window reads the same lifetime.
+          expect(
+            catalogFor(account: account).promptCacheLife,
+            Duration(seconds: ttl),
             reason: route,
           );
         }
@@ -291,11 +292,13 @@ void main() {
       expect(catalog.providers.providers.single.models.single.name, "claude-sonnet-test");
     });
 
-    test("omits the native /fast command owned by the fast-mode selection", () {
+    test("omits the native /model, /effort and /fast commands the selection owns", () {
       final catalog = repository.map(
         skillNames: const {},
         handshake: {
           "commands": [
+            {"name": "model", "description": "Set the AI model for Claude Code", "argumentHint": "[model]"},
+            {"name": "effort", "description": "Set effort level for model usage", "argumentHint": "[low|medium|high]"},
             {"name": "fast", "description": "Toggle fast mode", "argumentHint": "[on|off]"},
             {"name": "review", "description": "Review changes"},
           ],

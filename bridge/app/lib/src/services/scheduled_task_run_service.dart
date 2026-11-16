@@ -11,6 +11,7 @@ import "../repositories/models/session_operation.dart";
 import "../repositories/models/session_quietness.dart";
 import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
+import "scheduled_task_compaction_service.dart";
 import "scheduled_task_occurrence_calculator.dart";
 import "scheduled_task_request_exception.dart";
 import "scheduled_task_run_failure.dart";
@@ -29,13 +30,19 @@ import "yolo_settings_service.dart";
 /// never start one twice. A new-session run creates a session; a same-session
 /// run continues in the task's target session, creating and targeting one
 /// when there is none. Every history row written is announced on [changes],
-/// and every run that could not start on [failures].
+/// and every scheduled run that could not start on [failures]. A Run now that
+/// cannot start answers its caller instead.
+///
+/// A same-session task with auto-compact on has [ScheduledTaskCompactionService]
+/// compact its session after each run, on the same passes; a run due before
+/// that compacts first.
 ///
 /// After a new-session run starts, the task's finished run sessions beyond
 /// the newest [keptFinishedRuns] are archived, apart from the fire and one
 /// task at a time.
 class ScheduledTaskRunService({
   required final ScheduledTaskRepository _repository,
+  required final ScheduledTaskCompactionService _compaction,
   required final SessionCreationService _sessionCreation,
   required final SessionPromptService _prompts,
   required final SessionOperationDispatcher _operations,
@@ -91,17 +98,24 @@ class ScheduledTaskRunService({
         Log.w("Scheduled task ${task.id} in project ${task.definition.projectId} could not fire", error, stackTrace);
       }
     }
+    await _compaction.compactQuietRuns();
   }
 
   Future<void> _fireDue({required ScheduledTaskRecord task, required DateTime dueAt}) async {
     final definition = task.definition;
+    final gate = await _compaction.gateDueRun(task: task);
+    if (gate == DueRunGate.hold) return;
     final now = _clock.now();
-    final action = _calculator.dueAction(
+    final action = switch (_calculator.dueAction(
       schedule: definition.schedule,
       missedRunPolicy: definition.missedRunPolicy,
       dueAt: dueAt,
       now: now,
-    );
+    )) {
+      ScheduledTaskDueAction.recordMissed when gate == DueRunGate.fireAfterCompaction =>
+        ScheduledTaskDueAction.fireLate,
+      final action => action,
+    };
     final outcome = action == ScheduledTaskDueAction.recordMissed
         ? const ScheduledTaskRunOutcome.missed()
         : await _outcomeToFire(task: task, late: action == ScheduledTaskDueAction.fireLate);
@@ -118,7 +132,7 @@ class ScheduledTaskRunService({
       Log.i("Scheduled task ${task.id} changed while it was firing; the next pass reads it again");
       return;
     }
-    await _afterReserved(task: task, run: run);
+    await _afterReserved(task: task, run: run, scheduled: true);
   }
 
   Future<ScheduledTaskRun> _runNowLocked({required String taskId}) async {
@@ -135,7 +149,7 @@ class ScheduledTaskRunService({
           : ScheduledTaskRunOutcome.failed(reason: blocker),
       firedAt: now,
     );
-    return await _afterReserved(task: task, run: run);
+    return await _afterReserved(task: task, run: run, scheduled: false);
   }
 
   Future<ScheduledTaskRunOutcome> _outcomeToFire({required ScheduledTaskRecord task, required bool late}) async {
@@ -220,13 +234,19 @@ class ScheduledTaskRunService({
             provider.models.values.any((offered) => offered.id == model.modelID && offered.isAvailable),
       );
 
-  Future<ScheduledTaskRun> _afterReserved({required ScheduledTaskRecord task, required ScheduledTaskRun run}) async {
+  Future<ScheduledTaskRun> _afterReserved({
+    required ScheduledTaskRecord task,
+    required ScheduledTaskRun run,
+    required bool scheduled,
+  }) async {
     _changes.add(null);
     switch (run.outcome) {
       case ScheduledTaskRunStarted(:final late):
-        return await _start(task: task, run: run, late: late);
+        return await _start(task: task, run: run, late: late, scheduled: scheduled);
       case ScheduledTaskRunFailed(:final reason):
-        _failures.add(ScheduledTaskRunFailure(taskId: task.id, taskName: task.definition.name, reason: reason));
+        if (scheduled) {
+          _failures.add(ScheduledTaskRunFailure(taskId: task.id, taskName: task.definition.name, reason: reason));
+        }
         return run;
       case ScheduledTaskRunSkipped() || ScheduledTaskRunMissed() || ScheduledTaskRunOutcomeUnknown():
         return run;
@@ -237,6 +257,7 @@ class ScheduledTaskRunService({
     required ScheduledTaskRecord task,
     required ScheduledTaskRun run,
     required bool late,
+    required bool scheduled,
   }) async {
     final definition = task.definition;
     final String sessionId;
@@ -257,7 +278,9 @@ class ScheduledTaskRunService({
       final failed = run.copyWith(outcome: ScheduledTaskRunOutcome.failed(reason: reason));
       if (!await _repository.markRunFailed(runId: run.id, reason: reason)) return failed;
       _changes.add(null);
-      _failures.add(ScheduledTaskRunFailure(taskId: task.id, taskName: definition.name, reason: reason));
+      if (scheduled) {
+        _failures.add(ScheduledTaskRunFailure(taskId: task.id, taskName: definition.name, reason: reason));
+      }
       return failed;
     }
     _promptSentAt[task.id] = _clock.now();

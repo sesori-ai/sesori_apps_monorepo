@@ -18,6 +18,7 @@ class _MockImageSharer() extends Mock implements ImageSharer;
 
 Widget _presentationScope({required BuildContext context, required Widget child}) {
   return SessionDetailPresentationScope(
+    returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
     openHarnessSettings: () {},
     openBridgeSettings: () {},
     openSideChat: null,
@@ -104,6 +105,7 @@ Session _childSession({required String id, String? title}) {
     time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
     promptDefaults: null,
     lastUserActivityAt: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,

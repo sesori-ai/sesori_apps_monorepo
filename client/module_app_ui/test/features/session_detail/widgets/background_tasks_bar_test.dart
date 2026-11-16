@@ -21,6 +21,7 @@ void main() {
     time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
     promptDefaults: null,
     lastUserActivityAt: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,
@@ -56,6 +57,7 @@ void main() {
           openExternalLink: ({required url, required mode}) async => true,
           openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
               openedSessionIds.add(sessionId),
+          returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
           openHarnessSettings: () {},
           openBridgeSettings: () {},
           openSideChat: null,

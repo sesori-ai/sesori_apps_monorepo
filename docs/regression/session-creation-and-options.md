@@ -108,6 +108,17 @@ variant, and worktree mode, and creating the session with its first input.
   whose folder was deleted, probes in the host-created state directory, never the
   bridge process's launch directory, so a deleted project's sessions still open and
   reload with the user's and Claude's own entries.
+- A native command that changes a setting a composer picker owns (model, effort,
+  fast mode or approval mode) is never listed, and sending one fails as a stale
+  option. Hidden per harness:
+  - Claude: `/model`, `/effort`, `/fast`
+  - OMP: `/model`, `/switch`, `/effort`
+  - Hermes: `/model`
+  - GitHub Copilot: `/model`, `/allow-all`, `/permissions`
+  - Grok: `/always-approve`
+
+  Commands no picker covers stay listed, such as OMP's `/fast`, DeepSeek's
+  `/permission` and every plan command.
 - A Claude catalog probe never runs anything the project controls: a project's
   probe runs in a temporary mirror holding only copies of its command files
   (`.claude/commands/**/*.md`) and skill files (`.claude/skills/<skill>/SKILL.md`),
@@ -286,6 +297,11 @@ variant, and worktree mode, and creating the session with its first input.
   validate a turn. A stale model, mode, or reasoning value fails before prompt
   acceptance, invalidates that selection, and refreshes without inventing an
   option Copilot did not advertise. A catalog with no mode remains usable.
+- A create with a command whose options the harness refuses as stale deletes
+  the session it just made, logging its id, before answering with the same
+  stale-options rejection. The deletion event removes the row from session
+  lists, so no empty session sits beside the corrected retry. This applies to a
+  scheduled run's first session too.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.

@@ -48,11 +48,12 @@ typedef SessionDetailHeaderBuilder = Widget Function({
 
 /// The session's own actions for the glass bar's menu, built with the page so
 /// More can hide when there are none. [isBusy] is whether the session works
-/// right now.
+/// right now; [canFork] whether its menu offers Fork: a top-level session whose harness forks.
 typedef SessionDetailMenuEntriesBuilder = List<PregoMenuEntry> Function({
   required BuildContext context,
   required Session session,
   required bool isBusy,
+  required bool canFork,
 });
 
 /// A pointer surface's page frame: an opaque header above the transcript
@@ -843,7 +844,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     // it, and More must not open an empty menu. Built once per page build and
     // reused by the menu.
     final shellMenuEntries = switch ((session, menuEntriesBuilder)) {
-      (final session?, final builder?) => builder(context: context, session: session, isBusy: isBusy),
+      (final session?, final builder?) => builder(
+        context: context,
+        session: session,
+        isBusy: isBusy,
+        canFork: state is SessionDetailLoaded && state.forksMessages,
+      ),
       _ => const <PregoMenuEntry>[],
     };
     if (pageChrome != null) {
@@ -944,6 +950,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     return PregoGlassScaffold(
       title: title,
       subtitleText: null,
+      titleKeptSuffix: sessionForkTitleSuffix,
       banner: banner,
       // A chat owns its own (reversed) scroll, so there is no top-anchored
       // scroll for a large title to collapse against. Use the fixed, centred

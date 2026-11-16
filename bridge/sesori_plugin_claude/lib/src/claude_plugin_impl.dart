@@ -419,11 +419,11 @@ final class ClaudePlugin({
     if (directory == null) {
       throw const PluginOperationException.notFound(operation: "sendCommand", message: "session not found");
     }
-    // A catalog cached before /fast was filtered can still offer it.
-    if (command == ClaudeBackendCatalogRepository.fastModeCommand) {
+    // A catalog cached before these were filtered can still offer them.
+    if (ClaudeBackendCatalogRepository.selectionCommands.contains(command)) {
       throw const PluginStaleOptionsException(
         operation: "sendCommand",
-        message: "fast mode is set through the session selection",
+        message: "model, effort and fast mode are set through the session selection",
       );
     }
     final visible = userVisibleArguments?.trim();
@@ -456,6 +456,14 @@ final class ClaudePlugin({
             await _transcripts.findTranscriptPath(sessionId: sessionId) != null ||
             _sessionWithoutTranscript(sessionId) != null,
       );
+
+  /// The cache life the account's billing route gives, as the catalog read it
+  /// from Claude's handshake.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => (await _catalogService.getCatalog(
+    directory: await _directoryForSession(sessionId),
+    refresh: false,
+  )).promptCacheLife;
 
   /// Runs Claude's `/compact` with the session's applied selection, so the
   /// compaction neither switches the model nor restarts the process.

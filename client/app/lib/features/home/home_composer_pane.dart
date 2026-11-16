@@ -74,6 +74,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
     titleMode: PregoTopNavigationTitleMode.backLeading,
     banner: ConnectionBanner.maybeFor(context),
     slivers: const [],
+    titleKeptSuffix: null,
   );
 
   Widget _prompt({required NewSessionProjectSelected onProjectSelected}) => NewSessionProjectPrompt(

@@ -12,6 +12,7 @@ void main() {
           subtitle: PregoNavSubtitle(text: "Macbook-Pro.local", status: PregoNavStatus.online),
           automaticallyImplyLeading: false,
           slivers: [SliverFillRemaining(child: SizedBox.expand())],
+          titleKeptSuffix: null,
         ),
       ),
     );
@@ -37,6 +38,7 @@ void main() {
           automaticallyImplyLeading: false,
           actions: [PregoButtonsIconGlass(icon: Icons.close, semanticLabel: "Close", onPressed: () {})],
           slivers: const [SliverFillRemaining(child: SizedBox.expand())],
+          titleKeptSuffix: null,
         ),
       ),
     );

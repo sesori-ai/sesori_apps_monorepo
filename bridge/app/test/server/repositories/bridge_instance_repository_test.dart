@@ -176,6 +176,11 @@ class _FakeSystemProcessApi() implements SystemProcessApi {
   }
 
   @override
+  Future<List<int>> listPosixDescendants({required int pid}) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<SignalResult> sendForceSignal({required int pid}) {
     throw UnimplementedError();
   }

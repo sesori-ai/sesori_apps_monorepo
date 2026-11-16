@@ -60,6 +60,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SessionDetailPresentationScope(
+        returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
         openHarnessSettings: () {},
         openBridgeSettings: () {},
         openSideChat: null,

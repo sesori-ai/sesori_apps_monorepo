@@ -9,6 +9,8 @@ import "../logging/logging.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/models/send_to_session_result.dart";
 import "../repositories/models/session_cleanup_rejection.dart";
+import "../repositories/models/session_fork_result.dart";
+import "../repositories/plugin_repository.dart";
 import "../repositories/session_repository.dart";
 import "models/session_cleanup_outcome.dart";
 import "models/session_delete_result.dart";
@@ -17,9 +19,9 @@ import "selected_computer_service.dart";
 import "session_cleanup_service.dart";
 import "session_unseen_tracker.dart";
 
-/// Deletes sessions, marks them read or unread, and sends one into another.
-/// The rows they change live in the session windows and the trackers; this
-/// holds nothing a list shows.
+/// Deletes sessions, marks them read or unread, forks them, and sends one
+/// into another. The rows they change live in the session windows and the
+/// trackers; this holds nothing a list shows.
 @lazySingleton
 class SessionActionService({
   required final SessionRepository _sessionRepository,
@@ -28,7 +30,83 @@ class SessionActionService({
   required final FailureReporter _failureReporter,
   required final SelectedComputerService _selectedComputerService,
   required final ProductAnalyticsService _productAnalyticsService,
+  required final PluginRepository _pluginRepository,
 }) {
+  /// The harnesses whose bridge declared fork in the latest plugin listing;
+  /// empty until one loads or after one fails.
+  Set<String> _forkingPluginIds = const {};
+  Future<void>? _forkCapabilityRefresh;
+
+  /// Whether a session menu offers Fork for [session]: a top-level session
+  /// whose harness forks, archived or not, per the latest listing. Each
+  /// session screen refreshes it when it opens.
+  bool canFork({required Session session}) => session.parentID == null && _forkingPluginIds.contains(session.pluginId);
+
+  /// Reads which harnesses fork from the bridge's plugin listing. Concurrent
+  /// calls share one request.
+  Future<void> refreshForkCapabilities() =>
+      _forkCapabilityRefresh ??= _loadForkCapabilities().whenComplete(() => _forkCapabilityRefresh = null);
+
+  Future<void> _loadForkCapabilities() async {
+    try {
+      switch (await _pluginRepository.listPlugins()) {
+        case SuccessResponse(:final data):
+          _forkingPluginIds = {
+            for (final plugin in data.plugins)
+              if (plugin.sessionBranching.contains(SessionBranchingOperation.fork)) plugin.id,
+          };
+        case ErrorResponse(:final error):
+          // The bridge may have changed, so offer no Fork it might refuse.
+          _forkingPluginIds = const {};
+          logw("[SessionActions] could not read which harnesses fork", error);
+      }
+    } on Object catch (error, stackTrace) {
+      _forkingPluginIds = const {};
+      logw("[SessionActions] could not read which harnesses fork", error, stackTrace);
+    }
+  }
+
+  /// Forks [sessionId] at [point]; see [SessionRepository.forkSession].
+  /// [pluginId] is its harness, for analytics, or null when unknown.
+  Future<SessionForkResult> forkSession({
+    required String sessionId,
+    required String? pluginId,
+    required ForkPoint point,
+    required bool recreateFromBase,
+  }) async {
+    final result = await _sessionRepository.forkSession(
+      sessionId: sessionId,
+      point: point,
+      recreateFromBase: recreateFromBase,
+    );
+    switch (result) {
+      case SessionForked(:final session):
+        logd("[SessionActions] forked session $sessionId into ${session.id}");
+      case SessionForkNothingToFork() || SessionForkWorktreeBranchMissing():
+        logd("[SessionActions] did not fork session $sessionId: ${result.runtimeType}");
+      case SessionForkUnavailable() || SessionForkRejected():
+        logw("[SessionActions] the bridge refused to fork session $sessionId: ${result.runtimeType}");
+      case SessionForkFailed(:final error):
+        loge("Failed to fork session $sessionId", error);
+    }
+    if (pluginId != null) {
+      _reportProductEvent(
+        event: ProductAnalyticsEvent.sessionForked(
+          harness: AnalyticsHarness.fromPluginId(pluginId: pluginId),
+          outcome: switch (result) {
+            SessionForked() => AnalyticsSessionForkOutcome.succeeded,
+            SessionForkUnavailable() => AnalyticsSessionForkOutcome.branchPointUnavailable,
+            SessionForkNothingToFork() ||
+            SessionForkWorktreeBranchMissing() ||
+            SessionForkRejected() => AnalyticsSessionForkOutcome.refused,
+            SessionForkFailed() => AnalyticsSessionForkOutcome.failed,
+          },
+        ),
+      );
+    }
+    return result;
+  }
+
   /// Marks a session read (clears its bold) or unread (forces bold). Applied
   /// optimistically to the tracker so the row updates immediately; the bridge
   /// echo delivers the authoritative state (including the project aggregate)
@@ -138,20 +216,25 @@ class SessionActionService({
       case SendToSessionComputerSwitched():
         return;
     }
-    final event = ProductAnalyticsEvent.sessionSentToSession(
-      harness: AnalyticsHarness.fromPluginId(pluginId: sourcePluginId),
-      outcome: outcome,
+    _reportProductEvent(
+      event: ProductAnalyticsEvent.sessionSentToSession(
+        harness: AnalyticsHarness.fromPluginId(pluginId: sourcePluginId),
+        outcome: outcome,
+      ),
     );
+  }
+
+  void _reportProductEvent({required ProductAnalyticsEvent event}) {
     unawaited(
       _productAnalyticsService
           .logEvent(event: event, occurredAtUtc: DateTime.now().toUtc())
           .then<void>((delivery) {
             if (delivery == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
-              logw("Failed to deliver session-send analytics event");
+              logw("Failed to deliver ${event.wireName} analytics event");
             }
           })
           .catchError((Object error, StackTrace stackTrace) {
-            logw("Failed to report session-send analytics event", error, stackTrace);
+            logw("Failed to report ${event.wireName} analytics event", error, stackTrace);
           }),
     );
   }

@@ -32,6 +32,10 @@ class const DesktopPageToolbar({
 
   /// A second, quieter line under the title; null leaves the title alone.
   required final Widget? subtitle,
+
+  /// Kept whole when a long [title] or breadcrumb label ending with it is cut,
+  /// such as a fork's " (fork)"; null cuts them at their end.
+  required final String? keptSuffix,
   required final List<Widget> actions,
 }) extends StatelessWidget {
   static const double height = PregoTopNavigation.barHeight;
@@ -43,11 +47,10 @@ class const DesktopPageToolbar({
     final status = this.status;
     final subtitle = this.subtitle;
     final titleDetail = this.titleDetail;
-    final titleText = Text(
-      title,
+    final titleText = PregoKeptSuffixText(
+      text: title,
+      keptSuffix: keptSuffix,
       style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
     );
     final tertiary = prego.colors.textTertiary;
     return Container(
@@ -86,11 +89,10 @@ class const DesktopPageToolbar({
                                 children: [
                                   Icon(TablerRegular.chevron_left, size: 16, color: prego.colors.textSecondary),
                                   Flexible(
-                                    child: Text(
-                                      breadcrumb.label,
+                                    child: PregoKeptSuffixText(
+                                      text: breadcrumb.label,
+                                      keptSuffix: keptSuffix,
                                       style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],

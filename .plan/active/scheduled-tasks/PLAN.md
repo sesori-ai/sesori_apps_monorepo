@@ -553,9 +553,9 @@ There is **no compaction timer**. The window's activity clock is a
 `ScheduledTaskActivityTracker` (bridge `Tracker`), not `sessions.lastActivityAt`:
 `SessionUnseenService.recordActivity` deliberately coalesces repeated assistant
 activity once a session is unseen and unviewed, which is exactly an unattended
-run, so that column stops moving. The Orchestrator feeds the tracker every
-plugin event for a session (and its children) that has `scheduledTaskId`; it
-holds one "last activity" instant per such session in memory. After a bridge
+run, so that column stops moving. The Orchestrator feeds the tracker the
+status, message and part events of every session (its own events only, not its
+children's); it holds one "last activity" instant per session in memory. After a bridge
 restart the tracker starts every session at the bridge's start time, so the
 window restarts and can only compact later, never early; the pre-run fallback
 (case 2) still covers the next run. `ScheduledTaskRunService.runDue()`
@@ -589,8 +589,9 @@ be its latest started run and S its session (not archived).
      minutes; neither gives 1 hour) and does not recompute it, so that
      precedence has one owner, Codex 30 minutes, OpenCode by provider (Anthropic 5
      minutes), Pi 5 minutes, Hermes 5 minutes, Cursor by model (Anthropic 5
-     minutes), Oh My Pi per seat. Copilot, Antigravity (Gemini) and Grok report
-     unknown. The margin and cap live only in `ScheduledTaskCompactionService`
+     minutes), Oh My Pi 5 minutes (a subscription seat's hour is not visible
+     over ACP, and the shorter life stays warm on either). Copilot, Antigravity
+     (Gemini), Grok and DeepSeek report unknown. The margin and cap live only in `ScheduledTaskCompactionService`
      in bridge core, and no harness names appear in core.
    - Hermes `/compress` keeps the ACP session id (live-verified on
      v0.21.5+2453 through the ACP adapter); only Hermes' internal head id
@@ -767,7 +768,7 @@ including the `userPromptedAt` and `compactRequestedAt` run columns, one
 `sessions.scheduledTaskId` column, one nullable `Session` wire field, one
 `PluginMetadata` flag, one notification event type and `taskId` payload
 field, one SSE event. In-memory: one 30 s timer, one scheduler lock, one
-per-session activity instant for task-run sessions only
+activity instant per session with activity since the bridge started
 (`ScheduledTaskActivityTracker`, needed because `lastActivityAt` coalesces
 unattended activity), and two
 change/failure streams consumed by the Orchestrator (one feeding the new
@@ -830,14 +831,15 @@ consecutive-failure auto-pause, a new push category.
   - Client end to end on a headless iOS simulator (`xcrun simctl boot`, the
     device the local-testing skill assigns): Scheduled page with both
     headings, New task screen with both sheets, save and edit, Run now, marks
-    on rows, older-bridge update sheet against a v1.14.0 bridge.
+    on rows, older-bridge update sheet against a v1.13.1 bridge (the latest
+    public release; 1.14.0 is the unreleased version that ships tasks).
   - Packaged or external: push receipt on a device is not part of L3 (no
     iOS-simulator FCM delivery); the headless dispatch check covers L3.
 
 ## Delivery Rules
 
 - PR titles are fixed in [TRACKER.md](TRACKER.md). Use
-  `<emoji> [scheduled-tasks] <description> [step x/18]`.
+  `<emoji> [scheduled-tasks] <description> [step x/20]`.
 - Soft cap ~1,500 changed lines; lower for lifecycle steps (4.b, 5, 11). Drift
   and Freezed output can push steps 2 and 3.a over; report generated versus
   authored lines. Clean splits (for example 8.a/8.b, 9.a/9.b) need no
@@ -923,10 +925,15 @@ parallel with the bridge chain.
     `supportsCompactionOnRequest` (P9) across all plugins,
     `SessionRepository.compactSession`, live ACP probes, the readiness rename,
     a "Compaction on request" table in `docs/HARNESS_CAPABILITIES.md`. [1]
-11. 🚧 **Auto-compact same-session tasks.** `ScheduledTaskCompactionService`
-    and `ScheduledTaskActivityTracker` in the tick (P10 cases 1–4), the auto-compact switch and its
-    unsupported-harness tap on the Each run sheet, and the plugin-interface
-    prompt-cache-life query. Uses Q1 = B. [5, 9.b, 10]
+11. Split in three: the plugin answers, the bridge policy and the client
+    switch are independent and together run over the soft cap. Uses Q1 = B.
+    - 11.a ⚙️ **Prompt-cache life.** `BridgePluginApi.getPromptCacheLife`
+      answered by every plugin (P10 cache-life source), and the table in
+      docs/HARNESS_CAPABILITIES.md. [10]
+    - 11.b 🚧 **Auto-compact on the bridge.** `ScheduledTaskCompactionService`
+      and `ScheduledTaskActivityTracker` in the tick (P10 cases 1–4). [5, 11.a]
+    - 11.c 🌿 **Auto-compact switch.** The switch, its harness-based default
+      and its unsupported-harness tap on the Each run sheet (P10.6). [9.b]
 12. 🌱 **Regression docs.** Write `scheduled-tasks.md`, update the documents
     listed under Regression Coverage and the README index. [2–11]
 13. 🌱 **Run the L3 regression and retire the plan.** Run the matrix above,

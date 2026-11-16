@@ -21,7 +21,7 @@ void main() {
     setUp(() {
       fakes.clear();
       final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
+      final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       plugin = TestAcpPlugin(
         id: "acp",

@@ -37,10 +37,12 @@ enum SessionOperation() {
   setAutoContinuation,
   setApprovalOverride,
   setPinned,
+  movePin,
   observeQuotaInterruption,
   cancelQuotaContinuation,
   continueAfterQuota,
   getSessionReadiness,
   compactSession,
   getSessionQuietness,
+  getPromptCacheLife,
 }

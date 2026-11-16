@@ -10,6 +10,12 @@ import "mappers/omp_skill_mapper.dart";
 
 /// Layer-2 mapping and access for OMP catalog discovery.
 class OmpCatalogRepository({required final OmpAcpApi _api}) {
+  /// OMP's native `/model`, `/switch` and `/effort` change the model or the
+  /// thinking level, which the session selection owns (verified against the
+  /// list OMP advertises over ACP). `/fast` stays: OMP's picker has no fast
+  /// toggle.
+  static const Set<String> selectionCommands = {"model", "switch", "effort"};
+
   AcpCommandTracker? _commandTracker;
   StreamSubscription<AcpNotification>? _commandSubscription;
   Completer<void>? _commandSnapshot;
@@ -23,7 +29,7 @@ class OmpCatalogRepository({required final OmpAcpApi _api}) {
     if (!result.agentCapabilities.closeSession) {
       throw StateError("OMP catalog probing requires session/close");
     }
-    final tracker = AcpCommandTracker();
+    final tracker = AcpCommandTracker(selectionCommands: selectionCommands);
     _commandTracker = tracker;
     final snapshot = Completer<void>();
     _commandSnapshot = snapshot;

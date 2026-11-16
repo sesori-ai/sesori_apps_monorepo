@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_dart_core/src/repositories/models/send_to_session_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_diff_summary_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_fork_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_page_result.dart";
@@ -305,6 +306,64 @@ void main() {
       expect(
         await rewindAnswering(ErrorResponse(NonSuccessCodeError(errorCode: 502, rawErrorString: null))),
         isA<SessionRewindFailed>(),
+      );
+    });
+  });
+
+  group("forkSession", () {
+    Future<SessionForkResult> forkAnswering(ApiResponse<Session> response) {
+      final api = MockSessionApi();
+      when(
+        () => api.forkSession(sessionId: "session-1", point: const ForkPoint.latest(), recreateFromBase: false),
+      ).thenAnswer((_) async => response);
+      return SessionRepository(
+        api: api,
+      ).forkSession(sessionId: "session-1", point: const ForkPoint.latest(), recreateFromBase: false);
+    }
+
+    ApiResponse<Session> refusal({required SessionBranchErrorCode code, required String? message}) => ErrorResponse(
+      NonSuccessCodeError(
+        errorCode: 409,
+        rawErrorString: jsonEncode(SessionBranchErrorResponse(code: code, message: message).toJson()),
+      ),
+    );
+
+    test("maps the fork and each refusal the bridge explains", () async {
+      final fork = testSession(id: "fork-1");
+      expect(
+        await forkAnswering(SuccessResponse(fork)),
+        isA<SessionForked>().having((result) => result.session, "session", fork),
+      );
+      expect(
+        await forkAnswering(refusal(code: SessionBranchErrorCode.nothingToFork, message: null)),
+        isA<SessionForkNothingToFork>(),
+      );
+      expect(
+        await forkAnswering(refusal(code: SessionBranchErrorCode.branchPointUnavailable, message: "no checkpoint")),
+        isA<SessionForkUnavailable>().having((result) => result.reason, "reason", "no checkpoint"),
+      );
+      expect(
+        await forkAnswering(refusal(code: SessionBranchErrorCode.worktreeBranchMissing, message: null)),
+        isA<SessionForkWorktreeBranchMissing>(),
+      );
+      expect(
+        await forkAnswering(refusal(code: SessionBranchErrorCode.refused, message: "archived")),
+        isA<SessionForkRejected>().having((result) => result.reason, "reason", "archived"),
+      );
+      expect(
+        await forkAnswering(refusal(code: SessionBranchErrorCode.sessionBusy, message: "turn running")),
+        isA<SessionForkRejected>().having((result) => result.reason, "reason", "turn running"),
+      );
+    });
+
+    test("an error without a structured refusal is a failure", () async {
+      expect(
+        await forkAnswering(ErrorResponse(NonSuccessCodeError(errorCode: 400, rawErrorString: "bad request"))),
+        isA<SessionForkFailed>(),
+      );
+      expect(
+        await forkAnswering(ErrorResponse(NonSuccessCodeError(errorCode: 502, rawErrorString: null))),
+        isA<SessionForkFailed>(),
       );
     });
   });
@@ -841,7 +900,7 @@ void main() {
     }
 
     test("passes the pinned session through", () async {
-      final session = testSession(id: "s1").copyWith(pinned: true);
+      final session = testSession(id: "s1", pinOrder: 1);
 
       final result = await pinFor(response: ApiResponse.success(session));
 

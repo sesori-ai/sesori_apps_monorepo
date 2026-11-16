@@ -140,22 +140,31 @@ class ScheduledTaskEditorCubit({
   }
 
   /// Whether each run continues one session rather than starting its own.
+  /// Continuing turns auto-compact on, or as the edited task had it; Save
+  /// turns it off for a harness that cannot compact on request.
   void setSameSession({required bool sameSession}) {
     final ready = _ready;
     if (ready == null || (ready.runMode is TaskRunModeSameSession) == sameSession) return;
     _emitReady(
       ready: ready.copyWith(
-        // Auto-compact gets its switch on the Each run sheet in a later step;
-        // until then it stays off, or as the edited task had it.
         runMode: sameSession
             ? TaskRunMode.sameSession(
                 autoCompact: switch (ready.editing?.definition.runMode) {
                   TaskRunModeSameSession(:final autoCompact) => autoCompact,
-                  _ => false,
+                  _ => true,
                 },
               )
             : const TaskRunMode.newSession(),
       ),
+    );
+  }
+
+  /// Whether a same-session task compacts its session between runs.
+  void setAutoCompact({required bool autoCompact}) {
+    final ready = _ready;
+    if (ready == null || ready.runMode is! TaskRunModeSameSession) return;
+    _emitReady(
+      ready: ready.copyWith(runMode: TaskRunMode.sameSession(autoCompact: autoCompact)),
     );
   }
 
@@ -189,7 +198,14 @@ class ScheduledTaskEditorCubit({
       schedule: ready.schedule,
       timeZone: ready.timeZone,
       missedRunPolicy: ready.missedRunPolicy,
-      runMode: ready.runMode,
+      runMode: switch (ready.runMode) {
+        // The switch stays as chosen, so moving back to a harness that can
+        // compact finds it unchanged; only what is saved follows the harness.
+        TaskRunModeSameSession(:final autoCompact) => TaskRunMode.sameSession(
+          autoCompact: autoCompact && submission.compactsOnRequest,
+        ),
+        final other => other,
+      },
       approvalMode: ready.approvalMode,
     );
     emit(ready.copyWith(save: const ScheduledTaskEditorSaving()));
@@ -234,6 +250,14 @@ class ScheduledTaskEditorCubit({
   /// when back, a new session each run, and approvals as new sessions on this
   /// computer get them.
   Future<ScheduledTaskEditorState> _newTask() async {
+    // An older computer cannot take a task, whichever way the editor opened;
+    // say so before anything is filled in. Any other failure leaves the form
+    // open, and a save reports its own.
+    final check = await _repository.listTasks();
+    logScheduledTaskFailure(message: "Failed to check the bridge before a new scheduled task", result: check);
+    if (check is ScheduledTaskBridgeOutdated) {
+      return const ScheduledTaskEditorState.unavailable(reason: ScheduledTaskEditorUnavailableReason.bridgeOutdated);
+    }
     final String timeZone;
     try {
       timeZone = await _timeZoneSource.currentZoneName();

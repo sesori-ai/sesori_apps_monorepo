@@ -133,6 +133,7 @@ void _registerListServices({
       failureReporter: getIt<FailureReporter>(),
       selectedComputerService: FakeSelectedComputerService(),
       productAnalyticsService: getIt<ProductAnalyticsService>(),
+      pluginRepository: MockPluginRepository(),
     ),
   );
   // The session cubits count good interactions toward the rating sheet.

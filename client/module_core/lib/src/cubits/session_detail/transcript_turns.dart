@@ -1,3 +1,4 @@
+import "package:collection/collection.dart";
 import "package:meta/meta.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -34,23 +35,52 @@ final class const TranscriptTurns({
 
   /// Where in [turns] each rendered message's turn sits.
   required final Map<String, int> turnIndexByMessageId,
+
+  /// The last agent reply of each turn, which "Fork from here" is offered on.
+  required final Set<String> finalReplyIds,
 }) {
   /// Why the user message [messageId], rendered as [shape], cannot be
   /// edited and resent, or null when it can.
   MessageEditRefusal? editRefusal({required String messageId, required PromptTurnShape shape}) {
     if (shape is InvocationPromptTurnShape) return MessageEditRefusal.command;
-    final opensTurn = switch (turnIndexByMessageId[messageId]) {
-      final index? => switch (turns[index]) {
-        TranscriptPromptTurn(:final opener) => opener.info.id == messageId,
-        TranscriptPartialTurn() || TranscriptPreamble() => false,
-      },
-      null => false,
-    };
-    return opensTurn ? null : MessageEditRefusal.sentMidTurn;
+    return _opensTurn(messageId: messageId) ? null : MessageEditRefusal.sentMidTurn;
   }
+
+  bool _opensTurn({required String messageId}) => switch (_turnOf(messageId: messageId)) {
+    TranscriptPromptTurn(:final opener) => opener.info.id == messageId,
+    TranscriptPartialTurn() || TranscriptPreamble() || null => false,
+  };
+
+  TranscriptTurn? _turnOf({required String messageId}) => switch (turnIndexByMessageId[messageId]) {
+    final index? => turns[index],
+    null => null,
+  };
 
   /// Whether [messageId] is in the newest turn, the one a working session runs.
   bool inNewestTurn({required String messageId}) => turnIndexByMessageId[messageId] == turns.length - 1;
+
+  /// Where "Fork from here" on the user message [messageId] cuts: before the
+  /// turn it opens, or after the whole turn a follow-up sent mid-turn joined.
+  /// Null while its turn runs, as [working] says the newest one does.
+  ForkPoint? userMessageForkPoint({required String messageId, required bool working}) {
+    if (working && inNewestTurn(messageId: messageId)) return null;
+    return switch (_turnOf(messageId: messageId)) {
+      // The bridge has no turn for a preamble.
+      TranscriptPreamble() || null => null,
+      TranscriptPromptTurn() || TranscriptPartialTurn() =>
+        _opensTurn(messageId: messageId)
+            ? ForkPoint.beforeMessage(messageId: messageId)
+            : ForkPoint.afterMessage(messageId: messageId),
+    };
+  }
+
+  /// Where "Fork from here" on the agent reply [messageId] cuts: after its
+  /// turn, when it is that turn's last reply. Null on other replies, and
+  /// while its turn runs, as [working] says the newest one does.
+  ForkPoint? replyForkPoint({required String messageId, required bool working}) {
+    if (!finalReplyIds.contains(messageId) || (working && inNewestTurn(messageId: messageId))) return null;
+    return ForkPoint.afterMessage(messageId: messageId);
+  }
 }
 
 /// Why a user message cannot be edited and resent.
@@ -85,6 +115,7 @@ class const TranscriptTurnBuilder() {
   }) {
     final turns = <TranscriptTurn>[];
     final turnIndexByMessageId = <String, int>{};
+    final finalReplyIds = <String>{};
     for (final (index, segment) in splitPromptTurns(
       messages: messages,
       turnEndMessageIds: turnEndMessageIds,
@@ -93,6 +124,14 @@ class const TranscriptTurnBuilder() {
       for (final id in messageIds) {
         turnIndexByMessageId[id] = index;
       }
+      final reply = segment.messages.lastWhereOrNull(
+        (message) => switch (message.info) {
+          MessageAssistant(sender: MessageSender.agent) => true,
+          _ => false,
+        },
+      );
+      // A fully loaded preamble is no turn the bridge can fork after.
+      if (reply != null && (segment is PromptSegment || hasOlderMessages)) finalReplyIds.add(reply.info.id);
       turns.add(switch (segment) {
         PromptSegment(:final opener) => TranscriptPromptTurn(opener: opener, messageIds: messageIds),
         LeadingPromptSegment() when hasOlderMessages => TranscriptPartialTurn(messageIds: messageIds),
@@ -102,6 +141,7 @@ class const TranscriptTurnBuilder() {
     return TranscriptTurns(
       turns: List.unmodifiable(turns),
       turnIndexByMessageId: Map.unmodifiable(turnIndexByMessageId),
+      finalReplyIds: Set.unmodifiable(finalReplyIds),
     );
   }
 }

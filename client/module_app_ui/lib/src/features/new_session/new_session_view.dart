@@ -890,6 +890,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             ),
           ),
         ],
+        titleKeptSuffix: null,
       ),
     );
   }

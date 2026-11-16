@@ -57,7 +57,7 @@ void main() {
                     builder: (context) => TextButton(
                       onPressed: () => dispatcher.handleSessionArchive(
                         context: context,
-                        session: session.copyWith(pinned: pinned),
+                        session: session.copyWith(pinOrder: pinned ? 1 : null),
                         isRunning: running,
                       ),
                       child: const Text("go"),
@@ -173,6 +173,7 @@ void main() {
                       actions: actions,
                       session: target,
                       isRunning: false,
+                      canFork: false,
                       readEntry: const SessionReadMenuNone(),
                       surfaceEntries: [
                         PregoMenuItem(
@@ -200,7 +201,7 @@ void main() {
       List<String> titlesOf(List<PregoMenuItem> entries) => [for (final entry in entries) entry.title];
 
       expect(titlesOf(await menuFor(tester: tester, target: session)).take(3), ["Pin", "Page action", "Rename"]);
-      expect(titlesOf(await menuFor(tester: tester, target: session.copyWith(pinned: true))).first, "Unpin");
+      expect(titlesOf(await menuFor(tester: tester, target: session.copyWith(pinOrder: 1))).first, "Unpin");
       final archivedSession = testSession(id: "s1", title: "Fix the build", archivedAt: DateTime(2026));
       expect(titlesOf(await menuFor(tester: tester, target: archivedSession)), isNot(contains("Pin")));
       final child = testSession(id: "c1", parentID: "s1", title: "Sub-task");
@@ -248,6 +249,7 @@ void main() {
                     actions: actions,
                     session: worktreeSession,
                     isRunning: false,
+                    canFork: false,
                     readEntry: const SessionReadMenuNone(),
                     surfaceEntries: const [],
                   )
@@ -375,7 +377,7 @@ void main() {
       testWidgets("the ${confirmation.name} says a pinned session is pinned", (tester) async {
         await pumpDeleteButton(
           tester: tester,
-          target: session.copyWith(pinned: true),
+          target: session.copyWith(pinOrder: 1),
           deleteConfirmation: confirmation,
         );
 
@@ -386,7 +388,10 @@ void main() {
         await pumpDeleteButton(tester: tester, target: session, deleteConfirmation: confirmation);
 
         expect(find.text("Its worktree will be deleted too. The branch is kept."), findsNothing);
-        expect(find.text("Its folder and every file in it will be deleted too."), findsNothing);
+        expect(
+          find.text("Its folder and every file in it will be deleted too, unless a fork of it still uses the folder."),
+          findsNothing,
+        );
         await tester.tap(find.byKey(sessionDeleteConfirmKey));
         await tester.pumpAndSettle();
         verify(
@@ -397,7 +402,10 @@ void main() {
       testWidgets("the ${confirmation.name} says a No project session's folder goes, and deletes it", (tester) async {
         await pumpDeleteButton(tester: tester, target: session, deleteConfirmation: confirmation, noProject: true);
 
-        expect(find.text("Its folder and every file in it will be deleted too."), findsOneWidget);
+        expect(
+          find.text("Its folder and every file in it will be deleted too, unless a fork of it still uses the folder."),
+          findsOneWidget,
+        );
         await tester.tap(find.byKey(sessionDeleteConfirmKey));
         await tester.pumpAndSettle();
         verify(

@@ -193,7 +193,7 @@ void main() {
 
     test("prompt hooks expose live client and preserve prompt identity", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
+      final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       final hookPlugin = _PromptHookPlugin(
         id: "acp",
@@ -483,7 +483,7 @@ void main() {
 
     test("a prompt-ordered lifecycle extension stays behind its accepted user message", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
+      final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       final mapper = _PromptOrderedChildMapper(
         launchDirectory: cwd,
@@ -1275,7 +1275,7 @@ void main() {
 
     test("an abort landing during turn selection still drops the turn", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
+      final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       final gated = _GatedSelectionPlugin(
         id: "acp",

@@ -229,6 +229,22 @@ enum AnalyticsFileSource({required final String wireValue}) {
   mixed(wireValue: "mixed"),
 }
 
+/// How the bridge answered one fork of a session.
+enum AnalyticsSessionForkOutcome({required final String wireValue}) {
+  /// The bridge made the fork.
+  succeeded(wireValue: "succeeded"),
+
+  /// The harness cannot fork at that point, or no longer has the session.
+  branchPointUnavailable(wireValue: "branch_point_unavailable"),
+
+  /// The bridge refused the fork otherwise: nothing to fork yet, a removed
+  /// worktree it could not bring back, or a reason this app doesn't know.
+  refused(wireValue: "refused"),
+
+  /// The request failed or timed out, so the fork may or may not exist.
+  failed(wireValue: "failed"),
+}
+
 /// How the bridge answered one edit and resend of an earlier message.
 enum AnalyticsMessageEditOutcome({required final String wireValue}) {
   /// The bridge removed the message and what followed it, and sent the edit.
@@ -415,13 +431,17 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsScheduledTaskRepeat repeat,
     required AnalyticsScheduledTaskRunMode runMode,
     required AnalyticsScheduledTaskApprovalMode approvalMode,
-    required AnalyticsScheduledTaskMissedRunPolicy missedRunPolicy,
+    required AnalyticsScheduledTaskMissedRunPolicy? missedRunPolicy,
     required bool? autoCompact,
   }) = ScheduledTaskSavedEvent;
   const factory sessionMessageEdited({
     required AnalyticsHarness harness,
     required AnalyticsMessageEditOutcome outcome,
   }) = SessionMessageEditedEvent;
+  const factory sessionForked({
+    required AnalyticsHarness harness,
+    required AnalyticsSessionForkOutcome outcome,
+  }) = SessionForkedEvent;
   const factory sessionSentToSession({
     required AnalyticsHarness harness,
     required AnalyticsSessionSendOutcome outcome,
@@ -832,7 +852,10 @@ final class const ScheduledTaskSavedEvent({
   required final AnalyticsScheduledTaskRepeat repeat,
   required final AnalyticsScheduledTaskRunMode runMode,
   required final AnalyticsScheduledTaskApprovalMode approvalMode,
-  required final AnalyticsScheduledTaskMissedRunPolicy missedRunPolicy,
+
+  /// Null for a one-off task, which runs when the bridge is back whatever
+  /// its policy.
+  required final AnalyticsScheduledTaskMissedRunPolicy? missedRunPolicy,
 
   /// Null for a new-session task, which has nothing to compact.
   required final bool? autoCompact,
@@ -872,7 +895,7 @@ final class const ScheduledTaskSavedEvent({
       repeat: repeat,
       runMode: runMode,
       approvalMode: approvalMode,
-      missedRunPolicy: missedRunPolicy,
+      missedRunPolicy: repeat == AnalyticsScheduledTaskRepeat.once ? null : missedRunPolicy,
       autoCompact: autoCompact,
     );
   }
@@ -886,7 +909,7 @@ final class const ScheduledTaskSavedEvent({
     "repeat_kind": repeat.wireValue,
     "run_mode": runMode.wireValue,
     "approval_mode": approvalMode.wireValue,
-    "missed_run_policy": missedRunPolicy.wireValue,
+    if (missedRunPolicy case final missedRunPolicy?) "missed_run_policy": missedRunPolicy.wireValue,
     if (autoCompact case final autoCompact?) "auto_compact": autoCompact.toString(),
   };
 }
@@ -899,6 +922,19 @@ final class const SessionMessageEditedEvent({
 }) extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_message_edited";
+
+  @override
+  Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};
+}
+
+/// The bridge answered a fork of a session. The session, its title and where
+/// it was cut stay off the wire.
+final class const SessionForkedEvent({
+  required final AnalyticsHarness harness,
+  required final AnalyticsSessionForkOutcome outcome,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "session_forked";
 
   @override
   Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};

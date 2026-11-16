@@ -557,7 +557,7 @@ void main() {
         childSessions: childSessions,
       ),
       childSessionTracker: childSessions,
-      commandTracker: AcpCommandTracker(),
+      commandTracker: AcpCommandTracker(selectionCommands: const {}),
       processFactory: (_) async => fake,
     );
     addTearDown(() async {

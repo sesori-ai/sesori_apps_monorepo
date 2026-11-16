@@ -96,6 +96,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
             onOpenArchived: () => _openPage(context: context, route: const AppRoute.archivedSessions()),
             onOpenScheduled: () => _openPage(context: context, route: const AppRoute.scheduledTasks()),
+            onNewTask: () => _pushRoute(context: context, route: const AppRoute.scheduledTaskEditor(taskId: null)),
             onGoBack: () => _goBack(context: context),
             child: Builder(
               builder: (context) => SessionDetailRouteVisibility(
@@ -273,6 +274,22 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 context.pop();
               } else {
                 _goRoute(context: context, route: parent);
+              }
+            },
+            // A fork opened over its origin goes back there; one reached any other way selects its origin.
+            onReturnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {
+              final origin = AppRoute.sessionDetail(
+                projectId: projectId,
+                projectName: projectId == route.projectId ? route.projectName : null,
+                sessionId: sessionId,
+                sessionTitle: sessionTitle,
+                readOnly: readOnly,
+                fromLaunch: false,
+              );
+              if (_pageBelowIs(context: context, route: origin)) {
+                context.pop();
+              } else {
+                _goRoute(context: context, route: origin);
               }
             },
             onShowDiffs: () => _pushRoute(

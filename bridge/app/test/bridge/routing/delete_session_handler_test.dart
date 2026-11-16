@@ -714,6 +714,9 @@ class _RecordingPromptUploadRepository({required final PromptUploadRepository _d
       _delegate.save(sessionId: sessionId, bytes: bytes, filename: filename);
 
   @override
+  Future<void> deleteSaved({required String path}) => _delegate.deleteSaved(path: path);
+
+  @override
   Future<void> deleteSessions({required List<String> sessionIds}) {
     deletedSessionIds.add(sessionIds);
     final failure = this.failure;

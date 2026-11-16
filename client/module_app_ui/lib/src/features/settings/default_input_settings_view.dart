@@ -49,6 +49,7 @@ class const DefaultInputSettingsView({
           ),
         ),
       ],
+      titleKeptSuffix: null,
     );
   }
 }

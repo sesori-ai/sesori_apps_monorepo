@@ -33,6 +33,11 @@ class StrictFakeProcessRepository() implements ProcessRepository {
   }
 
   @override
+  Future<List<int>> listPosixDescendants({required int pid}) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<SignalResult> sendGracefulSignal({required int pid}) {
     throw UnimplementedError();
   }

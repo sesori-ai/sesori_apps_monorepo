@@ -439,23 +439,25 @@ void main() {
       await subscription.cancel();
     });
 
-    test("rejects the native /fast command as a stale option", () async {
+    test("rejects the native /model, /effort and /fast commands as stale options", () async {
       await harness.createSession();
 
-      await expectLater(
-        harness.plugin.sendCommand(
-          fastMode: true,
-          promptId: "prompt-fast",
-          sessionId: testSessionId,
-          command: "fast",
-          arguments: "on",
-          userVisibleArguments: "on",
-          variant: null,
-          agent: null,
-          model: null,
-        ),
-        throwsA(isA<PluginStaleOptionsException>()),
-      );
+      for (final command in ["model", "effort", "fast"]) {
+        await expectLater(
+          harness.plugin.sendCommand(
+            fastMode: true,
+            promptId: "prompt-$command",
+            sessionId: testSessionId,
+            command: command,
+            arguments: "on",
+            userVisibleArguments: "on",
+            variant: null,
+            agent: null,
+            model: null,
+          ),
+          throwsA(isA<PluginStaleOptionsException>()),
+        );
+      }
       expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
     });
 

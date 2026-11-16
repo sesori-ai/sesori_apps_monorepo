@@ -17,6 +17,9 @@ final class const ClaudeBackendCatalog({
   /// `resolvedModel` values and short family/context aliases such as
   /// `fable[1m]`.
   required final Map<String, String> modelIdsByApiModel,
+
+  /// How long Claude caches a prompt on the account's billing route.
+  required final Duration promptCacheLife,
 }) {
   /// The picker id behind an API model name, or null when the catalog has no
   /// such model. Claude can omit a context suffix from a resolved name, so a
@@ -50,9 +53,10 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
   static const List<String> _families = ["fable", "opus", "sonnet", "haiku"];
   static const ClaudeEffortLevel _defaultEffort = ClaudeEffortLevel.high;
 
-  /// Claude's native `/fast` toggle is not offered: the session's fast-mode
-  /// selection owns that setting, and the process state it tracks would drift.
-  static const String fastModeCommand = "fast";
+  /// Claude's native `/model`, `/effort` and `/fast` are not offered: the
+  /// session's selection owns those settings, and the process state it tracks
+  /// would drift.
+  static const Set<String> selectionCommands = {"model", "effort", "fast"};
 
   /// Claude's native command that compacts the conversation.
   static const String compactionCommand = "compact";
@@ -94,9 +98,10 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
   /// [skillNames] is labelled a skill and every other one a command.
   ClaudeBackendCatalog map({required Map<String, Object?> handshake, required Set<String> skillNames}) {
     final dto = ClaudeBackendCatalogDto.fromJson(handshake);
+    final promptCacheLife = Duration(seconds: _promptCacheTtlSeconds(account: dto.account));
     final fastMode = _fastMode(
       disabledReason: dto.fastModeDisabledReason,
-      promptCacheTtlSeconds: _promptCacheTtlSeconds(account: dto.account),
+      promptCacheTtlSeconds: promptCacheLife.inSeconds,
     );
     final entries = _newestPerFamily([
       for (final model in dto.models)
@@ -141,6 +146,7 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
         for (final command in dto.commands) ?_command(command, skillNames: skillNames),
       ]),
       modelIdsByApiModel: Map.unmodifiable(_modelIdsByApiModel(entries)),
+      promptCacheLife: promptCacheLife,
     );
   }
 
@@ -273,7 +279,7 @@ final class ClaudeBackendCatalogRepository({required final ClaudeCommandFilesApi
 
   PluginCommand? _command(ClaudeCommandDto dto, {required Set<String> skillNames}) {
     final name = dto.name?.trim();
-    if (name == null || name.isEmpty || name == fastModeCommand) return null;
+    if (name == null || name.isEmpty || selectionCommands.contains(name)) return null;
     return PluginCommand(
       name: name,
       description: trimmedOrNull(value: dto.description),

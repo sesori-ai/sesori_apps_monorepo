@@ -146,6 +146,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   pre-ACP binary, a Hermes Agent release below `0.20.0`, and missing model/provider
   configuration; startup revalidates the effective PATH or explicit `--hermes-bin` executable
   while preserving an explicit path as authoritative.
+  A pending Hermes self-update does not stall the `hermes status` probe: the probe skips
+  Hermes' launch-time update completion, which the `hermes acp` launch still runs; that
+  launch waits up to 10 minutes for the ACP handshake so the update can finish.
   Provider setup remains an out-of-band Hermes CLI action, so authentication-required
   Hermes entries give local setup guidance rather than offering bridge-managed login.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
@@ -435,6 +438,15 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   normal start, with an explicit variable replacing the parent's whatever its case,
   and that a late-bound process ends when the process holding the job exits while an
   unbound one survives.
+- On macOS and Linux, stopping a running backend runtime (bridge shutdown or plugin
+  restart) signals the runtime and every process descending from it at that moment,
+  detached ones included, so tool commands and helpers it started end with it. Oh My
+  Pi's named `bash` services run under a detached per-project broker that outlives
+  `omp` by design; when Sesori's `omp` spawned that broker, a bridge SIGTERM ends the
+  broker and its services, including any a terminal `omp` in the same project started
+  there; a broker another `omp` spawned is not reached. Short commands keep root-only signals, so the detached
+  OpenCode 2 service survives. Failure signal: after a bridge SIGTERM mid-turn, `ps`
+  still shows a tool command or `__omp_worker_daemon_broker` reparented to init.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
   A Codex 0.162.1 PATH install (newer than the 0.160.1 managed target) was observed
@@ -708,7 +720,7 @@ Vary which harness runs first and which stays disabled, and the configuration: d
 managed, explicit binary path, externally managed backend. Vary the trigger between app
 and management API, whether a session is idle or working, and fresh versus reused data
 directories. For Hermes, vary missing and pre-ACP installs, a release below `0.20.0`, an
-unconfigured model/provider, PATH discovery, and `--hermes-bin`. Restore eligibility,
+unconfigured model/provider, a pending self-update, PATH discovery, and `--hermes-bin`. Restore eligibility,
 timeouts, and sessions afterwards. For Antigravity, vary missing, mismatched and
 valid official pairs, PATH versus authoritative explicit selection,
 authenticated versus authentication-required isolated profiles, and current

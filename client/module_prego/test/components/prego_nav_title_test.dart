@@ -13,7 +13,7 @@ void main() {
           height: PregoTopNavigation.barHeight,
           width: 300,
           child: Center(
-            child: PregoNavTitle(title: "Bridge", subtitle: subtitle),
+            child: PregoNavTitle(title: "Bridge", subtitle: subtitle, titleKeptSuffix: null),
           ),
         ),
       ),

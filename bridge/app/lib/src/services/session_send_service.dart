@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show BridgeSseSessionError, BridgeSseSessionIdle, Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/session_archived_read_only_exception.dart";
 import "../repositories/mappers/session_transcript_markdown_builder.dart";
 import "../repositories/models/history_window.dart";
 import "../repositories/models/normalized_bridge_event.dart";
@@ -539,10 +540,20 @@ class SessionSendService({
         ),
       );
     } on Object catch (error, stackTrace) {
+      // Only these mean the target never took the prompt, so nothing names
+      // the transcript; any other failure may come after the target took it.
+      if (error is SessionArchivedReadOnlyException ||
+          error is StaleSessionPromptOptionsException ||
+          error is SessionPromptRefusedException) {
+        await _transcripts.deleteSaved(path: transcriptPath);
+      }
       throw SessionSendRejectedException(
-        code: error is StaleSessionPromptOptionsException
-            ? SendToSessionErrorCode.targetOptionsUnavailable
-            : SendToSessionErrorCode.targetRefused,
+        code: switch (error) {
+          // Archived while the summary was written, after the first check.
+          SessionArchivedReadOnlyException() => SendToSessionErrorCode.targetArchived,
+          StaleSessionPromptOptionsException() => SendToSessionErrorCode.targetOptionsUnavailable,
+          _ => SendToSessionErrorCode.targetRefused,
+        },
         userFacingReason: error is SessionPromptRefusedException ? error.userFacingReason : null,
         cause: error,
         causeStackTrace: stackTrace,

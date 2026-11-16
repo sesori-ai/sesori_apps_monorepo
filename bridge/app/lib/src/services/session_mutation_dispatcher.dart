@@ -147,6 +147,34 @@ class SessionMutationDispatcher({
     );
   }
 
+  /// Places pinned [sessionId] directly below pinned [afterSessionId], or at
+  /// the top of the pinned group when it is null, and announces every
+  /// session whose place changed to every client, top first. Either session
+  /// not being pinned, or the two being the same, is not found.
+  Future<List<Session>> movePin({required String sessionId, required String? afterSessionId}) {
+    if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
+    return _sessionOperationDispatcher.dispatch(
+      sessionId: sessionId,
+      operation: SessionOperation.movePin,
+      body: () async {
+        final moved = await _sessionRepository.movePin(sessionId: sessionId, afterSessionId: afterSessionId);
+        if (moved == null) {
+          throw PluginOperationException.notFound(
+            operation: SessionOperation.movePin.name,
+            message: switch (afterSessionId) {
+              null => "session $sessionId is not pinned",
+              final afterSessionId => "session $sessionId cannot be placed below $afterSessionId",
+            },
+          );
+        }
+        for (final session in moved) {
+          _mutationsController.add(SessionPinnedUpdated(session: session));
+        }
+        return moved;
+      },
+    );
+  }
+
   Future<Session?> applyGeneratedTitle({required String sessionId, required String title}) {
     if (_disposed) return Future.error(StateError("SessionMutationDispatcher is disposed"));
     return _sessionOperationDispatcher.dispatch(

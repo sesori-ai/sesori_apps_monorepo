@@ -3805,6 +3805,12 @@ abstract class AppLocalizations {
   /// **'Failed to unpin session'**
   String get sessionListUnpinFailed;
 
+  /// Error alert when the computer refused a dragged pinned session's new place, after the rows slid back.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the pinned order'**
+  String get sessionListPinMoveFailed;
+
   /// Session menu entry that opens the sheet for sending this session's work into another session.
   ///
   /// In en, this message translates to:
@@ -4069,10 +4075,10 @@ abstract class AppLocalizations {
   /// **'Its worktree will be deleted too. The branch is kept.'**
   String get sessionListDeleteWorktreeNotice;
 
-  /// Line in the delete confirmation, on both shells, stating that a session started without a project loses the folder it worked in, with the files the agent wrote there. Deletion never offers a choice about this.
+  /// Line in the delete confirmation, on both shells, stating that a session started without a project loses the folder it worked in, with the files the agent wrote there, except while a fork of the session still works in that folder, which the computer then keeps. Deletion never offers a choice about this.
   ///
   /// In en, this message translates to:
-  /// **'Its folder and every file in it will be deleted too.'**
+  /// **'Its folder and every file in it will be deleted too, unless a fork of it still uses the folder.'**
   String get sessionListDeleteFolderNotice;
 
   /// No description provided for @sessionListDeleted.
@@ -5623,6 +5629,24 @@ abstract class AppLocalizations {
   /// **'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead.'**
   String get sessionDetailEditMidTurnBody;
 
+  /// Explains why a message sent mid-turn cannot be edited, in a session that can fork, where the explanation also offers Fork from here.
+  ///
+  /// In en, this message translates to:
+  /// **'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead, or fork from here to send it again in a new session.'**
+  String get sessionDetailEditMidTurnForkBody;
+
+  /// Quiet line above the oldest message of a session forked from another one; tapping it goes back to that session.
+  ///
+  /// In en, this message translates to:
+  /// **'Forked from {title}'**
+  String transcriptForkedFrom(String title);
+
+  /// Quiet line above the oldest message of a session forked from a session that had no title.
+  ///
+  /// In en, this message translates to:
+  /// **'Forked from an untitled session'**
+  String get transcriptForkedFromUntitled;
+
   /// Title of the explanation shown when Edit and resend is tapped on a command, skill or MCP prompt.
   ///
   /// In en, this message translates to:
@@ -5694,6 +5718,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 attachment couldn\'t be brought back} other{{count} attachments couldn\'t be brought back}}'**
   String sessionDetailEditBannerLeftOut(int count);
+
+  /// Transcript message menu entry that starts a new session holding the conversation up to this message. On the user's own message the fork starts just before it, with the message waiting in the new session's composer.
+  ///
+  /// In en, this message translates to:
+  /// **'Fork from here'**
+  String get sessionDetailForkFromHere;
+
+  /// Session menu entry that starts a new session holding this session's conversation through its latest finished reply.
+  ///
+  /// In en, this message translates to:
+  /// **'Fork'**
+  String get sessionListFork;
+
+  /// Alert shown while the computer makes a fork, when it takes longer than a moment.
+  ///
+  /// In en, this message translates to:
+  /// **'Forking…'**
+  String get sessionForkForking;
+
+  /// Alert shown when Fork in the session menu found no finished reply to keep.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to fork yet'**
+  String get sessionForkNothingToFork;
+
+  /// Line under the Nothing to fork yet alert.
+  ///
+  /// In en, this message translates to:
+  /// **'The session hasn\'t finished a reply yet.'**
+  String get sessionForkNothingToForkBody;
+
+  /// Alert title shown when the computer refused a fork. Its line is the computer's reason, or the generic line.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t fork this session'**
+  String get sessionForkRefused;
+
+  /// Line of the refused-fork alert when the computer gave no reason.
+  ///
+  /// In en, this message translates to:
+  /// **'The session didn\'t accept the fork. Nothing changed.'**
+  String get sessionForkRefusedBody;
+
+  /// Alert shown when the computer's answer to a fork never arrived, so the fork may exist.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t confirm the fork. Check your session list before trying again.'**
+  String get sessionForkFailed;
+
+  /// Title of the prompt shown when an archived session's worktree was removed and nothing kept where it stood, before forking it.
+  ///
+  /// In en, this message translates to:
+  /// **'This session\'s worktree is gone'**
+  String get sessionForkWorktreeMissingTitle;
+
+  /// Body of the prompt shown before forking an archived session whose worktree is gone.
+  ///
+  /// In en, this message translates to:
+  /// **'Its earlier work can\'t be restored. The fork can start in a new worktree from where this session began.'**
+  String get sessionForkWorktreeMissingBody;
+
+  /// Button of the missing-worktree prompt that forks the session into a new worktree from where it began.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new worktree'**
+  String get sessionForkWorktreeMissingCreate;
+
+  /// Button of the missing-worktree prompt that leaves the session unforked.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionForkCancel;
 
   /// Confirmation shown after Copy in a transcript message's menu copied the message, or the text selected in it.
   ///
@@ -7722,6 +7818,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Continue in the same session'**
   String get scheduledTaskContinuesSession;
+
+  /// Each run sheet switch, under Continue in the same session: compact the session between runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-compact'**
+  String get scheduledTaskAutoCompact;
+
+  /// Subtitle under the Auto-compact switch explaining what it does.
+  ///
+  /// In en, this message translates to:
+  /// **'Compacts the session before its prompt cache goes cold, so the next run starts small.'**
+  String get scheduledTaskAutoCompactDetail;
+
+  /// Notice shown when the user taps the Auto-compact switch, which stays off because the task's harness cannot compact a session when asked.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} can\'t compact on request'**
+  String scheduledTaskAutoCompactUnsupported(String harness);
 
   /// Each run sheet heading for how a run answers permission requests.
   ///

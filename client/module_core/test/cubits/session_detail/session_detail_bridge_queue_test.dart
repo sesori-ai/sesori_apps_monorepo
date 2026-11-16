@@ -284,6 +284,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         );
       });
@@ -321,6 +322,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         );
       });
@@ -375,6 +377,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         );
       });
@@ -406,6 +409,7 @@ void main() {
         sseEventTracker: MockSseEventTracker(),
         fileReferenceOpenService: MockFileReferenceOpenService(),
         composerRestore: MockMessageComposerRestoreService(),
+        actionService: MockSessionActionService(),
         window: idleSessionWindow(),
         sessionLaunchService:
             sessionLaunchService ??

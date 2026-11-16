@@ -345,29 +345,49 @@ class const SessionTile({
   /// the titles that really did overflow, without a row paying to be measured
   /// twice. The ramp is an ellipsis wide rather than the design's, which is
   /// the price of that.
+  ///
+  /// A fork's " (fork)" stays whole after the cut, as it is what tells the fork
+  /// from its origin.
   Widget _title({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
     final size = prego.textTheme.textMd;
-
-    final title = Text(
-      session.title ?? context.loc.sessionListUntitled,
-      // Unopened activity leans on weight rather than a badge.
-      style: (unseen ? size.medium : size.regular).copyWith(
-        // Medium is the heaviest weight under a pointer, so colour says what is unread.
-        color: pointer && !unseen && !awaitingInput && !isRunning && !selected
-            ? Color.lerp(prego.colors.textPrimary, prego.colors.textSecondary, 0.5)
-            : prego.colors.textPrimary,
-      ),
-      maxLines: 1,
-      softWrap: false,
-      overflow: pointer ? TextOverflow.clip : TextOverflow.fade,
+    final text = session.title ?? context.loc.sessionListUntitled;
+    // Unopened activity leans on weight rather than a badge.
+    final style = (unseen ? size.medium : size.regular).copyWith(
+      // Medium is the heaviest weight under a pointer, so colour says what is unread.
+      color: pointer && !unseen && !awaitingInput && !isRunning && !selected
+          ? Color.lerp(prego.colors.textPrimary, prego.colors.textSecondary, 0.5)
+          : prego.colors.textPrimary,
     );
-    if (!pointer) return title;
+
+    if (!pointer) {
+      return PregoKeptSuffixText(
+        text: text,
+        keptSuffix: sessionForkTitleSuffix,
+        style: style,
+        softWrap: false,
+        overflow: TextOverflow.fade,
+      );
+    }
+    Text line(String part) => Text(part, style: style, maxLines: 1, softWrap: false, overflow: TextOverflow.clip);
     return Tooltip(
-      message: session.title ?? context.loc.sessionListUntitled,
+      message: text,
       waitDuration: const Duration(milliseconds: 400),
       excludeFromSemantics: true,
-      child: _FadingTitle(title: title),
+      // The fade runs over the text before the suffix, so the suffix stays crisp.
+      child: switch (PregoKeptSuffixText.split(text: text, keptSuffix: sessionForkTitleSuffix)) {
+        (:final base, :final suffix) => Semantics(
+          label: text,
+          excludeSemantics: true,
+          child: Row(
+            children: [
+              Flexible(child: _FadingTitle(title: line(base))),
+              line(suffix),
+            ],
+          ),
+        ),
+        null => _FadingTitle(title: line(text)),
+      },
     );
   }
 

@@ -30,6 +30,10 @@ class const SessionDetailPresentationScope({
   required final bool canShareImages,
   required final ExternalLinkOpener openExternalLink,
   required final SessionDetailSessionOpener openSession,
+
+  /// Goes back to a session the reader came from, such as a fork's origin:
+  /// back when it is the page or selection below, otherwise opened.
+  required final SessionDetailSessionReturner returnToSession,
   required final VoidCallback openHarnessSettings,
 
   /// Opens the settings that hold the connected bridge's YOLO toggle.
@@ -68,6 +72,7 @@ class const SessionDetailPresentationScope({
     canShareImages: canShareImages,
     openExternalLink: openExternalLink,
     openSession: openSession,
+    returnToSession: returnToSession,
     openHarnessSettings: openHarnessSettings,
     openBridgeSettings: openBridgeSettings,
     openSideChat: openSideChat,
@@ -87,6 +92,7 @@ class const SessionDetailPresentationScope({
       canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||
       openSession != oldWidget.openSession ||
+      returnToSession != oldWidget.returnToSession ||
       openHarnessSettings != oldWidget.openHarnessSettings ||
       openBridgeSettings != oldWidget.openBridgeSettings ||
       openSideChat != oldWidget.openSideChat;
@@ -97,6 +103,13 @@ typedef SessionDetailCapabilityProvider<T> = T Function();
 typedef FilePreviewCubitFactory = FilePreviewCubit Function({required FileReference reference});
 
 typedef SessionDetailSessionOpener = void Function({
+  required String projectId,
+  required String sessionId,
+  required String? sessionTitle,
+  required bool readOnly,
+});
+
+typedef SessionDetailSessionReturner = void Function({
   required String projectId,
   required String sessionId,
   required String? sessionTitle,
