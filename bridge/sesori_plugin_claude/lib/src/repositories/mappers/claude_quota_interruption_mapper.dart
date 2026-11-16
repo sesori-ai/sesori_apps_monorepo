@@ -15,9 +15,13 @@ final class ClaudeQuotaInterruptionMapper({required final ClaudeContentMapper co
     tz_data.initializeTimeZones();
   }
 
+  // Claude Code formats a reset more than a day away as `Nov 19 at 6pm`, and
+  // adds the year only when it differs from the current one: `Jan 2, 2027 at 6pm`.
   static final _reset = RegExp(
-    r"^You've hit your (?:session|weekly) limit · resets (\d{1,2})(?::(\d{2}))?(am|pm) \(([^)]+)\)$",
+    "^You've hit your (?:session|weekly) limit · resets "
+    r"(?:([A-Z][a-z]{2}) (\d{1,2})(?:, (\d{4}))? at )?(\d{1,2})(?::(\d{2}))?(am|pm) \(([^)]+)\)$",
   );
+  static const _months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   PluginQuotaInterruption? map({required ClaudeAssistantMessage message, required DateTime observedAt}) {
     final id = message.messageId;
@@ -44,11 +48,11 @@ final class ClaudeQuotaInterruptionMapper({required final ClaudeContentMapper co
 
   PluginQuotaReset _parseReset({required String text, required DateTime observedAt}) {
     final match = _reset.firstMatch(text);
-    final hourText = match?[1];
-    final zoneName = match?[4];
+    final hourText = match?[4];
+    final zoneName = match?[7];
     if (match == null || hourText == null || zoneName == null) return const PluginQuotaResetUnknown();
     final hour = int.parse(hourText);
-    final minute = int.parse(match[2] ?? "0");
+    final minute = int.parse(match[5] ?? "0");
     if (hour < 1 || hour > 12 || minute > 59) return const PluginQuotaResetUnknown();
     final tz.Location location;
     try {
@@ -57,9 +61,30 @@ final class ClaudeQuotaInterruptionMapper({required final ClaudeContentMapper co
       return const PluginQuotaResetUnknown();
     }
     final local = tz.TZDateTime.from(observedAt, location);
-    final wallTime = DateTime.utc(local.year, local.month, local.day, hour % 12 + (match[3] == "pm" ? 12 : 0), minute);
-    // A date-less reset is usable only on the observed local date. Do not guess
-    // a next day, a normalized DST gap, or one side of a repeated wall time.
+    final hour24 = hour % 12 + (match[6] == "pm" ? 12 : 0);
+    final monthText = match[1];
+    final dayText = match[2];
+    final DateTime wallTime;
+    if (monthText == null || dayText == null) {
+      // A date-less reset is usable only on the observed local date. Do not
+      // guess a next day.
+      wallTime = DateTime.utc(local.year, local.month, local.day, hour24, minute);
+    } else {
+      final month = _months.indexOf(monthText) + 1;
+      final day = int.parse(dayText);
+      if (month == 0) return const PluginQuotaResetUnknown();
+      final yearText = match[3];
+      // Without a year, a date earlier than the observed local date is a Dec->Jan rollover.
+      final year = yearText != null
+          ? int.parse(yearText)
+          : month < local.month || (month == local.month && day < local.day)
+          ? local.year + 1
+          : local.year;
+      wallTime = DateTime.utc(year, month, day, hour24, minute);
+      // `DateTime` normalizes overflow such as Feb 30 into another date.
+      if (wallTime.month != month || wallTime.day != day) return const PluginQuotaResetUnknown();
+    }
+    // Do not guess a normalized DST gap or one side of a repeated wall time.
     final candidates = <DateTime>{};
     for (final offset in location.zones.map((zone) => zone.offset).toSet()) {
       final candidate = wallTime.subtract(offset);
