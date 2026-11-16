@@ -219,6 +219,82 @@ void main() {
       expect(events, isEmpty);
     });
 
+    test("refuses a send whose model OMP no longer offers before accepting it", () async {
+      await connect();
+      final creating = plugin.createSession(
+        fastMode: false,
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      respond(await waitForFrame(AcpMethods.sessionNew), {
+        "sessionId": "session-1",
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "one/model",
+            "options": const [
+              {"value": "one/model", "name": "One"},
+            ],
+          },
+        ],
+      });
+      await creating;
+
+      await expectLater(
+        plugin.sendPrompt(
+          fastMode: false,
+          promptId: "prompt-1",
+          sessionId: "session-1",
+          parts: const [PluginPromptPart.text(text: "hello")],
+          variant: null,
+          agent: null,
+          model: (providerID: "gone", modelID: "gone/model"),
+        ),
+        throwsA(isA<PluginStaleOptionsException>()),
+      );
+      expect(await plugin.getQueuedPrompts(sessionId: "session-1"), isEmpty);
+      expect(frames(AcpMethods.sessionSetConfigOption), isEmpty);
+    });
+
+    test("forgets the session it created when the create's selection is refused as stale", () async {
+      await connect();
+      final creating = plugin.createSession(
+        fastMode: false,
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: (providerID: "gone", modelID: "gone/model"),
+      );
+      respond(await waitForFrame(AcpMethods.sessionNew), {
+        "sessionId": "session-1",
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "one/model",
+            "options": const [
+              {"value": "one/model", "name": "One"},
+            ],
+          },
+        ],
+      });
+
+      await expectLater(
+        creating,
+        throwsA(isA<PluginStaleOptionsException>().having((e) => e.operation, "operation", "createSession")),
+      );
+      expect(plugin.knownSessionDirectory(sessionId: "session-1"), isNull);
+    });
+
     test("does not prompt after a partially applied model selection", () async {
       await connect();
       final creating = plugin.createSession(

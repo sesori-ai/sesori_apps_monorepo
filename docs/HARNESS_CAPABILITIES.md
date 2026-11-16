@@ -330,7 +330,7 @@ refused with a reason.
 
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
-| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ✅ Sesori writes the kept active branch, through the kept turn's last record, to `<new id>.jsonl` under the fork's id; the first prompt then runs `--resume=<new id>`. Verified live on 2026-11-15 with Claude Code 2.1.322. The origin is only read, so it may be running. A point before the latest compaction is 🚫 and refused with a reason, as for edit; a message off the active branch and an origin without a transcript are refused too. Sub-agent transcripts stay with the origin |
+| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ✅ Sesori writes the kept active branch, through the kept turn's last record, to `<new id>.jsonl` under the fork's id; the first prompt then runs `--resume=<new id>`. Verified live on 2026-11-15 with Claude Code 2.1.322. The origin is only read, so it may be running. A point before a compaction forks from the full turns before it, leaving the compaction behind; a message off the active branch and an origin without a transcript are refused with a reason. Sub-agent transcripts stay with the origin |
 | Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ✅ `thread/fork {lastTurnId}` into a new persisted thread in the same directory; the source is not loaded, so it can run a later turn or be archived. Verified live on 2026-11-15 with Codex 0.169.0. Runtimes before 0.143.0 predate `lastTurnId`; by their source they ignore the unknown field and would copy the whole thread (not run live), so they are refused with a reason before anything is created, as are an unknown message, a missing rollout and a turn still running. A reply that a steered follow-up continued in the same native turn is 🚫: Codex forks only whole turns. Deleting a source keeps the rollouts a fork builds on and `thread/archive`s them, which Codex allows and forks keep reading |
 | Every other harness | ⬜ Not implemented yet for in-place rewinds; the bridge accepts a first-message swap, but the app shows no Edit because the harness does not declare `rewind` | ⬜ Not implemented yet |
 
@@ -358,6 +358,10 @@ directory, 2026-11-15):
   first prompt and needs no fork flags. A plain `--resume=<new>` of the written
   file reports the new id and parents the next prompt to the kept turn's last
   record.
+- A fork written from before a compaction holds no compaction, and a
+  `--resume=<new>` of it sends the full turns before the compaction
+  (checked live on 2.1.322 on 2026-11-16). Only an edit must stay after the
+  latest compaction, because it resumes the original transcript.
 
 ## Explicit shell-command presentation
 
@@ -662,8 +666,8 @@ app ignores `kind` and shows the row's text in red.
 | Pi | ✅ `stopReason: aborted`. | ✅ The same record. |
 | OpenCode v1 | ✅ `MessageAbortedError`. | ✅ The same record. |
 | OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
-| OMP | ✅ The shared ACP plugin's line, as below. | ⚠️ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing; it folds into the live line. A reply that streamed first keeps its line only until the history is re-read. |
-| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ⚠️ They record no stop, so the line shows only until the history is re-read. |
+| OMP | ✅ The shared ACP plugin's line, as below. | ✅ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing, folds into the live line. For a reply that streamed first, the bridge keeps the live line while the replay holds the turn's prompt. |
+| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ✅ They record no stop; the bridge keeps the live line while the replay holds the turn's prompt. |
 | Claude Code | ✅ The CLI's `[Request interrupted by user]` record (`… for tool use` when a tool was cut off), streamed before the turn's result. | ✅ The same record, by its uuid; the CLI's `<synthetic>` "No response requested." reply after it is hidden. |
 | Codex | ✅ `turn/completed` `interrupted` for a turn a Stop interrupted, keyed by the turn id. | ✅ Rollout `turn_aborted` with reason `interrupted`, keyed by its turn id. |
 
@@ -677,12 +681,25 @@ record before the shutdown ends the process, which a shutdown does not wait for.
 seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds,
 including for a turn the CLI started on its own, such as a wakeup.
 
-Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so that text
-shows live but is gone after a reload, leaving the Stopped line directly under the prompt. Claude Code keeps it.
+Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so the bridge
+snapshots that text live.
+
+The bridge's chat history keeps the live rows that the replay lacks of a turn with a row marked `kind: stopped` (a
+user Stop), its streamed reply and its Stopped row alike, for as long as the replay still holds the turn's prompt. A
+Stopped line shown live therefore stays after a reload on every harness, including those that record no stop; a
+rollback that removes the prompt removes them too. Rows not marked stopped, such as OMP's "Request was aborted"
+notices, stay failures and this rule keeps none of them. A session the bridge did not watch live shows only what the
+harness recorded.
 
 On the ACP harnesses a shutdown, a plugin restart or a follow-up that replaces the running turn cancels it without a
 Stopped line, and so does a Stop that lands before the prompt reached the agent. A turn that already showed a failed-turn
 notice (see [Failed-turn notices sent as text](#failed-turn-notices-sent-as-text)) keeps that notice as its one row.
+
+Hermes 0.21.5 keeps a `session/cancel` that reaches an idle session and refuses that session's next prompt with "Stopped
+waiting for another Hermes process on this session. Your message was not processed." So the Hermes plugin sends no
+cancel while the session has no turn running or queued and no sub-agent work. Verified live on 2026-11-16 on the test
+proxy: after a Stop on an idle session, the next prompt is answered. ⚠️ A Stop that reaches Hermes just after its turn
+ended can still cost the next prompt, which then needs resending.
 
 ## Pre-start catalog import
 
@@ -1301,9 +1318,10 @@ and the picker still shows the plain "Running" label instead of the warning. A
 steer that OMP admits as `promptRequired` runs as the next turn, without
 cancelling the current one.
 
-² Hermes ignored the first question after an aborted turn, answering "Stopped
-waiting for another Hermes process on this session. Your message was not
-processed."; the same question sent again was read and answered.
+² A first check found that Hermes ignored the first question after a Stop,
+answering "Stopped waiting for another Hermes process on this session. Your
+message was not processed." A Stop on an idle session no longer does this; a
+Stop that lands just after a turn ends still can. See [Stopped turns](#stopped-turns).
 
 Checked live on 2026-11-16 (UTC) against a source-run bridge on its local debug
 server, with one Pi session as the source and a fresh session of each installed

@@ -171,6 +171,62 @@ class OmpSessionOptionsService({
     return current;
   }
 
+  /// Refuses a send whose [model], [agent] or [variant] OMP no longer offers,
+  /// by the rules [applyTurnSelection] applies, so the send fails before it
+  /// is accepted rather than as a dropped turn. It checks what OMP last
+  /// reported for [sessionId], else the catalog of [projectId], the session's
+  /// known directory (null while unknown, so no other project's catalog is
+  /// used). An option kind OMP has reported nothing for is left for the turn
+  /// to check.
+  void validateTurnSelection({
+    required String operation,
+    required String sessionId,
+    required String? projectId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) {
+    final session = _sessionConfigs[sessionId];
+    final catalog = projectId == null ? null : _tracker.snapshotFor(projectId: projectId);
+    if (session == null && catalog == null) return;
+    final requestedModel = model?.modelID;
+    if (requestedModel != null && requestedModel.isNotEmpty) {
+      final models = switch (session?.models) {
+        final models? when models.isNotEmpty => models,
+        _ => catalog?.models ?? const [],
+      };
+      if (models.isNotEmpty && !models.any((entry) => entry.value == requestedModel)) {
+        throw PluginStaleOptionsException(
+          operation: operation,
+          message: "OMP no longer offers the selected model",
+        );
+      }
+    }
+    final hasModes = (session?.modes.isNotEmpty ?? false) || (catalog?.modes.isNotEmpty ?? false);
+    if (agent != null &&
+        agent.isNotEmpty &&
+        hasModes &&
+        _resolveMode(agent: agent, snapshot: session, catalog: catalog) == null) {
+      throw PluginStaleOptionsException(
+        operation: operation,
+        message: "OMP no longer offers the selected mode",
+      );
+    }
+    final requestedVariant = variant?.id;
+    if (requestedVariant == null || requestedVariant.isEmpty) return;
+    final currentModel = session?.currentModelValue;
+    final selectedModel = requestedModel == null || requestedModel.isEmpty ? currentModel : requestedModel;
+    final thinking = selectedModel == currentModel
+        ? session?.thinking ?? catalog?.thinkingByModel[selectedModel]
+        : catalog?.thinkingByModel[selectedModel];
+    if (thinking != null && !thinking.variants.contains(requestedVariant)) {
+      throw PluginStaleOptionsException(
+        operation: operation,
+        message: "OMP no longer offers the selected thinking level",
+      );
+    }
+  }
+
   void forgetSession({required String sessionId}) => _sessionConfigs.remove(sessionId);
 
   void resetConnection() {

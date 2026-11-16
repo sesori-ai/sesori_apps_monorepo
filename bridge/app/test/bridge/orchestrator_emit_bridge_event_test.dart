@@ -1330,6 +1330,7 @@ BridgeSseSessionUpdated _lateSessionUpdate({required String pluginId}) {
       promptDefaults: null,
       lastUserActivityAt: null,
       branchName: null,
+      pinOrder: null,
       scheduledTask: null,
       interruption: null,
       forkedFrom: null,

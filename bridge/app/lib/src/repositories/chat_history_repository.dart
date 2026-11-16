@@ -402,6 +402,13 @@ class ChatHistoryRepository({
   bool _isUserRow({required HistoryMessagesTableData row}) =>
       Message.fromJson(jsonDecodeMap(row.infoJson)) is MessageUser;
 
+  bool _isStoppedRow({required HistoryMessagesTableData row}) => switch (Message.fromJson(
+    jsonDecodeMap(row.infoJson),
+  )) {
+    MessageError(kind: MessageErrorKind.stopped) => true,
+    _ => false,
+  };
+
   bool _isInvocationRow({required HistoryMessagesTableData row}) => switch (Message.fromJson(
     jsonDecodeMap(row.infoJson),
   )) {
@@ -1126,6 +1133,24 @@ class ChatHistoryRepository({
           inUnreplayedRun = false;
         }
       }
+    }
+    // A stopped turn keeps the rows the replay doesn't hold, up to its stopped
+    // row: Codex records none of the reply it was streaming, and most ACP
+    // harnesses record no stop at all. The turn lasts while the replay still
+    // holds its prompt; a rollback that removes the prompt removes the rest.
+    bool replayHolds(HistoryMessagesTableData row) =>
+        importedIds.contains(row.messageId) || semanticallyImportedStoredIds.contains(row.messageId);
+    var turnStart = 0;
+    for (var index = 0; index <= storedRows.length; index++) {
+      if (index < storedRows.length && !_isUserRow(row: storedRows[index])) continue;
+      final turn = storedRows.sublist(turnStart, index);
+      turnStart = index;
+      final stoppedIndex = turn.lastIndexWhere((row) => _isStoppedRow(row: row));
+      if (stoppedIndex < 0 || !_isUserRow(row: turn.first) || !replayHolds(turn.first)) continue;
+      keptStaleIds.addAll([
+        for (final row in turn.sublist(1, stoppedIndex + 1))
+          if (!replayHolds(row)) row.messageId,
+      ]);
     }
 
     final retained = [

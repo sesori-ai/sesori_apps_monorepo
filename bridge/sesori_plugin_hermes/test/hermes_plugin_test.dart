@@ -276,6 +276,47 @@ void main() {
       expect(events.whereType<BridgeSseSessionError>(), isEmpty);
     });
 
+    test("a stop reaches Hermes only while a turn runs", () async {
+      await connect();
+      final creating = plugin.createSession(
+        fastMode: false,
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond(method: "session/new", result: const {"sessionId": "s-stop"});
+      final session = await creating;
+      Future<PluginAbortResult> stop() => plugin.abortSession(
+        sessionId: session.id,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
+      Iterable<Map<String, dynamic>> cancels() => fake.written.where((frame) => frame["method"] == "session/cancel");
+
+      // Hermes keeps a cancel sent to an idle session and refuses the next prompt.
+      expect(await stop(), isA<PluginAbortAccepted>());
+      await pump();
+      expect(cancels(), isEmpty);
+
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: session.id,
+        parts: const [PluginPromptPart.text(text: "work")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await waitForFrame(method: "session/prompt");
+      expect(await stop(), isA<PluginAbortAccepted>());
+      expect(cancels().single["params"], {"sessionId": session.id});
+    });
+
     test("deleteSession never calls session/close when closeSession is not advertised", () async {
       await connect();
 

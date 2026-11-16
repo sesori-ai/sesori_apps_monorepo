@@ -190,6 +190,22 @@ class OmpPlugin._({
   );
 
   @override
+  Future<void> validateTurnSelection({
+    required String operation,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) async => _ompSessionOptionsService.validateTurnSelection(
+    operation: operation,
+    sessionId: sessionId,
+    projectId: knownSessionDirectory(sessionId: sessionId),
+    model: model,
+    variant: variant,
+    agent: agent,
+  );
+
+  @override
   Future<void> applyTurnSelection({
     required AcpSessionConfigRepository configRepository,
     required String sessionId,

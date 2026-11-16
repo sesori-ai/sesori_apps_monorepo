@@ -35,7 +35,7 @@ sealed class SessionListRequest with _$SessionListRequest {
 }
 
 @Freezed(fromJson: true, toJson: true)
-sealed class Session with _$Session {
+sealed class const Session._() with _$Session {
   const factory({
     required String id,
     // COMPATIBILITY 2026-07-13 (v1.5.0): Old sessions omit pluginId and mean OpenCode. Remove the default and require
@@ -69,10 +69,14 @@ sealed class Session with _$Session {
     // from a newer bridge also reads as null.
     // COMPATIBILITY 2026-09-25 (v1.9.1): Bridges before per-session approval omit approvalOverride, which reads as null because their sessions always follow the bridge setting. Remove this comment once the minimum supported bridge always reports YoloSettingsResponse.supportsSessionOverride.
     @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required SessionApprovalMode? approvalOverride,
-    // Whether the user pinned this root session above the time-ordered list.
-    // The bridge stores it; archiving a session drops its pin.
-    // COMPATIBILITY 2026-11-14 (v1.14.0): Bridges before pinning omit pinned; they cannot pin, so false is honest. Remove the default once the minimum supported bridge always sends it.
-    @Default(false) bool pinned,
+    // The bridge's ordering key for this pinned root session within the
+    // pinned group, which lists above the time-ordered rest, highest first;
+    // null when it is not pinned. Values mean something only relative to each
+    // other. The bridge stores it, gives a new pin a value above the current
+    // highest, and clears it on archive; an app may compute provisional values
+    // for a move with SessionPinOrderCalculator until the bridge answers.
+    // Bridges before pinning omit it, which reads as null: they cannot pin.
+    required int? pinOrder,
     // The task whose run started this session. Null means it is not a task
     // run, which is also what bridges before scheduled tasks mean.
     required SessionScheduledTaskMark? scheduledTask,
@@ -85,6 +89,9 @@ sealed class Session with _$Session {
   }) = _Session;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
+
+  /// Whether the user pinned this session.
+  bool get pinned => pinOrder != null;
 }
 
 /// The session a fork was made from, as it was when the fork was made.

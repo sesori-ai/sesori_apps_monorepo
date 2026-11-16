@@ -415,6 +415,7 @@ class SessionDetailCubit(
           editPhase: switch (composerMode) {
             SessionComposerEditing(:final phase) => phase,
             SessionComposerNormal() => null,
+            SessionComposerSideQuestion() => null,
           },
           hasPendingPrompts:
               launchHandoff != null ||

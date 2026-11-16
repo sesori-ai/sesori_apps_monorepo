@@ -13,10 +13,4 @@ enum ClaudeForkRefusal() {
 
   /// The message is not on the transcript's active branch.
   notOnActiveBranch,
-
-  /// A later compaction replaced the kept turns with its summary. Claude Code
-  /// resumes only from the latest compaction on (verified live on 2.1.322), so
-  /// an edit refuses these points, and the fork refuses the same ones rather
-  /// than copy a conversation long enough that Claude Code compacted it.
-  beforeCompaction,
 }

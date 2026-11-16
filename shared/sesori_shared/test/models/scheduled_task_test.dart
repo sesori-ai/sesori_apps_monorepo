@@ -132,6 +132,7 @@ void main() {
       lastUserActivityAt: null,
       autoContinuation: null,
       approvalOverride: null,
+      pinOrder: null,
       scheduledTask: SessionScheduledTaskMark(taskId: "task-1", name: "Morning triage", kind: ScheduledTaskKind.once),
       interruption: null,
       forkedFrom: null,

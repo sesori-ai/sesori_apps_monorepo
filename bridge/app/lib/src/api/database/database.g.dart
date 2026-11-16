@@ -1766,9 +1766,11 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   /// bridge-wide YOLO setting. Null follows that setting.
   SessionApprovalMode? get approvalOverride;
 
-  /// Whether the user pinned this root session above the time-ordered list.
-  /// Only an unarchived root is pinned; archiving drops the pin.
-  bool get pinned;
+  /// Where the user placed this pinned root session in the pinned group,
+  /// which lists above the time-ordered rest, highest first; null when it is
+  /// not pinned. A new pin takes a value above every other. Only an
+  /// unarchived root is pinned; archiving drops the pin.
+  int? get pinOrder;
 
   /// The session this root session was forked from. Deleting the origin
   /// nulls it, and [forkedFromTitle] keeps naming the origin.
@@ -1840,7 +1842,9 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
         $SessionTableTable.$converterapprovalOverriden.toSql(approvalOverride),
       );
     }
-    map['pinned'] = Variable<bool>(pinned);
+    if (!nullToAbsent || pinOrder != null) {
+      map['pin_order'] = Variable<int>(pinOrder);
+    }
     if (!nullToAbsent || forkedFromSessionId != null) {
       map['forked_from_session_id'] = Variable<String>(forkedFromSessionId);
     }
@@ -2133,18 +2137,16 @@ class $SessionTableTable extends SessionTable
       ).withConverter<SessionApprovalMode?>(
         $SessionTableTable.$converterapprovalOverriden,
       );
-  static const VerificationMeta _pinnedMeta = const VerificationMeta('pinned');
+  static const VerificationMeta _pinOrderMeta = const VerificationMeta(
+    'pinOrder',
+  );
   @override
-  late final GeneratedColumn<bool> pinned = GeneratedColumn<bool>(
-    'pinned',
+  late final GeneratedColumn<int> pinOrder = GeneratedColumn<int>(
+    'pin_order',
     aliasedName,
-    false,
-    type: DriftSqlType.bool,
+    true,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("pinned" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
   );
   static const VerificationMeta _forkedFromSessionIdMeta =
       const VerificationMeta('forkedFromSessionId');
@@ -2211,7 +2213,7 @@ class $SessionTableTable extends SessionTable
     title,
     catalogTitle,
     approvalOverride,
-    pinned,
+    pinOrder,
     forkedFromSessionId,
     forkedFromTitle,
     scheduledTaskId,
@@ -2405,10 +2407,10 @@ class $SessionTableTable extends SessionTable
         ),
       );
     }
-    if (data.containsKey('pinned')) {
+    if (data.containsKey('pin_order')) {
       context.handle(
-        _pinnedMeta,
-        pinned.isAcceptableOrUnknown(data['pinned']!, _pinnedMeta),
+        _pinOrderMeta,
+        pinOrder.isAcceptableOrUnknown(data['pin_order']!, _pinOrderMeta),
       );
     }
     if (data.containsKey('forked_from_session_id')) {
@@ -2547,10 +2549,10 @@ class $SessionTableTable extends SessionTable
           data['${effectivePrefix}approval_override'],
         ),
       ),
-      pinned: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}pinned'],
-      )!,
+      pinOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pin_order'],
+      ),
       forkedFromSessionId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}forked_from_session_id'],
@@ -2612,7 +2614,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String?> title;
   final Value<String?> catalogTitle;
   final Value<SessionApprovalMode?> approvalOverride;
-  final Value<bool> pinned;
+  final Value<int?> pinOrder;
   final Value<String?> forkedFromSessionId;
   final Value<String?> forkedFromTitle;
   final Value<String?> scheduledTaskId;
@@ -2641,7 +2643,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
     this.approvalOverride = const Value.absent(),
-    this.pinned = const Value.absent(),
+    this.pinOrder = const Value.absent(),
     this.forkedFromSessionId = const Value.absent(),
     this.forkedFromTitle = const Value.absent(),
     this.scheduledTaskId = const Value.absent(),
@@ -2671,7 +2673,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
     this.approvalOverride = const Value.absent(),
-    this.pinned = const Value.absent(),
+    this.pinOrder = const Value.absent(),
     this.forkedFromSessionId = const Value.absent(),
     this.forkedFromTitle = const Value.absent(),
     this.scheduledTaskId = const Value.absent(),
@@ -2709,7 +2711,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? title,
     Expression<String>? catalogTitle,
     Expression<String>? approvalOverride,
-    Expression<bool>? pinned,
+    Expression<int>? pinOrder,
     Expression<String>? forkedFromSessionId,
     Expression<String>? forkedFromTitle,
     Expression<String>? scheduledTaskId,
@@ -2740,7 +2742,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (title != null) 'title': title,
       if (catalogTitle != null) 'catalog_title': catalogTitle,
       if (approvalOverride != null) 'approval_override': approvalOverride,
-      if (pinned != null) 'pinned': pinned,
+      if (pinOrder != null) 'pin_order': pinOrder,
       if (forkedFromSessionId != null)
         'forked_from_session_id': forkedFromSessionId,
       if (forkedFromTitle != null) 'forked_from_title': forkedFromTitle,
@@ -2773,7 +2775,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String?>? title,
     Value<String?>? catalogTitle,
     Value<SessionApprovalMode?>? approvalOverride,
-    Value<bool>? pinned,
+    Value<int?>? pinOrder,
     Value<String?>? forkedFromSessionId,
     Value<String?>? forkedFromTitle,
     Value<String?>? scheduledTaskId,
@@ -2803,7 +2805,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       title: title ?? this.title,
       catalogTitle: catalogTitle ?? this.catalogTitle,
       approvalOverride: approvalOverride ?? this.approvalOverride,
-      pinned: pinned ?? this.pinned,
+      pinOrder: pinOrder ?? this.pinOrder,
       forkedFromSessionId: forkedFromSessionId ?? this.forkedFromSessionId,
       forkedFromTitle: forkedFromTitle ?? this.forkedFromTitle,
       scheduledTaskId: scheduledTaskId ?? this.scheduledTaskId,
@@ -2893,8 +2895,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
         ),
       );
     }
-    if (pinned.present) {
-      map['pinned'] = Variable<bool>(pinned.value);
+    if (pinOrder.present) {
+      map['pin_order'] = Variable<int>(pinOrder.value);
     }
     if (forkedFromSessionId.present) {
       map['forked_from_session_id'] = Variable<String>(
@@ -2937,7 +2939,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('title: $title, ')
           ..write('catalogTitle: $catalogTitle, ')
           ..write('approvalOverride: $approvalOverride, ')
-          ..write('pinned: $pinned, ')
+          ..write('pinOrder: $pinOrder, ')
           ..write('forkedFromSessionId: $forkedFromSessionId, ')
           ..write('forkedFromTitle: $forkedFromTitle, ')
           ..write('scheduledTaskId: $scheduledTaskId')
@@ -8273,7 +8275,7 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<String?> title,
       Value<String?> catalogTitle,
       Value<SessionApprovalMode?> approvalOverride,
-      Value<bool> pinned,
+      Value<int?> pinOrder,
       Value<String?> forkedFromSessionId,
       Value<String?> forkedFromTitle,
       Value<String?> scheduledTaskId,
@@ -8304,7 +8306,7 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String?> title,
       Value<String?> catalogTitle,
       Value<SessionApprovalMode?> approvalOverride,
-      Value<bool> pinned,
+      Value<int?> pinOrder,
       Value<String?> forkedFromSessionId,
       Value<String?> forkedFromTitle,
       Value<String?> scheduledTaskId,
@@ -8696,8 +8698,8 @@ class $$SessionTableTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnFilters<bool> get pinned => $composableBuilder(
-    column: $table.pinned,
+  ColumnFilters<int> get pinOrder => $composableBuilder(
+    column: $table.pinOrder,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9076,8 +9078,8 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get pinned => $composableBuilder(
-    column: $table.pinned,
+  ColumnOrderings<int> get pinOrder => $composableBuilder(
+    column: $table.pinOrder,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -9285,8 +9287,8 @@ class $$SessionTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get pinned =>
-      $composableBuilder(column: $table.pinned, builder: (column) => column);
+  GeneratedColumn<int> get pinOrder =>
+      $composableBuilder(column: $table.pinOrder, builder: (column) => column);
 
   GeneratedColumn<String> get forkedFromTitle => $composableBuilder(
     column: $table.forkedFromTitle,
@@ -9610,7 +9612,7 @@ class $$SessionTableTableTableManager
                 Value<String?> catalogTitle = const Value.absent(),
                 Value<SessionApprovalMode?> approvalOverride =
                     const Value.absent(),
-                Value<bool> pinned = const Value.absent(),
+                Value<int?> pinOrder = const Value.absent(),
                 Value<String?> forkedFromSessionId = const Value.absent(),
                 Value<String?> forkedFromTitle = const Value.absent(),
                 Value<String?> scheduledTaskId = const Value.absent(),
@@ -9639,7 +9641,7 @@ class $$SessionTableTableTableManager
                 title: title,
                 catalogTitle: catalogTitle,
                 approvalOverride: approvalOverride,
-                pinned: pinned,
+                pinOrder: pinOrder,
                 forkedFromSessionId: forkedFromSessionId,
                 forkedFromTitle: forkedFromTitle,
                 scheduledTaskId: scheduledTaskId,
@@ -9671,7 +9673,7 @@ class $$SessionTableTableTableManager
                 Value<String?> catalogTitle = const Value.absent(),
                 Value<SessionApprovalMode?> approvalOverride =
                     const Value.absent(),
-                Value<bool> pinned = const Value.absent(),
+                Value<int?> pinOrder = const Value.absent(),
                 Value<String?> forkedFromSessionId = const Value.absent(),
                 Value<String?> forkedFromTitle = const Value.absent(),
                 Value<String?> scheduledTaskId = const Value.absent(),
@@ -9700,7 +9702,7 @@ class $$SessionTableTableTableManager
                 title: title,
                 catalogTitle: catalogTitle,
                 approvalOverride: approvalOverride,
-                pinned: pinned,
+                pinOrder: pinOrder,
                 forkedFromSessionId: forkedFromSessionId,
                 forkedFromTitle: forkedFromTitle,
                 scheduledTaskId: scheduledTaskId,
