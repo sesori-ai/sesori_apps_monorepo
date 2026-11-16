@@ -184,7 +184,8 @@ The bridge answers a send that did not happen with 409 and a
   belongs to the target: deleting the target removes it, archiving keeps it,
   deleting the source leaves it, and no age sweep touches it. A target that
   refuses the handoff prompt (archived, stale options, or the harness's own
-  refusal) has the file removed again; a failure that may follow the target's
+  refusal) has the file removed again, best-effort (a failed removal is
+  logged and the file stays); a failure that may follow the target's
   acceptance keeps it.
 - The file starts with the source's title and holds the conversation itself:
   numbered messages by role, text verbatim, one line per tool with its error
