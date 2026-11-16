@@ -1,4 +1,5 @@
 import "package:drift/drift.dart";
+import "package:sesori_shared/sesori_shared.dart" show TaskRunFailureReason;
 
 import "../database.dart";
 import "../tables/scheduled_task_runs_table.dart";
@@ -109,6 +110,68 @@ class ScheduledTaskDao({required AppDatabase database})
           ))
           .go();
     });
+  }
+
+  /// Enabled tasks not yet done whose next due time is at or before [now].
+  Future<List<ScheduledTaskDto>> listDueTasks({required int now}) {
+    return (select(scheduledTasksTable)
+          ..where(
+            (row) => row.enabled.equals(true) & row.completedAt.isNull() & row.nextDueAt.isSmallerOrEqualValue(now),
+          )
+          ..orderBy([(row) => OrderingTerm.asc(row.nextDueAt), (row) => OrderingTerm.asc(row.id)]))
+        .get();
+  }
+
+  /// In one transaction, and only while the task's update time is still
+  /// [expectedUpdatedAt]: writes its next due time and completion time, then
+  /// inserts [run] as [insertRunAndTrim] does. Returns whether it wrote.
+  Future<bool> reserveRun({
+    required String taskId,
+    required int expectedUpdatedAt,
+    required int? nextDueAt,
+    required int? completedAt,
+    required ScheduledTaskRunDto run,
+    required int keep,
+  }) {
+    return transaction(() async {
+      final changed =
+          await (update(scheduledTasksTable)
+                ..where((task) => task.id.equals(taskId) & task.updatedAt.equals(expectedUpdatedAt)))
+              .write(ScheduledTasksTableCompanion(nextDueAt: Value(nextDueAt), completedAt: Value(completedAt)));
+      if (changed == 0) return false;
+      await insertRunAndTrim(row: run, keep: keep, alwaysKeepNewest: ScheduledTaskRunOutcomeKind.started);
+      return true;
+    });
+  }
+
+  /// The task's newest run whose prompt went out.
+  Future<ScheduledTaskRunDto?> getLatestStartedRun({required String taskId}) {
+    return (select(scheduledTaskRunsTable)
+          ..where(
+            (row) => row.taskId.equals(taskId) & row.outcome.equalsValue(ScheduledTaskRunOutcomeKind.started),
+          )
+          ..orderBy(_newestFirst)
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  /// Returns the rows changed.
+  Future<int> setRunSession({required String runId, required String sessionId}) {
+    return (update(scheduledTaskRunsTable)..where((row) => row.id.equals(runId))).write(
+      ScheduledTaskRunsTableCompanion(sessionId: Value(sessionId)),
+    );
+  }
+
+  /// Turns a started run into one that could not start. Returns the rows
+  /// changed.
+  Future<int> markRunFailed({required String runId, required TaskRunFailureReason reason}) {
+    return (update(scheduledTaskRunsTable)..where((row) => row.id.equals(runId))).write(
+      ScheduledTaskRunsTableCompanion(
+        outcome: const Value(ScheduledTaskRunOutcomeKind.failed),
+        reason: Value(reason),
+        late: const Value(false),
+      ),
+    );
   }
 
   static List<OrderClauseGenerator<$ScheduledTaskRunsTableTable>> get _newestFirst => [

@@ -392,18 +392,27 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
 - Overlap (D8): a run is recorded as `skipped` when the session of
   the latest **started** run (not the latest history row: `skipped`, `missed`
   and `failed` rows have no session and must not hide an earlier active one)
-  is not `quiet` (busy or retry, a pending question, permission or
-  form, or non-idle readiness on Claude and Pi, where `queued` covers a pending
-  `ScheduleWakeup` and user-queued prompts). Exception: busy because of this
+  is `working` or `awaitingUser` (busy or retry, a pending question,
+  permission or form, or non-idle readiness on Claude and Pi, where `queued`
+  covers a pending `ScheduleWakeup` and user-queued prompts). `unknown` does
+  not block: Claude reads `unknown` for a session with no transcript, which
+  would otherwise block the task for good. Exception: busy because of this
   task's own pending compaction (P10). Step 4.b tests that many skipped
   occurrences in a row (more than the 20-row trim) still leave the earlier
   started run counted as active, so the next run is skipped too.
 - At most once: the run row and the advanced `nextDueAt` are written in one
   transaction before the create or send is attempted, like the quota
   `consumed` marker. A crash between write and send loses that run; it never
-  sends twice.
+  sends twice. The write only lands while the task's `updatedAt` is the one
+  read at fire start, so an edit, pause or delete during the fire wins. A
+  started row is written with no session and gets its session id after the
+  create, or turns into `failed(reason)` when the create throws. A one-off
+  task is completed by that same write, whatever the outcome.
 - Run now: same rules, does not move `nextDueAt`; when the previous run is
-  still going it returns a typed refusal and the app explains it.
+  still going it returns a typed refusal and the app explains it. It writes no
+  task fields, so its row is written without the `updatedAt` condition.
+- Until step 5 lands, the tick leaves same-session tasks due and unfired, and
+  Run now refuses them with `unsupportedByBridge`.
 
 ### P7. Firing a run
 

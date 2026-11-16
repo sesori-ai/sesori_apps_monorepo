@@ -42,6 +42,7 @@ import "listeners/chat_history_listener.dart";
 import "listeners/plugin_catalog_hydration_listener.dart";
 import "listeners/plugin_event_listener.dart";
 import "listeners/plugin_warmup_setting_listener.dart";
+import "listeners/scheduled_task_timer_listener.dart";
 import "listeners/session_binding_commit_listener.dart";
 import "listeners/session_continuation_timer_listener.dart";
 import "listeners/session_mutation_listener.dart";
@@ -169,6 +170,7 @@ import "routing/request_router.dart";
 import "routing/rewind_session_handler.dart";
 import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
+import "routing/run_scheduled_task_now_handler.dart";
 import "routing/search_session_prompts_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/send_to_session_handler.dart";
@@ -204,6 +206,7 @@ import "services/project_mutation_service.dart";
 import "services/prompt_part_delivery_service.dart";
 import "services/pull_request_refresh_settings_service.dart";
 import "services/scheduled_task_occurrence_calculator.dart";
+import "services/scheduled_task_run_service.dart";
 import "services/scheduled_task_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_continuation_service.dart";
@@ -398,10 +401,12 @@ class Orchestrator({
     );
     final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
     final sideChatRepository = SideChatRepository(dao: SideChatDao(database: _database));
+    final scheduledTaskRepository = ScheduledTaskRepository(dao: ScheduledTaskDao(database: _database));
+    const scheduledTaskOccurrenceCalculator = ScheduledTaskOccurrenceCalculator();
     final scheduledTaskService = ScheduledTaskService(
-      repository: ScheduledTaskRepository(dao: ScheduledTaskDao(database: _database)),
+      repository: scheduledTaskRepository,
       sessionRepository: sessionRepository,
-      calculator: const ScheduledTaskOccurrenceCalculator(),
+      calculator: scheduledTaskOccurrenceCalculator,
       clock: clock,
     );
     final sideQuestionService = SideQuestionService(
@@ -535,6 +540,15 @@ class Orchestrator({
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       promptPartDelivery: promptPartDeliveryService,
     );
+    final scheduledTaskRunService = ScheduledTaskRunService(
+      repository: scheduledTaskRepository,
+      sessionCreation: sessionCreationService,
+      sessions: sessionRepository,
+      sessionOptions: sessionOptionsService,
+      calculator: scheduledTaskOccurrenceCalculator,
+      clock: clock,
+    );
+    final scheduledTaskTimer = ScheduledTaskTimerListener(service: scheduledTaskRunService);
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,
       filesystemRepository: filesystemRepository,
@@ -805,6 +819,7 @@ class Orchestrator({
         SetScheduledTaskEnabledHandler(scheduledTaskService: scheduledTaskService),
         DeleteScheduledTaskHandler(scheduledTaskService: scheduledTaskService),
         GetScheduledTaskRunsHandler(scheduledTaskService: scheduledTaskService),
+        RunScheduledTaskNowHandler(scheduledTaskRunService: scheduledTaskRunService),
         GetProvidersHandler(repository: providerRepository),
         PostAgentsHandler(repository: agentRepository),
         GetSessionQuestionsHandler(questionRepository: questionRepository),
@@ -877,6 +892,8 @@ class Orchestrator({
       mcpService: mcpService,
       mcpAuthenticationService: mcpAuthenticationService,
       scheduledTaskService: scheduledTaskService,
+      scheduledTaskRunService: scheduledTaskRunService,
+      scheduledTaskTimer: scheduledTaskTimer,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -1003,6 +1020,8 @@ class OrchestratorSession._({
   required final McpService _mcpService,
   required final McpAuthenticationService _mcpAuthenticationService,
   required final ScheduledTaskService _scheduledTaskService,
+  required final ScheduledTaskRunService _scheduledTaskRunService,
+  required final ScheduledTaskTimerListener _scheduledTaskTimer,
   required Stream<CatalogImportProgress> catalogImportProgress,
   required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
   required Stream<String> pluginManagementSnapshotTokens,
@@ -1062,7 +1081,7 @@ class OrchestratorSession._({
     _mcpAuthenticationService.changes
         .listen((_) => _enqueueWireEvent(const SesoriSseEvent.mcpAuthenticationChanged()))
         .addTo(_subscriptions);
-    _scheduledTaskService.changes
+    Rx.merge([_scheduledTaskService.changes, _scheduledTaskRunService.changes])
         .listen((_) => _enqueueWireEvent(const SesoriSseEvent.scheduledTasksChanged()))
         .addTo(_subscriptions);
     _mcpAuthenticationService.inventoryChanges
@@ -1190,6 +1209,7 @@ class OrchestratorSession._({
     _viewedSessionPluginWarmupListener.start();
     _chatHistoryActivityListener.start();
     _sessionContinuationTimer.start();
+    _scheduledTaskTimer.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
     final lifecycleFuture = Future<void>.microtask(
       () => _runLifecycle(readiness: readiness),
@@ -1363,6 +1383,7 @@ class OrchestratorSession._({
       attempt(_mcpAuthenticationService.dispose),
       attempt(_pluginEventListener.dispose),
       attempt(_sessionContinuationTimer.dispose),
+      attempt(_scheduledTaskTimer.dispose),
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_chatHistoryListener.dispose),
       attempt(_chatHistoryActivityListener.dispose),
@@ -1373,6 +1394,7 @@ class OrchestratorSession._({
       attempt(_mcpService.dispose),
       attempt(_projectGlossaryPopulationService.dispose),
       attempt(_scheduledTaskService.dispose),
+      attempt(_scheduledTaskRunService.dispose),
     ]);
     Log.v(
       "[shutdown] routed requests and relay completions drained "
