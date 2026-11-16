@@ -3169,7 +3169,7 @@ abstract class AppLocalizations {
   /// **'another session'**
   String get transcriptHandoffAnotherSession;
 
-  /// Title of the sheet that shows the summary a session wrote to be sent into another session.
+  /// Title of the modal (a sheet on touch, a dialog under a pointer) that shows the summary a session wrote to be sent into another session, opened from the source's marker or the target's card.
   ///
   /// In en, this message translates to:
   /// **'Handoff summary'**
@@ -3181,17 +3181,11 @@ abstract class AppLocalizations {
   /// **'From {source}'**
   String transcriptHandoffFrom(String source);
 
-  /// Expands the summary on the card of a session sent in from another one.
+  /// Opens the whole summary in a modal (a sheet on touch, a dialog under a pointer) from the card of a session sent in from another one.
   ///
   /// In en, this message translates to:
   /// **'Show all'**
   String get transcriptHandoffShowAll;
-
-  /// Collapses the expanded summary on the card of a session sent in from another one.
-  ///
-  /// In en, this message translates to:
-  /// **'Show less'**
-  String get transcriptHandoffShowLess;
 
   /// Alert when a session linked from a handoff marker or card could not be read, for example because it was deleted or the computer is offline.
   ///

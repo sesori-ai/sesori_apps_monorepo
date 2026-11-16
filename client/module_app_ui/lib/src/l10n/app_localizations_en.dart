@@ -1814,9 +1814,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptHandoffShowAll => 'Show all';
 
   @override
-  String get transcriptHandoffShowLess => 'Show less';
-
-  @override
   String get transcriptHandoffSessionUnavailable => 'Couldn\'t open that session';
 
   @override
