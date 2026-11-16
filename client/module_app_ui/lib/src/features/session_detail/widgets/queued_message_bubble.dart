@@ -9,6 +9,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 
 import "invocation_card.dart";
+import "transcript_message_menu.dart";
 import "user_message_card.dart";
 
 sealed class const QueuedMessageBubblePresentation() {
@@ -351,20 +352,30 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         if (presentation case DeliveredMessageBubblePresentation(:final message))
           message(outlineFade: wasOutlined ? _statusFade : null)
         else if (card != null)
-          InvocationCard(
-            name: card.name,
-            source: card.source,
-            arguments: card.arguments,
-            attachments: attachments,
-            outlined: outlined,
-            transitionDuration: _statusFade,
+          TranscriptMessageMenu.wrap(
+            spotlight: PregoMenuSpotlight.listRow,
+            text: card.arguments,
+            builder: (selectionArea) => InvocationCard(
+              selectionArea: selectionArea,
+              name: card.name,
+              source: card.source,
+              arguments: card.arguments,
+              attachments: attachments,
+              outlined: outlined,
+              transitionDuration: _statusFade,
+            ),
           )
         else
-          UserMessageBubble(
-            markdown: displayText,
-            attachments: attachments,
-            outlined: outlined,
-            transitionDuration: _statusFade,
+          TranscriptMessageMenu.wrap(
+            spotlight: PregoMenuSpotlight.listRow,
+            text: displayText,
+            builder: (selectionArea) => UserMessageBubble(
+              selectionArea: selectionArea,
+              markdown: displayText,
+              attachments: attachments,
+              outlined: outlined,
+              transitionDuration: _statusFade,
+            ),
           ),
         // Cross-fade the status rail between its states, a line's arrival among
         // them, so the swap reads as one row changing state; the enclosing prompt
