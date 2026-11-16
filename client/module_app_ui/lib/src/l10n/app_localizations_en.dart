@@ -4453,6 +4453,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduledTaskContinuesSession => 'Continue in the same session';
 
   @override
+  String get scheduledTaskAutoCompact => 'Auto-compact';
+
+  @override
+  String get scheduledTaskAutoCompactDetail =>
+      'Compacts the session before its prompt cache goes cold, so the next run starts small.';
+
+  @override
+  String scheduledTaskAutoCompactUnsupported(String harness) {
+    return '$harness can\'t compact on request';
+  }
+
+  @override
   String get scheduledTaskApprovalsHeading => 'Approvals';
 
   @override
