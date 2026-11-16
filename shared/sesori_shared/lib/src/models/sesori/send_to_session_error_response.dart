@@ -23,6 +23,11 @@ enum SendToSessionErrorCode() {
   /// The source's harness did not accept the summary request.
   sourceUnavailable,
 
+  /// The source's harness no longer offers the model, agent or variant the
+  /// source last used, so it refused the summary request. Nothing is swapped
+  /// silently: a send from the source with another model fixes it.
+  sourceOptionsUnavailable,
+
   /// The source has no messages, so there is nothing to hand off.
   sourceEmpty,
 
@@ -43,6 +48,10 @@ enum SendToSessionErrorCode() {
 
   /// The target did not accept the handoff prompt.
   targetRefused,
+
+  /// The target's harness no longer offers the model, agent or variant the
+  /// target last used, so it refused the handoff prompt.
+  targetOptionsUnavailable,
   unknown,
 }
 

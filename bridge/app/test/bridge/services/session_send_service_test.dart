@@ -20,8 +20,16 @@ import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/session_send_rejected_exception.dart";
 import "package:sesori_bridge/src/services/session_send_service.dart";
 import "package:sesori_bridge/src/services/session_view_service.dart";
+import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgeSseSessionError, BridgeSseSessionIdle, Log, LogLevel, PluginOperationException, PluginRefusalException;
+    show
+        BridgeSseSessionError,
+        BridgeSseSessionIdle,
+        Log,
+        LogLevel,
+        PluginOperationException,
+        PluginRefusalException,
+        PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -420,6 +428,13 @@ void main() {
     expect(transcripts.saved, isEmpty);
   });
 
+  test("a source whose saved options its harness no longer offers says so", () async {
+    prompts.summaryFailure = _staleOptions();
+
+    expect(await refusalOf(send()), SendToSessionErrorCode.sourceOptionsUnavailable);
+    expect(transcripts.saved, isEmpty);
+  });
+
   test("a stop during the summary cancels the send", () async {
     prompts.onSummaryAccepted = (promptId) {
       events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
@@ -671,6 +686,13 @@ void main() {
     }
   });
 
+  test("a target whose saved options its harness no longer offers says so", () async {
+    finishSummaryTurn();
+    prompts.targetFailure = _staleOptions();
+
+    expect(await refusalOf(send()), SendToSessionErrorCode.targetOptionsUnavailable);
+  });
+
   test("no prompt, summary or transcript text reaches the log", () async {
     final logs = captureLogOutput();
     final level = Log.level;
@@ -843,6 +865,11 @@ typedef _Send = ({
   bool fastMode,
   MessageHandoff? handoff,
 });
+
+StaleSessionPromptOptionsException _staleOptions() => StaleSessionPromptOptionsException(
+  cause: const PluginStaleOptionsException(operation: "sendPrompt", message: "no longer offers the selected model"),
+  causeStackTrace: StackTrace.current,
+);
 
 final class _Prompts() implements SessionPromptService {
   final List<_Send> sends = [];

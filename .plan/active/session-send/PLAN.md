@@ -155,7 +155,10 @@ The bridge sends the source session a summarise prompt through the existing prom
   - `sourceAwaitingInput` covers a pending question or permission.
   - A plugin listed in `unavailablePluginIds` whose backend is not running has no turn, so it counts as idle. A
     running backend listed there failed its status read, so readiness is unknown and the send is refused as
-    `sourceUnavailable`. Any failure of the summarise send itself, including a refusal, is also `sourceUnavailable`.
+    `sourceUnavailable`. Any failure of the summarise send itself, including a refusal, is also `sourceUnavailable`,
+  except a stale-options rejection (the harness no longer offers the source's saved model, agent or variant), which
+  is `sourceOptionsUnavailable`; the target's is `targetOptionsUnavailable`. As in #2560 and #2562, the saved model is
+  never swapped silently: the user sends that session a message with another model, then sends again.
 - Readiness comes from sources that every plugin supplies:
   - `SessionRepository.getSessionStatuses()` decides idle, busy or retrying;
   - `PermissionRepository.getPendingPermissions` and `QuestionRepository.getPendingQuestions` decide awaiting input.
@@ -410,9 +413,9 @@ New wire contracts, all additive:
   `@JsonKey(unknownEnumValue: SendToSessionErrorCode.unknown)`. The codes are:
   - `sameSession`
   - `sourceArchived`, `targetArchived`, `sourceNotRoot`
-  - `sourceBusy`, `sourceAwaitingInput`, `sourceUnavailable`, `sourceEmpty`
+  - `sourceBusy`, `sourceAwaitingInput`, `sourceUnavailable`, `sourceOptionsUnavailable`, `sourceEmpty`
   - `summaryStopped`, `summaryFailed`, `summaryTimedOut`, `summaryMissing`
-  - `transcriptUnavailable`, `targetRefused`
+  - `transcriptUnavailable`, `targetRefused`, `targetOptionsUnavailable`
   - `unknown`
 
 How each pairing behaves:
