@@ -148,6 +148,8 @@ defaults and queued client sends coherent.
   saying why, including one on a Continue folding away; a tap on a detached reader's frozen view also returns to the
   newest rows. An open session view that receives a new unacknowledged interruption declares its view again, so the
   list's label clears while the user is looking. An older bridge sends no interruption and an older app ignores it.
+- The prompt after a Stop is answered on every harness, including a Stop pressed while the session was idle. Hermes
+  refuses the next prompt when a cancel reaches its idle session, so the bridge sends Hermes no cancel then.
 - A sent prompt stays on screen from send to delivered message. Scrolling while
   it is delivered, or a refresh whose fetch began before a queue event, must not
   blank its row. A wheel or trackpad touch that moves nothing at the newest edge

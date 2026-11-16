@@ -58,6 +58,7 @@ class AntigravityPlugin({
   @override
   Future<void> validateTurnSelection({
     required String operation,
+    required String sessionId,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
