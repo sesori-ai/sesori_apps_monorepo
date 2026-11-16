@@ -1823,10 +1823,10 @@ String toString() {
 @JsonSerializable()
 
 class ScheduledTaskRunStarted implements ScheduledTaskRunOutcome {
-  const ScheduledTaskRunStarted({required this.sessionId, required this.late,  String? $type}): $type = $type ?? 'started';
+  const ScheduledTaskRunStarted({required this.session, required this.late,  String? $type}): $type = $type ?? 'started';
   factory ScheduledTaskRunStarted.fromJson(Map<String, dynamic> json) => _$ScheduledTaskRunStartedFromJson(json);
 
- final  String? sessionId;
+ final  ScheduledTaskRunSession? session;
  final  bool late;
 
 @JsonKey(name: 'kind')
@@ -1841,18 +1841,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTaskRunStarted&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.late, late) || other.late == late));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTaskRunStarted&&(identical(other.session, session) || other.session == session)&&(identical(other.late, late) || other.late == late));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,sessionId,late);
+    return Object.hash(runtimeType,session,late);
 }
 
 @override
 String toString() {
-    return 'ScheduledTaskRunOutcome.started(sessionId: $sessionId, late: $late)';
+    return 'ScheduledTaskRunOutcome.started(session: $session, late: $late)';
 }
 
 
@@ -2021,6 +2021,154 @@ String toString() {
 
 
 
+
+
+/// @nodoc
+mixin _$ScheduledTaskRunSession {
+
+ String get id;/// The project the session is in now, which the task may have moved away
+/// from since.
+ String get projectId;
+/// Create a copy of ScheduledTaskRunSession
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ScheduledTaskRunSessionCopyWith<ScheduledTaskRunSession> get copyWith => _$ScheduledTaskRunSessionCopyWithImpl<ScheduledTaskRunSession>(this as ScheduledTaskRunSession, _$identity);
+
+  /// Serializes this ScheduledTaskRunSession to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as ScheduledTaskRunSession;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTaskRunSession&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as ScheduledTaskRunSession;
+  return Object.hash(runtimeType,_this.id,_this.projectId);
+}
+
+@override
+String toString() {
+  final _this = this as ScheduledTaskRunSession;
+  return 'ScheduledTaskRunSession(id: ${_this.id}, projectId: ${_this.projectId})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ScheduledTaskRunSessionCopyWith<$Res>  {
+  factory $ScheduledTaskRunSessionCopyWith(ScheduledTaskRunSession value, $Res Function(ScheduledTaskRunSession) _then) = _$ScheduledTaskRunSessionCopyWithImpl;
+@useResult
+$Res call({
+ String id, String projectId
+});
+
+
+
+
+}
+/// @nodoc
+class _$ScheduledTaskRunSessionCopyWithImpl<$Res>
+    implements $ScheduledTaskRunSessionCopyWith<$Res> {
+  _$ScheduledTaskRunSessionCopyWithImpl(this._self, this._then);
+
+  final ScheduledTaskRunSession _self;
+  final $Res Function(ScheduledTaskRunSession) _then;
+
+/// Create a copy of ScheduledTaskRunSession
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? projectId = null,}) {
+  return _then(ScheduledTaskRunSession(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _ScheduledTaskRunSession implements ScheduledTaskRunSession {
+  const _ScheduledTaskRunSession({required this.id, required this.projectId});
+  factory _ScheduledTaskRunSession.fromJson(Map<String, dynamic> json) => _$ScheduledTaskRunSessionFromJson(json);
+
+@override final  String id;
+/// The project the session is in now, which the task may have moved away
+/// from since.
+@override final  String projectId;
+
+/// Create a copy of ScheduledTaskRunSession
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ScheduledTaskRunSessionCopyWith<_ScheduledTaskRunSession> get copyWith => __$ScheduledTaskRunSessionCopyWithImpl<_ScheduledTaskRunSession>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ScheduledTaskRunSessionToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ScheduledTaskRunSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectId, projectId) || other.projectId == projectId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,id,projectId);
+}
+
+@override
+String toString() {
+    return 'ScheduledTaskRunSession(id: $id, projectId: $projectId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ScheduledTaskRunSessionCopyWith<$Res> implements $ScheduledTaskRunSessionCopyWith<$Res> {
+  factory _$ScheduledTaskRunSessionCopyWith(_ScheduledTaskRunSession value, $Res Function(_ScheduledTaskRunSession) _then) = __$ScheduledTaskRunSessionCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String projectId
+});
+
+
+
+
+}
+/// @nodoc
+class __$ScheduledTaskRunSessionCopyWithImpl<$Res>
+    implements _$ScheduledTaskRunSessionCopyWith<$Res> {
+  __$ScheduledTaskRunSessionCopyWithImpl(this._self, this._then);
+
+  final _ScheduledTaskRunSession _self;
+  final $Res Function(_ScheduledTaskRunSession) _then;
+
+/// Create a copy of ScheduledTaskRunSession
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? projectId = null,}) {
+  return _then(_ScheduledTaskRunSession(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
 
 
 /// @nodoc

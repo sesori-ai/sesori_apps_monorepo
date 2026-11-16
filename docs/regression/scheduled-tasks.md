@@ -76,8 +76,8 @@ them or can't start. Same-session tasks can compact their session between runs (
 
 - A started run's row carries an arrow and opens its session over the task page, the way a session row opens from
   the list; Back returns to the task. An archived run session opens read as archived. The session opens under the
-  task's current project, so a task moved to another project after the run can leave that session's page unable to
-  load.
+  project it is in, which the bridge reads from the session when it lists runs, so a run from before the task moved to
+  another project still opens in the old project.
 - A started run whose session was deleted has no arrow; a tap answers "This run's session was deleted."
 - A failed run's row keeps its short "Couldn't start: <reason>" line and carries an arrow. A tap opens a small sheet
   (a dialog under a pointer) over the unmoved page, saying what went wrong and what to do next. It names what that

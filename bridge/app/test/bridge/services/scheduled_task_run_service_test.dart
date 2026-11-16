@@ -156,7 +156,12 @@ void main() {
 
       await service.runDue();
 
-      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false)]);
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
+      ]);
       expect((await repository.get(taskId: task.id))?.nextDueAt, DateTime.utc(2026, 11, 16, 9));
       final (request, link) = creation.calls.single;
       expect(request.parts, [const PromptPart.text(text: "Summarize yesterday")]);
@@ -168,7 +173,12 @@ void main() {
 
       await service.runDue();
 
-      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: true)]);
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: true,
+        ),
+      ]);
       expect((await repository.get(taskId: task.id))?.nextDueAt, DateTime.utc(2026, 11, 16, 9));
     });
 
@@ -198,7 +208,12 @@ void main() {
       await service.runDue();
       await service.runDue();
 
-      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: true)]);
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: true,
+        ),
+      ]);
       final stored = await repository.get(taskId: task.id);
       expect(stored?.completedAt, now);
       expect(stored?.nextDueAt, isNull);
@@ -207,7 +222,9 @@ void main() {
     test("the run row and advanced due time are written before the session is created", () async {
       final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9));
       creation.onCreate = () async {
-        expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: null, late: false)]);
+        expect(await outcomes(task.id), [
+          const ScheduledTaskRunOutcome.started(session: null, late: false),
+        ]);
         expect((await repository.get(taskId: task.id))?.nextDueAt, DateTime.utc(2026, 11, 16, 9));
       };
 
@@ -254,7 +271,12 @@ void main() {
 
       expect(lifecycle.archived, ["old_6", "old_8", "old_9"]);
       expect(lifecycle.calls, everyElement((deleteWorktree: true, force: false)));
-      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false)]);
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
+      ]);
       expect(failures, isEmpty, reason: "a refusal is logged, not pushed");
     });
 
@@ -263,7 +285,12 @@ void main() {
 
       final task = await fireWithOlderRuns();
 
-      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false)]);
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
+      ]);
       expect(failures, isEmpty);
     });
 
@@ -287,7 +314,12 @@ void main() {
     test("the first run creates the session and targets it", () async {
       final task = await firstRun();
 
-      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false)]);
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
+      ]);
       expect(await targetOf(task.id), "ses_1");
       expect(creation.calls.single.$2, (taskId: task.id, approvalOverride: SessionApprovalMode.yolo));
       expect(prompts.sends, isEmpty);
@@ -335,7 +367,11 @@ void main() {
       expect((command.command, command.commandSource), ("review", CommandSource.skill));
       expect(command.parts, [const PromptPart.text(text: "main")]);
       expect(await outcomes(task.id), [
-        for (var i = 0; i < 3; i++) const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false),
+        for (var i = 0; i < 3; i++)
+          const ScheduledTaskRunOutcome.started(
+            session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+            late: false,
+          ),
       ]);
     });
 
@@ -375,7 +411,12 @@ void main() {
 
       await service.runDue();
 
-      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false)]);
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
+      ]);
       expect(await targetOf(task.id), isNull);
     });
 
@@ -514,7 +555,13 @@ void main() {
       sessions.quietness.remove("ses_1");
       await runDueAt(const Duration(days: 1, minutes: 6));
 
-      expect((await outcomes(task.id)).first, const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: true));
+      expect(
+        (await outcomes(task.id)).first,
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: true,
+        ),
+      );
       expect(prompts.sends.single.sessionId, "ses_1");
       expect(sessions.compacted, ["ses_1"]);
     });
@@ -597,7 +644,13 @@ void main() {
       await runDueAt(const Duration(days: 1));
 
       expect(sessions.compacted, ["ses_1"]);
-      expect((await outcomes(task.id)).first, const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false));
+      expect(
+        (await outcomes(task.id)).first,
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
+      );
     });
   });
 
@@ -616,10 +669,16 @@ void main() {
       await service.runDue();
 
       expect(await outcomes(task.id), [
-        const ScheduledTaskRunOutcome.started(sessionId: "ses_2", late: false),
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_2", projectId: "/repo"),
+          late: false,
+        ),
         const ScheduledTaskRunOutcome.skipped(),
         const ScheduledTaskRunOutcome.skipped(),
-        const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false),
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
       ]);
     });
 
@@ -643,7 +702,13 @@ void main() {
       // The newest rows are all skips; the started run is kept beyond them.
       expect(history, hasLength(ScheduledTaskRepository.runHistoryLimit + 1));
       expect(history.whereType<ScheduledTaskRunSkipped>(), hasLength(20));
-      expect(history.last, const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false));
+      expect(
+        history.last,
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
+      );
       expect(creation.calls, hasLength(1));
     });
   });
@@ -670,7 +735,12 @@ void main() {
 
       await service.runDue();
 
-      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_2", late: false)]);
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_2", projectId: "/repo"),
+          late: false,
+        ),
+      ]);
       expect(creation.calls.map((call) => call.$1.variant?.id), ["removed", "high"]);
       expect(prompts.correctionScopes, [("fake", "/repo")]);
       expect(failures, isEmpty);
@@ -776,7 +846,12 @@ void main() {
 
       await service.runDue();
 
-      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false)]);
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
+      ]);
       expect(options.explicitRefreshes, hasLength(1));
     });
 
@@ -813,7 +888,13 @@ void main() {
 
       final run = await service.runNow(taskId: task.id);
 
-      expect(run.outcome, const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false));
+      expect(
+        run.outcome,
+        const ScheduledTaskRunOutcome.started(
+          session: ScheduledTaskRunSession(id: "ses_1", projectId: "/repo"),
+          late: false,
+        ),
+      );
       expect((await repository.get(taskId: task.id))?.nextDueAt, DateTime.utc(2026, 11, 16, 9));
     });
 

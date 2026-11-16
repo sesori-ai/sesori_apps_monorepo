@@ -86,22 +86,30 @@ class const ScheduledTaskMapper() {
     );
   }
 
-  ScheduledTaskRun runFromDto({required ScheduledTaskRunDto row}) => ScheduledTaskRun(
-    id: row.id,
-    scheduledFor: ScheduledTaskInstant(at: row.scheduledFor, offsetMinutes: row.scheduledForOffsetMinutes),
-    outcome: switch (row.outcome) {
-      ScheduledTaskRunOutcomeKind.started => ScheduledTaskRunOutcome.started(sessionId: row.sessionId, late: row.late),
-      ScheduledTaskRunOutcomeKind.skipped => const ScheduledTaskRunOutcome.skipped(),
-      ScheduledTaskRunOutcomeKind.missed => const ScheduledTaskRunOutcome.missed(),
-      ScheduledTaskRunOutcomeKind.failed => ScheduledTaskRunOutcome.failed(
-        reason: row.reason ?? TaskRunFailureReason.unknown,
-        attempt: switch (row.attemptJson) {
-          final json? => ScheduledTaskRunAttempt.fromJson(jsonDecodeMap(json)),
-          null => null,
+  /// [sessionProjectId] is the project the run's session is in now.
+  ScheduledTaskRun runFromDto({required ScheduledTaskRunDto row, required String? sessionProjectId}) =>
+      ScheduledTaskRun(
+        id: row.id,
+        scheduledFor: ScheduledTaskInstant(at: row.scheduledFor, offsetMinutes: row.scheduledForOffsetMinutes),
+        outcome: switch (row.outcome) {
+          ScheduledTaskRunOutcomeKind.started => ScheduledTaskRunOutcome.started(
+            session: switch ((row.sessionId, sessionProjectId)) {
+              (final id?, final projectId?) => ScheduledTaskRunSession(id: id, projectId: projectId),
+              _ => null,
+            },
+            late: row.late,
+          ),
+          ScheduledTaskRunOutcomeKind.skipped => const ScheduledTaskRunOutcome.skipped(),
+          ScheduledTaskRunOutcomeKind.missed => const ScheduledTaskRunOutcome.missed(),
+          ScheduledTaskRunOutcomeKind.failed => ScheduledTaskRunOutcome.failed(
+            reason: row.reason ?? TaskRunFailureReason.unknown,
+            attempt: switch (row.attemptJson) {
+              final json? => ScheduledTaskRunAttempt.fromJson(jsonDecodeMap(json)),
+              null => null,
+            },
+          ),
         },
-      ),
-    },
-  );
+      );
 
   ScheduledTaskRunDto runToDto({
     required String id,
@@ -111,9 +119,9 @@ class const ScheduledTaskMapper() {
     required DateTime firedAt,
   }) {
     final (kind, sessionId, late, reason, attempt) = switch (outcome) {
-      ScheduledTaskRunStarted(:final sessionId, :final late) => (
+      ScheduledTaskRunStarted(:final session, :final late) => (
         ScheduledTaskRunOutcomeKind.started,
-        sessionId,
+        session?.id,
         late,
         null,
         null,

@@ -106,15 +106,16 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   /// The newest run of each of [taskIds] that has one.
   Future<Map<String, ScheduledTaskRun>> latestRuns({required Set<String> taskIds}) async {
     final latest = <String, ScheduledTaskRun>{};
-    for (final row in await _dao.listRunsForTasks(taskIds: taskIds)) {
-      latest.putIfAbsent(row.taskId, () => _mapper.runFromDto(row: row));
+    for (final (:run, :sessionProjectId) in await _dao.listRunsForTasks(taskIds: taskIds)) {
+      latest.putIfAbsent(run.taskId, () => _mapper.runFromDto(row: run, sessionProjectId: sessionProjectId));
     }
     return latest;
   }
 
   /// The task's run history, newest first.
   Future<List<ScheduledTaskRun>> listRuns({required String taskId}) async => [
-    for (final row in await _dao.listRunsForTasks(taskIds: {taskId})) _mapper.runFromDto(row: row),
+    for (final (:run, :sessionProjectId) in await _dao.listRunsForTasks(taskIds: {taskId}))
+      _mapper.runFromDto(row: run, sessionProjectId: sessionProjectId),
   ];
 
   /// Writes one history row and trims the task's history to the newest
@@ -138,7 +139,10 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
       keep: runHistoryLimit,
       alwaysKeepNewest: ScheduledTaskRunOutcomeKind.started,
     );
-    return _mapper.runFromDto(row: row);
+    return _mapper.runFromDto(
+      row: row,
+      sessionProjectId: _sessionProjectId(outcome: outcome),
+    );
   }
 
   /// Enabled tasks not yet done that are due at [now], earliest first.
@@ -175,8 +179,18 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
       run: row,
       keep: runHistoryLimit,
     );
-    return reserved ? _mapper.runFromDto(row: row) : null;
+    return reserved
+        ? _mapper.runFromDto(
+            row: row,
+            sessionProjectId: _sessionProjectId(outcome: outcome),
+          )
+        : null;
   }
+
+  static String? _sessionProjectId({required ScheduledTaskRunOutcome outcome}) => switch (outcome) {
+    ScheduledTaskRunStarted(:final session?) => session.projectId,
+    _ => null,
+  };
 
   /// The session of the task's newest run whose prompt went out, unless that
   /// session has been deleted. Skipped, missed and failed rows have none, so

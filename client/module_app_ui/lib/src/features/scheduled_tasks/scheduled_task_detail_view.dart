@@ -365,7 +365,7 @@ class const _History({
               title: Text(labels.runOutcome(outcome: run.outcome)),
               subtitle: Text(labels.instant(task: task, instant: run.scheduledFor)),
               trailing: switch (run.outcome) {
-                ScheduledTaskRunStarted(sessionId: _?) || ScheduledTaskRunFailed() => const Icon(
+                ScheduledTaskRunStarted(session: _?) || ScheduledTaskRunFailed() => const Icon(
                   TablerRegular.chevron_right,
                 ),
                 _ => null,
@@ -384,15 +384,13 @@ class const _History({
     required ScheduledTaskFormatter labels,
     required ScheduledTaskRunOutcome outcome,
   }) => switch (outcome) {
-    // The run's session is in the task's project, unless the task was moved
-    // to another project after this run.
-    ScheduledTaskRunStarted(:final sessionId?) => () => onOpenSession(
-      projectId: task.definition.projectId,
-      projectName: switch (_listedProject(context: context)) {
+    ScheduledTaskRunStarted(session: ScheduledTaskRunSession(:final id, :final projectId)) => () => onOpenSession(
+      projectId: projectId,
+      projectName: switch (_listedProject(context: context, projectId: projectId)) {
         final project? => projectDisplayName(loc: context.loc, project: project),
         null => null,
       },
-      sessionId: sessionId,
+      sessionId: id,
     ),
     ScheduledTaskRunStarted() => () => PregoPopupAlertPresenter.of(
       context,
@@ -414,13 +412,13 @@ class const _History({
     ScheduledTaskRunSkipped() || ScheduledTaskRunMissed() || ScheduledTaskRunOutcomeUnknown() => null,
   };
 
-  /// The task's project as this computer lists it, or null while the list
-  /// loads or once the project is no longer on it.
-  ProjectSummary? _listedProject({required BuildContext context}) => switch (context.read<ProjectListCubit>().state) {
-    ProjectListLoaded(:final projects) =>
-      projects.where((project) => project.id == task.definition.projectId).firstOrNull,
-    ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => null,
-  };
+  /// [projectId] as this computer lists it, or null while the list loads or
+  /// once the project is no longer on it.
+  ProjectSummary? _listedProject({required BuildContext context, required String projectId}) =>
+      switch (context.read<ProjectListCubit>().state) {
+        ProjectListLoaded(:final projects) => projects.where((project) => project.id == projectId).firstOrNull,
+        ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => null,
+      };
 
   /// A sheet over the page saying what went wrong and what to do next, offering the editor when that is where the fix is.
   Future<void> _showFailure({

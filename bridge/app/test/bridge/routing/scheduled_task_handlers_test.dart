@@ -201,7 +201,10 @@ void main() {
     await ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)).recordRun(
       taskId: task.id,
       scheduledFor: const ScheduledTaskInstant(at: 0, offsetMinutes: 0),
-      outcome: const ScheduledTaskRunOutcome.started(sessionId: "ses_running", late: false),
+      outcome: const ScheduledTaskRunOutcome.started(
+        session: ScheduledTaskRunSession(id: "ses_running", projectId: "/repo"),
+        late: false,
+      ),
       firedAt: DateTime.utc(2026, 11, 15, 9),
     );
     sessions.quietness["ses_running"] = SessionQuietness.working;

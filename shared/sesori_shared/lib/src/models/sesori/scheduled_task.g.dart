@@ -309,7 +309,11 @@ Map<String, dynamic> _$ScheduledTaskRunToJson(_ScheduledTaskRun instance) =>
 
 ScheduledTaskRunStarted _$ScheduledTaskRunStartedFromJson(Map json) =>
     ScheduledTaskRunStarted(
-      sessionId: json['sessionId'] as String?,
+      session: json['session'] == null
+          ? null
+          : ScheduledTaskRunSession.fromJson(
+              Map<String, dynamic>.from(json['session'] as Map),
+            ),
       late: json['late'] as bool,
       $type: json['kind'] as String?,
     );
@@ -317,7 +321,7 @@ ScheduledTaskRunStarted _$ScheduledTaskRunStartedFromJson(Map json) =>
 Map<String, dynamic> _$ScheduledTaskRunStartedToJson(
   ScheduledTaskRunStarted instance,
 ) => <String, dynamic>{
-  'sessionId': ?instance.sessionId,
+  'session': ?instance.session?.toJson(),
   'late': instance.late,
   'kind': instance.$type,
 };
@@ -374,6 +378,16 @@ ScheduledTaskRunOutcomeUnknown _$ScheduledTaskRunOutcomeUnknownFromJson(
 Map<String, dynamic> _$ScheduledTaskRunOutcomeUnknownToJson(
   ScheduledTaskRunOutcomeUnknown instance,
 ) => <String, dynamic>{'kind': instance.$type};
+
+_ScheduledTaskRunSession _$ScheduledTaskRunSessionFromJson(Map json) =>
+    _ScheduledTaskRunSession(
+      id: json['id'] as String,
+      projectId: json['projectId'] as String,
+    );
+
+Map<String, dynamic> _$ScheduledTaskRunSessionToJson(
+  _ScheduledTaskRunSession instance,
+) => <String, dynamic>{'id': instance.id, 'projectId': instance.projectId};
 
 _ScheduledTaskRunAttempt _$ScheduledTaskRunAttemptFromJson(Map json) =>
     _ScheduledTaskRunAttempt(
