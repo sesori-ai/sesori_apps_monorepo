@@ -44,6 +44,7 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
     preserveEmptyLines: widget.preserveEmptyLines,
   );
   final _selectionArea = GlobalKey<SelectionAreaState>();
+  final _content = GlobalKey();
   final _focusNode = _KeepingFocusNode(debugLabel: "PregoReadableSelectionArea");
 
   /// The area this one is nested in, which owns the selection; null when
@@ -131,20 +132,82 @@ class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea
         // registrar, so the area joins the one that subtree hides.
         registrar: SelectionContainer.maybeOf(context) ?? _NestedAreaRegistrarScope.maybeOf(context),
         delegate: _selectionDelegate,
-        child: widget.child,
+        // Marks where a press may start the outer area's gestures: wherever
+        // this area's own selection region took it.
+        child: MetaData(metaData: _nestedAreaMark, behavior: HitTestBehavior.translucent, child: widget.child),
       );
     }
     return _OuterSelectionAreaScope(
       area: this,
-      child: SelectionArea(
-        key: _selectionArea,
-        focusNode: _focusNode,
-        child: SelectionContainer(
-          delegate: _selectionDelegate,
-          child: widget.child,
+      child: _GesturesOnlyOnNestedAreas(
+        nested: _selectionDelegate.nested,
+        content: _content,
+        child: SelectionArea(
+          key: _selectionArea,
+          focusNode: _focusNode,
+          child: SelectionContainer(
+            delegate: _selectionDelegate,
+            child: KeyedSubtree(key: _content, child: widget.child),
+          ),
         ),
       ),
     );
+  }
+}
+
+/// What a nested area marks its box with, for [_GesturesOnlyOnNestedAreas].
+const _nestedAreaMark = Object();
+
+/// While areas are nested in the outer one, lets a press reach the outer
+/// area's selection gestures only where it lands on one of them, where each
+/// one's own selection region used to take it. Elsewhere the press goes
+/// straight to [content], so a touch scroll or swipe over the space between
+/// them meets the same gestures as before they shared a selection.
+class const _GesturesOnlyOnNestedAreas({
+  /// The nested areas, live: none means the area stands alone and every
+  /// press reaches its gestures.
+  required final Set<Object> nested,
+  required final GlobalKey content,
+  required super.child,
+}) extends SingleChildRenderObjectWidget {
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderGesturesOnlyOnNestedAreas(nested: nested, content: content);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderGesturesOnlyOnNestedAreas renderObject) => renderObject
+    ..nested = nested
+    ..content = content;
+}
+
+class _RenderGesturesOnlyOnNestedAreas({required Set<Object> nested, required GlobalKey content})
+    extends RenderProxyBox {
+  Set<Object> nested = nested;
+  GlobalKey content = content;
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    final box = content.currentContext?.findRenderObject();
+    if (nested.isEmpty || box is! RenderBox || !size.contains(position)) {
+      return super.hitTest(result, position: position);
+    }
+    bool hitContent(BoxHitTestResult result) => result.addWithPaintTransform(
+      transform: box.getTransformTo(this),
+      position: position,
+      hitTest: (result, position) => box.hitTest(result, position: position),
+    );
+    final probe = BoxHitTestResult();
+    hitContent(probe);
+    final onNestedArea = probe.path.any(
+      (entry) => switch (entry.target) {
+        RenderMetaData(:final metaData) => identical(metaData, _nestedAreaMark),
+        _ => false,
+      },
+    );
+    if (onNestedArea) return super.hitTest(result, position: position);
+    final hit = hitContent(result);
+    if (hit) result.add(BoxHitTestEntry(this, position));
+    return hit;
   }
 }
 

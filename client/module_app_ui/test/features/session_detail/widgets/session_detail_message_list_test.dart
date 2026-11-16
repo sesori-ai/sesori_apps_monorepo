@@ -3874,9 +3874,8 @@ void main() {
 
     expect(find.byKey(_jumpToLatestKey), findsNothing);
 
-    // Past the touch slop: the selection's tap recognizer waits that long.
     final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
-    await gesture.moveBy(const Offset(0, -24));
+    await gesture.moveBy(const Offset(0, -12));
     await tester.pump();
 
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
@@ -4622,10 +4621,9 @@ void main() {
     // gesture to increasing scroll offset (i.e. scrolling toward older
     // content, away from the newest-at-bottom edge).
     final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
-    // Establish vertical intent first, past the touch slop, so the timestamp
-    // and selection recognizers leave the arena, matching the stream of move
-    // events produced by a real drag.
-    await gesture.moveBy(const Offset(0, 24));
+    // Establish vertical intent first so the timestamp recognizer leaves the
+    // arena, matching the stream of move events produced by a real drag.
+    await gesture.moveBy(const Offset(0, 12));
     await tester.pump();
     await gesture.moveBy(const Offset(0, 288));
     await tester.pump();
@@ -6664,56 +6662,47 @@ void main() {
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 
-  testWidgets(
-    "a rightward-first drag yields when it turns into a vertical scroll",
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(900, 700));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets("a rightward-first drag yields when it turns into a vertical scroll", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      final created = DateTime.now().millisecondsSinceEpoch;
-      await tester.pumpWidget(
-        _SessionDetailMessageListHarness(
-          initialMessages: [
-            for (var i = 0; i < 12; i++)
-              _message(
-                messageId: "u$i",
-                role: "user",
-                text: _multilineText(label: "Message $i", lines: 6),
-                createdAtMs: created,
-              ),
-          ],
-          initialStreamingText: const {},
-        ),
-      );
-      await tester.pumpAndSettle();
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      final textFinder = find.textContaining("Message 11").first;
-      final restX = tester.getTopLeft(textFinder).dx;
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
 
-      // A rightward drag must be left for the system back-swipe / other
-      // gestures — it must not slide the transcript.
-      final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
-      await gesture.moveBy(const Offset(160, 0));
-      await tester.pump();
+    // A rightward drag must be left for the system back-swipe / other
+    // gestures — it must not slide the transcript.
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+    await gesture.moveBy(const Offset(160, 0));
+    await tester.pump();
 
-      expect(tester.getTopLeft(textFinder).dx, restX, reason: "rightward drag must not open the timestamp gutter");
+    expect(tester.getTopLeft(textFinder).dx, restX, reason: "rightward drag must not open the timestamp gutter");
 
-      // The scroll wins on the first move past its slop and takes the rest.
-      await gesture.moveBy(const Offset(0, 30));
-      await tester.pump();
-      await gesture.moveBy(const Offset(0, 270));
-      await tester.pump();
+    await gesture.moveBy(const Offset(0, 300));
+    await tester.pump();
 
-      expect(_position(tester).pixels, greaterThan(20));
-      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    expect(_position(tester).pixels, greaterThan(20));
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 
-      await gesture.up();
-      await tester.pumpAndSettle();
-    },
-    // On Android the transcript's selection region claims a horizontal touch
-    // drag at once; on iOS it waits for the scroll to lose first.
-    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-  );
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
 
   testWidgets("a mouse click-and-drag does not peek (left free for text selection)", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
