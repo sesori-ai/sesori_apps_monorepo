@@ -75,7 +75,7 @@ class _Harness({required final http.Client? callbackClient, required final Strin
   late final api = CodexAppServerApi(client: transport);
   late final inventory = CodexMcpRepository(
     appServerApi: api,
-    mapper: CodexMcpMapper(userAgent: userAgent),
+    mapper: CodexMcpMapper(codexVersion: CodexInitializeResult.fromJson({"userAgent": userAgent}).codexVersion),
   );
   late final repository = CodexMcpAuthenticationRepository(
     appServerApi: api,

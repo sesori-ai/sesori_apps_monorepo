@@ -121,7 +121,7 @@ void main() {
     final api = CodexAppServerApi(
       client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
     );
-    final repository = CodexThreadRepository(appServerApi: api, userAgent: null);
+    final repository = CodexThreadRepository(appServerApi: api, codexVersion: null);
 
     final fork = repository.decodeStartedNotificationParams(
       params: const {
@@ -840,7 +840,7 @@ class _ReadingThreadRepository({required final CodexThreadRecord? read, required
         appServerApi: CodexAppServerApi(
           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
         ),
-        userAgent: null,
+        codexVersion: null,
       );
 
   final List<String> readThreadIds = [];
@@ -862,7 +862,7 @@ class _GatedThreadRepository() extends CodexThreadRepository {
         appServerApi: CodexAppServerApi(
           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
         ),
-        userAgent: null,
+        codexVersion: null,
       );
 
   final Completer<void> readStarted = Completer<void>();

@@ -1,6 +1,6 @@
 import "dart:convert";
 
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show SemanticVersion, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
     show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
@@ -14,7 +14,6 @@ import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
 import "../models/codex_fork_refusal.dart";
 import "../models/codex_rewind_refusal.dart";
-import "../models/codex_user_agent.dart";
 import "mappers/codex_side_answer_mapper.dart";
 import "models/codex_model_provider_exception.dart";
 import "models/codex_resumed_thread.dart";
@@ -48,13 +47,17 @@ final class const _CodexPromptAttachmentException({required final String message
 }
 
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
-/// [userAgent] is the connected app-server's `initialize` answer.
-class CodexThreadRepository({required final CodexAppServerApi _appServerApi, required String? userAgent}) {
+/// [codexVersion] is the connected app-server's, from `initialize`.
+class CodexThreadRepository({
+  required final CodexAppServerApi _appServerApi,
+  required SemanticVersion? codexVersion,
+}) {
   static const _sideAnswerMapper = CodexSideAnswerMapper();
 
   /// `thread/fork {lastTurnId}` arrived in 0.143.0; older app-servers ignore
   /// the field and fork the whole thread.
-  final bool _forksThroughTurn = codexUserAgentIsAtLeast(userAgent: userAgent, minimum: "0.143.0");
+  final bool _forksThroughTurn =
+      codexVersion != null && codexVersion.compareTo(SemanticVersion.parse(value: "0.143.0")) >= 0;
 
   static const _supportedImageMimes = {
     "image/bmp",

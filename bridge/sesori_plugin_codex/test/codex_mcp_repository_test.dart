@@ -38,11 +38,15 @@ class _Transport({required List<Object?> responses}) implements CodexAppServerTr
 
 CodexMcpRepository _repository({required _Transport transport}) => CodexMcpRepository(
   appServerApi: CodexAppServerApi(client: transport),
-  mapper: CodexMcpMapper(userAgent: "fixture/0.160.1 (fixture)"),
+  mapper: CodexMcpMapper(
+    codexVersion: CodexInitializeResult.fromJson({"userAgent": "fixture/0.160.1 (fixture)"}).codexVersion,
+  ),
 );
 
 PluginMcpServerSnapshot _mapped({required Map<String, Object?> server}) =>
-    CodexMcpMapper(userAgent: "fixture/0.160.1 (fixture)")
+    CodexMcpMapper(
+              codexVersion: CodexInitializeResult.fromJson({"userAgent": "fixture/0.160.1 (fixture)"}).codexVersion,
+            )
             .map(
               servers: [CodexMcpServerStatusDto.fromJson(server)],
               scope: const PluginMcpHarnessScope(),
@@ -344,7 +348,9 @@ void main() {
     ("fixture/0.161.0 (fixture)", true),
   ]) {
     test("session authentication uses verified native context support: $userAgent", () {
-      final mapper = CodexMcpMapper(userAgent: userAgent);
+      final mapper = CodexMcpMapper(
+        codexVersion: CodexInitializeResult.fromJson({"userAgent": userAgent}).codexVersion,
+      );
       for (final scope in [const PluginMcpHarnessScope(), const PluginMcpSessionScope(sessionId: "thread")]) {
         for (final authStatus in ["notLoggedIn", "unsupported", "future-auth"]) {
           final entry =

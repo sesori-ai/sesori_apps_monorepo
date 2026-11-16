@@ -308,7 +308,7 @@ class CodexPlugin._({
         final appServerApi = CodexAppServerApi(client: client);
         final inventory = CodexMcpRepository(
           appServerApi: appServerApi,
-          mapper: CodexMcpMapper(userAgent: initialized.userAgent),
+          mapper: CodexMcpMapper(codexVersion: initialized.codexVersion),
         );
         _mcpRepository = inventory;
         _mcpAuthentication = CodexMcpAuthenticationService(
@@ -320,7 +320,7 @@ class CodexPlugin._({
           ),
         );
         _sessionService.attachAppServerRepositories(
-          threadRepository: CodexThreadRepository(appServerApi: appServerApi, userAgent: initialized.userAgent),
+          threadRepository: CodexThreadRepository(appServerApi: appServerApi, codexVersion: initialized.codexVersion),
           modelRepository: CodexModelRepository(appServerApi: appServerApi),
           skillRepository: CodexSkillRepository(appServerApi: appServerApi),
         );

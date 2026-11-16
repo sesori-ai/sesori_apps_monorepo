@@ -148,7 +148,7 @@ CodexRpcException _rpcError({required String message}) =>
     CodexRpcException(method: "thread/sample", code: -32600, message: message, data: null);
 
 CodexThreadRepository _repository({required _Transport transport}) =>
-    CodexThreadRepository(appServerApi: CodexAppServerApi(client: transport), userAgent: null);
+    CodexThreadRepository(appServerApi: CodexAppServerApi(client: transport), codexVersion: null);
 
 class _Transport({required List<Object?> responses}) implements CodexAppServerTransport {
   final List<Object?> _responses = List.of(responses);

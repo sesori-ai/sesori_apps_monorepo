@@ -51,7 +51,7 @@ void main() {
     );
     final threadRepository = CodexThreadRepository(
       appServerApi: appServerApi,
-      userAgent: null,
+      codexVersion: null,
     );
 
     List<BridgeSseEvent> mapThreadStarted(
