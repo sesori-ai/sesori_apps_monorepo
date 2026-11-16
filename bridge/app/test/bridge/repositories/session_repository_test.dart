@@ -630,6 +630,27 @@ void main() {
       expect(stampedHandoff(promptId: "refused"), isNull);
       expect(stampedHandoff(promptId: "accepted"), sent);
 
+      // A request the harness stored without its echo is reported later with
+      // no prompt id, and keeps the not-sent stamp by its message id.
+      const notSent = MessageHandoffNotSent(targetSessionId: "target", targetTitle: "Target");
+      repository.markRequestNotSent(sessionId: "s1", messageId: "unechoed", notSent: notSent);
+      MessageHandoff? promptlessHandoff({required String messageId}) => switch (repository.stampNotSentRequest(
+        message: Message.user(
+          id: messageId,
+          sessionID: "s1",
+          agent: null,
+          time: null,
+          promptId: null,
+          invocation: null,
+          handoff: null,
+        ),
+      )) {
+        MessageUser(:final handoff) => handoff,
+        _ => fail("expected a user message"),
+      };
+      expect(promptlessHandoff(messageId: "unechoed"), notSent);
+      expect(promptlessHandoff(messageId: "other"), isNull);
+
       // The queued prompt waiting for that echo carries the same stamp.
       QueuedSessionPrompt queued({required String id}) => QueuedSessionPrompt(
         id: id,
@@ -649,6 +670,16 @@ void main() {
         [for (final prompt in stampedQueue) prompt.handoff],
         [sent, const MessageHandoff.notSent(targetSessionId: "target", targetTitle: "Target"), null, null],
       );
+
+      // A held request stays listed once the harness drops it from its queue,
+      // and is not listed twice while the harness still has it.
+      final held = queued(id: "held").copyWith(handoff: notSent);
+      repository.holdRequest(sessionId: "s1", request: held);
+      expect(repository.stampQueuedPrompts(sessionId: "s1", prompts: const []), [held]);
+      expect(repository.stampQueuedPrompts(sessionId: "s2", prompts: const []), isEmpty);
+      expect(repository.stampQueuedPrompts(sessionId: "s1", prompts: [held]), [held]);
+      repository.releaseRequest(sessionId: "s1");
+      expect(repository.stampQueuedPrompts(sessionId: "s1", prompts: const []), isEmpty);
     });
 
     test("getCatalogSession returns the stored project without scanning the plugin", () async {

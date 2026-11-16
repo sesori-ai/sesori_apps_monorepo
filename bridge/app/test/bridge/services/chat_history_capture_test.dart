@@ -2305,9 +2305,18 @@ void main() {
         "marking a send as not sent replaces a sent stamp or stamps an unstamped request, and announces each",
         () async {
           final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
-          final refreshed = <String>[];
-          final refreshes = history.service.historyRefreshes.listen((refresh) => refreshed.add(refresh.sessionId));
-          addTearDown(refreshes.cancel);
+          final announced = <(String, MessageHandoff?, String)>[];
+          final requests = history.service.notSentRequests.listen(
+            (request) => announced.add((
+              request.info.id,
+              switch (request.info) {
+                MessageUser(:final handoff) => handoff,
+                _ => null,
+              },
+              request.parts.whereType<MessagePartText>().map((part) => part.text).join(),
+            )),
+          );
+          addTearDown(requests.cancel);
           const received = MessageHandoff.received(
             sourceSessionId: "source",
             sourceTitle: null,
@@ -2330,9 +2339,13 @@ void main() {
           for (final messageId in ["m1", "m2", "m3", "missing"]) {
             await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId, notSent: notSent);
           }
-          await pumpEventQueue();
-          // Only the marked requests reload the clients that show them.
-          expect(refreshed, ["ses_a", "ses_a"]);
+          // Only the marked requests go out, stamped and with their text, which
+          // an unechoed request has not shown yet, before the mark returns, so
+          // ahead of the send's empty queue.
+          expect(announced, [
+            ("m1", notSent, "Fixture request"),
+            ("m3", notSent, "Fixture request"),
+          ]);
           // A later update of the turn keeps the replaced stamp.
           await _captureMessageWithParts(
             history: history,

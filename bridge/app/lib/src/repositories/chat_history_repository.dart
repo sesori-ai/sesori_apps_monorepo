@@ -277,24 +277,33 @@ class ChatHistoryRepository({
   /// its live echo. It is an update at [updatedAt], so a later replay still
   /// pairs the row with its replayed turn. Any other stored stamp is left as it is.
   ///
-  /// Returns whether the message was marked.
-  Future<bool> markHandoffNotSent({
+  /// Returns the marked message with its text, which a request stored without
+  /// its echo has not shown yet, or null when nothing was marked. A summary
+  /// request is text only.
+  Future<MessageWithParts?> markHandoffNotSent({
     required String sessionId,
     required String messageId,
     required MessageHandoffNotSent notSent,
     required int updatedAt,
   }) async {
     final existing = await _chatHistoryDao.getMessage(sessionId: sessionId, messageId: messageId);
-    if (existing == null) return false;
+    if (existing == null) return null;
     final stored = Message.fromJson(jsonDecodeMap(existing.infoJson));
     if (stored case MessageUser(handoff: MessageHandoffSent() || null)) {
       final marked = stored.copyWith(handoff: notSent);
       await _chatHistoryDao.upsertMessage(
         row: existing.copyWith(infoJson: jsonEncode(marked.toJson()), updatedAt: updatedAt),
       );
-      return true;
+      final partRows = await _chatHistoryDao.getParts(sessionId: sessionId, messageIds: [messageId]);
+      return MessageWithParts(
+        info: marked,
+        parts: [
+          for (final row in partRows)
+            if (MessagePart.fromJson(jsonDecodeMap(row.partJson)) case final MessagePartText text) text,
+        ],
+      );
     }
-    return false;
+    return null;
   }
 
   /// [update] with the command invocation and handoff [stored] already

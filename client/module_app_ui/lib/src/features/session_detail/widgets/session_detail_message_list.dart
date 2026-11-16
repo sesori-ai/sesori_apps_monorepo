@@ -378,6 +378,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     cards: {},
     queuedMarkers: {},
     queuedCards: {},
+    stopping: false,
   );
 
   /// The attached user message bubbles, by message id.
@@ -1199,8 +1200,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       isBusy: isBusy,
       queuedPrompts: widget.bridgeQueuedPrompts,
     );
-    // A summary being written shows its own live line in place of the working row.
-    final activity = handoffs.writing
+    // A summary request's marker shows its own live line in place of the working row.
+    final activity = handoffs.showsWork
         ? const TranscriptActivityIdle()
         : const TranscriptActivityBuilder().build(
             transcript: transcript,

@@ -1389,6 +1389,21 @@ class OrchestratorSession._({
           _enqueueWireEvent(SesoriSseEvent.sessionHistoryRefreshed(sessionID: refresh.sessionId));
         })
         .addTo(_subscriptions);
+    _chatHistoryService.notSentRequests
+        .listen((request) {
+          _enqueueWireEvent(_mapper.buildMessageUpdatedEvent(message: request.info));
+          for (final part in request.parts) {
+            _enqueueWireEvent(_mapper.buildMessagePartEvent(part: part));
+          }
+        })
+        .addTo(_subscriptions);
+    _sessionSendService.queuedRequests
+        .listen(
+          (queue) => _enqueueWireEvent(
+            _mapper.buildQueuedPromptsEvent(sessionId: queue.sessionId, prompts: queue.prompts),
+          ),
+        )
+        .addTo(_subscriptions);
     _sessionUnseenService.unseenChanges
         .listen((change) {
           _enqueueWireEvent(
@@ -1835,7 +1850,7 @@ class OrchestratorSession._({
             );
           }
           await _deliverNormalized(
-            event: _mapper.buildMessageUpdatedEvent(message: message),
+            event: _mapper.buildMessageUpdatedEvent(message: _sessionRepository.stampNotSentRequest(message: message)),
             pluginId: pluginId,
             generation: generation,
             allowDuringStop: allowDuringStop,
