@@ -269,7 +269,9 @@ gives the agent their path.
   One shared builder in `sesori_shared` writes the note, and a parser beside it
   reads it back.
 - A sent user message can be brought back into a composer (shared core's
-  `MessageComposerRestoreService`; no surface uses it yet). The text comes back
+  `MessageComposerRestoreService`): Edit and resend restores it into the
+  session's own composer, and Fork from here on your own message restores it into
+  the fork's composer ([session edit and fork](session-edit-and-fork.md)). The text comes back
   without its saved-file notes, each inline, stored or remote image is fetched again as
   an ordinary staged image, and each noted file comes back as a file the bridge
   already holds. That file shows as an ordinary removable file tile and is sent
