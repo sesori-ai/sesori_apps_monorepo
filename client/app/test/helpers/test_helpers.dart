@@ -131,6 +131,7 @@ void _registerListServices({
       sessionCleanupService: getIt<SessionCleanupService>(),
       sessionUnseenTracker: getIt<SessionUnseenTracker>(),
       failureReporter: getIt<FailureReporter>(),
+      selectedComputerService: FakeSelectedComputerService(),
     ),
   );
   // The session cubits count good interactions toward the rating sheet.

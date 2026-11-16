@@ -571,6 +571,50 @@ void main() {
       );
     });
 
+    test("a first replay drops live rows around a live-only compaction row and keeps the row", () async {
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Name three colors", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "replay-response", text: "Red", reasoning: null, createdAt: null),
+            _messageWithText(id: "replay-compact", text: "/compact", createdAt: null, promptId: null),
+          ],
+        ),
+      );
+      Future<void> capture(MessageWithParts message) => _captureMessageWithParts(history: history, message: message);
+      MessageWithParts compaction({required String id, required int createdAt}) => MessageWithParts(
+        info: Message.assistant(
+          id: id,
+          sessionID: "ses_a",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          sender: MessageSender.agent,
+          time: MessageTime(created: createdAt, completed: null),
+        ),
+        parts: [
+          MessagePart.compaction(
+            id: "$id-part",
+            sessionID: "ses_a",
+            messageID: id,
+            state: const CompactionState.completed(summary: null, freedTokens: null, trigger: null),
+          ),
+        ],
+      );
+      await capture(_messageWithText(id: "live-prompt", text: "Name three colors", createdAt: 100, promptId: "p1"));
+      await capture(compaction(id: "live-auto", createdAt: 150));
+      await capture(_assistantMessageWithText(id: "live-response", text: "Red", reasoning: null, createdAt: 200));
+      await capture(_messageWithText(id: "live-compact", text: "/compact", createdAt: 300, promptId: "p2"));
+      await capture(compaction(id: "live-manual", createdAt: 350));
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "live-auto", "replay-response", "replay-compact", "live-manual"],
+      );
+    });
+
     test("a replay keeps one row per Claude compaction behind its /compact run", () async {
       const claudeSessionId = "11111111-2222-4333-8444-555555555555";
       final temp = Directory.systemTemp.createTempSync("claude-compaction-replay-");
@@ -1883,6 +1927,8 @@ void main() {
               _assistantMessageWithText(id: "live-hi-bob", text: "Hi Bob", reasoning: null, createdAt: null),
             ],
           );
+          // An import tells its own rows from live ones by their write time.
+          await Future<void>.delayed(const Duration(milliseconds: 2));
           return history;
         }
 
@@ -1914,6 +1960,75 @@ void main() {
             const ["r2-greet", "r2-hi-alice", "r2-plain", "r2-p", "live-hello", "r2-hi-bob"],
           );
           expect(await storedInvocations(history: history), [greet, null, null, null, hello, null]);
+        });
+
+        test("drops a replayed reply and a named turn the harness later removes", () async {
+          final transcript = replay(generation: "r1");
+          final history = await liveSession(transcript: transcript);
+          await history.service.backfillSession(sessionId: "ses_a");
+          transcript
+            ..clear()
+            ..addAll(replay(generation: "r2").sublist(2, 4));
+          await Future<void>.delayed(const Duration(milliseconds: 2));
+
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(
+            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+            const ["r2-plain", "r2-p", "live-hello"],
+          );
+        });
+
+        // Hermes runs `/compress` and `/help` itself: its replay holds neither
+        // the run nor its reply, and numbers untimed rows afresh on each load.
+        test("keeps a run the replay doesn't hold, reply included, with each turn around it once", () async {
+          const compress = CommandInvocation(name: "compress", source: CommandSource.command, arguments: null);
+          List<MessageWithParts> replay({required String generation}) => [
+            _messageWithText(id: "$generation-h0", text: "Say ALPHA", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "$generation-h1", text: "ALPHA", reasoning: null, createdAt: null),
+            _messageWithText(id: "$generation-h2", text: "Say BETA", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "$generation-h3", text: "BETA", reasoning: null, createdAt: null),
+          ];
+          final transcript = replay(generation: "r1");
+          final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+          await _captureMessages(
+            history: history,
+            messages: [
+              _messageWithText(id: "live-alpha", text: "Say ALPHA", createdAt: 100, promptId: "p1"),
+              _assistantMessageWithText(id: "live-alpha-reply", text: "ALPHA", reasoning: null, createdAt: null),
+              liveRun(id: "live-compress", text: "/compress", invocation: compress),
+              _assistantMessageWithText(
+                id: "live-compress-reply",
+                text: "Context compressed",
+                reasoning: null,
+                createdAt: null,
+              ),
+              _messageWithText(id: "live-beta", text: "Say BETA", createdAt: 300, promptId: "p3"),
+              _assistantMessageWithText(id: "live-beta-reply", text: "BETA", reasoning: null, createdAt: null),
+            ],
+          );
+
+          for (final generation in ["r1", "r2"]) {
+            transcript
+              ..clear()
+              ..addAll(replay(generation: generation));
+            await Future<void>.delayed(const Duration(milliseconds: 2));
+
+            await history.service.backfillSession(sessionId: "ses_a");
+
+            expect(
+              (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+              [
+                "$generation-h0",
+                "$generation-h1",
+                "live-compress",
+                "live-compress-reply",
+                "$generation-h2",
+                "$generation-h3",
+              ],
+              reason: "import $generation",
+            );
+          }
         });
 
         test("leaves a plain turn in a reshaped turn's place alone", () async {

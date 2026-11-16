@@ -26,7 +26,7 @@ import "session_scheduled_resume.dart";
 /// words lead the meta line in their colour.
 ///
 /// Tapping opens the session; long-pressing — or right-clicking with a mouse —
-/// opens its actions in a [PregoAnchorMenu] anchored to the row, which blurs
+/// opens its actions in a [PregoContextMenu] anchored to the row, which blurs
 /// the rest of the list back and holds this row sharp so the session being
 /// acted on stays in view.
 ///
@@ -100,37 +100,14 @@ class const SessionTile({
   Widget build(BuildContext context) {
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     if (PregoInteractionScope.of(context) == PregoInteractionMode.pointer) {
-      return _PointerRowMenu(
-        menuWidth: _menuWidth,
-        entriesBuilder: menuEntries,
-        rowBuilder: (context, openMenu, revealed, menuOpen) => _buildRow(
-          context: context,
-          openMenu: openMenu,
-          pointer: true,
-          revealActions: revealed,
-          menuOpen: menuOpen,
-        ),
+      return _PointerReveal(
+        builder: (context, revealed) => _buildRow(context: context, pointer: true, revealActions: revealed),
       );
     }
-    return PregoAnchorMenu(
-      flat: true,
-      menuWidth: _menuWidth,
-      // Holds this row sharp while the rest of the list blurs back, so which
-      // session the actions will hit is unambiguous.
-      spotlight: PregoMenuSpotlight.listRow,
-      entriesBuilder: menuEntries,
-      triggerBuilder: (context, openMenu) =>
-          _buildRow(context: context, openMenu: openMenu, pointer: false, revealActions: false, menuOpen: false),
-    );
+    return _buildRow(context: context, pointer: false, revealActions: false);
   }
 
-  Widget _buildRow({
-    required BuildContext context,
-    required VoidCallback openMenu,
-    required bool pointer,
-    required bool revealActions,
-    required bool menuOpen,
-  }) {
+  Widget _buildRow({required BuildContext context, required bool pointer, required bool revealActions}) {
     final prego = context.prego;
 
     return PregoSwipeActions(
@@ -147,16 +124,23 @@ class const SessionTile({
       onFullSwipe: isArchived ? onDelete : onArchive,
       leadingPrimaryActionBuilder: (context, close) => _markUnreadAction(context: context, close: close),
       onLeadingFullSwipe: onToggleUnread,
-      // Right-click is the mouse counterpart of long-press. The row merges its
-      // two lines into one semantics node and announces it as a button.
-      child: GestureDetector(
-        onSecondaryTap: openMenu,
-        child: MergeSemantics(
-          child: Semantics(
-            button: true,
+      // The row merges its two lines into one semantics node and announces it
+      // as a button.
+      child: MergeSemantics(
+        child: Semantics(
+          button: true,
+          // Inside the merged node, so its long-press is one of the row's
+          // actions for a screen reader.
+          child: PregoContextMenu(
+            menuWidth: _menuWidth,
+            // Holds this row sharp while the rest of the list blurs back, so
+            // which session the actions will hit is unambiguous.
+            spotlight: PregoMenuSpotlight.listRow,
+            onOpenChanged: null,
+            entriesBuilder: menuEntries,
             // Ink rather than a plain colour so the tap ripple stays visible
             // over the selected tint (a widget's own colour would cover it).
-            child: Padding(
+            builder: (context, menuOpen) => Padding(
               padding: pointer ? _pointerRowMargin : EdgeInsets.zero,
               child: Ink(
                 color: !pointer && selected ? prego.colors.bgBrandSolid.withValues(alpha: 0.08) : null,
@@ -169,7 +153,6 @@ class const SessionTile({
                 child: InkWell(
                   mouseCursor: WidgetStateMouseCursor.clickable,
                   onTap: onTap,
-                  onLongPress: openMenu,
                   hoverDuration: pointer ? Duration.zero : null,
                   borderRadius: pointer ? BorderRadius.circular(_pointerRowRadius) : null,
                   hoverColor: pointer ? prego.colors.bgSecondaryHover.withValues(alpha: 0.5) : null,
@@ -199,7 +182,7 @@ class const SessionTile({
                         ),
                       // What the open menu's actions will hit, as Finder outlines the
                       // item it right-clicked.
-                      if (menuOpen)
+                      if (pointer && menuOpen)
                         Positioned.fill(
                           child: IgnorePointer(
                             child: DecoratedBox(
@@ -954,33 +937,6 @@ class const _HarnessLogo({required final String pluginId, required final _LogoTo
       ),
     );
   }
-}
-
-/// A pointer row and its actions menu, which knows when the menu is open.
-class const _PointerRowMenu({
-  required final double menuWidth,
-  required final List<PregoMenuEntry> Function() entriesBuilder,
-  required final Widget Function(BuildContext context, VoidCallback openMenu, bool revealed, bool menuOpen) rowBuilder,
-}) extends StatefulWidget {
-  @override
-  State<_PointerRowMenu> createState() => _PointerRowMenuState();
-}
-
-class _PointerRowMenuState() extends State<_PointerRowMenu> {
-  bool _menuOpen = false;
-
-  @override
-  Widget build(BuildContext context) => PregoAnchorMenu(
-    flat: true,
-    menuWidth: widget.menuWidth,
-    entriesBuilder: widget.entriesBuilder,
-    onOpenChanged: (open) {
-      if (mounted) setState(() => _menuOpen = open);
-    },
-    triggerBuilder: (context, openMenu) => _PointerReveal(
-      builder: (context, revealed) => widget.rowBuilder(context, openMenu, revealed, _menuOpen),
-    ),
-  );
 }
 
 /// Whether the pointer is over the row or keyboard focus is inside it.

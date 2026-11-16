@@ -3,6 +3,10 @@ import "package:material_ui/material_ui.dart";
 
 /// A selection area that preserves structural boundaries between text widgets
 /// when copying across them.
+///
+/// The holder of a [GlobalKey] to its [PregoReadableSelectionAreaState] can
+/// read what is selected and select all of it, as a context menu's Copy and
+/// Select text do.
 class const PregoReadableSelectionArea({
   super.key,
   required final Widget child,
@@ -25,13 +29,32 @@ class const PregoReadableSelectionArea({
   }
 
   @override
-  State<PregoReadableSelectionArea> createState() => _PregoReadableSelectionAreaState();
+  State<PregoReadableSelectionArea> createState() => PregoReadableSelectionAreaState();
 }
 
-class _PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea> {
+class PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea> {
   late final _selectionDelegate = _ReadableSelectionContainerDelegate(
     preserveEmptyLines: widget.preserveEmptyLines,
   );
+  final _selectionArea = GlobalKey<SelectionAreaState>();
+  final _focusNode = _KeepingFocusNode(debugLabel: "PregoReadableSelectionArea");
+
+  /// The selected text, as copying it gives it, or null when none is selected.
+  String? get selectedText => _selectionDelegate.getSelectedContent()?.plainText;
+
+  /// Keeps the selection while [keep] is on, though the area loses the focus,
+  /// as it does to a menu opened on its text. Losing the focus otherwise
+  /// clears it. The region never sees the loss, so its selection stays whole
+  /// and a shift-click afterwards extends it.
+  void keepSelection({required bool keep}) => _focusNode.keeps = keep;
+
+  /// Selects all of the area's text and shows the selection's handles and
+  /// toolbar, taking the focus as a long-press selection does, so tapping
+  /// elsewhere clears it.
+  void selectAll() {
+    _focusNode.requestFocus();
+    _selectionArea.currentState?.selectableRegion.selectAll(SelectionChangedCause.toolbar);
+  }
 
   @override
   void didUpdateWidget(covariant PregoReadableSelectionArea oldWidget) {
@@ -44,18 +67,30 @@ class _PregoReadableSelectionAreaState() extends State<PregoReadableSelectionAre
   @override
   void dispose() {
     _selectionDelegate.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return SelectionArea(
+      key: _selectionArea,
+      focusNode: _focusNode,
       child: SelectionContainer(
         delegate: _selectionDelegate,
         child: widget.child,
       ),
     );
   }
+}
+
+/// Reports the focus while [keeps] is on, so the selection region does not
+/// clear its selection when a menu takes the focus.
+class _KeepingFocusNode({super.debugLabel}) extends FocusNode {
+  bool keeps = false;
+
+  @override
+  bool get hasFocus => keeps || super.hasFocus;
 }
 
 class _ReadableSelectionContainerDelegate({required bool preserveEmptyLines}) extends StaticSelectionContainerDelegate {

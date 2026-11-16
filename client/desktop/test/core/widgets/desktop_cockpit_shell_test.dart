@@ -170,6 +170,10 @@ void main() {
     when(() => refreshService.scan).thenAnswer((_) => BehaviorSubject.seeded(const CatalogRescanState.idle()));
     when(refreshService.refresh).thenAnswer((_) async => true);
     activity = MockSseEventTracker();
+    // The palette's session search reads both.
+    GetIt.instance
+      ..registerSingleton<SseEventTracker>(activity)
+      ..registerSingleton<PluginRepository>(stubbedPluginRepository());
     repository = _MockRepository();
     when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout());
     when(() => repository.writeSidebarLayout(layout: any(named: "layout"))).thenAnswer((_) async {});
@@ -1811,6 +1815,8 @@ const _sessionActions = SessionListActionDispatcher(
   onSessionArchived: null,
   onSessionDeleted: _deleted,
   onSessionMarkedUnread: null,
+  openSession: _openNothing,
+  createSessionSearch: _searchNothing,
 );
 void _deleted({required BuildContext context, required String sessionId}) {}
 void _openSession({
@@ -1857,3 +1863,11 @@ class _MockSessionWindowService() extends Mock implements SessionWindowService;
 class _MockFilterTracker() extends Mock implements SessionListFilterTracker;
 
 class _MockRepository() extends Mock implements DesktopInstanceRepository;
+
+void _openNothing({required String projectId, required String projectName, required Session session}) {}
+
+SessionSearchCubit _searchNothing({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) => throw UnimplementedError("These tests do not send sessions");

@@ -110,9 +110,14 @@ reconnect or restart.
   goes to the replayed user turn between the same neighbors (an OMP prompt
   template's expanded text), or stays where it was when the replay has no row
   for it (an OMP skill run), and its neighbors still match their replayed
-  rows. Failure signals after an OMP command or skill run and a reload or
-  forced re-import: the card and the expanded text both shown, a reply shown
-  twice, the card below the last reply, or the card gone.
+  rows. A run the harness handles itself and records nowhere, reply included
+  (Hermes `/compress` and `/help`, OMP `/session`), keeps its card and reply
+  in place, and the turns before and after it still match their replayed
+  rows. Failure signals after an OMP command or skill run, or a Hermes
+  `/compress` or `/help` followed by another prompt, and a reload or forced
+  re-import: the card and the expanded text both shown, a reply shown twice,
+  the next prompt shown both above and below the card, the card below the
+  last reply, or the card or its reply gone.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
@@ -346,7 +351,10 @@ reconnect or restart.
   live compaction row
   pairs with its replayed row even beside a live-only row such as the
   bridge's own `/compact` bubble, while distinct compactions, which never
-  share a time, stay apart.
+  share a time, stay apart. A compaction row is no neighbour in any other
+  row's context, so the live prompt and reply around a live-only compaction
+  row (DeepSeek, OMP, Grok) still pair with their replayed rows and the row
+  stays between them, without duplicating the turn.
   The content fingerprint ignores identity, time, agent/model attribution, and
   internal parts hidden from transcripts; alignment still uses available
   creation times as above, normalizes spilled attachments, and keeps replay

@@ -888,9 +888,9 @@ class SessionRepository({
   /// as the Running filter uses them. Readiness adds what a harness reports
   /// beyond that, such as a queued prompt or a pending wake-up.
   Future<SessionQuietness> getSessionQuietness({required String sessionId}) async {
-    final binding = await _sessionDao.getSession(sessionId: sessionId);
-    if (binding == null) return SessionQuietness.unknown;
     try {
+      final binding = await _sessionDao.getSession(sessionId: sessionId);
+      if (binding == null) return SessionQuietness.unknown;
       return await _runtime.useIfActive(
             pluginId: binding.pluginId,
             operation: SessionOperation.getSessionQuietness,

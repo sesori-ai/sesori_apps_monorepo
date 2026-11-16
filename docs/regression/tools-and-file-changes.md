@@ -78,8 +78,8 @@ sub-agent parts, plus the signal that a tool changed files.
 - The client never classifies a raw tool name or parses tool input.
 - A finished context compaction renders as one quiet "Context compacted" row in
   the step style; like visible text it ends a group. While it runs, Pi, Codex,
-  DeepSeek and Oh My Pi (automatic compaction only) show the live row below
-  from the start, Claude from its first
+  DeepSeek, Grok and Oh My Pi (automatic compaction only) show the live row
+  below from the start, Claude from its first
   `compacting` status, OpenCode v1 from its summary's first text, and OpenCode
   v2 once its running snapshot loads. When the
   harness exposes the carried-forward summary, tapping the row opens a
