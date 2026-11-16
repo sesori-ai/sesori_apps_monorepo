@@ -29,7 +29,7 @@ class const AntigravityPluginComposer() {
   }) {
     const protocol = AntigravityProtocolMapper();
     final configuration = AcpSessionConfigurationTracker();
-    final commands = AcpCommandTracker();
+    final commands = AcpCommandTracker(selectionCommands: const {});
     final children = AcpChildSessionTracker();
     final catalog = AntigravityCatalogTracker();
     return AntigravityPlugin(

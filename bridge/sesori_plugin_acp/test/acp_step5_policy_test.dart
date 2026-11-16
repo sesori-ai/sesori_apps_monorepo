@@ -68,7 +68,7 @@ void main() {
       Duration closeTimeout = const Duration(seconds: 1),
     }) {
       final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
+      final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       return _PolicyPlugin(
         forms: forms,

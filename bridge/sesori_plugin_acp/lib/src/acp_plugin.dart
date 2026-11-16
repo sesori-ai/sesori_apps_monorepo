@@ -1268,6 +1268,10 @@ abstract class AcpPlugin({
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    // A catalog cached before these were filtered can still offer them.
+    if (_commandTracker.selectionCommands.contains(command)) {
+      throw const PluginStaleOptionsException(operation: "sendCommand", message: "set through the session selection");
+    }
     await _connectedClient();
     await validateTurnSelection(
       operation: "sendCommand",

@@ -11,7 +11,12 @@ import "acp_stdio_client.dart";
 /// notification per session, but the commands are agent-global for every
 /// shipping backend, and `getCommands` is project-scoped — a per-session
 /// cache would invent scoping the plugin API can't express.
-class AcpCommandTracker() {
+class AcpCommandTracker({
+  /// Native commands that change a setting the session selection owns, such
+  /// as the model. They are never offered, so the agent's state cannot drift
+  /// from the picker.
+  required final Set<String> selectionCommands,
+}) {
   bool _hasSnapshot = false;
   int _revision = 0;
 
@@ -35,7 +40,7 @@ class AcpCommandTracker() {
   /// Replaces the authoritative snapshot after an isolated discovery process
   /// completes successfully.
   void replaceSnapshot({required List<PluginCommand> commands}) {
-    _commands = List.unmodifiable(commands);
+    _commands = List.unmodifiable(commands.where((command) => !selectionCommands.contains(command.name)));
     _hasSnapshot = true;
     _revision++;
   }
@@ -57,14 +62,14 @@ class AcpCommandTracker() {
 
   /// Fail-soft parse: a malformed entry is skipped rather than dropping the
   /// whole batch — command advertisement must never break the event flow.
-  static List<PluginCommand> _parse(Object? raw) {
+  List<PluginCommand> _parse(Object? raw) {
     if (raw is! List) return const [];
     final commands = <PluginCommand>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
       final map = entry.cast<String, dynamic>();
       final name = map["name"];
-      if (name is! String || name.isEmpty) continue;
+      if (name is! String || name.isEmpty || selectionCommands.contains(name)) continue;
       final description = map["description"];
       final input = map["input"];
       final hint = input is Map ? input["hint"] : null;

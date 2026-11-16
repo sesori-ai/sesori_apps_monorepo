@@ -45,7 +45,7 @@ void main() {
   test("production plugin composes the DeepSeek approval registry", () async {
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
     final configurationTracker = AcpSessionConfigurationTracker();
-    final commandTracker = AcpCommandTracker();
+    final commandTracker = AcpCommandTracker(selectionCommands: const {});
     final childSessionTracker = AcpChildSessionTracker();
     final mapper = DeepSeekEventMapper(
       launchDirectory: "/project",

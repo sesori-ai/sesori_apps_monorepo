@@ -292,11 +292,13 @@ void main() {
       expect(catalog.providers.providers.single.models.single.name, "claude-sonnet-test");
     });
 
-    test("omits the native /fast command owned by the fast-mode selection", () {
+    test("omits the native /model, /effort and /fast commands the selection owns", () {
       final catalog = repository.map(
         skillNames: const {},
         handshake: {
           "commands": [
+            {"name": "model", "description": "Set the AI model for Claude Code", "argumentHint": "[model]"},
+            {"name": "effort", "description": "Set effort level for model usage", "argumentHint": "[low|medium|high]"},
             {"name": "fast", "description": "Toggle fast mode", "argumentHint": "[on|off]"},
             {"name": "review", "description": "Review changes"},
           ],

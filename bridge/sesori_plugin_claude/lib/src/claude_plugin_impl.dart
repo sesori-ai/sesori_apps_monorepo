@@ -419,11 +419,11 @@ final class ClaudePlugin({
     if (directory == null) {
       throw const PluginOperationException.notFound(operation: "sendCommand", message: "session not found");
     }
-    // A catalog cached before /fast was filtered can still offer it.
-    if (command == ClaudeBackendCatalogRepository.fastModeCommand) {
+    // A catalog cached before these were filtered can still offer them.
+    if (ClaudeBackendCatalogRepository.selectionCommands.contains(command)) {
       throw const PluginStaleOptionsException(
         operation: "sendCommand",
-        message: "fast mode is set through the session selection",
+        message: "model, effort and fast mode are set through the session selection",
       );
     }
     final visible = userVisibleArguments?.trim();

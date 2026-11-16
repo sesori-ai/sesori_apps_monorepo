@@ -180,7 +180,7 @@ HermesSessionOptionsService _service({required _FakeCatalogRepository repository
   return HermesSessionOptionsService(
     repository: repository,
     configurationTracker: configurationTracker,
-    commandTracker: AcpCommandTracker(),
+    commandTracker: AcpCommandTracker(selectionCommands: const {}),
     launchDirectory: "/repo",
     pluginId: "hermes",
     agentDisplayName: "Hermes Agent",

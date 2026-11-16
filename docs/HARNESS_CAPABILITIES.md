@@ -1222,6 +1222,40 @@ bridge host. A sandboxed, credential-free Pi 1.0.4 RPC probe on macOS arm64
 (2026-10-06) confirmed both sources, the `/mcp` status reply and the hidden
 `/llama`; OAuth sign-in against a real MCP server was not exercised.
 
+Native commands that change a setting a composer picker owns (the model, the
+effort level, fast mode or the session's approval mode) are hidden, and sending
+one is rejected as a stale option, so the harness cannot drift from what Sesori
+sends:
+
+| Harness | Hidden | Evidence |
+|---|---|---|
+| Claude | `/model`, `/effort`, `/fast` | CLI 2.1.325 lists all three as non-interactive built-ins. |
+| OMP | `/model`, `/switch`, `/effort` | Captured ACP command list. |
+| Hermes | `/model` | Captured ACP command list. |
+| GitHub Copilot | `/model`, `/allow-all`, `/permissions` | `/allow-all` and `/permissions` (`default`, `allow-all`, `show`) are in a captured 1.0.109 ACP list. `/model` is a CLI 1.0.78 built-in that no capture confirms is advertised. |
+| Grok | `/always-approve` | Captured 1.0.30 ACP list. |
+
+Commands no picker covers stay listed: OMP's `/fast` and `/slow` (OMP's picker
+has no fast toggle) and `/modelpreset`, Claude's `/config` and `/output-style`,
+DeepSeek's `/permission` (its presets also switch the sandbox), Copilot's
+`/autopilot` and `/reset-allowed-tools`, and every harness's plan command (the
+composer has no plan-mode picker).
+
+The other harnesses advertise nothing a picker owns (checked 2026-11-15):
+
+- Codex: the plugin builds the list itself from skills plus a synthesized
+  `/compact`.
+- OpenCode: the server's `/command` list holds configured commands, MCP prompts
+  and skills, plus the synthesized `/compact`.
+- Pi 1.5.2: RPC `get_commands` returns extension, prompt-template and skill
+  commands. Its bundled extensions, read from the installed package, register
+  only `/llama` (already excluded), `/mcp` and `/name`.
+- Cursor 2026.07.23: the installed agent's `sendAvailableCommands` sends
+  `/copy-request-id` plus user commands and skills (read from source, no live
+  capture).
+- DeepSeek 0.2.2: read from the installed command registry, no live capture.
+- Antigravity 1.4.5: from this document's command list, no live capture.
+
 ## Pi extension startup dialogs
 
 Pi RPC supports extension select, confirm, input, and editor dialogs during

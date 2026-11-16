@@ -309,7 +309,7 @@ void main() {
 _service({required _FakeGrokAcpApi api}) {
   final catalogTracker = GrokCatalogTracker();
   final configurationTracker = AcpSessionConfigurationTracker();
-  final commandTracker = AcpCommandTracker()..replaceSnapshot(commands: const []);
+  final commandTracker = AcpCommandTracker(selectionCommands: const {})..replaceSnapshot(commands: const []);
   final catalogRepository = GrokCatalogRepository(api: api);
   return (
     service: GrokSessionOptionsService(
