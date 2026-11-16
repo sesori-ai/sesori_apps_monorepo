@@ -350,6 +350,38 @@ void main() {
         expect(logoLook(tester), "colour");
       });
 
+      testWidgets("a pin leads a pinned title and slides it over as it comes and goes, at once under reduced motion", (
+        tester,
+      ) async {
+        final session = testSession(title: "My Session", updatedAt: now);
+        final pin = find.byIcon(TablerRegular.pinned);
+        double titleStart() => tester.getTopLeft(find.text("My Session")).dx;
+        await pump(tester, tile(session: session));
+        expect(pin, findsNothing);
+        final unpinnedStart = titleStart();
+
+        await pump(tester, tile(session: session.copyWith(pinned: true)));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(titleStart(), allOf(greaterThan(unpinnedStart), lessThan(unpinnedStart + 18)), reason: "midway");
+        await tester.pump(const Duration(milliseconds: 150));
+        // The 14 px pin and a 4 px gap, centred on the title's line.
+        expect(titleStart(), unpinnedStart + 18);
+        expect(tester.getTopRight(pin).dx, unpinnedStart + 14);
+        expect(tester.getCenter(pin).dy, closeTo(tester.getCenter(find.text("My Session")).dy, 0.5));
+
+        await pump(tester, tile(session: session));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(titleStart(), allOf(greaterThan(unpinnedStart), lessThan(unpinnedStart + 18)), reason: "midway back");
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(titleStart(), unpinnedStart);
+        expect(pin, findsNothing);
+
+        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        await pump(tester, tile(session: session.copyWith(pinned: true)));
+        expect(titleStart(), unpinnedStart + 18);
+      });
+
       testWidgets("a lit logo breathes, and holds still at full strength under reduced motion", (tester) async {
         await withClock(Clock(() => tester.binding.clock.now()), () async {
           await pump(tester, tile(session: testSession(title: "My Session"), isRunning: true));
