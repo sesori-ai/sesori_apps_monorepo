@@ -162,8 +162,8 @@ bridge first.
   model (verified on 2.1.325, 2026-11-16, upstream
   [anthropics/claude-code#110490](https://github.com/anthropics/claude-code/issues/110490)):
   an ask sent early in the stream comes back after the main turn ends,
-  holding the main turn's reply. Sesori catches that echo and shows "Claude
-  Code answered with its running reply instead. Ask again." with Retry,
+  holding the main turn's reply. Sesori catches that echo and shows "Couldn't
+  answer while Claude Code was busy. Ask again." with Retry,
   instead of the reply. A non-Claude model behind a proxy hits it more often,
   and can also answer the running turn's prompt in its own words, which
   Sesori can't tell from an answer (see HARNESS_CAPABILITIES.md).

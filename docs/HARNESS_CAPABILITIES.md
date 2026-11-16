@@ -336,8 +336,8 @@ Claude Code (live probe against 2.1.325 with haiku, 2026-11-16):
   [anthropics/claude-code#110490](https://github.com/anthropics/claude-code/issues/110490).
 - Sesori catches only this exact echo: an answer equal, after trimming, to
   the final reply of a turn that ended while the ask was out is refused as
-  `repeatedRunningReply`, and the app says Claude Code answered with its
-  running reply, with Retry. A real answer that happens to equal such a reply
+  `repeatedRunningReply`, and the app says it couldn't answer while Claude
+  Code was busy, with Retry. A real answer that happens to equal such a reply
   is refused too, which costs only a re-ask. An answer to the running turn's
   prompt in other words (the proxy case above) is not caught.
 

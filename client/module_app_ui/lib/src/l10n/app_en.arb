@@ -2291,8 +2291,6 @@
   "@sessionDetailContinueInterruptedTurn": {"description": "Button under the 'Interrupted' line of a turn the Sesori bridge cut off. Sends the agent a prompt asking it to continue where it left off."},
   "sessionDetailContinueEditOpen": "Finish or cancel your edit first.",
   "@sessionDetailContinueEditOpen": {"description": "Alert shown when the user taps Continue under an interrupted turn while a message edit is open."},
-  "sessionDetailContinueEditSending": "Your edit is on its way. Continue in a moment.",
-  "@sessionDetailContinueEditSending": {"description": "Alert shown when the user taps Continue under an interrupted turn while an edited message is stopping the session or being sent."},
   "sessionDetailContinueSessionWorking": "The agent is already working.",
   "@sessionDetailContinueSessionWorking": {"description": "Alert shown when the user taps Continue under an interrupted turn just as the session started working."},
   "sessionDetailContinuePromptPending": "Your message is already on its way.",
@@ -2359,7 +2357,7 @@
   "sessionDetailEditRefusedBody": "The session didn't accept the edit. Nothing changed.",
   "@sessionDetailEditRefusedBody": {"description": "Alert body for a refused edit when the agent gave no reason."},
   "sessionDetailEditSendingLock": "Your edit is on its way. You can type again in a moment.",
-  "@sessionDetailEditSendingLock": {"description": "Note shown when the user taps or types in the composer while an edited message is stopping the session or being sent."},
+  "@sessionDetailEditSendingLock": {"description": "Note shown when the user taps or types in the composer, or taps Continue under an interrupted turn, while an edited message is stopping the session or being sent."},
   "sessionDetailEditOptionsChanged": "The available models or agents changed. Check your selection and resend.",
   "@sessionDetailEditOptionsChanged": {"description": "Alert shown when an edit named a model or agent the session no longer offers; the options were refreshed."},
   "sessionDetailEditStopFailed": "The session didn't stop, so the edit wasn't sent.",
@@ -3182,7 +3180,7 @@
   "@sideChatRefusedTooLong": {"description": "Shown in place of an answer when the side chat's history is too long for the harness."},
   "sideChatRefusedNoAnswer": "No answer came back.",
   "@sideChatRefusedNoAnswer": {"description": "Shown in place of an answer when the model gave no usable answer."},
-  "sideChatRefusedRepeatedRunningReply": "{harness} answered with its running reply instead. Ask again.",
+  "sideChatRefusedRepeatedRunningReply": "Couldn't answer while {harness} was busy. Ask again.",
   "@sideChatRefusedRepeatedRunningReply": {
     "description": "Shown in place of an answer, above a Retry button, when the harness sent back the reply of the turn it was running instead of answering the side question.",
     "placeholders": {"harness": {"type": "String", "example": "Claude Code"}}

@@ -144,7 +144,8 @@ defaults and queued client sends coherent.
   the turn is the latest, the session is idle and no prompt is on its way, a "Continue" link button sits under the
   line and sends "Continue where you left off."; it folds away under the line once a later turn appears, so nothing
   above moves. While the session is idle and an edit is open or sending, Continue stays but dims like the locked
-  composer, and a tap sends nothing and says why in a popup alert; while the session works, as during an edit's
+  composer, and a tap sends nothing and says why in a popup alert (while an edit is sending, in the composer's words);
+  while the session works, as during an edit's
   Stop and resend, Continue folds away as it does for any working session. Every refused tap answers with an alert
   saying why, including one on a Continue folding away; a tap on a detached reader's frozen view also returns to the
   newest rows. An open session view that receives a new unacknowledged interruption declares its view again, so the
