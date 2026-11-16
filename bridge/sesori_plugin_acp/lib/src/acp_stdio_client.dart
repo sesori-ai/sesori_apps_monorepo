@@ -48,8 +48,10 @@ class AcpStdioClient({
     logTag: _logTag,
     reapTimeout: const Duration(seconds: 5),
   );
+  // Synchronous, so agent frames reach listeners in arrival order and before
+  // a response that follows them resolves its request.
   final StreamController<AcpNotification> _notifications = StreamController.broadcast(sync: true);
-  final StreamController<AcpServerRequest> _serverRequests = StreamController.broadcast();
+  final StreamController<AcpServerRequest> _serverRequests = StreamController.broadcast(sync: true);
   StreamSubscription<JsonObject>? _frames;
   bool _disposed = false;
   int _nextId = 1;

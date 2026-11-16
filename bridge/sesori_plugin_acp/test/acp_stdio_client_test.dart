@@ -96,6 +96,31 @@ void main() {
       expect(seen, ["notification", "response"]);
     });
 
+    test("a server request reaches listeners before the notification that follows it", () async {
+      final seen = <String>[];
+      client.serverRequests.listen((_) => seen.add("request"));
+      client.notifications.listen((_) => seen.add("notification"));
+
+      fake.emitChunk(
+        messages: [
+          {
+            "jsonrpc": "2.0",
+            "id": 42,
+            "method": "session/request_permission",
+            "params": {"sessionId": "s1"},
+          },
+          {
+            "jsonrpc": "2.0",
+            "method": AcpMethods.cancelRequest,
+            "params": {"requestId": 42},
+          },
+        ],
+      );
+      await pump();
+
+      expect(seen, ["request", "notification"]);
+    });
+
     test("session request inactivity resets only for matching session activity", () async {
       const inactivityTimeout = Duration(milliseconds: 300);
       final first = await client.dispatchSessionRequest(
