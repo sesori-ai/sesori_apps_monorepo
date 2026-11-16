@@ -11,7 +11,10 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit {
+  @override
+  bool canFork({required shared.Session session}) => false;
+}
 
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 

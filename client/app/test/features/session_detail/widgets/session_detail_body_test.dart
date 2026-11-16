@@ -34,7 +34,10 @@ import "../../../helpers/test_helpers.dart";
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
-class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit {
+  @override
+  bool canFork({required Session session}) => false;
+}
 
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 

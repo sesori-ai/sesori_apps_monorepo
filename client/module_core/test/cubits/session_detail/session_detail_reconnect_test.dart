@@ -102,6 +102,7 @@ void main() {
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
       composerRestore: MockMessageComposerRestoreService(),
+      actionService: MockSessionActionService(),
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -194,6 +195,7 @@ void main() {
           cannotContinueMessage: null,
           namesCommandInvocations: false,
           supportsRewind: false,
+          supportsFork: false,
         ),
       ),
     );
@@ -221,6 +223,7 @@ void main() {
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
       composerRestore: MockMessageComposerRestoreService(),
+      actionService: MockSessionActionService(),
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -306,6 +309,7 @@ void main() {
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
       composerRestore: MockMessageComposerRestoreService(),
+      actionService: MockSessionActionService(),
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -367,6 +371,7 @@ const _emptySnapshot = SessionDetailSnapshot(
   cannotContinueMessage: null,
   namesCommandInvocations: false,
   supportsRewind: false,
+  supportsFork: false,
 );
 
 void _stubLoadApis(MockSessionRepository sourceRepository, {required MockSessionApi optionsApi}) {

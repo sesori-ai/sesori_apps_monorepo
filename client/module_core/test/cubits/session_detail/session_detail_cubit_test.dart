@@ -189,6 +189,7 @@ void main() {
       sseEventTracker: sseEventTracker ?? MockSseEventTracker(),
       fileReferenceOpenService: fileReferenceOpenService ?? MockFileReferenceOpenService(),
       composerRestore: MockMessageComposerRestoreService(),
+      actionService: MockSessionActionService(),
       window: window ?? idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       clock: clock,
@@ -2912,6 +2913,7 @@ void main() {
         sseEventTracker: MockSseEventTracker(),
         fileReferenceOpenService: MockFileReferenceOpenService(),
         composerRestore: MockMessageComposerRestoreService(),
+        actionService: MockSessionActionService(),
         window: idleSessionWindow(),
         sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       );

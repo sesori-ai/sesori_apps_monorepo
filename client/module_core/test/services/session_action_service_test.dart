@@ -2,8 +2,10 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/send_to_session_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
+import "package:sesori_dart_core/src/repositories/models/session_fork_result.dart";
 import "package:sesori_dart_core/src/services/models/session_cleanup_outcome.dart";
 import "package:sesori_dart_core/src/services/models/session_delete_result.dart";
 import "package:sesori_dart_core/src/services/selected_computer_service.dart";
@@ -21,6 +23,7 @@ void main() {
 
   const projectId = "project-1";
   late MockSessionRepository sessionRepository;
+  late MockPluginRepository plugins;
   late FakeSessionUnseenTracker unseen;
   late MockFailureReporter failureReporter;
   late SessionActionService actions;
@@ -32,6 +35,7 @@ void main() {
     selectedComputer = _MockSelectedComputerService();
     when(() => selectedComputer.targetBridgeId()).thenAnswer((_) async => "computer-a");
     sessionRepository = MockSessionRepository();
+    plugins = MockPluginRepository();
     unseen = FakeSessionUnseenTracker();
     failureReporter = MockFailureReporter();
     when(
@@ -51,6 +55,7 @@ void main() {
       failureReporter: failureReporter,
       selectedComputerService: selectedComputer,
       productAnalyticsService: analytics,
+      pluginRepository: plugins,
     );
   });
 
@@ -221,5 +226,96 @@ void main() {
 
       expect(await send(), isA<SendToSessionSent>());
     });
+  });
+
+  group("fork", () {
+    PluginMetadata plugin({required String id, required Set<SessionBranchingOperation> branching}) => PluginMetadata(
+      id: id,
+      displayName: id,
+      isDefault: false,
+      state: PluginLifecycleState.ready,
+      actionHint: null,
+      failureBlock: null,
+      mcpScopes: null,
+      supportsPromptAttachments: false,
+      failureReason: null,
+      sessionBranching: branching,
+    );
+
+    test("a top-level session forks when its harness lists fork", () async {
+      when(() => plugins.listPlugins()).thenAnswer(
+        (_) async => ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: "bridge",
+            supportsSessionOptions: true,
+            supportsFileUploads: false,
+            supportsSideQuestions: false,
+            plugins: [
+              plugin(id: "claude", branching: {SessionBranchingOperation.fork}),
+              plugin(id: "opencode", branching: const {}),
+            ],
+          ),
+        ),
+      );
+      await actions.refreshForkCapabilities();
+
+      expect(
+        actions.canFork(
+          session: testSession(id: "s1", pluginId: "claude"),
+        ),
+        isTrue,
+      );
+      expect(
+        actions.canFork(
+          session: testSession(id: "s2", pluginId: "opencode"),
+        ),
+        isFalse,
+      );
+      expect(
+        actions.canFork(
+          session: testSession(id: "s3", pluginId: "claude", parentID: "s1"),
+        ),
+        isFalse,
+      );
+    });
+
+    final outcomes = <(SessionForkResult, AnalyticsSessionForkOutcome)>[
+      (SessionForked(session: testSession(id: "fork")), AnalyticsSessionForkOutcome.succeeded),
+      (const SessionForkUnavailable(reason: null), AnalyticsSessionForkOutcome.branchPointUnavailable),
+      (const SessionForkNothingToFork(), AnalyticsSessionForkOutcome.refused),
+      (const SessionForkWorktreeBranchMissing(), AnalyticsSessionForkOutcome.refused),
+      (const SessionForkRejected(reason: "no"), AnalyticsSessionForkOutcome.refused),
+      (SessionForkFailed(error: ApiError.generic()), AnalyticsSessionForkOutcome.failed),
+    ];
+    for (final (result, outcome) in outcomes) {
+      test("returns and reports ${result.runtimeType.toString()} as ${outcome.wireValue}", () async {
+        when(
+          () =>
+              sessionRepository.forkSession(sessionId: "s1", point: const ForkPoint.latest(), recreateFromBase: false),
+        ).thenAnswer((_) async => result);
+
+        expect(
+          await actions.forkSession(
+            sessionId: "s1",
+            pluginId: "claude",
+            point: const ForkPoint.latest(),
+            recreateFromBase: false,
+          ),
+          same(result),
+        );
+
+        final reported = verify(
+          () => analytics.logEvent(
+            event: captureAny(named: "event"),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        ).captured;
+        expect(reported, [
+          isA<SessionForkedEvent>()
+              .having((e) => e.harness, "harness", AnalyticsHarness.claudeCode)
+              .having((e) => e.outcome, "outcome", outcome),
+        ]);
+      });
+    }
   });
 }

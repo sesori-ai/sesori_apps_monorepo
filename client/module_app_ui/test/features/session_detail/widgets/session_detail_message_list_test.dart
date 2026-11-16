@@ -294,6 +294,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       home: Scaffold(
         body: SessionDetailMessageList(
           onEditMessage: null,
+          onForkMessage: null,
           editingMessageId: null,
           bridgeQueuedPrompts: _bridgeQueuedPrompts,
           bridgePromptAttachments: _bridgePromptAttachments,

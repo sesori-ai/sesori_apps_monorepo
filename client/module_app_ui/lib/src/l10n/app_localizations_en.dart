@@ -3292,6 +3292,43 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get sessionDetailForkFromHere => 'Fork from here';
+
+  @override
+  String get sessionListFork => 'Fork';
+
+  @override
+  String get sessionForkForking => 'Forking…';
+
+  @override
+  String get sessionForkNothingToFork => 'Nothing to fork yet';
+
+  @override
+  String get sessionForkNothingToForkBody => 'The session hasn\'t finished a reply yet.';
+
+  @override
+  String get sessionForkRefused => 'Couldn\'t fork this session';
+
+  @override
+  String get sessionForkRefusedBody => 'The session didn\'t accept the fork. Nothing changed.';
+
+  @override
+  String get sessionForkFailed => 'Couldn\'t confirm the fork. Check your session list before trying again.';
+
+  @override
+  String get sessionForkWorktreeMissingTitle => 'This session\'s worktree is gone';
+
+  @override
+  String get sessionForkWorktreeMissingBody =>
+      'Its earlier work can\'t be restored. The fork can start in a new worktree from where this session began.';
+
+  @override
+  String get sessionForkWorktreeMissingCreate => 'Create new worktree';
+
+  @override
+  String get sessionForkCancel => 'Cancel';
+
+  @override
   String get sessionDetailMessageCopied => 'Copied to clipboard';
 
   @override

@@ -940,6 +940,17 @@ extension GetItInjectableX on _i174.GetIt {
         catalogRescanService: gh<_i572.CatalogRescanService>(),
       ),
     );
+    gh.lazySingleton<_i119.SessionActionService>(
+      () => _i119.SessionActionService(
+        sessionRepository: gh<_i7.SessionRepository>(),
+        sessionCleanupService: gh<_i692.SessionCleanupService>(),
+        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
+        failureReporter: gh<_i553.FailureReporter>(),
+        selectedComputerService: gh<_i370.SelectedComputerService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+        pluginRepository: gh<_i337.PluginRepository>(),
+      ),
+    );
     gh.lazySingleton<_i8.SessionLaunchService>(
       () => _i8.SessionLaunchService(
         sessionRepository: gh<_i7.SessionRepository>(),
@@ -1008,16 +1019,6 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i119.SessionActionService>(
-      () => _i119.SessionActionService(
-        sessionRepository: gh<_i7.SessionRepository>(),
-        sessionCleanupService: gh<_i692.SessionCleanupService>(),
-        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
-        failureReporter: gh<_i553.FailureReporter>(),
-        selectedComputerService: gh<_i370.SelectedComputerService>(),
-        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
-      ),
     );
     return this;
   }

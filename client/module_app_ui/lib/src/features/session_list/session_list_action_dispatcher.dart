@@ -12,6 +12,7 @@ import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "../../widgets/bridge_update_sheet.dart";
 import "../project_list/project_path_labels.dart";
+import "../session_detail/widgets/session_fork_flow.dart";
 import "rename_session_dialog.dart";
 import "send_session_sheet.dart";
 
@@ -141,6 +142,7 @@ class const SessionListActionDispatcher({
             onSessionArchived: onSessionArchived,
           ),
         ),
+      ?forkMenuEntry(context: context, actions: actions, session: session),
       // Archiving is permanent, so an already-archived row has no archive
       // action left to offer.
       if (!isArchived)
@@ -260,6 +262,48 @@ class const SessionListActionDispatcher({
           );
         }());
     }
+  }
+
+  /// Fork, which [sessionMenuEntries] lists, archived sessions included, for
+  /// a page that lists no other session action; null when [session]'s
+  /// harness does not fork.
+  PregoMenuItem? forkMenuEntry({
+    required BuildContext context,
+    required SessionActionsCubit actions,
+    required Session session,
+  }) => actions.canFork(session: session)
+      ? PregoMenuItem(
+          leadingIcon: TablerRegular.git_fork,
+          title: context.loc.sessionListFork,
+          subtitle: null,
+          isSelected: false,
+          shortcutLabel: null,
+          onTap: () => _fork(context: context, actions: actions, session: session),
+        )
+      : null;
+
+  /// Forks [session] after its latest finished reply and opens the fork.
+  void _fork({required BuildContext context, required SessionActionsCubit actions, required Session session}) {
+    final loc = context.loc;
+    final projects = context.read<ProjectListCubit>().state;
+    unawaited(
+      runSessionFork(
+        context: context,
+        fork: ({required recreateFromBase}) =>
+            actions.forkSession(session: session, recreateFromBase: recreateFromBase),
+        open: ({required fork}) => openSession(
+          projectId: fork.projectID,
+          projectName: switch (projects) {
+            ProjectListLoaded(:final projects) => switch (projects.where((project) => project.id == fork.projectID).firstOrNull) {
+              final project? => projectDisplayName(loc: loc, project: project),
+              null => loc.projectListDefaultName,
+            },
+            _ => loc.projectListDefaultName,
+          },
+          session: fork,
+        ),
+      ),
+    );
   }
 
   /// Whether [session] is a "No project" one, in its own folder that deleting

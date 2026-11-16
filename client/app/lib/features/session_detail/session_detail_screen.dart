@@ -226,7 +226,17 @@ class const _MobileSessionDetailBody({
                 },
               ),
           ];
-          if (auditView || readOnly || session.parentID != null) return pageEntries;
+          // An archived session still forks.
+          if (auditView || readOnly || session.parentID != null) {
+            return [
+              ...pageEntries,
+              ?_sessionActions.forkMenuEntry(
+                context: context,
+                actions: context.read<SessionActionsCubit>(),
+                session: session,
+              ),
+            ];
+          }
           return _sessionActions.sessionMenuEntries(
             context: context,
             actions: context.read<SessionActionsCubit>(),

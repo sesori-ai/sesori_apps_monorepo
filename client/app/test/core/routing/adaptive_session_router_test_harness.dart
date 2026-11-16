@@ -423,5 +423,6 @@ SessionDetailSnapshot _buildDetailSnapshot({
     cannotContinueMessage: null,
     namesCommandInvocations: false,
     supportsRewind: false,
+    supportsFork: false,
   );
 }

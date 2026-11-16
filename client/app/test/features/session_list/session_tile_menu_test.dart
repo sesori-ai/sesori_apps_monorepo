@@ -16,7 +16,10 @@ import "../../helpers/test_helpers.dart";
 /// beside the menu — the same treatment project rows get. The entries come
 /// from the real [SessionListActionDispatcher], so this covers the wiring from
 /// the row all the way to the actions it dispatches.
-class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit {
+  @override
+  bool canFork({required Session session}) => false;
+}
 
 void main() {
   late _MockSessionActionsCubit actions;

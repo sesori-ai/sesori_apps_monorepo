@@ -35,6 +35,7 @@ void main() {
 
   setUp(() {
     actionService = _MockActionService();
+    when(() => actionService.refreshForkCapabilities()).thenAnswer((_) async {});
     abortService = _MockAbortService();
     feedback = FakeFeedbackPromptService();
     persister = _MemoryPersister();

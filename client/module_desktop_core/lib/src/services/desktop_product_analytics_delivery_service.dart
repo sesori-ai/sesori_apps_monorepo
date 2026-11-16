@@ -122,6 +122,7 @@ class DesktopProductAnalyticsDeliveryService({
     FounderCallLinkOpenedEvent() ||
     FounderCallDeclinedEvent() ||
     SessionMessageEditedEvent() ||
+    SessionForkedEvent() ||
     SessionSentToSessionEvent() => null,
     // The auth server does not accept it yet.
     ScheduledTaskSavedEvent() => null,
