@@ -145,6 +145,24 @@ void main() {
       expect(withoutReply.markers["request"]?.summary, isNull);
     });
 
+    test("a prompt after a stopped, unanswered send keeps its own rows", () {
+      final handoffs = _build(
+        messages: [
+          _user(id: "request", handoff: _notSent),
+          _user(id: "next"),
+          _agent(
+            id: "next-reply",
+            parts: [_text(text: "Fixed")],
+          ),
+        ],
+        isBusy: false,
+      );
+
+      expect(handoffs.markers.keys, ["request"]);
+      expect(handoffs.markers["request"]?.summary, isNull);
+      expect(handoffs.foldedMessageIds, isEmpty);
+    });
+
     test("a follow-up steered into the summary turn is folded too, and stays out of the summary", () {
       final handoffs = _build(
         messages: [

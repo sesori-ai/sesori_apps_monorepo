@@ -96,22 +96,30 @@ class const TranscriptHandoffBuilder() {
       );
       if (requestIndex < 0) continue;
       final request = turnMessages[requestIndex];
-      final rest = turnMessages.skip(requestIndex + 1).toList();
-      folded.addAll([for (final message in rest) message.info.id]);
+      final rest = turnMessages.skip(requestIndex + 1);
+      // A prompt steered into a summary being written folds with it, but once
+      // a send has stopped, the shared turn rule can join the user's next,
+      // ordinary prompt to an unanswered request, so only the reply folds.
+      final folds = switch (request.info) {
+        MessageUser(handoff: MessageHandoffNotSent()) => rest.takeWhile((message) => message.info is! MessageUser),
+        MessageUser() || MessageAssistant() || MessageError() => rest,
+      };
+      folded.addAll([for (final message in folds) message.info.id]);
+      final reply = rest.takeWhile((message) => message.info is! MessageUser).toList();
       final newest = turnIndex == turns.turns.length - 1;
       final marker = switch (request.info) {
         MessageUser(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle)) => TranscriptHandoffMarker(
           targetSessionId: targetSessionId,
           targetTitle: targetTitle,
           status: newest && isBusy ? TranscriptHandoffMarkerStatus.writing : TranscriptHandoffMarkerStatus.sent,
-          summary: _summaryOf(reply: rest),
+          summary: _summaryOf(reply: reply),
         ),
         MessageUser(handoff: MessageHandoffNotSent(:final targetSessionId, :final targetTitle)) =>
           TranscriptHandoffMarker(
             targetSessionId: targetSessionId,
             targetTitle: targetTitle,
             status: TranscriptHandoffMarkerStatus.notSent,
-            summary: _summaryOf(reply: rest),
+            summary: _summaryOf(reply: reply),
           ),
         MessageUser() || MessageAssistant() || MessageError() => null,
       };
@@ -145,11 +153,11 @@ class const TranscriptHandoffBuilder() {
     );
   }
 
-  /// The agent's text after the request up to the next user message, as the
-  /// bridge's send reads the summary it hands off.
+  /// The agent's text in [reply], which runs up to the next user message, as
+  /// the bridge's send reads the summary it hands off.
   static String? _summaryOf({required List<MessageWithParts> reply}) {
     final text = [
-      for (final message in reply.takeWhile((message) => message.info is! MessageUser))
+      for (final message in reply)
         if (message.info case MessageAssistant(sender: MessageSender.agent))
           for (final part in message.parts)
             if (part case MessagePartText(:final text) when text.trim().isNotEmpty) text.trim(),
