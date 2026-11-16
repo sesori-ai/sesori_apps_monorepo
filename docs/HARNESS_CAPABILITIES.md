@@ -1042,10 +1042,12 @@ sessions. Ambient Google login is not imported. Neither row is a general API-key
 entry form or a claim of support for every provider authentication method.
 
 Claude Code's Always saves the suggested allow rules for the session only, never
-to a settings file. It is offered only when Claude suggests a rule. A file edit
-suggests only switching to accept-edits mode, so Always is not offered for edits
-yet (not implemented). Commands Claude cannot save a rule for get no Always
-either (not supported). Both still get Once and Reject.
+to a settings file. On a file edit, whose only suggestion is switching to
+accept-edits mode, Always switches the session to accept-edits, as Claude Code's
+own terminal does, so later edits in that session run without asking
+(implemented; the app shows no mode for it, because Claude advertises a single
+agent). Commands Claude cannot save a rule for get no Always (not supported),
+only Once and Reject.
 
 Antigravity deliberately omits every persistent `allow_always` choice because
 Sesori's current permission contract cannot safely represent persistent approval.

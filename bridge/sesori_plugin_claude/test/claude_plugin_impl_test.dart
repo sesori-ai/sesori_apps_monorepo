@@ -1536,6 +1536,78 @@ void main() {
       await subscription.cancel();
     });
 
+    test("Always on a file edit keeps the session in accept-edits for later turns", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      process.emit({
+        "type": "control_request",
+        "request_id": "edit-1",
+        "request": {
+          "subtype": "can_use_tool",
+          "tool_name": "Write",
+          "tool_use_id": "toolu-edit",
+          "input": {"file_path": "a.dart"},
+          "permission_suggestions": [
+            {"type": "setMode", "mode": "acceptEdits", "destination": "session"},
+          ],
+        },
+      });
+      await pump();
+      expect((await harness.plugin.getPendingPermissions(sessionId: testSessionId)).single.allowAlways, isTrue);
+
+      await harness.plugin.replyToPermission(
+        requestId: "br-1",
+        sessionId: testSessionId,
+        reply: PluginPermissionReply.always,
+      );
+      final reply = process.written.lastWhere((frame) => frame["type"] == "control_response");
+      expect(reply["response"], {
+        "subtype": "success",
+        "request_id": "edit-1",
+        "response": {
+          "behavior": "allow",
+          "updatedInput": {"file_path": "a.dart"},
+          "updatedPermissions": [
+            {"type": "setMode", "mode": "acceptEdits", "destination": "session"},
+          ],
+        },
+      });
+      process.emit(_result());
+      await pump();
+
+      Future<void> send({required String text, required String agent}) => harness.plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-$text",
+        sessionId: testSessionId,
+        parts: [PluginPromptPart.text(text: text)],
+        variant: null,
+        agent: agent,
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      List<Object?> permissionModes() => [
+        for (final frame in process.written)
+          if (frame["type"] == "control_request" && _request(frame)["subtype"] == "set_permission_mode")
+            _request(frame)["mode"],
+      ];
+
+      // Claude switched itself; the next Agent turn neither resets nor repeats it.
+      await send(text: "edit again", agent: "Agent");
+      await _waitForUserText(process, "edit again");
+      expect(permissionModes(), isEmpty);
+      process.emit(_result());
+      await pump();
+
+      // An explicit other mode still applies, and Agent returns to accept-edits.
+      await send(text: "plan", agent: "Plan");
+      await _waitForUserText(process, "plan");
+      process.emit(_result());
+      await pump();
+      await send(text: "back", agent: "Agent");
+      await _waitForUserText(process, "back");
+      expect(permissionModes(), ["plan", "acceptEdits"]);
+    });
+
     test("suppresses the terminal result after an explicit interruption", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);

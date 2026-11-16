@@ -374,14 +374,124 @@ void main() {
       });
     }
 
+    for (final destination in const ["session", "localSettings"]) {
+      test("always on a $destination accept-edits suggestion switches the session mode", () {
+        registry.handle(
+          sessionId: "session-1",
+          message: _permission(
+            suggestions: [
+              {"type": "setMode", "destination": destination, "mode": "acceptEdits"},
+            ],
+          ),
+        );
+
+        expect(events.whereType<BridgeSsePermissionAsked>().single.allowAlways, isTrue);
+        expect(registry.pendingPermissionsForSession(sessionId: "session-1").single.allowAlways, isTrue);
+        expect(
+          registry.permissionModeFor(sessionId: "session-1", requested: ClaudePermissionMode.standard),
+          ClaudePermissionMode.standard,
+        );
+        expect(registry.replyPermission(id: "br-1", reply: PluginPermissionReply.always), isTrue);
+
+        expect(responses.single.payload, {
+          "behavior": "allow",
+          "updatedInput": {"file_path": "a.dart"},
+          "updatedPermissions": [
+            {"type": "setMode", "mode": "acceptEdits", "destination": "session"},
+          ],
+        });
+        expect(
+          registry.permissionModeFor(sessionId: "session-1", requested: ClaudePermissionMode.standard),
+          ClaudePermissionMode.acceptEdits,
+        );
+        expect(
+          registry.permissionModeFor(sessionId: "session-1", requested: ClaudePermissionMode.plan),
+          ClaudePermissionMode.plan,
+        );
+        expect(registry.permissionModeFor(sessionId: "session-1", requested: null), isNull);
+        expect(
+          registry.permissionModeFor(sessionId: "session-2", requested: ClaudePermissionMode.standard),
+          ClaudePermissionMode.standard,
+        );
+        expect(registry.allowedToolsForSession(sessionId: "session-1"), isEmpty);
+
+        registry.forgetSession(sessionId: "session-1");
+        expect(
+          registry.permissionModeFor(sessionId: "session-1", requested: ClaudePermissionMode.standard),
+          ClaudePermissionMode.standard,
+        );
+      });
+    }
+
+    for (final reply in const [PluginPermissionReply.once, PluginPermissionReply.reject]) {
+      test("${reply.name} on an accept-edits suggestion leaves the session mode alone", () {
+        registry.handle(
+          sessionId: "session-1",
+          message: _permission(
+            suggestions: const [
+              {"type": "setMode", "destination": "session", "mode": "acceptEdits"},
+            ],
+          ),
+        );
+
+        registry.replyPermission(id: "br-1", reply: reply);
+
+        expect(responses.single.payload.containsKey("updatedPermissions"), isFalse);
+        expect(
+          registry.permissionModeFor(sessionId: "session-1", requested: ClaudePermissionMode.standard),
+          ClaudePermissionMode.standard,
+        );
+      });
+    }
+
+    test("suggested rules win over an accept-edits suggestion", () {
+      registry.handle(
+        sessionId: "session-1",
+        message: _permission(
+          suggestions: const [
+            {"type": "setMode", "destination": "session", "mode": "acceptEdits"},
+            {
+              "type": "addRules",
+              "destination": "localSettings",
+              "behavior": "allow",
+              "rules": [
+                {"toolName": "Write"},
+              ],
+            },
+          ],
+        ),
+      );
+
+      registry.replyPermission(id: "br-1", reply: PluginPermissionReply.always);
+
+      expect(responses.single.payload["updatedPermissions"], [
+        {
+          "type": "addRules",
+          "destination": "session",
+          "behavior": "allow",
+          "rules": [
+            {"toolName": "Write"},
+          ],
+        },
+      ]);
+      expect(
+        registry.permissionModeFor(sessionId: "session-1", requested: ClaudePermissionMode.standard),
+        ClaudePermissionMode.standard,
+      );
+    });
+
     for (final suggestion in const <Map<String, Object?>>[
-      {"type": "setMode", "destination": "session", "mode": "acceptEdits"},
+      {"type": "setMode", "destination": "session", "mode": "bypassPermissions"},
+      {"type": "setMode", "destination": "session", "mode": "plan"},
+      {"type": "setMode", "destination": "session", "mode": "default"},
+      {"type": "setMode", "destination": "session", "mode": "notAMode"},
+      {"type": "setMode", "destination": "session"},
       {"type": "addDirectories", "destination": "session"},
       {"type": "removeDirectories", "destination": "session"},
       {"type": "replaceRules", "destination": "session"},
       {"type": "removeRules", "destination": "session"},
     ]) {
-      test("does not offer always for ${suggestion["type"]}/${suggestion["destination"]}", () {
+      test("does not offer always for ${suggestion["type"]}/${suggestion["destination"]}/${suggestion["mode"]}", () {
         registry.handle(
           sessionId: "session-1",
           message: _permission(suggestions: [suggestion]),
@@ -394,6 +504,10 @@ void main() {
           "behavior": "allow",
           "updatedInput": {"file_path": "a.dart"},
         });
+        expect(
+          registry.permissionModeFor(sessionId: "session-1", requested: ClaudePermissionMode.standard),
+          ClaudePermissionMode.standard,
+        );
       });
     }
 
