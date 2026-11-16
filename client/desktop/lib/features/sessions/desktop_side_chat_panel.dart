@@ -238,10 +238,18 @@ class const _SlidingPanel({required final Animation<double> shown, required fina
     );
     return AnimatedBuilder(
       animation: shown,
-      builder: (context, child) => Transform.translate(
-        offset: Offset(towardEnd * _travel * (1 - shown.value), 0),
-        child: child,
-      ),
+      builder: (context, child) {
+        // A leaving panel takes no clicks and is no longer announced; its
+        // focus has already gone back to the page.
+        final leaving = shown.status == AnimationStatus.reverse;
+        return Transform.translate(
+          offset: Offset(towardEnd * _travel * (1 - shown.value), 0),
+          child: IgnorePointer(
+            ignoring: leaving,
+            child: ExcludeSemantics(excluding: leaving, child: child),
+          ),
+        );
+      },
       child: surface,
     );
   }
