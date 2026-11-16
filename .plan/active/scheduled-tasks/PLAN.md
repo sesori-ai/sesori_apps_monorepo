@@ -396,14 +396,14 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   permission or form, or non-idle readiness on Claude and Pi, where `queued`
   covers a pending `ScheduleWakeup` and user-queued prompts). `unknown` does
   not block: Claude reads `unknown` for a session with no transcript, which
-  would otherwise block the task for good. A run that fired less than 30
-  seconds ago counts as going whatever its session reads: OpenCode, for
-  one, reports a new turn's busy status only after the create returns, so
-  a second Run now right behind the first would otherwise start a second
-  run. Exception: busy because of this
+  would otherwise block the task for good. Exception: busy because of this
   task's own pending compaction (P10). Step 4.b tests that many skipped
   occurrences in a row (more than the 20-row trim) still leave the earlier
-  started run counted as active, so the next run is skipped too.
+  started run counted as active, so the next run is skipped too. A run whose
+  session was created less than 30 seconds ago counts as going whatever its
+  session reads, since OpenCode, for one, reports a new turn's busy status
+  only after the create returns. This wins over the compaction exception,
+  which cannot apply then: compaction waits for a quiet window (P10).
 - At most once: the run row and the advanced `nextDueAt` are written in one
   transaction before the create or send is attempted, like the quota
   `consumed` marker. A crash between write and send loses that run; it never

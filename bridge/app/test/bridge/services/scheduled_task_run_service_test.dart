@@ -304,7 +304,10 @@ void main() {
 
     test("a second tap right after a run started is refused before the harness reports the turn", () async {
       final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 16, 9));
+      // A slow create must not use up the grace.
+      creation.onCreate = () async => now = now.add(const Duration(minutes: 1));
       await service.runNow(taskId: task.id);
+      creation.onCreate = null;
 
       // The session still reads quiet: its busy status has not arrived yet.
       now = now.add(const Duration(seconds: 3));
