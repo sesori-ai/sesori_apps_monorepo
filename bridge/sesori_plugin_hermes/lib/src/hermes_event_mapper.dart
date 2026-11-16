@@ -2,11 +2,12 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "hermes_turn_failure_copy.dart";
+import "models/hermes_session_update_dto.dart";
 
 /// Hermes's event mapper: the standard ACP mapping from [AcpEventMapper], plus
 /// Hermes's notices for a failed turn, without its live-only queue
-/// acknowledgement and with its `/compress` reply as a compaction row (see
-/// [map]).
+/// acknowledgement and with its `/compress` reply and a session split as
+/// compaction rows (see [map]).
 ///
 /// Live, Hermes sends a failure's explanation as its ordinary final response,
 /// so on the wire the notice looks like a reply, and then fails
@@ -72,8 +73,28 @@ class HermesEventMapper({
   /// Shows Hermes's `/compress` reply as the compaction row
   /// (`acp_adapter/commands.py::_cmd_compress`, verified v0.21.5). Hermes's
   /// history keeps no record of a `/compress`, so the row is live only.
+  ///
+  /// With `compression.in_place: false`, an automatic compaction moves the
+  /// session onto a new internal session, and Hermes reports that move once,
+  /// after the turn's reply, as a `session_info_update` whose provenance has
+  /// `reason: "compression"` (`acp_adapter/server.py`, verified v0.21.5). One
+  /// report covers every compaction of the turn, so it shows one completed
+  /// row. The replay keeps the turns from before the move and no summary, so
+  /// the row is live only.
+  ///
+  /// Drops the leading whitespace of each reply, as Hermes's replay does (see
+  /// [_replyStart]).
   @override
   List<BridgeSseEvent> map(AcpNotification notification) {
+    if (_splitCompactionSessionId(notification: notification) case final String sessionId) {
+      return [
+        ...super.map(notification),
+        ..._compactionRow(
+          sessionId: sessionId,
+          state: const .completed(summary: null, freedTokens: null, trigger: .auto),
+        ),
+      ];
+    }
     if (notification.params
         case {
           "sessionId": final String sessionId,
@@ -90,7 +111,93 @@ class HermesEventMapper({
         return _compactionRow(sessionId: sessionId, state: state);
       }
     }
+    if (notification.params
+        case {
+          "sessionId": final String sessionId,
+          "update":
+              {
+                "sessionUpdate": "agent_message_chunk",
+                "messageId": final String messageId,
+                "content": {"type": "text", "text": final String text} && final Map<Object?, Object?> content,
+              } &&
+              final Map<Object?, Object?> update,
+        }
+        when notification.method == AcpMethods.sessionUpdate && _startedReplies[sessionId] != messageId) {
+      return _replyStart(
+        notification: notification,
+        sessionId: sessionId,
+        messageId: messageId,
+        update: update,
+        content: content,
+        text: text,
+      );
+    }
     return super.map(notification);
+  }
+
+  /// The message id of each session's reply whose text has begun.
+  final Map<String, String> _startedReplies = {};
+
+  @override
+  void forgetSession(String sessionId) {
+    _startedReplies.remove(sessionId);
+    super.forgetSession(sessionId);
+  }
+
+  /// Maps a reply's first text without its leading whitespace.
+  ///
+  /// Before the first text after a tool round, Hermes adds a paragraph break
+  /// that it does not save (`agent/stream_delivery.py::_fire_stream_delta`),
+  /// and it replays every row stripped
+  /// (`acp_adapter/server.py::_flatten_history_text`, verified v0.21.5). The
+  /// bridge pairs a live reply with its replayed copy by content, so with the
+  /// break the reply showed twice after a reload. Each reply opens a new
+  /// message id, so only a reply's first text can carry the break.
+  List<BridgeSseEvent> _replyStart({
+    required AcpNotification notification,
+    required String sessionId,
+    required String messageId,
+    required Map<Object?, Object?> update,
+    required Map<Object?, Object?> content,
+    required String text,
+  }) {
+    final reply = text.trimLeft();
+    // Whitespace alone leaves the reply unstarted.
+    if (reply.isEmpty) return const [];
+    _startedReplies[sessionId] = messageId;
+    if (reply == text) return super.map(notification);
+    return super.map(
+      AcpNotification(
+        method: notification.method,
+        params: {
+          ...notification.params,
+          "update": {
+            ...update.cast<String, dynamic>(),
+            "content": {...content.cast<String, dynamic>(), "text": reply},
+          },
+        },
+      ),
+    );
+  }
+
+  static String? _splitCompactionSessionId({required AcpNotification notification}) {
+    final params = notification.params;
+    final update = params["update"];
+    final sessionId = params["sessionId"];
+    if (notification.method != AcpMethods.sessionUpdate ||
+        sessionId is! String ||
+        update is! Map<String, dynamic> ||
+        update["sessionUpdate"] != "session_info_update") {
+      return null;
+    }
+    final HermesSessionUpdateDto dto;
+    try {
+      dto = HermesSessionUpdateDto.fromJson(update);
+    } on Object catch (error, stackTrace) {
+      Log.w("[hermes] read a session info update without its provenance", error, stackTrace);
+      return null;
+    }
+    return dto.meta?.hermes?.sessionProvenance?.reason == "compression" ? sessionId : null;
   }
 
   static final RegExp _queuedAcknowledgement = RegExp(r"^Queued for the next turn\. \(\d+ queued\)$");
@@ -147,11 +254,13 @@ class HermesEventMapper({
   // that actions may already have run, which the live reason does not say.
   @override
   AcpHaltNotice? classifyHaltNotice({required String text}) {
-    if (isHermesPartialTurnRow(text: text)) return const AcpHaltNotice(errorName: "hermes_partial_turn");
+    if (isHermesPartialTurnRow(text: text)) {
+      return const AcpHaltNotice(errorName: "hermes_partial_turn", kind: PluginErrorKind.failure);
+    }
     if (isHermesFailedTurnRow(text: text) ||
         isHermesContentRefusedRow(text: text) ||
         isHermesTurnFailureNotice(text: text)) {
-      return const AcpHaltNotice(errorName: _failedTurnKind);
+      return const AcpHaltNotice(errorName: _failedTurnKind, kind: PluginErrorKind.failure);
     }
     return null;
   }

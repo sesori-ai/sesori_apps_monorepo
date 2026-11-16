@@ -345,6 +345,7 @@ void main() {
         time: null,
         promptDefaults: null,
         lastUserActivityAt: null,
+        pinOrder: null,
         scheduledTask: null,
         interruption: null,
         forkedFrom: null,
@@ -382,6 +383,7 @@ void main() {
         time: null,
         promptDefaults: null,
         lastUserActivityAt: null,
+        pinOrder: null,
         scheduledTask: null,
         interruption: null,
         forkedFrom: null,
@@ -417,6 +419,7 @@ void main() {
         time: null,
         promptDefaults: null,
         lastUserActivityAt: null,
+        pinOrder: null,
         scheduledTask: null,
         interruption: null,
         forkedFrom: null,
@@ -535,8 +538,8 @@ void main() {
           ProjectActivitySummary(
             id: '/foo',
             activeSessions: [
-              ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's1', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's2', lastUserActivityAt: null, updatedAt: null),
             ],
           ),
           ProjectActivitySummary(id: '/bar', activeSessions: []),
@@ -567,6 +570,21 @@ void main() {
       final second = (json['projects'] as List)[1] as Map<String, dynamic>;
       expect(second['id'], '/bar');
       expect(second['activeSessions'], <Map<String, dynamic>>[]);
+    });
+
+    test('carries a session being sent, and reads an older bridge without it as not sending', () {
+      const sending = ActiveSession(
+        id: 's1',
+        lastUserActivityAt: null,
+        updatedAt: null,
+        sending: ActiveSessionSending(targetTitle: 'Target'),
+      );
+      final json = sending.toJson();
+      expect(json['sending'], {'targetTitle': 'Target'});
+      expect(ActiveSession.fromJson(json), sending);
+
+      final older = ActiveSession.fromJson({'id': 's1'});
+      expect(older.sending, isNull);
     });
 
     test('deserializes correctly', () {
@@ -619,16 +637,16 @@ void main() {
           ProjectActivitySummary(
             id: '/alpha',
             activeSessions: [
-              ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: 's3', lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: 's4', lastUserActivityAt: null, updatedAt: null),
-              ActiveSession(id: 's5', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's1', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's2', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's3', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's4', lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(sending: null, id: 's5', lastUserActivityAt: null, updatedAt: null),
             ],
           ),
           ProjectActivitySummary(
             id: '/beta',
-            activeSessions: [ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null)],
+            activeSessions: [ActiveSession(sending: null, id: 's1', lastUserActivityAt: null, updatedAt: null)],
           ),
           ProjectActivitySummary(id: '/gamma', activeSessions: []),
         ],
@@ -708,6 +726,7 @@ void main() {
           time: null,
           promptDefaults: null,
           lastUserActivityAt: null,
+          pinOrder: null,
           scheduledTask: null,
           interruption: null,
           forkedFrom: null,
@@ -731,6 +750,7 @@ void main() {
           time: null,
           promptDefaults: null,
           lastUserActivityAt: null,
+          pinOrder: null,
           scheduledTask: null,
           interruption: null,
           forkedFrom: null,
@@ -754,6 +774,7 @@ void main() {
           time: null,
           promptDefaults: null,
           lastUserActivityAt: null,
+          pinOrder: null,
           scheduledTask: null,
           interruption: null,
           forkedFrom: null,
@@ -821,13 +842,13 @@ void main() {
       const summary = ProjectActivitySummary(
         id: '/test',
         activeSessions: [
-          ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's3', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's4', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's5', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's6', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's7', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's1', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's2', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's3', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's4', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's5', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's6', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's7', lastUserActivityAt: null, updatedAt: null),
         ],
       );
       expect(summary.id, '/test');
@@ -838,10 +859,10 @@ void main() {
       const summary = ProjectActivitySummary(
         id: '/my/path',
         activeSessions: [
-          ActiveSession(id: 's1', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's2', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's3', lastUserActivityAt: null, updatedAt: null),
-          ActiveSession(id: 's4', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's1', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's2', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's3', lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(sending: null, id: 's4', lastUserActivityAt: null, updatedAt: null),
         ],
       );
       final json = summary.toJson();
@@ -892,6 +913,7 @@ void main() {
       expect(legacy.toJson(), isNot(contains('updatedAt')));
 
       const current = ActiveSession(
+        sending: null,
         id: 'current',
         mainAgentRunning: true,
         lastUserActivityAt: 20,
@@ -1004,6 +1026,7 @@ void main() {
           time: null,
           promptDefaults: null,
           lastUserActivityAt: null,
+          pinOrder: null,
           scheduledTask: null,
           interruption: null,
           forkedFrom: null,
@@ -1027,6 +1050,7 @@ void main() {
           time: null,
           promptDefaults: null,
           lastUserActivityAt: null,
+          pinOrder: null,
           scheduledTask: null,
           interruption: null,
           forkedFrom: null,
@@ -1050,6 +1074,7 @@ void main() {
           time: null,
           promptDefaults: null,
           lastUserActivityAt: null,
+          pinOrder: null,
           scheduledTask: null,
           interruption: null,
           forkedFrom: null,

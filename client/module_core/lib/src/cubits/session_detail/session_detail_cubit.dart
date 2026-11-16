@@ -34,6 +34,7 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/models/plugin_management_result.dart";
 import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
+import "../../repositories/models/session_fork_result.dart";
 import "../../repositories/models/session_messages_through_result.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/models/session_prompt_index_result.dart";
@@ -52,6 +53,7 @@ import "../../services/models/session_activity_info.dart";
 import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/session_abort_service.dart";
+import "../../services/session_action_service.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_approval_service.dart";
 import "../../services/session_auto_continuation_service.dart";
@@ -64,6 +66,7 @@ import "../../services/session_window_service.dart";
 import "../../services/sse_event_tracker.dart";
 import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
+import "interrupted_turn.dart";
 import "load_through_outcome.dart";
 import "local_send_phase.dart";
 import "prompt_send_queue.dart";
@@ -76,6 +79,7 @@ import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 import "tool_output_fetch.dart";
+import "turn_end_calculator.dart";
 
 enum _SessionRefreshTrigger(final String logValue) {
   commandExecuted("command_executed"),
@@ -137,6 +141,9 @@ class SessionDetailCubit(
   required final FileReferenceOpenService _fileReferenceOpenService,
   required final MessageComposerRestoreService _composerRestore,
 
+  /// Forks the session, for the transcript's "Fork from here".
+  required final SessionActionService _actionService,
+
   /// The window of the scope this page opened in, whose renames its title
   /// follows the way the session's row does.
   required final SessionWindowService _window,
@@ -155,6 +162,7 @@ class SessionDetailCubit(
   static const TranscriptSnapshotCalculator _transcript = TranscriptSnapshotCalculator();
   static const ComposerDraftCalculator _draftCalculator = ComposerDraftCalculator();
   static const PromptTurnShapeCalculator _promptTurnShapes = PromptTurnShapeCalculator();
+  static const TurnEndCalculator _turnEnds = TurnEndCalculator();
 
   /// Shown when a catalog offers no agent at all, so the composer still names
   /// something. Backends that advertise agents always replace it.
@@ -197,13 +205,25 @@ class SessionDetailCubit(
   List<ComposerAttachment> _composerAttachments = const [];
 
   /// The composer's images after a stop restored queued messages into it,
-  /// until the composer stages them; see [restoredAttachments].
-  List<ComposerAttachment> _restoredAttachments = const [];
-  int _composerRestorations = 0;
+  /// or a fork from one of the origin's own messages handed them over, until
+  /// the composer stages them; see [restoredAttachments].
+  List<ComposerAttachment> _restoredAttachments = _composerDraftRepository.takeHandedOverAttachments(
+    sessionId: _sessionId,
+  );
 
-  /// The earlier message the composer is editing, or null while Send adds a
-  /// prompt; see [editMessage].
-  _MessageEdit? _edit;
+  /// Starts at one when a fork handed attachments over, so the composer
+  /// stages them on its first build.
+  late int _composerRestorations = _restoredAttachments.isEmpty ? 0 : 1;
+
+  /// What Send does instead of adding a prompt, or null while it adds one; see
+  /// [editMessage], [startSideQuestion] and [_composerMode].
+  _ComposerOverride? _override;
+
+  /// The earlier message the composer is editing, if it is editing one.
+  _MessageEdit? get _edit => switch (_override) {
+    final _MessageEdit edit => edit,
+    _SideQuestionOverride() || null => null,
+  };
 
   /// The words returned messages put at the front of the composer's draft,
   /// for a later return to go after while the draft still starts with them.
@@ -378,8 +398,47 @@ class SessionDetailCubit(
         next.copyWith(launchHandoff: null),
       _ => next,
     };
-    super.emit(_withPromptTurnShapes(state: shown, namesCommandInvocations: _namesCommandInvocations));
+    super.emit(
+      _withInterruptedTurn(
+        state: _withPromptTurnShapes(state: shown, namesCommandInvocations: _namesCommandInvocations),
+      ),
+    );
   }
+
+  static SessionDetailState _withInterruptedTurn({required SessionDetailState state}) => switch (state) {
+    SessionDetailLoaded(
+      :final messages,
+      :final session,
+      :final sessionStatus,
+      :final launchHandoff,
+      :final localSend,
+      :final queuedMessages,
+      :final bridgeQueuedPrompts,
+      :final awaitingBridgeSubmissions,
+      :final launchFollowUps,
+      :final composerMode,
+    ) =>
+      state.copyWith(
+        interruptedTurn: _turnEnds.interruptedTurn(
+          messages: messages,
+          interruption: session.interruption,
+          sessionStatus: sessionStatus,
+          editPhase: switch (composerMode) {
+            SessionComposerEditing(:final phase) => phase,
+            SessionComposerNormal() => null,
+            SessionComposerSideQuestion() => null,
+          },
+          hasPendingPrompts:
+              launchHandoff != null ||
+              localSend is! LocalSendIdle ||
+              queuedMessages.isNotEmpty ||
+              bridgeQueuedPrompts.isNotEmpty ||
+              awaitingBridgeSubmissions.isNotEmpty ||
+              launchFollowUps.isNotEmpty,
+        ),
+      ),
+    SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => state,
+  };
 
   static SessionDetailState _withPromptTurnShapes({
     required SessionDetailState state,
@@ -1532,6 +1591,7 @@ class SessionDetailCubit(
               offersSessionMcp: snapshot.offersSessionMcp,
               namesCommandInvocations: snapshot.namesCommandInvocations,
               supportsRewind: snapshot.supportsRewind,
+              supportsFork: snapshot.supportsFork,
               sideQuestions: snapshot.sideQuestions,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               session: refreshedSession,
@@ -2006,6 +2066,13 @@ class SessionDetailCubit(
         isArchived: sessionTime == null ? current.isArchived : sessionTime.archived != null,
       ),
     );
+    // A view declared before the bridge recorded this interruption found
+    // nothing to acknowledge, such as one a reconnect sent while the restarted
+    // bridge was still resolving its turns. Declaring it again clears the
+    // session's Interrupted label while the user is looking at it.
+    if (session.interruption case final interruption? when interruption.unacknowledged) {
+      if (interruption != current.session.interruption) _declareViewingSessionIfVisible();
+    }
   }
 
   /// Opens the file [raw] names, resolving a relative path against this
@@ -3332,11 +3399,24 @@ class SessionDetailCubit(
 
   void acknowledgeRestoredAttachments() => _restoredAttachments = const [];
 
-  void trackComposerAttachments({required List<ComposerAttachment> attachments}) => _composerAttachments = attachments;
+  /// A side question takes no images, so staging one leaves that mode.
+  void trackComposerAttachments({required List<ComposerAttachment> attachments}) {
+    _composerAttachments = attachments;
+    if (attachments.isNotEmpty) leaveSideQuestion();
+  }
 
   /// An edit's words stay off the saved draft, which keeps what the composer
-  /// held before the edit for when it ends or the screen closes.
+  /// held before the edit for when it ends or the screen closes. Typing
+  /// "/btw " at its start switches the composer to a side question; see
+  /// [_sideQuestionTyped].
   void saveComposerDraft({required ComposerDraft draft}) {
+    if (_sideQuestionTyped(draft: draft) case final question?) {
+      _override = const _SideQuestionOverride();
+      // Only the mode is not saved: a restored draft comes back as plain text.
+      _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: question);
+      _fillComposer(draft: question, restoredPrefix: "", attachments: const [], stagedCommand: null);
+      return;
+    }
     _composerDraft = draft;
     if (_edit == null) _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: draft);
   }
@@ -3351,14 +3431,40 @@ class SessionDetailCubit(
   // Edit and resend
   // ---------------------------------------------------------------------------
 
-  SessionComposerMode get _composerMode => switch (_edit) {
+  SessionComposerMode get _composerMode => switch (_override) {
     null => const SessionComposerMode.normal(),
-    final edit => SessionComposerMode.editing(
+    _SideQuestionOverride() => const SessionComposerMode.sideQuestion(),
+    final _MessageEdit edit => SessionComposerMode.editing(
       messageId: edit.messageId,
       phase: edit.phase,
       leftOutCount: edit.leftOutCount,
     ),
   };
+
+  /// What Continue sends to pick up a turn a bridge stop cut off.
+  static const String continueInterruptedTurnPrompt = "Continue where you left off.";
+
+  /// Picks up the turn a bridge stop cut off: sends
+  /// [continueInterruptedTurnPrompt] like a typed prompt, with the composer's
+  /// current agent and model. Returns why it sent nothing, or null once the
+  /// prompt is on its way.
+  Future<InterruptedTurnContinueRefusal?> continueInterruptedTurn() async {
+    final refusal = switch (state) {
+      SessionDetailLoaded(interruptedTurn: InterruptedTurnShown(:final continueRefusal)) => continueRefusal,
+      _ => InterruptedTurnContinueRefusal.noInterruptedTurn,
+    };
+    if (refusal != null) {
+      logw("Refused to continue the interrupted turn: ${refusal.name}");
+      return refusal;
+    }
+    await sendMessage(
+      text: continueInterruptedTurnPrompt,
+      command: null,
+      inputMode: ComposerInputMode.typed,
+      attachments: const [],
+    );
+    return null;
+  }
 
   /// Starts editing [message], an earlier user message: the composer takes up
   /// its text and attachments, and Resend replaces it and everything after it.
@@ -3386,13 +3492,15 @@ class SessionDetailCubit(
             command: current.stagedCommand,
           ),
     );
-    _edit = edit;
+    // Replaces a side question, whose words wait, as plain text, with what the
+    // composer held.
+    _override = edit;
     emit(current.copyWith(composerMode: _composerMode, stagedCommand: null));
     final restored = await _composerRestore.restore(sessionId: _sessionId, message: message);
     // Cancelled meanwhile. A return meanwhile changed only what it holds.
     final latest = _edit;
     if (isClosed || latest == null || latest.promptId != edit.promptId) return;
-    _edit = _MessageEdit(
+    _override = _MessageEdit(
       messageId: edit.messageId,
       promptId: edit.promptId,
       phase: SessionEditPhase.composing,
@@ -3401,6 +3509,35 @@ class SessionDetailCubit(
       held: latest.held,
     );
     _fillComposer(draft: restored.draft, restoredPrefix: "", attachments: restored.attachments, stagedCommand: null);
+  }
+
+  /// Forks this session at [point]. [ownMessage] is the user message the
+  /// fork was asked from, whose text and attachments wait in the fork's
+  /// composer when its page opens; null for an agent reply.
+  /// [recreateFromBase] answers a [SessionForkWorktreeBranchMissing].
+  Future<SessionForkResult> forkSession({
+    required ForkPoint point,
+    required MessageWithParts? ownMessage,
+    required bool recreateFromBase,
+  }) async {
+    // Restored while the bridge forks, so the fork's page opens with them.
+    final restoring = switch (ownMessage) {
+      final message? => _composerRestore.restore(sessionId: _sessionId, message: message),
+      null => null,
+    };
+    final result = await _actionService.forkSession(
+      sessionId: _sessionId,
+      pluginId: switch (state) {
+        SessionDetailLoaded(:final pluginId) => pluginId,
+        _ => null,
+      },
+      point: point,
+      recreateFromBase: recreateFromBase,
+    );
+    if (result case SessionForked(:final session) when restoring != null) {
+      _composerDraftRepository.handOverForSession(sessionId: session.id, restored: await restoring);
+    }
+    return result;
   }
 
   /// Ends the edit without sending it.
@@ -3538,6 +3675,25 @@ class SessionDetailCubit(
     final latest = _edit;
     if (isClosed || latest == null || latest.promptId != attempt.promptId) return;
     if (result is SessionRewindAccepted) {
+      // Parked like any accepted send, so the prompt rises while the edit's
+      // removals fold and its echo takes the row in place, instead of
+      // arriving as a second motion once the fold has pulled the list down.
+      if (!_accountedUserMessages.any((message) => message.promptId == attempt.promptId)) {
+        _promptQueue.adoptAccepted(
+          submission: QueuedSessionSubmission.text(
+            promptId: attempt.promptId,
+            text: text,
+            inputMode: ComposerInputMode.typed,
+            attachments: attachments,
+            agent: current.selectedAgent,
+            agentModel: agentModel,
+            fastMode: current.runsFastMode,
+          ),
+          since: null,
+          epoch: ++_parkEpoch,
+        );
+        _emitQueueUpdate();
+      }
       _endEdit(edit: latest);
       return;
     }
@@ -3569,7 +3725,7 @@ class SessionDetailCubit(
 
   /// Gives the composer back what it held before the edit.
   void _endEdit({required _MessageEdit edit}) {
-    _edit = null;
+    _override = null;
     final held = edit.held;
     _fillComposer(
       draft: held.draft,
@@ -3602,9 +3758,72 @@ class SessionDetailCubit(
   }
 
   void _setEdit({required _MessageEdit edit}) {
-    _edit = edit;
+    _override = edit;
+    _emitComposerMode();
+  }
+
+  void _emitComposerMode() {
     final current = state;
     if (current is SessionDetailLoaded && !isClosed) emit(current.copyWith(composerMode: _composerMode));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Side-question mode
+  // ---------------------------------------------------------------------------
+
+  static const _sideQuestionPrefix = "/btw ";
+
+  /// [draft] without its "/btw " prefix (any letter case) when typing it
+  /// switches the composer to a side question; see [_canEnterSideQuestion].
+  /// Elsewhere "/btw " stays plain text.
+  ComposerDraft? _sideQuestionTyped({required ComposerDraft draft}) {
+    final current = state;
+    if (current is! SessionDetailLoaded || !_canEnterSideQuestion(state: current)) return null;
+    final text = draft.text;
+    if (text.length < _sideQuestionPrefix.length ||
+        text.substring(0, _sideQuestionPrefix.length).toLowerCase() != _sideQuestionPrefix) {
+      return null;
+    }
+    return _draftCalculator.replaceTyped(draft: draft, start: 0, end: _sideQuestionPrefix.length, replacement: "");
+  }
+
+  /// Whether the composer may switch to a side question: on a root session
+  /// that can ask one, from a normal composer holding no staged command or
+  /// images, which a side question doesn't take.
+  bool _canEnterSideQuestion({required SessionDetailLoaded state}) =>
+      state.sideQuestions == SideQuestionAvailability.available &&
+      state.session.parentID == null &&
+      _override == null &&
+      state.stagedCommand == null &&
+      _composerAttachments.isEmpty;
+
+  /// Switches the composer to a side question, keeping what it holds, as the
+  /// command picker's btw row does.
+  void startSideQuestion() {
+    final current = state;
+    if (current is! SessionDetailLoaded || !_canEnterSideQuestion(state: current)) return;
+    _override = const _SideQuestionOverride();
+    _emitComposerMode();
+  }
+
+  /// Returns the composer to sending prompts, keeping its text.
+  void leaveSideQuestion() {
+    if (_override is! _SideQuestionOverride) return;
+    _override = null;
+    _emitComposerMode();
+  }
+
+  /// Takes the side question the composer holds: leaves the mode, clears the
+  /// draft and returns the trimmed text for a new side chat to ask, or null
+  /// when there is none to ask.
+  String? submitSideQuestion() {
+    if (_override is! _SideQuestionOverride) return null;
+    final question = _composerDraft.text.trim();
+    if (question.isEmpty) return null;
+    _override = null;
+    clearComposerDraft();
+    _emitComposerMode();
+    return question;
   }
 
   void reportVoiceTranscriptionCompleted({required AnalyticsVoiceFinish finish, required AnalyticsVoiceMode mode}) {
@@ -4017,7 +4236,9 @@ class SessionDetailCubit(
     if (_refuseComposerInput(action: action) || isClosed) return;
     switch (state) {
       case final SessionDetailLoaded current:
-        emit(current.copyWith(stagedCommand: command));
+        // A side question takes no command.
+        if (command != null && _override is _SideQuestionOverride) _override = null;
+        emit(current.copyWith(stagedCommand: command, composerMode: _composerMode));
       case final SessionDetailLoading current:
         if (current.seededComposer case final seeded?) {
           emit(
@@ -4194,6 +4415,8 @@ class SessionDetailCubit(
   /// and those still staged. A dispatched prompt counts
   /// too: until the harness echoes it, as Claude steering the stop interrupts
   /// before the CLI reads it, nothing says it will ever reach the transcript.
+  /// A prompt the bridge sent to send one session into another is the
+  /// bridge's own, never the user's draft, so it is left out.
   List<ReturnedPrompt> _unsentQueuedPrompts() {
     final bridgePrompts = switch (state) {
       SessionDetailLoaded(:final bridgeQueuedPrompts) => bridgeQueuedPrompts,
@@ -4204,11 +4427,12 @@ class SessionDetailCubit(
     final bridgeAttachments = _promptQueue.bridgePromptAttachments;
     return [
       for (final prompt in bridgePrompts)
-        (
-          promptId: prompt.id,
-          draft: _draftCalculator.bridgePromptDraft(prompt: prompt),
-          attachments: bridgeAttachments[prompt.id] ?? const <ComposerAttachment>[],
-        ),
+        if (prompt.handoff == null)
+          (
+            promptId: prompt.id,
+            draft: _draftCalculator.bridgePromptDraft(prompt: prompt),
+            attachments: bridgeAttachments[prompt.id] ?? const <ComposerAttachment>[],
+          ),
       for (final submission in [
         for (final entry in _promptQueue.awaitingBridge) entry.submission,
         // Typed before the session existed, so ahead of all sent from here.
@@ -4252,7 +4476,7 @@ class SessionDetailCubit(
         ),
       };
       _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: restoration.draft);
-      _edit = edit.withHeld(
+      _override = edit.withHeld(
         held: (
           draft: restoration.draft,
           restoredPrefix: restoration.restoredPrefix,
@@ -4387,6 +4611,7 @@ class SessionDetailCubit(
       offersSessionMcp: snapshot.offersSessionMcp,
       namesCommandInvocations: snapshot.namesCommandInvocations,
       supportsRewind: snapshot.supportsRewind,
+      supportsFork: snapshot.supportsFork,
       sideQuestions: snapshot.sideQuestions,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
@@ -4492,6 +4717,12 @@ typedef _HeldComposer = ({
   CommandInfo? command,
 });
 
+/// What the composer's Send does instead of adding a prompt.
+sealed class const _ComposerOverride();
+
+/// Send asks the composer's text as a side question.
+final class const _SideQuestionOverride() extends _ComposerOverride;
+
 /// An edit of an earlier message the composer holds.
 final class const _MessageEdit({
   required final String messageId,
@@ -4507,7 +4738,7 @@ final class const _MessageEdit({
   /// that same payload may go out under it again.
   required final _EditPayload? unconfirmed,
   required final _HeldComposer held,
-}) {
+}) extends _ComposerOverride {
   _MessageEdit withPhase({required SessionEditPhase phase}) => _MessageEdit(
     messageId: messageId,
     promptId: promptId,

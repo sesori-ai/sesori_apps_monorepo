@@ -51,6 +51,7 @@ void main() {
     );
     final threadRepository = CodexThreadRepository(
       appServerApi: appServerApi,
+      codexVersion: null,
     );
 
     List<BridgeSseEvent> mapThreadStarted(
@@ -1993,6 +1994,55 @@ void main() {
         ),
       );
       expect(() => parseAsSesori(agent[0]), returnsNormally);
+    });
+
+    test("a stopped turn snapshots the reply it was streaming before its stopped row", () {
+      const threadId = "t-stopped-reply";
+      void delta({required String thread, required String itemId, required String text}) => mapper.mapParsed(
+        notification: CodexServerNotification(
+          method: "item/agentMessage/delta",
+          params: {"threadId": thread, "itemId": itemId, "delta": text},
+        ),
+      );
+      delta(thread: threadId, itemId: "i-done", text: "Finished");
+      mapper.mapParsed(
+        notification: const CodexServerNotification(
+          method: "item/completed",
+          params: {
+            "threadId": threadId,
+            "item": {"type": "agentMessage", "id": "i-done", "text": "Finished"},
+          },
+        ),
+      );
+      delta(thread: threadId, itemId: "i-partial", text: "1. Apples ");
+      // A transport drop: the app-server keeps the turn and the plugin reconnects.
+      mapper.resetLiveItemTimes();
+      delta(thread: threadId, itemId: "i-partial", text: "are crisp.");
+      delta(thread: "t-other", itemId: "i-other", text: "elsewhere");
+      const completed = {
+        "threadId": threadId,
+        "turn": {"id": "u-stopped", "status": "interrupted"},
+      };
+
+      final events = mapper.mapStoppedTurn(threadId: threadId, params: completed);
+
+      expect(events, hasLength(2));
+      final snapshot = (events[0] as BridgeSseMessagePartUpdated).part;
+      expect(snapshot.id, "i-partial-text");
+      expect(snapshot.messageID, "i-partial");
+      expect(snapshot, isA<PluginMessagePartText>().having((part) => part.text, "text", "1. Apples are crisp."));
+      final stopped = (events[1] as BridgeSseMessageUpdated).info;
+      expect(
+        stopped,
+        isA<PluginMessageError>()
+            .having((message) => message.id, "id", "u-stopped")
+            .having((message) => message.kind, "kind", PluginErrorKind.stopped),
+      );
+
+      mapper.mapParsed(
+        notification: const CodexServerNotification(method: "turn/completed", params: completed),
+      );
+      expect(mapper.mapStoppedTurn(threadId: threadId, params: completed).single, isA<BridgeSseMessageUpdated>());
     });
   });
 }

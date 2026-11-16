@@ -69,6 +69,10 @@ class OpenCodePlugin._({
   Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
       PluginSessionReadiness.unavailable;
 
+  /// v1 does not compact on request, so its cache life is never needed.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => null;
+
   static const String _sendPromptOperation = "sendPrompt";
   static const String _sendCommandOperation = "sendCommand";
 

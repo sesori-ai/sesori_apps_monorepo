@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -20,28 +22,47 @@ typedef SessionSearchCubitFactory = SessionSearchCubit Function({
 /// What the user chose to send [source] into.
 typedef SendSessionChoice = ({SessionSearchMatch target, bool archiveAfterSending});
 
+/// Asks before a send that will archive a pinned session. False keeps the
+/// send sheet open.
+typedef PinnedArchiveConfirmation = Future<bool> Function({required BuildContext context});
+
 /// Asks where to send [source]: a bottom sheet under touch, a dialog under a
 /// pointer. Null when the user leaves without sending.
 Future<SendSessionChoice?> showSendSessionSheet({
   required BuildContext context,
   required Session source,
+  required SessionActionsCubit actions,
   required SessionSearchCubitFactory createSearch,
-}) {
+  required PinnedArchiveConfirmation confirmPinnedArchive,
+}) async {
   // The sheet's route sits above the session scope, so its owners are read here.
   final window = context.read<SessionWindowService>();
   final projectInventory = context.read<ProjectInventoryService>();
-  return showPregoModal<SendSessionChoice>(
+  // Read before the sheet opens, so its switch never flips while it slides in.
+  final archiveAfterSending = await actions.archiveAfterSend();
+  if (!context.mounted) return null;
+  return await showPregoModal<SendSessionChoice>(
     context: context,
     title: context.loc.sendSessionTitle,
     builder: (_) => BlocProvider(
       // Created with the sheet, so the picker opens on loaded sessions.
       create: (_) => createSearch(window: window, projectInventory: projectInventory, excludedSessionId: source.id),
-      child: const _SendSessionSheet(),
+      child: _SendSessionSheet(
+        source: source,
+        actions: actions,
+        initialArchiveAfterSending: archiveAfterSending,
+        confirmPinnedArchive: confirmPinnedArchive,
+      ),
     ),
   );
 }
 
-class const _SendSessionSheet() extends StatefulWidget {
+class const _SendSessionSheet({
+  required final Session source,
+  required final SessionActionsCubit actions,
+  required final bool initialArchiveAfterSending,
+  required final PinnedArchiveConfirmation confirmPinnedArchive,
+}) extends StatefulWidget {
   @override
   State<_SendSessionSheet> createState() => _SendSessionSheetState();
 }
@@ -51,8 +72,22 @@ class _SendSessionSheetState() extends State<_SendSessionSheet> {
 
   SessionSearchMatch? _target;
 
-  // ponytail: resets to on each time the sheet opens; step 9 archives with it and keeps the last choice.
-  bool _archiveAfterSending = true;
+  late bool _archiveAfterSending = widget.initialArchiveAfterSending;
+
+  /// The next send opens with the same choice.
+  void _setArchiveAfterSending({required bool value}) {
+    setState(() => _archiveAfterSending = value);
+    unawaited(widget.actions.setArchiveAfterSend(value: value));
+  }
+
+  /// A pinned source is asked about here, next to the tap, rather than once
+  /// the summary lands; the archive after the send then doesn't ask again.
+  Future<void> _send({required SessionSearchMatch target}) async {
+    final archive = _archiveAfterSending;
+    if (archive && widget.source.pinned && !await widget.confirmPinnedArchive(context: context)) return;
+    if (!mounted) return;
+    context.pop<SendSessionChoice>((target: target, archiveAfterSending: archive));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,13 +115,12 @@ class _SendSessionSheetState() extends State<_SendSessionSheet> {
                       spacing: PregoSpacing.xs,
                       children: [
                         Flexible(
-                          child: Text(
-                            switch (target) {
+                          child: PregoKeptSuffixText(
+                            text: switch (target) {
                               null => loc.sendSessionChooseTarget,
                               final target => target.session.title ?? loc.sessionListUntitled,
                             },
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            keptSuffix: sessionForkTitleSuffix,
                             style: prego.textTheme.textMd.regular.copyWith(
                               color: target == null ? prego.colors.textTertiary : prego.colors.textSecondary,
                             ),
@@ -105,9 +139,9 @@ class _SendSessionSheetState() extends State<_SendSessionSheet> {
                   title: Text(loc.sendSessionArchiveAfter),
                   trailing: PregoSwitch(
                     value: _archiveAfterSending,
-                    onChanged: (value) => setState(() => _archiveAfterSending = value),
+                    onChanged: (value) => _setArchiveAfterSending(value: value),
                   ),
-                  onTap: () => setState(() => _archiveAfterSending = !_archiveAfterSending),
+                  onTap: () => _setArchiveAfterSending(value: !_archiveAfterSending),
                 ),
               ),
             ],
@@ -121,10 +155,7 @@ class _SendSessionSheetState() extends State<_SendSessionSheet> {
             fullWidth: true,
             onPressed: switch (target) {
               null => null,
-              final target => () => context.pop<SendSessionChoice>((
-                target: target,
-                archiveAfterSending: _archiveAfterSending,
-              )),
+              final target => () => unawaited(_send(target: target)),
             },
           ),
         ],

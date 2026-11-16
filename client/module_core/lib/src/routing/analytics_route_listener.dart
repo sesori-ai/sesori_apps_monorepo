@@ -110,7 +110,8 @@ class AnalyticsRouteListener {
     }
   }
 
-  AnalyticsScreen _screenFor({required AppRouteDef route}) => switch (route) {
+  /// Null for a route that reports no screen view.
+  AnalyticsScreen? _screenFor({required AppRouteDef route}) => switch (route) {
     AppRouteDef.splash => throw StateError("Splash is a readiness route, not an analytics screen"),
     AppRouteDef.login => AnalyticsScreen.login,
     AppRouteDef.settings ||
@@ -125,6 +126,10 @@ class AnalyticsRouteListener {
     AppRouteDef.newSession => AnalyticsScreen.newSession,
     AppRouteDef.sessionDetail || AppRouteDef.archivedSessionDetail => AnalyticsScreen.sessionDetail,
     AppRouteDef.sessionDiffs => AnalyticsScreen.sessionDiffs,
+    AppRouteDef.scheduledTasks => AnalyticsScreen.scheduledTasks,
+    AppRouteDef.scheduledTaskDetail => AnalyticsScreen.scheduledTaskDetail,
+    // The auth server does not accept a scheduled_task_editor screen yet.
+    AppRouteDef.scheduledTaskEditor => null,
   };
 
   @disposeMethod

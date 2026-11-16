@@ -2,6 +2,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
@@ -54,6 +55,8 @@ class const DesktopNewSessionView({
   Widget build(BuildContext context) {
     return DesktopPaneDropTarget(
       child: NewSessionView(
+        title: context.loc.sessionListNewSession,
+        composingTitleMode: PregoTopNavigationTitleMode.backLeading,
         onProjectSelected: ({required projectId, required projectName}) =>
             context.read<NewSessionCubit>().selectProject(
               project: NewSessionProject(
@@ -82,6 +85,7 @@ class const DesktopNewSessionView({
             title: context.loc.sessionListNewSession,
             titleDetail: null,
             subtitle: null,
+            keptSuffix: null,
             actions: const [],
           ),
           // A page of its own, so opaque as it fades in over the one below.

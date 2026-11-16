@@ -15,6 +15,7 @@ import "../../../extensions/build_context_x.dart";
 import "assistant_message_card.dart";
 import "error_message_card.dart";
 import "follow_detach_scrollable.dart";
+import "forked_from_row.dart";
 import "handoff_card.dart";
 import "handoff_marker_row.dart";
 import "jump_to_edge_pill.dart";
@@ -23,6 +24,7 @@ import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "sent_bubble_landing.dart";
+import "session_fork_flow.dart";
 import "session_launch_submission_view.dart";
 import "system_message_card.dart";
 import "transcript_glide_activity.dart";
@@ -37,6 +39,7 @@ import "transcript_row_hold.dart";
 import "transcript_row_reporter.dart";
 import "transcript_sticky_layout.dart";
 import "transcript_sticky_prompt_overlay.dart";
+import "turn_end_line.dart";
 import "user_message_card.dart";
 
 /// Chat-style message list for the session detail screen.
@@ -98,6 +101,13 @@ class const SessionDetailMessageList({
   /// not does the sub-agent row take over from "Working…".
   required final bool mainAgentRunning,
 
+  /// How the transcript ends the turn a bridge stop cut off.
+  required final InterruptedTurnView interruptedTurn,
+
+  /// Sends the prompt that continues the interrupted turn, answering why it
+  /// sent nothing; null on a surface that cannot send.
+  required final Future<InterruptedTurnContinueRefusal?> Function()? onContinueInterruptedTurn,
+
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
   required final Future<void> Function()? onLoadOlderMessages,
@@ -130,9 +140,26 @@ class const SessionDetailMessageList({
   required final void Function({required Offset focalPoint}) onPinchIn,
 
   /// Edit and resend on a user message, with why it cannot be edited, or null
-  /// when it can. Null when the session offers no edit.
-  required final void Function({required MessageWithParts message, required MessageEditRefusal? refusal})?
+  /// when it can, and the message's Fork from here, or null where it offers
+  /// none. Null when the session offers no edit.
+  required final void Function({
+    required MessageWithParts message,
+    required MessageEditRefusal? refusal,
+    required VoidCallback? onFork,
+  })?
   onEditMessage,
+
+  /// "Fork from here" at [point]. [ownMessage] is the user message it was
+  /// asked from, whose text and attachments go to the fork's composer, or
+  /// null for an agent reply. Null when the session offers no fork.
+  required final void Function({required ForkPoint point, required MessageWithParts? ownMessage})? onForkMessage,
+
+  /// Where this session was forked from, shown above its oldest message once
+  /// that is loaded, or null when it is not a fork.
+  required final SessionForkOrigin? forkedFrom,
+
+  /// Goes back to the session [forkedFrom] names.
+  required final void Function({required String sessionId, required String? sessionTitle}) onOpenForkOrigin,
 
   /// The user message the composer is editing, which stands out, or null.
   required final String? editingMessageId,
@@ -171,6 +198,10 @@ typedef _DetachedSnapshot = ({
   /// The frozen messages' card shapes, so a row being read never turns
   /// between a card and a bubble.
   Map<String, InvocationPromptTurnShape> messageShapes,
+
+  /// The Interrupted line as it stood, so it neither arrives nor loses its
+  /// Continue under the rows being read.
+  InterruptedTurnView interruptedTurn,
 });
 
 enum _TransientStage() {
@@ -231,6 +262,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// Synthetic id for the launch's first message, the oldest transient row. A
   /// session has at most one, so it is never matched against echoes.
   static const _kLaunchRowId = "session-detail-launch-row";
+
+  /// Synthetic id for a fork's "Forked from" line, the oldest row once the
+  /// start of the transcript is loaded.
+  static const _kForkedFromRowId = "session-detail-forked-from-row";
   static const _kPromptRowPrefix = "session-detail-prompt-";
 
   /// Distance from the oldest edge at which the next older page starts
@@ -309,6 +344,22 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The rows of the messages the last update removed, for the next build.
   Set<String> _removedRowIds = const {};
 
+  /// How long removed rows keep their room for what replaces them. Another
+  /// surface's edit reaches this one as its removals first and its prompt's
+  /// echo and the Working row some frames later.
+  static const _kFoldWait = Duration(milliseconds: 300);
+
+  /// Leaving rows that keep their room, still shown, until rows join to take
+  /// it or [_kFoldWait] ends. Folding as those rows grow, they move the rows
+  /// above in one direction, where folding first would carry them down and
+  /// the joining rows back up.
+  final Set<String> _waitingRowIds = {};
+  Timer? _foldWait;
+
+  /// When a row last joined the list or the live row started showing.
+  DateTime? _joinedAt;
+  bool _liveRowShown = false;
+
   /// The row that replaced the launch bubble. It keeps the launch row's key, so
   /// the swap eases in place like a queued prompt turning into its message.
   String? _launchSlotRowId;
@@ -328,6 +379,24 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The last build's newest message, to tell when one arrives.
   String? _newestMessageId;
 
+  /// Whether an edit's accepted prompt shows the working row ahead of the
+  /// busy status; see where the build sets it.
+  bool _acceptedEditWorks = false;
+
+  /// How long the working row stays away once streamed text ends with the
+  /// session still busy. A harness can report idle some 50 ms after its reply's
+  /// last part, and the row folding in and out again in between moves the
+  /// rows above. A real gap before the next step outlasts this, and the next
+  /// step's own row takes over sooner anyway.
+  static const _kStreamEndGrace = Duration(milliseconds: 250);
+
+  /// Whether the last build had streaming text.
+  bool _streamed = false;
+
+  /// Runs from a stream's end, while busy alone would bring back the working
+  /// row, until [_kStreamEndGrace] ends or the session goes idle.
+  Timer? _streamEndGrace;
+
   /// The last build's rendered user messages, prompts and steers alike, in
   /// order: the messages that can pin.
   Map<String, MessageWithParts> _userMessagesById = const {};
@@ -337,7 +406,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   final ValueNotifier<double> _topReserve = ValueNotifier(0);
 
   /// The handoffs among the rows, from the last build.
-  TranscriptHandoffs _handoffs = const TranscriptHandoffs(markers: {}, foldedMessageIds: {}, cards: {});
+  TranscriptHandoffs _handoffs = const TranscriptHandoffs(
+    markers: {},
+    foldedMessageIds: {},
+    cards: {},
+    queuedMarkers: {},
+    queuedCards: {},
+    stopping: false,
+  );
 
   /// The attached user message bubbles, by message id.
   final _promptSlots = TranscriptPromptSlots();
@@ -383,7 +459,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   SessionPromptIndexEntry? _unloadedPin;
 
   /// The rendered messages' turns, as the last build split them.
-  TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {});
+  TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {}, finalReplyIds: {});
+
+  /// The Interrupted line the last build rendered, which the rows it builds
+  /// read.
+  InterruptedTurnView _interruptedTurn = const InterruptedTurnView.absent();
 
   /// The unloaded prompt a tap on its pin is loading, until that load ends.
   /// Its spinner keeps to this entry's side even once the pin itself clears.
@@ -418,6 +498,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _revealController.dispose();
     _stickyOpenerIds.dispose();
     _pinLoadSpinner?.cancel();
+    _foldWait?.cancel();
+    _streamEndGrace?.cancel();
     super.dispose();
   }
 
@@ -439,6 +521,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // its rows go at once.
     final removedMessages = refreshEnded ? const <Message>[] : _removedMessages(oldWidget: oldWidget);
     _removedRowIds = {for (final info in removedMessages) _entryIdForMessage(info: info)};
+    // An edit's removals leave an older message newest, which did not arrive:
+    // the session stays quiet, so the edit's prompt wakes it above the
+    // working row, where its echo lands.
+    final newestMessageId = widget.messages.lastOrNull?.info.id;
+    if (removedMessages.isNotEmpty && oldWidget.messages.any((message) => message.info.id == newestMessageId)) {
+      _newestMessageId = newestMessageId;
+    }
     if (refreshEnded || oldestChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -503,6 +592,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           for (final MessageWithParts(:info) in [...prepended, ...delivered])
             info.id: ?widget.promptTurnShapes.messages[info.id],
         },
+        interruptedTurn: frozen.interruptedTurn,
       );
     });
     // The prepended rows render against the frozen `streamingText` and
@@ -573,6 +663,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     mainAgentRunning: widget.mainAgentRunning,
     promptIndex: widget.promptIndex ?? _promptIndex,
     messageShapes: widget.promptTurnShapes.messages,
+    interruptedTurn: widget.interruptedTurn,
   );
 
   PromptTurnShape _messageShape({required String messageId}) => switch (_snapshot) {
@@ -593,6 +684,38 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   void _onRowLeft({required String rowId}) {
     if (mounted && _leavingRows.containsKey(rowId)) setState(() => _leavingRows.remove(rowId));
+  }
+
+  /// Holds rows that start leaving while following with nothing joining, see
+  /// [_waitingRowIds], and lets every held row fold once rows join. Rows that
+  /// joined in the last [transcriptMotionDuration] still grow, so rows leaving
+  /// then fold at once.
+  void _waitForReplacements({
+    required Set<String> newlyLeaving,
+    required bool rowsJoined,
+    required bool following,
+  }) {
+    final now = clock.now();
+    if (following && rowsJoined) _joinedAt = now;
+    final joinedLately = switch (_joinedAt) {
+      final joinedAt? => now.difference(joinedAt) < transcriptMotionDuration,
+      null => false,
+    };
+    if (joinedLately) {
+      _waitingRowIds.clear();
+    } else if (following && newlyLeaving.isNotEmpty) {
+      _waitingRowIds.addAll(newlyLeaving);
+    }
+    _waitingRowIds.retainAll(_leavingRows.keys);
+    if (_waitingRowIds.isEmpty) {
+      _foldWait?.cancel();
+      _foldWait = null;
+    } else {
+      _foldWait ??= Timer(_kFoldWait, () {
+        _foldWait = null;
+        if (mounted) setState(_waitingRowIds.clear);
+      });
+    }
   }
 
   /// Where row [rowId] sits in the list's box, or null while it is not built.
@@ -1000,11 +1123,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<String> pendingPromptRowIds,
     required String? wakingPromptRowId,
     required bool hasLaunchRow,
+    required bool hasForkedFromRow,
   }) {
     // The prompt that woke the session is answered first, so its working row
     // follows it, as it will follow its message.
     final wakingEnd = wakingPromptRowId == null ? 0 : pendingPromptRowIds.indexOf(wakingPromptRowId) + 1;
     final entries = <String>[
+      if (hasForkedFromRow) _kForkedFromRowId,
       ...messageRows,
       // Where the first message's echo lands, above the working row.
       if (hasLaunchRow) _kLaunchRowId,
@@ -1123,6 +1248,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
     final isBusy = snap?.isBusy ?? widget.isBusy;
     final mainAgentRunning = snap?.mainAgentRunning ?? widget.mainAgentRunning;
+    final interruptedTurn = _interruptedTurn = snap?.interruptedTurn ?? widget.interruptedTurn;
 
     final indexById = _indexByIdFor(messages: messages);
     final transcript = const TranscriptBuilder().build(
@@ -1134,6 +1260,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final turns = _turns = const TranscriptTurnBuilder().build(
       messages: messages,
       hasOlderMessages: widget.onLoadOlderMessages != null,
+      turnEndMessageIds: interruptedTurn.turnEndMessageIds,
     );
     _promptIndex = widget.promptIndex ?? _promptIndex;
     // An index that arrives while detached still pins above the frozen messages.
@@ -1146,14 +1273,39 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       messages: messages,
       turns: turns,
       isBusy: isBusy,
+      queuedPrompts: widget.bridgeQueuedPrompts,
     );
-    // A summary being written shows its own live line in place of the working row.
-    final activity = handoffs.writing
+    // A send the bridge accepts while removed rows fold is an edit's, and its
+    // turn is starting: its working row rises with its prompt and the fold,
+    // not a beat later with the busy status, which would push the rows above
+    // back up once the fold ended. Held until the prompt shows as a message.
+    _acceptedEditWorks =
+        widget.awaitingBridgeSubmissions.isNotEmpty &&
+        (_acceptedEditWorks || _removedRowIds.isNotEmpty || _leavingRows.isNotEmpty);
+    // A stream that ends while the session still works is often the turn's
+    // last word, its idle a moment behind, so the working row does not come
+    // back on busy alone until the grace ends. Whatever starts next shows its
+    // own row meanwhile as usual.
+    final streams = streamingText.isNotEmpty;
+    if (!isBusy || _acceptedEditWorks) {
+      _streamEndGrace?.cancel();
+      _streamEndGrace = null;
+    } else if (_streamed && !streams && !_liveRowShown) {
+      _streamEndGrace?.cancel();
+      _streamEndGrace = Timer(_kStreamEndGrace, () {
+        _streamEndGrace = null;
+        if (mounted) setState(() {});
+      });
+    }
+    _streamed = streams;
+    // A summary being written, or a stopped send still ending, shows its marker
+    // in place of the working row.
+    final activity = handoffs.showsWork || _streamEndGrace != null
         ? const TranscriptActivityIdle()
         : const TranscriptActivityBuilder().build(
             transcript: transcript,
             messages: messages,
-            isBusy: isBusy,
+            isBusy: isBusy || _acceptedEditWorks,
             mainAgentRunning: mainAgentRunning,
             retryErrorMessage: retryErrorMessage,
             streamingText: streamingText,
@@ -1209,6 +1361,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       pendingPromptRowIds: pendingPromptRowIds,
       wakingPromptRowId: wakingPromptRowId,
       hasLaunchRow: hasLaunchRow,
+      // Above the oldest message, so only once no older page is left.
+      hasForkedFromRow: widget.forkedFrom != null && widget.onLoadOlderMessages == null,
     );
     final previousRowIndexById = _rowIndexById;
     final previousRowIds = previousRowIndexById.keys.toList();
@@ -1217,13 +1371,25 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // message comes back stays.
     final liveRowIdSet = liveRowIds.toSet();
     _leavingRows.removeWhere((rowId, _) => liveRowIdSet.contains(rowId) || !previousRowIndexById.containsKey(rowId));
+    final newlyLeaving = <String>{};
     if (!context.isReducedMotion) {
       for (final rowId in _removedRowIds) {
-        if (_builtRows[rowId] case final row? when !liveRowIdSet.contains(rowId)) _leavingRows[rowId] = row;
+        if (_builtRows[rowId] case final row? when !liveRowIdSet.contains(rowId)) {
+          _leavingRows[rowId] = row;
+          newlyLeaving.add(rowId);
+        }
       }
     }
     _removedRowIds = const {};
     final rowIds = _withLeavingRows(live: liveRowIds, previous: previousRowIds, leaving: _leavingRows.keys.toSet());
+    _waitForReplacements(
+      newlyLeaving: newlyLeaving,
+      rowsJoined:
+          (activity is! TranscriptActivityIdle && !_liveRowShown) ||
+          rowIds.any((rowId) => !previousRowIndexById.containsKey(rowId)),
+      following: snap == null,
+    );
+    _liveRowShown = activity is! TranscriptActivityIdle;
     final knownRowIds = _knownRowIds;
     if (knownRowIds != null && knownRowIds.contains(_kLaunchRowId) && !rowIds.contains(_kLaunchRowId)) {
       _launchSlotRowId = rowIds
@@ -1312,125 +1478,138 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               final TranscriptMessageMenuOpened menu => _onMessageMenuOpened(menu),
               _ => _onScrollNotification(notification),
             },
-            child: PregoHorizontalDragGestureDetector(
-              behavior: HitTestBehavior.translucent,
-              supportedDevices: _kRevealPointerDevices,
-              onHorizontalDragDown: _onRevealDragDown,
-              onHorizontalDragStart: _onRevealDragStart,
-              onHorizontalDragUpdate: _onRevealDragUpdate,
-              onHorizontalDragEnd: _onRevealDragEnd,
-              onHorizontalDragCancel: _onRevealDragCancel,
-              pendingRejectionSlop: _kRevealPendingRejectionSlop,
-              direction: PregoHorizontalDragDirection.left,
-              dragStartBehavior: DragStartBehavior.down,
-              child: Stack(
-                children: [
-                  TranscriptLaidOutListView(
-                    key: _kListViewKey,
-                    onLaidOut: _layOutSticky,
-                    detached: () => !_follow.following,
-                    rowsLeaving: () => _leavingRows.isNotEmpty,
-                    onCarriedToNewestEnd: _follow.reattach,
-                    reverse: true,
-                    controller: _follow.scrollController,
-                    padding: EdgeInsetsDirectional.only(
-                      start: widget.horizontalInset,
-                      end: widget.horizontalInset,
-                      top: 8 + widget.topInset + _topReserve.value,
-                      // The list view adds the floating controls' height itself.
-                      bottom: 8,
-                    ),
-                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: rowIds.length,
-                    findChildIndexCallback: (key) {
-                      if (key case ValueKey<String>(value: final keyValue)) {
-                        final rowId = keyValue == _kLaunchRowId ? _launchSlotRowId ?? keyValue : keyValue;
-                        final domainIndex = rowIds.indexOf(rowId);
-                        return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
-                      }
-                      return null;
-                    },
-                    itemBuilder: (context, index) {
-                      final entryId = rowIds[rowIds.length - index - 1];
-                      final leavingRow = _leavingRows[entryId];
-                      final row = _builtRows[entryId] =
-                          leavingRow ??
-                          _buildRow(
-                            entryId: entryId,
-                            messages: messages,
-                            indexById: indexById,
-                            transientSubmissions: transientSubmissions,
-                            transcript: transcript,
-                            streamingText: streamingText,
-                            retryErrorMessage: retryErrorMessage,
-                            activity: activity,
-                          );
-                      return TranscriptRowReporter(
-                        key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
-                        rowId: entryId,
-                        onMount: _onRowMount,
-                        onUnmount: _onRowUnmount,
-                        child: SentBubbleArrival(
-                          // Not the old rows a glide back to the latest edge builds on its way.
-                          arriving: !previousRowIndexById.containsKey(entryId),
-                          child: TranscriptPresence(
-                            entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
-                            exiting: leavingRow != null,
-                            onEntered: () => _easedInRowIds.add(entryId),
-                            onExited: () => _onRowLeft(rowId: entryId),
-                            child: row,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  Positioned.fill(
-                    // The copies' code blocks scroll sideways; the list must not
-                    // read their scrolls as its own.
-                    child: NotificationListener<Notification>(
-                      onNotification: (notification) =>
-                          notification is ScrollNotification || notification is ScrollMetricsNotification,
-                      child: ValueListenableBuilder(
-                        valueListenable: _stickyOpenerIds,
-                        builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
-                          key: _stickyKey,
-                          messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
-                          // The rows' own shapes, frozen with them while detached, so a pin never disagrees with its row.
-                          promptTurnShapes: switch (snap) {
-                            final frozen? => widget.promptTurnShapes.copyWith(messages: frozen.messageShapes),
-                            null => widget.promptTurnShapes,
-                          },
-                          unloaded: unloadedPin,
-                          horizontalInset: widget.horizontalInset,
-                          onLayout: _layOutSticky,
-                          onTap: _onPinTap,
-                        ),
+            // One selection across the messages, so a drag runs from one into
+            // the next; each row keeps all but its messages' text out of it.
+            // Around the peek, so a finger's horizontal drag peeks rather than
+            // the selection's, which only a double-tap drag uses.
+            child: PregoReadableSelectionArea(
+              child: PregoHorizontalDragGestureDetector(
+                behavior: HitTestBehavior.translucent,
+                supportedDevices: _kRevealPointerDevices,
+                onHorizontalDragDown: _onRevealDragDown,
+                onHorizontalDragStart: _onRevealDragStart,
+                onHorizontalDragUpdate: _onRevealDragUpdate,
+                onHorizontalDragEnd: _onRevealDragEnd,
+                onHorizontalDragCancel: _onRevealDragCancel,
+                pendingRejectionSlop: _kRevealPendingRejectionSlop,
+                direction: PregoHorizontalDragDirection.left,
+                dragStartBehavior: DragStartBehavior.down,
+                child: Stack(
+                  children: [
+                    TranscriptLaidOutListView(
+                      key: _kListViewKey,
+                      onLaidOut: _layOutSticky,
+                      detached: () => !_follow.following,
+                      rowsLeaving: () => _leavingRows.isNotEmpty,
+                      onCarriedToNewestEnd: _follow.reattach,
+                      reverse: true,
+                      controller: _follow.scrollController,
+                      padding: EdgeInsetsDirectional.only(
+                        start: widget.horizontalInset,
+                        end: widget.horizontalInset,
+                        top: 8 + widget.topInset + _topReserve.value,
+                        // The list view adds the floating controls' height itself.
+                        bottom: 8,
                       ),
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: rowIds.length,
+                      findChildIndexCallback: (key) {
+                        if (key case ValueKey<String>(value: final keyValue)) {
+                          final rowId = keyValue == _kLaunchRowId ? _launchSlotRowId ?? keyValue : keyValue;
+                          final domainIndex = rowIds.indexOf(rowId);
+                          return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
+                        }
+                        return null;
+                      },
+                      itemBuilder: (context, index) {
+                        final entryId = rowIds[rowIds.length - index - 1];
+                        final leavingRow = _leavingRows[entryId];
+                        final row = _builtRows[entryId] =
+                            leavingRow ??
+                            _buildRow(
+                              entryId: entryId,
+                              messages: messages,
+                              indexById: indexById,
+                              transientSubmissions: transientSubmissions,
+                              transcript: transcript,
+                              streamingText: streamingText,
+                              retryErrorMessage: retryErrorMessage,
+                              activity: activity,
+                            );
+                        return TranscriptRowReporter(
+                          key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
+                          rowId: entryId,
+                          onMount: _onRowMount,
+                          onUnmount: _onRowUnmount,
+                          child: PregoSelectionOnlyInNestedAreas(
+                            child: SentBubbleArrival(
+                              // Not the old rows a glide back to the latest edge builds on its way.
+                              arriving: !previousRowIndexById.containsKey(entryId),
+                              child: TranscriptPresence(
+                                entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
+                                exiting: leavingRow != null && !_waitingRowIds.contains(entryId),
+                                onEntered: () => _easedInRowIds.add(entryId),
+                                onExited: () => _onRowLeft(rowId: entryId),
+                                child: row,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                  // Beside the pin, clear of its bubble, which keeps to the right, or
-                  // of its card, which keeps to the left.
-                  if (_pinLoad case final pinLoad?)
-                    Positioned(
-                      left: pinLoad.invocation == null ? widget.horizontalInset + UserMessageBubble.margin.left : null,
-                      right: pinLoad.invocation == null
-                          ? null
-                          : widget.horizontalInset + UserMessageBubble.margin.right,
-                      top: widget.topInset + _kPinGap + UserMessageBubble.padding,
-                      child: IgnorePointer(
-                        child: AnimatedOpacity(
-                          opacity: _showsPinLoadSpinner ? 1 : 0,
-                          duration: transcriptMotionDuration,
-                          child: Semantics(
-                            liveRegion: _showsPinLoadSpinner,
-                            label: _showsPinLoadSpinner ? loc.transcriptPromptsLoading : null,
-                            child: const SizedBox.square(dimension: 16, child: PregoActivityIndicator(color: null)),
+                    Positioned.fill(
+                      // The copies' code blocks scroll sideways; the list must not
+                      // read their scrolls as its own.
+                      child: SelectionContainer.disabled(
+                        // The pins select on their own, apart from the rows they copy.
+                        child: NotificationListener<Notification>(
+                          onNotification: (notification) =>
+                              notification is ScrollNotification || notification is ScrollMetricsNotification,
+                          child: ValueListenableBuilder(
+                            valueListenable: _stickyOpenerIds,
+                            builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
+                              key: _stickyKey,
+                              messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
+                              // The rows' own shapes, frozen with them while detached, so a pin never disagrees with its row.
+                              promptTurnShapes: switch (snap) {
+                                final frozen? => widget.promptTurnShapes.copyWith(messages: frozen.messageShapes),
+                                null => widget.promptTurnShapes,
+                              },
+                              unloaded: unloadedPin,
+                              horizontalInset: widget.horizontalInset,
+                              onLayout: _layOutSticky,
+                              onTap: _onPinTap,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                ],
+                    // Beside the pin, clear of its bubble, which keeps to the right, or
+                    // of its card, which keeps to the left.
+                    if (_pinLoad case final pinLoad?)
+                      Positioned(
+                        left: pinLoad.invocation == null
+                            ? widget.horizontalInset + UserMessageBubble.margin.left
+                            : null,
+                        right: pinLoad.invocation == null
+                            ? null
+                            : widget.horizontalInset + UserMessageBubble.margin.right,
+                        top: widget.topInset + _kPinGap + UserMessageBubble.padding,
+                        child: IgnorePointer(
+                          child: AnimatedOpacity(
+                            opacity: _showsPinLoadSpinner ? 1 : 0,
+                            duration: transcriptMotionDuration,
+                            child: Semantics(
+                              liveRegion: _showsPinLoadSpinner,
+                              label: _showsPinLoadSpinner ? loc.transcriptPromptsLoading : null,
+                              child: const SizedBox.square(dimension: 16, child: PregoActivityIndicator(color: null)),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1473,6 +1652,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         ),
       );
     }
+    if ((entryId, widget.forkedFrom) case (_kForkedFromRowId, final origin?)) {
+      return _revealable(
+        createdAtMs: null,
+        child: ForkedFromRow(origin: origin, onOpenOrigin: widget.onOpenForkOrigin),
+      );
+    }
     if (entryId == _kWorkingRowId) {
       return _revealable(
         createdAtMs: null,
@@ -1499,7 +1684,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return _revealable(
         createdAtMs: null,
         child: _animatedPromptRow(
+          deliveredMessageId: null,
           child: QueuedMessageBubble(
+            body: null,
             displayText: submission.displayText,
             isCommand: submission is NewSessionCommandSubmissionSnapshot,
             shape: widget.promptTurnShapes.launch,
@@ -1531,11 +1718,23 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       final promptId = entryId.substring(_kPromptRowPrefix.length);
       final prompt = widget.bridgeQueuedPrompts.where((candidate) => candidate.id == promptId).firstOrNull;
       if (prompt != null) {
+        // A handoff shows as it will once delivered, in the same row. The source's
+        // marker offers no Cancel, as the source must be idle to hand off; the
+        // target's card waits under the same status line a message would.
+        if (_handoffs.queuedMarkers[prompt.id] case final marker?) {
+          return _revealable(
+            createdAtMs: prompt.createdAt,
+            child: _endingInterruptedTurn(messageId: null, child: HandoffMarkerRow(marker: marker)),
+          );
+        }
+        final card = _handoffs.queuedCards[prompt.id];
         final onCancel = widget.onCancelBridgeQueuedPrompt;
         return _revealable(
           createdAtMs: prompt.createdAt,
           child: _animatedPromptRow(
+            deliveredMessageId: null,
             child: QueuedMessageBubble(
+              body: card == null ? null : HandoffCard(messageId: prompt.id, card: card),
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               shape: widget.promptTurnShapes.ofPrompt(promptId: prompt.id),
@@ -1569,7 +1768,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return _revealable(
         createdAtMs: null,
         child: _animatedPromptRow(
+          deliveredMessageId: null,
           child: QueuedMessageBubble(
+            body: null,
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             shape: widget.promptTurnShapes.ofPrompt(promptId: submission.promptId),
@@ -1593,7 +1794,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return _revealable(
         createdAtMs: null,
         child: _animatedPromptRow(
+          deliveredMessageId: null,
           child: QueuedMessageBubble(
+            body: null,
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             shape: widget.promptTurnShapes.ofPrompt(promptId: submission.promptId),
@@ -1650,46 +1853,71 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final card = switch (message.info) {
       // The launch bubble's echo keeps easing like the bubble it replaced.
       MessageUser() when entryId == _launchSlotRowId => _deliveredPromptRow(message: message),
-      MessageUser() => _userMessage(message: message, outlineFade: null),
+      MessageUser(:final id) => _endingInterruptedTurn(
+        messageId: id,
+        child: _userMessage(message: message, outlineFade: null),
+      ),
       MessageAssistant(sender: MessageSender.agent, :final id) => _agentRow(
+        messageId: id,
+        isError: false,
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
         createdAtMs: createdAtMs,
         end: null,
       ),
-      MessageAssistant(:final id) => SystemMessageCard(
-        projectId: widget.projectId,
-        blocks: transcript.blocksFor(messageId: id),
-        streamingText: streamingText,
-        createdAtMs: createdAtMs,
+      MessageAssistant(:final id) => _endingInterruptedTurn(
+        messageId: id,
+        child: SystemMessageCard(
+          projectId: widget.projectId,
+          blocks: transcript.blocksFor(messageId: id),
+          streamingText: streamingText,
+          createdAtMs: createdAtMs,
+        ),
       ),
       final MessageError error => _agentRow(
+        messageId: error.id,
+        isError: true,
         blocks: transcript.blocksFor(messageId: error.id),
         streamingText: streamingText,
         createdAtMs: createdAtMs,
-        end: error,
+        // The Interrupted line ends the turn in place of its Stopped line.
+        end: switch (_interruptedTurn) {
+          InterruptedTurnShown(:final supersededStoppedIds) when supersededStoppedIds.contains(error.id) => null,
+          InterruptedTurnShown() || InterruptedTurnAbsent() => error,
+        },
       ),
     };
     return _revealable(createdAtMs: createdAtMs, child: card);
   }
 
   /// An agent reply's row: what it streamed, then, once the turn stopped or
-  /// failed, the [end] row under it. A reply keeps its row when its turn ends,
-  /// so the end row grows in under it as the working row folds away.
+  /// failed, the [end] row under it, and the Interrupted line when a bridge
+  /// stop cut the turn off here. A reply keeps its row when its turn ends, so
+  /// the end row grows in under it as the working row folds away.
+  ///
+  /// [end] is null for a reply, and for an error row whose Stopped line the
+  /// Interrupted line replaces, which then shows only what it streamed.
   Widget _agentRow({
+    required String messageId,
+    required bool isError,
     required List<TranscriptBlock> blocks,
     required Map<String, String> streamingText,
     required int? createdAtMs,
     required MessageError? end,
   }) {
-    final showsReply = blocks.isNotEmpty || end == null;
+    final showsReply = blocks.isNotEmpty || !isError;
     return TranscriptPresenceColumn(
       children: [
         if (showsReply)
           SizedBox(
             key: const ValueKey("reply"),
             width: double.infinity,
-            child: _agentReply(blocks: blocks, streamingText: streamingText, createdAtMs: createdAtMs),
+            child: _agentReply(
+              messageId: messageId,
+              blocks: blocks,
+              streamingText: streamingText,
+              createdAtMs: createdAtMs,
+            ),
           ),
         if (end != null)
           SizedBox(
@@ -1697,19 +1925,87 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             width: double.infinity,
             child: ErrorMessageCard(message: end, followsReply: showsReply),
           ),
+        ?_interruptedLine(messageId: messageId, followsReply: showsReply && end == null),
       ],
     );
   }
 
+  /// [child], the row of message [messageId], with the Interrupted line under
+  /// it when a bridge stop cut the turn off after it. The row keeps one shape
+  /// with or without the line, so it keeps its state when the line arrives.
+  /// [messageId] is null for a prompt not delivered yet, which ends no turn.
+  Widget _endingInterruptedTurn({required String? messageId, required Widget child}) => TranscriptPresenceColumn(
+    children: [
+      KeyedSubtree(key: const ValueKey("message"), child: child),
+      ?_interruptedLine(messageId: messageId, followsReply: false),
+    ],
+  );
+
+  /// The Interrupted line, when the turn a bridge stop cut off ends with
+  /// message [messageId]. It offers Continue only while the turn can be picked
+  /// up and this surface can send.
+  Widget? _interruptedLine({required String? messageId, required bool followsReply}) {
+    if (_interruptedTurn case InterruptedTurnShown(:final lineAfterMessageId, :final continueRefusal)
+        when lineAfterMessageId == messageId) {
+      final onContinue = widget.onContinueInterruptedTurn;
+      final locked = continueRefusal?.locksContinue ?? false;
+      return SizedBox(
+        key: const ValueKey("interrupted"),
+        width: double.infinity,
+        child: InterruptedTurnLine(
+          followsReply: followsReply,
+          onContinue: onContinue == null || (continueRefusal != null && !locked)
+              ? null
+              : () => _continue(onContinue: onContinue),
+          continueLocked: locked,
+        ),
+      );
+    }
+    return null;
+  }
+
+  /// Continues the interrupted turn, or says why it can't: an edit holds a
+  /// locked Continue, and a tap on one folding away, or on a line frozen
+  /// while the reader is detached, finds the turn already moved on. A reader
+  /// who is detached is taken to the newest rows, which show where it went.
+  Future<void> _continue({required Future<InterruptedTurnContinueRefusal?> Function() onContinue}) async {
+    final refusal = await onContinue();
+    if (refusal == null || !mounted) return;
+    final loc = context.loc;
+    PregoPopupAlertPresenter.of(context).show(
+      title: switch (refusal) {
+        InterruptedTurnContinueRefusal.editOpen => loc.sessionDetailContinueEditOpen,
+        InterruptedTurnContinueRefusal.editSending => loc.sessionDetailContinueEditSending,
+        InterruptedTurnContinueRefusal.sessionWorking => loc.sessionDetailContinueSessionWorking,
+        InterruptedTurnContinueRefusal.promptPending => loc.sessionDetailContinuePromptPending,
+        InterruptedTurnContinueRefusal.laterTurn ||
+        InterruptedTurnContinueRefusal.noInterruptedTurn => loc.sessionDetailContinueAlreadyContinued,
+      },
+      variant: PregoPopupAlertsNotificationsVariant.warning,
+      duration: PregoPopupAlertPresenter.defaultDuration,
+    );
+    if (!refusal.locksContinue && !_follow.following) await _follow.animateToEdge();
+  }
+
   /// An agent reply's card, with its message menu.
   Widget _agentReply({
+    required String messageId,
     required List<TranscriptBlock> blocks,
     required Map<String, String> streamingText,
     required int? createdAtMs,
   }) => TranscriptMessageMenu(
     spotlight: PregoMenuSpotlight.listRow,
     copyText: AssistantMessageCard.markdownOf(blocks: blocks, streamingText: streamingText),
-    actions: const [],
+    actions: [
+      if ((widget.onForkMessage, _turns.replyForkPoint(messageId: messageId, working: widget.isBusy)) case (
+        final onFork?,
+        final point?,
+      ))
+        forkFromHereMenuItem(
+          context: context,
+          onTap: () => onFork(point: point, ownMessage: null),
+        ),
+    ],
     builder: (context, selectionArea) => AssistantMessageCard(
       projectId: widget.projectId,
       blocks: blocks,
@@ -1722,37 +2018,69 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// A user message's bubble, registered where it is so its pin can stand in
   /// for it.
-  Widget _userMessage({required MessageWithParts message, required Duration? outlineFade}) => TranscriptPromptSlot(
-    openerId: message.info.id,
-    registry: _promptSlots,
-    child: UserMessageCard(
-      message: message,
-      shape: _messageShape(messageId: message.info.id),
-      outlineFade: outlineFade,
-      editing: widget.editingMessageId == message.info.id,
-      onEdit: switch (widget.onEditMessage) {
-        null => null,
-        // The running turn offers no edit until it finishes, and the message
-        // being edited none over the changes the composer holds.
-        _ when widget.editingMessageId == message.info.id => null,
-        _ when widget.isBusy && _turns.inNewestTurn(messageId: message.info.id) => null,
-        final onEdit => () => onEdit(
-          message: message,
-          refusal: _turns.editRefusal(
-            messageId: message.info.id,
-            shape: _messageShape(messageId: message.info.id),
+  Widget _userMessage({required MessageWithParts message, required Duration? outlineFade}) {
+    final onFork = switch ((
+      widget.onForkMessage,
+      _turns.userMessageForkPoint(messageId: message.info.id, working: widget.isBusy),
+    )) {
+      (final onFork?, final point?) => () => onFork(point: point, ownMessage: message),
+      _ => null,
+    };
+    return TranscriptPromptSlot(
+      openerId: message.info.id,
+      registry: _promptSlots,
+      child: UserMessageCard(
+        message: message,
+        shape: _messageShape(messageId: message.info.id),
+        outlineFade: outlineFade,
+        editing: widget.editingMessageId == message.info.id,
+        onEdit: switch (widget.onEditMessage) {
+          null => null,
+          // The running turn offers no edit until it finishes, and the message
+          // being edited none over the changes the composer holds.
+          _ when widget.editingMessageId == message.info.id => null,
+          _ when widget.isBusy && _turns.inNewestTurn(messageId: message.info.id) => null,
+          final onEdit => () => onEdit(
+            message: message,
+            refusal: _turns.editRefusal(
+              messageId: message.info.id,
+              shape: _messageShape(messageId: message.info.id),
+            ),
+            onFork: onFork,
           ),
-        ),
-      },
-    ),
-  );
+        },
+        onFork: onFork,
+      ),
+    );
+  }
 
   /// A handoff's marker or card in place of its prompt's bubble, or null for
-  /// any other prompt.
+  /// any other prompt. The card carries on from the queued card's row, so the
+  /// status line it waited under sees out its fade.
   Widget? _handoffRow({required MessageWithParts message}) {
     final id = message.info.id;
-    if (_handoffs.markers[id] case final marker?) return HandoffMarkerRow(marker: marker);
-    if (_handoffs.cards[id] case final card?) return HandoffCard(messageId: id, card: card);
+    if (_handoffs.markers[id] case final marker?) {
+      return _endingInterruptedTurn(
+        messageId: id,
+        child: HandoffMarkerRow(marker: marker),
+      );
+    }
+    if (_handoffs.cards[id] case final card?) {
+      return _animatedPromptRow(
+        deliveredMessageId: id,
+        child: QueuedMessageBubble(
+          body: null,
+          displayText: null,
+          isCommand: false,
+          shape: _messageShape(messageId: id),
+          attachmentCount: 0,
+          localAttachments: const [],
+          presentation: QueuedMessageBubblePresentation.delivered(
+            message: ({required outlineFade}) => HandoffCard(messageId: id, card: card),
+          ),
+        ),
+      );
+    }
     return null;
   }
 
@@ -1760,7 +2088,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// key keeping them one, so a line that showed sees out its fade, and a row built
   /// later has none to replay.
   Widget _deliveredPromptRow({required MessageWithParts message}) => _animatedPromptRow(
+    deliveredMessageId: message.info.id,
     child: QueuedMessageBubble(
+      body: null,
       displayText: null,
       isCommand: false,
       shape: _messageShape(messageId: message.info.id),
@@ -1783,17 +2113,23 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// Eases a prompt row's height as it moves between its sending, queued,
   /// and sent renderings, whose status rows differ in height — without this
   /// each hop snaps and reads as a flash in the bottom-pinned list.
-  Widget _animatedPromptRow({required Widget child}) {
+  ///
+  /// Every state of the row keeps one shape, so the bubble that waited and its
+  /// delivered message stay one element; [deliveredMessageId] is the delivered
+  /// message, which may end an interrupted turn, or null before delivery.
+  Widget _animatedPromptRow({required String? deliveredMessageId, required Widget child}) => _endingInterruptedTurn(
+    messageId: deliveredMessageId,
     // No wrapper at all under reduced motion: a zero-duration AnimatedSize
     // re-dirties itself inside its own layout pass.
-    if (context.isReducedMotion) return child;
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 240),
-      curve: Curves.easeInOutCubic,
-      alignment: AlignmentDirectional.topEnd,
-      child: child,
-    );
-  }
+    child: context.isReducedMotion
+        ? child
+        : AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeInOutCubic,
+            alignment: AlignmentDirectional.topEnd,
+            child: child,
+          ),
+  );
 
   /// The working row eases in when work starts or a step ends, and away when
   /// a step starts or work ends. The sub-agent row takes over, easing, while

@@ -16,6 +16,7 @@ const _two = ProjectSummary(id: "two", name: "Two", path: "/two", time: null);
 const _scratch = ProjectSummary(id: "scratch", name: "No project", path: "/scratch", time: null);
 
 const _running = SessionActivityInfo(
+  sending: null,
   mainAgentRunning: true,
   isRunning: true,
   lastUserActivityAt: null,
@@ -69,6 +70,7 @@ void main() {
   late MockConnectionService connection;
   late MockSseEventTracker activity;
   late FakeSessionUnseenTracker unseen;
+  late SessionSendTracker sendTracker;
   late FakeCatalogRescanService catalog;
   late _MockProjectInventory projectInventory;
   late BehaviorSubject<ProjectListState> inventory;
@@ -98,6 +100,7 @@ void main() {
     connection = MockConnectionService();
     activity = MockSseEventTracker();
     unseen = FakeSessionUnseenTracker();
+    sendTracker = SessionSendTracker();
     catalog = FakeCatalogRescanService();
     projectInventory = _MockProjectInventory();
     events = StreamController.broadcast(sync: true);
@@ -136,6 +139,7 @@ void main() {
     await activity.onDispose();
     await unseen.onDispose();
     await catalog.onDispose();
+    sendTracker.onDispose();
   });
 
   /// Runs [body] in fake time over a cubit on a new [mode] window, then
@@ -156,6 +160,7 @@ void main() {
       catalogRescanService: catalog,
     );
     final cubit = AllSessionsCubit(
+      sessionSendTracker: sendTracker,
       window: window,
       projectInventory: projectInventory,
       filterTracker: filterTracker,
@@ -194,6 +199,36 @@ void main() {
       activity.emitSessionActivity(const {});
       async.elapse(Duration.zero);
       expect(cubit.state.rows.last.isRunning, isFalse);
+    });
+  });
+
+  test("a row shows a send the bridge reports from any device, and this device's own send first", () {
+    bridge.sessions = [_session(id: "a", updatedAt: 2)];
+    activity.emitSessionActivity({
+      "one": {
+        "a": const SessionActivityInfo(
+          mainAgentRunning: true,
+          isRunning: true,
+          lastUserActivityAt: null,
+          updatedAt: null,
+          sending: SessionSending(targetTitle: "From the bridge"),
+        ),
+      },
+    });
+    withCubit((cubit, async) {
+      expect(cubit.state.rows.single.sending, const SessionSending(targetTitle: "From the bridge"));
+
+      const own = SessionSending(targetTitle: "Mine");
+      sendTracker.start(sourceSessionId: "a", sending: own);
+      async.elapse(Duration.zero);
+      expect(cubit.state.rows.single.sending, own);
+
+      sendTracker.end(sourceSessionId: "a", sending: own);
+      activity.emitSessionActivity({
+        "one": {"a": _running},
+      });
+      async.elapse(Duration.zero);
+      expect(cubit.state.rows.single.sending, isNull);
     });
   });
 
@@ -244,6 +279,22 @@ void main() {
     });
   });
 
+  test("a row is interrupted while its interruption is unacknowledged and the session is not running", () {
+    SessionInterruption interruption({required bool unacknowledged}) =>
+        SessionInterruption(afterMessageId: "m1", unacknowledged: unacknowledged);
+    bridge.sessions = [
+      _session(id: "c", updatedAt: 3).copyWith(interruption: interruption(unacknowledged: true)),
+      _session(id: "b", updatedAt: 2).copyWith(interruption: interruption(unacknowledged: false)),
+      _session(id: "a", updatedAt: 1).copyWith(interruption: interruption(unacknowledged: true)),
+    ];
+    activity.emitSessionActivity({
+      "one": {"a": _running},
+    });
+    withCubit((cubit, async) {
+      expect([for (final row in cubit.state.rows) row.isInterrupted], [true, false, false]);
+    });
+  });
+
   test("a chip and a project filter are the window's key", () {
     bridge.sessions = [_session(id: "b", updatedAt: 2, projectId: "two"), _session(id: "a", updatedAt: 1)];
     withCubit((cubit, async) {
@@ -258,6 +309,7 @@ void main() {
 
   test("a session waiting on the user counts whatever the list shows, unless hidden or in an unlisted project", () {
     const waiting = SessionActivityInfo(
+      sending: null,
       awaitingInput: true,
       isRunning: false,
       lastUserActivityAt: null,

@@ -33,6 +33,7 @@ void main() {
     final rows = [
       for (final session in sessions)
         AllSessionsRow(
+          sending: null,
           session: session,
           project: project,
           isRunning: false,
@@ -40,6 +41,7 @@ void main() {
           isAwaitingInput: false,
           isRetrying: false,
           backgroundTaskCount: 0,
+          isInterrupted: false,
         ),
     ];
     return AllSessionsState(

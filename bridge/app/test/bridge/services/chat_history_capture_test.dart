@@ -14,6 +14,9 @@ import "package:claude_plugin/claude_plugin.dart"
         ClaudeToolTracker,
         ClaudeTranscriptApi,
         ClaudeTranscriptCatalogRepository;
+import "package:omp_plugin/src/omp_event_mapper.dart";
+import "package:omp_plugin/src/omp_identity.dart";
+import "package:omp_plugin/src/trackers/omp_compaction_tracker.dart";
 import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
@@ -1246,9 +1249,10 @@ void main() {
           "replay-a",
           "live-a",
           "tool-1",
-          "replay-shared",
+          // The exact copy still matches between its tool anchors: the partial
+          // row the replay doesn't hold doesn't separate them.
           "live-middle-partial",
-          "live-middle-exact",
+          "replay-shared",
           "tool-2",
           "replay-b",
           "live-b",
@@ -2064,8 +2068,188 @@ void main() {
       });
     });
 
+    // Oh My Pi replays untimed rows under fresh ids on every load.
+    group("a replay under fresh ids", () {
+      test("matches a live turn after an earlier import once", () async {
+        final transcript = [
+          _messageWithText(id: "r1-alpha", text: "Say ALPHA", createdAt: null, promptId: null),
+          _assistantMessageWithText(id: "r1-alpha-reply", text: "ALPHA", reasoning: null, createdAt: null),
+        ];
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-alpha", text: "Say ALPHA", createdAt: 100, promptId: "p1"),
+            _assistantMessageWithText(id: "live-alpha-reply", text: "ALPHA", reasoning: null, createdAt: null),
+          ],
+        );
+        await history.service.backfillSession(sessionId: "ses_a");
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-beta", text: "Say BETA", createdAt: 300, promptId: "p2"),
+            _assistantMessageWithText(id: "live-beta-reply", text: "BETA", reasoning: null, createdAt: null),
+          ],
+        );
+        transcript
+          ..clear()
+          ..addAll([
+            _messageWithText(id: "r2-alpha", text: "Say ALPHA", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "r2-alpha-reply", text: "ALPHA", reasoning: null, createdAt: null),
+            _messageWithText(id: "r2-beta", text: "Say BETA", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "r2-beta-reply", text: "BETA", reasoning: null, createdAt: null),
+          ]);
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r2-alpha", "r2-alpha-reply", "r2-beta", "r2-beta-reply"],
+        );
+      });
+
+      // A live turn the replay doesn't hold yet separates no neighbors, so its
+      // reply sits in the same context as an imported reply of the same text.
+      test("keeps a live reply that looks like a replayed one", () async {
+        final transcript = [
+          _messageWithText(id: "r1-q", text: "Say Q", createdAt: null, promptId: null),
+          _assistantMessageWithText(id: "r1-a", text: "A", reasoning: null, createdAt: null),
+        ];
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-q", text: "Say Q", createdAt: 100, promptId: "p1"),
+            _assistantMessageWithText(id: "live-a", text: "A", reasoning: null, createdAt: null),
+          ],
+        );
+        await history.service.backfillSession(sessionId: "ses_a");
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-x", text: "Say X", createdAt: 300, promptId: "p2"),
+            _assistantMessageWithText(id: "live-x-a", text: "A", reasoning: null, createdAt: null),
+          ],
+        );
+        transcript
+          ..clear()
+          ..addAll([
+            _messageWithText(id: "r2-q", text: "Say Q", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "r2-a", text: "A", reasoning: null, createdAt: null),
+          ]);
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r2-q", "r2-a", "live-x", "live-x-a"],
+        );
+      });
+
+      // Oh My Pi replays no row for a reply whose model call failed.
+      test("keeps each failed reply after its own turn", () async {
+        final history = createTestChatHistory(
+          sessionRepository: _FakeSessionRepository(
+            transcript: [
+              for (final word in ["ALPHA", "BETA", "GAMMA"])
+                _messageWithText(id: "r1-$word", text: "Say $word", createdAt: null, promptId: null),
+            ],
+          ),
+        );
+        await _captureMessages(
+          history: history,
+          messages: [
+            for (final (index, word) in ["ALPHA", "BETA", "GAMMA"].indexed) ...[
+              _messageWithText(id: "live-$word", text: "Say $word", createdAt: index * 100, promptId: "p$index"),
+              _assistantMessageWithText(id: "failed-$word", text: "400 $word", reasoning: null, createdAt: null),
+            ],
+          ],
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r1-ALPHA", "failed-ALPHA", "r1-BETA", "failed-BETA", "r1-GAMMA", "failed-GAMMA"],
+        );
+      });
+    });
+
+    // A stopped turn keeps what the replay doesn't hold of it: Codex records
+    // none of the reply it was streaming, and most ACP harnesses no stop.
+    group("a stopped turn's live-only rows", () {
+      final live = [
+        _messageWithText(id: "h1-user", text: "Write a list", createdAt: 100, promptId: "p1"),
+        _assistantMessageWithText(id: "live-partial", text: "1. Apples", reasoning: null, createdAt: 200),
+        _stoppedMessage(id: "turn-stopped", createdAt: 300),
+      ];
+      final prompt = _messageWithText(id: "h1-user", text: "Write a list", createdAt: 100, promptId: null);
+
+      Future<List<String>> idsAfterTwoImports({required List<MessageWithParts> replay}) async {
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: replay));
+        await _captureMessages(history: history, messages: live);
+        for (var import = 0; import < 2; import++) {
+          await Future<void>.delayed(const Duration(milliseconds: 2));
+          await history.service.backfillSession(sessionId: "ses_a");
+        }
+        return [for (final message in await _storedMessages(history: history, sessionId: "ses_a")) message.info.id];
+      }
+
+      test("keeps the streamed reply the replay lacks before the stopped row it holds", () async {
+        expect(
+          await idsAfterTwoImports(
+            replay: [
+              prompt,
+              _stoppedMessage(id: "turn-stopped", createdAt: 300),
+            ],
+          ),
+          ["h1-user", "live-partial", "turn-stopped"],
+        );
+      });
+
+      test("keeps a live-only stopped row while the replay holds its prompt", () async {
+        expect(await idsAfterTwoImports(replay: [prompt]), ["h1-user", "live-partial", "turn-stopped"]);
+      });
+
+      test("leaves an unstopped turn's live-only rows to the replay", () async {
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: [prompt]));
+        await _captureMessages(history: history, messages: live.sublist(0, 2));
+        for (var import = 0; import < 2; import++) {
+          await Future<void>.delayed(const Duration(milliseconds: 2));
+          await history.service.backfillSession(sessionId: "ses_a");
+        }
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          ["h1-user"],
+        );
+      });
+
+      test("leaves with its prompt when the harness rolls the turn back", () async {
+        final transcript = [prompt];
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(history: history, messages: live);
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        transcript
+          ..clear()
+          ..add(_messageWithText(id: "h2-user", text: "Something else", createdAt: 400, promptId: null));
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          ["h2-user"],
+        );
+      });
+    });
+
     group("handoff stamps", () {
       const sent = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Target");
+      const notSent = MessageHandoffNotSent(targetSessionId: "target", targetTitle: "Target");
       MessageWithParts stamped({required String id, required MessageHandoff? handoff}) {
         final message = _messageWithText(id: id, text: "Fixture request", createdAt: 100, promptId: null);
         return switch (message.info) {
@@ -2117,42 +2301,61 @@ void main() {
         }
       });
 
-      test("marking a send as not sent turns only a sent stamp", () async {
-        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
-        const received = MessageHandoff.received(
-          sourceSessionId: "source",
-          sourceTitle: null,
-          summary: "Fixture summary",
-          transcriptPath: "/fixture/transcript.md",
-        );
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m1", handoff: sent),
-        );
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m2", handoff: received),
-        );
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m3", handoff: null),
-        );
+      test(
+        "marking a send as not sent replaces a sent stamp or stamps an unstamped request, and announces each",
+        () async {
+          final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
+          final announced = <(String, MessageHandoff?, String)>[];
+          final requests = history.service.notSentRequests.listen(
+            (request) => announced.add((
+              request.info.id,
+              switch (request.info) {
+                MessageUser(:final handoff) => handoff,
+                _ => null,
+              },
+              request.parts.whereType<MessagePartText>().map((part) => part.text).join(),
+            )),
+          );
+          addTearDown(requests.cancel);
+          const received = MessageHandoff.received(
+            sourceSessionId: "source",
+            sourceTitle: null,
+            summary: "Fixture summary",
+            transcriptPath: "/fixture/transcript.md",
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m1", handoff: sent),
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m2", handoff: received),
+          );
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m3", handoff: null),
+          );
 
-        for (final messageId in ["m1", "m2", "m3", "missing"]) {
-          await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId);
-        }
-        // A later update of the turn keeps the replaced stamp.
-        await _captureMessageWithParts(
-          history: history,
-          message: stamped(id: "m1", handoff: null),
-        );
+          for (final messageId in ["m1", "m2", "m3", "missing"]) {
+            await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId, notSent: notSent);
+          }
+          // Only the marked requests go out, stamped and with their text, which
+          // an unechoed request has not shown yet, before the mark returns, so
+          // ahead of the send's empty queue.
+          expect(announced, [
+            ("m1", notSent, "Fixture request"),
+            ("m3", notSent, "Fixture request"),
+          ]);
+          // A later update of the turn keeps the replaced stamp.
+          await _captureMessageWithParts(
+            history: history,
+            message: stamped(id: "m1", handoff: null),
+          );
 
-        expect(await storedHandoffs(history: history), [
-          const MessageHandoff.notSent(targetSessionId: "target", targetTitle: "Target"),
-          received,
-          null,
-        ]);
-      });
+          // The harness stored m3 without the echo that would have stamped it.
+          expect(await storedHandoffs(history: history), [notSent, received, notSent]);
+        },
+      );
     });
 
     test("semantic replay matching preserves repeated-message multiplicity", () async {
@@ -2575,6 +2778,77 @@ void main() {
       });
     });
 
+    // OMP sends nothing live for a stop, so the shared ACP plugin adds the
+    // stopped row; OMP replays the stop as its "Interrupted by user" reason.
+    test("an OMP stop seen live stays one stopped row after a reload", () async {
+      const sessionId = "ses_a";
+      final replayTranscript = <MessageWithParts>[];
+      final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: replayTranscript));
+      final mapper = OmpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: OmpPluginIdentity.id,
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
+        compactionTracker: OmpCompactionTracker(clock: const ServerClock()),
+        hasPendingTurn: ({required sessionId}) => false,
+      )..beginTurn(sessionId: sessionId, messageId: "live-user");
+      await _captureAcpEvents(
+        history: history,
+        sessionId: sessionId,
+        events: [
+          ...mapper.mapSentPrompt(
+            sessionId: sessionId,
+            messageId: "live-user",
+            promptId: "prompt-1",
+            parts: const [PluginPromptPart.text(text: "request")],
+            createdAtMs: 100,
+          ),
+          ...mapper.mapUserStop(sessionId: sessionId),
+        ],
+      );
+      final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
+        shellCommandResolver: null,
+        toolNameResolver: null,
+        sessionId: sessionId,
+        agentId: OmpPluginIdentity.id,
+        initialUserMessage: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: mapper.classifyHaltNotice,
+        toolPartReplacement: null,
+        toolPartSuppression: null,
+      );
+      for (final update in [
+        {
+          "sessionUpdate": "user_message_chunk",
+          "content": {"type": "text", "text": "request"},
+          "messageId": "user-1",
+        },
+        {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Interrupted by user"},
+          "messageId": "assistant-1",
+        },
+      ]) {
+        collector.consume({"update": update});
+      }
+      replayTranscript.addAll(collector.build().toSharedMessageWithParts(sessionId: sessionId));
+
+      for (var reload = 0; reload < 2; reload++) {
+        await history.service.backfillSession(sessionId: sessionId);
+
+        final errors = [
+          for (final message in await _storedMessages(history: history, sessionId: sessionId))
+            if (message.info case final MessageError error) error,
+        ];
+        expect(
+          errors.map((error) => (error.kind, error.errorMessage)),
+          [(MessageErrorKind.stopped, "Stopped")],
+        );
+      }
+    });
+
     // Editing a message in the backend's own client rolls the session back and
     // deletes what followed. A bridge that was not watching never sees the
     // removal events, so the re-import's gap is the only evidence it gets.
@@ -2700,18 +2974,6 @@ void main() {
       expect(stored.single.parts, isEmpty, reason: "the removal is newer than the fetched transcript");
     });
 
-    test("concurrent reads share one fetch", () async {
-      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
-      final history = createTestChatHistory(sessionRepository: repository);
-
-      await Future.wait([
-        history.service.backfillSession(sessionId: "ses_a"),
-        history.service.backfillSession(sessionId: "ses_a"),
-      ]);
-
-      expect(repository.fetchCount, 1);
-    });
-
     test("a failed fetch propagates and leaves the session unsynced", () async {
       final repository = _FakeSessionRepository(transcript: const [], error: StateError("backend down"));
       final history = createTestChatHistory(sessionRepository: repository);
@@ -2823,6 +3085,112 @@ void main() {
 
       expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay");
       expect(mutations.updated, ["ses_a"]);
+    });
+
+    // The bridge stopped after storing the turn's reasoning and before the
+    // tool row the replay has next.
+    test("a re-import matches the live row the interrupted turn ends on once", () async {
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Run it", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "replay-thinking", text: "Thinking", reasoning: null, createdAt: null),
+            _assistantMessageWithText(id: "replay-tool", text: "Ran it", reasoning: null, createdAt: null),
+          ],
+        ),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessages(
+        history: history,
+        messages: [
+          _messageWithText(id: "live-prompt", text: "Run it", createdAt: 100, promptId: "p1"),
+          _assistantMessageWithText(id: "live-thinking", text: "Thinking", reasoning: null, createdAt: null),
+        ],
+      );
+      await history.service.convertInterruptedTurn(leftover: await leftover(interruptions: interruptions));
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "replay-thinking", "replay-tool"],
+      );
+      expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay-thinking");
+    });
+
+    test("the first read matches that row before the plugin resolves the running turn", () async {
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Run it", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "replay-thinking", text: "Thinking", reasoning: null, createdAt: null),
+            _assistantMessageWithText(id: "replay-tool", text: "Ran it", reasoning: null, createdAt: null),
+          ],
+        ),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessages(
+        history: history,
+        messages: [
+          _messageWithText(id: "live-prompt", text: "Run it", createdAt: 100, promptId: "p1"),
+          _assistantMessageWithText(id: "live-thinking", text: "Thinking", reasoning: null, createdAt: null),
+        ],
+      );
+      await leftover(interruptions: interruptions);
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "replay-thinking", "replay-tool"],
+      );
+    });
+
+    test("a re-import matches that row when the stop cut its reasoning off mid-stream", () async {
+      MessageWithParts thinking({required String id, required String text}) => MessageWithParts(
+        info: Message.assistant(
+          id: id,
+          sessionID: "ses_a",
+          agent: "copilot",
+          modelID: null,
+          providerID: null,
+          sender: MessageSender.agent,
+          time: null,
+        ),
+        parts: [MessagePart.reasoning(id: "$id-reasoning", sessionID: "ses_a", messageID: id, text: text)],
+      );
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Run it", createdAt: null, promptId: null),
+            thinking(id: "replay-thinking", text: "Thinking"),
+            _assistantMessageWithText(id: "replay-tool", text: "Ran it", reasoning: null, createdAt: null),
+          ],
+        ),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessages(
+        history: history,
+        messages: [
+          _messageWithText(id: "live-prompt", text: "Run it", createdAt: 100, promptId: "p1"),
+          thinking(id: "live-thinking", text: ""),
+        ],
+      );
+      await history.service.convertInterruptedTurn(leftover: await leftover(interruptions: interruptions));
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "replay-thinking", "replay-tool"],
+      );
+      expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay-thinking");
     });
 
     test("a re-import queued while a conversion is between its read and its write anchors to a stored row", () async {
@@ -2978,6 +3346,21 @@ MessageWithParts _errorMessage({
     errorName: errorName,
     errorMessage: text,
     time: createdAt == null ? null : MessageTime(created: createdAt, completed: createdAt),
+  ),
+  parts: const [],
+);
+
+MessageWithParts _stoppedMessage({required String id, required int createdAt}) => MessageWithParts(
+  info: Message.error(
+    id: id,
+    sessionID: "ses_a",
+    agent: "codex",
+    modelID: null,
+    providerID: null,
+    kind: MessageErrorKind.stopped,
+    errorName: "CodexTurnAborted",
+    errorMessage: "Stopped",
+    time: MessageTime(created: createdAt, completed: createdAt),
   ),
   parts: const [],
 );

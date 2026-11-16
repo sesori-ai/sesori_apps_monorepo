@@ -175,6 +175,7 @@ void main() {
             automaticallyImplyLeading: false,
             banner: ConnectionBanner.maybeFor(context),
             slivers: const [SliverToBoxAdapter(child: SizedBox(height: 10))],
+            titleKeptSuffix: null,
           ),
         ),
       ),

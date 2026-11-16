@@ -225,7 +225,7 @@ The main pane hosts one full-width routed page.
   into the panel (its question field, or the panel itself when the chat is read-only). Its close button slides it
   out; Escape, with the focus anywhere in the session page, closes it at once, as keyboard toggles of the sidebar
   are answered, and hands the focus back to where it was. Reduced motion opens and closes it at once. Opening it
-  again while it shows keeps its chat. Switching sessions closes it with the page that holds it; a page kept under
+  again while it shows keeps its chat, except that a `/btw` question replaces it with a new chat asking it. Switching sessions closes it with the page that holds it; a page kept under
   a pushed subtask or Changes keeps its panel for the return. While it shows, the shell's connection pill sits
   clear of its leading edge, moving with the panel's own slide (at once under reduced motion), so neither the
   pill nor the panel's close button loses a click. Where the window leaves the pill no room beside the panel, it

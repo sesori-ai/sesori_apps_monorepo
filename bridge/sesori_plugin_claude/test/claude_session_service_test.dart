@@ -588,6 +588,12 @@ void main() {
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
       process.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
+      await pump();
+
+      // The Stop waits for the interrupted turn to end, so its interrupt
+      // record reaches the bridge before the process goes.
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      process.emit(_result());
       await abort;
       await harness.waitForIdle();
 
@@ -680,6 +686,13 @@ void main() {
       unawaited(harness.enqueue("second"));
       await pump();
 
+      // The prompt is listed before busy, so a client never shows work without it.
+      expect(
+        harness.events
+            .where((event) => event is BridgeSseQueuedPromptsUpdated || event is BridgeSseSessionStatus)
+            .first,
+        isA<BridgeSseQueuedPromptsUpdated>(),
+      );
       expect(
         harness.service.queuedPrompts(sessionId: testSessionId).map((prompt) => prompt.id),
         ["prompt-first", "prompt-second"],
@@ -1306,6 +1319,7 @@ void main() {
         final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
         final interrupt = await _waitForControlSubtype(first, "interrupt");
         first.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
+        first.emit({..._result(), "subtype": "error_during_execution", "is_error": true});
         await _waitForStdinClose(first);
 
         final answer = harness.ask();
@@ -1448,6 +1462,41 @@ void main() {
         },
       );
 
+      test("lists the edited prompt before busy, while the session respawns", () async {
+        unawaited(harness.enqueue("first"));
+        final first = await harness.firstProcess;
+        await waitForFrame(first, "user");
+        first.emit(_result());
+        await harness.waitForIdle();
+        harness.events.clear();
+
+        final hold = harness.holdRewind = Completer<void>();
+        final rewind = harness.rewind("edited");
+        while (harness.processes.length < 2) {
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+
+        // A client counts a busy session's working time from its newest prompt;
+        // busy before this one would count from a message the edit removes.
+        final updates = harness.events.where(
+          (event) => event is BridgeSseQueuedPromptsUpdated || event is BridgeSseSessionStatus,
+        );
+        expect(
+          updates.first,
+          isA<BridgeSseQueuedPromptsUpdated>().having(
+            (update) => update.prompts.map((prompt) => prompt.id),
+            "prompts",
+            ["prompt-edited"],
+          ),
+        );
+        expect(updates.whereType<BridgeSseSessionStatus>(), hasLength(1));
+
+        hold.complete();
+        await rewind;
+        await waitForFrame(harness.processes[1], "user");
+        expect(harness.service.queuedPrompts(sessionId: testSessionId).single.id, "prompt-edited");
+      });
+
       test("refuses a prompt with no resumable entry before touching the process", () async {
         unawaited(harness.enqueue("first"));
         final first = await harness.firstProcess;
@@ -1495,6 +1544,8 @@ void main() {
           ),
         );
         expect(harness.service.queuedPrompts(sessionId: testSessionId), isEmpty);
+        await pump();
+        expect(harness.events.whereType<BridgeSseQueuedPromptsUpdated>().lastOrNull?.prompts ?? const [], isEmpty);
         expect(harness.service.currentWorkState, PluginWorkState.idle);
       });
     });

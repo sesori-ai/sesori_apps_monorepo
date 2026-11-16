@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
+import "package:fake_async/fake_async.dart";
 import "package:hermes_plugin/hermes_plugin.dart";
 import "package:hermes_plugin/src/api/hermes_acp_api.dart";
 import "package:hermes_plugin/src/hermes_event_mapper.dart";
@@ -101,6 +102,36 @@ void main() {
       fake.emit({"jsonrpc": "2.0", "id": authFrame["id"], "result": <String, dynamic>{}});
       expect(await connecting, isTrue);
     }
+
+    test("keeps waiting for the handshake while Hermes finishes a pending update", () {
+      fakeAsync((async) {
+        final updating = FakeAcpProcess();
+        final updatingPlugin = _plugin(fake: updating);
+        bool? connected;
+        int? killedWith;
+        unawaited(updatingPlugin.ensureConnected().then((value) => connected = value));
+        unawaited(updating.exitCode.then((code) => killedWith = code));
+        async.flushMicrotasks();
+        updating.emitStderr(text: "hermes: finishing an interrupted source update...\n");
+
+        // Well past the stock 60 s handshake deadline, as a slow update takes.
+        async.elapse(const Duration(minutes: 5));
+        expect(connected, isNull, reason: "the agent must not be killed while it finishes the update");
+        expect(killedWith, isNull);
+
+        final initialize = updating.written.singleWhere((frame) => frame["method"] == "initialize");
+        updating.emit({"jsonrpc": "2.0", "id": initialize["id"], "result": hermesInitializeResult});
+        async.flushMicrotasks();
+        final authenticate = updating.written.singleWhere((frame) => frame["method"] == "authenticate");
+        updating.emit({"jsonrpc": "2.0", "id": authenticate["id"], "result": <String, dynamic>{}});
+        async.flushMicrotasks();
+        expect(connected, isTrue);
+
+        unawaited(updatingPlugin.dispose());
+        unawaited(updating.close());
+        async.flushMicrotasks();
+      });
+    });
 
     test("id is hermes", () {
       expect(plugin.id, "hermes");
@@ -276,6 +307,47 @@ void main() {
       expect(events.whereType<BridgeSseSessionError>(), isEmpty);
     });
 
+    test("a stop reaches Hermes only while a turn runs", () async {
+      await connect();
+      final creating = plugin.createSession(
+        fastMode: false,
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond(method: "session/new", result: const {"sessionId": "s-stop"});
+      final session = await creating;
+      Future<PluginAbortResult> stop() => plugin.abortSession(
+        sessionId: session.id,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
+      Iterable<Map<String, dynamic>> cancels() => fake.written.where((frame) => frame["method"] == "session/cancel");
+
+      // Hermes keeps a cancel sent to an idle session and refuses the next prompt.
+      expect(await stop(), isA<PluginAbortAccepted>());
+      await pump();
+      expect(cancels(), isEmpty);
+
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: session.id,
+        parts: const [PluginPromptPart.text(text: "work")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await waitForFrame(method: "session/prompt");
+      expect(await stop(), isA<PluginAbortAccepted>());
+      expect(cancels().single["params"], {"sessionId": session.id});
+    });
+
     test("deleteSession never calls session/close when closeSession is not advertised", () async {
       await connect();
 
@@ -431,7 +503,7 @@ HermesPlugin _plugin({
       modelId: configuredModelId,
       providerId: configuredProviderId,
     );
-  final commandTracker = AcpCommandTracker();
+  final commandTracker = AcpCommandTracker(selectionCommands: const {});
   final childSessionTracker = AcpChildSessionTracker();
   final repository = HermesCatalogRepository(
     api: HermesAcpApi(

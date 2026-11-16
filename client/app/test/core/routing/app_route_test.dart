@@ -234,11 +234,13 @@ void main() {
       getIt
         ..registerSingleton<SessionListFilterTracker>(_MockSessionListFilterTracker())
         ..registerSingleton<SseEventTracker>(activity)
-        ..registerSingleton<SessionUnseenTracker>(unseen);
+        ..registerSingleton<SessionUnseenTracker>(unseen)
+        ..registerSingleton<SessionSendTracker>(SessionSendTracker());
       addTearDown(() async {
         await getIt.unregister<SessionListFilterTracker>();
         await getIt.unregister<SseEventTracker>();
         await getIt.unregister<SessionUnseenTracker>();
+        await getIt.unregister<SessionSendTracker>();
         await activity.onDispose();
         await unseen.onDispose();
       });
@@ -285,7 +287,10 @@ void main() {
       final allPaths = _collectAbsoluteRoutePaths(routes: routes);
 
       expect(flatPaths, equals([AppRouteDef.splash.path, AppRouteDef.login.path]));
-      expect(signedInPaths, equals([AppRouteDef.settings.path]));
+      expect(
+        signedInPaths,
+        equals([AppRouteDef.scheduledTasks.path, AppRouteDef.scheduledTaskEditor.path, AppRouteDef.settings.path]),
+      );
       expect(shell.routes, hasLength(1));
       expect(
         allPaths,
@@ -298,6 +303,9 @@ void main() {
           AppRouteDef.sessionDiffs.path,
           AppRouteDef.archivedSessions.path,
           AppRouteDef.archivedSessionDetail.path,
+          AppRouteDef.scheduledTasks.path,
+          AppRouteDef.scheduledTaskDetail.path,
+          AppRouteDef.scheduledTaskEditor.path,
           AppRouteDef.settingsHarnesses.path,
           AppRouteDef.settingsHarnessDetail.path,
           AppRouteDef.settings.path,
@@ -446,7 +454,11 @@ void main() {
           AppRouteDef.splash.path,
           AppRouteDef.login.path,
         ]);
-        expect(_signedInRoutes().whereType<GoRoute>().map((route) => route.path), [AppRouteDef.settings.path]);
+        expect(_signedInRoutes().whereType<GoRoute>().map((route) => route.path), [
+          AppRouteDef.scheduledTasks.path,
+          AppRouteDef.scheduledTaskEditor.path,
+          AppRouteDef.settings.path,
+        ]);
       });
 
       test("detail route has exactly one nested child", () {

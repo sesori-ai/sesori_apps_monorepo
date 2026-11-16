@@ -12,6 +12,7 @@ import "../repositories/scratch_repository.dart";
 import "../repositories/session_metadata_repository.dart";
 import "../repositories/session_repository.dart";
 import "prompt_part_delivery_service.dart";
+import "session_deletion_service.dart";
 import "session_mutation_dispatcher.dart";
 import "session_options_service.dart";
 import "session_prompt_service.dart";
@@ -28,6 +29,7 @@ class SessionCreationService({
   required final ScratchRepository _scratchRepository,
   required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
   required final PromptPartDeliveryService _promptPartDelivery,
+  required final SessionDeletionService _sessionDeletionService,
 }) {
   final PendingOperations _lateMetadataWork = PendingOperations();
   bool _acceptingLateMetadata = true;
@@ -60,7 +62,13 @@ class SessionCreationService({
       } on Object catch (invalidationError, invalidationStackTrace) {
         Log.w("Failed to invalidate stale options after session creation", invalidationError, invalidationStackTrace);
       }
-      throw StaleSessionPromptOptionsException(cause: error, causeStackTrace: stackTrace);
+      throw StaleSessionPromptOptionsException(
+        cause: error,
+        causeStackTrace: stackTrace,
+        agent: request.agent,
+        model: request.model,
+        variant: request.variant,
+      );
     }
   }
 
@@ -147,20 +155,31 @@ class SessionCreationService({
       lastAgentModel: promptDefaults.model,
       scheduledRun: scheduledRun,
     );
-    await _maybeSendCommand(
-      session: created,
-      command: normalizedCommand,
-      arguments: _buildCommandArguments(
-        userArguments: firstText ?? '',
-        worktreeResult: worktreeResult,
-      ),
-      userVisibleArguments: firstText,
-      variant: request.variant,
-      fastMode: request.fastMode,
-      agent: request.agent,
-      model: request.model,
-      commandSource: request.commandSource,
-    );
+    try {
+      await _maybeSendCommand(
+        session: created,
+        command: normalizedCommand,
+        arguments: _buildCommandArguments(
+          userArguments: firstText ?? '',
+          worktreeResult: worktreeResult,
+        ),
+        userVisibleArguments: firstText,
+        variant: request.variant,
+        fastMode: request.fastMode,
+        agent: request.agent,
+        model: request.model,
+        commandSource: request.commandSource,
+      );
+    } on PluginStaleOptionsException {
+      // The harness ran nothing, so the session it just made would sit empty
+      // beside the corrected retry; it goes before the refusal is reported.
+      await _deleteRefusedSession(
+        sessionId: created.id,
+        // Only a project-less session got a folder of its own to remove.
+        deleteSessionFolder: _projectCatalogIdentityCalculator.isScratchRoot(path: request.projectId),
+      );
+      rethrow;
+    }
     // A scheduled run must not change the user's remembered picks.
     if (scheduledRun == null) {
       unawaited(
@@ -173,6 +192,20 @@ class SessionCreationService({
     }
     _startLateMetadata(session: created, firstText: firstText);
     return created;
+  }
+
+  Future<void> _deleteRefusedSession({required String sessionId, required bool deleteSessionFolder}) async {
+    Log.i("Deleting session $sessionId: its first command was refused as stale");
+    try {
+      await _sessionDeletionService.deleteSession(
+        sessionId: sessionId,
+        deleteWorktree: true,
+        force: true,
+        deleteSessionFolder: deleteSessionFolder,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to delete session $sessionId after its command was refused as stale", error, stackTrace);
+    }
   }
 
   void beginShutdown() {

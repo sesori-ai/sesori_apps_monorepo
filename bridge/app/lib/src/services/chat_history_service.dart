@@ -90,9 +90,10 @@ final class const CapturedPartShapes({
 /// fallback is bounded to the released inline-wire budget.
 final class const CapturedPartUnavailable({required final MessagePart inlineFallbackPart}) extends CapturedPartDelivery;
 
-/// A session whose stored pages changed after a background re-read: the
-/// re-read transcript landed, the backend newly refused to restore the
-/// session, or finalizing dead tool parts rewrote the store.
+/// A session whose stored pages changed under the clients that read them: a
+/// background re-read's transcript landed, the backend newly refused to
+/// restore the session, finalizing dead tool parts rewrote the store, or a
+/// handoff request was marked not sent.
 typedef SessionHistoryRefresh = ({
   String sessionId,
 
@@ -138,6 +139,9 @@ class ChatHistoryService({
   final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
   final ParallelLock _thumbnailGenerationLock = ParallelLock(maxParallelOperations: 1);
   final StreamController<SessionHistoryRefresh> _historyRefreshes = StreamController<SessionHistoryRefresh>.broadcast();
+  // Synchronous, so a marked request goes out before the send announces its
+  // queue empty and its marker never drops out in between.
+  final StreamController<MessageWithParts> _notSentRequests = StreamController<MessageWithParts>.broadcast(sync: true);
 
   /// The plugin's explanation for each session a background re-read found it
   /// cannot restore, served with its stored pages until a re-read succeeds.
@@ -149,6 +153,10 @@ class ChatHistoryService({
   /// the backend newly reported it cannot restore the session, or dead tool
   /// parts were finalized.
   Stream<SessionHistoryRefresh> get historyRefreshes => _historyRefreshes.stream;
+
+  /// Each summary request [markHandoffNotSent] stamped, as stored, so open
+  /// chats turn its marker at once instead of after a history reload.
+  Stream<MessageWithParts> get notSentRequests => _notSentRequests.stream;
 
   /// The [window] of the session's messages, served from the store whenever
   /// it is known to be current and falling back to the backend otherwise.
@@ -391,7 +399,10 @@ class ChatHistoryService({
   /// Waits for the background re-reads, which never throw, during shutdown.
   Future<void> drain() => Future.wait(_backgroundRefreshes.toList());
 
-  Future<void> dispose() => _historyRefreshes.close();
+  Future<void> dispose() async {
+    await _historyRefreshes.close();
+    await _notSentRequests.close();
+  }
 
   /// Re-reads a session a read served behind its harness, then announces it
   /// on [historyRefreshes]. A failure leaves the stored transcript, still
@@ -492,7 +503,7 @@ class ChatHistoryService({
   );
 
   /// Every prompt in the session's history, oldest first, kinded by the
-  /// shared prompt-turn rule.
+  /// shared prompt-turn rule with the transcript's turn ends.
   ///
   /// Read like [_storedOnlyPage]: from the store or the audit file alone,
   /// outside the session queue and without a backfill. The app asks after a
@@ -501,9 +512,23 @@ class ChatHistoryService({
   Future<List<SessionPromptIndexEntry>> getPromptIndex({required String sessionId}) => _readStoredHistory(
     sessionId: sessionId,
     noStoredSession: const <SessionPromptIndexEntry>[],
-    readArchive: (_) => _chatHistoryRepository.getArchivedPromptIndex(sessionId: sessionId),
-    readStore: (_) => _chatHistoryRepository.getPromptIndex(sessionId: sessionId),
+    readArchive: (_) async => await _chatHistoryRepository.getArchivedPromptIndex(
+      sessionId: sessionId,
+      turnEndMessageIds: await _turnEndMessageIds(sessionId: sessionId),
+    ),
+    readStore: (_) async => await _chatHistoryRepository.getPromptIndex(
+      sessionId: sessionId,
+      turnEndMessageIds: await _turnEndMessageIds(sessionId: sessionId),
+    ),
   );
+
+  /// The messages after which [sessionId]'s turns ended without a reply, so
+  /// edits, forks and the prompt index split turns as the app shows them: the message a bridge
+  /// stop cut the turn off after, when one did.
+  Future<Set<String>> _turnEndMessageIds({required String sessionId}) async => {
+    if ((await _interruptions.readMany(sessionIds: {sessionId}))[sessionId] case final interruption?)
+      interruption.afterMessageId,
+  };
 
   /// What editing [messageId] removes from [sessionId]'s history.
   ///
@@ -522,7 +547,10 @@ class ChatHistoryService({
       backgroundRefresh: false,
     );
     final openers = [
-      for (final segment in splitPromptTurns(messages: page.messages))
+      for (final segment in splitPromptTurns(
+        messages: page.messages,
+        turnEndMessageIds: await _turnEndMessageIds(sessionId: sessionId),
+      ))
         if (segment case PromptSegment(:final opener)) opener.info.id,
     ];
     final turnIndex = openers.indexOf(messageId);
@@ -575,7 +603,10 @@ class ChatHistoryService({
       backgroundRefresh: false,
     );
     // Messages before the first prompt belong to no turn, so no fork keeps them.
-    final turns = splitPromptTurns(messages: page.messages).whereType<PromptSegment>().toList();
+    final turns = splitPromptTurns(
+      messages: page.messages,
+      turnEndMessageIds: await _turnEndMessageIds(sessionId: sessionId),
+    ).whereType<PromptSegment>().toList();
     final finishedTurns = running && turns.isNotEmpty ? turns.length - 1 : turns.length;
     ForkBoundary throughTurn(int index) => ForkBoundaryThroughMessage(messageId: turns[index].messages.last.info.id);
     switch (point) {
@@ -1237,24 +1268,35 @@ class ChatHistoryService({
     );
   }
 
-  /// Fills the store from the backend's own transcript.
+  /// Fills the store from the backend's transcript as it stands after this
+  /// call. Failures propagate so a cache miss never looks like an empty thread.
   ///
-  /// Concurrent callers for the same session await one fetch. Failures
-  /// propagate so a cache miss never looks like an empty thread.
+  /// Unlike a read, this never joins a backfill already running: that one may
+  /// have fetched before the change the caller waited for reached the backend,
+  /// such as a send's summary finishing mid-fetch. The fetch queues behind it.
   Future<void> backfillSession({required String sessionId}) async {
-    await _backfillSessionForRead(sessionId: sessionId);
+    await _backfillSession(sessionId: sessionId);
   }
 
-  /// Turns the stored `sent` handoff of the user message [messageId] into its
-  /// not-sent form, after the session's pending captures.
-  Future<void> markHandoffNotSent({required String sessionId, required String messageId}) => _enqueue(
-    sessionId: sessionId,
-    write: () => _chatHistoryRepository.markHandoffNotSent(
+  /// Stamps the user message [messageId] with [notSent] in place of its
+  /// stored `sent` handoff, or of none, after the session's pending captures,
+  /// and announces the marked message on [notSentRequests].
+  Future<void> markHandoffNotSent({
+    required String sessionId,
+    required String messageId,
+    required MessageHandoffNotSent notSent,
+  }) async {
+    final marked = await _enqueue(
       sessionId: sessionId,
-      messageId: messageId,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
-    ),
-  );
+      write: () => _chatHistoryRepository.markHandoffNotSent(
+        sessionId: sessionId,
+        messageId: messageId,
+        notSent: notSent,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+    if (marked != null && !_notSentRequests.isClosed) _notSentRequests.add(marked);
+  }
 
   Future<SessionPromptDefaults?> _backfillSessionForRead({required String sessionId}) {
     final inFlight = _inFlightBackfills[sessionId];
@@ -1296,6 +1338,12 @@ class ChatHistoryService({
             observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
         final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+        // The row the session's last turn ends on when a bridge stop cut it
+        // off. Its running row stays until the plugin is ready to turn it into
+        // the interruption, which can come after the first read imports.
+        final interruptedAfterMessageId = await _interruptions.hasRunningTurn(sessionId: sessionId)
+            ? await _chatHistoryRepository.getNewestMessageId(sessionId: sessionId)
+            : (await _interruptions.readMany(sessionIds: {sessionId}))[sessionId]?.afterMessageId;
         final replacementIds = await _chatHistoryRepository.replaceSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
@@ -1304,6 +1352,7 @@ class ChatHistoryService({
           watermark: backendActivityAt,
           backendActivityAt: backendActivityAt,
           syncedAt: DateTime.now().millisecondsSinceEpoch,
+          interruptedAfterMessageId: interruptedAfterMessageId,
         );
         await _reanchorInterruption(sessionId: sessionId, replacementIds: replacementIds);
         final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;

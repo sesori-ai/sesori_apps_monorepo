@@ -739,6 +739,7 @@ void main() {
               id: "project-a",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "root",
                   mainAgentRunning: true,
                   childSessionIds: ["child"],
@@ -776,6 +777,7 @@ void main() {
               id: "project-a",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "other-root",
                   mainAgentRunning: true,
                   childSessionIds: ["child"],
@@ -801,7 +803,13 @@ void main() {
             ProjectActivitySummary(
               id: "proj-a",
               activeSessions: [
-                ActiveSession(id: "sess-root", mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  sending: null,
+                  id: "sess-root",
+                  mainAgentRunning: true,
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -821,6 +829,7 @@ void main() {
               id: "proj-a",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "sess-root",
                   mainAgentRunning: true,
                   childSessionIds: ["sess-child"],
@@ -850,7 +859,13 @@ void main() {
             ProjectActivitySummary(
               id: "proj-new",
               activeSessions: [
-                ActiveSession(id: "sess-1", mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  sending: null,
+                  id: "sess-1",
+                  mainAgentRunning: true,
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -882,6 +897,7 @@ void main() {
               id: "project-a",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "root",
                   mainAgentRunning: true,
                   childSessionIds: ["child"],
@@ -889,6 +905,7 @@ void main() {
                   updatedAt: null,
                 ),
                 ActiveSession(
+                  sending: null,
                   id: "child",
                   mainAgentRunning: true,
                   childSessionIds: ["grandchild"],
@@ -1352,6 +1369,7 @@ void main() {
               id: "project-a",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "root-a",
                   mainAgentRunning: false,
                   childSessionIds: ["child"],
@@ -1393,6 +1411,7 @@ void main() {
               id: "project-a",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "repaired-root",
                   mainAgentRunning: false,
                   childSessionIds: ["child"],
@@ -1419,6 +1438,7 @@ void main() {
               id: "project-a",
               activeSessions: [
                 ActiveSession(
+                  sending: null,
                   id: "root",
                   mainAgentRunning: false,
                   childSessionIds: ["child"],
@@ -1446,6 +1466,7 @@ void main() {
             id: "project-a",
             activeSessions: [
               ActiveSession(
+                sending: null,
                 id: "root",
                 mainAgentRunning: false,
                 childSessionIds: ["child"],
@@ -1499,6 +1520,7 @@ Session _session({
     time: null,
     promptDefaults: null,
     lastUserActivityAt: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,

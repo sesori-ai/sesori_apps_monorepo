@@ -12,6 +12,7 @@ import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "../../widgets/bridge_update_sheet.dart";
 import "../project_list/project_path_labels.dart";
+import "../session_detail/widgets/session_fork_flow.dart";
 import "rename_session_dialog.dart";
 import "send_session_sheet.dart";
 
@@ -79,11 +80,13 @@ class const SessionListActionDispatcher({
   /// row: archive/delete can remove that row before their follow-up UI runs.
   /// [isRunning] is whether the session works right now, so archive asks first.
   /// [surfaceEntries] are a page's own actions, listed right after Pin.
+  /// [canFork] is whether [session]'s harness forks it.
   List<PregoMenuEntry> sessionMenuEntries({
     required BuildContext context,
     required SessionActionsCubit actions,
     required Session session,
     required bool isRunning,
+    required bool canFork,
     required SessionReadMenuEntry readEntry,
     required List<PregoMenuEntry> surfaceEntries,
   }) {
@@ -138,8 +141,10 @@ class const SessionListActionDispatcher({
             isRunning: isRunning,
             createSearch: createSessionSearch,
             openSession: openSession,
+            onSessionArchived: onSessionArchived,
           ),
         ),
+      ?forkMenuEntry(context: context, actions: actions, session: session, canFork: canFork),
       // Archiving is permanent, so an already-archived row has no archive
       // action left to offer.
       if (!isArchived)
@@ -223,7 +228,11 @@ class const SessionListActionDispatcher({
         return;
       }
       if (!context.mounted) return;
-      context.read<PendingSessionArchiveCubit>().archive(session: session, deleteWorktree: session.hasWorktree);
+      context.read<PendingSessionArchiveCubit>().archive(
+        session: session,
+        deleteWorktree: session.hasWorktree,
+        callerOffersUndo: false,
+      );
       onSessionArchived?.call(context: context, sessionId: session.id);
     }());
   }
@@ -255,6 +264,48 @@ class const SessionListActionDispatcher({
           );
         }());
     }
+  }
+
+  /// Fork, which [sessionMenuEntries] lists, archived sessions included, for
+  /// a page that lists no other session action; null unless [canFork].
+  PregoMenuItem? forkMenuEntry({
+    required BuildContext context,
+    required SessionActionsCubit actions,
+    required Session session,
+    required bool canFork,
+  }) => canFork
+      ? PregoMenuItem(
+          leadingIcon: TablerRegular.git_fork,
+          title: context.loc.sessionListFork,
+          subtitle: null,
+          isSelected: false,
+          shortcutLabel: null,
+          onTap: () => _fork(context: context, actions: actions, session: session),
+        )
+      : null;
+
+  /// Forks [session] after its latest finished reply and opens the fork.
+  void _fork({required BuildContext context, required SessionActionsCubit actions, required Session session}) {
+    unawaited(
+      runSessionFork(
+        context: context,
+        fork: ({required recreateFromBase}) =>
+            actions.forkSession(session: session, recreateFromBase: recreateFromBase),
+        open: ({required fork}) => openSession(
+          projectId: fork.projectID,
+          projectName: switch (context.read<ProjectListCubit>().state) {
+            ProjectListLoaded(:final projects) => switch (projects
+                .where((project) => project.id == fork.projectID)
+                .firstOrNull) {
+              final project? => projectDisplayName(loc: context.loc, project: project),
+              null => context.loc.projectListDefaultName,
+            },
+            _ => context.loc.projectListDefaultName,
+          },
+          session: fork,
+        ),
+      ),
+    );
   }
 
   /// Whether [session] is a "No project" one, in its own folder that deleting

@@ -18,6 +18,10 @@ entirely along with its transcript and its dedicated worktree.
   question on it gets the archived read-only rejection. A side question
   already in flight when the session is archived still stores its answer.
   Deleting the session deletes its side chats through the session foreign key.
+- The bridge archives a new-session scheduled task's finished run sessions beyond the newest 5 through this
+  same unforced archive with worktree removal. Pinned, working, waiting and unknown-state sessions stay, and a
+  refused cleanup (uncommitted work) keeps the session and is only logged. Archiving a same-session task's
+  session makes its next run start a fresh one. See [Scheduled tasks](scheduled-tasks.md).
 
 - Archiving is final. An archived session can never be unarchived, prompted,
   renamed, replied to, or otherwise mutated in place; those attempts receive the
@@ -56,6 +60,11 @@ entirely along with its transcript and its dedicated worktree.
   Archive and Cancel; a running pinned session gets that one question, which also says archiving stops it.
   The phone's swipe pill, full swipe and row menu, both detail menus and the desktop list all archive this
   way; a full swipe that asks springs its row back while the question is open, so Cancel leaves it in place.
+- A send into another session can archive its source (see [Session sending](session-sending.md)). With the
+  send sheet's archive switch on, the source enters the same Undo window once the target accepts the handoff,
+  removing its dedicated worktree as Archive does. The sent alert carries both Open and Undo for the five
+  seconds. A pinned source is asked about in the send sheet before anything is sent, and the archive after
+  the send asks nothing more. A send that fails archives nothing.
 - Neither shell ever asks whether the worktree survives, and no menu, checkbox or button offers to keep it.
   Archive and Delete both request removal of a dedicated worktree, and send no worktree request for a session
   that has none. The bridge's cleanup refusal is the only thing that protects unfinished work.
@@ -73,20 +82,33 @@ entirely along with its transcript and its dedicated worktree.
   would remove a worktree another session is still using.
 - A fork shares its origin's worktree, so archiving or deleting either one while the other is live takes the
   shared-worktree path above. An archived session can still be forked on the bridge (see
-  session-edit-and-fork.md); the fork is a live session that keeps the origin's worktree path, which archive may
-  already have removed (see that file's Known Limitations).
+  session-edit-and-fork.md); the fork is a live session in the same worktree. When archiving removed that worktree,
+  the fork recreates it at the same path; the archived origin is no sharer, so archiving or deleting the fork with worktree
+  removal removes it again.
+- Before archiving removes a dedicated worktree, it records where HEAD stood: the branch it is on goes on every
+  session row naming the worktree (null for a detached HEAD), and the HEAD commit is pinned under
+  `refs/sesori/worktrees/<path hash>` so garbage collection keeps detached commits. Uncommitted changes are not kept.
+  A failure to record is logged and the archive goes on. While the ref exists, a new session never takes that worktree
+  path, so a later archive cannot overwrite what an archived session kept. Deleting the last session that names the worktree deletes
+  the ref once its row is gone, so a deletion the backend refuses keeps it; deleting one while another session, archived or
+  not, still names it keeps the ref.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
   that a dedicated worktree will be deleted and its branch kept, and, for a pinned session, that it is pinned.
 - Deleting a "No project" session, from any entry point, adds to that confirmation that its folder and every file
-  in it are deleted too, and only then sends `deleteSessionFolder: true` (also on a forced retry). Deleting any
-  other session sends `false` and adds no such sentence.
+  in it are deleted too, unless a fork of it still uses the folder (the bridge then keeps it, so the app needs no
+  fork lookup), and only then sends `deleteSessionFolder: true` (also on a forced retry). Deleting any other session
+  sends `false` and adds no such sentence.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup
   reconciliation. Worktree cleanup happens whenever the session has one; unsafe
   cleanup is refused with its issues and proceeds only on a forced retry.
   Session retirement never deletes a Git branch.
+- Transcript files that sends saved for a session under `~/.sesori/transcripts/<session id>/` live as long
+  as that session. Deleting it, or a family it belongs to, removes them best-effort with its uploads; a
+  logged failure leaves only the files. Archiving keeps them, because the archived session stays readable
+  and its handoff card still names the file.
 - Deletion never depends on a reachable backend. A session whose plugin is
   uninstalled, disabled, or unstartable still deletes: worktree cleanup is Git
   only, the unreachable backend delete is logged and skipped, and the plugin
@@ -220,8 +242,8 @@ entirely along with its transcript and its dedicated worktree.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation, including a new side question, while its stored side chats still list. |
-| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history, side chats and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a running session stopped before the flip, still archived when its stop fails or never answers, and left running when its worktree cleanup is refused; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete of a session with and without a dedicated worktree, a dirty-worktree refusal forced through from the modal, a shared-worktree refusal retried silently, branch retained. Deleting a "No project" session warns that its folder goes too and removes it. |
+| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history, side chats and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; archive keeps a removed worktree's HEAD and branch before removal and goes on when it cannot, and deleting the last session naming the worktree releases the pin (a real-git test recreates a pinned detached HEAD after `gc --prune=now`); a running session stopped before the flip, still archived when its stop fails or never answers, and left running when its worktree cleanup is refused; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete of a session with and without a dedicated worktree, a dirty-worktree refusal forced through from the modal, a shared-worktree refusal retried silently, branch retained. Deleting a "No project" session warns that its folder goes too and removes it; delete one that has a live fork and check its folder stays for the fork. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
 

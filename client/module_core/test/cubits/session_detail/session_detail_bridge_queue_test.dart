@@ -59,6 +59,7 @@ SesoriMessagePartUpdated _textPartFor({required String messageId, required Strin
 
 const _queuedPrompt = QueuedSessionPrompt(
   commandSource: null,
+  handoff: null,
   id: "prm_1",
   text: "steer it",
   command: null,
@@ -283,6 +284,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         );
       });
@@ -320,6 +322,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         );
       });
@@ -374,6 +377,7 @@ void main() {
             cannotContinueMessage: null,
             namesCommandInvocations: false,
             supportsRewind: false,
+            supportsFork: false,
           ),
         );
       });
@@ -405,6 +409,7 @@ void main() {
         sseEventTracker: MockSseEventTracker(),
         fileReferenceOpenService: MockFileReferenceOpenService(),
         composerRestore: MockMessageComposerRestoreService(),
+        actionService: MockSessionActionService(),
         window: idleSessionWindow(),
         sessionLaunchService:
             sessionLaunchService ??
@@ -1639,6 +1644,7 @@ void main() {
       // local copy hands over in the same emission.
       final acceptedPrompt = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: promptId ?? "",
         text: "steer it",
         command: null,
@@ -1696,6 +1702,7 @@ void main() {
           prompts: [
             QueuedSessionPrompt(
               commandSource: null,
+              handoff: null,
               id: failed?.promptId ?? "",
               text: "lost",
               command: null,
@@ -1807,6 +1814,7 @@ void main() {
               prompts: [
                 QueuedSessionPrompt(
                   commandSource: null,
+                  handoff: null,
                   id: promptId,
                   text: "Review image",
                   command: null,
@@ -1880,6 +1888,7 @@ void main() {
           prompts: [
             QueuedSessionPrompt(
               commandSource: null,
+              handoff: null,
               id: promptId ?? "",
               text: "steer it",
               command: null,
@@ -2342,6 +2351,7 @@ void main() {
       final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.submission.promptId;
       final queued = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: promptId,
         text: "hello",
         command: null,
@@ -2554,6 +2564,7 @@ void main() {
     test("an accepted stop returns the bridge queue to the composer, in order, before the draft", () async {
       const dictated = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: "prm_2",
         dispatchState: QueuedPromptDispatchState.queued,
         text: '🎙️ "spoken words"',
@@ -2562,6 +2573,7 @@ void main() {
       );
       const dispatched = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: "prm_steering",
         dispatchState: QueuedPromptDispatchState.dispatched,
         text: "steered, never echoed",
@@ -2570,6 +2582,7 @@ void main() {
       );
       const command = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: "prm_3",
         dispatchState: QueuedPromptDispatchState.queued,
         text: "the diff",
@@ -2595,6 +2608,30 @@ void main() {
       expect(state.composerRestorations, 1);
       // The stop dropped what it returned, so the rows leave as the draft fills.
       expect(state.bridgeQueuedPrompts, isEmpty);
+    });
+
+    test("an accepted stop leaves a send's summary request out of the composer and keeps its marker", () async {
+      const summaryRequest = QueuedSessionPrompt(
+        commandSource: null,
+        handoff: MessageHandoff.sent(targetSessionId: "target", targetTitle: "Fixture target"),
+        id: "prm_summary",
+        dispatchState: QueuedPromptDispatchState.dispatched,
+        text: "Fixture summary request",
+        command: null,
+        createdAt: 101,
+      );
+      when(
+        () => mockSessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
+      ).thenAnswer((_) async => ApiResponse.success(true));
+      final cubit = await createLoadedCubit(snapshotQueue: const [summaryRequest]);
+
+      expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop), isA<SessionAbortAccepted>());
+
+      expect(cubit.composerDraft.text, isEmpty);
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.composerRestorations, 0);
+      // The bridge owns the request, so its marker stays until the bridge drops it.
+      expect(state.bridgeQueuedPrompts, [summaryRequest]);
     });
 
     test("a stop returns a message staged while it runs, with its images and the composer's", () async {
@@ -2861,6 +2898,7 @@ void main() {
           prompts: [
             QueuedSessionPrompt(
               commandSource: null,
+              handoff: null,
               id: promptId ?? "",
               text: "steer it",
               command: null,
@@ -2975,6 +3013,7 @@ void main() {
           prompts: [
             QueuedSessionPrompt(
               commandSource: null,
+              handoff: null,
               id: promptId ?? "",
               text: "steer it",
               command: null,
@@ -3286,6 +3325,7 @@ void main() {
             prompts: [
               QueuedSessionPrompt(
                 commandSource: null,
+                handoff: null,
                 id: promptId,
                 text: "one",
                 command: null,
@@ -3549,6 +3589,7 @@ void main() {
       test("puts the sends back ahead of the draft, and the bridge's rows with them", () async {
         const dispatched = QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_steering",
           dispatchState: QueuedPromptDispatchState.dispatched,
           text: "steered, never echoed",
@@ -3798,6 +3839,7 @@ void main() {
               _queuedPrompt,
               QueuedSessionPrompt(
                 commandSource: null,
+                handoff: null,
                 id: "prm_2",
                 text: "Hello",
                 command: null,
@@ -4125,6 +4167,7 @@ void main() {
                   prompts: [
                     QueuedSessionPrompt(
                       commandSource: null,
+                      handoff: null,
                       id: "prm_a",
                       text: "and then prm_a",
                       command: null,
@@ -4184,6 +4227,7 @@ void main() {
               prompts: [
                 QueuedSessionPrompt(
                   commandSource: null,
+                  handoff: null,
                   id: "prm_a",
                   text: "and then prm_a",
                   command: null,
@@ -4230,6 +4274,7 @@ void main() {
               prompts: [
                 QueuedSessionPrompt(
                   commandSource: null,
+                  handoff: null,
                   id: "prm_a",
                   text: "and then prm_a",
                   command: null,
@@ -4301,6 +4346,7 @@ void main() {
                     prompts: [
                       QueuedSessionPrompt(
                         commandSource: null,
+                        handoff: null,
                         id: "prm_a",
                         text: "and then prm_a",
                         command: null,
@@ -4783,6 +4829,7 @@ void main() {
             prompts: [
               QueuedSessionPrompt(
                 commandSource: null,
+                handoff: null,
                 id: promptId,
                 text: "steer it",
                 command: null,

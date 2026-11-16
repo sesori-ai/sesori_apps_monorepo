@@ -11,7 +11,7 @@ void main() {
       expect(manifest.runtimeId, "copilot");
       expect(manifest.minPathVersion.raw, "1.0.78");
       expect(manifest.bundledVersion.raw, CopilotRuntimeManifest.targetVersion);
-      expect(manifest.bundledVersion.raw, "1.0.109");
+      expect(manifest.bundledVersion.raw, "1.0.112");
     });
 
     test("probes the version with auto-update off, as the session launches", () {
@@ -24,37 +24,37 @@ void main() {
             const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64): (
               assetName: "copilot-darwin-arm64.tar.gz",
               format: ArchiveFormat.tarGz,
-              sha256: "9c21ad663ce98f500c1f0b62e0a6d687bc1b1661e59f4c2161cc114515a01942",
+              sha256: "4a4a6aa624dceb76a23e1a53fb5f64e87a0bb5a2161a5017e0edf78d7082ce68",
               archiveBinaryName: "copilot",
             ),
             const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64): (
               assetName: "copilot-darwin-x64.tar.gz",
               format: ArchiveFormat.tarGz,
-              sha256: "ce73d75d599718a7ade68a3b78d2ba84cc1c2a77e01cc4483b03579ff592199d",
+              sha256: "fda4b6661269589b15447c9c6ebde96939a4cd32d08d6595a9dad6e92d1e83f5",
               archiveBinaryName: "copilot",
             ),
             const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.arm64): (
               assetName: "copilot-linux-arm64.tar.gz",
               format: ArchiveFormat.tarGz,
-              sha256: "679db06c3168457d8154cd8ce93b822f7c46d3169e61da4c0b78ac6e110c4af6",
+              sha256: "491d18303505935675dc20987ef0c5f3ae899f81e66c53d567ad97a8b03e504e",
               archiveBinaryName: "copilot",
             ),
             const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64): (
               assetName: "copilot-linux-x64.tar.gz",
               format: ArchiveFormat.tarGz,
-              sha256: "45a7f37e822e8c8725eda6b27deaed55dad2688ff4163ed27ec22e23293cb761",
+              sha256: "dfe7e59acf04f0b7f59b024ea9db101a9246503e9bf7152eb668fbb2a469b151",
               archiveBinaryName: "copilot",
             ),
             const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64): (
               assetName: "copilot-win32-arm64.zip",
               format: ArchiveFormat.zip,
-              sha256: "7e5bfc92c5b607491710ff1352079c362270fbe23a8d5d7868a6fc6a10b4040d",
+              sha256: "ddbfa7145274ad568d831bab12959e2577dff558476d0bec79d3a53a171d4362",
               archiveBinaryName: "copilot.exe",
             ),
             const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64): (
               assetName: "copilot-win32-x64.zip",
               format: ArchiveFormat.zip,
-              sha256: "794c16bcc5535cdf478598d6cf4af3228daec3b7801bfa3540c56b8d3524beee",
+              sha256: "159a5e610c7b64c4b68b97a812fd7913182f372cb84ce688d81167d5277896d9",
               archiveBinaryName: "copilot.exe",
             ),
           };
@@ -78,7 +78,7 @@ void main() {
       if (asset == null) fail("missing macOS arm64 asset");
       expect(
         manifest.downloadUrlFor(asset: asset),
-        "https://github.com/github/copilot-cli/releases/download/v1.0.109/copilot-darwin-arm64.tar.gz",
+        "https://github.com/github/copilot-cli/releases/download/v1.0.112/copilot-darwin-arm64.tar.gz",
       );
     });
   });

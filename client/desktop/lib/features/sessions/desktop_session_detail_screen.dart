@@ -30,6 +30,9 @@ class const DesktopSessionDetailScreen({
   required final void Function({required String parentSessionId}) onOpenParentSession,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
+
+  /// Goes back to a session the reader came from, such as a fork's origin.
+  required final SessionDetailSessionReturner onReturnToSession,
   required final VoidCallback onOpenHarnessSettings,
   required final VoidCallback onOpenBridgeSettings,
   required final SessionListActionDispatcher sessionActions,
@@ -82,6 +85,7 @@ class const DesktopSessionDetailScreen({
               onOpenParentSession: onOpenParentSession,
               onShowDiffs: onShowDiffs,
               onOpenSession: onOpenSession,
+              onReturnToSession: onReturnToSession,
               onOpenHarnessSettings: onOpenHarnessSettings,
               onOpenBridgeSettings: onOpenBridgeSettings,
               sessionActions: sessionActions,
@@ -109,16 +113,21 @@ class const DesktopSessionDetailScreen({
                 reference: reference,
               ),
               createSideChatCubit:
-                  ({required sessionId, required pluginId, required availability, required isArchived}) =>
-                      SideChatCubit(
-                        repository: getIt<SideChatRepository>(),
-                        productAnalyticsService: getIt<ProductAnalyticsService>(),
-                        sessionId: sessionId,
-                        pluginId: pluginId,
-                        availability: availability,
-                        isArchived: isArchived,
-                        initialQuestion: null,
-                      ),
+                  ({
+                    required sessionId,
+                    required pluginId,
+                    required availability,
+                    required isArchived,
+                    required initialQuestion,
+                  }) => SideChatCubit(
+                    repository: getIt<SideChatRepository>(),
+                    productAnalyticsService: getIt<ProductAnalyticsService>(),
+                    sessionId: sessionId,
+                    pluginId: pluginId,
+                    availability: availability,
+                    isArchived: isArchived,
+                    initialQuestion: initialQuestion,
+                  ),
               canShareImages: defaultTargetPlatform != TargetPlatform.linux,
             ),
           ),
@@ -140,6 +149,9 @@ class const DesktopSessionDetailView({
   required final void Function({required String parentSessionId}) onOpenParentSession,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
+
+  /// Goes back to a session the reader came from, such as a fork's origin.
+  required final SessionDetailSessionReturner onReturnToSession,
   required final VoidCallback onOpenHarnessSettings,
   required final VoidCallback onOpenBridgeSettings,
   required final SessionListActionDispatcher sessionActions,
@@ -174,6 +186,7 @@ class const DesktopSessionDetailView({
         canShareImages: canShareImages,
         openExternalLink: openDesktopExternalLink,
         openSession: onOpenSession,
+        returnToSession: onReturnToSession,
         openHarnessSettings: onOpenHarnessSettings,
         openBridgeSettings: onOpenBridgeSettings,
         openSideChat: openSideChat,
@@ -268,6 +281,7 @@ class const DesktopSessionDetailView({
         final parts => parts.join(" · "),
       },
       subtitle: null,
+      keptSuffix: sessionForkTitleSuffix,
       // One group, whose actions bring their own gaps, so the toolbar's spacing
       // never sees an empty slot.
       actions: [
@@ -322,6 +336,7 @@ class const DesktopSessionDetailView({
                       actions: context.read<SessionActionsCubit>(),
                       session: session,
                       isRunning: isBusy,
+                      canFork: context.read<SessionActionsCubit>().canFork(session: session),
                       readEntry: const SessionReadMenuNone(),
                       surfaceEntries: [
                         if (state.offersMcp)

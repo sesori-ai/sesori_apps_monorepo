@@ -36,6 +36,7 @@ void main() {
             automaticallyImplyLeading: false,
             leading: leading,
             actions: actions,
+            titleKeptSuffix: null,
           ),
         ),
       ),
@@ -93,7 +94,7 @@ void main() {
     // height instead of being stretched to fill the bar (which made the round
     // back button render as an oval).
     final renderedHeight = tester.getSize(find.byKey(leadingKey)).height;
-    final barHeight = const PregoTopNavigation(title: title).preferredSize.height;
+    final barHeight = const PregoTopNavigation(title: title, titleKeptSuffix: null).preferredSize.height;
     expect(renderedHeight, 40);
     expect(renderedHeight, lessThan(barHeight));
   });
@@ -117,6 +118,7 @@ void main() {
               automaticallyImplyLeading: false,
               onBack: onBack,
               actions: actions,
+              titleKeptSuffix: null,
             ),
           ),
         ),

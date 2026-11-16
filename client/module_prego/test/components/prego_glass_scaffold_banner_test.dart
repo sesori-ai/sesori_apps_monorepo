@@ -41,6 +41,7 @@ Widget _harness({
         ),
         ...?extraSlivers,
       ],
+      titleKeptSuffix: null,
     ),
   );
 }

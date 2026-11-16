@@ -14,6 +14,7 @@ import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/model_orbits_calculator.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
+import "interrupted_turn.dart";
 import "local_send_phase.dart";
 import "prompt_turn_shape.dart";
 import "seeded_composer.dart";
@@ -106,6 +107,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// Whether the bridge can edit and resend this session's earlier messages.
     @Default(false) bool supportsRewind,
 
+    /// Whether the bridge can fork this session from its messages, archived
+    /// or not.
+    @Default(false) bool supportsFork,
+
     /// What Send does: add a prompt, or resend an edited earlier message.
     @Default(SessionComposerMode.normal()) SessionComposerMode composerMode,
     // Model from the latest assistant message.
@@ -192,6 +197,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// Whether each user turn this state renders is a card or a bubble, as
     /// the cubit resolved it.
     @Default(PromptTurnShapes()) PromptTurnShapes promptTurnShapes,
+
+    /// How the transcript ends the turn a bridge stop cut off, as the cubit
+    /// resolved it from [session]'s interruption.
+    @Default(InterruptedTurnView.absent()) InterruptedTurnView interruptedTurn,
   }) = SessionDetailLoaded;
 
   /// The harness is blocked *and* the bridge's store holds nothing for this
@@ -295,6 +304,10 @@ extension SessionDetailLoadedX on SessionDetailLoaded {
   /// Whether the next prompt runs in fast mode.
   bool get runsFastMode =>
       _selection.resolvedFastMode(providers: availableProviders, model: selectedAgentModel, requested: fastMode);
+
+  /// Whether the transcript offers to fork from its messages. A sub-agent's
+  /// conversation is not forked on its own.
+  bool get forksMessages => supportsFork && session.parentID == null;
 
   /// Whether the transcript offers to edit and resend earlier messages.
   bool get editsMessages => supportsRewind && !isArchived && cannotContinueMessage == null;

@@ -48,6 +48,7 @@ Session _child({required String id, required int? createdAt}) => Session(
   branchName: null,
   lastUserActivityAt: null,
   autoContinuation: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,

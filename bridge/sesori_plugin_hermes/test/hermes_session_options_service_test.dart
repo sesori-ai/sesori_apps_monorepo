@@ -152,6 +152,23 @@ void main() {
 
     expect(repository.appliedModels, ["opencode-go:deepseek-v4-flash"]);
   });
+
+  test("refuses a model the catalog no longer lists before the prompt is accepted", () async {
+    final repository = _FakeCatalogRepository()..discoveries.add(Future.value(_catalog()));
+    final service = _service(repository: repository);
+    addTearDown(service.dispose);
+    void validate(String modelId) => service.validateTurnSelection(
+      operation: "sendPrompt",
+      model: (providerID: "opencode-go", modelID: modelId),
+    );
+
+    validate("opencode-go:retired");
+    await service.getSessionOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
+
+    expect(() => validate("opencode-go:retired"), throwsA(isA<PluginStaleOptionsException>()));
+    validate("opencode-go:gpt-5");
+    validate("deepseek-v4-flash");
+  });
 }
 
 HermesSessionOptionsService _service({required _FakeCatalogRepository repository}) {
@@ -163,7 +180,7 @@ HermesSessionOptionsService _service({required _FakeCatalogRepository repository
   return HermesSessionOptionsService(
     repository: repository,
     configurationTracker: configurationTracker,
-    commandTracker: AcpCommandTracker(),
+    commandTracker: AcpCommandTracker(selectionCommands: const {}),
     launchDirectory: "/repo",
     pluginId: "hermes",
     agentDisplayName: "Hermes Agent",

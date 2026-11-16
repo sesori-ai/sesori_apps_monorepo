@@ -85,7 +85,7 @@ void main() {
       expect(response.status, 200);
       final session = Session.fromJson(jsonDecodeMap(response.body ?? ""));
       expect((session.id, session.pinned), ("s1", true));
-      expect((await db.sessionDao.getSession(sessionId: "s1"))?.pinned, isTrue);
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.pinOrder, isNotNull);
     });
 
     test("a missing session is the route's own 404, unlike an unknown route", () async {

@@ -223,6 +223,7 @@ class AdaptiveSessionRouterTestHarness() {
     final getIt = GetIt.instance;
     getIt.registerSingleton<ProjectRepository>(projectRepository);
     getIt.registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
+    getIt.registerSingleton<ArchiveAfterSendPreferenceStorage>(FakeArchiveAfterSendPreferenceStorage());
     getIt.registerSingleton<PluginRepository>(pluginRepository);
     final pluginPreferenceRepository = MockPluginPreferenceRepository();
     when(
@@ -261,6 +262,7 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<ConnectionService>(connectionService);
     getIt.registerSingleton<SseEventTracker>(sseEventTracker);
     getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
+    getIt.registerLazySingleton<SessionSendTracker>(SessionSendTracker.new);
     getIt.registerSingleton<SessionViewingService>(stubbedSessionViewingService());
     getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
     getIt.registerSingleton<RouteSource>(routeSource);
@@ -367,6 +369,7 @@ Session adaptiveTestSession({
     time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
     promptDefaults: null,
     lastUserActivityAt: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,
@@ -421,5 +424,6 @@ SessionDetailSnapshot _buildDetailSnapshot({
     cannotContinueMessage: null,
     namesCommandInvocations: false,
     supportsRewind: false,
+    supportsFork: false,
   );
 }

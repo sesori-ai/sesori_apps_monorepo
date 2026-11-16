@@ -16,6 +16,7 @@ import "../repositories/claude_session_process_repository.dart";
 import "../repositories/claude_transcript_catalog_repository.dart";
 import "../repositories/mappers/claude_content_mapper.dart";
 import "../repositories/mappers/claude_quota_interruption_mapper.dart";
+import "../repositories/models/claude_fork_result.dart";
 import "../repositories/models/claude_rewind_point.dart";
 
 /// A queued prompt that the service wrote to Claude's stdin.
@@ -264,8 +265,10 @@ final class ClaudeSessionService({
       createdAt: _clock.now().millisecondsSinceEpoch,
     );
     state.queue.add(entry);
-    _beginTurnAccounting(sessionId: sessionId, state: state);
+    // The queue goes out ahead of busy, so a client never shows the session
+    // working before the prompt that started it.
     _emitQueueUpdate(sessionId: sessionId, state: state);
+    _beginTurnAccounting(sessionId: sessionId, state: state);
     final generation = state.generation;
     state.dispatchTail = state.dispatchTail.then(
       (_) => _dispatchTurn(
@@ -374,10 +377,6 @@ final class ClaudeSessionService({
     if (state.hasWork || state.aborting != null) {
       throw const PluginOperationException(operation: operation, statusCode: 409, message: "session is busy");
     }
-    // The edited prompt's turn starts now: the session is busy, so a second
-    // rewind is refused and an armed idle reap cannot end the respawned process.
-    _beginTurnAccounting(sessionId: sessionId, state: state);
-    final generation = state.generation;
     final entry = _QueuedPrompt(
       id: promptId,
       displayText: displayText,
@@ -385,6 +384,15 @@ final class ClaudeSessionService({
       attachmentCount: attachmentCount,
       createdAt: _clock.now().millisecondsSinceEpoch,
     );
+    // The edited prompt goes out ahead of busy, as in [enqueueTurn], so a
+    // client never counts the respawn's work from a message the edit removes.
+    // It is queued at the front: anything queued later arrived after it.
+    state.queue.insert(0, entry);
+    _emitQueueUpdate(sessionId: sessionId, state: state);
+    // The edited prompt's turn starts now: the session is busy, so a second
+    // rewind is refused and an armed idle reap cannot end the respawned process.
+    _beginTurnAccounting(sessionId: sessionId, state: state);
+    final generation = state.generation;
     final respawn = state.dispatchTail.then((_) async {
       final reaping = _teardownsBySession[sessionId];
       if (reaping != null) await reaping;
@@ -403,32 +411,29 @@ final class ClaudeSessionService({
       );
     });
     // The edited prompt takes the chain slot right after the respawn, so a
-    // send that arrives meanwhile cannot reach the process first. It is
-    // queued at the front: anything already queued arrived after it.
+    // send that arrives meanwhile cannot reach the process first.
+    final mode = _QueuedTurnMode(entry: entry);
     state.dispatchTail = respawn.then(
-      (_) {
-        state.queue.insert(0, entry);
-        _emitQueueUpdate(sessionId: sessionId, state: state);
-        return _dispatchTurn(
-          sessionId: sessionId,
-          directory: directory,
-          createNew: false,
-          parts: parts,
-          model: model,
-          effort: effort,
-          permissionMode: permissionMode,
-          fastMode: fastMode,
-          state: state,
-          generation: generation,
-          mode: _QueuedTurnMode(entry: entry),
-        );
-      },
+      (_) => _dispatchTurn(
+        sessionId: sessionId,
+        directory: directory,
+        createNew: false,
+        parts: parts,
+        model: model,
+        effort: effort,
+        permissionMode: permissionMode,
+        fastMode: fastMode,
+        state: state,
+        generation: generation,
+        mode: mode,
+      ),
       // The caller receives the respawn's failure below.
       onError: (Object _) {},
     );
     try {
       await respawn;
     } on Object catch (error) {
+      _settleQueuedEntry(sessionId: sessionId, state: state, mode: mode);
       _finish(sessionId: sessionId, state: state, outcome: null);
       if (error is ClaudeRewindUnsupportedException) {
         throw PluginBranchPointUnavailableException(
@@ -440,6 +445,41 @@ final class ClaudeSessionService({
       rethrow;
     }
   }
+
+  /// Creates root session [forkSessionId] whose conversation is
+  /// [sessionId]'s through the turn whose last shown message is
+  /// [throughMessageId], by writing its transcript. The fork then resumes like
+  /// any session on its first prompt.
+  ///
+  /// The origin's process and queue are never touched, so a later turn may run
+  /// meanwhile. A point the transcript cannot cut at, or an origin with no
+  /// transcript, throws [PluginBranchPointUnavailableException] before
+  /// anything is written.
+  Future<void> forkSession({
+    required String sessionId,
+    required String throughMessageId,
+    required String forkSessionId,
+  }) async {
+    if (_disposed) throw StateError("Claude session service is disposed");
+    final result = await _transcripts.forkTranscript(
+      sessionId: sessionId,
+      throughMessageId: throughMessageId,
+      forkSessionId: forkSessionId,
+    );
+    if (result case ClaudeForkUnavailable(:final reason)) {
+      throw PluginBranchPointUnavailableException(
+        operation: "forkSession",
+        userFacingReason: switch (reason) {
+          ClaudeForkRefusal.transcriptMissing => ClaudeSessionService.forkTranscriptMissingReason,
+          ClaudeForkRefusal.notOnActiveBranch => "This message is no longer in the Claude Code conversation.",
+        },
+        cause: null,
+      );
+    }
+  }
+
+  /// Why a session whose conversation Claude Code no longer has cannot fork.
+  static const String forkTranscriptMissingReason = "Claude Code no longer has this conversation.";
 
   void _beginTurnAccounting({required String sessionId, required _SessionTurnState state}) {
     _retryStatuses.remove(sessionId);
@@ -517,6 +557,7 @@ final class ClaudeSessionService({
         sessionId: sessionId,
         parts: parts,
         promptId: mode.replayPromptId,
+        echoAtOnce: mode.echoesAtOnce,
       );
       final isSteering = state.selfStartedTurn != null || state.settlements.isNotEmpty;
       switch (mode) {
@@ -712,7 +753,17 @@ final class ClaudeSessionService({
   /// sub-agents too; `stop`, and `keep` during a live main turn or with
   /// nothing resident, interrupts and tears the process down, cancelling every
   /// task with it.
-  Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) async {
+  Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) =>
+      _abort(sessionId: sessionId, subAgents: subAgents, userStop: true);
+
+  /// [userStop] is false for a shutdown, which skips waiting for the
+  /// interrupted turn to end: only a user Stop shows the stopped row that the
+  /// turn's end carries.
+  Future<PluginAbortResult> _abort({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+    required bool userStop,
+  }) async {
     final state = _turns[sessionId];
     if (state == null) return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
     final activeAbort = state.aborting;
@@ -720,7 +771,7 @@ final class ClaudeSessionService({
       // The in-flight abort may have kept work this caller wants stopped; run
       // the requested scope once its fence releases.
       await activeAbort.future;
-      return await abort(sessionId: sessionId, subAgents: subAgents);
+      return await _abort(sessionId: sessionId, subAgents: subAgents, userStop: userStop);
     }
     final runningSubAgents = state.runningTaskIds.values.where((type) => type == ClaudeTaskType.subAgent).length;
     if (subAgents == PluginAbortSubAgentPolicy.confirm && runningSubAgents > 0) {
@@ -768,7 +819,11 @@ final class ClaudeSessionService({
       // not rearm it, so a pending wakeup cannot survive an abort.
       state.wakeupAt = null;
       try {
-        await _processes.interrupt(sessionId: sessionId);
+        await _processes.interrupt(
+          sessionId: sessionId,
+          awaitTurnEnd: userStop,
+          selfStartedTurnEnd: state.selfStartedTurn?.future,
+        );
       } on Object catch (error, stack) {
         Log.w("[claude] interrupt failed for $sessionId", error, stack);
       } finally {
@@ -800,7 +855,7 @@ final class ClaudeSessionService({
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
         for (final sessionId in activeSessionIds)
-          abort(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop),
+          _abort(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop, userStop: false),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
@@ -1177,6 +1232,10 @@ final class ClaudeSessionService({
 sealed class const _TurnMode() {
   String? get replayPromptId;
 
+  /// Whether the prompt is echoed as soon as it is written. Only a turn with
+  /// no queued entry needs it: nothing else shows the prompt meanwhile.
+  bool get echoesAtOnce;
+
   /// Settles a turn that was dropped before dispatch (stale generation or a
   /// cancelled queued entry).
   void settleUnaccepted();
@@ -1190,6 +1249,10 @@ final class const _QueuedTurnMode({required final _QueuedPrompt entry}) extends 
   @override
   String? get replayPromptId => entry.command == null ? entry.id : null;
 
+  /// The queued entry shows the prompt until the CLI echoes it.
+  @override
+  bool get echoesAtOnce => false;
+
   @override
   void settleUnaccepted() {}
 
@@ -1201,6 +1264,10 @@ final class const _QueuedTurnMode({required final _QueuedPrompt entry}) extends 
 final class const _BlockingTurnMode({required final Completer<void> acceptance}) extends _TurnMode {
   @override
   String? get replayPromptId => null;
+
+  /// The opening prompt of a new process, which echoes it only once started.
+  @override
+  bool get echoesAtOnce => true;
 
   @override
   void settleUnaccepted() {

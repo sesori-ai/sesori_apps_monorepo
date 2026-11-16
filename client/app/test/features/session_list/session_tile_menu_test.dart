@@ -16,7 +16,13 @@ import "../../helpers/test_helpers.dart";
 /// beside the menu — the same treatment project rows get. The entries come
 /// from the real [SessionListActionDispatcher], so this covers the wiring from
 /// the row all the way to the actions it dispatches.
-class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit {
+  /// Whether the session's harness forks it; a test sets it before opening the menu.
+  bool forks = false;
+
+  @override
+  bool canFork({required Session session}) => forks;
+}
 
 void main() {
   late _MockSessionActionsCubit actions;
@@ -81,6 +87,25 @@ void main() {
 
     expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
     expect(find.widgetWithText(InkWell, "Delete"), findsOneWidget);
+  });
+
+  testWidgets("right-clicking a session whose harness forks offers Fork", (tester) async {
+    actions.forks = true;
+
+    await pumpRow(tester, session: testSession(title: "My Session"));
+    await tester.tap(find.widgetWithText(SessionTile, "My Session"), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(InkWell, "Fork"), findsOneWidget);
+  });
+
+  testWidgets("right-clicking a session whose harness cannot fork leaves Fork out", (tester) async {
+    await pumpRow(tester, session: testSession(title: "My Session"));
+    await tester.tap(find.widgetWithText(SessionTile, "My Session"), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "Fork"), findsNothing);
   });
 
   testWidgets("Delete is the only entry tinted as destructive", (tester) async {
@@ -160,7 +185,7 @@ void main() {
     expect(find.widgetWithText(FilledButton, "Archive"), findsNothing);
     expect(find.widgetWithText(SessionTile, "My Session"), findsNothing);
 
-    tester.element(find.byType(AllSessionsList)).read<PendingSessionArchiveCubit>().undo();
+    tester.element(find.byType(AllSessionsList)).read<PendingSessionArchiveCubit>().undo(sessionId: session.id);
     await tester.pumpAndSettle();
     expect(find.widgetWithText(SessionTile, "My Session"), findsOneWidget);
   });

@@ -698,6 +698,91 @@ void main() {
     await runFuture.timeout(const Duration(seconds: 5));
   });
 
+  test("a summary request marked not sent while its update waits is delivered stamped", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final runFuture = running.stopped;
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    final plugin = harness.plugins.single;
+    await harness.database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
+    await harness.database.sessionDao.insertSession(
+      fastMode: false,
+      sessionId: "session",
+      backendSessionId: "session",
+      projectId: "project",
+      isDedicated: false,
+      createdAt: 1,
+      worktreePath: null,
+      baseBranch: null,
+      baseCommit: null,
+      lastAgent: null,
+      lastAgentModel: null,
+      pluginId: "one",
+    );
+    final started = Completer<void>();
+    final gate = Completer<void>();
+    // Another, not yet stored session's project read holds the plugin's
+    // events behind it.
+    const directory = "/projects/blocked";
+    plugin
+      ..activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: directory,
+          activeSessions: [PluginActiveSession(id: "blocker", awaitingInput: false)],
+        ),
+      ]
+      ..currentProjectResult = const PluginProject(id: directory, directory: directory)
+      ..getProjectStarted = started
+      ..getProjectGate = gate;
+    final delivered = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriMessageUpdated && event.info.id == "request")
+        .cast<SesoriMessageUpdated>()
+        .first;
+
+    // The harness reports the request, naming no prompt, while earlier work
+    // holds the plugin's events; the send marks it before the update leaves.
+    plugin.emitEvent(const BridgeSseProjectUpdated());
+    await started.future.timeout(const Duration(seconds: 2));
+    plugin.emitEvent(
+      const BridgeSseMessageUpdated(
+        info: PluginMessage.user(
+          promptId: null,
+          invocation: null,
+          id: "request",
+          sessionID: "session",
+          agent: null,
+          time: PluginMessageTime(created: 1234, completed: null),
+        ),
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    const notSent = MessageHandoffNotSent(targetSessionId: "target", targetTitle: "Target");
+    harness.composition.sessionRepository.markRequestNotSent(
+      sessionId: "session",
+      messageId: "request",
+      notSent: notSent,
+    );
+    gate.complete();
+
+    final event = await delivered.timeout(const Duration(seconds: 2));
+    expect(switch (event.info) {
+      MessageUser(:final handoff) => handoff,
+      MessageAssistant() || MessageError() => fail("expected the user message"),
+    }, notSent);
+
+    await harness.composition.session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+  });
+
   test("session upserts emitted during backend deletion stay suppressed", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
@@ -1330,6 +1415,7 @@ BridgeSseSessionUpdated _lateSessionUpdate({required String pluginId}) {
       promptDefaults: null,
       lastUserActivityAt: null,
       branchName: null,
+      pinOrder: null,
       scheduledTask: null,
       interruption: null,
       forkedFrom: null,

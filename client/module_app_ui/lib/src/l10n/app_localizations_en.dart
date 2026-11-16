@@ -2173,6 +2173,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListUnpinFailed => 'Failed to unpin session';
 
   @override
+  String get sessionListPinMoveFailed => 'Couldn\'t save the pinned order';
+
+  @override
+  String get sessionListPinnedEdit => 'Edit';
+
+  @override
+  String get sessionListPinnedEditDone => 'Done';
+
+  @override
   String get sessionListSendToSession => 'Send to another session…';
 
   @override
@@ -2226,6 +2235,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String sendSessionSent(String target) {
     return 'Sent to “$target”';
+  }
+
+  @override
+  String sendSessionSentArchived(String target, String source) {
+    return 'Sent to “$target”. Archived “$source”.';
   }
 
   @override
@@ -2340,7 +2354,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListDeleteWorktreeNotice => 'Its worktree will be deleted too. The branch is kept.';
 
   @override
-  String get sessionListDeleteFolderNotice => 'Its folder and every file in it will be deleted too.';
+  String get sessionListDeleteFolderNotice =>
+      'Its folder and every file in it will be deleted too, unless a fork of it still uses the folder.';
 
   @override
   String get sessionListDeleted => 'Session deleted';
@@ -2539,7 +2554,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListAwaitingInput => 'Awaiting input';
 
   @override
+  String sessionListSending(String target) {
+    return 'Sending to “$target”…';
+  }
+
+  @override
   String get sessionListWaiting => 'Waiting';
+
+  @override
+  String get sessionListInterrupted => 'Interrupted';
+
+  @override
+  String sessionListRecurringTaskRun(String name) {
+    return 'Run of recurring task $name';
+  }
+
+  @override
+  String sessionListScheduledTaskRun(String name) {
+    return 'Run of scheduled task $name';
+  }
+
+  @override
+  String sessionListOnceTaskRun(String name) {
+    return 'Run of one-time task $name';
+  }
 
   @override
   String sessionListBackgroundTasks(int count) {
@@ -3144,6 +3182,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailTurnStopped => 'Stopped';
 
   @override
+  String get sessionDetailTurnInterrupted => 'Interrupted';
+
+  @override
+  String get sessionDetailTurnInterruptedReason => 'Sesori\'s bridge stopped during this turn';
+
+  @override
+  String get sessionDetailContinueInterruptedTurn => 'Continue';
+
+  @override
+  String get sessionDetailContinueEditOpen => 'Finish or cancel your edit first.';
+
+  @override
+  String get sessionDetailContinueEditSending => 'Your edit is on its way. Continue in a moment.';
+
+  @override
+  String get sessionDetailContinueSessionWorking => 'The agent is already working.';
+
+  @override
+  String get sessionDetailContinuePromptPending => 'Your message is already on its way.';
+
+  @override
+  String get sessionDetailContinueAlreadyContinued => 'This turn already continued.';
+
+  @override
   String get sessionDetailCompactionTurnEnded => 'the turn ended first';
 
   @override
@@ -3195,6 +3257,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead.';
 
   @override
+  String get sessionDetailEditMidTurnForkBody =>
+      'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead, or fork from here to send it again in a new session.';
+
+  @override
+  String transcriptForkedFrom(String title) {
+    return 'Forked from $title';
+  }
+
+  @override
+  String get transcriptForkedFromUntitled => 'Forked from an untitled session';
+
+  @override
   String get sessionDetailEditCommandTitle => 'Commands can\'t be edited';
 
   @override
@@ -3218,6 +3292,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailEditRefusedBody => 'The session didn\'t accept the edit. Nothing changed.';
 
   @override
+  String get sessionDetailEditSendingLock => 'Your edit is on its way. You can type again in a moment.';
+
+  @override
   String get sessionDetailEditOptionsChanged =>
       'The available models or agents changed. Check your selection and resend.';
 
@@ -3237,6 +3314,43 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sessionDetailForkFromHere => 'Fork from here';
+
+  @override
+  String get sessionListFork => 'Fork';
+
+  @override
+  String get sessionForkForking => 'Forking…';
+
+  @override
+  String get sessionForkNothingToFork => 'Nothing to fork yet';
+
+  @override
+  String get sessionForkNothingToForkBody => 'The session hasn\'t finished a reply yet.';
+
+  @override
+  String get sessionForkRefused => 'Couldn\'t fork this session';
+
+  @override
+  String get sessionForkRefusedBody => 'The session didn\'t accept the fork. Nothing changed.';
+
+  @override
+  String get sessionForkFailed => 'Couldn\'t confirm the fork. Check your session list before trying again.';
+
+  @override
+  String get sessionForkWorktreeMissingTitle => 'This session\'s worktree is gone';
+
+  @override
+  String get sessionForkWorktreeMissingBody =>
+      'Its earlier work can\'t be restored. The fork can start in a new worktree from where this session began.';
+
+  @override
+  String get sessionForkWorktreeMissingCreate => 'Create new worktree';
+
+  @override
+  String get sessionForkCancel => 'Cancel';
 
   @override
   String get sessionDetailMessageCopied => 'Copied to clipboard';
@@ -4148,6 +4262,306 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpCancel => 'Cancel';
 
   @override
+  String get scheduledTasksTitle => 'Scheduled';
+
+  @override
+  String get scheduledTasksClose => 'Close Scheduled';
+
+  @override
+  String get scheduledTasksRecurringHeading => 'Recurring';
+
+  @override
+  String get scheduledTasksOnceHeading => 'Once';
+
+  @override
+  String get scheduledTasksEmpty => 'No scheduled tasks on this computer yet.';
+
+  @override
+  String get scheduledTasksLoadFailed => 'Couldn’t load scheduled tasks';
+
+  @override
+  String get scheduledTasksRetry => 'Try again';
+
+  @override
+  String get scheduledTasksBridgeOutdated => 'Update this computer to schedule tasks';
+
+  @override
+  String scheduledTasksToggleFailed(String name) {
+    return 'Couldn’t change “$name”. Try again.';
+  }
+
+  @override
+  String scheduledTaskDaily(String time) {
+    return 'Every day at $time';
+  }
+
+  @override
+  String scheduledTaskWeekdays(String time) {
+    return 'Weekdays at $time';
+  }
+
+  @override
+  String scheduledTaskWeekly(String days, String time) {
+    return '$days at $time';
+  }
+
+  @override
+  String scheduledTaskEveryHours(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: 'Every $hours hours',
+      one: 'Every hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get scheduledTaskNewerApp => 'Edit on a newer app';
+
+  @override
+  String get scheduledTaskPaused => 'Paused';
+
+  @override
+  String get scheduledTaskToday => 'Today';
+
+  @override
+  String get scheduledTaskTomorrow => 'Tomorrow';
+
+  @override
+  String get scheduledTaskYesterday => 'Yesterday';
+
+  @override
+  String scheduledTaskDayAndTime(String day, String time) {
+    return '$day, $time';
+  }
+
+  @override
+  String scheduledTaskInZone(String time, String zone) {
+    return '$time ($zone)';
+  }
+
+  @override
+  String get scheduledTaskWhen => 'When';
+
+  @override
+  String get scheduledTaskNextRun => 'Next run';
+
+  @override
+  String get scheduledTaskNoNextRun => 'Not scheduled';
+
+  @override
+  String get scheduledTaskRunNow => 'Run now';
+
+  @override
+  String get scheduledTaskRunStarted => 'Run started';
+
+  @override
+  String get scheduledTaskRunNowFailed => 'Couldn’t start the run. Try again.';
+
+  @override
+  String get scheduledTaskPreviousRunActive => 'The previous run is still going. Try again once it finishes.';
+
+  @override
+  String get scheduledTaskRunNowUnsupported => 'This computer can’t run this task yet.';
+
+  @override
+  String get scheduledTaskPause => 'Pause';
+
+  @override
+  String get scheduledTaskResume => 'Resume';
+
+  @override
+  String get scheduledTaskPauseFailed => 'Couldn’t pause the task. Try again.';
+
+  @override
+  String get scheduledTaskResumeFailed => 'Couldn’t resume the task. Try again.';
+
+  @override
+  String get scheduledTaskRename => 'Rename';
+
+  @override
+  String get scheduledTaskRenameTitle => 'Rename task';
+
+  @override
+  String get scheduledTaskRenameHint => 'Task name';
+
+  @override
+  String get scheduledTaskRenameFailed => 'Couldn’t rename the task';
+
+  @override
+  String get scheduledTaskDelete => 'Delete task';
+
+  @override
+  String scheduledTaskDeleteTitle(String name) {
+    return 'Delete “$name”?';
+  }
+
+  @override
+  String get scheduledTaskDeleteMessage => 'It won’t run again. Sessions it already started stay.';
+
+  @override
+  String get scheduledTaskDeleteCancel => 'Cancel';
+
+  @override
+  String get scheduledTaskDeleteConfirm => 'Delete';
+
+  @override
+  String get scheduledTaskDeleteFailed => 'Couldn’t delete the task. Try again.';
+
+  @override
+  String get scheduledTaskReadOnly => 'This task uses settings this app doesn’t know. Edit it on a newer app.';
+
+  @override
+  String get scheduledTaskGone => 'This task is no longer scheduled.';
+
+  @override
+  String get scheduledTaskRunsHeading => 'Runs';
+
+  @override
+  String get scheduledTaskNoRuns => 'No runs yet';
+
+  @override
+  String get scheduledTaskRunRan => 'Ran';
+
+  @override
+  String get scheduledTaskRunRanLate => 'Ran late';
+
+  @override
+  String get scheduledTaskRunSkipped => 'Skipped: the previous run was still going';
+
+  @override
+  String get scheduledTaskRunMissed => 'Missed: the computer was off';
+
+  @override
+  String scheduledTaskRunFailed(String reason) {
+    return 'Couldn’t start: $reason';
+  }
+
+  @override
+  String get scheduledTaskRunUnknown => 'Updated app needed to show this run';
+
+  @override
+  String get scheduledTaskFailureProjectMissing => 'the project is gone';
+
+  @override
+  String get scheduledTaskFailureHarnessUnavailable => 'the harness isn’t available';
+
+  @override
+  String get scheduledTaskFailureModelUnavailable => 'its model isn’t offered anymore';
+
+  @override
+  String get scheduledTaskFailureStartFailed => 'the session didn’t start';
+
+  @override
+  String get scheduledTaskFailureUnknown => 'an unknown reason';
+
+  @override
+  String get scheduledTaskNew => 'New task';
+
+  @override
+  String get scheduledTaskEditTitle => 'Edit task';
+
+  @override
+  String get scheduledTaskEdit => 'Edit';
+
+  @override
+  String get scheduledTaskSave => 'Save task';
+
+  @override
+  String get scheduledTaskEachRun => 'Each run';
+
+  @override
+  String get scheduledTaskRepeatOnce => 'Once';
+
+  @override
+  String get scheduledTaskRepeatDaily => 'Every day';
+
+  @override
+  String get scheduledTaskRepeatWeekdays => 'Weekdays';
+
+  @override
+  String get scheduledTaskRepeatWeekly => 'Weekly';
+
+  @override
+  String get scheduledTaskRepeatEveryHours => 'Every few hours';
+
+  @override
+  String get scheduledTaskTime => 'Time';
+
+  @override
+  String get scheduledTaskDateAndTime => 'Date and time';
+
+  @override
+  String get scheduledTaskStarting => 'Starting';
+
+  @override
+  String get scheduledTaskFewerHours => 'Fewer hours';
+
+  @override
+  String get scheduledTaskMoreHours => 'More hours';
+
+  @override
+  String get scheduledTaskMissedHeading => 'If the computer was off';
+
+  @override
+  String get scheduledTaskRunWhenBack => 'Run when it’s back';
+
+  @override
+  String get scheduledTaskWaitForNext => 'Wait for the next time';
+
+  @override
+  String get scheduledTaskStartsNewSession => 'New session';
+
+  @override
+  String get scheduledTaskContinuesSession => 'Continue in the same session';
+
+  @override
+  String get scheduledTaskAutoCompact => 'Auto-compact';
+
+  @override
+  String get scheduledTaskAutoCompactDetail =>
+      'Compacts the session before its prompt cache goes cold, so the next run starts small.';
+
+  @override
+  String scheduledTaskAutoCompactUnsupported(String harness) {
+    return '$harness can\'t compact on request';
+  }
+
+  @override
+  String get scheduledTaskApprovalsHeading => 'Approvals';
+
+  @override
+  String get scheduledTaskApprovalsAsk => 'Ask me';
+
+  @override
+  String get scheduledTaskApprovalsAll => 'Approve everything';
+
+  @override
+  String get scheduledTaskSaving => 'Saving…';
+
+  @override
+  String get scheduledTaskSaveFailed => 'Couldn’t save the task. Try again.';
+
+  @override
+  String get scheduledTaskOnceInPast => 'Pick a time that hasn’t passed';
+
+  @override
+  String get scheduledTaskNoDays => 'Pick at least one day';
+
+  @override
+  String get scheduledTaskInvalidSchedule => 'This computer can’t use this schedule';
+
+  @override
+  String get scheduledTaskEmptyPrompt => 'Write what the task should do';
+
+  @override
+  String get scheduledTaskUnknownProject => 'This project isn’t on the computer anymore';
+
+  @override
+  String get scheduledTaskUnknownHarness => 'This harness isn’t available on the computer';
+
+  @override
   String get sideQuestionAsk => 'Ask a side question';
 
   @override
@@ -4217,6 +4631,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sideChatAskFailed => 'Couldn\'t reach your computer to ask.';
+
+  @override
+  String get sideQuestionComposerLabel => 'Side question';
+
+  @override
+  String get sideQuestionComposerLeave => 'Back to a message';
+
+  @override
+  String get sideQuestionComposerHint => 'Ask a side question…';
+
+  @override
+  String get sideQuestionCommandDescription => 'Ask a side question';
+
+  @override
+  String get sideQuestionCommandSource => 'Sesori';
 
   @override
   String sessionDetailArchivedSideChats(int count) {

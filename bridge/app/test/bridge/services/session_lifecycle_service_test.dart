@@ -72,6 +72,7 @@ void main() {
 
     test("no cleanup requested returns success and runs no git ops", () async {
       final result = await _cleanup(
+        purpose: SessionCleanupPurpose.deletion,
         service: service,
         sessionRepository: sessionRepository,
         sessionId: "s1",
@@ -90,6 +91,7 @@ void main() {
       await expectLater(
         service.cleanupAlreadyReserved(
           sessionId: "missing",
+          purpose: SessionCleanupPurpose.deletion,
           deleteWorktree: true,
           force: false,
         ),
@@ -134,6 +136,7 @@ void main() {
       worktreeService.safetyResult = WorktreeSafe();
 
       final result = await _cleanup(
+        purpose: SessionCleanupPurpose.deletion,
         service: service,
         sessionRepository: sessionRepository,
         sessionId: "s2",
@@ -159,6 +162,7 @@ void main() {
 
       await expectLater(
         () => _cleanup(
+          purpose: SessionCleanupPurpose.deletion,
           service: service,
           sessionRepository: sessionRepository,
           sessionId: "s2-failed",
@@ -177,6 +181,73 @@ void main() {
       );
     });
 
+    group("the removed worktree's HEAD", () {
+      Future<CleanupResult> cleanup({required SessionCleanupPurpose purpose, required bool deleteWorktree}) => _cleanup(
+        service: service,
+        sessionRepository: sessionRepository,
+        sessionId: "s-head",
+        worktreePath: "/worktrees/repo/blue-otter",
+        branchName: "unused",
+        deleteWorktree: deleteWorktree,
+        force: false,
+        purpose: purpose,
+      );
+
+      test("is kept by archive before removal, with its branch recorded", () async {
+        worktreeService.keptBranch = "agent/feature";
+
+        await cleanup(purpose: SessionCleanupPurpose.archive, deleteWorktree: true);
+
+        expect(worktreeService.keptHeads, ["/worktrees/repo/blue-otter"]);
+        expect(sessionRepository.recordedBranches, [
+          (worktreePath: "/worktrees/repo/blue-otter", branchName: "agent/feature"),
+        ]);
+        expect(worktreeService.releasedHeads, isEmpty);
+      });
+
+      test("that cannot be kept does not stop the archive", () async {
+        worktreeService.keepError = StateError("no HEAD");
+
+        expect(await cleanup(purpose: SessionCleanupPurpose.archive, deleteWorktree: true), isA<CleanupSuccess>());
+
+        expect(worktreeService.removeCallCount, 1);
+        expect(sessionRepository.recordedBranches, isEmpty);
+      });
+
+      test("is not kept when the archive keeps the worktree, or when it is deleted", () async {
+        await cleanup(purpose: SessionCleanupPurpose.archive, deleteWorktree: false);
+        await cleanup(purpose: SessionCleanupPurpose.deletion, deleteWorktree: true);
+
+        expect(worktreeService.keptHeads, isEmpty);
+      });
+
+      Future<void> releaseDeleted() => service.releaseDeletedWorktreeHead(
+        sessionId: "s-head",
+        projectId: "/repo",
+        worktreePath: "/worktrees/repo/blue-otter",
+      );
+
+      test("is not released by a deletion's cleanup, which runs before the row goes", () async {
+        await cleanup(purpose: SessionCleanupPurpose.deletion, deleteWorktree: true);
+
+        expect(worktreeService.releasedHeads, isEmpty);
+      });
+
+      test("is released once the last session naming the worktree is deleted", () async {
+        await releaseDeleted();
+
+        expect(worktreeService.releasedHeads, ["/worktrees/repo/blue-otter"]);
+      });
+
+      test("stays while another session, such as an archived fork, names the worktree", () async {
+        sessionRepository.namedByOtherSessions = true;
+
+        await releaseDeleted();
+
+        expect(worktreeService.releasedHeads, isEmpty);
+      });
+    });
+
     test("dirty worktree without force rejects with mapped issues", () async {
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [
@@ -185,6 +256,7 @@ void main() {
       );
 
       final result = await _cleanup(
+        purpose: SessionCleanupPurpose.deletion,
         service: service,
         sessionRepository: sessionRepository,
         sessionId: "s3",
@@ -213,6 +285,7 @@ void main() {
       );
 
       final result = await _cleanup(
+        purpose: SessionCleanupPurpose.deletion,
         service: service,
         sessionRepository: sessionRepository,
         sessionId: "s4",
@@ -245,7 +318,12 @@ void main() {
         baseCommit: "abc123",
       );
 
-      final result = await service.cleanupAlreadyReserved(sessionId: "s5", deleteWorktree: true, force: false);
+      final result = await service.cleanupAlreadyReserved(
+        sessionId: "s5",
+        purpose: SessionCleanupPurpose.deletion,
+        deleteWorktree: true,
+        force: false,
+      );
 
       expect(worktreeService.lastCheckBaseCommit, "abc123");
       expect(
@@ -259,6 +337,7 @@ void main() {
       worktreeService.safetyResult = WorktreeUnsafe(issues: [CommitsOnNoBranch()]);
 
       final result = await _cleanup(
+        purpose: SessionCleanupPurpose.deletion,
         service: service,
         sessionRepository: sessionRepository,
         sessionId: "s5b",
@@ -278,6 +357,7 @@ void main() {
       sessionRepository.hasSharingResult = true;
 
       final result = await _cleanup(
+        purpose: SessionCleanupPurpose.deletion,
         service: service,
         sessionRepository: sessionRepository,
         sessionId: "s6",
@@ -299,6 +379,7 @@ void main() {
       sessionRepository.hasSharingResult = true;
 
       final result = await _cleanup(
+        purpose: SessionCleanupPurpose.deletion,
         service: service,
         sessionRepository: sessionRepository,
         sessionId: "s6b",
@@ -320,6 +401,7 @@ void main() {
       worktreeService.safetyResult = WorktreeSafe();
 
       final result = await _cleanup(
+        purpose: SessionCleanupPurpose.deletion,
         service: service,
         sessionRepository: sessionRepository,
         sessionId: "s7",
@@ -340,6 +422,7 @@ void main() {
       worktreeService.safetyResult = WorktreeSafe();
 
       final result = await _cleanup(
+        purpose: SessionCleanupPurpose.deletion,
         service: service,
         sessionRepository: sessionRepository,
         sessionId: "s8",
@@ -657,6 +740,7 @@ Future<CleanupResult> _cleanup({
   required String branchName,
   required bool deleteWorktree,
   required bool force,
+  required SessionCleanupPurpose purpose,
 }) {
   sessionRepository.storedSession = StoredSession(
     id: sessionId,
@@ -674,6 +758,7 @@ Future<CleanupResult> _cleanup({
   );
   return service.cleanupAlreadyReserved(
     sessionId: sessionId,
+    purpose: purpose,
     deleteWorktree: deleteWorktree,
     force: force,
   );
@@ -683,6 +768,22 @@ class _FakeSessionRepository() implements SessionRepository {
   StoredSession? storedSession;
   bool hasSharingResult = false;
   int hasSharingCallCount = 0;
+  bool namedByOtherSessions = false;
+  final recordedBranches = <({String worktreePath, String? branchName})>[];
+
+  @override
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) async => namedByOtherSessions;
+
+  @override
+  Future<void> recordWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) async => recordedBranches.add((worktreePath: worktreePath, branchName: branchName));
 
   @override
   Future<bool> hasOtherActiveSessionsSharing({

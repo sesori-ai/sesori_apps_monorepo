@@ -1,12 +1,15 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/gestures.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_list/pinned_row_drag.dart";
 import "package:sesori_app_ui/src/features/session_list/session_list_headings.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
@@ -18,6 +21,8 @@ class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements All
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
 class _MockSessionWindowService() extends Mock implements SessionWindowService;
+
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
 
 void main() {
   const project = ProjectSummary(id: "p1", name: "Project One", path: "/p1", time: null);
@@ -53,6 +58,7 @@ void main() {
     required DateTime? archivedAt,
     required bool isRunning,
   }) => AllSessionsRow(
+    sending: null,
     session: testSession(
       id: title,
       title: title,
@@ -65,6 +71,7 @@ void main() {
     isAwaitingInput: false,
     isRetrying: false,
     backgroundTaskCount: 0,
+    isInterrupted: false,
   );
 
   late _MockProjectListCubit projects;
@@ -86,6 +93,8 @@ void main() {
     PregoInteractionMode interaction = PregoInteractionMode.touch,
     // The launches the list's launching rows come from.
     SessionLaunchRepository? launches,
+    SessionActionsCubit? actions,
+    void Function({required AllSessionsRow row})? onSessionTap,
   }) async {
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, updates, initialState: initial);
@@ -146,7 +155,7 @@ void main() {
                   PregoInteractionScope(
                     mode: interaction,
                     child: AllSessionsList(
-                      onSessionTap: ({required row}) {},
+                      onSessionTap: onSessionTap ?? ({required row}) {},
                       actionDispatcher: const SessionListActionDispatcher(
                         deleteConfirmation: SessionDeleteConfirmation.sheet,
                         onSessionArchived: null,
@@ -155,7 +164,7 @@ void main() {
                         openSession: _openNothing,
                         createSessionSearch: _searchNothing,
                       ),
-                      createActions: ({required window}) => throw StateError("no row to act on"),
+                      createActions: ({required window}) => actions ?? (throw StateError("no row to act on")),
                       selectedSessionId: null,
                       showsLoadFailure: true,
                       showsSearchField: true,
@@ -436,6 +445,7 @@ void main() {
           row(title: "Fix the parser", updatedAt: today, archivedAt: null, isRunning: true),
           row(title: "Tidy the docs", updatedAt: today, archivedAt: null, isRunning: false),
           AllSessionsRow(
+            sending: null,
             session: testSession(
               id: "answer",
               title: "Answer the question",
@@ -447,6 +457,7 @@ void main() {
             isAwaitingInput: true,
             isRetrying: false,
             backgroundTaskCount: 0,
+            isInterrupted: false,
           ),
           row(title: "Rename the module", updatedAt: yesterday, archivedAt: null, isRunning: false),
         ],
@@ -494,6 +505,7 @@ void main() {
     const scratch = ProjectSummary(id: "scratch", name: null, path: "/scratch", time: null, kind: ProjectKind.scratch);
     final now = DateTime.now();
     final jot = AllSessionsRow(
+      sending: null,
       session: testSession(id: "jot", title: "Jot down ideas", updatedAt: now.millisecondsSinceEpoch),
       project: scratch,
       isRunning: false,
@@ -501,6 +513,7 @@ void main() {
       isAwaitingInput: false,
       isRetrying: false,
       backgroundTaskCount: 0,
+      isInterrupted: false,
     );
     const projectList = ProjectListState.loaded(
       projects: [project, scratch],
@@ -2361,13 +2374,14 @@ void main() {
         expect(onScreen.length, greaterThan(4));
         final renamed = onScreen[onScreen.length ~/ 2];
         final renamedRow = AllSessionsRow(
+          sending: null,
           // A pin keeps the session's time; a rename makes it the newest.
           session: pinned
               ? testSession(
                   id: "Session $renamed",
                   title: "Renamed",
                   updatedAt: rows[renamed].session.time?.updated,
-                ).copyWith(pinned: true)
+                ).copyWith(pinOrder: 1)
               : testSession(id: "Session $renamed", title: "Renamed", updatedAt: now.millisecondsSinceEpoch),
           project: project,
           isRunning: false,
@@ -2375,6 +2389,7 @@ void main() {
           isAwaitingInput: false,
           isRetrying: false,
           backgroundTaskCount: 0,
+          isInterrupted: false,
         );
         final finders = [for (final index in onScreen) find.text("Session $index")];
         List<double?> readTops() => [for (final finder in finders) topOf(tester, finder)];
@@ -2421,13 +2436,15 @@ void main() {
     AllSessionsRow pinnedRow({required String title, required DateTime updatedAt, required bool isRunning}) {
       final listed = row(title: title, updatedAt: updatedAt, archivedAt: null, isRunning: isRunning);
       return AllSessionsRow(
-        session: listed.session.copyWith(pinned: true),
+        sending: null,
+        session: listed.session.copyWith(pinOrder: 1),
         project: project,
         isRunning: isRunning,
         isUnseen: false,
         isAwaitingInput: false,
         isRetrying: false,
         backgroundTaskCount: 0,
+        isInterrupted: false,
       );
     }
 
@@ -2450,7 +2467,7 @@ void main() {
       launches: launches,
       updates: updates.stream,
       initial: listing([
-        // A running pinned row stays in Pinned, at its time.
+        // A running pinned row stays in its place in Pinned.
         pinnedRow(title: "Fix the parser", updatedAt: today, isRunning: true),
         pinnedRow(title: "Plan the release", updatedAt: yesterday, isRunning: false),
         ...unpinned,
@@ -2498,6 +2515,465 @@ void main() {
     }
     expect(headings(), ["Today", "Yesterday"]);
     expect(find.byIcon(TablerRegular.pinned), findsNothing);
+  });
+
+  group("dragging a pinned row", () {
+    final today = DateTime.now();
+    AllSessionsRow pinnedRow({required String title, required int pinOrder}) {
+      final listed = row(title: title, updatedAt: today, archivedAt: null, isRunning: false);
+      return AllSessionsRow(
+        sending: null,
+        session: listed.session.copyWith(pinOrder: pinOrder),
+        project: project,
+        isRunning: false,
+        isUnseen: false,
+        isAwaitingInput: false,
+        isRetrying: false,
+        isInterrupted: false,
+        backgroundTaskCount: 0,
+      );
+    }
+
+    AllSessionsState listing(List<AllSessionsRow> rows) => state(
+      query: "",
+      failure: null,
+      rows: rows,
+      scratchProjectId: null,
+      counts: SessionListChipCounts(all: rows.length, running: 0, unread: 0),
+    );
+    final first = pinnedRow(title: "First", pinOrder: 30);
+    final second = pinnedRow(title: "Second", pinOrder: 20);
+    final third = pinnedRow(title: "Third", pinOrder: 10);
+    final unpinned = row(title: "Unpinned", updatedAt: today, archivedAt: null, isRunning: false);
+
+    /// The tops of the rows' rooms in the list, which stay empty while lifted.
+    List<double> roomTops(WidgetTester tester) => [
+      for (final title in ["First", "Second", "Third"])
+        tester.getTopLeft(find.ancestor(of: find.text(title).first, matching: find.byType(PinnedRowDrag))).dy,
+    ];
+
+    Future<void> settle(WidgetTester tester) async {
+      for (var elapsed = 0; elapsed < 400; elapsed += 50) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    Future<(SessionActionsCubit, StreamController<AllSessionsState>, Completer<bool>)> pumpPinned(
+      WidgetTester tester, {
+      required List<AllSessionsRow> rows,
+      PregoInteractionMode interaction = PregoInteractionMode.pointer,
+      void Function({required AllSessionsRow row})? onSessionTap,
+    }) async {
+      final actions = _MockSessionActionsCubit();
+      final answer = Completer<bool>();
+      when(
+        () => actions.movePin(
+          sessionId: any(named: "sessionId"),
+          afterSessionId: any(named: "afterSessionId"),
+        ),
+      ).thenAnswer((_) => answer.future);
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        mode: AllSessionsMode.active,
+        interaction: interaction,
+        actions: actions,
+        updates: updates.stream,
+        initial: listing(rows),
+        onSessionTap: onSessionTap,
+      );
+      await settle(tester);
+      return (actions, updates, answer);
+    }
+
+    testWidgets("with a mouse, the row lifts, the others slide out of its way, and it stays where it is dropped", (
+      tester,
+    ) async {
+      final (actions, updates, answer) = await pumpPinned(tester, rows: [first, second, third, unpinned]);
+      final rest = roomTops(tester);
+      final rowHeight = rest[1] - rest[0];
+
+      final drag = await tester.startGesture(tester.getCenter(find.text("Third")), kind: PointerDeviceKind.mouse);
+      await drag.moveBy(const Offset(0, -6));
+      await tester.pump();
+      // A lifted copy floats over the list while the row's room stays.
+      expect(find.text("Third"), findsNWidgets(2));
+      await drag.moveBy(Offset(0, -2 * rowHeight));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      // Mid-slide, First and Second move down, neither jumping.
+      final sliding = roomTops(tester);
+      expect(sliding[0], inExclusiveRange(rest[0], rest[1]));
+      await settle(tester);
+      expect(roomTops(tester), [rest[1], rest[2], rest[0]]);
+
+      await drag.up();
+      await tester.pump();
+      verify(() => actions.movePin(sessionId: "Third", afterSessionId: null)).called(1);
+      await settle(tester);
+      expect(find.text("Third"), findsOneWidget);
+      expect(roomTops(tester), [rest[1], rest[2], rest[0]]);
+
+      // The window's order catches up, then the bridge agrees: nothing moves.
+      updates.add(listing([third.copyWith(session: third.session.copyWith(pinOrder: 31)), first, second, unpinned]));
+      await tester.pump();
+      answer.complete(true);
+      await settle(tester);
+      expect(roomTops(tester), [rest[1], rest[2], rest[0]]);
+    });
+
+    testWidgets("a refused move slides the rows back and says so", (tester) async {
+      final (_, _, answer) = await pumpPinned(tester, rows: [first, second, third, unpinned]);
+      final rest = roomTops(tester);
+      final rowHeight = rest[1] - rest[0];
+
+      final drag = await tester.startGesture(tester.getCenter(find.text("First")), kind: PointerDeviceKind.mouse);
+      await drag.moveBy(const Offset(0, 6));
+      await drag.moveBy(Offset(0, rowHeight));
+      await tester.pump();
+      await drag.up();
+      await settle(tester);
+      expect(roomTops(tester), [rest[1], rest[0], rest[2]]);
+
+      answer.complete(false);
+      // The refusal reaches the list a frame after the bridge answers.
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(roomTops(tester)[0], inExclusiveRange(rest[0], rest[1]));
+      await settle(tester);
+      expect(roomTops(tester), rest);
+      expect(find.text("Couldn't save the pinned order"), findsOneWidget);
+    });
+
+    testWidgets("a cancelled drag puts the row back and moves nothing", (tester) async {
+      final (actions, _, _) = await pumpPinned(tester, rows: [first, second, third, unpinned]);
+      final rest = roomTops(tester);
+
+      final drag = await tester.startGesture(tester.getCenter(find.text("Third")), kind: PointerDeviceKind.mouse);
+      await drag.moveBy(const Offset(0, -6));
+      await drag.moveBy(Offset(0, -2 * (rest[1] - rest[0])));
+      await tester.pump();
+      await settle(tester);
+      expect(roomTops(tester), isNot(rest));
+      await drag.cancel();
+      await settle(tester);
+      expect(roomTops(tester), rest);
+      expect(find.text("Third"), findsOneWidget);
+      verifyNever(
+        () => actions.movePin(
+          sessionId: any(named: "sessionId"),
+          afterSessionId: any(named: "afterSessionId"),
+        ),
+      );
+    });
+
+    testWidgets("a click still opens the row instead of lifting it", (tester) async {
+      final (actions, _, _) = await pumpPinned(tester, rows: [first, second, third, unpinned]);
+
+      await tester.tap(find.text("Second"), kind: PointerDeviceKind.mouse);
+      await settle(tester);
+      expect(find.text("Second"), findsOneWidget);
+      verifyNever(
+        () => actions.movePin(
+          sessionId: any(named: "sessionId"),
+          afterSessionId: any(named: "afterSessionId"),
+        ),
+      );
+    });
+
+    group("on a phone", () {
+      Finder handleOf(String title) => find.descendant(
+        of: find.ancestor(of: find.text(title).first, matching: find.byType(PinnedRowDrag)),
+        matching: find.byIcon(TablerRegular.menu_2),
+      );
+
+      double handleOpacity(WidgetTester tester, String title) => tester
+          .widget<AnimatedOpacity>(find.ancestor(of: handleOf(title), matching: find.byType(AnimatedOpacity)).first)
+          .opacity;
+
+      testWidgets("Edit on Pinned fades the handles in, and Done fades them out", (tester) async {
+        await pumpPinned(tester, rows: [first, second, third, unpinned], interaction: PregoInteractionMode.touch);
+        final rest = roomTops(tester);
+        expect(handleOpacity(tester, "First"), 0);
+
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+        expect(find.text("Done"), findsOneWidget);
+        for (final title in ["First", "Second", "Third"]) {
+          expect(handleOpacity(tester, title), 1);
+        }
+        // The handles cover the rows' ends, moving nothing.
+        expect(roomTops(tester), rest);
+
+        await tester.tap(find.text("Done"));
+        await settle(tester);
+        expect(find.text("Edit"), findsOneWidget);
+        expect(handleOpacity(tester, "First"), 0);
+      });
+
+      testWidgets("there is no Edit with one pinned row, nor under a mouse", (tester) async {
+        await pumpPinned(tester, rows: [first, unpinned], interaction: PregoInteractionMode.touch);
+        expect(find.text("Pinned"), findsOneWidget);
+        expect(find.text("Edit"), findsNothing);
+
+        await pumpPinned(tester, rows: [first, second, third, unpinned]);
+        expect(find.text("Edit"), findsNothing);
+      });
+
+      testWidgets("a touch on a handle lifts the row at once with a light tap, and the drag moves it", (tester) async {
+        final haptics = <String>[];
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == "HapticFeedback.vibrate") haptics.add(call.arguments as String);
+          return null;
+        });
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null),
+        );
+        final (actions, _, _) = await pumpPinned(
+          tester,
+          rows: [first, second, third, unpinned],
+          interaction: PregoInteractionMode.touch,
+        );
+        final rest = roomTops(tester);
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+
+        final drag = await tester.startGesture(tester.getCenter(handleOf("Third")));
+        await tester.pump();
+        // Lifted with no hold and no movement.
+        expect(find.text("Third"), findsNWidgets(2));
+        expect(haptics, ["HapticFeedbackType.lightImpact"]);
+
+        await drag.moveBy(Offset(0, -2 * (rest[1] - rest[0])));
+        await tester.pump();
+        await settle(tester);
+        // The finger moved the row, not the list.
+        expect(roomTops(tester), [rest[1], rest[2], rest[0]]);
+        await drag.up();
+        await tester.pump();
+        verify(() => actions.movePin(sessionId: "Third", afterSessionId: null)).called(1);
+      });
+
+      testWidgets("while editing, a tap on a pinned row does not open it, while an unpinned row still opens", (
+        tester,
+      ) async {
+        final tapped = <String>[];
+        await pumpPinned(
+          tester,
+          rows: [first, second, third, unpinned],
+          interaction: PregoInteractionMode.touch,
+          onSessionTap: ({required row}) => tapped.add(row.session.id),
+        );
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+
+        await tester.tap(find.text("Second"));
+        await settle(tester);
+        expect(tapped, isEmpty);
+        expect(find.text("Second"), findsOneWidget);
+
+        await tester.tap(find.text("Unpinned"));
+        expect(tapped, ["Unpinned"]);
+      });
+
+      testWidgets("while editing, Pinned and Done stay at the top as the pinned rows scroll on, moving nothing", (
+        tester,
+      ) async {
+        final many = [for (var at = 0; at < 20; at++) pinnedRow(title: "Pin $at", pinOrder: 100 - at)];
+        await pumpPinned(tester, rows: [...many, unpinned], interaction: PregoInteractionMode.touch);
+        final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+        final listTop = tester.getTopLeft(find.byType(Scrollable).first).dy;
+        // The held heading paints over the list from its own layer, wherever
+        // the list's top has scrolled.
+        Finder held(String text) => find.text(text, skipOffstage: false).hitTestable();
+        double rowTop() => tester.getTopLeft(find.text("Pin 8")).dy;
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+
+        position.jumpTo(400);
+        await tester.pump();
+        // The heading the list scrolled away is held at its top, over the rows.
+        expect(tester.getTopLeft(held("Pinned")).dy, greaterThanOrEqualTo(listTop));
+        expect(tester.getTopLeft(held("Pinned")).dy, lessThan(listTop + 40));
+        final scrolled = rowTop();
+
+        await tester.tap(held("Done"));
+        await settle(tester);
+        expect(handleOpacity(tester, "Pin 8"), 0);
+        // It fades out where it stood, and nothing in the list moved.
+        expect(held("Pinned"), findsNothing);
+        expect(position.pixels, 400);
+        expect(rowTop(), scrolled);
+
+        // Back at the top, the heading is the list's own again.
+        position.jumpTo(0);
+        await tester.pump();
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+        expect(held("Done"), findsOneWidget);
+        position.jumpTo(400);
+        await tester.pump();
+        expect(rowTop(), scrolled);
+        expect(held("Done"), findsOneWidget);
+      });
+
+      testWidgets("the held heading scrolls the list under a finger, and a tap on it reaches no row beneath", (
+        tester,
+      ) async {
+        final haptics = <String>[];
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == "HapticFeedback.vibrate") haptics.add(call.arguments as String);
+          return null;
+        });
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null),
+        );
+        final many = [for (var at = 0; at < 20; at++) pinnedRow(title: "Pin $at", pinOrder: 100 - at)];
+        await pumpPinned(tester, rows: [...many, unpinned], interaction: PregoInteractionMode.touch);
+        final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+        Finder held(String text) => find.text(text, skipOffstage: false).hitTestable();
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+        position.jumpTo(400);
+        await tester.pump();
+        final band = tester.getRect(find.ancestor(of: held("Pinned"), matching: find.byType(ColoredBox)).first);
+
+        // Over a row's handle, left of Done: it neither lifts that row nor
+        // ends editing.
+        await tester.tapAt(Offset(tester.getCenter(held("Done")).dx - 56, band.center.dy));
+        await settle(tester);
+        expect(haptics, isEmpty);
+        expect(held("Done"), findsOneWidget);
+        expect(position.pixels, 400);
+
+        await tester.dragFrom(Offset(band.width / 3, band.center.dy), const Offset(0, 150));
+        await tester.pump();
+        expect(position.pixels, lessThan(300));
+        expect(haptics, isEmpty);
+      });
+    });
+
+    group("held at the list's edge", () {
+      final many = [for (var at = 0; at < 20; at++) pinnedRow(title: "Pin $at", pinOrder: 100 - at)];
+
+      ScrollPosition position(WidgetTester tester) =>
+          tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+
+      /// The top of the lifted copy: the one of [title]'s two rows that is not
+      /// its room, which stays empty while the row is lifted.
+      double copyTop(WidgetTester tester, {required String title}) {
+        bool inEmptyRoom(Element element) {
+          var empty = false;
+          element.visitAncestorElements((ancestor) {
+            empty = ancestor.widget is Opacity && (ancestor.widget as Opacity).opacity == 0;
+            return !empty;
+          });
+          return empty;
+        }
+
+        final copy = find.text(title).evaluate().singleWhere((element) => !inEmptyRoom(element));
+        return tester.getTopLeft(find.byElementPredicate((element) => element == copy)).dy;
+      }
+
+      testWidgets("the list scrolls under the held row and stops where the pinned rows end", (tester) async {
+        final (actions, _, _) = await pumpPinned(tester, rows: [...many, unpinned]);
+        final viewportBottom = tester.getBottomLeft(find.byType(Scrollable).first).dy;
+
+        final start = tester.getCenter(find.text("Pin 1"));
+        final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+        await drag.moveBy(const Offset(0, 6));
+        await tester.pump();
+        // Fully lifted first, so the copy's scale holds still.
+        await tester.pump(const Duration(milliseconds: 200));
+        await drag.moveTo(Offset(start.dx, viewportBottom - 4));
+        await tester.pump();
+        final held = copyTop(tester, title: "Pin 1");
+        expect(position(tester).pixels, 0);
+
+        // It scrolls smoothly, a little each frame, with the copy still under
+        // the pointer.
+        final scrolled = <double>[];
+        for (var frame = 0; frame < 10; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          scrolled.add(position(tester).pixels);
+        }
+        for (final (at, pixels) in scrolled.indexed.skip(1)) {
+          expect(pixels - scrolled[at - 1], inExclusiveRange(0, 40));
+        }
+        expect(copyTop(tester, title: "Pin 1"), moreOrLessEquals(held));
+
+        // It stops once the last pinned row shows, clear of the edge.
+        for (var frame = 0; frame < 300; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        final stopped = position(tester).pixels;
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(position(tester).pixels, stopped);
+        expect(stopped, lessThan(position(tester).maxScrollExtent));
+        expect(tester.getBottomLeft(find.text("Pin 19")).dy, lessThan(viewportBottom));
+
+        await drag.up();
+        await tester.pump();
+        verify(() => actions.movePin(sessionId: "Pin 1", afterSessionId: "Pin 19")).called(1);
+        await settle(tester);
+      });
+
+      testWidgets("held at the top, it scrolls back through rows built on the way, to the pinned rows' start", (
+        tester,
+      ) async {
+        final (actions, _, _) = await pumpPinned(tester, rows: [...many, unpinned]);
+        // The rows above are scrolled away, past being built.
+        position(tester).jumpTo(position(tester).maxScrollExtent);
+        await tester.pump();
+        expect(find.text("Pin 2"), findsNothing);
+        final viewportTop = tester.getTopLeft(find.byType(Scrollable).first).dy;
+
+        final start = tester.getCenter(find.text("Pin 14"));
+        final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+        await drag.moveBy(const Offset(0, -6));
+        await tester.pump();
+        await drag.moveTo(Offset(start.dx, viewportTop + 4));
+        // It scrolls back steadily: no row it builds or passes on the way
+        // makes the list jump.
+        var pixels = position(tester).pixels;
+        for (var frame = 0; frame < 300; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(pixels - position(tester).pixels, inInclusiveRange(0, 17));
+          pixels = position(tester).pixels;
+        }
+        expect(tester.getTopLeft(find.text("Pin 0")).dy, greaterThan(viewportTop));
+
+        await drag.up();
+        await tester.pump();
+        verify(() => actions.movePin(sessionId: "Pin 14", afterSessionId: null)).called(1);
+        await settle(tester);
+      });
+
+      testWidgets("a scroll mid-drag keeps the copy under the pointer and moves its room along", (tester) async {
+        final (actions, _, _) = await pumpPinned(tester, rows: [...many, unpinned]);
+        final rest = [
+          for (final title in ["Pin 0", "Pin 1"]) tester.getTopLeft(find.text(title)).dy,
+        ];
+        final rowHeight = rest[1] - rest[0];
+
+        final drag = await tester.startGesture(tester.getCenter(find.text("Pin 2")), kind: PointerDeviceKind.mouse);
+        await drag.moveBy(const Offset(0, 6));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+        final held = copyTop(tester, title: "Pin 2");
+        position(tester).jumpTo(3 * rowHeight);
+        await tester.pump();
+        await settle(tester);
+        expect(copyTop(tester, title: "Pin 2"), moreOrLessEquals(held));
+
+        await drag.up();
+        await tester.pump();
+        verify(() => actions.movePin(sessionId: "Pin 2", afterSessionId: "Pin 5")).called(1);
+        await settle(tester);
+      });
+    });
   });
 }
 

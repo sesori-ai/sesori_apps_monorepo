@@ -204,6 +204,14 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
 
   /// Best-effort configuration probe. The ACP handshake remains the runtime
   /// authentication gate, while this command supplies the model picker label.
+  ///
+  /// A self-updating Hermes install finishes an interrupted source update
+  /// (dependency sync plus TUI, web and desktop builds, 50 s or more)
+  /// in front of any command except `--version`/`--help`. Killing that at the
+  /// probe timeout restarts it on every probe, so the status probe sets
+  /// Hermes' documented install-probe policy `HERMES_DISABLE_LAZY_INSTALLS`,
+  /// which skips that launch-time completion. `hermes acp` itself does not
+  /// set it, so the agent launch still finishes the update.
   Future<CommandResult?> _probeHermesStatus({
     required String executablePath,
     required HostProcessService processes,
@@ -220,7 +228,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
         executable: executablePath,
         arguments: const ["status"],
         workingDirectory: null,
-        environment: environment,
+        environment: {...environment, "HERMES_DISABLE_LAZY_INSTALLS": "1"},
         timeout: _versionProbeTimeout,
       );
       if (result.exitCode != 0) {
@@ -287,7 +295,10 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     }
 
     if (result.exitCode != 0) {
-      Log.d("[hermes] availability probe '$executablePath acp --version' exited with code ${result.exitCode}");
+      Log.d(
+        "[hermes] availability probe '$executablePath acp --version' exited with code ${result.exitCode}: "
+        "${result.stderr.trim()}",
+      );
       // A pre-ACP install rejects the `acp` subcommand with a recognizable
       // parser error. That positively identifies an outdated installation;
       // unrelated nonzero failures remain unknown.
@@ -395,7 +406,8 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
         modelId: hasConfiguredModel ? status.model : null,
         providerId: hasConfiguredModel ? status.provider : null,
       );
-    final commandTracker = AcpCommandTracker();
+    // Hermes's native `/model` changes the model the session selection owns.
+    final commandTracker = AcpCommandTracker(selectionCommands: const {"model"});
     final childSessionTracker = AcpChildSessionTracker();
     final eventMapper = HermesEventMapper(
       launchDirectory: cwd,

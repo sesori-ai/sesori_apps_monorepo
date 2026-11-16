@@ -32,11 +32,14 @@ void main() {
     bool selected = false,
     bool awaitingInput = false,
     bool isRetrying = false,
+    bool isInterrupted = false,
     int backgroundTaskCount = 0,
+    SessionSending? sending,
     VoidCallback? onArchive,
     VoidCallback? onToggleUnread,
   }) {
     return SessionTile(
+      sending: sending,
       session: session,
       projectLabel: projectLabel,
       isArchived: isArchived,
@@ -51,6 +54,7 @@ void main() {
       onArchive: onArchive ?? () {},
       onDelete: () {},
       onToggleUnread: onToggleUnread ?? () {},
+      isInterrupted: isInterrupted,
     );
   }
 
@@ -163,6 +167,71 @@ void main() {
         }
       });
 
+      testWidgets("a mark that leaves fades out, then its room closes without a snap", (tester) async {
+        final session = testSession(title: "My Session", updatedAt: now);
+        await pump(tester, tile(session: session, isRunning: true));
+        final sparkle = find.byType(PregoAiLoader);
+        double sparkleOpacity() =>
+            tester.widget<Opacity>(find.ancestor(of: sparkle, matching: find.byType(Opacity)).first).opacity;
+        double markRoom() => tester.getSize(find.ancestor(of: sparkle, matching: find.byType(ClipRect)).first).width;
+        final fullRoom = markRoom();
+        final rowSize = tester.getSize(find.byType(SessionTile));
+
+        await pump(tester, tile(session: session));
+        await tester.pump(const Duration(milliseconds: 100));
+        // Fading, in its full room.
+        expect(sparkleOpacity(), inExclusiveRange(0, 1));
+        expect(markRoom(), fullRoom);
+
+        await tester.pump(const Duration(milliseconds: 200));
+        // Gone from sight, its room closing.
+        expect(sparkleOpacity(), 0);
+        expect(markRoom(), inExclusiveRange(0, fullRoom));
+        expect(tester.getSize(find.byType(SessionTile)), rowSize);
+
+        await tester.pump(const Duration(milliseconds: 200));
+        // Gone, and a quiet row keeps no room for it.
+        expect(sparkle, findsNothing);
+      });
+
+      testWidgets("a session being sent swaps the sparkle and meta line for the send, in place", (tester) async {
+        final semantics = tester.ensureSemantics();
+        final session = testSession(title: "My Session", updatedAt: now);
+        await pump(tester, tile(session: session, isRunning: true, projectLabel: "Project"));
+        final rowSize = tester.getSize(find.byType(SessionTile));
+        final titleTop = tester.getTopLeft(find.text("My Session"));
+
+        await pump(
+          tester,
+          tile(
+            session: session,
+            isRunning: true,
+            projectLabel: "Project",
+            sending: const SessionSending(targetTitle: "Target"),
+          ),
+        );
+        // Mid cross-fade, only the incoming state speaks.
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.bySemanticsLabel(RegExp("Running")), findsNothing);
+        expect(find.bySemanticsLabel(RegExp("Sending to “Target”…")), findsOneWidget);
+        await tester.pump(const Duration(seconds: 1));
+
+        expect(find.byType(PregoAiLoader), findsNothing);
+        expect(find.byIcon(TablerRegular.send), findsOneWidget);
+        expect(find.text("Sending to “Target”…"), findsOneWidget);
+        expect(find.text("Project"), findsNothing);
+        // Nothing moves: the row keeps its size and the title its place.
+        expect(tester.getSize(find.byType(SessionTile)), rowSize);
+        expect(tester.getTopLeft(find.text("My Session")), titleTop);
+
+        await pump(tester, tile(session: session, isRunning: true, projectLabel: "Project"));
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byIcon(TablerRegular.send), findsNothing);
+        expect(find.text("Project"), findsOneWidget);
+        expect(sparkleTwinkles(tester), isTrue);
+        semantics.dispose();
+      });
+
       testWidgets("an unread session carries its mark and weights its title", (tester) async {
         await pump(
           tester,
@@ -230,6 +299,26 @@ void main() {
         );
 
         expect(find.byType(PregoAiLoader), findsNothing);
+        expect(find.text("Waiting"), findsOneWidget);
+      });
+
+      testWidgets("a session a bridge stop cut off says Interrupted in grey, after Waiting and Retrying", (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        await pump(tester, tile(session: testSession(title: "My Session"), isInterrupted: true));
+
+        expect(
+          tester.widget<Text>(find.text("Interrupted")).style?.color,
+          (pointer ? PregoDesignSystem.desktopLight : PregoDesignSystem.light).colors.textSecondary,
+        );
+        expect(find.bySemanticsLabel(RegExp("Interrupted")), findsOneWidget);
+        semantics.dispose();
+
+        await pump(tester, tile(session: testSession(title: "My Session"), isRetrying: true, isInterrupted: true));
+        expect(find.text("Interrupted"), findsNothing);
+        await pump(tester, tile(session: testSession(title: "My Session"), awaitingInput: true, isInterrupted: true));
+        expect(find.text("Interrupted"), findsNothing);
         expect(find.text("Waiting"), findsOneWidget);
       });
 
@@ -360,7 +449,7 @@ void main() {
         expect(pin, findsNothing);
         final unpinnedStart = titleStart();
 
-        await pump(tester, tile(session: session.copyWith(pinned: true)));
+        await pump(tester, tile(session: session.copyWith(pinOrder: 1)));
         await tester.pump(const Duration(milliseconds: 100));
         expect(titleStart(), allOf(greaterThan(unpinnedStart), lessThan(unpinnedStart + 18)), reason: "midway");
         await tester.pump(const Duration(milliseconds: 150));
@@ -378,7 +467,7 @@ void main() {
 
         tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
         addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-        await pump(tester, tile(session: session.copyWith(pinned: true)));
+        await pump(tester, tile(session: session.copyWith(pinOrder: 1)));
         expect(titleStart(), unpinnedStart + 18);
       });
 
@@ -534,6 +623,33 @@ void main() {
       ),
     );
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+  });
+
+  testWidgets("a scheduled run names its task after the state and before the project", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session").copyWith(
+          scheduledTask: const SessionScheduledTaskMark(
+            taskId: "stk_1",
+            name: "Nightly cleanup",
+            kind: ScheduledTaskKind.recurring,
+          ),
+        ),
+        projectLabel: "demo-app",
+        awaitingInput: true,
+      ),
+    );
+
+    final task = find.textContaining("Nightly cleanup");
+    expect(task, findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("Run of recurring task Nightly cleanup")), findsOneWidget);
+    expect(find.byIcon(TablerRegular.repeat), findsOneWidget);
+    expect(tester.getTopRight(find.text("Waiting")).dx, lessThan(tester.getTopLeft(task).dx));
+    expect(tester.getTopRight(task).dx, lessThan(tester.getTopLeft(find.text("demo-app")).dx));
+    expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+    semantics.dispose();
   });
 
   testWidgets("retrying leads the meta line in its colour", (tester) async {

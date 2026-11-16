@@ -21,7 +21,7 @@ void main() {
     setUp(() {
       fakes.clear();
       final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
+      final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       plugin = TestAcpPlugin(
         id: "acp",
@@ -899,5 +899,5 @@ class _HaltMapper({
 }) extends AcpEventMapper {
   @override
   AcpHaltNotice? classifyHaltNotice({required String text}) =>
-      text.startsWith("HALT:") ? const AcpHaltNotice(errorName: "test_halt") : null;
+      text.startsWith("HALT:") ? const AcpHaltNotice(errorName: "test_halt", kind: PluginErrorKind.failure) : null;
 }

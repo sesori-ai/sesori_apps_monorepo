@@ -70,14 +70,15 @@ void main() {
       final first = _build(tracker: _load(updates: updates));
       final second = _build(tracker: _load(updates: updates));
       expect(second, first, reason: "independent loads use equivalent replay-local fields");
-      expect(first.single.parts.map((part) => part.type), [
+      expect(first.map((message) => message.parts.single.type), [
         PluginMessagePartType.text,
         PluginMessagePartType.subtask,
         PluginMessagePartType.text,
       ]);
-      final message = first.single;
-      final tile = message.parts[1] as PluginMessagePartSubtask;
-      expect((message.info.id, tile.id), ("root-mm1-assistant", "root-mm1-assistant-tool-task-1"));
+      final message = first[1];
+      final tile = message.parts.single as PluginMessagePartSubtask;
+      final toolMessageId = AcpEventMapper.toolMessageId(sessionId: _sessionId, toolCallId: "task-1");
+      expect((message.info.id, tile.id), (toolMessageId, AcpEventMapper.toolPartId(messageId: toolMessageId)));
       expect((tile.sessionID, tile.messageID), (_sessionId, message.info.id));
       expect((tile.prompt, tile.description, tile.agent), ("Inspect code", "Inspect", "unspecified"));
       expect(tile.childSessionID, isNull);
@@ -91,7 +92,7 @@ void main() {
         ),
         (PluginToolStatus.completed, null, "final report", 1),
       );
-      expect(message.parts.whereType<PluginMessagePartTool>(), isEmpty);
+      expect(first.expand((message) => message.parts).whereType<PluginMessagePartTool>(), isEmpty);
     });
     test("merges separately replayed facts using an opaque tool-call ID", () {
       final updates = [

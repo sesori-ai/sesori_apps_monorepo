@@ -470,15 +470,19 @@ state.
   "Jump to latest" pill is neutral. Text fields show no required-field asterisk,
   and their placeholders are tertiary.
 - The phone's open root session page offers the row's actions from a menu in its glass bar: Changes with its
-  line counts, then Rename, Mark as unread, Archive, Archive keeping the worktree when the session has one,
-  and Delete, from the shared dispatcher. Mark as unread always sends unread, whatever local state says.
+  line counts, then Rename, Mark as unread, Send to another session…, Fork, Archive and Delete, from the shared
+  dispatcher. Mark as unread always sends unread, whatever local state says.
   Archive, Delete and Mark as unread return to the session list. A sub-agent's page offers no row actions,
-  and the read-only archived view offers neither those nor Changes.
+  and the read-only archived view offers neither those nor Changes, but keeps Fork.
+- Every live root session offers "Send to another session…" after Mark as read or unread and before Archive,
+  in the phone's row menu and session page menu and in the desktop sidebar's row menu and session page menu,
+  all from the shared dispatcher. Archived and sub-agent sessions don't offer it. See
+  [Session sending](session-sending.md).
 - Beside the centred title, the phone's session bar carries only Back, Prompts and that menu, so the
   title keeps the rest of the row at 320 px and under large text scaling. It shows no Changes button and no
   busy spinner; the transcript, the composer and the sub-agents bar report the session's progress. The
-  archived page is the same bar with no menu: Back returns to the archived list, whose own Back leaves the
-  flow, so the page carries no close control.
+  archived page is the same bar, its menu holding only entries that leave the session unchanged, such as
+  Fork: Back returns to the archived list, whose own Back leaves the flow, so the page carries no close control.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are
@@ -517,15 +521,29 @@ state.
   occur in the title or in the project's own name; "No project" matches on its
   title only. Running is main-agent work, a retry or a child task, by the same
   shared rule the app uses. With `pinnedFirst`, an active page lists pinned
-  sessions first, each group in that order, and the cursor carries the group, so
-  pages continue across it; archived pages ignore the flag. An app that omits it
-  gets the time order unchanged, and a cursor written before pinning is a 400.
+  sessions first in their pin order, highest first, then the rest by time, and
+  the cursor carries the pin order, so pages continue across the group; archived
+  pages ignore the flag. An app that omits it gets the time order unchanged, and
+  a cursor written before pin orders is a 400.
 - `PATCH /session/pinned` pins an unarchived root session or unpins any session.
-  The bridge alone stores the pin, so every harness supports it. It answers the
-  updated session and announces it through `session.updated` without moving its
-  updated time; catalog imports and backend session updates keep the pin, except
-  an import that stores the session under a parent, which drops it. Pinning
-  a missing, child or archived session is the route's own 404, never the router's.
+  The bridge alone stores the pin, as the session's `pinOrder`, so every
+  harness supports it. A new pin goes above every pinned session; pinning an
+  already pinned one keeps its place, and unpinning or archiving clears it. It
+  answers the updated session and announces it through `session.updated`
+  without moving its updated time; agent activity never moves a pinned session
+  within the group. Catalog imports and backend session updates keep the pin,
+  except an import that stores the session under a parent, which drops it.
+  Pinning a missing, child or archived session is the route's own 404, never
+  the router's. Upgrading the database keeps existing pins in the order they
+  last showed, by latest activity.
+- `PATCH /session/pin-position` moves a pinned session directly below another
+  pinned one, or to the top with no anchor. It rewrites the pin order of the
+  rows from the top down to the moved one, all above the current highest, and
+  answers and announces each, top first; a session already there rewrites
+  nothing. A missing or unpinned session or anchor, or a self anchor, is a
+  404. The app moves the row at once
+  and keeps it there through loads and live updates until the bridge answers;
+  a refused move puts the rows back.
 - The phone's project picker and Settings › Projects show a project's path cut
   to the last two folders, growing one folder at a time while a same-named
   project still ends the same way; a path shown whole keeps its root. Adding a
@@ -572,7 +590,12 @@ state.
   time, except that a scheduled auto-continuation shows "Resumes <time>" in
   its place while the session is neither running nor waiting for the user;
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, starting under the logo, one tertiary meta line holds any state that needs
-  words ("Waiting" in amber, else retrying), then the project when the list gives
+  words ("Waiting" in amber, else retrying, else "Interrupted" in secondary for a
+  session that is not running, whose turn a bridge stop cut off, until the user
+  opens it or sends to it), then, for a scheduled task's run, a repeat glyph (recurring), clock (one-off) or
+  calendar (a kind this app doesn't know) and the task's name, ellipsizing with the line, which screen readers hear
+  as "Run of recurring task <name>", "Run of one-time task <name>" or "Run of scheduled task <name>" (see
+  scheduled-tasks.md), then the project when the list gives
   one, then background tasks as a quiet count: a stack glyph and the number,
   which screen readers hear as "2 background tasks". Waiting and retrying hide
   the count. A plain running session has no words on the line; the sparkle and
@@ -610,8 +633,8 @@ state.
   heading when needed, without moving any row above it on screen. At the
   list's top, a row arriving first opens in view instead.
 - The active list, on the phone home and in the desktop sidebar, leads with a
-  Pinned heading holding the pinned top-level sessions by latest activity,
-  above Today; with nothing pinned the heading is absent. A running pinned row
+  Pinned heading holding the pinned top-level sessions in the order the user
+  gave them, which agent activity never changes, above Today; with nothing pinned the heading is absent. A running pinned row
   stays in Pinned, and a launching row leads Today below it. A pinned row shows
   a small grey pin before its title, centred on the title's line; pinning or
   unpinning a row where it stands opens or closes the pin's room as it fades,
@@ -628,6 +651,36 @@ state.
   list by time. A
   bridge without the route keeps Pin offered and answers a tap with "Update
   this computer to pin sessions"; a failed pin or unpin says so.
+  In the desktop sidebar a mouse drag reorders the pinned rows, under the All
+  chip with no search typed, also within a project filter, where the row lands
+  below the pinned row it was dropped under, or first of all pinned rows when
+  dropped at the top. A press that moves lifts the row
+  (slight scale and shadow) and it follows the pointer vertically, held within
+  Pinned, while the other pinned rows slide to open its gap and show no hover
+  or tooltip beneath it. On release it glides into the gap and nothing moves
+  when the bridge confirms. A refused move slides the rows back and says
+  "Couldn't save the pinned order". A click still opens the row and a right
+  click its menu; touch still scrolls. Holding the row within about 40 pt of
+  the list's top or bottom edge scrolls the list smoothly, faster nearer the
+  edge, and the scroll eases to a stop once Pinned's end shows; the row stays
+  under the pointer and the gap follows it through any scroll, including a
+  wheel scroll mid-drag, and through rows built on the way.
+  On the phone, under the same conditions and with at least two pinned rows,
+  the Pinned heading ends with Edit. Edit turns into Done and fades a ≡ handle
+  in over each pinned row's time, moving nothing. Touching a handle lifts the
+  row at once with a light haptic, with the same lift, slide, glide, refusal
+  and edge scroll as the sidebar; the edge zones start below the glass bar
+  and above the home indicator. While editing, pinned rows neither open, swipe
+  nor show their long-press menu, and a finger on a row still scrolls the
+  list; other rows are untouched. Done, a search, a chip, too few pinned rows
+  or leaving the screen ends editing. While editing, the Pinned heading with
+  Done stays right under the glass bar as the pinned rows scroll on beneath
+  it, the last pinned row pushing it up as Pinned ends, and the edge scroll
+  starts below it; a finger on the held heading scrolls the list as from a
+  row, and only its Done takes a tap, never a row beneath; Edit or Done
+  moves no row and no scroll offset, and once editing ends a held heading
+  fades out where it stands (at once under reduced motion) while the list's
+  own heading scrolls on. Screen readers read only the list's own heading.
 - Above the active session list, on the phone and the sidebar alike, chips
   read All, Running and Unread with the bridge's counts under the project
   filter and the search, whatever chip is chosen. A chip narrows the loaded
@@ -703,8 +756,12 @@ state.
 - A newly committed session can list before generated metadata. A later generated
   title reuses `session.updated`; lists and detail adopt the durable session facts without marking unseen or moving
   the worktree directory.
-- A fork lists as an ordinary root session in its origin's project; its title and `Session.forkedFrom` follow
-  session-edit-and-fork.md.
+- A fork lists as an ordinary root session in its origin's project, titled `<origin title> (fork)` (untitled for an
+  untitled origin); its title and
+  `Session.forkedFrom` follow session-edit-and-fork.md.
+- Fork sits after "Send to another session…" and before Archive in the phone's and the desktop's row menus and
+  session page menus, for a top-level session whose harness declares `fork`, archived sessions included. It forks
+  after the latest finished reply ([session edit and fork](session-edit-and-fork.md)).
 - A Claude root session imported from its transcript is titled by its newest
   `/rename` (`custom-title`), else the CLI's newest `ai-title`, else the first
   prompt the user typed, on one line and cut to 100 characters with "…".
@@ -883,6 +940,11 @@ beside each mark on both apps, with preserved swipe/menu actions and enlarged
 text.
 Verify running rows under Today keeping their place, awaiting-only date grouping,
 updated-time versus archive-time buckets, and missing-timestamp headings.
+For pinned reordering, drag with a mouse in the sidebar and with Edit's handles
+on an iPhone viewport, in All and in a project filter, scrolled and at the top:
+drop first, last and between, hold at each edge until Pinned's end shows, have
+the bridge refuse a move, and end editing with Done, a search, a chip and by
+unpinning down to one row. Watch for any row or heading that jumps.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
@@ -1162,6 +1224,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
 - Session pages and shared rules: `bridge/app/lib/src/routing/get_session_page_handler.dart`,
   `bridge/app/lib/src/routing/set_session_pinned_handler.dart`,
+  `bridge/app/lib/src/routing/move_session_pin_handler.dart`,
+  `shared/sesori_shared/lib/src/models/sesori/session_pin_order_calculator.dart`,
   `bridge/app/lib/src/api/database/daos/session_dao.dart`,
   `shared/sesori_shared/lib/src/models/sesori/session_page.dart`,
   `shared/sesori_shared/lib/src/search/title_matcher.dart`, and
@@ -1194,6 +1258,9 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   `bridge/app/test/bridge/routing/get_session_page_handler_test.dart`,
   `bridge/app/test/bridge/persistence/session_page_query_test.dart`,
   `bridge/app/test/bridge/routing/set_session_pinned_handler_test.dart`,
+  `bridge/app/test/bridge/routing/move_session_pin_handler_test.dart`,
+  `bridge/app/test/drift/default/session_pin_order_migration_test.dart`,
+  `shared/sesori_shared/test/models/session_pin_order_calculator_test.dart`,
   `client/module_core/test/services/session_window_service_test.dart`,
   `client/module_core/test/cubits/all_sessions/all_sessions_cubit_test.dart`,
   `client/module_prego/test/components/prego_animated_sliver_list_test.dart`,

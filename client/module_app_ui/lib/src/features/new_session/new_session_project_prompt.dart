@@ -10,12 +10,19 @@ import "../../extensions/build_context_x.dart";
 import "../project_list/add_project_dialog.dart";
 import "../project_picker/project_picker.dart";
 
-/// The new-session page, or the home's composer pane, before it has a project:
+/// The new-session page, the home's composer pane or the New task screen,
+/// before it has a project:
 /// it asks for one, with nothing selected. With no projects at all the picker
 /// offers only "Open folder…", or [offersFirstRunStep] replaces it.
 class const NewSessionProjectPrompt({
   super.key,
   required final NewSessionProjectSelected onProjectSelected,
+
+  /// The glass bar's title, such as "New session".
+  required final String title,
+
+  /// Where the glass bar's title sits.
+  required final PregoTopNavigationTitleMode titleMode,
 
   /// Null where nothing lies behind the page, such as the home's content pane.
   required final VoidCallback? onBack,
@@ -155,9 +162,9 @@ class _NewSessionProjectPromptState() extends State<NewSessionProjectPrompt> {
       );
     }
     return PregoGlassScaffold(
-      title: loc.sessionListNewSession,
+      title: widget.title,
       onBack: widget.onBack,
-      titleMode: PregoTopNavigationTitleMode.backLeading,
+      titleMode: widget.titleMode,
       subtitle: null,
       banner: widget.banner,
       slivers: [
@@ -166,6 +173,7 @@ class _NewSessionProjectPromptState() extends State<NewSessionProjectPrompt> {
           sliver: SliverToBoxAdapter(child: prompt),
         ),
       ],
+      titleKeptSuffix: null,
     );
   }
 }

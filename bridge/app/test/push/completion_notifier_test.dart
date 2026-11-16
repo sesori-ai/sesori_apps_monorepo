@@ -241,6 +241,7 @@ void main() {
                 id: "project-a",
                 activeSessions: [
                   ActiveSession(
+                    sending: null,
                     id: "root",
                     mainAgentRunning: false,
                     childSessionIds: ["child"],
@@ -300,6 +301,7 @@ void main() {
                 id: "project-a",
                 activeSessions: [
                   ActiveSession(
+                    sending: null,
                     id: "root",
                     mainAgentRunning: false,
                     childSessionIds: ["child"],
@@ -872,6 +874,7 @@ void main() {
                 id: "project-a",
                 activeSessions: [
                   ActiveSession(
+                    sending: null,
                     id: "root",
                     mainAgentRunning: false,
                     childSessionIds: ["child"],
@@ -924,6 +927,7 @@ void main() {
                 id: "project-a",
                 activeSessions: [
                   ActiveSession(
+                    sending: null,
                     id: "root",
                     mainAgentRunning: false,
                     childSessionIds: ["child"],
@@ -981,6 +985,7 @@ void main() {
                 id: "project-a",
                 activeSessions: [
                   ActiveSession(
+                    sending: null,
                     id: "root",
                     mainAgentRunning: false,
                     childSessionIds: ["child-1", "child-2"],
@@ -1038,6 +1043,7 @@ void main() {
                 id: "project-a",
                 activeSessions: [
                   ActiveSession(
+                    sending: null,
                     id: "root",
                     mainAgentRunning: false,
                     childSessionIds: ["child"],
@@ -1045,6 +1051,7 @@ void main() {
                     updatedAt: null,
                   ),
                   ActiveSession(
+                    sending: null,
                     id: "child",
                     mainAgentRunning: false,
                     childSessionIds: ["grandchild"],
@@ -1138,6 +1145,7 @@ Session _session({
     time: null,
     promptDefaults: null,
     lastUserActivityAt: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,

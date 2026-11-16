@@ -11,6 +11,15 @@ import "random_hex_id.dart";
 /// A task whose time has come, with the time it fell due.
 typedef DueScheduledTask = ({ScheduledTaskRecord task, DateTime dueAt});
 
+/// What auto-compact reads of a task's newest started run and its session.
+typedef StartedRunState = ({
+  String runId,
+  String sessionId,
+  DateTime firedAt,
+  DateTime? compactRequestedAt,
+  DateTime? userPromptedAt,
+});
+
 /// Stored tasks and their run history.
 class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   /// History rows kept per task, beyond the newest started run.
@@ -175,6 +184,28 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   Future<String?> latestStartedSessionId({required String taskId}) async =>
       (await _dao.getLatestStartedRun(taskId: taskId))?.sessionId;
 
+  /// The task's newest started run, once its prompt has gone to a session.
+  Future<StartedRunState?> latestStartedRun({required String taskId}) async {
+    final row = await _dao.getLatestStartedRun(taskId: taskId);
+    final sessionId = row?.sessionId;
+    if (row == null || sessionId == null) return null;
+    return (
+      runId: row.id,
+      sessionId: sessionId,
+      firedAt: DateTime.fromMillisecondsSinceEpoch(row.firedAt, isUtc: true),
+      compactRequestedAt: _instantOrNull(millis: row.compactRequestedAt),
+      userPromptedAt: _instantOrNull(millis: row.userPromptedAt),
+    );
+  }
+
+  static DateTime? _instantOrNull({required int? millis}) =>
+      millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+
+  /// Records that auto-compact asked for [runId]'s session to be compacted,
+  /// or gave up on it, so it does not ask again for that run.
+  Future<void> recordCompactRequested({required String runId, required DateTime at}) =>
+      _dao.setRunCompactRequestedAt(runId: runId, compactRequestedAt: at.millisecondsSinceEpoch);
+
   /// Makes [sessionId] the session a same-session task continues in. It writes
   /// nothing and returns false when the task was edited, paused or deleted
   /// since [task] was read, so that change wins.
@@ -190,6 +221,35 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   /// run is gone with its deleted task.
   Future<bool> setRunSession({required String runId, required String sessionId}) async =>
       await _dao.setRunSession(runId: runId, sessionId: sessionId) > 0;
+
+  /// The run mark of each of [sessionIds] that a task started.
+  Future<Map<String, SessionScheduledTaskMark>> marksOfSessions({required Set<String> sessionIds}) async => {
+    for (final (:sessionId, :task) in await _dao.listTasksOfSessions(sessionIds: sessionIds))
+      sessionId: SessionScheduledTaskMark(
+        taskId: task.id,
+        name: task.name,
+        kind: switch (_mapper.recordFromDto(row: task).definition.schedule) {
+          TaskScheduleOnce() => ScheduledTaskKind.once,
+          TaskScheduleDaily() ||
+          TaskScheduleWeekdays() ||
+          TaskScheduleWeekly() ||
+          TaskScheduleEveryHours() => ScheduledTaskKind.recurring,
+          TaskScheduleUnknown() => ScheduledTaskKind.unknown,
+        },
+      ),
+  };
+
+  /// Whether [sessionId]'s newest run has gone without a prompt of the
+  /// user's own since it started. False for a session no run went to.
+  Future<bool> isUnattendedRun({required String sessionId}) async {
+    final run = await _dao.getLatestRunOfSession(sessionId: sessionId);
+    return run != null && run.userPromptedAt == null;
+  }
+
+  /// Records that the user sent their own prompt into [sessionId], on its
+  /// newest run, unless that run already has one.
+  Future<void> recordUserPrompted({required String sessionId, required DateTime at}) =>
+      _dao.setLatestRunUserPromptedAt(sessionId: sessionId, userPromptedAt: at.millisecondsSinceEpoch);
 
   /// False when the run is gone with its deleted task.
   Future<bool> markRunFailed({required String runId, required TaskRunFailureReason reason}) async =>

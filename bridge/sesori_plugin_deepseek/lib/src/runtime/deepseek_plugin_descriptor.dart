@@ -280,7 +280,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
     final cwd = io.Directory.current.path;
     final processFactory = hostProcessAcpFactory(processes: host.processes, environment: host.environment);
     final configurationTracker = AcpSessionConfigurationTracker();
-    final commandTracker = AcpCommandTracker();
+    final commandTracker = AcpCommandTracker(selectionCommands: const {});
     final childSessionTracker = AcpChildSessionTracker();
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
     const messageTimeParser = DeepSeekMessageTimeParser();

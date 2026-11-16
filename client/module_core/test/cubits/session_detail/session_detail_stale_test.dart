@@ -137,6 +137,7 @@ void main() {
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
       composerRestore: MockMessageComposerRestoreService(),
+      actionService: MockSessionActionService(),
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );

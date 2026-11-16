@@ -4,7 +4,12 @@ import "package:theme_prego/module_prego.dart";
 
 const double _rowHeight = 80;
 
-Widget _harness(List<String> items, {bool disableAnimations = false, VoidCallback? onTap}) {
+Widget _harness(
+  List<String> items, {
+  bool disableAnimations = false,
+  VoidCallback? onTap,
+  bool Function(String item) slidesWhenMoved = _neverSlides,
+}) {
   return MaterialApp(
     home: Builder(
       builder: (context) => MediaQuery(
@@ -14,6 +19,7 @@ Widget _harness(List<String> items, {bool disableAnimations = false, VoidCallbac
             PregoAnimatedSliverList<String>(
               items: items,
               itemKey: ValueKey<String>.new,
+              slidesWhenMoved: slidesWhenMoved,
               itemBuilder: (context, index, item) => GestureDetector(
                 key: ValueKey("row-$item"),
                 behavior: HitTestBehavior.opaque,
@@ -31,7 +37,96 @@ Widget _harness(List<String> items, {bool disableAnimations = false, VoidCallbac
   );
 }
 
+bool _neverSlides(String item) => false;
+
 void main() {
+  testWidgets("rows that slide move from where they stood to their new places, keeping their rows", (tester) async {
+    bool slides(String item) => item != "D";
+    await tester.pumpWidget(_harness(["A", "B", "C", "D"], slidesWhenMoved: slides));
+    double topOf(String item) => tester.getTopLeft(find.byKey(ValueKey("row-$item"))).dy;
+
+    await tester.pumpWidget(_harness(["C", "A", "B", "D"], slidesWhenMoved: slides));
+    // Nothing closes or opens: each row is still painted where it stood.
+    expect(find.text("C"), findsOneWidget);
+    expect([topOf("A"), topOf("B"), topOf("C"), topOf("D")], [0, _rowHeight, 2 * _rowHeight, 3 * _rowHeight]);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(topOf("C"), inExclusiveRange(0, 2 * _rowHeight));
+    expect(topOf("A"), inExclusiveRange(0, _rowHeight));
+    expect(topOf("D"), 3 * _rowHeight);
+
+    await tester.pumpAndSettle();
+    expect([topOf("C"), topOf("A"), topOf("B"), topOf("D")], [0, _rowHeight, 2 * _rowHeight, 3 * _rowHeight]);
+  });
+
+  testWidgets("a slide interrupted by another reorder carries on from where the rows stand", (tester) async {
+    bool slides(String item) => true;
+    await tester.pumpWidget(_harness(["A", "B"], slidesWhenMoved: slides));
+    double topOf(String item) => tester.getTopLeft(find.byKey(ValueKey("row-$item"))).dy;
+
+    await tester.pumpWidget(_harness(["B", "A"], slidesWhenMoved: slides));
+    await tester.pump(const Duration(milliseconds: 60));
+    final standing = topOf("B");
+
+    // Put back: B turns round from where it stands instead of jumping.
+    await tester.pumpWidget(_harness(["A", "B"], slidesWhenMoved: slides));
+    expect(topOf("B"), moreOrLessEquals(standing));
+    await tester.pumpAndSettle();
+    expect([topOf("A"), topOf("B")], [0, _rowHeight]);
+  });
+
+  testWidgets("in a scrolled list, the first visible row moving among the sliding rows moves nothing else", (
+    tester,
+  ) async {
+    bool slides(String item) => true;
+    final rows = [for (var at = 0; at < 30; at++) "$at"];
+    await tester.pumpWidget(_harness(rows, slidesWhenMoved: slides));
+    final position = tester.state<ScrollableState>(find.byType(Scrollable)).position..jumpTo(10.5 * _rowHeight);
+    await tester.pump();
+    double topOf(String item) => tester.getTopLeft(find.byKey(ValueKey("row-$item"))).dy;
+    final tops = {
+      for (final item in ["10", "11", "12"]) item: topOf(item),
+    };
+
+    // The row under the top edge and the one below it swap, as a row dragged
+    // up at the list's top edge passes another.
+    await tester.pumpWidget(
+      _harness(
+        [...rows]
+          ..insert(10, rows[11])
+          ..removeAt(12),
+        slidesWhenMoved: slides,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(position.pixels, 10.5 * _rowHeight);
+    expect([topOf("11"), topOf("10"), topOf("12")], [tops["10"], tops["11"], tops["12"]]);
+  });
+
+  testWidgets("in a scrolled list, a row arriving among sliding rows that moved the first visible one opens", (
+    tester,
+  ) async {
+    bool slides(String item) => true;
+    final rows = [for (var at = 0; at < 30; at++) "$at"];
+    await tester.pumpWidget(_harness(rows, slidesWhenMoved: slides));
+    tester.state<ScrollableState>(find.byType(Scrollable)).position.jumpTo(10.5 * _rowHeight);
+    await tester.pump();
+
+    // The first visible row and the next swap, and a row arrives between them.
+    await tester.pumpWidget(
+      _harness(
+        [...rows.take(10), "11", "new", "10", ...rows.skip(12)],
+        slidesWhenMoved: slides,
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final opening = tester.getSize(
+      find.ancestor(of: find.byKey(const ValueKey("row-new")), matching: find.byType(SizeTransition)),
+    );
+    expect(opening.height, inExclusiveRange(0, _rowHeight));
+  });
+
   testWidgets("removed row closes while the following row moves into place", (tester) async {
     await tester.pumpWidget(_harness(["A", "B"]));
     expect(tester.getTopLeft(find.byKey(const ValueKey("row-B"))).dy, _rowHeight);
@@ -58,6 +153,7 @@ void main() {
           PregoAnimatedSliverList<String>(
             items: items,
             itemKey: ValueKey<String>.new,
+            slidesWhenMoved: _neverSlides,
             itemBuilder: (context, index, item) => SizedBox(
               height: _rowHeight,
               child: _Instance(label: item),
@@ -124,6 +220,7 @@ void main() {
           PregoAnimatedSliverList<String>(
             items: items,
             itemKey: ValueKey<String>.new,
+            slidesWhenMoved: _neverSlides,
             itemBuilder: (context, index, item) => Focus(focusNode: focus, child: Text(item)),
           ),
         ],

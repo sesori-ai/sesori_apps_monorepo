@@ -16,7 +16,7 @@ void main() {
     setUp(() {
       catalogService = _FakeCursorCatalogService();
       catalogTracker = CursorCatalogTracker();
-      commandTracker = AcpCommandTracker();
+      commandTracker = AcpCommandTracker(selectionCommands: const {});
       service = CursorSessionOptionsService(
         catalogService: catalogService,
         catalogTracker: catalogTracker,

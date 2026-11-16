@@ -27,6 +27,7 @@ import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
 import "../platform/route_source.dart";
 import "../platform/url_launcher.dart";
+import "../repositories/archive_after_send_preference_storage.dart";
 import "../repositories/bridge_repository.dart";
 import "../repositories/composer_draft_repository.dart";
 import "../repositories/dedicated_worktree_preference_store.dart";
@@ -56,6 +57,7 @@ import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
 import "../services/registered_bridges_service.dart";
 import "../services/selected_computer_service.dart";
+import "../services/session_action_service.dart";
 import "../services/session_detail_load_service.dart";
 import "../services/session_launch_service.dart";
 import "../services/session_unseen_tracker.dart";
@@ -257,6 +259,8 @@ class MockFilesystemApi() extends Mock implements FilesystemApi;
 class MockFileReferenceOpenService() extends Mock implements FileReferenceOpenService;
 
 class MockMessageComposerRestoreService() extends Mock implements MessageComposerRestoreService;
+
+class MockSessionActionService() extends Mock implements SessionActionService;
 
 class MockProjectRepository() extends Mock implements ProjectRepository;
 
@@ -673,6 +677,7 @@ const Session testConstSession = Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   unseen: false,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,
@@ -690,9 +695,11 @@ Session testSession({
   int? lastUserActivityAt = _noInt,
   String pluginId = "plugin-1",
   String? branchName = _noString,
+  int? pinOrder,
 }) {
   return Session(
     approvalOverride: null,
+    pinOrder: pinOrder,
     autoContinuation: null,
     branchName: branchName,
     id: id ?? "session-1",
@@ -1048,6 +1055,16 @@ class FakeCatalogRescanService() implements CatalogRescanService {
 }
 
 class FakeDedicatedWorktreePreferenceStore() implements DedicatedWorktreePreferenceStore {
+  final List<bool> writes = [];
+
+  @override
+  Future<bool> read() async => writes.lastOrNull ?? true;
+
+  @override
+  Future<void> write({required bool value}) async => writes.add(value);
+}
+
+class FakeArchiveAfterSendPreferenceStorage() implements ArchiveAfterSendPreferenceStorage {
   final List<bool> writes = [];
 
   @override

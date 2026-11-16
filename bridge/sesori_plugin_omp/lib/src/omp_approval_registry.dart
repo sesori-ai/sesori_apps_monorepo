@@ -17,7 +17,8 @@ class OmpApprovalRegistry({
       );
 
   /// The `ask` tool names the pair `q0`/`q0__other`; an HTML form names it
-  /// `color`/`color_other`.
+  /// `color`/`color__other` from 18.20.0 and `color`/`color_other` in
+  /// 18.18.3 to 18.19.0.
   @override
   String? elicitationCustomAnswerKey({required String choiceKey, required Set<String> propertyKeys}) {
     for (final candidate in ["${choiceKey}__other", "${choiceKey}_other"]) {

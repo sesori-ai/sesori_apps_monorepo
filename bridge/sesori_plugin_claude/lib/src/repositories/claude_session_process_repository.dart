@@ -107,6 +107,10 @@ final class ClaudeSessionProcessRepository({
   /// long for a quick answer, so the ask is cancelled sooner.
   static const Duration _sideQuestionTimeout = Duration(minutes: 3);
 
+  /// The CLI ends an interrupted turn within milliseconds of acknowledging the
+  /// interrupt (observed on 2.1.325); this only bounds a CLI that never does.
+  static const Duration _interruptSettleTimeout = Duration(seconds: 2);
+
   final Map<String, String> _environment = Map.unmodifiable(environment);
   final Map<String, _ResidentProcess> _resident = {};
   final Map<String, Future<void>> _connecting = {};
@@ -417,10 +421,15 @@ final class ClaudeSessionProcessRepository({
     process.appliedFastMode = fastMode;
   }
 
+  /// Writes a turn to the session's stdin. With [echoAtOnce] the prompt is
+  /// echoed right away, under the uuid it is sent with, exactly as the CLI
+  /// will echo it, and the CLI's own echo is dropped: a new process echoes
+  /// only once it has started up, seconds later.
   ClaudeTurnDispatch sendTurn({
     required String sessionId,
     required List<PluginPromptPart> parts,
     required String? promptId,
+    required bool echoAtOnce,
   }) {
     final process = _resident[sessionId];
     if (process == null) throw StateError("Claude session is not resident: $sessionId");
@@ -450,6 +459,18 @@ final class ClaudeSessionProcessRepository({
       rethrow;
     }
     _startedSessions.add(sessionId);
+    if (echoAtOnce && !_events.isClosed) {
+      if (_earlyEcho(sessionId: sessionId, process: process, pending: pending, content: content) case final echo?) {
+        _events.add(
+          ClaudeSessionProcessMessage(
+            sessionId: sessionId,
+            message: echo,
+            interrupted: process.interrupted,
+            promptId: promptId,
+          ),
+        );
+      }
+    }
     return ClaudeTurnDispatch(
       messageId: pending.messageId,
       outcome: pending.outcome.future,
@@ -494,11 +515,30 @@ final class ClaudeSessionProcessRepository({
     }
   }
 
-  Future<void> interrupt({required String sessionId}) async {
+  /// Interrupts the session's work. With [awaitTurnEnd] it also waits, within
+  /// [_interruptSettleTimeout], for the running turn to end: the CLI
+  /// acknowledges the interrupt before it writes the turn's interrupt record
+  /// and result, so a teardown right after the acknowledgement would drop the
+  /// record a user Stop's stopped row comes from. A turn the CLI started on
+  /// its own (a wakeup, a task report) has no pending turn here, so the caller
+  /// passes its end as [selfStartedTurnEnd].
+  Future<void> interrupt({
+    required String sessionId,
+    required bool awaitTurnEnd,
+    required Future<void>? selfStartedTurnEnd,
+  }) async {
     final process = _resident[sessionId];
     if (process == null) return;
     process.interrupted = true;
     await process.client.sendControlRequest(subtype: "interrupt", params: const {"cancel_queued": true});
+    if (!awaitTurnEnd) return;
+    final running = [
+      for (final pending in process.pendingTurns)
+        if (pending.started && !pending.settled) pending.outcome.future,
+      ?selfStartedTurnEnd,
+    ];
+    if (running.isEmpty) return;
+    await Future.wait(running).timeout(_interruptSettleTimeout, onTimeout: () => const []);
   }
 
   Future<void> teardown({required String sessionId}) async {
@@ -670,24 +710,36 @@ final class ClaudeSessionProcessRepository({
     // A prompt sent mid-turn joins it only at the next tool boundary, so a
     // compaction now is the running turn's, not that prompt's.
     if (promptId == null || content == null || (!opener.started && process.turnActive)) return null;
+    final echo = _earlyEcho(sessionId: sessionId, process: process, pending: opener, content: content);
+    if (echo == null) return null;
+    return (echo: echo, promptId: promptId);
+  }
+
+  /// [pending]'s echo, made before the CLI's own, which is then dropped.
+  ClaudeUserMessage? _earlyEcho({
+    required String sessionId,
+    required _ResidentProcess process,
+    required _PendingTurn pending,
+    required List<Map<String, Object?>> content,
+  }) {
     final echo = ClaudeStreamMessage.parse({
       "type": "user",
       "message": {"role": "user", "content": content},
       "session_id": sessionId,
       "parent_tool_use_id": null,
-      "uuid": opener.messageId,
-      "timestamp": opener.dispatchedAt.toUtc().toIso8601String(),
+      "uuid": pending.messageId,
+      "timestamp": pending.dispatchedAt.toUtc().toIso8601String(),
       "isReplay": true,
     });
     if (echo is! ClaudeUserMessage) return null;
-    opener
+    pending
       ..replayObserved = true
       ..started = true;
     process
       ..turnActive = true
-      ..earlyEchoIds.add(opener.messageId);
+      ..earlyEchoIds.add(pending.messageId);
     _removeSettledReplays(process: process);
-    return (echo: echo, promptId: promptId);
+    return echo;
   }
 
   String? _trackTurnMessage({required _ResidentProcess process, required ClaudeStreamMessage message}) {

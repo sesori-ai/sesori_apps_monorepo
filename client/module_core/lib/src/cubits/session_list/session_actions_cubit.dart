@@ -1,10 +1,14 @@
+import "dart:async";
+
 import "package:bloc/bloc.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../logging/logging.dart";
+import "../../repositories/archive_after_send_preference_storage.dart";
 import "../../repositories/models/send_to_session_result.dart";
 import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
+import "../../repositories/models/session_fork_result.dart";
 import "../../repositories/models/session_pin_result.dart";
 import "../../services/feedback_prompt_service.dart";
 import "../../services/models/session_delete_result.dart";
@@ -13,7 +17,7 @@ import "../../services/session_action_service.dart";
 import "../../services/session_window_service.dart";
 
 /// The actions a session row or page offers: pin, rename, delete, mark read
-/// or unread, send into another session, and stop. The rows they change live
+/// or unread, fork, send into another session, and stop. The rows they change live
 /// in [SessionWindowService] and the trackers.
 ///
 /// It holds no state. Each action returns its own outcome, so actions on
@@ -23,8 +27,26 @@ class SessionActionsCubit({
   required final SessionActionService _actionService,
   required final SessionAbortService _abortService,
   required final FeedbackPromptService _feedbackPromptService,
+  required final ArchiveAfterSendPreferenceStorage _archiveAfterSendStorage,
 }) extends Cubit<void> {
-  this : super(null);
+  this : super(null) {
+    // So the first menu already knows which harnesses fork.
+    unawaited(_actionService.refreshForkCapabilities());
+  }
+
+  /// Whether the session menu offers Fork for [session].
+  bool canFork({required Session session}) => _actionService.canFork(session: session);
+
+  /// Forks [session] after its latest finished turn. [recreateFromBase]
+  /// answers a [SessionForkWorktreeBranchMissing] with a new worktree from
+  /// its base branch.
+  Future<SessionForkResult> forkSession({required Session session, required bool recreateFromBase}) =>
+      _actionService.forkSession(
+        sessionId: session.id,
+        pluginId: session.pluginId,
+        point: const ForkPoint.latest(),
+        recreateFromBase: recreateFromBase,
+      );
 
   /// The row shows [title] at once. False when the bridge refused it, after
   /// the row got its previous title back.
@@ -34,6 +56,12 @@ class SessionActionsCubit({
   /// The row moves into or out of Pinned once the bridge answers.
   Future<SessionPinResult> setPinned({required String sessionId, required bool pinned}) =>
       _window.setPinned(sessionId: sessionId, pinned: pinned);
+
+  /// Moves pinned [sessionId] directly below pinned [afterSessionId], or to
+  /// the top of Pinned when it is null. The row stands there at once. False
+  /// when the bridge refused it, after the rows went back to their places.
+  Future<bool> movePin({required String sessionId, required String? afterSessionId}) =>
+      _window.movePin(sessionId: sessionId, afterSessionId: afterSessionId);
 
   /// [deleteSessionFolder] also removes a "No project" session's own folder.
   Future<SessionDeleteResult> deleteSession({
@@ -52,8 +80,23 @@ class SessionActionsCubit({
       _actionService.markSessionSeen(projectId: projectId, sessionId: sessionId, read: read);
 
   /// Completes once the bridge answers, which waits for the source's summary.
-  Future<SendToSessionResult> sendToSession({required String sourceSessionId, required String targetSessionId}) =>
-      _actionService.sendToSession(sourceSessionId: sourceSessionId, targetSessionId: targetSessionId);
+  Future<SendToSessionResult> sendToSession({
+    required String sourceSessionId,
+    required String sourcePluginId,
+    required String targetSessionId,
+    required String? targetTitle,
+  }) => _actionService.sendToSession(
+    sourceSessionId: sourceSessionId,
+    sourcePluginId: sourcePluginId,
+    targetSessionId: targetSessionId,
+    targetTitle: targetTitle,
+  );
+
+  /// The send sheet's last "Archive this session after sending" choice; on
+  /// until the user turns it off.
+  Future<bool> archiveAfterSend() => _archiveAfterSendStorage.read();
+
+  Future<void> setArchiveAfterSend({required bool value}) => _archiveAfterSendStorage.write(value: value);
 
   /// Stops [sessionId] and its sub-agents, so a busy source can be sent.
   /// False when the bridge did not stop it.

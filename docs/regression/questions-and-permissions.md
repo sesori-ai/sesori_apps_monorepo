@@ -106,7 +106,8 @@ reaches the backend so the turn continues.
   property: the pair is one question with a custom answer. A listed choice
   fills the choice property; custom text fills the paired property and
   satisfies a required choice. Only the OMP plugin pairs, by its `qN`/`qN__other`
-  (ask tool) and `name`/`name_other` (HTML form) naming; shared mapping knows no
+  (ask tool) and `name`/`name__other` (HTML form from 18.20.0; `name_other` in
+  18.18.3 to 18.19.0) naming; shared mapping knows no
   naming convention. Other ACP plugins keep a separate string property as its
   own custom-text question.
 - An ACP schema `default` marks the matching option as the default: a

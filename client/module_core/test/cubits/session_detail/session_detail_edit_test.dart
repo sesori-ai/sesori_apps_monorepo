@@ -6,6 +6,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/interrupted_turn.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_composer_mode.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
@@ -15,6 +16,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/restored_compose
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/side_question_availability.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
+import "package:sesori_dart_core/src/repositories/models/session_fork_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_rewind_result.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
@@ -40,6 +42,7 @@ void main() {
 
   late MockSessionRepository sessionRepository;
   late MockMessageComposerRestoreService restore;
+  late MockSessionActionService actions;
   late MockProductAnalyticsService analytics;
   late ComposerDraftRepository drafts;
   late StreamController<SesoriSessionEvent> sessionEvents;
@@ -51,6 +54,7 @@ void main() {
     final connectionService = MockConnectionService();
     sessionRepository = MockSessionRepository();
     restore = MockMessageComposerRestoreService();
+    actions = MockSessionActionService();
     analytics = stubbedProductAnalyticsService();
     drafts = inMemoryComposerDraftRepository();
     sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
@@ -116,6 +120,7 @@ void main() {
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
       composerRestore: restore,
+      actionService: actions,
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -207,6 +212,88 @@ void main() {
     ).called(1);
   });
 
+  group("an accepted edit's prompt", () {
+    void echo({required String promptId}) {
+      sessionEvents
+        ..add(
+          SesoriMessageUpdated(
+            info: Message.user(
+              invocation: null,
+              handoff: null,
+              id: "echo-1",
+              sessionID: _sessionId,
+              agent: null,
+              time: const MessageTime(created: 200, completed: null),
+              promptId: promptId,
+            ),
+          ),
+        )
+        ..add(
+          const SesoriMessagePartUpdated(
+            part: MessagePart.text(
+              id: "echo-1-text",
+              sessionID: _sessionId,
+              messageID: "echo-1",
+              text: "first prompt, edited",
+            ),
+          ),
+        );
+    }
+
+    List<String> awaiting() => [
+      for (final (:submission, since: _) in loaded().awaitingBridgeSubmissions) submission.promptId,
+    ];
+
+    test("shows as a send on its way until its echo lands", () async {
+      await openSession(status: const SessionStatus.idle());
+      answerRewind(const SessionRewindAccepted());
+      await cubit.editMessage(message: edited);
+
+      await cubit.resendEdit(text: "first prompt, edited", attachments: const []);
+
+      final promptId = rewoundPromptIds().single;
+      expect(awaiting(), [promptId], reason: "the prompt rises while the edit's removals fold");
+      expect(loaded().awaitingBridgeSubmissions.single.submission.displayText, "first prompt, edited");
+
+      echo(promptId: promptId);
+      await pumpEventQueue();
+
+      expect(awaiting(), isEmpty);
+    });
+
+    test("is not held when its echo landed first", () async {
+      await openSession(status: const SessionStatus.idle());
+      final answer = Completer<SessionRewindResult>();
+      final promptIds = <String>[];
+      when(
+        () => sessionRepository.rewindSession(
+          sessionId: any(named: "sessionId"),
+          messageId: any(named: "messageId"),
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+        ),
+      ).thenAnswer((invocation) {
+        if (invocation.namedArguments[#promptId] case final String promptId) promptIds.add(promptId);
+        return answer.future;
+      });
+      await cubit.editMessage(message: edited);
+
+      final resent = cubit.resendEdit(text: "first prompt, edited", attachments: const []);
+      await pumpEventQueue();
+      echo(promptId: promptIds.single);
+      await pumpEventQueue();
+      answer.complete(const SessionRewindAccepted());
+      await resent;
+
+      expect(awaiting(), isEmpty);
+    });
+  });
+
   test("a refusal keeps the edit and says why; a retry after a lost answer reuses its prompt id", () async {
     await openSession(status: const SessionStatus.idle());
     await cubit.editMessage(message: edited);
@@ -228,6 +315,32 @@ void main() {
 
     expect(notices.last, isA<SessionDetailEditFailed>());
     expect(rewoundPromptIds().toSet(), hasLength(1), reason: "the bridge never applies one edit twice");
+  });
+
+  test("a fork from your own message hands its text to the fork's composer, a failed one keeps nothing", () async {
+    await openSession(status: const SessionStatus.idle());
+    void answerFork(SessionForkResult result) => when(
+      () => actions.forkSession(
+        sessionId: _sessionId,
+        pluginId: any(named: "pluginId"),
+        point: const ForkPoint.beforeMessage(messageId: "m1"),
+        recreateFromBase: false,
+      ),
+    ).thenAnswer((_) async => result);
+    Future<SessionForkResult> fork() => cubit.forkSession(
+      point: const ForkPoint.beforeMessage(messageId: "m1"),
+      ownMessage: edited,
+      recreateFromBase: false,
+    );
+
+    answerFork(SessionForkFailed(error: ApiError.generic()));
+    expect(await fork(), isA<SessionForkFailed>());
+    expect(drafts.readForSession(sessionId: "fork-1").text, isEmpty);
+
+    answerFork(SessionForked(session: testSession(id: "fork-1")));
+    expect(await fork(), isA<SessionForked>());
+    expect(drafts.readForSession(sessionId: "fork-1").text, "first prompt");
+    expect(cubit.composerDraft.text, isEmpty, reason: "the origin's composer is left alone");
   });
 
   test("an edit changed after a lost answer goes out under a new prompt id", () async {
@@ -254,6 +367,40 @@ void main() {
     ).captured;
     expect(promptIds.toSet(), hasLength(2), reason: "the bridge would answer the first id without the change");
     expect(loaded().composerMode, const SessionComposerMode.normal());
+  });
+
+  test("an open edit locks Continue on a cut-off turn and sends nothing", () async {
+    await openSession(status: const SessionStatus.idle());
+    sessionEvents.add(
+      SesoriSessionUpdated(
+        info: testSession(id: _sessionId).copyWith(
+          interruption: const SessionInterruption(afterMessageId: "m1", unacknowledged: false),
+        ),
+      ),
+    );
+    await awaitState(
+      cubit: cubit,
+      predicate: (state) => state is SessionDetailLoaded && state.interruptedTurn is InterruptedTurnShown,
+      description: "interrupted line shown",
+    );
+
+    await cubit.editMessage(message: edited);
+
+    expect(await cubit.continueInterruptedTurn(), InterruptedTurnContinueRefusal.editOpen);
+    verifyNever(
+      () => sessionRepository.sendMessage(
+        promptId: any(named: "promptId"),
+        sessionId: any(named: "sessionId"),
+        text: any(named: "text"),
+        attachments: any(named: "attachments"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: any(named: "command"),
+        commandSource: any(named: "commandSource"),
+      ),
+    );
   });
 
   test("Resend during a turn offers to stop first, and Stop and resend sends once the session is idle", () async {
@@ -336,4 +483,5 @@ SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, requi
       cannotContinueMessage: null,
       namesCommandInvocations: false,
       supportsRewind: true,
+      supportsFork: false,
     );

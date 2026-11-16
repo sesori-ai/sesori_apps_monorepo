@@ -415,6 +415,7 @@ class DesktopAttentionService({
         sessionId: session.id,
         projectId: session.projectID,
         sessionTitle: session.title,
+        taskId: null,
         accountId: authState.user.id,
         // The desktop opens attention notifications on the computer it views.
         bridgeId: null,
@@ -582,7 +583,7 @@ class DesktopAttentionService({
     }
 
     _routeDispatcher.dismissPopups();
-    openNotificationSession(
+    openNotificationTarget(
       request: request,
       routeDispatcher: _routeDispatcher,
       routeSource: _routeSource,

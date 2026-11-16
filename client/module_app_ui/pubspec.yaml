@@ -17,6 +17,7 @@ dependencies:
     sdk: flutter
   flutter_markdown_plus: ^1.0.12
   flutter_svg: ^2.3.4
+  flutter_timezone: ^5.1.1
   go_router: ^18.1.4
   intl: any
   liquid_glass_widgets: 1.17.2

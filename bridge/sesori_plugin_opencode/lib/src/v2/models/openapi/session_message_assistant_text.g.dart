@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
+// Source: anomalyco/opencode@v2.3.0 (a6b15d33daf6ab7d35569f6d711fdb630b9f04e7)
 
 import 'package:meta/meta.dart';
 import 'session_message_assistant_content.g.dart';

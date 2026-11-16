@@ -32,7 +32,8 @@ import "session_unseen_tracker.dart";
 import "sse_event_tracker.dart";
 
 /// The root sessions of one [AllSessionsMode] under one [key], loaded from
-/// the bridge a page at a time, pinned sessions first, then newest first, and
+/// the bridge a page at a time, pinned sessions first in the order the user
+/// gave them, then newest first, and
 /// kept current by live events. It owns the one rule for whether a session
 /// matches a key.
 ///
@@ -116,6 +117,14 @@ class SessionWindowService({
   /// The title [sessionId] shows while a rename of it waits for the bridge;
   /// null when none does.
   String? pendingTitle({required String sessionId}) => _renameBySessionId[sessionId]?.visibleValue;
+
+  static const SessionPinOrderCalculator _pinOrderCalculator = SessionPinOrderCalculator();
+
+  /// The pin orders moves still waiting for the bridge give their rows, by
+  /// session, with the move that gave each. They order the rows over what
+  /// loads and live updates bring until that move settles.
+  final Map<String, ({int move, int pinOrder})> _pendingPinOrders = {};
+  int _nextPinMove = 0;
 
   Timer? _queryTimer;
   Timer? _reloadTimer;
@@ -419,6 +428,73 @@ class SessionWindowService({
     return result;
   }
 
+  /// Moves pinned [sessionId] directly below pinned [afterSessionId], or to
+  /// the top of the pinned group when it is null. The rows take their new
+  /// places at once, as the bridge will place them, and keep them through any
+  /// load or live update until it answers; a refused move puts them back.
+  /// Answers whether the bridge moved it, which also tells every other
+  /// surface through the sessions' live updates.
+  Future<bool> movePin({required String sessionId, required String? afterSessionId}) async {
+    final move = ++_nextPinMove;
+    final rewrites = _pinOrderCalculator.move(
+      pinned: [
+        for (final session in _loadedSessions())
+          if (_pinOrderOf(session) case final pinOrder?) (sessionId: session.id, pinOrder: pinOrder),
+      ],
+      sessionId: sessionId,
+      afterSessionId: afterSessionId,
+    );
+    if (rewrites != null && rewrites.isNotEmpty) {
+      for (final (:sessionId, :pinOrder) in rewrites) {
+        _pendingPinOrders[sessionId] = (move: move, pinOrder: pinOrder);
+      }
+      _sortRows();
+    }
+    final moved = await _requestPinMove(sessionId: sessionId, afterSessionId: afterSessionId);
+    if (_state.isClosed) return moved != null;
+    _pendingPinOrders.removeWhere((_, pending) => pending.move == move);
+    if (moved == null) {
+      _sortRows();
+      return false;
+    }
+    // The bridge's places order the rows as this move's did, so nothing moves.
+    for (final session in moved) {
+      if (session.parentID != null) continue;
+      final _SessionChange change = (session: session, removed: false);
+      _replay?.add(change);
+      _applyChange(change);
+    }
+    return true;
+  }
+
+  /// The sessions the bridge rewrote to move [sessionId]'s pin, top first;
+  /// null when it refused or could not be reached.
+  Future<List<Session>?> _requestPinMove({required String sessionId, required String? afterSessionId}) async {
+    try {
+      switch (await _sessionRepository.movePin(sessionId: sessionId, afterSessionId: afterSessionId)) {
+        case SuccessResponse(:final data):
+          return data.sessions;
+        case ErrorResponse(:final error):
+          loge("Failed to move the pin of session $sessionId", error);
+          return null;
+      }
+    } on Object catch (error, stackTrace) {
+      loge("Failed to move the pin of session $sessionId", error, stackTrace);
+      return null;
+    }
+  }
+
+  /// Sorts the rows again, for pin orders a move gave or took back.
+  void _sortRows() {
+    int compare(Session a, Session b) => _compare(a: a, b: b);
+    if (_completeSessions case final sessions?) {
+      _setComplete(sessions: [...sessions]..sort(compare));
+    } else if (_state.value case final SessionWindowLoaded loaded) {
+      final sorted = [...loaded.sessions]..sort(compare);
+      _emit(_withSessions(loaded: loaded, sessions: List.unmodifiable(sorted)));
+    }
+  }
+
   void _reportPinChanged({required bool pinned}) {
     unawaited(
       _productAnalyticsService
@@ -511,6 +587,8 @@ class SessionWindowService({
     _seedUnseen(sessions: sessions, sinceTick: unseenTick);
     final replay = _takeReplay();
     _rowsOutdated = false;
+    // The bridge answers in its stored order, which a pending move is ahead of.
+    if (_pendingPinOrders.isNotEmpty) sessions.sort((a, b) => _compare(a: a, b: b));
     _emit(
       SessionWindowLoaded(
         sessions: List.unmodifiable(sessions),
@@ -936,12 +1014,25 @@ class SessionWindowService({
   bool _isUnseen(Session session) =>
       _sessionUnseenTracker.currentSessionUnseen[session.projectID]?[session.id]?.unseen ?? session.unseen;
 
-  /// The bridge's list order: pinned sessions first, then [_compareTime].
-  /// Archived sessions are never pinned.
+  /// The bridge's list order: pinned sessions first, highest pin order
+  /// first, then [_compareTime]. Archived sessions are never pinned.
   int _compare({required Session a, required Session b}) {
-    if (_mode == AllSessionsMode.active && a.pinned != b.pinned) return a.pinned ? -1 : 1;
+    final byPin = switch ((_pinOrderOf(a), _pinOrderOf(b))) {
+      (final first?, final second?) => second.compareTo(first),
+      (_?, null) => -1,
+      (null, _?) => 1,
+      (null, null) => 0,
+    };
+    if (_mode == AllSessionsMode.active && byPin != 0) return byPin;
     return _compareTime(a: a, b: b);
   }
+
+  /// [session]'s pin order, as a move still waiting for the bridge shows it.
+  /// A pending move's pin order, unless the session has since been unpinned.
+  int? _pinOrderOf(Session session) => switch (session.pinOrder) {
+    null => null,
+    final pinOrder => _pendingPinOrders[session.id]?.pinOrder ?? pinOrder,
+  };
 
   /// The bridge's search order: newest first (archived: most recently
   /// archived first), then by id descending.

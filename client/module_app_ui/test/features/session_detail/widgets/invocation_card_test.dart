@@ -51,6 +51,7 @@ Future<void> _pump(WidgetTester tester, {required Widget child, double width = 3
 
 QueuedMessageBubble _queued({required QueuedMessageBubblePresentation presentation, required PromptTurnShape shape}) =>
     QueuedMessageBubble(
+      body: null,
       key: const ValueKey("row"),
       displayText: "/fixture-greeter Greet the team\nin two lines",
       isCommand: true,
@@ -68,7 +69,14 @@ void main() {
       await _pump(
         tester,
         width: width,
-        child: const UserMessageCard(message: _message, shape: _skill, outlineFade: null, editing: false, onEdit: null),
+        child: const UserMessageCard(
+          message: _message,
+          shape: _skill,
+          outlineFade: null,
+          editing: false,
+          onEdit: null,
+          onFork: null,
+        ),
       );
 
       expect(find.text("You ran /fixture-greeter"), findsOneWidget);
@@ -83,7 +91,14 @@ void main() {
   testWidgets("gives dictated arguments a slot to land on, as a bubble does", (tester) async {
     await _pump(
       tester,
-      child: const UserMessageCard(message: _message, shape: _skill, outlineFade: null, editing: false, onEdit: null),
+      child: const UserMessageCard(
+        message: _message,
+        shape: _skill,
+        outlineFade: null,
+        editing: false,
+        onEdit: null,
+        onFork: null,
+      ),
     );
 
     final slot = tester.widget<SentBubbleSlot>(
@@ -96,7 +111,14 @@ void main() {
     final semantics = tester.ensureSemantics();
     await _pump(
       tester,
-      child: const UserMessageCard(message: _message, shape: _skill, outlineFade: null, editing: false, onEdit: null),
+      child: const UserMessageCard(
+        message: _message,
+        shape: _skill,
+        outlineFade: null,
+        editing: false,
+        onEdit: null,
+        onFork: null,
+      ),
     );
 
     expect(find.descendant(of: find.byType(InvocationCard), matching: find.byType(InkResponse)), findsNothing);
@@ -125,8 +147,14 @@ void main() {
     final queued = await sizeOf(QueuedMessageBubblePresentation.pending(onCancel: () {}, sentAt: DateTime(2000)));
     final confirmed = await sizeOf(
       QueuedMessageBubblePresentation.delivered(
-        message: ({required outlineFade}) =>
-            UserMessageCard(message: _message, shape: _skill, outlineFade: outlineFade, editing: false, onEdit: null),
+        message: ({required outlineFade}) => UserMessageCard(
+          message: _message,
+          shape: _skill,
+          outlineFade: outlineFade,
+          editing: false,
+          onEdit: null,
+          onFork: null,
+        ),
       ),
     );
 

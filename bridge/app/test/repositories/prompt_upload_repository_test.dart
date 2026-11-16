@@ -111,6 +111,27 @@ void main() {
       });
     });
 
+    group("deleteSaved", () {
+      test("removes the saved file's folder and keeps the session's other files", () async {
+        final kept = await save(sessionId: "ses_1", filename: "kept.md");
+        final removed = await save(sessionId: "ses_1", filename: "removed.md");
+
+        await repository.deleteSaved(path: removed);
+
+        expect(Directory(p.dirname(removed)).existsSync(), isFalse);
+        expect(File(kept).existsSync(), isTrue);
+      });
+
+      test("leaves a folder outside the uploads root alone", () async {
+        final outside = Directory(p.join(parent.path, "outside"))..createSync();
+        File(p.join(outside.path, "file.md")).writeAsStringSync("x");
+
+        await repository.deleteSaved(path: p.join(outside.path, "file.md"));
+
+        expect(outside.existsSync(), isTrue);
+      });
+    });
+
     group("deleteSessions", () {
       test("removes the named sessions' folders and skips sessions without one", () async {
         await save(sessionId: "ses_1", filename: "a.txt");

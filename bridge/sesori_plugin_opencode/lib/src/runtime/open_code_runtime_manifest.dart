@@ -27,7 +27,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "1.14.0");
 
   /// The latest stable OpenCode release targeted by this plugin.
-  static const String targetVersion = "2.2.7";
+  static const String targetVersion = "2.3.0";
 
   /// The exact OpenCode version the managed runtime installs.
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
@@ -41,7 +41,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
         assetName: "cli-darwin-arm64-$targetVersion.tgz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "8d4f90c5b23faa724ba1c877d8358072bbb6565c33b8d8b5dca7c7644c4de0bf",
+        sha256: "c25247a72bb9d0cb8feca67eb95f1417b61c9cfb042908756fbaf8d6c170641e",
         archiveBinaryName: "package/bin/opencode",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
@@ -49,7 +49,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
         assetName: "cli-darwin-x64-$targetVersion.tgz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "a2f1bd02c36e180d43999a70126212511ef67686345d600724dd93ea74de7601",
+        sha256: "a75749c0d77ef2cf4b234b45ad1b59a570afdaae23e0da416f258733557e795e",
         archiveBinaryName: "package/bin/opencode",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
@@ -59,7 +59,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
         assetName: "cli-linux-arm64-$targetVersion.tgz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "7e74ceb64fe5704ff2fdef3dee45866efcb580d71f182a6cae29606cad1f8b52",
+        sha256: "be30066353bb592c43919b31072ff4099e069636c31a16806b088737e0287cea",
         archiveBinaryName: "package/bin/opencode",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
@@ -67,7 +67,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
         assetName: "cli-linux-x64-$targetVersion.tgz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "d65935464f93f07913633f977cb99723af64eeff6ae7a822722ce89bedabdd45",
+        sha256: "408f854b5fac7857a3b4df4e783d3a8b70f5cc8c7c3187aac09c5be0576c14ae",
         archiveBinaryName: "package/bin/opencode",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
@@ -77,7 +77,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
         assetName: "cli-windows-arm64-$targetVersion.tgz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "4909131b2998e0350ba8adada6ffb31522193908d8f4a6d67b17b76c52a94f87",
+        sha256: "5b522c46a1429448cdf833e989d9a0d0e2649505ec3d29a87319be2ae3d08247",
         archiveBinaryName: "package/bin/opencode.exe",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
@@ -85,7 +85,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
         assetName: "cli-windows-x64-$targetVersion.tgz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "666d684601380ad9f7b54a004c6fe61c2a94827fac4a6150ba131ea85e507977",
+        sha256: "65e61f579ad62fa5e03579619a0b90b6cfc43504b7c5f20e8b9684bfdf98a978",
         archiveBinaryName: "package/bin/opencode.exe",
         layout: RuntimeArchiveLayout.singleBinary,
       ),

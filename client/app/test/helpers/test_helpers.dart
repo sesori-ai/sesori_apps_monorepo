@@ -127,11 +127,14 @@ void _registerListServices({
   }
   getIt.registerFactory<SessionActionService>(
     () => SessionActionService(
+      sendTracker: SessionSendTracker(),
       sessionRepository: getIt<SessionRepository>(),
       sessionCleanupService: getIt<SessionCleanupService>(),
       sessionUnseenTracker: getIt<SessionUnseenTracker>(),
       failureReporter: getIt<FailureReporter>(),
       selectedComputerService: FakeSelectedComputerService(),
+      productAnalyticsService: getIt<ProductAnalyticsService>(),
+      pluginRepository: MockPluginRepository(),
     ),
   );
   // The session cubits count good interactions toward the rating sheet.
@@ -217,6 +220,7 @@ Widget testHome() {
   final filterTracker = _MockSessionListFilterTracker();
   when(() => filterTracker.projectId).thenAnswer((_) => BehaviorSubject<String?>.seeded(null).stream);
   return SessionScope(
+    sessionSendTracker: SessionSendTracker(),
     createProjectInventory: getIt.call<ProjectInventoryService>,
     createSessionWindow: ({required mode, required projectInventory}) =>
         getIt<SessionWindowService>(param1: mode, param2: projectInventory),
@@ -270,6 +274,7 @@ Widget sessionRowApp({
   final sessions = _MockAllSessionsCubit();
   final rows = [
     AllSessionsRow(
+      sending: null,
       session: session,
       project: project,
       isRunning: false,
@@ -277,6 +282,7 @@ Widget sessionRowApp({
       isAwaitingInput: false,
       isRetrying: false,
       backgroundTaskCount: 0,
+      isInterrupted: false,
     ),
   ];
   whenListen(

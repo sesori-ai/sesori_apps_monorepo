@@ -219,6 +219,82 @@ void main() {
       expect(events, isEmpty);
     });
 
+    test("refuses a send whose model OMP no longer offers before accepting it", () async {
+      await connect();
+      final creating = plugin.createSession(
+        fastMode: false,
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      respond(await waitForFrame(AcpMethods.sessionNew), {
+        "sessionId": "session-1",
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "one/model",
+            "options": const [
+              {"value": "one/model", "name": "One"},
+            ],
+          },
+        ],
+      });
+      await creating;
+
+      await expectLater(
+        plugin.sendPrompt(
+          fastMode: false,
+          promptId: "prompt-1",
+          sessionId: "session-1",
+          parts: const [PluginPromptPart.text(text: "hello")],
+          variant: null,
+          agent: null,
+          model: (providerID: "gone", modelID: "gone/model"),
+        ),
+        throwsA(isA<PluginStaleOptionsException>()),
+      );
+      expect(await plugin.getQueuedPrompts(sessionId: "session-1"), isEmpty);
+      expect(frames(AcpMethods.sessionSetConfigOption), isEmpty);
+    });
+
+    test("forgets the session it created when the create's selection is refused as stale", () async {
+      await connect();
+      final creating = plugin.createSession(
+        fastMode: false,
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: (providerID: "gone", modelID: "gone/model"),
+      );
+      respond(await waitForFrame(AcpMethods.sessionNew), {
+        "sessionId": "session-1",
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "currentValue": "one/model",
+            "options": const [
+              {"value": "one/model", "name": "One"},
+            ],
+          },
+        ],
+      });
+
+      await expectLater(
+        creating,
+        throwsA(isA<PluginStaleOptionsException>().having((e) => e.operation, "operation", "createSession")),
+      );
+      expect(plugin.knownSessionDirectory(sessionId: "session-1"), isNull);
+    });
+
     test("does not prompt after a partially applied model selection", () async {
       await connect();
       final creating = plugin.createSession(
@@ -1048,6 +1124,51 @@ void main() {
       expect(image.base64, "AQ==");
       expect(image.filename, "history.webp");
       expect(image.toString(), isNot(contains("/private/")));
+    });
+
+    // OMP stamps a model call's reasoning with a message id and replays under
+    // fresh ids, so only the live tool message id lets a re-import match it.
+    test("replays a tool call after stamped reasoning as the live tool message", () async {
+      plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
+      final loading = plugin.getSessionMessages("stored");
+      final initialize = await waitForFrame(AcpMethods.initialize);
+      respond(initialize, {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": true},
+        "authMethods": [
+          {"id": "agent", "name": "Agent"},
+        ],
+      });
+      respond(await waitForFrame(AcpMethods.authenticate), const {});
+      final load = await waitForFrame(AcpMethods.sessionLoad);
+      for (final update in <Map<String, dynamic>>[
+        {
+          "sessionUpdate": "agent_thought_chunk",
+          "messageId": "replay-1",
+          "content": {"type": "text", "text": "Thinking"},
+        },
+        {
+          "sessionUpdate": "tool_call",
+          "toolCallId": "call-1",
+          "title": "bash",
+          "kind": "execute",
+          "status": "completed",
+        },
+      ]) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {"sessionId": "stored", "update": update},
+        });
+      }
+      respond(load, {"sessionId": "stored"});
+
+      final messages = await loading;
+      expect(
+        messages.map((message) => message.info.id).last,
+        AcpEventMapper.toolMessageId(sessionId: "stored", toolCallId: "call-1"),
+      );
+      expect(messages, hasLength(2));
     });
 
     test("names a replayed OMP skill prompt as the skill run", () async {

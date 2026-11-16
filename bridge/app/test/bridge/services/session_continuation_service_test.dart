@@ -1,12 +1,14 @@
 import "dart:async";
 
 import "package:clock/clock.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_readiness.dart";
+import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -53,6 +55,7 @@ void main() {
     mutations = _Mutations();
     views = SessionViewService(
       sessions: sessions,
+      scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       continuations: records,
       interruptions: const NoSessionInterruptions(),
       resetBuffer: const Duration(minutes: 2),
@@ -361,6 +364,7 @@ void main() {
     await interruptions.convertLeftover(leftover: leftover, afterMessageId: "m1");
     final projecting = SessionViewService(
       sessions: sessions,
+      scheduledTasks: ScheduledTaskRepository(dao: ScheduledTaskDao(database: db)),
       continuations: records,
       interruptions: interruptions,
       resetBuffer: const Duration(minutes: 2),
@@ -427,6 +431,7 @@ class _Sessions() implements SessionRepository {
     unseen: false,
     lastUserActivityAt: null,
     autoContinuation: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,
@@ -490,6 +495,13 @@ class _Prompts({required final SessionContinuationRepository records}) implement
     sent.add((parts: parts, model: model, variant: variant, agent: agent, fastMode: fastMode));
     if (error case final error?) throw error;
   }
+
+  @override
+  Future<void> sendWithDefaults({
+    required String sessionId,
+    required SessionPromptDefaults? defaults,
+    required Future<void> Function(PromptSettings settings) send,
+  }) => send(SessionPromptService.settingsFrom(defaults: defaults));
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

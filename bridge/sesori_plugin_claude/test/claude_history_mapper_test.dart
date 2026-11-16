@@ -218,6 +218,67 @@ void main() {
       expect(messages.first.info.time?.created, DateTime.parse("2026-08-09T10:00:00Z").millisecondsSinceEpoch);
     });
 
+    test("hides the /model breadcrumb a set_model request leaves, but keeps a /model the user sent", () async {
+      // Record shapes as CLI 2.1.325 writes them: the SDK-mode breadcrumb has a
+      // fresh uuid and no turn attribution; a sent command keeps its stdin uuid
+      // in both; the terminal UI never stamps attribution.
+      const caveat =
+          "<local-command-caveat>The command below was run directly in Claude Code, not sent to you as a "
+          "request, and its output goes straight to the user.</local-command-caveat>";
+      String model(String arguments) =>
+          "<command-name>/model</command-name>\n            <command-message>model</command-message>\n"
+          "            <command-args>$arguments</command-args>";
+      _writeTranscript(
+        temp: temp,
+        records: [
+          _messageRecord(
+            type: "user",
+            uuid: "terminal-model",
+            content: model("haiku"),
+            entrypoint: "cli",
+          ),
+          _messageRecord(type: "user", uuid: "breadcrumb-caveat", content: caveat, isMeta: true, entrypoint: "sdk-cli"),
+          _messageRecord(type: "user", uuid: "breadcrumb-envelope", content: model("sonnet"), entrypoint: "sdk-cli"),
+          _messageRecord(
+            type: "user",
+            uuid: "breadcrumb-output",
+            content: "<local-command-stdout>Set model to `sonnet`</local-command-stdout>",
+            entrypoint: "sdk-cli",
+          ),
+          _messageRecord(
+            type: "user",
+            uuid: "prompt",
+            content: "Reply only with OK.",
+            entrypoint: "sdk-cli",
+            turnAttributionKey: "prompt",
+          ),
+          _messageRecord(type: "user", uuid: "typed-caveat", content: caveat, isMeta: true, entrypoint: "sdk-cli"),
+          _messageRecord(
+            type: "user",
+            uuid: "typed-model",
+            content: model("opus"),
+            entrypoint: "sdk-cli",
+            turnAttributionKey: "typed-model",
+          ),
+        ],
+      );
+
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        agentId: null,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        commands: const [],
+        residentTaskToolUseIds: const {},
+        catalogModelId: null,
+      );
+
+      expect(messages.map((message) => message.info.id), ["terminal-model", "prompt", "typed-model"]);
+      expect(
+        messages.map((message) => message.parts.single.text),
+        ["/model haiku", "Reply only with OK.", "/model opus"],
+      );
+    });
+
     test("maps the transcript-only compaction summary to one compaction row with its boundary's details", () async {
       _writeTranscript(
         temp: temp,
@@ -364,6 +425,72 @@ void main() {
         ),
         isEmpty,
       );
+    });
+
+    test("replays a user interrupt as a stopped row and drops the CLI's filler reply", () async {
+      _writeTranscript(
+        temp: temp,
+        records: [
+          _messageRecord(
+            type: "user",
+            uuid: "prompt",
+            content: const [
+              {"type": "text", "text": "write an essay"},
+            ],
+          ),
+          _messageRecord(
+            type: "assistant",
+            uuid: "partial-record",
+            messageId: "partial",
+            model: "claude-test-model",
+            content: const [
+              {"type": "text", "text": "Rivers"},
+            ],
+          ),
+          _messageRecord(
+            type: "user",
+            uuid: "interrupt",
+            timestamp: "2026-08-09T10:00:05Z",
+            content: const [
+              {"type": "text", "text": "[Request interrupted by user]"},
+            ],
+          ),
+          _messageRecord(
+            type: "assistant",
+            uuid: "filler",
+            messageId: "filler-message",
+            model: "<synthetic>",
+            isApiErrorMessage: false,
+            content: const [
+              {"type": "text", "text": "No response requested."},
+            ],
+          ),
+          _messageRecord(
+            type: "user",
+            uuid: "tool-interrupt",
+            content: const [
+              {"type": "text", "text": "[Request interrupted by user for tool use]"},
+            ],
+          ),
+        ],
+      );
+
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        agentId: null,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        commands: const [],
+        residentTaskToolUseIds: const {},
+        catalogModelId: null,
+      );
+
+      expect(messages.map((message) => message.info.id), ["prompt", "partial", "interrupt", "tool-interrupt"]);
+      final stopped = messages.map((message) => message.info).whereType<PluginMessageError>().toList();
+      expect(stopped.map((error) => error.kind), [PluginErrorKind.stopped, PluginErrorKind.stopped]);
+      expect(stopped.first.errorMessage, "[Request interrupted by user]");
+      expect(stopped.first.modelID, "claude-test-model");
+      expect(stopped.first.time?.created, DateTime.utc(2026, 8, 9, 10, 0, 5).millisecondsSinceEpoch);
+      expect(messages.where((message) => message.info.id == "interrupt").single.parts, isEmpty);
     });
 
     test("replays CLI API failures as one error instead of a synthetic assistant", () async {
@@ -528,11 +655,15 @@ Map<String, Object?> _messageRecord({
   bool? isApiErrorMessage,
   int? apiErrorStatus,
   String? error,
+  String? turnAttributionKey,
+  String? entrypoint,
 }) => {
   "type": type,
   "sessionId": _sessionId,
   "uuid": uuid,
   "timestamp": timestamp,
+  "turnAttributionKey": ?turnAttributionKey,
+  "entrypoint": ?entrypoint,
   "isSidechain": ?isSidechain,
   "isMeta": ?isMeta,
   "isVisibleInTranscriptOnly": ?isVisibleInTranscriptOnly,

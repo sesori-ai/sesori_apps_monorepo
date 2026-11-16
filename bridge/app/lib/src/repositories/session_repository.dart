@@ -39,6 +39,7 @@ import "package:sesori_shared/sesori_shared.dart"
         CommandSource,
         Message,
         MessageHandoff,
+        MessageHandoffNotSent,
         MessageHandoffSent,
         MessagePartSubtask,
         MessageUser,
@@ -54,6 +55,7 @@ import "package:sesori_shared/sesori_shared.dart"
         SessionPageCounts,
         SessionPageFilter,
         SessionPageMode,
+        SessionPinOrderCalculator,
         SessionPromptDefaults,
         SessionStatus,
         SessionStatusBusy,
@@ -120,7 +122,14 @@ typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 typedef ScheduledRunSessionLink = ({String taskId, SessionApprovalMode approvalOverride});
 
 /// The deleted root as clients see it, plus every session id removed with it.
-typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
+/// [projectId] and [worktreePath] are the deleted root's stored keys, for
+/// cleanup that must wait until its row is gone.
+typedef DeletedSessionSubtree = ({
+  Session session,
+  List<String> sessionIds,
+  String projectId,
+  String? worktreePath,
+});
 
 typedef SessionPage = ({List<Session> items, SessionPageCursor? nextCursor, SessionPageCounts counts});
 
@@ -140,6 +149,7 @@ class SessionRepository({
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
   static const ActiveSessionRunningCalculator _runningCalculator = ActiveSessionRunningCalculator();
+  static const SessionPinOrderCalculator _pinOrderCalculator = SessionPinOrderCalculator();
 
   final Map<String, Set<String>> _tombstonedBackendSessionIds = <String, Set<String>>{};
   final Set<String> _deletedSessionIds = <String>{};
@@ -149,6 +159,7 @@ class SessionRepository({
   final Set<String> _tombstonesLoaded = <String>{};
   final Map<String, _BusyObservation> _busyObservations = <String, _BusyObservation>{};
   final PromptStampTracker _stamps = PromptStampTracker();
+  final Map<String, QueuedSessionPrompt> _heldRequests = <String, QueuedSessionPrompt>{};
   int _lastProjectionTimestamp = 0;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
@@ -269,14 +280,14 @@ class SessionRepository({
       ],
       filter: filter,
       runningIds: runningIds,
-      after: cursor == null ? null : (pinned: cursor.pinned, sortAt: cursor.sortAt, sessionId: cursor.sessionId),
+      after: cursor == null ? null : (pinOrder: cursor.pinOrder, sortAt: cursor.sortAt, sessionId: cursor.sessionId),
       limit: limit,
     );
     return (
       items: _mapCatalogSessions(rows: page.rows),
       nextCursor: switch (page.nextKey) {
-        (:final pinned, :final sortAt, :final sessionId) => SessionPageCursor(
-          pinned: pinned,
+        (:final pinOrder, :final sortAt, :final sessionId) => SessionPageCursor(
+          pinOrder: pinOrder,
           sortAt: sortAt,
           sessionId: sessionId,
         ),
@@ -663,6 +674,30 @@ class SessionRepository({
     return message;
   }
 
+  /// Records the summary request [messageId] of [sessionId] as [notSent],
+  /// for [stampNotSentRequest]. A harness stopped before it echoed the
+  /// request can still report it afterwards, naming no prompt, so
+  /// [markHandoffNotSent] cannot reach that update.
+  void markRequestNotSent({
+    required String sessionId,
+    required String messageId,
+    required MessageHandoffNotSent notSent,
+  }) => _stamps.recordNotSentRequest(sessionId: sessionId, messageId: messageId, notSent: notSent);
+
+  /// [message] stamped as not sent when it is a summary request
+  /// [markRequestNotSent] recorded. Applied as the update leaves the bridge,
+  /// not when it is normalized: the harness can report the request before the
+  /// send marks it, and the update can wait behind the stop until after, even
+  /// an echo already stamped sent.
+  Message stampNotSentRequest({required Message message}) {
+    if (message case MessageUser(:final sessionID, :final id, handoff: MessageHandoffSent() || null)) {
+      if (_stamps.notSentRequestFor(sessionId: sessionID, messageId: id) case final notSent?) {
+        return message.copyWith(handoff: notSent);
+      }
+    }
+    return message;
+  }
+
   /// Turns the `sent` handoff recorded for the prompt [promptId] to
   /// [sessionId] into its not-sent form, so an echo that has yet to arrive,
   /// or a later live update of one that has, is stamped as not sent.
@@ -680,22 +715,34 @@ class SessionRepository({
     }
   }
 
-  /// [prompts] with the source of each command this bridge sent to [sessionId].
-  List<QueuedSessionPrompt> stampQueuedCommandSources({
+  /// [prompts] with the stamps this bridge recorded for its sends to
+  /// [sessionId]: the source of each command, and the handoff of each prompt
+  /// that sends one session into another, so a client never shows a handoff
+  /// prompt as a plain message while it waits for its echo.
+  ///
+  /// A request [holdRequest] keeps is listed too, when [prompts] lacks it.
+  List<QueuedSessionPrompt> stampQueuedPrompts({
     required String sessionId,
     required List<QueuedSessionPrompt> prompts,
   }) => [
     for (final prompt in prompts)
-      if (prompt.command != null && prompt.commandSource == null)
-        prompt.copyWith(
-          commandSource: switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
-            PromptStampCommand(:final invocation) => invocation.source,
-            PromptStampHandoff() || null => null,
-          },
-        )
-      else
-        prompt,
+      switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
+        PromptStampCommand(:final invocation) when prompt.command != null && prompt.commandSource == null =>
+          prompt.copyWith(commandSource: invocation.source),
+        PromptStampHandoff(:final handoff) => prompt.copyWith(handoff: handoff),
+        PromptStampCommand() || null => prompt,
+      },
+    if (_heldRequests[sessionId] case final held? when prompts.every((prompt) => prompt.id != held.id)) held,
   ];
+
+  /// Keeps [request] in [sessionId]'s queue until [releaseRequest]: a stopped
+  /// harness drops a send's summary request from its own queue before the
+  /// bridge has marked the message that takes its place.
+  void holdRequest({required String sessionId, required QueuedSessionPrompt request}) =>
+      _heldRequests[sessionId] = request;
+
+  /// Stops listing the request [holdRequest] kept for [sessionId].
+  void releaseRequest({required String sessionId}) => _heldRequests.remove(sessionId);
 
   /// Sends [parts] as the prompt [promptId]. A [handoff] is remembered under
   /// [promptId], so the user message that fulfils it is stamped by
@@ -902,7 +949,7 @@ class SessionRepository({
       body: (plugin, _) async =>
           (await plugin.getQueuedPrompts(sessionId: binding.backendSessionId)).toSharedQueuedPrompts(),
     );
-    return stampQueuedCommandSources(sessionId: sessionId, prompts: prompts ?? const []);
+    return stampQueuedPrompts(sessionId: sessionId, prompts: prompts ?? const []);
   }
 
   /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
@@ -1013,6 +1060,11 @@ class SessionRepository({
             },
       );
 
+  /// The sessions [taskId]'s runs started that are neither archived nor
+  /// pinned, newest first: the candidates for archiving old runs.
+  Future<List<String>> listArchivableScheduledRunSessionIds({required String taskId}) =>
+      _sessionDao.listUnarchivedUnpinnedScheduledRunSessionIds(scheduledTaskId: taskId);
+
   /// Whether [sessionId] is between turns with nothing waiting on the user.
   /// The one owner of that question for scheduled runs.
   ///
@@ -1034,6 +1086,26 @@ class SessionRepository({
     } on Object catch (error, stackTrace) {
       Log.w("Could not read whether session $sessionId is quiet", error, stackTrace);
       return SessionQuietness.unknown;
+    }
+  }
+
+  /// How long [sessionId]'s prompt cache stays warm after its last use, or
+  /// null when its harness cannot tell or is not running.
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async {
+    try {
+      final binding = await _sessionDao.getSession(sessionId: sessionId);
+      if (binding == null) return null;
+      return await _runtime.useIfActive<Duration?>(
+        pluginId: binding.pluginId,
+        operation: SessionOperation.getPromptCacheLife,
+        body: (plugin, _) {
+          _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+          return plugin.getPromptCacheLife(sessionId: binding.backendSessionId);
+        },
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not read session $sessionId's prompt-cache life", error, stackTrace);
+      return null;
     }
   }
 
@@ -1119,6 +1191,24 @@ class SessionRepository({
   Future<Session?> setPinned({required String sessionId, required bool pinned}) async {
     final stored = await _sessionDao.setPinned(sessionId: sessionId, pinned: pinned);
     return stored ? await getCatalogSession(sessionId: sessionId) : null;
+  }
+
+  /// Places pinned [sessionId] directly below pinned [afterSessionId], or at
+  /// the top of the pinned group when it is null, and returns every session
+  /// whose pin order changed, top first; empty when it already stood there.
+  /// Null when either is not pinned or they are the same session.
+  Future<List<Session>?> movePin({required String sessionId, required String? afterSessionId}) async {
+    final rewrites = await _sessionDao.attachedDatabase.transaction(() async {
+      final rewrites = _pinOrderCalculator.move(
+        pinned: await _sessionDao.getPinnedOrder(),
+        sessionId: sessionId,
+        afterSessionId: afterSessionId,
+      );
+      if (rewrites != null) await _sessionDao.setPinOrders(orders: rewrites);
+      return rewrites;
+    });
+    if (rewrites == null) return null;
+    return [for (final (:sessionId, pinOrder: _) in rewrites) ?await getCatalogSession(sessionId: sessionId)];
   }
 
   /// The override that governs [sessionId]'s permission requests: its own, or
@@ -1283,7 +1373,12 @@ class SessionRepository({
         return [for (final binding in subtree) binding.sessionId];
       },
     );
-    return (session: deletionSnapshot, sessionIds: sessionIds);
+    return (
+      session: deletionSnapshot,
+      sessionIds: sessionIds,
+      projectId: binding.projectId,
+      worktreePath: binding.worktreePath,
+    );
   }
 
   /// Tombstones the harness session of every row in [root]'s subtree, so
@@ -1956,6 +2051,30 @@ class SessionRepository({
       worktreePath: worktreePath,
     );
     return sessions.isNotEmpty;
+  }
+
+  /// Whether a session other than [sessionId], archived or not, still names
+  /// [worktreePath].
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) {
+    return _sessionDao.hasOtherSessionsNamingWorktree(
+      sessionId: sessionId,
+      projectId: projectId,
+      worktreePath: worktreePath,
+    );
+  }
+
+  /// Records the branch a removed worktree was on, or null for a detached
+  /// HEAD, on every session that names it, so a fork can check it out again.
+  Future<void> recordWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) {
+    return _sessionDao.setWorktreeBranch(projectId: projectId, worktreePath: worktreePath, branchName: branchName);
   }
 
   /// The project's recorded live directory, suitable as a git/CLI working

@@ -19,6 +19,10 @@ stored or sent to the bridge.
   opens a new turn after text, reasoning, an error, or a failed or cancelled
   step, and when it is the first message loaded. Automation never opens a
   turn. Messages before the first opening prompt form one leading segment.
+- Edits and forks apply the same turn rule (`splitPromptTurns`) on the bridge;
+  their contract lives in [session edit and fork](session-edit-and-fork.md).
+  When an edit removes messages, the pinned prompt and prompt numbering drop
+  them at once, while their rows fold away without moving the rows being read.
 - A pinch in opens the Prompts screen, by touch or trackpad, at most once per
   gesture, at a scale of 0.8 or less; a pinch out on the transcript does
   nothing. A second finger

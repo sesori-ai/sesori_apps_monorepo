@@ -164,16 +164,31 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     final openSideChat = SessionDetailPresentationScope.of(context).openSideChat;
     if (openSideChat == null || state.session.parentID != null) return null;
     final loc = context.loc;
+    final cubit = context.read<SessionDetailCubit>();
+    void open({required String pluginId}) => openSideChat(
+      context: context,
+      sessionId: widget.sessionId,
+      pluginId: pluginId,
+      availability: state.sideQuestions,
+      isArchived: state.isArchived,
+      initialQuestion: null,
+    );
     return switch ((state.sideQuestions, state.pluginId)) {
-      (SideQuestionAvailability.available, final String pluginId) => ComposerSideQuestionOpen(
-        onOpen: () => openSideChat(
-          context: context,
-          sessionId: widget.sessionId,
-          pluginId: pluginId,
-          availability: state.sideQuestions,
-          isArchived: state.isArchived,
+      (SideQuestionAvailability.available, final String pluginId) => switch (state.composerMode) {
+        SessionComposerSideQuestion() => ComposerSideQuestionAsking(
+          onOpen: () => open(pluginId: pluginId),
+          onLeave: cubit.leaveSideQuestion,
         ),
-      ),
+        SessionComposerNormal() => ComposerSideQuestionOpen(
+          onOpen: () => open(pluginId: pluginId),
+          onAskInComposer: cubit.startSideQuestion,
+        ),
+        // A side question never discards an edit: Cancel it first.
+        SessionComposerEditing() => ComposerSideQuestionOpen(
+          onOpen: () => open(pluginId: pluginId),
+          onAskInComposer: null,
+        ),
+      },
       (SideQuestionAvailability.bridgeUpdateRequired, _) => ComposerSideQuestionBlocked(
         reason: loc.sideQuestionBridgeUpdateRequired,
       ),
@@ -182,6 +197,26 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
       ),
       _ => const ComposerSideQuestionPending(),
     };
+  }
+
+  /// Send in side-question mode: a new side chat asks what the composer holds.
+  void _askSideQuestion({required BuildContext context}) {
+    final openSideChat = SessionDetailPresentationScope.read(context).openSideChat;
+    final cubit = context.read<SessionDetailCubit>();
+    final current = cubit.state;
+    if (openSideChat == null || current is! SessionDetailLoaded) return;
+    final pluginId = current.pluginId;
+    if (pluginId == null) return;
+    final question = cubit.submitSideQuestion();
+    if (question == null) return;
+    openSideChat(
+      context: context,
+      sessionId: widget.sessionId,
+      pluginId: pluginId,
+      availability: current.sideQuestions,
+      isArchived: current.isArchived,
+      initialQuestion: question,
+    );
   }
 
   Widget _buildComposer({
@@ -215,8 +250,9 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     final cubit = context.read<SessionDetailCubit>();
     final editing = switch (composerMode) {
       final SessionComposerEditing editing => editing,
-      SessionComposerNormal() => null,
+      SessionComposerNormal() || SessionComposerSideQuestion() => null,
     };
+    final asksSideQuestion = composerMode is SessionComposerSideQuestion;
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     final pointer = composerCapabilities.presentation == ComposerPresentation.pointer;
     return Column(
@@ -227,6 +263,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
           child: CallbackShortcuts(
             bindings: {
               if (editing != null) const SingleActivator(LogicalKeyboardKey.escape): cubit.cancelEditing,
+              if (asksSideQuestion) const SingleActivator(LogicalKeyboardKey.escape): cubit.leaveSideQuestion,
             },
             child: PromptInput(
               draftIdentity: widget.sessionId,
@@ -245,18 +282,32 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
               fileUploadsSupported: fileUploadsSupported,
               isBusy: isBusy,
               canSend: editing == null || editing.phase == SessionEditPhase.composing,
+              // A sent edit holds the composer until the bridge answers.
+              lockedNote: switch (editing?.phase) {
+                SessionEditPhase.stopping || SessionEditPhase.sending => context.loc.sessionDetailEditSendingLock,
+                _ => null,
+              },
               // An edit stays in the composer until the bridge takes it.
               submitAction: editing == null
                   ? null
                   : PromptSubmitAction(label: context.loc.sessionDetailEditResend, icon: TablerRegular.arrow_up),
-              onSend: ({required draft, required command, required attachments}) => editing == null
-                  ? cubit.sendMessage(
-                      text: draft.text,
-                      command: command,
-                      inputMode: command == null ? draft.inputMode : ComposerInputMode.typed,
-                      attachments: attachments,
-                    )
-                  : cubit.resendEdit(text: draft.text, attachments: attachments),
+              onSend: ({required draft, required command, required attachments}) {
+                switch (composerMode) {
+                  case SessionComposerNormal():
+                    unawaited(
+                      cubit.sendMessage(
+                        text: draft.text,
+                        command: command,
+                        inputMode: command == null ? draft.inputMode : ComposerInputMode.typed,
+                        attachments: attachments,
+                      ),
+                    );
+                  case SessionComposerEditing():
+                    unawaited(cubit.resendEdit(text: draft.text, attachments: attachments));
+                  case SessionComposerSideQuestion():
+                    _askSideQuestion(context: context);
+                }
+              },
               onVoiceTranscriptionFinished: composerCapabilities.voiceSupport.isSupported
                   ? context.read<SessionDetailCubit>().reportVoiceTranscriptionCompleted
                   : null,

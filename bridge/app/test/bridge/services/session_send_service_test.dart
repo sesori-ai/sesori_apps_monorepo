@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 
 import "package:clock/clock.dart";
+import "package:sesori_bridge/src/foundation/session_archived_read_only_exception.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_transcript_markdown_builder.dart";
 import "package:sesori_bridge/src/repositories/models/history_window.dart";
 import "package:sesori_bridge/src/repositories/models/normalized_bridge_event.dart";
@@ -67,6 +68,7 @@ void main() {
     plugins: const _Plugins(),
     clock: Clock.fixed(DateTime.utc(2026, 11, 15, 12)),
     summaryTimeout: summaryTimeout,
+    settleTimeout: const Duration(milliseconds: 20),
   );
 
   setUp(() {
@@ -111,10 +113,38 @@ void main() {
 
   Future<void> send() => service.send(sourceSessionId: _source, targetSessionId: _target);
 
+  /// The source queues the send announces, as (prompt id, handoff) pairs.
+  List<List<(String, MessageHandoff?)>> watchQueues() {
+    final queues = <List<(String, MessageHandoff?)>>[];
+    final subscription = service.queuedRequests.listen((queue) {
+      expect(queue.sessionId, _source);
+      queues.add([for (final prompt in queue.prompts) (prompt.id, prompt.handoff)]);
+    });
+    addTearDown(subscription.cancel);
+    return queues;
+  }
+
+  const sent = MessageHandoff.sent(targetSessionId: _target, targetTitle: "Target title");
+  const notSent = MessageHandoff.notSent(targetSessionId: _target, targetTitle: "Target title");
+
   test("sends the summary to the target with the saved transcript path", () async {
     finishSummaryTurn();
+    final queues = watchQueues();
+    final queuedBeforePrompting = <int>[];
+    final playTurn = prompts.onSummaryAccepted;
+    prompts.onSummaryAccepted = (promptId) {
+      queuedBeforePrompting.add(queues.length);
+      playTurn?.call(promptId);
+    };
 
     await send();
+
+    // Listed before the source runs, so no client shows a plain working row
+    // first; its echo then settles it on every client.
+    expect(queuedBeforePrompting, [1]);
+    expect(queues, [
+      [(prompts.sends.first.promptId, sent)],
+    ]);
 
     final request = prompts.sends.first;
     expect(request.sessionId, _source);
@@ -156,6 +186,49 @@ void main() {
     );
     expect(sessions.notSentPrompts, isEmpty);
     expect(history.notSentMessages, isEmpty);
+  });
+
+  test("lists the source as sending to every client until the send ends", () async {
+    final changes = <Map<String, ActiveSessionSending>>[];
+    service.sendingChanges.listen((_) => changes.add(Map.of(service.sending)));
+    final whilePrompting = <Map<String, ActiveSessionSending>>[];
+    prompts.onSummaryAccepted = (promptId) {
+      whilePrompting.add(Map.of(service.sending));
+      events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
+      events.add(const NormalizedStatusEvent(sessionId: _source, status: SessionStatus.idle()));
+    };
+
+    final summaries = [
+      const ProjectActivitySummary(
+        id: "project",
+        activeSessions: [
+          ActiveSession(id: _source, sending: null, lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: "other", sending: null, lastUserActivityAt: null, updatedAt: null),
+        ],
+      ),
+    ];
+    final marked = <List<ProjectActivitySummary>>[];
+    final playTurn = prompts.onSummaryAccepted;
+    prompts.onSummaryAccepted = (promptId) {
+      marked.add(service.markSending(projects: summaries));
+      playTurn?.call(promptId);
+    };
+
+    await send();
+
+    const sending = {_source: ActiveSessionSending(targetTitle: "Target title")};
+    expect(whilePrompting, [sending]);
+    expect([for (final active in marked.single.single.activeSessions) active.sending], [sending[_source], null]);
+    expect(service.markSending(projects: summaries), same(summaries));
+    expect(changes, [sending, <String, ActiveSessionSending>{}]);
+  });
+
+  test("a failed send stops listing its source", () async {
+    prompts.summaryFailure = _staleOptions();
+
+    await refusalOf(send());
+
+    expect(service.sending, isEmpty);
   });
 
   test("the transcript leaves out the summary exchanges of earlier sends", () async {
@@ -360,6 +433,101 @@ void main() {
         expect(history.notSentMessages, isEmpty);
       });
     }
+
+    // Claude records a request it was stopped before echoing, under an id no
+    // prompt id names, and the store holds it only once the stop has settled.
+    final unechoed = <String, (SendToSessionErrorCode, void Function())>{
+      "a stop": (SendToSessionErrorCode.summaryStopped, () => aborts.add(_source)),
+      "a session error": (
+        SendToSessionErrorCode.summaryFailed,
+        () => events.add(const NormalizedOtherEvent(event: BridgeSseSessionError(sessionID: _source))),
+      ),
+    };
+    for (final MapEntry(key: name, value: (code, interrupt)) in unechoed.entries) {
+      test("before the echo: $name marks the request the source stored once it settles", () async {
+        prompts.onSummaryAccepted = (_) {
+          interrupt();
+          Future(() {
+            history.messages = [
+              ...history.messages,
+              _userMessage(id: "stored-unechoed", text: prompts.sends.first.text),
+            ];
+            events.add(const NormalizedOtherEvent(event: BridgeSseSessionIdle(sessionID: _source)));
+          }).ignore();
+        };
+
+        // A prompt the user queued while the summary was written.
+        sessions.harnessQueue = [
+          const QueuedSessionPrompt(
+            id: "user-prompt",
+            text: "Fixture follow-up",
+            command: null,
+            commandSource: null,
+            handoff: null,
+            dispatchState: QueuedPromptDispatchState.queued,
+            createdAt: 0,
+          ),
+        ];
+        final queues = watchQueues();
+
+        expect(await refusalOf(send()), code);
+        expect(sessions.notSentPrompts, [prompts.sends.first.promptId]);
+        expect(history.backfilled, [_source]);
+        expect(history.notSentMessages, ["stored-unechoed"]);
+        // The queued request turns not sent at once, and leaves once the
+        // stored request carries the marker. The user's prompt stays listed.
+        final promptId = prompts.sends.first.promptId;
+        expect(queues, [
+          [(promptId, sent)],
+          [("user-prompt", null), (promptId, notSent)],
+          [("user-prompt", null)],
+        ]);
+        // Its later live updates name no prompt, so they are stamped by id.
+        expect(sessions.notSentRequests, ["stored-unechoed"]);
+        // The harness's own queue keeps listing it until then.
+        expect(sessions.heldWhenMarked, [promptId]);
+        expect(sessions.held, isNull);
+      });
+    }
+
+    test("before the echo: a stop whose queue can't be read still fails as stopped and marks the request", () async {
+      prompts.onSummaryAccepted = (_) {
+        aborts.add(_source);
+        Future(() {
+          history.messages = [
+            ...history.messages,
+            _userMessage(id: "stored-unechoed", text: prompts.sends.first.text),
+          ];
+          events.add(const NormalizedOtherEvent(event: BridgeSseSessionIdle(sessionID: _source)));
+        }).ignore();
+      };
+      sessions.queueReadError = StateError("fixture queue read failure");
+
+      expect(await refusalOf(send()), SendToSessionErrorCode.summaryStopped);
+      expect(history.notSentMessages, ["stored-unechoed"]);
+      expect(sessions.held, isNull);
+    });
+
+    test("before the echo: a stop marks nothing when the source never stored the request", () async {
+      prompts.onSummaryAccepted = (_) {
+        // An earlier send to the same target asked with the same text.
+        history.messages = [
+          ...history.messages,
+          _userMessage(
+            id: "earlier-sent",
+            text: prompts.sends.first.text,
+            handoff: const MessageHandoff.sent(targetSessionId: _target, targetTitle: "Target title"),
+          ),
+        ];
+        aborts.add(_source);
+        Future(() => events.add(const NormalizedStatusEvent(sessionId: _source, status: SessionStatus.idle())))
+            .ignore();
+      };
+
+      expect(await refusalOf(send()), SendToSessionErrorCode.summaryStopped);
+      expect(history.backfilled, [_source]);
+      expect(history.notSentMessages, isEmpty);
+    });
   });
 
   group("refuses before sending anything", () {
@@ -423,9 +591,13 @@ void main() {
 
   test("a source that refuses the summary request is unavailable", () async {
     prompts.summaryFailure = StateError("plugin not routable");
+    final queues = watchQueues();
 
     expect(await refusalOf(send()), SendToSessionErrorCode.sourceUnavailable);
     expect(transcripts.saved, isEmpty);
+    // The request it listed leaves the queue again.
+    expect(queues, hasLength(2));
+    expect(queues.last, isEmpty);
   });
 
   test("a source whose saved options its harness no longer offers says so", () async {
@@ -460,24 +632,24 @@ void main() {
     expect(prompts.sends.last.sessionId, _target);
   });
 
-  test("a second send racing the first is refused as busy", () async {
+  test("a second send racing the first is refused as busy, before the source reports busy", () async {
     final accepted = Completer<String>();
-    prompts.onSummaryAccepted = (promptId) {
-      // The harness reports the turn as running once it accepts the prompt.
-      sessions.statuses[_source] = const SessionStatus.busy(since: null);
-      accepted.complete(promptId);
-    };
+    // The source's busy status has yet to arrive.
+    prompts.onSummaryAccepted = accepted.complete;
 
     final first = send();
-    final second = send();
+    final second = refusalOf(send());
     final promptId = await accepted.future;
 
-    expect(await refusalOf(second), SendToSessionErrorCode.sourceBusy);
+    expect(await second, SendToSessionErrorCode.sourceBusy);
+    // The refused send leaves the first one listed.
+    expect(service.sending.keys, [_source]);
     events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
     events.add(const NormalizedStatusEvent(sessionId: _source, status: SessionStatus.idle()));
     await first;
     expect(prompts.sends.where((send) => send.sessionId == _source), hasLength(1));
     expect(transcripts.saved, hasLength(1));
+    expect(service.sending, isEmpty);
   });
 
   test("idle before the echo does not end the wait", () async {
@@ -684,6 +856,7 @@ void main() {
       expect(error.userFacingReason, "The target is read-only.");
       expect(error.cause, isA<SessionPromptRefusedException>());
     }
+    expect(transcripts.deleted, [transcripts.pathFor(transcripts.saved.single)]);
   });
 
   test("a target whose saved options its harness no longer offers says so", () async {
@@ -691,6 +864,26 @@ void main() {
     prompts.targetFailure = _staleOptions();
 
     expect(await refusalOf(send()), SendToSessionErrorCode.targetOptionsUnavailable);
+    expect(transcripts.deleted, [transcripts.pathFor(transcripts.saved.single)]);
+  });
+
+  test("a target archived while the summary was written is reported as archived", () async {
+    finishSummaryTurn();
+    prompts.targetFailure = SessionArchivedReadOnlyException(
+      rejection: const SessionArchivedRejection(sessionId: _target, reason: SessionArchivedReason.archivedReadOnly),
+    );
+
+    expect(await refusalOf(send()), SendToSessionErrorCode.targetArchived);
+    expect(transcripts.deleted, [transcripts.pathFor(transcripts.saved.single)]);
+  });
+
+  test("a target failure that may follow its acceptance keeps the transcript", () async {
+    finishSummaryTurn();
+    prompts.targetFailure = StateError("target down");
+
+    expect(await refusalOf(send()), SendToSessionErrorCode.targetRefused);
+    expect(transcripts.saved, hasLength(1));
+    expect(transcripts.deleted, isEmpty);
   });
 
   test("no prompt, summary or transcript text reaches the log", () async {
@@ -764,6 +957,7 @@ Session _session({
   lastUserActivityAt: null,
   autoContinuation: null,
   approvalOverride: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,
@@ -794,6 +988,44 @@ final class _Sessions() implements SessionRepository {
   void markHandoffNotSent({required String sessionId, required String promptId}) {
     expect(sessionId, _source);
     notSentPrompts.add(promptId);
+  }
+
+  /// Message ids whose later live updates are stamped as not sent.
+  final List<String> notSentRequests = [];
+
+  @override
+  void markRequestNotSent({
+    required String sessionId,
+    required String messageId,
+    required MessageHandoffNotSent notSent,
+  }) {
+    expect(sessionId, _source);
+    notSentRequests.add(messageId);
+    heldWhenMarked.add(held?.id);
+  }
+
+  QueuedSessionPrompt? held;
+  final List<String?> heldWhenMarked = [];
+
+  @override
+  void holdRequest({required String sessionId, required QueuedSessionPrompt request}) {
+    expect(sessionId, _source);
+    held = request;
+  }
+
+  @override
+  void releaseRequest({required String sessionId}) => held = null;
+
+  /// Prompts the source's harness itself still queues.
+  List<QueuedSessionPrompt> harnessQueue = const [];
+
+  /// Thrown by every queue read when set.
+  Object? queueReadError;
+
+  @override
+  Future<List<QueuedSessionPrompt>> getQueuedPrompts({required String sessionId}) async {
+    if (queueReadError case final error?) throw error;
+    return [...harnessQueue, ?held];
   }
 
   void reparent({required String sessionId}) {
@@ -870,6 +1102,9 @@ typedef _Send = ({
 StaleSessionPromptOptionsException _staleOptions() => StaleSessionPromptOptionsException(
   cause: const PluginStaleOptionsException(operation: "sendPrompt", message: "no longer offers the selected model"),
   causeStackTrace: StackTrace.current,
+  agent: null,
+  model: null,
+  variant: null,
 );
 
 final class _Prompts() implements SessionPromptService {
@@ -909,6 +1144,13 @@ final class _Prompts() implements SessionPromptService {
     );
     onSummaryAccepted?.call(promptId);
   }
+
+  @override
+  Future<void> sendWithDefaults({
+    required String sessionId,
+    required SessionPromptDefaults? defaults,
+    required Future<void> Function(PromptSettings settings) send,
+  }) => send(SessionPromptService.settingsFrom(defaults: defaults));
 
   @override
   Future<void> sendPrompt({
@@ -1019,8 +1261,13 @@ final class _History() implements ChatHistoryService {
   final List<String> notSentMessages = [];
 
   @override
-  Future<void> markHandoffNotSent({required String sessionId, required String messageId}) async {
+  Future<void> markHandoffNotSent({
+    required String sessionId,
+    required String messageId,
+    required MessageHandoffNotSent notSent,
+  }) async {
     expect(sessionId, _source);
+    expect(notSent, const MessageHandoff.notSent(targetSessionId: _target, targetTitle: "Target title"));
     notSentMessages.add(messageId);
   }
 
@@ -1072,6 +1319,7 @@ typedef _Saved = ({String sessionId, List<int> bytes, String filename});
 
 final class _Transcripts() implements PromptUploadRepository {
   final List<_Saved> saved = [];
+  final List<String> deleted = [];
   Object? failure;
 
   String pathFor(_Saved file) => "/fixture-home/.sesori/transcripts/${file.sessionId}/2026-11-15-abc/${file.filename}";
@@ -1083,6 +1331,9 @@ final class _Transcripts() implements PromptUploadRepository {
     saved.add(file);
     return pathFor(file);
   }
+
+  @override
+  Future<void> deleteSaved({required String path}) async => deleted.add(path);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -590,6 +590,7 @@ void main() {
               bridgeQueuedPrompts: [
                 QueuedSessionPrompt(
                   commandSource: null,
+                  handoff: null,
                   id: "prm_sent",
                   text: wrapDictatedText(text: "spoken words"),
                   command: null,
@@ -1155,6 +1156,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
             canShareImages: false,
             openExternalLink: ({required url, required mode}) async => true,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+            returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
             openHarnessSettings: () {},
             openBridgeSettings: () {},
             openSideChat: null,
@@ -1272,6 +1274,7 @@ class _ScreenState() extends State<_Screen> {
                 isBusy: false,
                 hasMessages: true,
                 canSend: true,
+                lockedNote: null,
                 submitAction: null,
                 onSend: ({required draft, required command, required attachments}) {
                   if (widget.buildsRows) setState(() => _rows.add(draft.text));

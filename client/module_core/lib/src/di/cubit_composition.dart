@@ -4,16 +4,20 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../cubits/new_session/new_session_cubit.dart";
 import "../cubits/new_session/new_session_purpose.dart";
+import "../cubits/scheduled_task_editor/scheduled_task_editor_cubit.dart";
 import "../cubits/session_detail/session_detail_cubit.dart";
 import "../cubits/session_list/session_actions_cubit.dart";
 import "../cubits/session_search/session_search_cubit.dart";
+import "../foundation/platform/device_time_zone_source.dart";
 import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
+import "../repositories/archive_after_send_preference_storage.dart";
 import "../repositories/composer_draft_repository.dart";
 import "../repositories/dedicated_worktree_preference_store.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/plugin_repository.dart";
 import "../repositories/project_repository.dart";
+import "../repositories/scheduled_task_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/bridge_settings_service.dart";
 import "../services/feedback_prompt_service.dart";
@@ -73,6 +77,7 @@ SessionDetailCubit createSessionDetailCubit({
     sessionLaunchService: locator<SessionLaunchService>(),
     fileReferenceOpenService: locator<FileReferenceOpenService>(),
     composerRestore: locator<MessageComposerRestoreService>(),
+    actionService: locator<SessionActionService>(),
     window: window,
   );
 }
@@ -85,6 +90,7 @@ SessionActionsCubit createSessionActionsCubit({required GetIt locator, required 
     actionService: locator<SessionActionService>(),
     abortService: locator<SessionAbortService>(),
     feedbackPromptService: locator<FeedbackPromptService>(),
+    archiveAfterSendStorage: locator<ArchiveAfterSendPreferenceStorage>(),
   );
 }
 
@@ -102,6 +108,18 @@ SessionSearchCubit createSessionSearchCubit({
     sseEventTracker: locator<SseEventTracker>(),
     pluginRepository: locator<PluginRepository>(),
     excludedSessionId: excludedSessionId,
+  );
+}
+
+/// The New task screen's cubit, or the same screen editing [taskId].
+ScheduledTaskEditorCubit createScheduledTaskEditorCubit({required GetIt locator, required String? taskId}) {
+  return ScheduledTaskEditorCubit(
+    repository: locator<ScheduledTaskRepository>(),
+    timeZoneSource: locator<DeviceTimeZoneSource>(),
+    bridgeSettingsService: locator<BridgeSettingsService>(),
+    productAnalyticsService: locator<ProductAnalyticsService>(),
+    now: DateTime.now,
+    taskId: taskId,
   );
 }
 

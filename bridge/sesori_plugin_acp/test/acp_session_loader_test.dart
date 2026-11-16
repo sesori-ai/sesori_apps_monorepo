@@ -494,9 +494,9 @@ void main() {
       expect(warnings, isEmpty);
     });
 
-    test("a tool attached to an explicit assistant draft keeps that grouping", () {
+    test("a tool after stamped reasoning gets the live tool message", () {
       const sessionId = "s1";
-      const toolCallId = "opaque tool:/?[]{}";
+      const toolCallId = "call-1";
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
@@ -513,9 +513,9 @@ void main() {
             )
             ..consume(
               upd({
-                "sessionUpdate": "agent_message_chunk",
+                "sessionUpdate": "agent_thought_chunk",
                 "messageId": "explicit",
-                "content": {"type": "text", "text": "before"},
+                "content": {"type": "text", "text": "thinking"},
               }),
             )
             ..consume(
@@ -527,10 +527,10 @@ void main() {
               }),
             );
 
-      final replayMessage = collector.build().single;
-      expect(replayMessage.info.id, "$sessionId-mexplicit-assistant");
-      expect(replayMessage.parts, hasLength(2));
-      expect(replayMessage.parts.last.id, "$sessionId-mexplicit-assistant-tool-$toolCallId");
+      final messages = collector.build();
+      final toolMessageId = AcpEventMapper.toolMessageId(sessionId: sessionId, toolCallId: toolCallId);
+      expect(messages.map((message) => message.info.id), ["$sessionId-mexplicit-assistant", toolMessageId]);
+      expect(messages.last.parts.single.id, AcpEventMapper.toolPartId(messageId: toolMessageId));
     });
 
     test("id-less text after a tool stays chronologically after the tool", () {
@@ -1012,7 +1012,7 @@ void main() {
     ];
 
     for (final testCase in stampedAssistantChronologyCases) {
-      test("preserves ${testCase.name} chronology in one stamped assistant draft", () {
+      test("preserves ${testCase.name} chronology around a stamped message's tool", () {
         final collector =
             AcpReplayCollector(
                 sessionUpdateNormalizer: null,
@@ -1058,11 +1058,17 @@ void main() {
                 }),
               );
 
-        final message = collector.build().single;
-        expect(message.info.id, "s1-mm1-assistant");
-        expect(message.parts.map((part) => part.type), testCase.expectedTypes);
-        expect(message.parts.map((part) => part.id).toSet(), hasLength(message.parts.length));
-        final tool = message.parts.singleWhere((part) => part.type == PluginMessagePartType.tool);
+        final messages = collector.build();
+        final toolMessageId = AcpEventMapper.toolMessageId(sessionId: "s1", toolCallId: "t1");
+        expect(messages.map((message) => message.info.id), [
+          "s1-mm1-assistant",
+          toolMessageId,
+          "s1-mm1-assistant-segment-2",
+        ]);
+        final parts = [for (final message in messages) ...message.parts];
+        expect(parts.map((part) => part.type), testCase.expectedTypes);
+        expect(parts.map((part) => part.id).toSet(), hasLength(parts.length));
+        final tool = parts.singleWhere((part) => part.type == PluginMessagePartType.tool);
         expect(tool.tool, "read");
         expect(tool.state.status, PluginToolStatus.completed);
         expect(tool.state.title, "Read source.dart");
@@ -1185,7 +1191,7 @@ void main() {
       expect(messages[1].parts.single.text, "id-less message");
     });
 
-    test("a same-message thought and text share the message; tools attach without an id", () {
+    test("a tool between a stamped message's thought and text gets its own message", () {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
@@ -1223,15 +1229,18 @@ void main() {
               }),
             );
 
-      final message = collector.build().single;
-      expect(
-        message.parts.map((p) => p.type),
-        containsAll(<PluginMessagePartType>[
-          PluginMessagePartType.reasoning,
-          PluginMessagePartType.text,
-          PluginMessagePartType.tool,
-        ]),
-      );
+      final messages = collector.build();
+      final toolMessageId = AcpEventMapper.toolMessageId(sessionId: "s1", toolCallId: "t1");
+      expect(messages.map((message) => message.info.id), [
+        "s1-mm1-assistant",
+        toolMessageId,
+        "s1-mm1-assistant-segment-2",
+      ]);
+      expect(messages.map((message) => message.parts.single.type), [
+        PluginMessagePartType.reasoning,
+        PluginMessagePartType.tool,
+        PluginMessagePartType.text,
+      ]);
     });
 
     test("a halt notice replays as an error message with no text part", () {
@@ -1245,8 +1254,9 @@ void main() {
             initialUserMessage: null,
             messageIdOverride: null,
             messageTimeResolver: null,
-            haltClassifier: ({required text}) =>
-                text.trim() == "Check your settings to continue" ? const AcpHaltNotice(errorName: "cursor_gate") : null,
+            haltClassifier: ({required text}) => text.trim() == "Check your settings to continue"
+                ? const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure)
+                : null,
             toolPartReplacement: null,
             toolPartSuppression: null,
           )..consume(
@@ -1279,7 +1289,8 @@ void main() {
             initialUserMessage: null,
             messageIdOverride: null,
             messageTimeResolver: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
+            haltClassifier: ({required text}) =>
+                const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure),
             toolPartReplacement: null,
             toolPartSuppression: null,
           )..consume(
@@ -1304,7 +1315,8 @@ void main() {
             initialUserMessage: null,
             messageIdOverride: null,
             messageTimeResolver: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
+            haltClassifier: ({required text}) =>
+                const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure),
             toolPartReplacement: null,
             toolPartSuppression: null,
           )..consume(
@@ -1342,7 +1354,8 @@ void main() {
             initialUserMessage: null,
             messageIdOverride: null,
             messageTimeResolver: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
+            haltClassifier: ({required text}) =>
+                const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure),
             toolPartReplacement: null,
             toolPartSuppression: null,
           )..consume(
@@ -1515,18 +1528,23 @@ void main() {
             toolPart.copyWith(tool: "override-$toolCallId"),
       );
 
-      expect(configured.single.parts.map((part) => part.type), [
+      List<PluginMessagePart> parts(List<PluginMessageWithParts> messages) => [
+        for (final message in messages) ...message.parts,
+      ];
+      expect(parts(configured).map((part) => part.type), [
         PluginMessagePartType.text,
         PluginMessagePartType.tool,
         PluginMessagePartType.text,
       ]);
-      expect((configured.single.parts[1] as PluginMessagePartTool).tool, "configured-task-1");
-      expect((overridden.single.parts[1] as PluginMessagePartTool).tool, "override-task-1");
-      expect(overridden.single.parts.map((part) => part.id), configured.single.parts.map((part) => part.id));
-      final assistant = overridden.single.info as PluginMessageAssistant;
-      expect((assistant.modelID, assistant.providerID, assistant.variant), ("m", "p", "v"));
+      expect((parts(configured)[1] as PluginMessagePartTool).tool, "configured-task-1");
+      expect((parts(overridden)[1] as PluginMessagePartTool).tool, "override-task-1");
+      expect(parts(overridden).map((part) => part.id), parts(configured).map((part) => part.id));
+      for (final message in overridden) {
+        final assistant = message.info as PluginMessageAssistant;
+        expect((assistant.modelID, assistant.providerID, assistant.variant), ("m", "p", "v"));
+      }
       expect(
-        (collector.build().single.parts[1] as PluginMessagePartTool).tool,
+        (parts(collector.build())[1] as PluginMessagePartTool).tool,
         "configured-task-1",
         reason: "override does not mutate configuration",
       );

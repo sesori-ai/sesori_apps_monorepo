@@ -140,7 +140,7 @@ void main() {
     );
 
     final messages = collector.build();
-    expect(messages.map((message) => message.info.time?.created), [30, 10]);
+    expect(messages.map((message) => message.info.time?.created), [30, 20, 10]);
   });
 
   test("replay halt retains draft time and omitted metadata remains null", () {
@@ -157,7 +157,9 @@ void main() {
       toolPartReplacement: null,
       toolPartSuppression: null,
     );
-    final halted = collector(({required text}) => const AcpHaltNotice(errorName: "halt"));
+    final halted = collector(
+      ({required text}) => const AcpHaltNotice(errorName: "halt", kind: PluginErrorKind.failure),
+    );
     halted.consume(
       notification({
         "sessionUpdate": "agent_message_chunk",

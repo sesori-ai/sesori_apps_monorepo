@@ -314,6 +314,43 @@ void main() {
           "side_question_asked",
           {"harness": "claude_code", "outcome": wireValue},
         ),
+      (
+        const ProductAnalyticsEvent.scheduledTaskSaved(
+          action: AnalyticsScheduledTaskAction.created,
+          repeat: AnalyticsScheduledTaskRepeat.everyHours,
+          runMode: AnalyticsScheduledTaskRunMode.newSession,
+          approvalMode: AnalyticsScheduledTaskApprovalMode.ask,
+          missedRunPolicy: AnalyticsScheduledTaskMissedRunPolicy.waitForNext,
+          autoCompact: null,
+        ),
+        "scheduled_task_saved",
+        {
+          "action": "created",
+          "repeat_kind": "every_hours",
+          "run_mode": "new_session",
+          "approval_mode": "ask",
+          "missed_run_policy": "wait_for_next",
+        },
+      ),
+      (
+        const ProductAnalyticsEvent.scheduledTaskSaved(
+          action: AnalyticsScheduledTaskAction.edited,
+          repeat: AnalyticsScheduledTaskRepeat.weekdays,
+          runMode: AnalyticsScheduledTaskRunMode.sameSession,
+          approvalMode: AnalyticsScheduledTaskApprovalMode.approveAll,
+          missedRunPolicy: AnalyticsScheduledTaskMissedRunPolicy.runWhenBack,
+          autoCompact: true,
+        ),
+        "scheduled_task_saved",
+        {
+          "action": "edited",
+          "repeat_kind": "weekdays",
+          "run_mode": "same_session",
+          "approval_mode": "approve_all",
+          "missed_run_policy": "run_when_back",
+          "auto_compact": "true",
+        },
+      ),
       for (final (outcome, wireValue) in [
         (AnalyticsMessageEditOutcome.succeeded, "succeeded"),
         (AnalyticsMessageEditOutcome.refusedBusy, "refused_busy"),
@@ -324,6 +361,31 @@ void main() {
         (
           ProductAnalyticsEvent.sessionMessageEdited(harness: AnalyticsHarness.codex, outcome: outcome),
           "session_message_edited",
+          {"harness": "codex", "outcome": wireValue},
+        ),
+      // Only the source's harness and the outcome: no session, title or summary.
+      for (final (outcome, wireValue) in [
+        (AnalyticsSessionSendOutcome.sent, "sent"),
+        (AnalyticsSessionSendOutcome.refusedBusy, "refused_busy"),
+        (AnalyticsSessionSendOutcome.refusedOther, "refused_other"),
+        (AnalyticsSessionSendOutcome.failed, "failed"),
+        (AnalyticsSessionSendOutcome.unsupported, "unsupported"),
+        (AnalyticsSessionSendOutcome.unconfirmed, "unconfirmed"),
+      ])
+        (
+          ProductAnalyticsEvent.sessionSentToSession(harness: AnalyticsHarness.claudeCode, outcome: outcome),
+          "session_sent_to_session",
+          {"harness": "claude_code", "outcome": wireValue},
+        ),
+      for (final (outcome, wireValue) in [
+        (AnalyticsSessionForkOutcome.succeeded, "succeeded"),
+        (AnalyticsSessionForkOutcome.branchPointUnavailable, "branch_point_unavailable"),
+        (AnalyticsSessionForkOutcome.refused, "refused"),
+        (AnalyticsSessionForkOutcome.failed, "failed"),
+      ])
+        (
+          ProductAnalyticsEvent.sessionForked(harness: AnalyticsHarness.codex, outcome: outcome),
+          "session_forked",
           {"harness": "codex", "outcome": wireValue},
         ),
     ];
@@ -402,5 +464,37 @@ void main() {
 
     expect(envelope.occurredAtUtc.isUtc, isTrue);
     expect(envelope.occurredAtUtc.microsecondsSinceEpoch, local.microsecondsSinceEpoch);
+  });
+  test("a one-off task's saved event leaves out the missed-run policy it ignores", () {
+    const definition = ScheduledTaskDefinition(
+      name: "Release check",
+      prompt: ScheduledTaskPrompt.text(text: "Check the release"),
+      projectId: "fixture-project",
+      pluginId: "fixture",
+      agent: null,
+      model: null,
+      variant: null,
+      fastMode: false,
+      dedicatedWorktree: false,
+      schedule: TaskSchedule.once(at: TaskLocalDateTime(year: 2026, month: 11, day: 17, hour: 9, minute: 0)),
+      timeZone: "UTC",
+      missedRunPolicy: TaskMissedRunPolicy.waitForNext,
+      runMode: TaskRunMode.newSession(),
+      approvalMode: TaskApprovalMode.ask,
+    );
+
+    final once = ScheduledTaskSavedEvent.of(action: AnalyticsScheduledTaskAction.created, definition: definition);
+    final daily = ScheduledTaskSavedEvent.of(
+      action: AnalyticsScheduledTaskAction.created,
+      definition: definition.copyWith(schedule: const TaskSchedule.daily(time: TaskTimeOfDay(hour: 9, minute: 0))),
+    );
+
+    expect(once?.parameters, {
+      "action": "created",
+      "repeat_kind": "once",
+      "run_mode": "new_session",
+      "approval_mode": "ask",
+    });
+    expect(daily?.parameters["missed_run_policy"], "wait_for_next");
   });
 }

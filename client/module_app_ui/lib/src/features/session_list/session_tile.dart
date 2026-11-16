@@ -61,7 +61,15 @@ class const SessionTile({
   final bool selected = false,
   final bool awaitingInput = false,
   final bool isRetrying = false,
+
+  /// A bridge stop cut the last turn off and the user has not been back since.
+  required final bool isInterrupted,
   final int backgroundTaskCount = 0,
+
+  /// A send of the session into another, from any device, while the session
+  /// writes its summary: a paper plane takes the sparkle's place and the meta
+  /// line says where it goes.
+  required final SessionSending? sending,
 
   /// Opens the session.
   required final VoidCallback onTap,
@@ -88,6 +96,9 @@ class const SessionTile({
   /// Whether the row shows an agent at work: running, unless waiting on the
   /// user, which wins. The turning sparkle and the breathing harness logo say it.
   bool get _working => isRunning && !awaitingInput;
+
+  /// The send the row shows. Waiting for the user still wins.
+  SessionSending? get _shownSending => awaitingInput ? null : sending;
 
   /// How the harness logo shows: breathing while an agent works, in colour
   /// while the session has unread activity or is the open one, grey otherwise.
@@ -270,7 +281,15 @@ class const SessionTile({
 
   Widget _titleRow({required BuildContext context, required bool pointer}) {
     final state = _state(context: context);
-    if (pointer) return _pointerTitleRow(context: context, state: state);
+    return _MarkRoom(
+      mark: state != null ? _crossFadeMark(context: context, label: state.label, mark: state.mark) : null,
+      builder: (context, mark, room) => pointer
+          ? _pointerTitleRow(context: context, mark: mark, room: room)
+          : _touchTitleRow(context: context, mark: mark),
+    );
+  }
+
+  Widget _touchTitleRow({required BuildContext context, required Widget? mark}) {
     // The row's width caps a resume time, which a narrow row with large text
     // could not otherwise fit beside the title.
     return LayoutBuilder(
@@ -287,10 +306,10 @@ class const SessionTile({
             child: _TitleLine(
               title: _title(context: context, pointer: false),
               pin: _LeadingPin(pinned: session.pinned, pointer: false),
-              mark: state != null ? Semantics(label: state.label, child: state.mark) : null,
+              mark: mark,
             ),
           ),
-          ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, holdsColumn: false),
+          ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, column: 0),
         ],
       ),
     );
@@ -298,8 +317,9 @@ class const SessionTile({
 
   /// A pointer row's first line: the title from the row's edge, after the pin
   /// of a pinned session, then its state right before the time, so a quiet row
-  /// gives the title that room.
-  Widget _pointerTitleRow({required BuildContext context, required ({String label, Widget mark})? state}) =>
+  /// gives the title that room. The time's column opens and closes with the
+  /// mark's [room].
+  Widget _pointerTitleRow({required BuildContext context, required Widget? mark, required double room}) =>
       LayoutBuilder(
         builder: (context, constraints) => Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -313,20 +333,11 @@ class const SessionTile({
                 children: [
                   _LeadingPin(pinned: session.pinned, pointer: true),
                   Expanded(child: _title(context: context, pointer: true)),
-                  if (state != null)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                      child: SizedBox.square(
-                        dimension: _markSize,
-                        child: Center(
-                          child: Semantics(label: state.label, child: state.mark),
-                        ),
-                      ),
-                    ),
+                  ?mark,
                 ],
               ),
             ),
-            ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, holdsColumn: state != null),
+            ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, column: room),
           ],
         ),
       );
@@ -342,44 +353,75 @@ class const SessionTile({
   /// the titles that really did overflow, without a row paying to be measured
   /// twice. The ramp is an ellipsis wide rather than the design's, which is
   /// the price of that.
+  ///
+  /// A fork's " (fork)" stays whole after the cut, as it is what tells the fork
+  /// from its origin.
   Widget _title({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
     final size = prego.textTheme.textMd;
-
-    final title = Text(
-      session.title ?? context.loc.sessionListUntitled,
-      // Unopened activity leans on weight rather than a badge.
-      style: (unseen ? size.medium : size.regular).copyWith(
-        // Medium is the heaviest weight under a pointer, so colour says what is unread.
-        color: pointer && !unseen && !awaitingInput && !isRunning && !selected
-            ? Color.lerp(prego.colors.textPrimary, prego.colors.textSecondary, 0.5)
-            : prego.colors.textPrimary,
-      ),
-      maxLines: 1,
-      softWrap: false,
-      overflow: pointer ? TextOverflow.clip : TextOverflow.fade,
+    final text = session.title ?? context.loc.sessionListUntitled;
+    // Unopened activity leans on weight rather than a badge.
+    final style = (unseen ? size.medium : size.regular).copyWith(
+      // Medium is the heaviest weight under a pointer, so colour says what is unread.
+      color: pointer && !unseen && !awaitingInput && !isRunning && !selected
+          ? Color.lerp(prego.colors.textPrimary, prego.colors.textSecondary, 0.5)
+          : prego.colors.textPrimary,
     );
-    if (!pointer) return title;
+
+    if (!pointer) {
+      return PregoKeptSuffixText(
+        text: text,
+        keptSuffix: sessionForkTitleSuffix,
+        style: style,
+        softWrap: false,
+        overflow: TextOverflow.fade,
+      );
+    }
+    Text line(String part) => Text(part, style: style, maxLines: 1, softWrap: false, overflow: TextOverflow.clip);
     return Tooltip(
-      message: session.title ?? context.loc.sessionListUntitled,
+      message: text,
       waitDuration: const Duration(milliseconds: 400),
       excludeFromSemantics: true,
-      child: _FadingTitle(title: title),
+      // The fade runs over the text before the suffix, so the suffix stays crisp.
+      child: switch (PregoKeptSuffixText.split(text: text, keptSuffix: sessionForkTitleSuffix)) {
+        (:final base, :final suffix) => Semantics(
+          label: text,
+          excludeSemantics: true,
+          child: Row(
+            children: [
+              Flexible(child: _FadingTitle(title: line(base))),
+              line(suffix),
+            ],
+          ),
+        ),
+        null => _FadingTitle(title: line(text)),
+      },
     );
   }
 
   /// When the session last changed, at the end of the title line, or when a
   /// quiet session will continue on its own. Waiting and running outrank a
   /// scheduled continuation.
-  Widget? _time({required BuildContext context, required double resumeMaxWidth, required bool holdsColumn}) {
+  /// [column] is how much of the fixed time column a mark beside it holds
+  /// open, from none to all of it.
+  Widget? _time({required BuildContext context, required double resumeMaxWidth, required double column}) {
     if (!awaitingInput && !isRunning) {
       if (sessionScheduledResumeAt(view: session.autoContinuation) case final continueAt?) {
-        // Half the row at most: the title keeps the other half, and both ellipsize.
+        // Half the row at most: the title keeps the other half, and both
+        // ellipsize. It holds the mark's column like the time does.
         return ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: resumeMaxWidth),
-          child: Padding(
-            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-            child: SessionScheduledResume(continueAt: continueAt, labelled: true),
+          constraints: BoxConstraints(
+            minWidth: min(_pointerTimeWidth * column, resumeMaxWidth),
+            maxWidth: resumeMaxWidth,
+          ),
+          // Its own width, at least the column's, flush with the row's end.
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            widthFactor: 1,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+              child: SessionScheduledResume(continueAt: continueAt, labelled: true),
+            ),
           ),
         );
       }
@@ -391,7 +433,7 @@ class const SessionTile({
     return Container(
       // A fixed column beside a mark, so marks line up down the list; a quiet row's
       // title has that room instead.
-      constraints: BoxConstraints(minWidth: holdsColumn ? _pointerTimeWidth : 0),
+      constraints: BoxConstraints(minWidth: _pointerTimeWidth * column),
       alignment: AlignmentDirectional.centerEnd,
       padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
       child: Text(
@@ -495,6 +537,9 @@ class const SessionTile({
         ),
       );
     }
+    if (_shownSending case final sending?) {
+      return (label: _sendingWords(context: context, sending: sending), mark: const _SendingMark());
+    }
     if (isRunning) {
       return (label: loc.sessionListRunning, mark: const PregoAiLoader(size: _markSize));
     }
@@ -510,7 +555,8 @@ class const SessionTile({
   }
 
   /// The row's second line, starting under the logo: any state that needs
-  /// words, then the project, then the background tasks, apart by middle dots.
+  /// words, then the scheduled task that started the session, then the
+  /// project, then the background tasks, apart by middle dots.
   /// Under a pointer it starts on the title's edge and the harness logo ends it.
   Widget _metaLine({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
@@ -522,6 +568,7 @@ class const SessionTile({
       final project? => Text(project, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
       null => null,
     };
+    final task = _taskMark(context: context, style: style);
     final backgroundTasks = _backgroundTasks(context: context, pointer: pointer, style: style);
     if (pointer) {
       Widget separator() => ExcludeSemantics(
@@ -537,32 +584,39 @@ class const SessionTile({
           spacing: PregoSpacing.xs,
           children: [
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) => Row(
-                  children: [
-                    // The status keeps its words and the count its number; the
-                    // project gives way first. Only a status too long for the
-                    // whole line, with its separator, ellipsizes.
-                    if (status != null)
-                      ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: constraints.maxWidth),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(child: status),
-                            if (project != null) separator(),
-                          ],
+              child: _crossFadeWords(
+                context: context,
+                style: style,
+                pointer: pointer,
+                details: LayoutBuilder(
+                  builder: (context, constraints) => Row(
+                    children: [
+                      // The status keeps its words and the count its number; the
+                      // task and the project give way first. Only a status too
+                      // long for the whole line, with its separator, ellipsizes.
+                      if (status != null)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(child: status),
+                              if (task != null || project != null) separator(),
+                            ],
+                          ),
                         ),
-                      ),
-                    if (project != null) Flexible(child: project),
-                    if (project != null && backgroundTasks != null) separator(),
-                    ?backgroundTasks,
-                    // With no words at all, a line of the meta text's height holds
-                    // the line box, so the row is as tall as one with words at
-                    // any text size.
-                    if (status == null && project == null && backgroundTasks == null)
-                      SizedBox(height: context.lineHeightOf(style)),
-                  ],
+                      if (task != null) Flexible(child: task),
+                      if (task != null && project != null) separator(),
+                      if (project != null) Flexible(child: project),
+                      if ((task != null || project != null) && backgroundTasks != null) separator(),
+                      ?backgroundTasks,
+                      // With no words at all, a line of the meta text's height holds
+                      // the line box, so the row is as tall as one with words at
+                      // any text size.
+                      if (status == null && task == null && project == null && backgroundTasks == null)
+                        SizedBox(height: context.lineHeightOf(style)),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -576,7 +630,7 @@ class const SessionTile({
         ),
       );
     }
-    final details = <Widget>[?status, ?project, ?backgroundTasks];
+    final details = <Widget>[?status, ?task, ?project, ?backgroundTasks];
 
     Widget separator() => ExcludeSemantics(
       child: Text(_separator, style: style, maxLines: 1, softWrap: false, overflow: TextOverflow.clip),
@@ -586,41 +640,114 @@ class const SessionTile({
     // the line instead of being cropped to the 1x line box.
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: _metaLineHeightOf(pointer: pointer)),
-      child: Row(
-        children: [
-          for (final (index, detail) in details.indexed)
-            // Each separator yields with the detail it leads, so scaled-up
-            // text shrinks details rather than overflowing the line.
-            Flexible(
-              child: index == 0
-                  ? detail
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(child: separator()),
-                        Flexible(flex: 3, child: detail),
-                      ],
-                    ),
-            ),
-          // With nothing to show, a line of the meta text's height still
-          // holds the line at the current text scale, so the row stays as
-          // tall as its neighbours and as the launching row it replaces.
-          if (details.isEmpty) SizedBox(height: context.lineHeightOf(style)),
-        ],
+      child: _crossFadeWords(
+        context: context,
+        style: style,
+        pointer: pointer,
+        details: Row(
+          children: [
+            for (final (index, detail) in details.indexed)
+              // Each separator yields with the detail it leads, so scaled-up
+              // text shrinks details rather than overflowing the line.
+              Flexible(
+                child: index == 0
+                    ? detail
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(child: separator()),
+                          Flexible(flex: 3, child: detail),
+                        ],
+                      ),
+              ),
+            // With nothing to show, a line of the meta text's height still
+            // holds the line at the current text scale, so the row stays as
+            // tall as its neighbours and as the launching row it replaces.
+            if (details.isEmpty) SizedBox(height: context.lineHeightOf(style)),
+          ],
+        ),
       ),
     );
   }
 
-  /// The states that need words: waiting for the user and a retry loop. A
-  /// plain running session has none; its turning sparkle and breathing harness logo
-  /// say it.
+  /// The target's name in "Sending to …" words.
+  String _sendingWords({required BuildContext context, required SessionSending sending}) {
+    final loc = context.loc;
+    return loc.sessionListSending(sending.targetTitle ?? loc.sessionDetailTitle);
+  }
+
+  /// The status mark, cross-fading as a send starts and ends; the other marks
+  /// change in place, so the sparkle keeps its own settle when a turn ends.
+  Widget _crossFadeMark({required BuildContext context, required String label, required Widget mark}) =>
+      AnimatedSwitcher(
+        duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+        switchInCurve: transcriptMotionCurve,
+        switchOutCurve: transcriptMotionCurve.flipped,
+        layoutBuilder: (current, previous) =>
+            _currentSemanticsOnly(current: current, previous: previous, alignment: Alignment.center),
+        child: Semantics(key: ValueKey(_shownSending != null), label: label, child: mark),
+      );
+
+  /// A cross-fade's layout in which only the incoming child speaks, so a
+  /// screen reader never reads the outgoing state beside the new one. Each
+  /// wrapper takes its child's key, so a child keeps its state as it leaves.
+  static Widget _currentSemanticsOnly({
+    required Widget? current,
+    required List<Widget> previous,
+    required AlignmentGeometry alignment,
+  }) => Stack(
+    alignment: alignment,
+    children: [
+      for (final child in previous) ExcludeSemantics(key: child.key, child: child),
+      if (current != null) ExcludeSemantics(key: current.key, excluding: false, child: current),
+    ],
+  );
+
+  /// The meta line's words, which cross-fade to "Sending to …" while this app
+  /// sends the session and back when the send ends, in the line's own room so
+  /// nothing moves. The mark already speaks the send to a screen reader.
+  Widget _crossFadeWords({
+    required BuildContext context,
+    required TextStyle style,
+    required bool pointer,
+    required Widget details,
+  }) {
+    final sending = _shownSending;
+    return AnimatedSwitcher(
+      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      switchInCurve: transcriptMotionCurve,
+      switchOutCurve: transcriptMotionCurve.flipped,
+      layoutBuilder: (current, previous) =>
+          _currentSemanticsOnly(current: current, previous: previous, alignment: AlignmentDirectional.centerStart),
+      child: switch (sending) {
+        null => KeyedSubtree(key: const ValueKey("details"), child: details),
+        final sending => ExcludeSemantics(
+          key: const ValueKey("sending"),
+          child: Text(
+            _sendingWords(context: context, sending: sending),
+            style: _metaStyleOf(context: context, pointer: pointer).copyWith(
+              fontWeight: FontWeight.w500,
+              color: context.prego.colors.textSecondary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      },
+    );
+  }
+
+  /// The states that need words: waiting for the user, a retry loop and a
+  /// turn a bridge stop cut off. A plain running session has none; its turning
+  /// sparkle and breathing harness logo say it.
   Widget? _statusLabel({required BuildContext context, required bool pointer}) {
     final loc = context.loc;
     final prego = context.prego;
-    final (String, Color)? status = switch ((awaitingInput, isRetrying)) {
-      (true, _) => (loc.sessionListWaiting, prego.colors.smallWarningText),
-      (false, true) => (loc.sessionListRunningRetrying, prego.colors.fgErrorPrimary),
-      (false, false) => null,
+    final (String, Color)? status = switch ((awaitingInput, isRetrying, isInterrupted)) {
+      (true, _, _) => (loc.sessionListWaiting, prego.colors.smallWarningText),
+      (false, true, _) => (loc.sessionListRunningRetrying, prego.colors.fgErrorPrimary),
+      (false, false, true) => (loc.sessionListInterrupted, prego.colors.textSecondary),
+      (false, false, false) => null,
     };
     if (status case (final label, final color)) {
       final text = Text(
@@ -633,6 +760,39 @@ class const SessionTile({
       return awaitingInput ? ExcludeSemantics(child: text) : text;
     }
     return null;
+  }
+
+  /// The repeat or clock glyph and the name of the scheduled task that
+  /// started the session, or null for a session the user started.
+  Widget? _taskMark({required BuildContext context, required TextStyle style}) {
+    final mark = session.scheduledTask;
+    if (mark == null) return null;
+    final loc = context.loc;
+    final (glyph, words) = switch (mark.kind) {
+      ScheduledTaskKind.recurring => (TablerRegular.repeat, loc.sessionListRecurringTaskRun(mark.name)),
+      ScheduledTaskKind.once => (TablerRegular.clock, loc.sessionListOnceTaskRun(mark.name)),
+      ScheduledTaskKind.unknown => (TablerRegular.calendar_time, loc.sessionListScheduledTaskRun(mark.name)),
+    };
+    // One paragraph, so the glyph sits in the text's own line box and the
+    // name ellipsizes with the text when the line runs out of room.
+    return Text.rich(
+      TextSpan(
+        children: [
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
+              child: Icon(glyph, size: _backgroundTasksGlyphSize, color: style.color),
+            ),
+          ),
+          TextSpan(text: mark.name),
+        ],
+      ),
+      semanticsLabel: words,
+      style: style,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
   }
 
   /// The tasks running behind the turn, as a quiet count: a stack glyph and
@@ -725,7 +885,9 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                             ),
                             pin: null,
                             // "Creating…" already says what the sparkle means.
-                            mark: const ExcludeSemantics(child: PregoAiLoader(size: _markSize)),
+                            mark: const _MarkBox(
+                              child: ExcludeSemantics(child: PregoAiLoader(size: _markSize)),
+                            ),
                           ),
                         ),
                       ],
@@ -858,23 +1020,102 @@ class const _TitleLine({
   required final Widget? mark,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    final mark = this.mark;
-    return Row(
-      children: [
-        ?pin,
-        Flexible(child: title),
-        if (mark != null)
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-            child: SizedBox.square(
-              dimension: _markSize,
-              child: Center(child: mark),
+  Widget build(BuildContext context) => Row(
+    children: [
+      ?pin,
+      Flexible(child: title),
+      ?mark,
+    ],
+  );
+}
+
+/// A status mark's room after the title: a small gap, then the mark centred
+/// in a square.
+class const _MarkBox({required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+    child: SizedBox.square(
+      dimension: _markSize,
+      child: Center(child: child),
+    ),
+  );
+}
+
+/// Brings a title line's status mark in and out without a snap. A mark that
+/// leaves fades out, then its room closes, so the title eases into it. A new
+/// mark opens its room, then fades in. A quiet row keeps no room, and a mark
+/// that changes into another changes in place. Under reduced motion the mark
+/// comes and goes at once.
+class const _MarkRoom({
+  /// The mark to show, or null for none.
+  required final Widget? mark,
+
+  /// Lays the title line out around the mark's [_MarkBox], null while there
+  /// is none, and how open its room is, from 0 to 1.
+  required final Widget Function(BuildContext context, Widget? mark, double room) builder,
+}) extends StatefulWidget {
+  @override
+  State<_MarkRoom> createState() => _MarkRoomState();
+}
+
+class _MarkRoomState() extends State<_MarkRoom> with SingleTickerProviderStateMixin {
+  /// Opening the room, then fading the mark in, each over the usual motion.
+  late final AnimationController _presence = AnimationController(
+    vsync: this,
+    value: widget.mark == null ? 0 : 1,
+  );
+
+  /// The mark shown, kept while it fades out after the row lost it.
+  late Widget? _shown = widget.mark;
+
+  @override
+  void didUpdateWidget(covariant _MarkRoom oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _presence.duration = context.isReducedMotion ? Duration.zero : transcriptMotionDuration * 2;
+    if (widget.mark case final mark?) {
+      _shown = mark;
+      _presence.forward();
+    } else {
+      _presence.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _presence.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _presence,
+    builder: (context, _) {
+      final shown = _shown;
+      final presence = _presence.value;
+      if (shown == null || presence == 0) return widget.builder(context, null, 0);
+      final room = transcriptMotionCurve.transform(min(1.0, presence * 2));
+      final opacity = transcriptMotionCurve.transform(max(0.0, presence * 2 - 1));
+      return widget.builder(
+        context,
+        // A leaving mark no longer speaks.
+        ExcludeSemantics(
+          excluding: widget.mark == null,
+          child: ClipRect(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              widthFactor: room,
+              child: Opacity(
+                opacity: opacity,
+                child: _MarkBox(child: shown),
+              ),
             ),
           ),
-      ],
-    );
-  }
+        ),
+        room,
+      );
+    },
+  );
 }
 
 /// The pin before a pinned session's title, in the meta line's grey, with a
@@ -964,6 +1205,67 @@ class const _HarnessLogo({required final String pluginId, required final _LogoTo
               color: Color.lerp(colors.textTertiary, colors.textPrimary, colour),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The paper plane that takes the turning sparkle's place while this app
+/// sends the session into another. It loops gently: drifts a little forward
+/// while fading in and out, so the wrap back never shows. Under reduced
+/// motion it holds still.
+class const _SendingMark() extends StatefulWidget {
+  @override
+  State<_SendingMark> createState() => _SendingMarkState();
+}
+
+class _SendingMarkState() extends State<_SendingMark> with SingleTickerProviderStateMixin {
+  static const Duration _period = Duration(milliseconds: 1200);
+
+  /// How far the plane drifts each way along its heading, up and to the end.
+  static const double _drift = 1.5;
+
+  /// The part of the loop spent fading in, and again fading out.
+  static const double _fade = 0.25;
+
+  late final AnimationController _loop = AnimationController(vsync: this, duration: _period);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (context.isReducedMotion) {
+      _loop.stop();
+    } else if (!_loop.isAnimating) {
+      _loop.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _loop.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(TablerRegular.send, size: _sendGlyphSize, color: context.prego.colors.textPrimary);
+    if (context.isReducedMotion) return ExcludeSemantics(child: icon);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _loop,
+          child: icon,
+          builder: (context, child) {
+            final t = _loop.value;
+            final along = _drift * (2 * Curves.easeInOut.transform(t) - 1);
+            final opacity = min(1.0, min(t, 1 - t) / _fade);
+            return Opacity(
+              opacity: opacity,
+              child: Transform.translate(offset: Offset(rtl ? -along : along, -along), child: child),
+            );
+          },
         ),
       ),
     );
@@ -1081,6 +1383,9 @@ const double _titleFadeWidth = 18;
 /// padding. A date is wider and widens its own row's column.
 const double _pointerTimeWidth = 31;
 const double _waitingDotSize = 8;
+
+/// The paper plane's glyph inside the mark's slot, as the sparkle's is.
+const double _sendGlyphSize = 14;
 
 /// As large as the status marks, so the logo and the mark read as glyphs of
 /// one size around the title.

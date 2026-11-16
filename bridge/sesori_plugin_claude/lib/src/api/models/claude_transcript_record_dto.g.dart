@@ -21,6 +21,8 @@ _ClaudeTranscriptRecordDto _$ClaudeTranscriptRecordDtoFromJson(Map json) =>
       logicalParentUuid: _stringOrNull(json['logicalParentUuid']),
       sourceToolAssistantUuid: _stringOrNull(json['sourceToolAssistantUUID']),
       leafUuid: _stringOrNull(json['leafUuid']),
+      turnAttributionKey: _stringOrNull(json['turnAttributionKey']),
+      entrypoint: _stringOrNull(json['entrypoint']),
       isMeta: _boolOrNull(json['isMeta']),
       isVisibleInTranscriptOnly: _boolOrNull(json['isVisibleInTranscriptOnly']),
       isCompactSummary: _boolOrNull(json['isCompactSummary']),

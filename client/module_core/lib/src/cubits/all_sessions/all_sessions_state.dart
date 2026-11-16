@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
 import "../../services/models/session_list_quick_filter.dart";
+import "../../services/models/session_sending.dart";
 import "../../services/models/session_window_state.dart";
 
 part "all_sessions_state.freezed.dart";
@@ -18,7 +19,15 @@ sealed class AllSessionsRow with _$AllSessionsRow {
     required bool isUnseen,
     required bool isAwaitingInput,
     required bool isRetrying,
+
+    /// A bridge stop cut the session's last turn off and the user has not
+    /// opened the session or sent anything since; never while it runs again.
+    required bool isInterrupted,
     required int backgroundTaskCount,
+
+    /// A send of the session into another, while it lasts: this app's own,
+    /// or one the bridge reports from any device.
+    required SessionSending? sending,
   }) = _AllSessionsRow;
 }
 

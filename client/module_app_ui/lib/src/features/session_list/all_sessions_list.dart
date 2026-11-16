@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/foundation.dart" show setEquals;
+import "package:flutter/gestures.dart" show Drag;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -14,6 +15,7 @@ import "../../widgets/project_launch_rows_builder.dart";
 import "../../widgets/remote_failure_view.dart";
 import "../project_list/project_path_labels.dart";
 import "../session_detail/widgets/transcript_motion.dart";
+import "pinned_row_drag.dart";
 import "session_date_label.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_headings.dart";
@@ -260,6 +262,38 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   String? _note;
   bool _noteLeaving = false;
 
+  /// The pinned rows' drag and drop, which places a dragged row ahead of the
+  /// sessions' order. A held row scrolls the list as it meets the held
+  /// Pinned heading.
+  late final PinnedRowDragTracker _dragTracker = PinnedRowDragTracker(
+    heldOverTop: () => switch (_heldHeading()) {
+      (:final origin, :final height, coveredTop: _)? => origin.dy + height,
+      null => null,
+    },
+  );
+
+  /// Whether a touch list shows its pinned rows' handles, reordering them.
+  bool _editingPinned = false;
+
+  /// While editing, Pinned's heading, with Done, stays under the list's top
+  /// as its pinned rows scroll on beneath it: a copy over the list takes
+  /// over from the heading as it scrolls under the top, so nothing in the
+  /// list moves, and fades out once editing ends.
+  /// The list's own Pinned heading while the list lays it out.
+  BuildContext? _pinnedHeading;
+  final OverlayPortalController _heldHeadingPortal = OverlayPortalController()..show();
+  late final AnimationController _heldFade = AnimationController(vsync: this, duration: transcriptMotionDuration);
+  late final CurvedAnimation _heldOpacity = CurvedAnimation(
+    parent: _heldFade,
+    curve: transcriptMotionCurve,
+    reverseCurve: transcriptMotionCurve.flipped,
+  );
+  ScrollableState? _scrollable;
+
+  /// A finger scrolling the list from the held heading, which takes every
+  /// touch on it so none reaches a handle beneath.
+  Drag? _heldHeadingDrag;
+
   @override
   void initState() {
     super.initState();
@@ -270,6 +304,40 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
 
     _handOff.addStatusListener(rebuildOnEnd);
     _chipsIn.addStatusListener(rebuildOnEnd);
+    _dragTracker.addListener(_onDragTracker);
+  }
+
+  void _onDragTracker() => setState(() {});
+
+  /// Where the held Pinned heading stands, globally, and the top of the
+  /// list's uncovered part, above which it is cut off: at that top once its
+  /// own heading scrolls under it, pushed up by the last pinned row, and
+  /// nowhere while its heading shows or the pinned rows have scrolled away.
+  /// Read as it paints, once the list has laid out.
+  ({Offset origin, double height, double coveredTop})? _heldHeading() {
+    final scrollable = _scrollable;
+    if (_heldFade.isDismissed || scrollable == null || !scrollable.mounted) return null;
+    final RenderBox viewport;
+    switch (scrollable.context.findRenderObject()) {
+      case final RenderBox box when box.attached && box.hasSize:
+        viewport = box;
+      case _:
+        return null;
+    }
+    final viewportOrigin = viewport.localToGlobal(Offset.zero);
+    final coveredTop = pinnedListUncoveredTop(listContext: scrollable.context, viewportTop: viewportOrigin.dy);
+    if (_pinnedHeading?.findRenderObject() case final RenderBox heading
+        when heading.attached && heading.hasSize && heading.localToGlobal(Offset.zero).dy >= coveredTop) {
+      return null;
+    }
+    final pinnedBottom = _dragTracker.pinnedBottom();
+    if (pinnedBottom == null) return null;
+    final height = SessionListHeadingSkeleton.heightOf(context: context, isFirst: true);
+    return (
+      origin: Offset(viewportOrigin.dx, math.min(coveredTop, pinnedBottom - height)),
+      height: height,
+      coveredTop: coveredTop,
+    );
   }
 
   /// Fades the content in where the skeleton stands, timed from the next
@@ -285,6 +353,11 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _dragTracker
+      ..removeListener(_onDragTracker)
+      ..dispose();
+    _heldOpacity.dispose();
+    _heldFade.dispose();
     _contentOpacity.dispose();
     _handOff.dispose();
     _chipsOpacity.dispose();
@@ -336,12 +409,25 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
             _SessionItem(row: row, heading: headings[index]),
       ];
       // Pinned rows lead the list, so launches lead Today right below them.
-      final pinned = sessions.takeWhile((item) => item.row.session.pinned).length;
+      final pinnedCount = sessions.takeWhile((item) => item.row.session.pinned).length;
+      final pinned = sessions.take(pinnedCount).toList();
+      if (identical(state, current)) {
+        _dragTracker.showPinned(sessionIds: [for (final item in pinned) item.row.session.id]);
+      }
+      // A dragged row stands where it was dragged until the rows show it there.
+      if (_dragTracker.place case (:final sessionId, :final afterSessionId)?) {
+        final at = pinned.indexWhere((item) => item.row.session.id == sessionId);
+        final anchor = pinned.indexWhere((item) => item.row.session.id == afterSessionId);
+        if (at >= 0 && (afterSessionId == null || anchor >= 0)) {
+          final dragged = pinned.removeAt(at);
+          pinned.insert(afterSessionId == null ? 0 : (anchor > at ? anchor : anchor + 1), dragged);
+        }
+      }
       return groupUnderHeadings<_HeadedItem>(
         items: [
-          ...sessions.take(pinned),
+          ...pinned,
           for (final launch in launchesOf(state)) _LaunchItem(launch: launch),
-          ...sessions.skip(pinned),
+          ...sessions.skip(pinnedCount),
         ],
         headingOf: (item) => switch (item) {
           // A launch is the newest running thing, so it leads Today.
@@ -404,6 +490,22 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     final isLoading = awaitingConnection || state.isLoading;
     final loading = isLoading && entries.isEmpty;
     final isActive = cubit.mode == AllSessionsMode.active;
+    // Searched or narrowed to running or unread rows, the pinned rows shown
+    // are too few to place one among.
+    final reorders = isActive && !searching && state.quickFilter == SessionListQuickFilter.all;
+    final pinnedShown = entries
+        .where(
+          (entry) => switch (entry) {
+            SessionListItemEntry(item: _SessionItem(:final row)) => row.session.pinned,
+            _ => false,
+          },
+        )
+        .length;
+    // Reordering ends where it stops applying, and as the list's screen is
+    // left.
+    if (pointer || !reorders || pinnedShown < 2 || !(ModalRoute.isCurrentOf(context) ?? true)) {
+      _editingPinned = false;
+    }
     // The skeleton fades out where it stood, or in where it will stand:
     // hanging from the Retry row it stands under, else from the room above
     // that row. At most one place holds it.
@@ -414,6 +516,20 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     final heldUnderFailure = handingOff && state.failure != null && _skeletonUnderFailure;
     final heldAboveFailure = handingOff && !heldUnderFailure;
     final motion = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
+    _scrollable = Scrollable.maybeOf(context);
+    _heldFade.duration = motion;
+    if (_editingPinned && !_heldFade.isForwardOrCompleted) {
+      _heldFade.forward();
+    } else if (!_editingPinned && _heldFade.isForwardOrCompleted) {
+      _heldFade.reverse();
+    }
+    // Pinned's Edit, or Done, on a touch list with rows to reorder.
+    final pinnedAction = !pointer && reorders && pinnedShown >= 2
+        ? (
+            label: _editingPinned ? loc.sessionListPinnedEditDone : loc.sessionListPinnedEdit,
+            onTap: () => setState(() => _editingPinned = !_editingPinned),
+          )
+        : null;
     // Rows narrowed to a new search or chip may still be joined by the
     // bridge's answer, so their emptiness says nothing yet.
     final settled = !isLoading && !state.awaitingAnswer && state.failure == null && entries.isEmpty;
@@ -575,6 +691,41 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
 
     return SliverMainAxisGroup(
       slivers: [
+        if (!pointer && isActive)
+          SliverToBoxAdapter(
+            key: const ValueKey("all-sessions-held-heading"),
+            child: OverlayPortal(
+              controller: _heldHeadingPortal,
+              overlayChildBuilder: (_) => FloatAt(
+                origin: () => _heldHeading()?.origin,
+                repaint: Listenable.merge([?_scrollable?.position, _heldFade, _dragTracker, _dragTracker.liftedTop]),
+                // ponytail: a phone list spans the screen.
+                width: MediaQuery.sizeOf(context).width,
+                interactive: true,
+                clipAbove: () => _heldHeading()?.coveredTop ?? double.negativeInfinity,
+                // Only Done takes a tap; a drag scrolls the list beneath, as
+                // from any row.
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onVerticalDragStart: (details) => _heldHeadingDrag = _scrollable?.position.drag(
+                    details,
+                    () => _heldHeadingDrag = null,
+                  ),
+                  onVerticalDragUpdate: (details) => _heldHeadingDrag?.update(details),
+                  onVerticalDragEnd: (details) => _heldHeadingDrag?.end(details),
+                  onVerticalDragCancel: () => _heldHeadingDrag?.cancel(),
+                  child: FadeTransition(
+                    opacity: _heldOpacity,
+                    child: ColoredBox(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      child: SessionListHeading(heading: loc.sessionListPinned, isFirst: true, action: pinnedAction),
+                    ),
+                  ),
+                ),
+              ),
+              child: const SizedBox.shrink(),
+            ),
+          ),
         // Keyed, so the header keeps its state as the boxes around it come and go.
         if (searchShown && list.showsSearchField)
           SliverToBoxAdapter(
@@ -733,6 +884,12 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
             opacity: _contentOpacity,
             sliver: PregoAnimatedSliverList<SessionListEntry<_Item>>(
               items: shownEntries,
+              // Pinned rows slide as the user drags one among them, or as
+              // another surface reorders them.
+              slidesWhenMoved: (entry) => switch (entry) {
+                SessionListItemEntry(item: _SessionItem(:final row)) => row.session.pinned,
+                _ => false,
+              },
               itemKey: (entry) => switch (entry) {
                 final SessionListHeadingEntry<_Item> heading => heading.key,
                 SessionListItemEntry(item: _LaunchItem(:final launch)) => ValueKey<Object>(launch.launchId),
@@ -752,7 +909,21 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                 }
                 final bottomPadding = index == shownEntries.length - 1 ? endPadding : 0.0;
                 return switch (entry) {
-                  SessionListHeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0),
+                  SessionListHeadingEntry(:final heading)
+                      when index + 1 < shownEntries.length &&
+                          switch (shownEntries[index + 1]) {
+                            SessionListItemEntry(item: _SessionItem(:final row)) => row.session.pinned,
+                            _ => false,
+                          } =>
+                    _LaidOut(
+                      onChanged: (heading) => _pinnedHeading = heading,
+                      child: SessionListHeading(heading: heading, isFirst: index == 0, action: pinnedAction),
+                    ),
+                  SessionListHeadingEntry(:final heading) => SessionListHeading(
+                    heading: heading,
+                    isFirst: index == 0,
+                    action: null,
+                  ),
                   SessionListItemEntry(item: _LaunchItem(:final launch)) => IgnorePointer(
                     ignoring: _replacing,
                     child: _launchRowSettling(
@@ -769,6 +940,8 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                     row: row,
                     bottomPadding: bottomPadding,
                     tookLaunchRow: launchRows[row.project.id]?.rowKeys.containsKey(row.session.id) ?? false,
+                    reorders: reorders && row.session.pinned,
+                    pointer: pointer,
                     // Across every project each row names its own, a "No project"
                     // session's as "No project", as its session header does.
                     labelsProject: state.projectId == null,
@@ -906,48 +1079,70 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     required double bottomPadding,
     required bool tookLaunchRow,
     required bool labelsProject,
+    required bool reorders,
+    required bool pointer,
   }) {
     final list = widget.list;
     final dispatcher = list.actionDispatcher;
     // Actions run against the list's context, not the row's: a delete
     // unmounts the row before its follow-ups run.
     SessionActionsCubit actions() => context.read<SessionActionsCubit>();
-    final tile = Padding(
-      padding: EdgeInsetsDirectional.only(bottom: bottomPadding),
-      child: SessionTile(
+    final tile = SessionTile(
+      session: row.session,
+      projectLabel: labelsProject ? projectDisplayName(loc: context.loc, project: row.project) : null,
+      isArchived: row.session.time?.archived != null,
+      isRunning: row.isRunning,
+      unseen: row.isUnseen,
+      selected: list.selectedSessionId == row.session.id,
+      awaitingInput: row.isAwaitingInput,
+      isRetrying: row.isRetrying,
+      isInterrupted: row.isInterrupted,
+      backgroundTaskCount: row.backgroundTaskCount,
+      sending: row.sending,
+      onTap: () => list.onSessionTap(row: row),
+      menuEntries: () => dispatcher.sessionMenuEntries(
+        context: context,
+        actions: actions(),
         session: row.session,
-        projectLabel: labelsProject ? projectDisplayName(loc: context.loc, project: row.project) : null,
-        isArchived: row.session.time?.archived != null,
         isRunning: row.isRunning,
-        unseen: row.isUnseen,
-        selected: list.selectedSessionId == row.session.id,
-        awaitingInput: row.isAwaitingInput,
-        isRetrying: row.isRetrying,
-        backgroundTaskCount: row.backgroundTaskCount,
-        onTap: () => list.onSessionTap(row: row),
-        menuEntries: () => dispatcher.sessionMenuEntries(
-          context: context,
-          actions: actions(),
-          session: row.session,
-          isRunning: row.isRunning,
-          readEntry: SessionReadMenuToggle(unseen: row.isUnseen),
-          surfaceEntries: const [],
-        ),
-        onArchive: () =>
-            dispatcher.handleSessionArchive(context: context, session: row.session, isRunning: row.isRunning),
-        onDelete: () => dispatcher.handleSessionDelete(context: context, actions: actions(), session: row.session),
-        onToggleUnread: () => dispatcher.handleSessionToggleUnread(
-          context: context,
-          actions: actions(),
-          session: row.session,
-          unseen: row.isUnseen,
-        ),
+        canFork: actions().canFork(session: row.session),
+        readEntry: SessionReadMenuToggle(unseen: row.isUnseen),
+        surfaceEntries: const [],
       ),
+      onArchive: () =>
+          dispatcher.handleSessionArchive(context: context, session: row.session, isRunning: row.isRunning),
+      onDelete: () => dispatcher.handleSessionDelete(context: context, actions: actions(), session: row.session),
+      onToggleUnread: () => dispatcher.handleSessionToggleUnread(
+        context: context,
+        actions: actions(),
+        session: row.session,
+        unseen: row.isUnseen,
+      ),
+    );
+    // The list's end room stays below a row, not part of what lifts.
+    final placed = Padding(
+      padding: EdgeInsetsDirectional.only(bottom: bottomPadding),
+      child: reorders
+          ? PinnedRowDrag(
+              sessionId: row.session.id,
+              tracker: _dragTracker,
+              editing: _editingPinned,
+              onMove: ({required sessionId, required afterSessionId}) =>
+                  actions().movePin(sessionId: sessionId, afterSessionId: afterSessionId),
+              onMoveRefused: () => PregoPopupAlertPresenter.of(context).show(
+                title: context.loc.sessionListPinMoveFailed,
+                variant: PregoPopupAlertsNotificationsVariant.error,
+              ),
+              borderRadius: pointer ? BorderRadius.circular(PregoRadius.sm) : BorderRadius.zero,
+              liftedColor: pointer ? context.prego.colors.pointerPanelFill : Theme.of(context).scaffoldBackgroundColor,
+              child: tile,
+            )
+          : tile,
     );
     // A row a load replaces fades out without taking taps.
     return IgnorePointer(
       ignoring: _replacing,
-      child: tookLaunchRow ? _launchRowSettling(context: context, launching: false, child: tile) : tile,
+      child: tookLaunchRow ? _launchRowSettling(context: context, launching: false, child: placed) : placed,
     );
   }
 }
@@ -1101,3 +1296,34 @@ Widget _launchRowSettling({required BuildContext context, required bool launchin
     );
 
 const Duration _settleDuration = Duration(milliseconds: 200);
+
+/// Hands [onChanged] its context while the list lays it out, and null once
+/// the list sets it aside, as it scrolls away.
+class const _LaidOut({required final ValueSetter<BuildContext?> onChanged, required final Widget child})
+    extends StatefulWidget {
+  @override
+  State<_LaidOut> createState() => _LaidOutState();
+}
+
+class _LaidOutState() extends State<_LaidOut> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onChanged(context);
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    widget.onChanged(context);
+  }
+
+  @override
+  void deactivate() {
+    widget.onChanged(null);
+    super.deactivate();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}

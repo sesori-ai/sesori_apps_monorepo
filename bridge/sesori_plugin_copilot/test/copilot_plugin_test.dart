@@ -229,6 +229,7 @@ void main() {
       plugin.onConnectionReset();
       final refreshing = plugin.validateTurnSelection(
         operation: "sendPrompt",
+        sessionId: "session",
         model: null,
         variant: null,
         agent: "Plan",
@@ -255,12 +256,14 @@ void main() {
       await connecting;
       final claude = plugin.validateTurnSelection(
         operation: "sendPrompt",
+        sessionId: "session",
         model: (providerID: "copilot", modelID: "claude-sonnet-4.5"),
         variant: const PluginSessionVariant(id: "high"),
         agent: null,
       );
       final gemini = plugin.validateTurnSelection(
         operation: "sendPrompt",
+        sessionId: "session",
         model: (providerID: "copilot", modelID: "gemini-3-pro"),
         variant: const PluginSessionVariant(id: "high"),
         agent: null,

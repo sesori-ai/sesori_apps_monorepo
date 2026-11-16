@@ -14,6 +14,11 @@ final class const SendToSessionRefused({
   required final String? message,
 }) extends SendToSessionResult;
 
+/// The bridge's answer was lost, and the source's transcript later showed
+/// the send did not complete. Unlike [SendToSessionRefused], the reason is
+/// unknown.
+final class const SendToSessionNotSent() extends SendToSessionResult;
+
 /// The request failed before the bridge could send, or with an answer that
 /// is not a refusal.
 final class const SendToSessionFailed({required final ApiError error}) extends SendToSessionResult;
@@ -26,5 +31,6 @@ final class const SendToSessionUnsupported() extends SendToSessionResult;
 final class const SendToSessionComputerSwitched() extends SendToSessionResult;
 
 /// The answer never arrived: the request timed out or the connection dropped
-/// after it went out. The bridge finishes the send regardless.
+/// after it went out, and the outcome did not show in either session in time.
+/// The bridge finishes the send regardless.
 final class const SendToSessionUnconfirmed({required final ApiError error}) extends SendToSessionResult;

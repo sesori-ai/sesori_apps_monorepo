@@ -3,6 +3,8 @@ import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "support/fake_claude_process.dart";
+
 void main() {
   group("ClaudeEventDispatcher", () {
     late ClaudeEventDispatcher mapper;
@@ -412,6 +414,29 @@ void main() {
         (mentioned.last as BridgeSseMessagePartUpdated).part.text,
         "What does <command-name> mean in <local-command-stdout> output?",
       );
+    });
+
+    test("maps the CLI's user-interrupt records to stopped rows instead of user bubbles", () {
+      _startMessage(mapper, messageId: "msg-partial");
+      for (final text in ["[Request interrupted by user]", "[Request interrupted by user for tool use]"]) {
+        final events = _map(
+          mapper,
+          _user(
+            uuid: "interrupt-record",
+            timestamp: "2026-08-09T10:00:05Z",
+            content: [
+              {"type": "text", "text": text},
+            ],
+          ),
+        );
+
+        final stopped = expectType<PluginMessageError>(expectType<BridgeSseMessageUpdated>(events.single).info);
+        expect(stopped.id, "interrupt-record");
+        expect(stopped.kind, PluginErrorKind.stopped);
+        expect(stopped.errorMessage, text);
+        expect(stopped.modelID, "claude-opus-5");
+        expect(stopped.time?.created, DateTime.utc(2026, 8, 9, 10, 0, 5).millisecondsSinceEpoch);
+      }
     });
 
     test("maps tool input and completion with one diff signal", () {
@@ -928,6 +953,7 @@ void main() {
                 isCompactSummary: false,
                 toolUseResult: const ClaudeToolUseResultAbsent(),
                 originKind: ClaudeMessageOriginKind.unknown,
+                isUnattributedSdkRecord: false,
                 cwd: "/tmp/project",
                 timestamp: timestamp,
                 isSidechain: false,

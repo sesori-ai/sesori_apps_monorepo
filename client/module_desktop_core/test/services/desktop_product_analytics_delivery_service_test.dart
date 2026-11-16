@@ -277,10 +277,43 @@ void main() {
         name: "product_screen_viewed",
         params: const {"screen": "session_detail"},
       ),
+      (
+        event: const ProductAnalyticsEvent.harnessInstallFinished(outcome: AnalyticsHarnessInstallOutcome.completed),
+        name: "harness_install_finished",
+        params: const {"outcome": "completed"},
+      ),
+      (
+        event: const ProductAnalyticsEvent.transcriptPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar),
+        name: "transcript_prompts_opened",
+        params: const {"entry": "session_bar"},
+      ),
+      (
+        event: const ProductAnalyticsEvent.computerSwitched(source: ComputerSwitchSource.menu, targetOnline: true),
+        name: "computer_switched",
+        params: const {"source": "menu", "target_online": "true"},
+      ),
+      (
+        event: const ProductAnalyticsEvent.computerManaged(action: ComputerManageAction.renamed),
+        name: "computer_managed",
+        params: const {"action": "renamed"},
+      ),
+      (
+        event: const ProductAnalyticsEvent.sessionPinChanged(pinned: false),
+        name: "session_pin_changed",
+        params: const {"pinned": "false"},
+      ),
+      (
+        event: const ProductAnalyticsEvent.sideQuestionAsked(
+          harness: AnalyticsHarness.codex,
+          outcome: AnalyticsSideQuestionOutcome.noAnswer,
+        ),
+        name: "side_question_asked",
+        params: const {"harness": "codex", "outcome": "no_answer"},
+      ),
     ];
 
-    test("covers all 24 event names in the contract", () {
-      expect(sentEvents.map((event) => event.name).toSet(), hasLength(24));
+    test("covers all 30 event names in the contract", () {
+      expect(sentEvents.map((event) => event.name).toSet(), hasLength(30));
     });
 
     for (final sent in sentEvents) {
@@ -300,28 +333,12 @@ void main() {
 
     final notSentEvents = <({ProductAnalyticsEvent event, String reason})>[
       (
-        event: const ProductAnalyticsEvent.harnessInstallFinished(outcome: AnalyticsHarnessInstallOutcome.completed),
-        reason: "harness_install_finished",
-      ),
-      (
-        event: const ProductAnalyticsEvent.transcriptPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar),
-        reason: "transcript_prompts_opened",
-      ),
-      (
         event: const ProductAnalyticsEvent.desktopLinkCopied(surface: OnboardingSurface.connectSetup),
         reason: "desktop_link_copied",
       ),
       (
         event: const ProductAnalyticsEvent.desktopLinkShared(surface: OnboardingSurface.connectSetup),
         reason: "desktop_link_shared",
-      ),
-      (
-        event: const ProductAnalyticsEvent.computerSwitched(source: ComputerSwitchSource.menu, targetOnline: true),
-        reason: "computer_switched",
-      ),
-      (
-        event: const ProductAnalyticsEvent.computerManaged(action: ComputerManageAction.renamed),
-        reason: "computer_managed",
       ),
       (
         event: const ProductAnalyticsEvent.founderCallShown(surface: FounderCallSurface.settings),
@@ -434,7 +451,37 @@ void main() {
           "new_session",
           "session_detail",
           "session_diffs",
+          "scheduled_tasks",
+          "scheduled_task_detail",
         },
+      ),
+      (
+        client: AnalyticsHarnessInstallOutcome.values.map((value) => value.wireValue),
+        contract: const {"completed", "failed"},
+      ),
+      (
+        client: AnalyticsPromptsEntry.values.map((value) => value.wireValue),
+        contract: const {"session_bar", "pinch"},
+      ),
+      (
+        client: ComputerSwitchSource.values.map((value) => value.wireValue),
+        contract: const {
+          "menu",
+          "offline_screen",
+          "settings",
+          "alert",
+          "notification",
+          "computers_page",
+          "command_palette",
+        },
+      ),
+      (
+        client: ComputerManageAction.values.map((value) => value.wireValue),
+        contract: const {"renamed", "removed"},
+      ),
+      (
+        client: AnalyticsSideQuestionOutcome.values.map((value) => value.wireValue),
+        contract: const {"answered", "no_answer", "unavailable", "failed"},
       ),
     ];
 

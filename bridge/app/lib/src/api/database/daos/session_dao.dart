@@ -28,9 +28,10 @@ typedef ObservedRootSession = ({
   int projectionUpdatedAt,
 });
 
-/// Where a session page continues: the last row's pin group, sort time and
-/// id. [pinned] is false whenever the page is not ordered pinned first.
-typedef SessionPageKey = ({bool pinned, int sortAt, String sessionId});
+/// Where a session page continues: the last row's pin order, sort time and
+/// id. [pinOrder] is null for an unpinned row and whenever the page is not
+/// ordered pinned first.
+typedef SessionPageKey = ({int? pinOrder, int sortAt, String sessionId});
 
 /// A search word and the projects whose own name holds it, so their sessions
 /// match the word whatever their title.
@@ -84,17 +85,50 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     return updatedRows == 1;
   }
 
-  /// Pins or unpins [sessionId]. Pinning writes only an unarchived root row;
-  /// unpinning writes the row whatever it is. Like the approval override, a
-  /// pin is not activity, so the row's times stay. Returns whether a row was
-  /// written.
+  /// Pins or unpins [sessionId]. Pinning writes only an unarchived root row,
+  /// placing it above every pinned session unless it is pinned already, where
+  /// it stays; unpinning writes the row whatever it is. Like the approval
+  /// override, a pin is not activity, so the row's times stay. Returns whether
+  /// a row was written.
   Future<bool> setPinned({required String sessionId, required bool pinned}) async {
-    final query = update(sessionTable)
-      ..where((t) {
-        final row = t.sessionId.equals(sessionId);
-        return pinned ? row & t.parentSessionId.isNull() & t.archivedAt.isNull() : row;
-      });
-    return await query.write(SessionTableCompanion(pinned: Value(pinned))) == 1;
+    if (!pinned) {
+      final query = update(sessionTable)..where((t) => t.sessionId.equals(sessionId));
+      return await query.write(const SessionTableCompanion(pinOrder: Value(null))) == 1;
+    }
+    // One statement, so two pins at once never take the same place.
+    final written = await customUpdate(
+      "UPDATE sessions_table "
+      "SET pin_order = coalesce(pin_order, (SELECT coalesce(max(pin_order), 0) + 1 FROM sessions_table)) "
+      "WHERE session_id = ? AND parent_session_id IS NULL AND archived_at IS NULL",
+      variables: [Variable.withString(sessionId)],
+      updates: {sessionTable},
+      updateKind: UpdateKind.update,
+    );
+    return written == 1;
+  }
+
+  /// Every pinned session with its pin order, in the order the pinned group
+  /// lists them: highest first, ties as a session page breaks them.
+  Future<List<({String sessionId, int pinOrder})>> getPinnedOrder() async {
+    final sessionId = sessionTable.sessionId;
+    final pinOrder = sessionTable.pinOrder;
+    final query = selectOnly(sessionTable)
+      ..addColumns([sessionId, pinOrder])
+      ..where(pinOrder.isNotNull())
+      ..orderBy([OrderingTerm.desc(pinOrder), OrderingTerm.desc(_displayedAt), OrderingTerm.desc(sessionId)]);
+    return [
+      for (final row in await query.get())
+        if ((row.read(sessionId), row.read(pinOrder)) case (final id?, final order?)) (sessionId: id, pinOrder: order),
+    ];
+  }
+
+  /// Writes each session's pin order. Like a pin, it is not activity.
+  Future<void> setPinOrders({required List<({String sessionId, int pinOrder})> orders}) async {
+    for (final (:sessionId, :pinOrder) in orders) {
+      await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+        SessionTableCompanion(pinOrder: Value(pinOrder)),
+      );
+    }
   }
 
   Future<bool> hasApprovalOverride({required SessionApprovalMode approvalOverride}) async {
@@ -498,6 +532,20 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     });
   }
 
+  /// The unarchived, unpinned sessions [scheduledTaskId]'s runs started,
+  /// newest first.
+  Future<List<String>> listUnarchivedUnpinnedScheduledRunSessionIds({required String scheduledTaskId}) async {
+    final query = selectOnly(sessionTable)
+      ..addColumns([sessionTable.sessionId])
+      ..where(
+        sessionTable.scheduledTaskId.equals(scheduledTaskId) &
+            sessionTable.archivedAt.isNull() &
+            sessionTable.pinOrder.isNull(),
+      )
+      ..orderBy([OrderingTerm.desc(sessionTable.createdAt), OrderingTerm.desc(sessionTable.sessionId)]);
+    return [for (final row in await query.get()) ?row.read(sessionTable.sessionId)];
+  }
+
   Future<void> setParentSessionId({required String sessionId, required String parentSessionId}) async {
     await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
       SessionTableCompanion(parentSessionId: Value(parentSessionId)),
@@ -542,7 +590,8 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   /// Active pages order by the displayed time and archived pages by
   /// `archived_at`, both newest first with ties broken by `session_id`
   /// descending. With [pinnedFirst], an active page lists its pinned rows
-  /// before the rest, each group in that order; archived pages ignore it. The
+  /// before the rest, highest pin order first and ties in the time order;
+  /// archived pages ignore it. The
   /// scope is the mode's roots in [projectIds] matching every one of [words];
   /// the [filter] narrows only the page, not the counts.
   Future<SessionPageRows> getSessionPage({
@@ -602,24 +651,29 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         SessionPageFilter.running => scope & running,
         SessionPageFilter.unread => scope & unseen,
       };
-      if (after case (:final pinned, :final sortAt, :final sessionId)) {
-        final laterInGroup =
+      if (after case (:final pinOrder, :final sortAt, :final sessionId)) {
+        final laterInTime =
             sortKey.isSmallerThanValue(sortAt) |
             (sortKey.equals(sortAt) & table.sessionId.isSmallerThanValue(sessionId));
+        final unpinned = table.pinOrder.isNull();
         where =
             where &
-            switch ((pinnedGroupFirst, pinned)) {
-              (false, _) => laterInGroup,
+            switch ((pinnedGroupFirst, pinOrder)) {
+              (false, _) => laterInTime,
               // Every unpinned row follows the pinned group.
-              (true, true) => table.pinned.not() | (table.pinned & laterInGroup),
-              (true, false) => table.pinned.not() & laterInGroup,
+              (true, final pinOrder?) =>
+                unpinned |
+                    table.pinOrder.isSmallerThanValue(pinOrder) |
+                    (table.pinOrder.equals(pinOrder) & laterInTime),
+              (true, null) => unpinned & laterInTime,
             };
       }
       final rows =
           await (select(table).addColumns([sortKey])
                 ..where(where)
                 ..orderBy([
-                  if (pinnedGroupFirst) OrderingTerm.desc(table.pinned),
+                  // Descending puts the unpinned rows' nulls last.
+                  if (pinnedGroupFirst) OrderingTerm.desc(table.pinOrder),
                   OrderingTerm.desc(sortKey),
                   OrderingTerm.desc(table.sessionId),
                 ])
@@ -628,7 +682,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
       final page = [for (final row in rows.take(limit)) row.readTable(table)];
       final SessionPageKey? nextKey = rows.length > limit
           ? (
-              pinned: pinnedGroupFirst && page.last.pinned,
+              pinOrder: pinnedGroupFirst ? page.last.pinOrder : null,
               sortAt: rows[limit - 1].read(sortKey) ?? 0,
               sessionId: page.last.sessionId,
             )
@@ -670,7 +724,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
       SessionTableCompanion(
         archivedAt: Value(archivedAt),
         // Archiving drops the pin.
-        pinned: const Value(false),
+        pinOrder: const Value(null),
         lastAgent: const Value(null),
         lastAgentModel: const Value(null),
         updatedAt: Value(updatedAt),
@@ -815,6 +869,34 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
               t.worktreePath.equals(worktreePath),
         ))
         .get();
+  }
+
+  /// Whether a session other than [sessionId], archived or not, names
+  /// [worktreePath] in [projectId].
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) async {
+    final query = select(sessionTable)
+      ..where(
+        (t) =>
+            t.sessionId.equals(sessionId).not() & t.projectId.equals(projectId) & t.worktreePath.equals(worktreePath),
+      )
+      ..limit(1);
+    return await query.getSingleOrNull() != null;
+  }
+
+  /// Records [branchName], the branch the worktree at [worktreePath] was on
+  /// when it was removed (null for a detached HEAD), on every session of
+  /// [projectId] that names it.
+  Future<void> setWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) async {
+    await (update(sessionTable)..where((t) => t.projectId.equals(projectId) & t.worktreePath.equals(worktreePath)))
+        .write(SessionTableCompanion(branchName: Value(branchName)));
   }
 
   Future<void> deleteSession({required String sessionId}) async {

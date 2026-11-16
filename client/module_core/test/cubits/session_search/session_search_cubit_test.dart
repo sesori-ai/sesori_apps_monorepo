@@ -439,7 +439,7 @@ void main() {
     );
 
     SessionActivityInfo running() =>
-        const SessionActivityInfo(isRunning: true, lastUserActivityAt: null, updatedAt: null);
+        const SessionActivityInfo(sending: null, isRunning: true, lastUserActivityAt: null, updatedAt: null);
 
     setUp(() {
       final sessions = [

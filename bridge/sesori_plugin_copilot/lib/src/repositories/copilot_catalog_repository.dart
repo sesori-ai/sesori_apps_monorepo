@@ -14,6 +14,13 @@ enum CopilotConfigOptionKind({required final String category}) {
 }
 
 class CopilotCatalogRepository({required final CopilotCatalogProbeApi _api}) {
+  /// Copilot's native `/model` changes the model the session selection owns,
+  /// and `/allow-all` and `/permissions` switch between asking and approving
+  /// everything, which the session's approval mode owns. `/allow-all` and
+  /// `/permissions` appear in Copilot's ACP list; `/model` is a CLI built-in no
+  /// captured list has confirmed.
+  static const Set<String> selectionCommands = {"model", "allow-all", "permissions"};
+
   AcpCommandTracker? _commandTracker;
   StreamSubscription<AcpNotification>? _commandSubscription;
   Completer<void>? _commandSnapshot;
@@ -26,7 +33,7 @@ class CopilotCatalogRepository({required final CopilotCatalogProbeApi _api}) {
     if (!initialized.agentCapabilities.closeSession) {
       throw StateError("GitHub Copilot option discovery requires session/close");
     }
-    final tracker = AcpCommandTracker();
+    final tracker = AcpCommandTracker(selectionCommands: selectionCommands);
     _commandTracker = tracker;
     final snapshot = Completer<void>();
     _commandSnapshot = snapshot;

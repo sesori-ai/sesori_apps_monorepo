@@ -66,7 +66,7 @@ _PolicyPlugin _compose({
   required AcpOutputInterceptors Function()? outputFactory,
 }) {
   final config = AcpSessionConfigurationTracker();
-  final commands = AcpCommandTracker();
+  final commands = AcpCommandTracker(selectionCommands: const {});
   final children = AcpChildSessionTracker();
   return _PolicyPlugin(
     id: "test",

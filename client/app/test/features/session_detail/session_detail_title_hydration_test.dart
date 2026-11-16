@@ -94,6 +94,7 @@ SessionDetailLoadResult _loadedResult({required bool isArchived, required bool o
       cannotContinueMessage: null,
       namesCommandInvocations: false,
       supportsRewind: false,
+      supportsFork: false,
     ),
   );
 }
@@ -126,6 +127,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       cannotContinueMessage: null,
       namesCommandInvocations: false,
       supportsRewind: false,
+      supportsFork: false,
     ),
   );
 }
@@ -165,6 +167,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       cannotContinueMessage: null,
       namesCommandInvocations: false,
       supportsRewind: false,
+      supportsFork: false,
     ),
   );
 }
@@ -211,14 +214,18 @@ void _registerDependencies({
   getIt.registerSingleton<FileReferenceOpenService>(MockFileReferenceOpenService());
   getIt.registerSingleton<MessageComposerRestoreService>(MockMessageComposerRestoreService());
   getIt.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
+  getIt.registerSingleton<ArchiveAfterSendPreferenceStorage>(FakeArchiveAfterSendPreferenceStorage());
   // The page's own action service runs its menu actions.
   getIt.registerSingleton<SessionActionService>(
     SessionActionService(
+      sendTracker: SessionSendTracker(),
       sessionRepository: promptDispatcher,
       sessionCleanupService: SessionCleanupService(repository: promptDispatcher),
       sessionUnseenTracker: FakeSessionUnseenTracker(),
       failureReporter: failureReporter,
       selectedComputerService: FakeSelectedComputerService(),
+      productAnalyticsService: productAnalyticsService,
+      pluginRepository: MockPluginRepository(),
     ),
   );
 }

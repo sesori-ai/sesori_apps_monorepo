@@ -35,6 +35,21 @@ class PushDispatcher({
       body: body,
       sessionId: rootSessionId,
       projectId: projectId,
+      taskId: null,
+    );
+  }
+
+  /// A scheduled task run that could not start. It names no session, so it
+  /// is rate-limited and collapsed per task.
+  void dispatchScheduledTaskFailure({required String taskId, required String title, required String body}) {
+    _sendNotification(
+      category: NotificationCategory.sessionMessage,
+      eventType: NotificationEventType.scheduledTaskRunFailed,
+      title: title,
+      body: body,
+      sessionId: null,
+      projectId: null,
+      taskId: taskId,
     );
   }
 
@@ -65,6 +80,7 @@ class PushDispatcher({
       body: notificationData.body,
       sessionId: sessionId,
       projectId: projectId,
+      taskId: null,
     );
   }
 
@@ -75,10 +91,15 @@ class PushDispatcher({
     required String body,
     required String? sessionId,
     required String? projectId,
+    required String? taskId,
   }) {
+    // A push without a session is scoped to its task when it has one, so two
+    // tasks failing at the same time are neither throttled nor collapsed
+    // into one.
+    final taskScope = taskId == null ? null : "task-$taskId";
     // Completion cooldowns stay per category + session. Blocking questions and
     // permissions bypass cooldowns in the limiter.
-    final rateLimitKey = "${category.id}-${sessionId ?? "global"}";
+    final rateLimitKey = "${category.id}-${sessionId ?? taskScope ?? "global"}";
     if (!_rateLimiter.shouldSend(category: category, rateLimitKey: rateLimitKey)) {
       return;
     }
@@ -89,7 +110,7 @@ class PushDispatcher({
     // mobile derives the same value via sessionNotificationId for local rendering.
     final collapseKey = sessionId != null
         ? sessionNotificationId(sessionId: sessionId).toString()
-        : "${category.id}-global";
+        : "${category.id}-${taskScope ?? "global"}";
 
     final payload = _contentBuilder.buildNotificationPayload(
       category: category,
@@ -101,6 +122,7 @@ class PushDispatcher({
       projectId: projectId,
       // Names this computer, so tapping the push opens it on the phone.
       bridgeId: _bridgeIdProvider.bridgeId,
+      taskId: taskId,
     );
 
     unawaited(

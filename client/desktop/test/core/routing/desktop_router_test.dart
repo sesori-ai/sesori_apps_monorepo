@@ -28,11 +28,13 @@ void main() {
     getIt
       ..registerSingleton<SessionListFilterTracker>(_MockSessionListFilterTracker())
       ..registerSingleton<SseEventTracker>(activity)
-      ..registerSingleton<SessionUnseenTracker>(unseen);
+      ..registerSingleton<SessionUnseenTracker>(unseen)
+      ..registerSingleton<SessionSendTracker>(SessionSendTracker());
     addTearDown(() async {
       await getIt.unregister<SessionListFilterTracker>();
       await getIt.unregister<SseEventTracker>();
       await getIt.unregister<SessionUnseenTracker>();
+      await getIt.unregister<SessionSendTracker>();
       await activity.onDispose();
       await unseen.onDispose();
     });
@@ -82,6 +84,9 @@ void main() {
     final pages = shell.routes.whereType<GoRoute>().toList();
     for (final def in [
       AppRouteDef.archivedSessions,
+      AppRouteDef.scheduledTasks,
+      AppRouteDef.scheduledTaskDetail,
+      AppRouteDef.scheduledTaskEditor,
       AppRouteDef.newSession,
       AppRouteDef.sessionDetail,
       AppRouteDef.sessionDiffs,
@@ -380,6 +385,31 @@ void main() {
     expect(router.state.pathParameters[sessionIdPathParam], "s");
   });
 
+  testWidgets("a fork returns to the origin under it and otherwise selects the origin", (tester) async {
+    final router = _callbackRouter(initialRoute: const AppRoute.home());
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    unawaited(router.push<void>(_detail(readOnly: false).buildPath()));
+    await tester.pumpAndSettle();
+    unawaited(router.push<void>(_fork.buildPath()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("fork origin"));
+    await tester.pumpAndSettle();
+    // Popped: the home is still under the origin.
+    expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
+    expect(router.canPop(), isTrue);
+
+    // A fork reached from the home selects its origin, replacing the stack.
+    router.go(const AppRoute.home().buildPath());
+    await tester.pumpAndSettle();
+    unawaited(router.push<void>(_fork.buildPath()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("fork origin"));
+    await tester.pumpAndSettle();
+    expect(router.state.pathParameters[sessionIdPathParam], "s");
+    expect(router.canPop(), isFalse);
+  });
+
   testWidgets("direct newSession back falls back to the home", (tester) async {
     final router = _callbackRouter(
       initialRoute: const AppRoute.newSession(
@@ -449,6 +479,14 @@ class _FakeGoRouterState({
   final Uri uri = Uri(path: "/", queryParameters: queryParameters.isEmpty ? null : queryParameters);
 }
 
+const _fork = AppRoute.sessionDetail(
+  projectId: "p",
+  projectName: "UI / Core",
+  sessionId: "fork",
+  sessionTitle: "A session (fork)",
+  readOnly: false,
+  fromLaunch: false,
+);
 AppRoute _detail({required bool readOnly}) => AppRoute.sessionDetail(
   projectId: "p",
   projectName: "UI / Core",
@@ -470,6 +508,7 @@ const _session = Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   time: SessionTime(created: 1, updated: 2, archived: 3),
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,
@@ -548,6 +587,15 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                           action: () => screen.onOpenParentSession(parentSessionId: "s"),
                         ),
                         button(
+                          label: "fork origin",
+                          action: () => screen.onReturnToSession(
+                            projectId: "p",
+                            sessionId: "s",
+                            sessionTitle: "A session",
+                            readOnly: false,
+                          ),
+                        ),
+                        button(
                           label: "delete open session",
                           action: () => (screen.sessionActions.onSessionDeleted ?? fail("no delete action"))(
                             context: context,
@@ -568,6 +616,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                           label: "open archived row",
                           action: () => archived.onSessionTap(
                             row: const AllSessionsRow(
+                              sending: null,
                               session: _session,
                               project: ProjectSummary(id: "p", name: "UI / Core", path: "/fixture", time: null),
                               isRunning: false,
@@ -575,6 +624,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                               isAwaitingInput: false,
                               isRetrying: false,
                               backgroundTaskCount: 0,
+                              isInterrupted: false,
                             ),
                           ),
                         ),

@@ -33,6 +33,42 @@ class SystemProcessApi({
       ? _sendWindowsTreeSignal(pid: pid, requestedSignal: .force, force: true)
       : _sendSignal(pid: pid, requestedSignal: .force, deliveredSignal: .sigkill);
 
+  /// POSIX only: the processes descending from [pid] right now, read from one
+  /// `ps` snapshot. Windows signals already reach the whole tree.
+  Future<List<int>> listPosixDescendants({required int pid}) async {
+    const command = "ps";
+    const args = <String>["-A", "-o", "pid=,ppid="];
+    final result = await _processRunner.run(
+      executable: command,
+      arguments: args,
+      environment: {"LC_ALL": "C"},
+      workingDirectory: null,
+    );
+    if (result.exitCode != 0) {
+      throw ProcessException(command, args, result.stderr.toString(), result.exitCode);
+    }
+
+    final childrenByParent = <int, List<int>>{};
+    for (final line in const LineSplitter().convert(result.stdout.toString())) {
+      final fields = line.trim().split(RegExp(r"\s+"));
+      if (fields.length != 2) continue;
+      final child = int.tryParse(fields[0]);
+      final parent = int.tryParse(fields[1]);
+      if (child == null || parent == null || child == parent) continue;
+      (childrenByParent[parent] ??= <int>[]).add(child);
+    }
+
+    final descendants = <int>[];
+    final pending = <int>[pid];
+    while (pending.isNotEmpty) {
+      for (final child in childrenByParent[pending.removeLast()] ?? const <int>[]) {
+        descendants.add(child);
+        pending.add(child);
+      }
+    }
+    return descendants;
+  }
+
   Future<SignalResult> _sendWindowsTreeSignal({
     required int pid,
     required ShutdownSignal requestedSignal,

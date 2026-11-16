@@ -57,11 +57,29 @@ final class const TranscriptHandoffs({
 
   /// Cards by the id of the handoff prompt they replace.
   required final Map<String, TranscriptHandoffCard> cards,
+
+  /// Markers by the id of a summary request the bridge still lists as queued,
+  /// so the request never shows as a plain prompt before its message renders.
+  required final Map<String, TranscriptHandoffMarker> queuedMarkers,
+
+  /// Cards by the id of a handoff prompt the bridge still lists as queued.
+  required final Map<String, TranscriptHandoffCard> queuedCards,
+
+  /// Whether the source is still ending the newest turn after its send did not
+  /// complete, which the "Couldn't send" marker already shows.
+  required final bool stopping,
 }) {
-  /// Whether the newest turn is a summary still being written, which its
-  /// marker already shows, so no working row joins it. Only the newest turn
-  /// is ever writing.
-  bool get writing => markers.values.any((marker) => marker.status == TranscriptHandoffMarkerStatus.writing);
+  /// Whether the newest turn is a summary still being written, or a request
+  /// on its way to being answered, which its marker already shows. Only the
+  /// newest turn is ever writing.
+  bool get writing => [
+    ...markers.values,
+    ...queuedMarkers.values,
+  ].any((marker) => marker.status == TranscriptHandoffMarkerStatus.writing);
+
+  /// Whether the newest turn's marker shows what the source is doing, so no
+  /// working row joins it.
+  bool get showsWork => writing || stopping;
 }
 
 /// Folds handoff turns into markers and turns handoff prompts into cards.
@@ -78,10 +96,19 @@ class const TranscriptHandoffBuilder() {
     /// Whether the session works, so a summary request in the newest turn is
     /// still being answered.
     required bool isBusy,
+
+    /// The prompts the bridge accepted for the session, which show before
+    /// their user messages arrive.
+    required List<QueuedSessionPrompt> queuedPrompts,
   }) {
     final byId = {for (final message in messages) message.info.id: message};
     final markers = <String, TranscriptHandoffMarker>{};
     final folded = <String>{};
+    var stopping = false;
+    final queuedRequestIds = {
+      for (final prompt in queuedPrompts)
+        if (prompt.handoff is MessageHandoffSent) prompt.id,
+    };
     for (final (turnIndex, turn) in turns.turns.indexed) {
       final turnMessages = [
         for (final id in turn.messageIds) ?byId[id],
@@ -111,7 +138,19 @@ class const TranscriptHandoffBuilder() {
           folded.add(message.info.id);
         }
         final reply = rest.takeWhile((message) => message.info is! MessageUser).toList();
-        final writing = last && isBusy && turnIndex == turns.turns.length - 1;
+        final promptId = switch (request.info) {
+          MessageUser(:final promptId) => promptId,
+          MessageAssistant() || MessageError() => null,
+        };
+        // A send needs an idle source, so a newer request still queued means
+        // this one's turn has ended, even when busy arrives before its echo.
+        final newest = last && isBusy && turnIndex == turns.turns.length - 1;
+        final writing = newest && !queuedRequestIds.any((id) => id != promptId);
+        // The user's next prompt, joined to a stopped request's turn, works as
+        // any other.
+        if (request.info case MessageUser(handoff: MessageHandoffNotSent()) when newest) {
+          stopping = !rest.any((message) => message.info is MessageUser);
+        }
         final marker = switch (request.info) {
           MessageUser(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle)) =>
             TranscriptHandoffMarker(
@@ -134,30 +173,54 @@ class const TranscriptHandoffBuilder() {
     }
     final cards = <String, TranscriptHandoffCard>{
       for (final message in messages)
-        if (message.info
-            case MessageUser(
-              :final id,
-              handoff: MessageHandoffReceived(
-                :final sourceSessionId,
-                :final sourceTitle,
-                :final summary,
-                :final transcriptPath,
-              ),
-            )
-            when !folded.contains(id))
-          id: TranscriptHandoffCard(
-            sourceSessionId: sourceSessionId,
-            sourceTitle: sourceTitle,
-            summary: summary,
-            transcriptPath: transcriptPath,
-          ),
+        if (message.info case MessageUser(:final id, :final MessageHandoffReceived handoff) when !folded.contains(id))
+          id: _cardOf(handoff: handoff),
     };
+    // A prompt whose user message arrived before its parts still shows from
+    // the queue, so its row keeps the handoff until the message can take over.
+    final queuedMarkers = <String, TranscriptHandoffMarker>{};
+    final queuedCards = <String, TranscriptHandoffCard>{};
+    for (final prompt in queuedPrompts) {
+      switch (prompt.handoff) {
+        // Not answered yet, so the summary is still to be written.
+        case MessageHandoffSent(:final targetSessionId, :final targetTitle):
+          queuedMarkers[prompt.id] = TranscriptHandoffMarker(
+            targetSessionId: targetSessionId,
+            targetTitle: targetTitle,
+            status: TranscriptHandoffMarkerStatus.writing,
+            summary: null,
+          );
+        case MessageHandoffNotSent(:final targetSessionId, :final targetTitle):
+          // Held until its marked message renders, while the source stops.
+          stopping = stopping || isBusy;
+          queuedMarkers[prompt.id] = TranscriptHandoffMarker(
+            targetSessionId: targetSessionId,
+            targetTitle: targetTitle,
+            status: TranscriptHandoffMarkerStatus.notSent,
+            summary: null,
+          );
+        case final MessageHandoffReceived handoff:
+          queuedCards[prompt.id] = _cardOf(handoff: handoff);
+        case MessageHandoffUnknown() || null:
+          break;
+      }
+    }
     return TranscriptHandoffs(
       markers: Map.unmodifiable(markers),
       foldedMessageIds: Set.unmodifiable(folded),
       cards: Map.unmodifiable(cards),
+      queuedMarkers: Map.unmodifiable(queuedMarkers),
+      queuedCards: Map.unmodifiable(queuedCards),
+      stopping: stopping,
     );
   }
+
+  static TranscriptHandoffCard _cardOf({required MessageHandoffReceived handoff}) => TranscriptHandoffCard(
+    sourceSessionId: handoff.sourceSessionId,
+    sourceTitle: handoff.sourceTitle,
+    summary: handoff.summary,
+    transcriptPath: handoff.transcriptPath,
+  );
 
   static bool _isRequest({required MessageWithParts message}) => switch (message.info) {
     MessageUser(handoff: MessageHandoffSent() || MessageHandoffNotSent()) => true,

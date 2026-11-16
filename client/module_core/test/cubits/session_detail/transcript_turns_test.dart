@@ -74,7 +74,11 @@ ToolState _state({required ToolStatus status}) =>
     ToolState(status: status, title: null, shellCommand: null, output: null, error: null);
 
 TranscriptTurns _turns({required List<MessageWithParts> messages, bool hasOlderMessages = false}) =>
-    const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: hasOlderMessages);
+    const TranscriptTurnBuilder().build(
+      messages: messages,
+      hasOlderMessages: hasOlderMessages,
+      turnEndMessageIds: const {},
+    );
 
 String _kind({required TranscriptTurn turn}) => switch (turn) {
   TranscriptPromptTurn() => "prompt",
@@ -138,6 +142,49 @@ void main() {
       expect(turns.inNewestTurn(messageId: "u1"), isFalse);
       expect(turns.inNewestTurn(messageId: "u2"), isTrue);
       expect(turns.inNewestTurn(messageId: "u3"), isTrue);
+    });
+  });
+
+  group("TranscriptTurns fork points", () {
+    final turns = _turns(
+      messages: [
+        _prompt(id: "u1"),
+        _agent(id: "a1", parts: [_tool()]),
+        _agent(id: "a2", parts: [_text()]),
+        _automation(id: "x1", parts: [_text()]),
+        _prompt(id: "u2"),
+        _agent(id: "a3", parts: [_stepStart()]),
+        _prompt(id: "u3"),
+        _agent(id: "a4", parts: [_text()]),
+      ],
+    );
+
+    test("a turn's opener forks before it, a follow-up after it", () {
+      expect(
+        turns.userMessageForkPoint(messageId: "u1", working: false),
+        const ForkPoint.beforeMessage(messageId: "u1"),
+      );
+      expect(
+        turns.userMessageForkPoint(messageId: "u3", working: false),
+        const ForkPoint.afterMessage(messageId: "u3"),
+      );
+    });
+
+    test("only a finished turn's last agent reply forks, after it", () {
+      expect(turns.replyForkPoint(messageId: "a1", working: false), isNull);
+      expect(turns.replyForkPoint(messageId: "a2", working: false), const ForkPoint.afterMessage(messageId: "a2"));
+      expect(turns.replyForkPoint(messageId: "x1", working: false), isNull);
+      expect(turns.replyForkPoint(messageId: "a4", working: false), const ForkPoint.afterMessage(messageId: "a4"));
+    });
+
+    test("the running turn offers no fork, earlier turns still do", () {
+      expect(turns.userMessageForkPoint(messageId: "u2", working: true), isNull);
+      expect(turns.replyForkPoint(messageId: "a4", working: true), isNull);
+      expect(
+        turns.userMessageForkPoint(messageId: "u1", working: true),
+        const ForkPoint.beforeMessage(messageId: "u1"),
+      );
+      expect(turns.replyForkPoint(messageId: "a2", working: true), const ForkPoint.afterMessage(messageId: "a2"));
     });
   });
 

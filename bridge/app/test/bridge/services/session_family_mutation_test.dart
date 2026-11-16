@@ -430,7 +430,7 @@ class _FamilyRepository() implements SessionRepository {
         if (record.rootId == sessionId || record.id == sessionId) record.id,
     ];
     _sessions.removeWhere((_, record) => record.rootId == sessionId || record.id == sessionId);
-    return (session: snapshot.session, sessionIds: removed);
+    return (session: snapshot.session, sessionIds: removed, projectId: snapshot.session.projectID, worktreePath: null);
   }
 
   @override
@@ -535,6 +535,7 @@ class _SessionRecord({
     promptDefaults: null,
     lastUserActivityAt: null,
     branchName: "branch-$id",
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,
@@ -588,6 +589,9 @@ class _NoPromptUploadRepository() implements PromptUploadRepository {
   @override
   Future<String> save({required String sessionId, required List<int> bytes, required String filename}) =>
       throw UnimplementedError();
+
+  @override
+  Future<void> deleteSaved({required String path}) => throw UnimplementedError();
 
   @override
   Future<void> deleteSessions({required List<String> sessionIds}) async {}

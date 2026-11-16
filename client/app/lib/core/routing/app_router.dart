@@ -14,6 +14,7 @@ import "../../features/home/home_sidebar_footer.dart";
 import "../../features/home/onboarding/bridge_onboarding.dart";
 import "../../features/login/login_screen.dart";
 import "../../features/new_session/new_session_screen.dart";
+import "../../features/scheduled_tasks/scheduled_tasks_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_diffs/session_diffs_screen.dart";
 import "../../features/session_list/archived_sessions_artwork.dart";
@@ -122,6 +123,12 @@ extension on AppRoute {
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSettingsComputers() => const ComputersScreen(),
       AppRouteSettingsProjects() => const ProjectsSettingsScreen(),
+      AppRouteScheduledTasks() => const ScheduledTasksScreen(),
+      AppRouteScheduledTaskDetail(:final taskId) => ScheduledTaskDetailScreen(
+        key: ValueKey("scheduled-task-detail-$taskId"),
+        taskId: taskId,
+      ),
+      AppRouteScheduledTaskEditor(:final taskId) => ScheduledTaskEditorScreen(taskId: taskId),
       AppRouteNewSession(:final projectId, :final projectName, :final entry) => NewSessionScreen(
         projectId: projectId,
         projectName: projectName,
@@ -304,6 +311,7 @@ List<RouteBase> _buildAppRoutes({
           filterTracker: getIt<SessionListFilterTracker>(),
           sseEventTracker: getIt<SseEventTracker>(),
           sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+          sessionSendTracker: getIt<SessionSendTracker>(),
           // Above that navigator, so its alerts join the pages' alert slot.
           alertNavigatorKey: signedInNavigatorKey,
           // The home and Archived both name the computer they reach.
@@ -443,6 +451,15 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
       ],
     ),
     buildArchivedSessionsRoute(),
+    AppRouteDef.scheduledTasks.toGoRoute(
+      routes: [
+        GoRoute(
+          path: ":$taskIdPathParam",
+          builder: (context, state) => AppRouteDef.scheduledTaskDetail._buildScreen(context: context, state: state),
+        ),
+      ],
+    ),
+    AppRouteDef.scheduledTaskEditor.toGoRoute(),
     buildHarnessSettingsRoute(),
     AppRouteDef.settings.toGoRoute(
       routes: [
@@ -592,6 +609,7 @@ ShellRoute buildArchivedSessionsRoute() {
           filterTracker: getIt<SessionListFilterTracker>(),
           sseEventTracker: getIt<SseEventTracker>(),
           sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+          sessionSendTracker: getIt<SessionSendTracker>(),
           child: child,
         ),
       ),
@@ -674,6 +692,42 @@ void closeDeletedArchivedSessionRoute({required BuildContext context, required S
   // Pop only the archive navigator; go() would discard the flow's opener.
   // ignore: no_slop_linter/avoid_navigator_of, pop owned audit pages without replacing the root stack
   Navigator.of(context).popUntil((route) => route.isFirst);
+}
+
+/// Goes back to the session a page came from, such as a fork's origin: back
+/// when its page, live or archived, is the one below, so going there and back
+/// never piles pages up; otherwise [route], that session's page, opens over
+/// this one.
+void returnToSessionRoute({
+  required BuildContext context,
+  required String projectId,
+  required String sessionId,
+  required AppRoute route,
+}) {
+  final locations = {
+    for (final candidate in [
+      AppRoute.sessionDetail(
+        projectId: projectId,
+        projectName: null,
+        sessionId: sessionId,
+        sessionTitle: null,
+        readOnly: false,
+        fromLaunch: false,
+      ),
+      AppRoute.archivedSessionDetail(projectId: projectId, projectName: null, sessionId: sessionId, sessionTitle: null),
+    ])
+      Uri.parse(candidate.buildPath()).path,
+  };
+  Iterable<RouteMatchBase> pages(List<RouteMatchBase> matches) =>
+      matches.expand((match) => match is ShellRouteMatch ? pages(match.matches) : [match]);
+  // ignore: no_slop_linter/avoid_raw_go_router, reads the page stack; navigation below uses the typed extension
+  final router = GoRouter.of(context);
+  final stack = pages(router.routerDelegate.currentConfiguration.matches).toList();
+  if (stack.length >= 2 && locations.contains(stack[stack.length - 2].matchedLocation)) {
+    router.pop();
+  } else {
+    unawaited(context.pushRoute<void>(route));
+  }
 }
 
 /// Opens the session a send went into, from an alert that can outlive the

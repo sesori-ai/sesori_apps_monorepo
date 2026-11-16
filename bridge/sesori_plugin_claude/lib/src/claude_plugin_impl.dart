@@ -44,6 +44,7 @@ final class ClaudePlugin({
         FormInteractionPluginApi,
         SessionExternalActionsPluginApi,
         SessionRewindPluginApi,
+        SessionForkPluginApi,
         SideQuestionPluginApi {
   this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
@@ -57,6 +58,9 @@ final class ClaudePlugin({
   final String _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
   final Map<String, PluginSession> _createdSessions = {};
   final Set<String> _unstartedSessions = {};
+
+  /// The bridge's stored directory of each session it operated on.
+  final Map<String, String> _primedDirectories = {};
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _disposeFuture;
 
@@ -88,6 +92,11 @@ final class ClaudePlugin({
 
   @override
   String get launchDirectory => _launchDirectory;
+
+  @override
+  void primeSessionDirectory({required String sessionId, required String directory}) {
+    _primedDirectories[sessionId] = normalizeProjectDirectory(directory: directory);
+  }
 
   @override
   Future<List<PluginSession>> getSessions({required String projectId}) async {
@@ -220,6 +229,7 @@ final class ClaudePlugin({
     } finally {
       _createdSessions.remove(sessionId);
       _unstartedSessions.remove(sessionId);
+      _primedDirectories.remove(sessionId);
       _eventDispatcher.forgetSession(sessionId: sessionId);
       if (existing != null) _eventBuffer.add(BridgeSseSessionDeleted(info: existing.toJson()));
       _eventBuffer.add(const BridgeSseProjectUpdated());
@@ -247,7 +257,7 @@ final class ClaudePlugin({
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
     if (await _transcripts.findTranscriptPath(sessionId: sessionId) == null) {
-      if (_createdSessions.containsKey(sessionId)) return const [];
+      if (_sessionWithoutTranscript(sessionId) != null) return const [];
       throw const PluginOperationException.notFound(operation: "getSessionMessages", message: "session not found");
     }
     final catalog = await _catalogForHistory(directory: await _directoryForSession(sessionId));
@@ -358,6 +368,42 @@ final class ClaudePlugin({
   }
 
   @override
+  Future<PluginSession> forkSession({required String sessionId, required String throughMessageId}) async {
+    const operation = "forkSession";
+    final directory = await _directoryForSession(sessionId);
+    if (directory == null) {
+      throw const PluginBranchPointUnavailableException(
+        operation: operation,
+        userFacingReason: ClaudeSessionService.forkTranscriptMissingReason,
+        cause: null,
+      );
+    }
+    final forkSessionId = _generateSessionId();
+    try {
+      await _sessions.forkSession(
+        sessionId: sessionId,
+        throughMessageId: throughMessageId,
+        forkSessionId: forkSessionId,
+      );
+    } on PluginOperationException {
+      rethrow;
+    } on Object catch (error) {
+      throw PluginOperationException(operation: operation, message: "Claude fork could not be written", cause: error);
+    }
+    final now = _clock.now().millisecondsSinceEpoch;
+    final session = PluginSession(
+      id: forkSessionId,
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: null,
+      time: PluginSessionTime(created: now, updated: now, archived: null),
+    );
+    _eventBuffer.add(BridgeSseSessionCreated(info: session.toJson()));
+    return session;
+  }
+
+  @override
   Future<void> sendCommand({
     required String sessionId,
     required String promptId,
@@ -373,11 +419,11 @@ final class ClaudePlugin({
     if (directory == null) {
       throw const PluginOperationException.notFound(operation: "sendCommand", message: "session not found");
     }
-    // A catalog cached before /fast was filtered can still offer it.
-    if (command == ClaudeBackendCatalogRepository.fastModeCommand) {
+    // A catalog cached before these were filtered can still offer them.
+    if (ClaudeBackendCatalogRepository.selectionCommands.contains(command)) {
       throw const PluginStaleOptionsException(
         operation: "sendCommand",
-        message: "fast mode is set through the session selection",
+        message: "model, effort and fast mode are set through the session selection",
       );
     }
     final visible = userVisibleArguments?.trim();
@@ -407,8 +453,17 @@ final class ClaudePlugin({
         sessionId: sessionId,
         sessionExists:
             _createdSessions.containsKey(sessionId) ||
-            await _transcripts.findTranscriptPath(sessionId: sessionId) != null,
+            await _transcripts.findTranscriptPath(sessionId: sessionId) != null ||
+            _sessionWithoutTranscript(sessionId) != null,
       );
+
+  /// The cache life the account's billing route gives, as the catalog read it
+  /// from Claude's handshake.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => (await _catalogService.getCatalog(
+    directory: await _directoryForSession(sessionId),
+    refresh: false,
+  )).promptCacheLife;
 
   /// Runs Claude's `/compact` with the session's applied selection, so the
   /// compaction neither switches the model nor restarts the process.
@@ -729,6 +784,7 @@ final class ClaudePlugin({
     await _sessions.dispose();
     _createdSessions.clear();
     _unstartedSessions.clear();
+    _primedDirectories.clear();
     await _eventBuffer.close();
   }
 
@@ -930,7 +986,33 @@ final class ClaudePlugin({
   }
 
   Future<PluginSession?> _findSession(String sessionId) async =>
-      _createdSessions[sessionId] ?? await _transcripts.findSessionById(sessionId: sessionId);
+      _createdSessions[sessionId] ??
+      await _transcripts.findSessionById(sessionId: sessionId) ??
+      _sessionWithoutTranscript(sessionId);
+
+  /// A session known here that has no transcript. Claude Code writes nothing
+  /// until a session's first prompt, so a session created without one, such
+  /// as an empty fork, is only in memory. After a bridge restart the
+  /// bridge's directory hint is all that is left of it, so a hinted root
+  /// session without a transcript is taken as unstarted again, and its first
+  /// prompt starts it under its own id.
+  PluginSession? _sessionWithoutTranscript(String sessionId) {
+    if (_createdSessions[sessionId] case final created?) return created;
+    final directory = _primedDirectories[sessionId];
+    if (directory == null || ClaudeSubagentSessionId.agentIdOf(sessionId) != null) return null;
+    final now = _clock.now().millisecondsSinceEpoch;
+    final session = PluginSession(
+      id: sessionId,
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: null,
+      time: PluginSessionTime(created: now, updated: now, archived: null),
+    );
+    _createdSessions[sessionId] = session;
+    _unstartedSessions.add(sessionId);
+    return session;
+  }
 
   Future<String?> _directoryForSession(String sessionId) async => (await _findSession(sessionId))?.directory;
 
@@ -952,8 +1034,9 @@ final class ClaudePlugin({
       // Between an acknowledged interrupt and the interrupted turn's result the
       // CLI can still stream that turn's output; a full stop tears the process
       // down, a main-agent-only stop keeps it, so assistant output is dropped
-      // here. User echoes still render (they are the prompt's transcript identity)
-      // and so do forwarded sub-agent frames, which belong to the kept work.
+      // here. User echoes still render (they are the prompt's transcript identity,
+      // and the CLI's interrupt record becomes the turn's stopped row) and so do
+      // forwarded sub-agent frames, which belong to the kept work.
       if (interrupted) {
         if (message
             case ClaudeAssistantMessage(parentToolUseId: null) || ClaudeStreamEventMessage(parentToolUseId: null)) {

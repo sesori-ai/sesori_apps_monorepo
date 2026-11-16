@@ -141,6 +141,21 @@ final class _ComposerSendShortcutActivator({
   String debugDescribeKeys() => _activator.debugDescribeKeys();
 }
 
+/// Backspace in the empty field, which has nothing to delete.
+final class _EmptyFieldBackspaceActivator({required final TextEditingController controller}) extends ShortcutActivator {
+  static const _backspace = SingleActivator(LogicalKeyboardKey.backspace);
+  final TextEditingController _controller = controller;
+
+  @override
+  Iterable<LogicalKeyboardKey>? get triggers => _backspace.triggers;
+
+  @override
+  bool accepts(KeyEvent event, HardwareKeyboard state) => _controller.text.isEmpty && _backspace.accepts(event, state);
+
+  @override
+  String debugDescribeKeys() => _backspace.debugDescribeKeys();
+}
+
 typedef PromptSubmitCallback = void Function({
   required ComposerDraft draft,
   required CommandInfo? command,
@@ -169,6 +184,10 @@ class const PromptInput({
   /// Whether a send may go out now. Typing stays open either way; while this
   /// is false the draft simply waits in the field.
   required final bool canSend,
+
+  /// While set, the composer takes no input: it dims, and typing, a tap,
+  /// paste, a drop, attaching or voice answer with this note instead.
+  required final String? lockedNote,
   required final PromptSubmitCallback onSend,
 
   /// Null for Send with its arrow, which empties the composer once it goes.
@@ -183,7 +202,9 @@ class const PromptInput({
   required final Widget? composerHeader,
 
   /// The options pill's side-question action; null where the composer offers
-  /// none.
+  /// none. While it is [ComposerSideQuestionAsking], Send asks a side question
+  /// instead: the strip above the input says so, with its ✕ (or Backspace in
+  /// the empty field) leaving, and the field's border darkens.
   required final ComposerSideQuestion? sideQuestion,
 
   /// Kept at the trailing edge of the strip above the input in every state,
@@ -245,6 +266,9 @@ class const PromptInput({
 
   /// Finds the composer's text field in widget and integration tests.
   static const textFieldKey = ValueKey("promptInput.textField");
+
+  /// Finds the darker border a side question draws, in widget tests.
+  static const sideQuestionBorderKey = ValueKey("promptInput.sideQuestionBorder");
 
   /// Finds the resting text-first pill's field area, which a tap opens into
   /// the text field, in widget and integration tests.
@@ -320,6 +344,11 @@ class _PromptInputState() extends State<PromptInput> {
   /// the picker's search takes focus, and a layout swap would drop the
   /// picker's anchor.
   bool _typingPinnedByPicker = false;
+
+  /// Keeps the typing layout after Send handed a side question to its side
+  /// chat: the composer behind the rising sheet keeps its height, so the
+  /// transcript above it stays put. Cleared once the field takes focus again.
+  bool _typingPinnedBySideChat = false;
   bool _optionsOpen = false;
 
   /// Whether the field holds sendable text. Mirrored into state so the
@@ -528,7 +557,11 @@ class _PromptInputState() extends State<PromptInput> {
     // resting pill.
     _updateComposerState(
       update: () {
-        if (!_focusNode.hasFocus) _typingRequested = false;
+        if (_focusNode.hasFocus) {
+          _typingPinnedBySideChat = false;
+        } else {
+          _typingRequested = false;
+        }
       },
     );
   }
@@ -544,10 +577,19 @@ class _PromptInputState() extends State<PromptInput> {
   bool get _showsTypingLayout =>
       _typingRequested ||
       _typingPinnedByPicker ||
+      _typingPinnedBySideChat ||
       _focusNode.hasFocus ||
       _hasText ||
       widget.stagedCommand != null ||
+      _asksSideQuestion ||
       _attachments.isNotEmpty;
+
+  bool get _asksSideQuestion => widget.sideQuestion is ComposerSideQuestionAsking;
+
+  VoidCallback? get _leaveSideQuestion => switch (widget.sideQuestion) {
+    ComposerSideQuestionAsking(:final onLeave) => onLeave,
+    ComposerSideQuestionOpen() || ComposerSideQuestionBlocked() || ComposerSideQuestionPending() || null => null,
+  };
 
   /// The layout the composer would rest in right now, ignoring any pinned
   /// voice interaction.
@@ -658,7 +700,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// Enter and the send button. While a pointer shell listens, Enter finishes
   /// the dictation.
   void _handleSend() {
-    if (_isAwaitingDictatedWords) return;
+    if (_isAwaitingDictatedWords || _refuseWhileLocked()) return;
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     if (_isListening && ComposerPresentationScope.read(context).presentation == ComposerPresentation.pointer) {
       unawaited(_endRecording(finish: _VoiceFinish.send));
@@ -755,7 +797,9 @@ class _PromptInputState() extends State<PromptInput> {
     // Here rather than before this method: a refusal above leaves the words
     // for the box, with no bubble expected.
     final handsOver = widget.submitAction != null;
-    if (fromDictation && !handsOver) SentBubbleLanding.of(context: context).expect();
+    // A side question lands in its side chat, not in the transcript.
+    final asksSideQuestion = _asksSideQuestion;
+    if (fromDictation && !handsOver && !asksSideQuestion) SentBubbleLanding.of(context: context).expect();
     widget.onSend(
       draft: submission,
       command: stagedCommand,
@@ -771,6 +815,11 @@ class _PromptInputState() extends State<PromptInput> {
     }
     _controller.clear();
     widget.onDraftCleared();
+    // The side chat that asks it takes the focus.
+    if (asksSideQuestion) {
+      setState(() => _typingPinnedBySideChat = true);
+      return true;
+    }
     // Keep the keyboard up across a send only where it was already part of
     // the flow: when the field was focused, and after a typed send in
     // text-first. A dictation that sent itself never raises it — the composer
@@ -844,6 +893,7 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   Future<void> _handleRecordStart({required _RecordingPointer? pointer}) async {
+    if (_refuseWhileLocked()) return;
     if (_voiceInteraction is! _VoiceIdle || _voiceCubit.state is! VoiceInputIdle) return;
     // Fire before recorder startup or rebuilding so touch-down feels immediate.
     unawaited(_playHapticFeedback(play: HapticFeedback.lightImpact));
@@ -1400,7 +1450,31 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
+  /// Answers input a locked composer refuses with its note.
+  bool _refuseWhileLocked() {
+    final note = widget.lockedNote;
+    if (note == null) return false;
+    _showComposerNotice(note);
+    return true;
+  }
+
+  /// Dims a locked composer and answers a tap anywhere on it with its note.
+  Widget _lockable({required Widget child}) {
+    final locked = widget.lockedNote != null;
+    return GestureDetector(
+      behavior: locked ? HitTestBehavior.opaque : HitTestBehavior.deferToChild,
+      onTap: locked ? _refuseWhileLocked : null,
+      child: AnimatedOpacity(
+        duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        opacity: locked ? 0.6 : 1,
+        child: IgnorePointer(ignoring: locked, child: child),
+      ),
+    );
+  }
+
   Future<void> _openEditorSheet() async {
+    if (_refuseWhileLocked()) return;
     await PromptEditorSheet.show(
       context,
       controller: _controller,
@@ -1431,6 +1505,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
       return context.loc.sessionDetailCommandArgumentsHint;
     }
+    if (_asksSideQuestion) return context.loc.sideQuestionComposerHint;
     if (_pointerShell && _voicePresentation == _VoicePresentation.recording) return context.loc.voiceListening;
     return widget.hasMessages ? context.loc.sessionDetailFollowUpHint : context.loc.sessionDetailPromptHint;
   }
@@ -1631,42 +1706,44 @@ class _PromptInputState() extends State<PromptInput> {
             // The composer's halo runs on to the bottom edge, so nothing
             // shows below it. It follows the animated size rather than one
             // layout's surface, so it stays put while layouts cross-fade.
-            child: _withLiveWords(
-              context: context,
-              body: PregoPageHalo(
-                radius: PregoRadius.x3l,
-                reachesLayerBottom: true,
-                // Only a layout a send left stands above the closing box: it is cut
-                // along the top of the surface it is fading from.
-                child: ClipRRect(
-                  clipBehavior: _closesWithSend ? Clip.antiAlias : Clip.none,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(PregoRadius.x3l)),
-                  child: _morphSize(
-                    alignment: Alignment.bottomCenter,
-                    duration: _closesWithSend ? transcriptMotionDuration : _morphDuration,
-                    curve: _closesWithSend ? transcriptMotionCurve : _morphCurve,
-                    clipBehavior: Clip.hardEdge,
-                    child: AnimatedSwitcher(
-                      key: _composerBodyKey,
-                      duration: _morphDuration,
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      layoutBuilder: (currentChild, previousChildren) =>
-                          _layoutComposerBody(currentChild: currentChild, previousChildren: previousChildren),
-                      child: KeyedSubtree(
-                        // Layout changes cross-fade; voice interactions pin
-                        // [_layout], so a switch never happens mid-hold.
-                        key: ValueKey(_layout),
-                        child: switch (_layout) {
-                          ComposerSurfaceLayout.typing => _buildTypingComposer(context),
-                          ComposerSurfaceLayout.compact => _buildCompactComposer(context),
-                          ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
-                            context,
-                            hint: context.loc.sessionDetailHoldToTalk,
-                            extraTrailingWidth: widget.isBusy ? _stopRoom : 0,
-                            trailing: _buildRestingActions(context),
-                          ),
-                        },
+            child: _lockable(
+              child: _withLiveWords(
+                context: context,
+                body: PregoPageHalo(
+                  radius: PregoRadius.x3l,
+                  reachesLayerBottom: true,
+                  // Only a layout a send left stands above the closing box: it is cut
+                  // along the top of the surface it is fading from.
+                  child: ClipRRect(
+                    clipBehavior: _closesWithSend ? Clip.antiAlias : Clip.none,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(PregoRadius.x3l)),
+                    child: _morphSize(
+                      alignment: Alignment.bottomCenter,
+                      duration: _closesWithSend ? transcriptMotionDuration : _morphDuration,
+                      curve: _closesWithSend ? transcriptMotionCurve : _morphCurve,
+                      clipBehavior: Clip.hardEdge,
+                      child: AnimatedSwitcher(
+                        key: _composerBodyKey,
+                        duration: _morphDuration,
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        layoutBuilder: (currentChild, previousChildren) =>
+                            _layoutComposerBody(currentChild: currentChild, previousChildren: previousChildren),
+                        child: KeyedSubtree(
+                          // Layout changes cross-fade; voice interactions pin
+                          // [_layout], so a switch never happens mid-hold.
+                          key: ValueKey(_layout),
+                          child: switch (_layout) {
+                            ComposerSurfaceLayout.typing => _buildTypingComposer(context),
+                            ComposerSurfaceLayout.compact => _buildCompactComposer(context),
+                            ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
+                              context,
+                              hint: context.loc.sessionDetailHoldToTalk,
+                              extraTrailingWidth: widget.isBusy ? _stopRoom : 0,
+                              trailing: _buildRestingActions(context),
+                            ),
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -1772,26 +1849,32 @@ class _PromptInputState() extends State<PromptInput> {
         },
       );
     } else {
-      final headerChild = switch (widget.stagedCommand) {
-        null => _pointerShell ? null : widget.composerHeader,
-        final commandInfo => Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: PregoPageHalo(
-              radius: PregoRadius.full,
-              reachesLayerBottom: false,
-              child: GlassChip(
-                label: "/${commandInfo.name}",
-                onDeleted: widget.onCommandCleared,
-                deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
-              ),
-            ),
+      final leaveSideQuestion = _leaveSideQuestion;
+      final headerChild = switch ((widget.stagedCommand, leaveSideQuestion)) {
+        (final commandInfo?, _) => _buildHeaderChip(
+          chip: GlassChip(
+            label: "/${commandInfo.name}",
+            onDeleted: widget.onCommandCleared,
+            deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
           ),
         ),
+        (null, final onLeave?) => _buildHeaderChip(
+          chip: GlassChip(
+            label: context.loc.sideQuestionComposerLabel,
+            icon: const Icon(TablerRegular.message_dots, size: PregoIconSize.md),
+            onDeleted: onLeave,
+            deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
+            deleteSemanticLabel: context.loc.sideQuestionComposerLeave,
+          ),
+        ),
+        (null, null) => _pointerShell ? null : widget.composerHeader,
       };
       child = KeyedSubtree(
-        key: ValueKey(widget.stagedCommand == null ? "header" : "staged-command"),
+        key: switch ((widget.stagedCommand, leaveSideQuestion)) {
+          (_?, _) => const ValueKey("staged-command"),
+          (null, _?) => _sideQuestionChipKey,
+          (null, null) => const ValueKey("header"),
+        },
         // Older bridges can provide no picker header. Reserve its footprint so
         // the recording helper does not grow the composer when it appears.
         child:
@@ -1819,7 +1902,7 @@ class _PromptInputState() extends State<PromptInput> {
           // its ordinary fade, including while the outgoing chip dematerializes.
           // Under reduced motion the materialize is itself a plain fade, with no
           // scale or blur, and the one fade that glass honours.
-          if (transitionChild.key == const ValueKey("staged-command")) {
+          if (transitionChild.key == const ValueKey("staged-command") || transitionChild.key == _sideQuestionChipKey) {
             return GlassMaterializeTransition(animation: animation, child: transitionChild);
           }
           final fade = _fadeEachEntry(transitionChild, animation);
@@ -1835,6 +1918,21 @@ class _PromptInputState() extends State<PromptInput> {
       ),
     );
   }
+
+  static const _sideQuestionChipKey = ValueKey("side-question");
+
+  /// A staged command's chip, or the side question's, where the header shows.
+  /// The staged command's or side question's chip. It belongs to the field,
+  /// unlike the pills in [composerHeader], so its ✕ keeps the keyboard up.
+  Widget _buildHeaderChip({required Widget chip}) => Padding(
+    padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
+    child: Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: TextFieldTapRegion(
+        child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: chip),
+      ),
+    ),
+  );
 
   Widget _buildSavedRecordingActions(BuildContext context) {
     final loc = context.loc;
@@ -2399,6 +2497,23 @@ class _PromptInputState() extends State<PromptInput> {
               ],
             ),
           ),
+          // A side question darkens the border: a darker one eases in over it.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _asksSideQuestion ? 1 : 0,
+                duration: context.isReducedMotion ? Duration.zero : _morphDuration,
+                curve: _morphCurve,
+                child: DecoratedBox(
+                  key: PromptInput.sideQuestionBorderKey,
+                  decoration: BoxDecoration(
+                    borderRadius: borderRadius,
+                    border: Border.all(color: context.prego.colors.fgQuaternary),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -2457,6 +2572,7 @@ class _PromptInputState() extends State<PromptInput> {
                         controller: _controller,
                         activator: const SingleActivator(LogicalKeyboardKey.enter),
                       ): _handleSend,
+                    _EmptyFieldBackspaceActivator(controller: _controller): ?_leaveSideQuestion,
                   },
                   child: ComposerWordsBoxSlot(
                     box: _wordsBox,
@@ -2469,6 +2585,12 @@ class _PromptInputState() extends State<PromptInput> {
                       maxLines: growsInPlace ? 16 : 6,
                       keyboardType: TextInputType.multiline,
                       textInputAction: TextInputAction.newline,
+                      // Keeps the keyboard up while locked, so nothing moves.
+                      inputFormatters: [
+                        TextInputFormatter.withFunction(
+                          (previous, next) => previous.text != next.text && _refuseWhileLocked() ? previous : next,
+                        ),
+                      ],
                       contextMenuBuilder: (_, editableTextState) =>
                           _buildComposerContextMenu(editableTextState: editableTextState),
                       // Material's default keeps focus on mobile touch taps;
@@ -2595,6 +2717,7 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   void _removeAttachment({required int index}) {
+    if (_refuseWhileLocked()) return;
     setState(() => _attachments.removeAt(index));
     _reportAttachments();
   }
@@ -2903,6 +3026,18 @@ class _PromptInputState() extends State<PromptInput> {
           widget.onCommandSelected(command);
           _focusComposerField();
         },
+        // A side question takes no command or images; the cubit refuses them
+        // too, so the row only hides what wouldn't work.
+        onSideQuestion: switch (widget.sideQuestion) {
+          ComposerSideQuestionOpen(:final onAskInComposer?) when widget.stagedCommand == null && _attachments.isEmpty =>
+            () {
+              close();
+              if (!mounted) return;
+              onAskInComposer();
+              _focusComposerField();
+            },
+          _ => null,
+        },
         onClose: close,
       ),
     );
@@ -2911,14 +3046,17 @@ class _PromptInputState() extends State<PromptInput> {
   /// Opens the shell's picker for [source]. Adding an attachment switches the
   /// composer to the typing layout (via [_showsTypingLayout]) so the preview
   /// strip is visible, without raising the keyboard.
-  Future<void> _handleAttach({required ComposerPickSource source}) => _attach(
-    outcome: (stagedAttachmentBytes) => _attachmentDispatcher.pick(
-      source: source,
-      attachmentsSupported: _knownAttachmentsSupported,
-      fileUploadsSupported: _knownFileUploadsSupported,
-      stagedAttachmentBytes: stagedAttachmentBytes,
-    ),
-  );
+  Future<void> _handleAttach({required ComposerPickSource source}) async {
+    if (_refuseWhileLocked()) return;
+    await _attach(
+      outcome: (stagedAttachmentBytes) => _attachmentDispatcher.pick(
+        source: source,
+        attachmentsSupported: _knownAttachmentsSupported,
+        fileUploadsSupported: _knownFileUploadsSupported,
+        stagedAttachmentBytes: stagedAttachmentBytes,
+      ),
+    );
+  }
 
   /// Recording and transcription own the field, so the composer pauses its
   /// drops meanwhile: the pane then shows no drop hint and answers a drop with
@@ -2936,6 +3074,8 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   void _handleDroppedPaths(List<String> paths) {
+    // A locked composer keeps listening, so a drop hears its own note.
+    if (_refuseWhileLocked()) return;
     // A drop delivered just before recording paused the subscription still
     // waits out recording and transcription, like the attach action.
     if (_voicePresentation != _VoicePresentation.idle) {
@@ -3184,6 +3324,7 @@ class _PromptInputState() extends State<PromptInput> {
     required FutureOr<void> Function() onTextPaste,
     required VoidCallback? onAttachmentPasted,
   }) async {
+    if (_refuseWhileLocked()) return;
     // The text fallback reads the clipboard too, so the paste is busy until
     // whichever lands has landed.
     final turn = _startInsert();

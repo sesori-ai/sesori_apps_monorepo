@@ -2,32 +2,37 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, 
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
+import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "chat_history_service.dart";
 import "session_branch_refused_exception.dart";
 import "session_operation_dispatcher.dart";
 import "session_view_service.dart";
+import "worktree_service.dart";
 
 /// Forks a root session at a turn boundary into a new root session in the
 /// same directory or worktree. The origin is only read, so an archived one
-/// can be forked too.
+/// can be forked too; its worktree is recreated when archiving removed it.
 class SessionForkService({
   required final SessionRepository _sessionRepository,
   required final ChatHistoryService _chatHistory,
+  required final WorktreeService _worktrees,
   required final SessionViewService _views,
   required final SessionOperationDispatcher _dispatcher,
 }) {
-  /// Suffix of a fork's title, after its origin's displayed title. Written by
-  /// the bridge like any stored title, so it is not localised.
-  static const forkTitleSuffix = " (fork)";
-
   /// Forks [sessionId] at [point] and returns the new session. Refusals are
-  /// [SessionBranchRefusedException]s.
-  Future<Session> forkSession({required String sessionId, required ForkPoint point}) async {
+  /// [SessionBranchRefusedException]s. [recreateFromBase] lets an archived
+  /// origin whose worktree and branch are gone get a new worktree from its
+  /// base.
+  Future<Session> forkSession({
+    required String sessionId,
+    required ForkPoint point,
+    required bool recreateFromBase,
+  }) async {
     final fork = await _dispatcher.dispatch(
       sessionId: sessionId,
       operation: SessionOperation.forkSession,
-      body: () => _createFork(sessionId: sessionId, point: point),
+      body: () => _createFork(sessionId: sessionId, point: point, recreateFromBase: recreateFromBase),
     );
     // Off the origin's lane: the fork is its own session. Also for a fork that
     // kept nothing: its store then knows it is empty, so its first prompt
@@ -41,11 +46,12 @@ class SessionForkService({
     return await _views.enrich(session: fork);
   }
 
-  Future<Session> _createFork({required String sessionId, required ForkPoint point}) async {
+  Future<Session> _createFork({
+    required String sessionId,
+    required ForkPoint point,
+    required bool recreateFromBase,
+  }) async {
     final origin = await _views.get(sessionId: sessionId);
-    // The fork runs in the origin's stored directory. An archived origin's
-    // dedicated worktree may have been removed at archive, which this does
-    // not check: its fork would point at a missing worktree.
     final boundary = await _chatHistory.forkBoundary(
       sessionId: sessionId,
       point: point,
@@ -58,12 +64,15 @@ class SessionForkService({
       case ForkBoundaryEmpty():
         throughMessageId = null;
       case ForkBoundaryNothingToFork():
-        throw _refusal(code: SessionBranchErrorCode.nothingToFork);
+        throw _refusal(code: SessionBranchErrorCode.nothingToFork, message: null);
       case ForkBoundaryTurnRunning():
-        throw _refusal(code: SessionBranchErrorCode.sessionBusy);
+        throw _refusal(code: SessionBranchErrorCode.sessionBusy, message: null);
       case ForkBoundaryNotBranchPoint():
-        throw _refusal(code: SessionBranchErrorCode.branchPointUnavailable);
+        throw _refusal(code: SessionBranchErrorCode.branchPointUnavailable, message: null);
     }
+    // The fork runs in the origin's stored directory, so it must exist before
+    // the harness is asked for anything.
+    await _restoreArchivedWorktree(sessionId: sessionId, recreateFromBase: recreateFromBase);
     final originTitle = origin.title;
     final Session fork;
     try {
@@ -71,7 +80,7 @@ class SessionForkService({
         originSessionId: sessionId,
         throughMessageId: throughMessageId,
         // An untitled origin's fork stays untitled unless its harness names it.
-        title: originTitle == null ? null : "$originTitle$forkTitleSuffix",
+        title: originTitle == null ? null : "$originTitle$sessionForkTitleSuffix",
         forkedFromTitle: originTitle,
       );
     } on PluginBranchPointUnavailableException catch (error, stackTrace) {
@@ -87,6 +96,45 @@ class SessionForkService({
     return fork;
   }
 
-  static SessionBranchRefusedException _refusal({required SessionBranchErrorCode code}) =>
-      SessionBranchRefusedException(code: code, message: null, cause: null, causeStackTrace: null);
+  /// Recreates an archived origin's dedicated worktree at its old path when
+  /// archiving removed it: the harness session and the agent's remembered
+  /// paths still point there. Nothing else counts the archived origin as a
+  /// sharer, so the fork's own archive or deletion removes it again.
+  Future<void> _restoreArchivedWorktree({required String sessionId, required bool recreateFromBase}) async {
+    final origin = await _sessionRepository.requireStoredSession(
+      sessionId: sessionId,
+      operation: SessionOperation.forkSession,
+    );
+    if (origin case StoredSession(archivedAt: _?, isDedicated: true, :final worktreePath?)) {
+      if (await _worktrees.worktreeExists(projectId: origin.projectId, worktreePath: worktreePath)) return;
+      if (_worktrees.worktreePathExists(worktreePath: worktreePath)) {
+        throw _refusal(
+          code: SessionBranchErrorCode.refused,
+          message: "The folder this session's worktree was in is now used by something else.",
+        );
+      }
+      final recreation = await _worktrees.recreateWorktree(
+        projectId: origin.projectId,
+        worktreePath: worktreePath,
+        branchName: origin.branchName,
+        baseBranch: origin.baseBranch,
+        baseCommit: origin.baseCommit,
+        fromBase: recreateFromBase,
+      );
+      switch (recreation) {
+        case WorktreeRecreation.recreated:
+          Log.i("Recreated worktree $worktreePath of archived session $sessionId to fork it");
+        case WorktreeRecreation.branchMissing:
+          throw _refusal(code: SessionBranchErrorCode.worktreeBranchMissing, message: null);
+        case WorktreeRecreation.failed:
+          throw _refusal(
+            code: SessionBranchErrorCode.refused,
+            message: "This session's worktree was removed and could not be recreated.",
+          );
+      }
+    }
+  }
+
+  static SessionBranchRefusedException _refusal({required SessionBranchErrorCode code, required String? message}) =>
+      SessionBranchRefusedException(code: code, message: message, cause: null, causeStackTrace: null);
 }

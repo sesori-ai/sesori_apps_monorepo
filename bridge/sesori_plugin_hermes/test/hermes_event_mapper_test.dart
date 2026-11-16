@@ -106,6 +106,35 @@ void main() {
       );
     });
 
+    // Hermes replays each row stripped; only a reply's start loses whitespace.
+    test("a reply keeps its paragraph breaks but not the whitespace it starts with", () {
+      AcpNotification chunk({required String messageId, required String text}) => AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": text},
+            "messageId": messageId,
+          },
+        },
+      );
+      final events = [
+        for (final (messageId, text) in [
+          ("m1", "\n"),
+          ("m1", "\n\nFirst."),
+          ("m1", "\n\nSecond."),
+          ("m2", "\n\nNext."),
+        ])
+          ...mapper.map(chunk(messageId: messageId, text: text)),
+      ];
+
+      expect(
+        [for (final delta in events.whereType<BridgeSseMessagePartDelta>()) (delta.messageID, delta.delta)],
+        [("s1-mm1-assistant", "First."), ("s1-mm1-assistant", "\n\nSecond."), ("s1-mm2-assistant", "Next.")],
+      );
+    });
+
     test("Hermes's partial-turn and interrupted-automation rows are notices of their own kind", () {
       for (final row in [partialFailedTurnBoundary, automationInterruptedBoundary]) {
         expect(mapper.classifyHaltNotice(text: row)?.errorName, "hermes_partial_turn", reason: row);
@@ -296,6 +325,53 @@ void main() {
 
         expect(stateOf(events: events), isNull);
         expect(events.whereType<BridgeSseMessagePartDelta>(), isNotEmpty);
+      });
+    });
+
+    group("session split by compaction", () {
+      // Recorded from Hermes v0.21.5 with `compression.in_place: false`, after
+      // the reply of a turn that compacted twice; ids are synthetic.
+      AcpNotification sessionInfo({required String? reason}) => AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": "s1",
+          "update": {
+            "_meta": {
+              "hermes": {
+                "sessionProvenance": {
+                  "acpSessionId": "s1",
+                  "currentHermesSessionId": "20260101_000002_000002",
+                  "rootHermesSessionId": "s1",
+                  "parentHermesSessionId": "20260101_000001_000001",
+                  "sessionKind": "continuation",
+                  "compressionDepth": 2,
+                  "previousHermesSessionId": "s1",
+                  "reason": ?reason,
+                  "creatorKind": ?reason,
+                },
+              },
+            },
+            "updatedAt": "2026-11-16T02:08:33.594709+00:00",
+            "sessionUpdate": "session_info_update",
+          },
+        },
+      );
+
+      test("shows one completed automatic compaction row", () {
+        final events = mapper.map(sessionInfo(reason: "compression"));
+
+        expect(
+          events.whereType<BridgeSseMessagePartUpdated>().single.part,
+          isA<PluginMessagePartCompaction>().having(
+            (part) => part.compactionState,
+            "compactionState",
+            const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: .auto),
+          ),
+        );
+      });
+
+      test("a session info update without the compression reason adds no row", () {
+        expect(mapper.map(sessionInfo(reason: null)).whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       });
     });
   });

@@ -41,6 +41,7 @@ class const SettingsView({
   required final VoidCallback onOpenHarnesses,
   required final VoidCallback onOpenProjects,
   required final VoidCallback onOpenArchived,
+  required final VoidCallback onOpenScheduled,
   required final VoidCallback onOpenDefaultInput,
   required final VoidCallback onOpenRateSesori,
 
@@ -129,6 +130,7 @@ class const SettingsView({
                   onOpenHarnesses: onOpenHarnesses,
                   onOpenProjects: onOpenProjects,
                   onOpenArchived: onOpenArchived,
+                  onOpenScheduled: onOpenScheduled,
                   onSwitchComputer: onSwitchComputer,
                   onManageComputers: onManageComputers,
                 ),
@@ -193,6 +195,7 @@ class const SettingsView({
           child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
         ),
       ],
+      titleKeptSuffix: null,
     );
   }
 }

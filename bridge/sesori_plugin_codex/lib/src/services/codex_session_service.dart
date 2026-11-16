@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../codex_config_reader.dart";
 import "../codex_metadata_repository.dart";
 import "../models/codex_collaboration_mode.dart";
+import "../models/codex_fork_refusal.dart";
 import "../models/codex_replay_tool_disposition.dart";
 import "../models/codex_rewind_refusal.dart";
 import "../repositories/codex_catalog_repository.dart";
@@ -17,6 +18,7 @@ import "../repositories/codex_thread_repository.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/mappers/codex_session_mapper.dart";
 import "../repositories/models/codex_resumed_thread.dart";
+import "../repositories/models/codex_session_deletion.dart";
 import "../repositories/models/codex_session_record.dart";
 import "../repositories/models/codex_sub_agent_rollout_fact.dart";
 import "../repositories/models/codex_thread_record.dart";
@@ -636,6 +638,40 @@ class CodexSessionService({
     return resumed;
   }
 
+  /// Forks [threadId] through the native turn holding [throughMessageId]
+  /// into a new persisted thread in the same directory, without loading or
+  /// disturbing the source, which may be running a later turn. Every refusal
+  /// comes before Codex creates anything.
+  Future<CodexThreadRecord> forkThread({
+    required String threadId,
+    required String throughMessageId,
+  }) async {
+    // An old runtime is the reason even when its rollout names the message
+    // in a way the turn lookup below can't place.
+    _connectedThreadRepository.checkForkSupported();
+    final source = await _catalogRepository.findSessionById(sessionId: threadId);
+    if (source == null) throw CodexForkRefusal.missingSession.toException(cause: null);
+    final lastTurnId = _messageRepository.forkTurnId(
+      read: _messageRepository.prepareMessageRead(rolloutPath: source.rolloutPath, sessionId: threadId),
+      messageId: throughMessageId,
+    );
+    final fork = await _connectedThreadRepository.forkThread(
+      threadId: threadId,
+      lastTurnId: lastTurnId,
+      developerInstructions: await _developerInstructions(cwd: source.cwd),
+    );
+    _loadedThreads.add(fork.id);
+    _rememberThreadModel(threadId: fork.id, model: fork.model);
+    // The fork wrote its rollout; history reads must find it before the next
+    // scan.
+    try {
+      await _catalogRepository.refresh();
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] rollout catalog refresh after forking $threadId failed", error, stackTrace);
+    }
+    return fork;
+  }
+
   /// Answers [question] on the loaded [threadId] from a throwaway copy of the
   /// thread, so a running turn continues and nothing is written to it.
   /// [activeTurnId] is the turn running now, if any; otherwise the copy is
@@ -910,8 +946,9 @@ class CodexSessionService({
   }
 
   Future<void> _deleteSession({required String sessionId}) async {
-    final deleted = await _catalogRepository.deleteSession(sessionId: sessionId);
-    if (deleted) {
+    final deletion = await _catalogRepository.deleteSession(sessionId: sessionId);
+    if (deletion == CodexSessionDeletion.keptForForks) await _archiveKeptThread(threadId: sessionId);
+    if (deletion != CodexSessionDeletion.failed) {
       try {
         await _toolOutcomeRepository.deleteSession(sessionId: sessionId);
       } on Object catch (error, stackTrace) {
@@ -924,6 +961,21 @@ class CodexSessionService({
     }
     _loadedThreads.remove(sessionId);
     _threadModels.remove(sessionId);
+  }
+
+  /// Moves the rollouts a fork still builds on out of Codex's own thread
+  /// list; forks read their history from the archive as well.
+  Future<void> _archiveKeptThread({required String threadId}) async {
+    final repository = _threadRepository;
+    if (repository == null) {
+      Log.w("[codex] kept rollouts of deleted $threadId stay listed in Codex: app-server not connected");
+      return;
+    }
+    try {
+      await repository.archiveThread(threadId: threadId);
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to archive the kept rollouts of deleted $threadId", error, stackTrace);
+    }
   }
 
   Future<CodexSessionMessageRead?> prepareSessionMessageRead({

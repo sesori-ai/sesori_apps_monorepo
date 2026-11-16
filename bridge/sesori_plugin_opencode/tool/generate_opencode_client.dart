@@ -2118,12 +2118,14 @@ class ModelWriter({
         if (itemsRef is String) {
           final refName = _schemaNameFromRef(itemsRef);
           final refType = _pascalFromSnake(refName);
-          // If the items $ref points to a top-level array schema, the
-          // element cast must be `as List<dynamic>` not `as Map<String, dynamic>`.
+          // The element cast follows the referenced schema's shape: a
+          // top-level array or string enum is not a JSON object.
           final refSchema = readObjectOrNull(schemas[refName]);
-          final elementCast = (refSchema != null && refSchema['type'] == 'array')
-              ? 'List<dynamic>'
-              : 'Map<String, dynamic>';
+          final elementCast = switch (refSchema) {
+            {'type': 'array'} => 'List<dynamic>',
+            {'type': 'string', 'enum': List()} => 'String',
+            _ => 'Map<String, dynamic>',
+          };
           if (isNullable) {
             return '$safeName: (json[$keyExpr] as List<dynamic>?)?.map((e) => $refType.fromJson(e as $elementCast)).toList()';
           }

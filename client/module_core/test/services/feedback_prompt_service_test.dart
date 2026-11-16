@@ -50,6 +50,7 @@ Session _childSession({required String id}) => Session(
   lastUserActivityAt: null,
   autoContinuation: null,
   approvalOverride: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,

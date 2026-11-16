@@ -4,12 +4,14 @@ import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../api/models/codex_sub_agent_item_dto.dart";
 import "../codex_config_reader.dart";
+import "../models/codex_fork_refusal.dart";
 import "../models/codex_replay_tool_disposition.dart";
 import "../models/codex_rewind_refusal.dart";
 import "codex_sub_agent_tracker.dart";
 import "codex_tool_lifecycle_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
 import "mappers/codex_session_mapper.dart";
+import "mappers/codex_stopped_turn_mapper.dart";
 import "mappers/codex_tool_part_mapper.dart";
 import "mappers/codex_user_content_mapper.dart";
 import "models/codex_projected_tool.dart";
@@ -120,6 +122,92 @@ class CodexMessageRepository({
     throw (turnsWithUserItem.isEmpty ? CodexRewindRefusal.legacySession : CodexRewindRefusal.unknownMessage)
         .toException(cause: null);
   }
+
+  /// The native turn a fork through [messageId], inclusive, keeps last.
+  ///
+  /// [messageId] is any message replay shows: a user or agent item, a tool
+  /// call, or a turn's error, each recorded inside its turn. Codex forks
+  /// whole turns, so the turn must end with the message's prompt turn: a
+  /// later user item in the same native turn (a message steered in after an
+  /// answer) would come into the fork too, and is refused. Throws
+  /// [PluginBranchPointUnavailableException] for a message no turn holds.
+  String forkTurnId({required CodexPreparedMessageRead read, required String messageId}) {
+    String? activeTurnId;
+    String? forkTurnId;
+    for (final line in read._lines) {
+      final (:turnId, :ids) = _turnAndMessageIds(line: line, activeTurnId: activeTurnId);
+      if (line case CodexRolloutEventMessageLineDto(payload: CodexRolloutTaskStartedEventDto())) {
+        // The next native turn starts: the fork turn has ended.
+        if (forkTurnId != null) break;
+        activeTurnId = turnId;
+        continue;
+      }
+      if (forkTurnId == null) {
+        if (turnId != null && ids.contains(messageId)) forkTurnId = turnId;
+        continue;
+      }
+      if (line
+          case CodexRolloutEventMessageLineDto(
+            payload: CodexRolloutItemCompletedEventDto(
+              :final turnId,
+              item: CodexRolloutCompletedUserMessageDto(:final id),
+            ),
+          )
+          when turnId == forkTurnId && id != messageId) {
+        throw CodexForkRefusal.midTurn.toException(cause: null);
+      }
+    }
+    if (forkTurnId == null) throw CodexForkRefusal.unknownMessage.toException(cause: null);
+    return forkTurnId;
+  }
+
+  /// The native turn [line] belongs to and the ids of the messages replay
+  /// keys from it. Response items carry no turn id; they belong to the turn
+  /// [activeTurnId] last started.
+  static ({String? turnId, List<String> ids}) _turnAndMessageIds({
+    required CodexRolloutLineDto line,
+    required String? activeTurnId,
+  }) => switch (line) {
+    CodexRolloutEventMessageLineDto(:final payload) => switch (payload) {
+      CodexRolloutTaskStartedEventDto(:final turnId) => (turnId: turnId, ids: const []),
+      // A failed turn's error row is keyed by the turn id.
+      CodexRolloutTaskCompleteEventDto(:final turnId) => (turnId: turnId, ids: [turnId]),
+      CodexRolloutItemCompletedEventDto(:final turnId, :final item) => (
+        turnId: turnId,
+        ids: switch (item) {
+          CodexRolloutCompletedUserMessageDto(:final id) ||
+          CodexRolloutCompletedContextCompactionDto(:final id) ||
+          CodexRolloutCompletedSubAgentActivityDto(:final id) ||
+          CodexRolloutCompletedCollabAgentToolCallDto(:final id) => [id],
+          CodexRolloutUnknownCompletedItemDto() => const [],
+        },
+      ),
+      CodexRolloutImageGenerationEndEventDto(:final callId) => (turnId: activeTurnId, ids: [callId]),
+      CodexRolloutUserMessageEventDto() ||
+      CodexRolloutTurnAbortedEventDto() ||
+      CodexRolloutThreadRolledBackEventDto() ||
+      CodexRolloutUnknownEventDto() => (turnId: activeTurnId, ids: const []),
+    },
+    CodexRolloutResponseItemLineDto(:final payload) => (
+      turnId: activeTurnId,
+      ids: switch (payload) {
+        CodexRolloutMessageDto(:final id) ||
+        CodexRolloutReasoningDto(:final id) ||
+        CodexRolloutWebSearchCallDto(:final id) ||
+        CodexRolloutImageGenerationDto(:final id) => [?id],
+        CodexRolloutFunctionCallDto(:final callId) || CodexRolloutCustomToolCallDto(:final callId) => [callId],
+        CodexRolloutAgentMessageDto() ||
+        CodexRolloutFunctionCallOutputDto() ||
+        CodexRolloutCustomToolCallOutputDto() ||
+        CodexRolloutUnknownResponseItemDto() => const [],
+      },
+    ),
+    CodexRolloutSessionMetadataLineDto() ||
+    CodexRolloutTurnContextLineDto() ||
+    CodexRolloutInterAgentCommunicationMetadataLineDto() ||
+    CodexRolloutCompactedLineDto() ||
+    CodexRolloutUnknownLineDto() => (turnId: activeTurnId, ids: const []),
+  };
 
   /// Only a rollout's leading `session_meta` describes its own base; any
   /// later one belongs to inherited history.
@@ -662,6 +750,25 @@ class CodexMessageRepository({
           ),
         );
       }
+      // An interrupt is how a user Stop ends a turn; a replaced or reviewed
+      // turn was not stopped.
+      if (line case CodexRolloutEventMessageLineDto(
+        payload: CodexRolloutTurnAbortedEventDto(:final turnId?, reason: CodexRolloutTurnAbortReason.interrupted),
+      )) {
+        messages.add(
+          PluginMessageWithParts(
+            info: codexStoppedTurnMessage(
+              id: turnId,
+              sessionId: sessionId,
+              modelId: currentModel ?? config.model,
+              providerId: sessionProvider ?? config.effectiveModelProvider,
+              variant: currentVariant,
+              time: _messageTimeFrom(raw: lineTimestamp),
+            ),
+            parts: const [],
+          ),
+        );
+      }
 
       final CodexRolloutResponseItemDto payload;
       switch (line) {
@@ -747,7 +854,10 @@ class CodexMessageRepository({
             _toolMessage(
               messageId: messageId,
               sessionId: sessionId,
-              info: assistantInfo(id: messageId, time: messageTime),
+              info: assistantInfo(
+                id: messageId,
+                time: _assistantReplyTime(persistedId: id, lineTime: messageTime),
+              ),
               tool: "web_search",
               title: action?.query,
               status: PluginToolStatus.completed,
@@ -773,7 +883,10 @@ class CodexMessageRepository({
             _toolMessage(
               messageId: messageId,
               sessionId: sessionId,
-              info: assistantInfo(id: messageId, time: messageTime),
+              info: assistantInfo(
+                id: messageId,
+                time: _assistantReplyTime(persistedId: generation.id, lineTime: messageTime),
+              ),
               tool: "image_generation",
               title: null,
               status:
@@ -799,7 +912,10 @@ class CodexMessageRepository({
           );
           messages.add(
             PluginMessageWithParts(
-              info: assistantInfo(id: messageId, time: messageTime),
+              info: assistantInfo(
+                id: messageId,
+                time: _assistantReplyTime(persistedId: id, lineTime: messageTime),
+              ),
               parts: [
                 PluginMessagePart.reasoning(
                   id: "$messageId-reasoning",
@@ -857,7 +973,10 @@ class CodexMessageRepository({
                   promptId: null,
                   invocation: null,
                 )
-              : assistantInfo(id: messageId, time: messageTime);
+              : assistantInfo(
+                  id: messageId,
+                  time: _assistantReplyTime(persistedId: id, lineTime: messageTime),
+                );
           messages.add(
             _textMessage(
               info: info,
@@ -991,6 +1110,22 @@ class CodexMessageRepository({
         ),
       ],
     );
+  }
+
+  /// A replayed assistant row's time: the rollout line's, unless the row has
+  /// no persisted id.
+  PluginMessageTime? _assistantReplyTime({required String? persistedId, required PluginMessageTime? lineTime}) {
+    final persisted = persistedId?.trim();
+    if (persisted != null && persisted.isNotEmpty) return lineTime;
+    // COMPATIBILITY 2026-11-16 (v1.14.0): Codex 0.139.0 records neither the
+    // item id nor the start of an assistant row, and its rollout line is
+    // written when the row finishes, so the line time conflicts with the start
+    // the live row carries. Without a time, the store pairs the live row with
+    // this replay by content and keeps the live time, instead of showing both.
+    // Every id-less row is left undated, including ones from older rollouts:
+    // one with no live capture shows no time.
+    // Remove with the `m-N` fallback ids below.
+    return null;
   }
 
   String _persistedOrLegacyMessageId({

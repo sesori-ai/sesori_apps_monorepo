@@ -188,10 +188,12 @@ void main() {
 
     int busyCount() => emitted.whereType<BridgeSseSessionStatus>().length;
     int idleCount() => emitted.whereType<BridgeSseSessionIdle>().length;
+    Iterable<PluginMessageError> errorRows(List<BridgeSseEvent> events) =>
+        events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).whereType<PluginMessageError>();
 
     test("prompt hooks expose live client and preserve prompt identity", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
+      final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       final hookPlugin = _PromptHookPlugin(
         id: "acp",
@@ -481,7 +483,7 @@ void main() {
 
     test("a prompt-ordered lifecycle extension stays behind its accepted user message", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
+      final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       final mapper = _PromptOrderedChildMapper(
         launchDirectory: cwd,
@@ -993,6 +995,7 @@ void main() {
       await pump();
       await pump();
       expect(idleCount(), 1, reason: "idle only after the last queued turn settles");
+      expect(errorRows(emitted), isEmpty, reason: "a follow-up's cancel is not the user's stop");
       expect(plugin.getActiveSessionsSummary(), isEmpty);
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
@@ -1123,6 +1126,58 @@ void main() {
       expect(idleCount(), 1, reason: "queue accounting settles to idle");
       expect(emitted.whereType<BridgeSseSessionError>(), isEmpty);
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(
+        errorRows(emitted).map((row) => row.kind),
+        [PluginErrorKind.stopped],
+        reason: "only the stopped turn that ran ends with a row; the dropped one never started",
+      );
+    });
+
+    test("a user stop ends the cancelled turn with one stopped row under what it streamed", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      await sendPrompt(sessionId, "long task");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "Partial answer"},
+          },
+        },
+      });
+      await pump();
+
+      await plugin.abortSession(
+        sessionId: sessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
+      respondTo(prompt, {"stopReason": "cancelled"});
+      for (var i = 0; i < 20 && idleCount() == 0; i++) {
+        await pump();
+      }
+
+      expect(
+        errorRows(emitted).single,
+        isA<PluginMessageError>()
+            .having((row) => row.kind, "kind", PluginErrorKind.stopped)
+            .having((row) => row.errorName, "errorName", AcpEventMapper.stoppedErrorName)
+            .having((row) => row.errorMessage, "errorMessage", "Stopped"),
+      );
+      expect(
+        emitted.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
+        contains("Partial answer"),
+      );
+      final stoppedIndex = emitted.indexWhere(
+        (event) => event is BridgeSseMessageUpdated && event.info is PluginMessageError,
+      );
+      expect(emitted.indexWhere((event) => event is BridgeSseSessionIdle), greaterThan(stoppedIndex));
+      expect(emitted.whereType<BridgeSseSessionError>(), isEmpty);
     });
 
     test("forced interruption waits for ACP history to quiesce", () async {
@@ -1144,6 +1199,7 @@ void main() {
       expect(await interruption, {sessionId});
       expect(plugin.currentWorkState, PluginWorkState.idle);
       expect(emitted.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      expect(errorRows(emitted), isEmpty, reason: "a shutdown interrupt is not the user's stop");
     });
 
     test("forced interruption cancels pending input for an untracked session", () async {
@@ -1219,7 +1275,7 @@ void main() {
 
     test("an abort landing during turn selection still drops the turn", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
+      final commandTracker = AcpCommandTracker(selectionCommands: const {});
       final childSessionTracker = AcpChildSessionTracker();
       final gated = _GatedSelectionPlugin(
         id: "acp",
@@ -1293,6 +1349,7 @@ void main() {
       expect(frames("session/prompt"), isEmpty);
       expect(gatedEvents.whereType<BridgeSseSessionIdle>(), hasLength(1));
       expect(gated.getActiveSessionsSummary(), isEmpty);
+      expect(errorRows(gatedEvents), isEmpty, reason: "a turn stopped before it started shows no row");
     });
 
     test("deleted turns publish no stale prompt lifecycle events", () async {

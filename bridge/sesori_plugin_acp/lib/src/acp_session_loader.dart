@@ -398,7 +398,7 @@ class AcpReplayCollector({
             modelID: selection.modelId,
             providerID: selection.providerId,
             variant: selection.variant,
-            kind: PluginErrorKind.failure,
+            kind: halt.kind,
             errorName: halt.errorName,
             errorMessage: assistantText,
             time: draft.time,
@@ -598,15 +598,18 @@ class AcpReplayCollector({
     overrideId: messageId == null ? null : messageIdOverride?.call(acpMessageId: messageId),
   );
 
-  // Tool calls carry no messageId (they are not ContentChunks) and attach to
-  // the current assistant message even when its content chunks are stamped.
+  // Tool calls carry no messageId (they are not ContentChunks). Each gets its
+  // own message, the shape the live mapper streams, even after stamped
+  // content chunks, so a replayed tool call matches the row captured live.
   _Draft _assistantForTool({required String toolCallId}) {
     if (_entries.isNotEmpty) {
       final entry = _entries.last;
-      if (entry is _Draft && entry.role == "assistant") {
-        if (entry.acpMessageId != null || (entry.text.isEmpty && entry.reasoning.isEmpty && entry.entries.isEmpty)) {
-          return entry;
-        }
+      if (entry is _Draft &&
+          entry.role == "assistant" &&
+          entry.text.isEmpty &&
+          entry.reasoning.isEmpty &&
+          entry.entries.isEmpty) {
+        return entry;
       }
     }
     return _newDraft(

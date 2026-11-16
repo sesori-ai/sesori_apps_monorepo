@@ -12,7 +12,7 @@ void main() {
   test("Step 9 preserves DeepSeek session-list metadata in event snapshots", () async {
     final fake = FakeAcpProcess();
     final configurationTracker = AcpSessionConfigurationTracker();
-    final commandTracker = AcpCommandTracker();
+    final commandTracker = AcpCommandTracker(selectionCommands: const {});
     final childSessionTracker = AcpChildSessionTracker();
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
     final mapper = DeepSeekEventMapper(

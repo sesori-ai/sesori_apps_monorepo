@@ -232,6 +232,22 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// A new session holding [sessionId]'s conversation up to [point]. Answers
+  /// the fork; refusals answer `SessionBranchErrorResponse`.
+  Future<ApiResponse<Session>> forkSession({
+    required String sessionId,
+    required ForkPoint point,
+    required bool recreateFromBase,
+  }) {
+    return _client.post(
+      "/session/fork",
+      fromJson: Session.fromJson,
+      body: ForkSessionRequest(sessionId: sessionId, point: point, recreateFromBase: recreateFromBase),
+      // The bridge creates a harness session and reads its history back.
+      timeout: _createTimeout,
+    );
+  }
+
   /// The bridge-owned queued prompts for a session. Old bridges without the
   /// route answer an error, which callers degrade to an empty list.
   Future<ApiResponse<QueuedPromptResponse>> getQueuedPrompts({required String sessionId}) {
@@ -358,6 +374,14 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       "/session/pinned",
       fromJson: Session.fromJson,
       body: SetSessionPinnedRequest(sessionId: sessionId, pinned: pinned),
+    );
+  }
+
+  Future<ApiResponse<MoveSessionPinResponse>> movePin({required String sessionId, required String? afterSessionId}) {
+    return _client.patch(
+      "/session/pin-position",
+      fromJson: MoveSessionPinResponse.fromJson,
+      body: MoveSessionPinRequest(sessionId: sessionId, afterSessionId: afterSessionId),
     );
   }
 

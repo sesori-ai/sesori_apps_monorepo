@@ -358,7 +358,13 @@ void main() {
     });
 
     group("pins", () {
-      Future<void> insertRow({required String id, String? parentId, int? archivedAt, bool pinned = false}) {
+      Future<void> insertRow({
+        required String id,
+        String? parentId,
+        int? archivedAt,
+        int? pinOrder,
+        int updatedAt = 2,
+      }) {
         return db
             .into(db.sessionTable)
             .insert(
@@ -371,24 +377,34 @@ void main() {
                 isDedicated: false,
                 archivedAt: Value(archivedAt),
                 createdAt: 1,
-                updatedAt: 2,
+                updatedAt: updatedAt,
                 projectionUpdatedAt: 3,
                 pluginId: "opencode",
-                pinned: Value(pinned),
+                pinOrder: Value(pinOrder),
               ),
             );
       }
 
-      Future<bool?> pinnedOf(String id) async => (await dao.getSession(sessionId: id))?.pinned;
+      Future<int?> pinOrderOf(String id) async => (await dao.getSession(sessionId: id))?.pinOrder;
 
-      test("setPinned pins an unarchived root without touching its times", () async {
+      test("setPinned pins an unarchived root on top without touching its times", () async {
         await insertRow(id: "root");
+        await insertRow(id: "pinned", pinOrder: 7);
 
         expect(await dao.setPinned(sessionId: "root", pinned: true), isTrue);
 
         final row = await dao.getSession(sessionId: "root") ?? fail("session root is not stored");
-        expect(row.pinned, isTrue);
+        expect(row.pinOrder, 8);
         expect((row.updatedAt, row.projectionUpdatedAt), (2, 3));
+      });
+
+      test("setPinned keeps a pinned session where it stands", () async {
+        await insertRow(id: "low", pinOrder: 1);
+        await insertRow(id: "high", pinOrder: 2);
+
+        expect(await dao.setPinned(sessionId: "low", pinned: true), isTrue);
+
+        expect(await pinOrderOf("low"), 1);
       });
 
       test("setPinned refuses to pin a child, an archived or a missing session", () async {
@@ -399,26 +415,42 @@ void main() {
         expect(await dao.setPinned(sessionId: "child", pinned: true), isFalse);
         expect(await dao.setPinned(sessionId: "archived", pinned: true), isFalse);
         expect(await dao.setPinned(sessionId: "missing", pinned: true), isFalse);
-        expect((await pinnedOf("child"), await pinnedOf("archived")), (false, false));
+        expect((await pinOrderOf("child"), await pinOrderOf("archived")), (null, null));
       });
 
       test("setPinned unpins any stored session", () async {
         await insertRow(id: "root");
-        await insertRow(id: "child", parentId: "root", pinned: true);
-        await insertRow(id: "archived", archivedAt: 5, pinned: true);
+        await insertRow(id: "child", parentId: "root", pinOrder: 1);
+        await insertRow(id: "archived", archivedAt: 5, pinOrder: 2);
 
         expect(await dao.setPinned(sessionId: "child", pinned: false), isTrue);
         expect(await dao.setPinned(sessionId: "archived", pinned: false), isTrue);
         expect(await dao.setPinned(sessionId: "missing", pinned: false), isFalse);
-        expect((await pinnedOf("child"), await pinnedOf("archived")), (false, false));
+        expect((await pinOrderOf("child"), await pinOrderOf("archived")), (null, null));
       });
 
       test("setArchived drops the pin", () async {
-        await insertRow(id: "root", pinned: true);
+        await insertRow(id: "root", pinOrder: 1);
 
         await dao.setArchived(sessionId: "root", archivedAt: 10, updatedAt: 10, projectionUpdatedAt: 10);
 
-        expect(await pinnedOf("root"), isFalse);
+        expect(await pinOrderOf("root"), isNull);
+      });
+
+      test("getPinnedOrder lists pinned sessions by pin order, ties by time, and setPinOrders writes them", () async {
+        await insertRow(id: "a", pinOrder: 5, updatedAt: 1);
+        await insertRow(id: "b", pinOrder: 5, updatedAt: 9);
+        await insertRow(id: "c", pinOrder: 8);
+        await insertRow(id: "unpinned");
+
+        expect(await dao.getPinnedOrder(), [
+          (sessionId: "c", pinOrder: 8),
+          (sessionId: "b", pinOrder: 5),
+          (sessionId: "a", pinOrder: 5),
+        ]);
+
+        await dao.setPinOrders(orders: [(sessionId: "a", pinOrder: 9)]);
+        expect((await pinOrderOf("a"), (await dao.getSession(sessionId: "a"))?.updatedAt), (9, 1));
       });
     });
 
@@ -475,6 +507,43 @@ void main() {
       expect(byIds.containsKey("ses-b"), isFalse);
       expect(byIds["ses-a"]?.projectId, equals("proj-x"));
       expect(byIds["ses-c"]?.projectId, equals("proj-y"));
+    });
+
+    test("a removed worktree's branch is recorded on every session naming it, archived or not", () async {
+      Future<void> insert({required String sessionId, required String projectId, required String? worktreePath}) =>
+          insertTestSession(
+            db: db,
+            sessionId: sessionId,
+            backendSessionId: "backend-$sessionId",
+            pluginId: "opencode",
+            projectId: projectId,
+            isDedicated: worktreePath != null,
+            createdAt: 1,
+            worktreePath: worktreePath,
+            baseBranch: null,
+            baseCommit: null,
+            agent: null,
+            agentModel: null,
+          );
+      await insert(sessionId: "origin", projectId: "proj-1", worktreePath: "/wt/a");
+      await insert(sessionId: "fork", projectId: "proj-1", worktreePath: "/wt/a");
+      await insert(sessionId: "other", projectId: "proj-1", worktreePath: "/wt/b");
+      await insert(sessionId: "elsewhere", projectId: "proj-2", worktreePath: "/wt/a");
+      await dao.setArchived(sessionId: "origin", archivedAt: 2, updatedAt: 2, projectionUpdatedAt: 2);
+
+      await dao.setWorktreeBranch(projectId: "proj-1", worktreePath: "/wt/a", branchName: "agent/feature");
+
+      Future<String?> branch(String sessionId) async => (await dao.getSession(sessionId: sessionId))?.branchName;
+      expect(await branch("origin"), "agent/feature");
+      expect(await branch("fork"), "agent/feature");
+      expect(await branch("other"), isNull);
+      expect(await branch("elsewhere"), isNull);
+
+      Future<bool> namedByOthers(String sessionId) =>
+          dao.hasOtherSessionsNamingWorktree(sessionId: sessionId, projectId: "proj-1", worktreePath: "/wt/a");
+      expect(await namedByOthers("fork"), isTrue, reason: "the archived origin still names it");
+      await dao.deleteSession(sessionId: "origin");
+      expect(await namedByOthers("fork"), isFalse);
     });
 
     group("getOtherActiveSessionsSharing", () {

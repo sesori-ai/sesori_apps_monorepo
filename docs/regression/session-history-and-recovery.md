@@ -72,9 +72,10 @@ reconnect or restart.
   composer stays enabled. Any other backfill failure still fails the read.
 - OMP replays history for a session its live `omp acp` process holds on that
   process (`session/load` returns the in-memory session and writes nothing),
-  never through a second process: from 18.19.0 a second process that loads a
-  held session writes an "open-elsewhere" copy when it exits, which shows up
-  as a duplicate "Untitled session". A session the live process does not hold
+  never through a second process: on 18.19.0 and 18.20.0 a second process
+  that loads a held session writes an "open-elsewhere" copy when it exits,
+  which shows up as a duplicate "Untitled session" (fixed upstream in 18.20.1,
+  `cb8eb7ac`; the rule stays for those PATH versions). A session the live process does not hold
   still replays on a short-lived process. While a turn on a held session runs,
   the plugin reports `PluginSessionHistoryBusyException`. The read then serves
   the store with `awaitingHarnessSync` and no `cannotContinueMessage`, and writes nothing, so
@@ -118,6 +119,22 @@ reconnect or restart.
   re-import: the card and the expanded text both shown, a reply shown twice,
   the next prompt shown both above and below the card, the card below the
   last reply, or the card or its reply gone.
+- A replay under fresh ids on every load (OMP) still matches each live turn
+  once on a later re-import, including a turn sent after an earlier import:
+  the earlier imported rows around it shape its match. A turn whose content and
+  neighbors repeat elsewhere in the session has no unique match without
+  matching creation times, so its live rows are kept. A live reply the replay
+  never holds (OMP drops a reply whose model call failed) stays after its own
+  turn and does not separate the replayed turns around it. Failure signals
+  after a reload or forced re-import: a live prompt shown twice, or all
+  replayed prompts first and the live turns repeated below them.
+- Every ACP harness replays each tool call as its own message, the shape the
+  live stream captured, also after reasoning or text chunks stamped with a
+  message id (Oh My Pi and DeepSeek stamp them). Text the stamped message
+  continues after the tool follows as its own segment. A re-import or the first
+  read after a bridge restart therefore matches the live tool row by id.
+  Failure signal: after a forced re-import or a restart mid-turn, a tool turn
+  shows its reasoning or tool call twice.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
@@ -323,9 +340,10 @@ reconnect or restart.
   replay, a notice shows Hermes's inline code without backticks
   (``run `hermes setup` `` reads "run hermes setup").
 - An OMP reply that was aborted before it produced anything replays as one
-  error notice with OMP's abort reason ("Interrupted by user" after a stop,
-  "Request was aborted" otherwise), never as a reply bubble. A reply that only
-  mentions those words stays a reply.
+  row, never as a reply bubble: "Interrupted by user" after a stop as the grey
+  Stopped line, folded into the live stop's line, and "Request was aborted"
+  otherwise as an error notice with that text. A reply that only mentions those
+  words stays a reply.
 - For any harness, a live error notice and the replayed error notice in the
   same place of the transcript are one notice even when they are worded
   differently. The error name is the notice's kind. A replayed notice of the
@@ -354,10 +372,15 @@ reconnect or restart.
   share a time, stay apart. A compaction row is no neighbour in any other
   row's context, so the live prompt and reply around a live-only compaction
   row (DeepSeek, OMP, Hermes's `/compress`) still pair with their replayed
-  rows and the row stays between them, without duplicating the turn. Grok's
+  rows and the row stays between them, without duplicating the turn. Hermes's
+  live-only session-split row follows its turn's reply and stays after it the
+  same way. Grok's
   replay names its compaction rows as the live mapper does, so exact identity
   keeps one row across every re-import; Hermes's replayed summary row is named
-  by its position in the replay.
+  by its position in the replay. Hermes streams a reply that follows a tool
+  round after a paragraph break it neither saves nor replays, so the live reply
+  drops its leading whitespace; that reply and the tool cards before it show
+  once after a reload, never twice with a copy that starts with a blank line.
   The content fingerprint ignores identity, time, agent/model attribution, and
   internal parts hidden from transcripts; alignment still uses available
   creation times as above, normalizes spilled attachments, and keeps replay
@@ -385,6 +408,11 @@ reconnect or restart.
   so a re-read drops it. That is how a session rolled back outside Sesori — an
   edited message in the backend's own client, with no removal events reaching
   this bridge — stops showing the messages it replaced.
+  A turn holding a stopped row (`kind: stopped`) is the exception: its rows the
+  replay lacks, up to its last stopped row, stay while the replay still holds
+  the turn's prompt, so a Codex reply the rollout never recorded and the
+  Stopped row of a harness that records no stop survive re-imports. A rollback
+  that removes the prompt removes them too.
 - Live streamed messages and parts become queryable immediately after they
   finalize, with the same visibility filtering and tool-output bound a backend
   fetch returns. Reasoning finalizes when the stream advances to assistant or
@@ -495,8 +523,10 @@ reconnect or restart.
   rollout already read, leaves only the later history, with a warning in the
   bridge log. A fork keeps the source's turn and item ids for
   the inherited turns. Deleting a reverted thread removes every rollout it
-  owns. Legacy rollouts keep their single-file layout and `thread_rolled_back`
-  replay.
+  owns except those another thread's `history_base` still builds on, such as a
+  fork's base, which it keeps and `thread/archive`s, so the fork reads the same
+  before and after its origin is deleted. Legacy rollouts keep their
+  single-file layout and `thread_rolled_back` replay.
 - Codex replay keys a user prompt by the `item_completed/UserMessage` item
   written after its response item, with that item's start time, which is the
   id and time the live `userMessage` row carries. A re-import therefore
@@ -555,6 +585,10 @@ reconnect or restart.
   prompt sits within the catalog's bounded header read. A linear transcript
   reads exactly as before. A store that imported both branches before this
   converges on the next re-read of the session.
+- A first-message edit moves the session onto a new harness session and
+  tombstones the old one with its sub-agents, so catalog import and startup
+  cleanup never bring the old conversation back as a second session
+  ([session edit and fork](session-edit-and-fork.md)).
 - Pi history follows the active `leafId` branch while retaining visible
   pre-compaction messages, applies thinking-level changes to later assistant and
   error messages on that branch, and omits compaction and branch-summary
@@ -583,9 +617,15 @@ reconnect or restart.
   readiness or run. Conversion and adoption act only while the row still holds
   the time they read, so a turn this run started meanwhile is left alone. A
   re-import that replaces the anchor message moves the interruption onto its
-  replacement. Opening the session, or the bridge accepting a prompt for it,
-  acknowledges the interruption with one session update; an acknowledged one
-  stays stored. Sessions from a bridge without this report no interruption.
+  replacement. The row a cut-off turn ends on lacks the next row its replay
+  holds, so while it is still the store's newest row a re-import matches it by
+  its previous row and its content, which the replay may complete when the stop
+  landed mid-stream (an empty Oh My Pi reasoning row, for example), provided
+  their known times agree and exactly one replayed row qualifies. The first
+  read after a restart, before the plugin resolves the running row, matches it
+  the same way, so it shows once. Opening the session, or the bridge accepting
+  a prompt for it, acknowledges the interruption with one session update; an
+  acknowledged one stays stored. Sessions from a bridge without this report no interruption.
 
 ## Regression Levels
 
@@ -664,7 +704,7 @@ rules where supported.
   reason, repeats the generic saved row after the live reason, merges the
   failed prompt into the next one, or hides a reply.
 - A reloaded OMP session shows "Request was aborted" or "Interrupted by user"
-  as a normal assistant reply.
+  as a normal assistant reply, or a stop as a red row or two Stopped lines.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
   a nested tile to the root instead of its direct parent, changes live child
   activity, loses latest terminal metadata across pages, or collapses/reorders
@@ -755,9 +795,10 @@ rules where supported.
 - A bridge stop mid-turn reports no interruption after restart (by `kill -9` or
   by signal), a running turn the plugin still reports busy is reported
   interrupted, a failed status read drops the rows, a turn started after the
-  restart is converted, the anchor names a message the store no longer holds, or
-  opening or sending to the session leaves it unacknowledged or announces it
-  more than once.
+  restart is converted, the anchor names a message the store no longer holds,
+  the row the cut-off turn ended on shows next to its replayed copy, or opening
+  or sending to the session leaves it unacknowledged or announces it more than
+  once.
 
 ## Known Limitations
 
@@ -765,6 +806,13 @@ rules where supported.
   bridge store, an OMP prompt template run shows its expanded text without a
   name and a text-only OMP skill run has no row, since OMP records neither
   name.
+- OMP omits a reply whose model call failed from its replay, so a later forced
+  re-import drops those failed replies stored before the previous import.
+- A turn that finished while the bridge was down, which only OpenCode 2 on its
+  shared background server can do, reads idle at restart and shows Interrupted
+  with Continue although it completed. A harness process that dies mid-turn
+  while the bridge stays up and never reports idle keeps its running row until
+  the next bridge restart, which then reports it interrupted.
 - A first-ever open or a stale re-read still needs the backend; if it is
   unavailable and cannot auto-start, that read fails. A store-only read avoids
   that at the cost of a possibly incomplete transcript. A store-only read also
@@ -782,11 +830,6 @@ rules where supported.
   The re-read moves the watermark to that time, so it converges. Measured live
   on 2026-11-12 with Pi `1.5.2` and Codex `0.167.2`: no extra re-read after a
   Sesori-run turn; Claude Code and OpenCode are not measured for that case.
-- Known gap until the session-edit-fork plan's Codex native fork step:
-  deleting a Codex thread from Sesori removes its rollouts even when a fork
-  reads its prefix through `history_base`, so the fork then shows only its own
-  turns. That step keeps every rollout another thread's `history_base` still
-  references, so deleting an origin leaves its fork intact.
 - A Codex revert made outside Sesori is picked up at the next catalog scan;
   until then the catalog reads the thread's previous rollout.
 - A session already open on screen picks up an outside turn on the next app

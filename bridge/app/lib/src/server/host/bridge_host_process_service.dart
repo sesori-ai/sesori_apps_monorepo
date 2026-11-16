@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io" as io;
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
@@ -32,6 +33,13 @@ class BridgeHostProcessService({
   required final ProcessUser? _currentUser,
   required final bool _isWindows,
 }) implements HostProcessService {
+  /// POSIX children spawned with [ProcessLifetime.endsWithBridge] that are
+  /// still running. Signalling one also signals its descendants, which a
+  /// harness can leave behind when it exits: tool commands and helpers such as
+  /// Oh My Pi's detached service broker. Windows needs no record because its
+  /// signals already end the whole tree.
+  final Set<int> _treeOwnerPids = <int>{};
+
   @override
   Future<SpawnedProcess> spawn({
     required String executable,
@@ -59,6 +67,11 @@ class BridgeHostProcessService({
             runInShell: runInShell,
             includeParentEnvironment: includeParentEnvironment,
           );
+    if (!_isWindows && lifetime == ProcessLifetime.endsWithBridge) {
+      final pid = process.pid;
+      _treeOwnerPids.add(pid);
+      unawaited(process.exitCode.whenComplete(() => _treeOwnerPids.remove(pid)));
+    }
 
     final spawnIdentity = ProcessIdentity(
       pid: process.pid,
@@ -128,12 +141,36 @@ class BridgeHostProcessService({
 
   @override
   Future<SignalResult> signalGraceful({required int pid}) {
-    return _processRepository.sendGracefulSignal(pid: pid);
+    return _signalWithDescendants(pid: pid, send: _processRepository.sendGracefulSignal);
   }
 
   @override
   Future<SignalResult> signalForce({required int pid}) {
-    return _processRepository.sendForceSignal(pid: pid);
+    return _signalWithDescendants(pid: pid, send: _processRepository.sendForceSignal);
+  }
+
+  /// Signals [pid], then the descendants it had just before, so a harness
+  /// tree cannot outlive its root. The snapshot comes first because once the
+  /// root exits its orphans are reparented and no longer traceable to it.
+  Future<SignalResult> _signalWithDescendants({
+    required int pid,
+    required Future<SignalResult> Function({required int pid}) send,
+  }) async {
+    final descendants = _treeOwnerPids.contains(pid) ? await _descendantsOf(pid: pid) : const <int>[];
+    final result = await send(pid: pid);
+    for (final descendant in descendants) {
+      await send(pid: descendant);
+    }
+    return result;
+  }
+
+  Future<List<int>> _descendantsOf({required int pid}) async {
+    try {
+      return await _processRepository.listPosixDescendants(pid: pid);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not list the descendants of pid $pid; signalling only the process itself", error, stackTrace);
+      return const <int>[];
+    }
   }
 
   Future<ProcessIdentity> _resolveSpawnedIdentity({

@@ -22,10 +22,13 @@ lists the rows that stayed unexecuted.
   replace root observations. Process-wide rate-limit frames alone do not report.
   Trailing stream frames preserve a complete error; a new root message clears it.
 - Claude's recognized clock-time/IANA-zone format is accepted only when it
-  denotes one future instant on the original local date. Stale times, unresolved
-  day boundaries, malformed times, unknown zones and DST gaps/ambiguity remain unknown.
-  Weekly limits use the same rule; date-bearing or otherwise unrecognized weekly
-  reset text reports an unknown reset rather than leaving the preference idle.
+  denotes one future instant. A date-less time (`6pm`) must fall on the original
+  local date; a dated time (`Nov 19 at 6pm`, `Jan 2, 2027 at 6pm`) uses that date,
+  inferring the next year when an undated day already passed (Dec→Jan). Stale
+  times, unresolved day boundaries, invalid dates, malformed times, unknown zones
+  and DST gaps/ambiguity remain unknown. Session and weekly limits share the rule;
+  unrecognized reset text reports an unknown reset rather than leaving the
+  preference idle.
 - Pi reports only recognized `openai-codex` assistant errors after native
   `agent_settled`. Intermediate `agent_end`, retry status and a subsequently
   successful response never report a terminal quota interruption.
@@ -53,6 +56,12 @@ lists the rows that stayed unexecuted.
   and updates carry the durable preference and outcome. Enabling an unavailable
   harness returns 501; disabling remains possible. Repeating the same setting
   succeeds without another mutation.
+- A `Continue.` the harness refuses because it no longer offers the session's
+  remembered agent, variant or fast mode is resent once with them corrected
+  against the rediscovered catalog, by the rules the app applies to a stale
+  selection. A model the harness no longer offers is never replaced; that
+  continuation fails, as does one whose catalog can't be read or whose
+  correction changes nothing.
 - History-derived model/agent/variant defaults preserve the stored fast-mode
   preference; missing history selection falls back to stored defaults.
 - Pi's history can record the native thinking level `off` for a model without

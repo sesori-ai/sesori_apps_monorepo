@@ -14,7 +14,7 @@ void main() {
     );
 
     test("parses advertised commands fail-soft; last update wins", () {
-      final tracker = AcpCommandTracker()
+      final tracker = AcpCommandTracker(selectionCommands: const {})
         ..consume(
           update({
             "sessionUpdate": "available_commands_update",
@@ -51,7 +51,7 @@ void main() {
     });
 
     test("ignores malformed command snapshots without replacing the last good value", () {
-      final emptyTracker = AcpCommandTracker()
+      final emptyTracker = AcpCommandTracker(selectionCommands: const {})
         ..consume(
           update({
             "sessionUpdate": "available_commands_update",
@@ -61,7 +61,7 @@ void main() {
       expect(emptyTracker.commands, isEmpty);
       expect(emptyTracker.hasSnapshot, isFalse);
 
-      final populatedTracker = AcpCommandTracker()
+      final populatedTracker = AcpCommandTracker(selectionCommands: const {})
         ..consume(
           update({
             "sessionUpdate": "available_commands_update",
@@ -75,8 +75,42 @@ void main() {
       expect(populatedTracker.hasSnapshot, isTrue);
     });
 
+    test("never offers a command the session selection owns", () {
+      final tracker = AcpCommandTracker(selectionCommands: const {"model"})
+        ..consume(
+          update({
+            "sessionUpdate": "available_commands_update",
+            "availableCommands": [
+              {"name": "model"},
+              {"name": "review"},
+            ],
+          }),
+        );
+      expect(tracker.commands.map((command) => command.name), ["review"]);
+
+      tracker.replaceSnapshot(
+        commands: const [
+          PluginCommand(
+            name: "model",
+            description: null,
+            hints: [],
+            provider: null,
+            source: PluginCommandSource.command,
+          ),
+          PluginCommand(
+            name: "plan",
+            description: null,
+            hints: [],
+            provider: null,
+            source: PluginCommandSource.command,
+          ),
+        ],
+      );
+      expect(tracker.commands.map((command) => command.name), ["plan"]);
+    });
+
     test("ignores unrelated notifications", () {
-      final tracker = AcpCommandTracker()
+      final tracker = AcpCommandTracker(selectionCommands: const {})
         ..consume(const AcpNotification(method: "cursor/update_todos", params: {}))
         ..consume(update({"sessionUpdate": "plan", "entries": <Object?>[]}));
       expect(tracker.commands, isEmpty);

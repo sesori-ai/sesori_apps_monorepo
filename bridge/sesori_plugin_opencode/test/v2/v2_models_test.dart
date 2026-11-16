@@ -5,6 +5,7 @@
 
 import "package:opencode_plugin/src/v2/models/openapi/form_multiselect_field.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/form_string_field.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/model_capabilities.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_reply.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_source.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/provider_info.g.dart";
@@ -19,6 +20,7 @@ import "package:opencode_plugin/src/v2/models/openapi/session_message_info.g.dar
 import "package:opencode_plugin/src/v2/models/openapi/session_message_tool_state_completed.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_message_user.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_messages_response.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/tool_freeform_format.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/tool_text_content.g.dart";
 import "package:opencode_plugin/src/v2/models/v2_event.g.dart";
 import "package:test/test.dart";
@@ -154,6 +156,20 @@ void main() {
     expect(provider.settings?.chunkTimeout, false);
     expect(provider.settings?.headerTimeout, 30000);
     expect(ProviderInfo.fromJson(provider.toJson()), provider);
+  });
+
+  test("decodes a list of string enum values", () {
+    // OpenCode 2.3.0 lists a model's freeform tool formats as string literals.
+    const payload = <String, dynamic>{
+      "tools": true,
+      "freeform": ["text", "lark", "future-format"],
+      "input": ["text"],
+      "output": ["text"],
+    };
+    final capabilities = ModelCapabilities.fromJson(payload);
+
+    expect(capabilities.freeform, [ToolFreeformFormat.text, ToolFreeformFormat.lark, ToolFreeformFormat.unknown]);
+    expect(capabilities.toJson()["freeform"], ["text", "lark", "unknown"]);
   });
 
   group("SessionInfo", () {

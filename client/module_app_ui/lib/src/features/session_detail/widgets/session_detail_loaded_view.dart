@@ -10,10 +10,12 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../session_detail_presentation_scope.dart";
 import "edit_message_dialogs.dart";
+import "handoff_session_link.dart";
 import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
+import "session_fork_flow.dart";
 import "transcript_jump_notifier.dart";
 import "transcript_laid_out_list_view.dart";
 import "transcript_motion.dart";
@@ -237,6 +239,7 @@ class SessionDetailLoadedView extends StatelessWidget {
                       pluginId: pluginId,
                       availability: state.sideQuestions,
                       isArchived: true,
+                      initialQuestion: null,
                     ),
                     _ => null,
                   },
@@ -342,19 +345,48 @@ class SessionDetailLoadedView extends StatelessWidget {
       onPinchIn: onPinchIn,
       onEditMessage: readOnly || !state.interaction.canInteract || !state.editsMessages
           ? null
-          : ({required message, required refusal}) => unawaited(switch (refusal) {
+          : ({required message, required refusal, required onFork}) => unawaited(switch (refusal) {
               null => context.read<SessionDetailCubit>().editMessage(message: message),
-              final refusal => showEditUnavailableDialog(context: context, refusal: refusal),
+              final refusal => showEditUnavailableDialog(context: context, refusal: refusal, onFork: onFork),
             }),
+      // Archived sessions fork too.
+      onForkMessage: state.forksMessages
+          ? ({required point, required ownMessage}) {
+              final openSession = SessionDetailPresentationScope.of(context).openSession;
+              unawaited(
+                runSessionFork(
+                  context: context,
+                  fork: ({required recreateFromBase}) => context.read<SessionDetailCubit>().forkSession(
+                    point: point,
+                    ownMessage: ownMessage,
+                    recreateFromBase: recreateFromBase,
+                  ),
+                  open: ({required fork}) => openSession(
+                    projectId: fork.projectID,
+                    sessionId: fork.id,
+                    sessionTitle: fork.title,
+                    readOnly: false,
+                  ),
+                ),
+              );
+            }
+          : null,
+      forkedFrom: state.session.forkedFrom,
+      onOpenForkOrigin: ({required sessionId, required sessionTitle}) =>
+          unawaited(openForkOrigin(context: context, sessionId: sessionId)),
       editingMessageId: switch (state.composerMode) {
         SessionComposerEditing(:final messageId) => messageId,
-        SessionComposerNormal() => null,
+        SessionComposerNormal() || SessionComposerSideQuestion() => null,
       },
       streamingText: state.streamingText,
       children: state.children,
       childStatuses: state.childStatuses,
       isBusy: _isBusy(state: state),
       mainAgentRunning: state.mainAgentRunning,
+      interruptedTurn: state.interruptedTurn,
+      onContinueInterruptedTurn: readOnly || !state.interaction.canInteract
+          ? null
+          : context.read<SessionDetailCubit>().continueInterruptedTurn,
       // Null once the start of the transcript is loaded,
       // so the list stops asking for more.
       onLoadOlderMessages: state.olderMessagesCursor == null

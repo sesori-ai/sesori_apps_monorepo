@@ -52,7 +52,7 @@ class OmpPlugin._({
       sessionDirectory: null,
     );
     final configurationTracker = AcpSessionConfigurationTracker();
-    final commandTracker = AcpCommandTracker();
+    final commandTracker = AcpCommandTracker(selectionCommands: OmpCatalogRepository.selectionCommands);
     final childSessionTracker = AcpChildSessionTracker();
     final catalogApi = OmpAcpApi(
       binaryPath: binaryPath,
@@ -122,12 +122,19 @@ class OmpPlugin._({
   @override
   String? get authMethodId => OmpBinary.acpAuthMethodId;
 
+  /// Oh My Pi caches for 5 minutes by default ("short" retention), and an
+  /// Anthropic subscription seat for an hour. The seat is not visible over
+  /// ACP, so this answers the shorter life, which stays warm on either.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => const Duration(minutes: 5);
+
   @override
   bool get supportsFormElicitation => true;
 
-  /// From 18.19.0, a second `omp acp` process that loads a session this
-  /// process holds writes a full copy as a new "open-elsewhere" session when
-  /// it exits, which shows up as a duplicate untitled session. Loading it on
+  /// On 18.19.0 and 18.20.0, a second `omp acp` process that loads a session
+  /// this process holds writes a full copy as a new "open-elsewhere" session
+  /// when it exits, which shows up as a duplicate untitled session (18.20.1
+  /// stopped writing it; PATH installs can still be older). Loading it on
   /// the holding process returns the session already in memory and writes
   /// nothing.
   @override
@@ -141,8 +148,10 @@ class OmpPlugin._({
     activeSessionResolver: () => activeTurnSessionId,
   );
 
-  /// From 18.18.9, ACP session deletion persists an empty untitled replacement
-  /// session (https://github.com/can1357/oh-my-pi/issues/19068). An entry with
+  /// From 18.18.9 until 18.20.1, ACP session deletion persists an empty
+  /// untitled replacement session
+  /// (https://github.com/can1357/oh-my-pi/issues/19068), and `session/new`
+  /// still writes an empty untitled session at once (18.21.0). An entry with
   /// zero messages and no title holds nothing to show: it is that leftover or
   /// a session never prompted, and one Sesori created keeps its bridge row.
   /// A missing or non-int count keeps the entry.
@@ -187,6 +196,22 @@ class OmpPlugin._({
     result,
     sessionId: sessionId,
     fromNewSession: fromNewSession,
+  );
+
+  @override
+  Future<void> validateTurnSelection({
+    required String operation,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) async => _ompSessionOptionsService.validateTurnSelection(
+    operation: operation,
+    sessionId: sessionId,
+    projectId: knownSessionDirectory(sessionId: sessionId),
+    model: model,
+    variant: variant,
+    agent: agent,
   );
 
   @override

@@ -41,6 +41,7 @@ class const SettingsChromePage({
       banner: connectionBanner,
       onRefresh: onRefresh,
       slivers: slivers,
+      titleKeptSuffix: null,
     ),
     // These pages' slivers inset their top by 10, so all tabs start at one height.
     SettingsPageInWindow() => SettingsWindowPage(

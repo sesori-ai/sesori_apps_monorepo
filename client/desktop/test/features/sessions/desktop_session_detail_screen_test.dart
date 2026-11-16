@@ -22,7 +22,10 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
-class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit {
+  @override
+  bool canFork({required Session session}) => false;
+}
 
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
 
@@ -104,6 +107,7 @@ const _child = Session(
   time: SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
   promptDefaults: null,
   lastUserActivityAt: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,
@@ -125,6 +129,7 @@ const _session = Session(
   lastUserActivityAt: null,
   // Local state can still say unseen just after opening.
   unseen: true,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,
@@ -231,6 +236,7 @@ SideChatCubit _unusedSideChatCubit({
   required String pluginId,
   required SideQuestionAvailability availability,
   required bool isArchived,
+  required String? initialQuestion,
 }) => throw UnimplementedError("Side chats are not under test");
 
 const _sideChat = SideChat(
@@ -293,6 +299,12 @@ void main() {
               return _MockImageClipboard();
             },
             child: DesktopSessionDetailView(
+              onReturnToSession: ({
+                required projectId,
+                required sessionId,
+                required sessionTitle,
+                required readOnly,
+              }) {},
               onOpenHarnessSettings: () {},
               onOpenBridgeSettings: () {},
               projectId: "project-1",
@@ -340,7 +352,8 @@ void main() {
     expect(find.text("Desktop transcript"), findsOneWidget);
     expect(find.byKey(const Key("desktop-session-page-back")), findsNothing);
     expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
-    expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
+    // The transcript's, and its message's, which joins it.
+    expect(find.byType(PregoReadableSelectionArea), findsNWidgets(2));
     final loadedView = tester.widget<SessionDetailLoadedView>(find.byType(SessionDetailLoadedView));
     expect(loadedView.readOnly, isFalse);
     expect(
@@ -421,6 +434,12 @@ void main() {
             home: _composerScope(
               imageClipboard: _MockImageClipboard.new,
               child: DesktopSessionDetailView(
+                onReturnToSession: ({
+                  required projectId,
+                  required sessionId,
+                  required sessionTitle,
+                  required readOnly,
+                }) {},
                 onOpenHarnessSettings: () {},
                 onOpenBridgeSettings: () {},
                 projectId: "project-1",
@@ -539,6 +558,7 @@ void main() {
         imageClipboard: _MockImageClipboard.new,
         child: DesktopSessionDetailView(
           key: key,
+          onReturnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
           onOpenHarnessSettings: () {},
           onOpenBridgeSettings: () {},
           projectId: "project-1",
@@ -573,19 +593,26 @@ void main() {
               throw UnimplementedError("File previews are not under test"),
           createExternalActionCubit: ({required requestId, required sessionId}) =>
               throw UnimplementedError("External actions are not under test"),
-          createSideChatCubit: ({required sessionId, required pluginId, required availability, required isArchived}) {
-            final sideChat = SideChatCubit(
-              repository: sideChats,
-              productAnalyticsService: MockProductAnalyticsService(),
-              sessionId: sessionId,
-              pluginId: pluginId,
-              availability: availability,
-              isArchived: isArchived,
-              initialQuestion: null,
-            );
-            createdSideChats.add(sideChat);
-            return sideChat;
-          },
+          createSideChatCubit:
+              ({
+                required sessionId,
+                required pluginId,
+                required availability,
+                required isArchived,
+                required initialQuestion,
+              }) {
+                final sideChat = SideChatCubit(
+                  repository: sideChats,
+                  productAnalyticsService: MockProductAnalyticsService(),
+                  sessionId: sessionId,
+                  pluginId: pluginId,
+                  availability: availability,
+                  isArchived: isArchived,
+                  initialQuestion: initialQuestion,
+                );
+                createdSideChats.add(sideChat);
+                return sideChat;
+              },
           canShareImages: true,
         ),
       );
@@ -1195,6 +1222,39 @@ void main() {
           pageKey: const ValueKey("session-2"),
         );
         expect(panel, findsNothing);
+      });
+
+      testWidgets("a /btw question replaces the open panel's chat with a new one asking it", (tester) async {
+        final states = StreamController<SessionDetailState>();
+        addTearDown(states.close);
+        await pumpPage(tester, session: root, initialState: sideChatState(), states: states.stream);
+        final answer = Completer<ApiResponse<AskSideQuestionResponse>>();
+        when(
+          () => sideChats.askSideQuestion(
+            sessionId: any(named: "sessionId"),
+            sideChatId: any(named: "sideChatId"),
+            question: any(named: "question"),
+          ),
+        ).thenAnswer((_) => answer.future);
+        await openFromComposer(tester);
+        final shown = createdSideChats.single;
+
+        // The composer enters side-question mode with a question typed.
+        states.add(sideChatState().copyWith(composerMode: const SessionComposerMode.sideQuestion()));
+        await tester.pump();
+        final composer = find.byType(SessionDetailComposerControls);
+        await tester.enterText(find.descendant(of: composer, matching: find.byType(EditableText)), "why so slow?");
+        when(cubit.submitSideQuestion).thenReturn("why so slow?");
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(createdSideChats, hasLength(2));
+        expect(shown.isClosed, isTrue);
+        expect(find.descendant(of: panel, matching: find.text("why so slow?")), findsOneWidget);
+        verify(
+          () => sideChats.askSideQuestion(sessionId: "session-1", sideChatId: null, question: "why so slow?"),
+        ).called(1);
       });
 
       testWidgets("an archived session's Side chats link opens its newest chat read-only in the panel", (

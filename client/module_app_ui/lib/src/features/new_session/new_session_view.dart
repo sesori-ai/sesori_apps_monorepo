@@ -59,6 +59,13 @@ class const NewSessionView({
   /// [NewSessionCubit.selectProject].
   required final NewSessionProjectSelected? onProjectSelected,
 
+  /// The glass bar's title; a page chrome's top bar carries its own.
+  required final String title,
+
+  /// Where the glass bar's title sits while composing; the sending
+  /// transcript centres it.
+  required final PregoTopNavigationTitleMode composingTitleMode,
+
   /// Null where nothing lies behind the page, such as the home's content pane.
   required final VoidCallback? onBack,
   required final VoidCallback onOpenHarnessSettings,
@@ -604,6 +611,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             // The first message is in the transcript once it is sending.
             hasMessages: isSending,
             canSend: cubit.canSubmit,
+            lockedNote: null,
             attachmentsSupported: cubit.offersAttachments ? composerData?.plugin?.supportsPromptAttachments : false,
             // Unresolved until a bridge has answered discovery.
             fileUploadsSupported: !cubit.offersAttachments
@@ -653,7 +661,6 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   Widget build(BuildContext context) {
     final cubit = context.watch<NewSessionCubit>();
     final state = cubit.state;
-    final loc = context.loc;
     final sendingPhase = switch (state.phase) {
       final NewSessionPhaseSending phase => phase,
       NewSessionPhaseIdle() ||
@@ -820,13 +827,13 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
 
     return listening(
       child: PregoGlassScaffold(
-        title: loc.sessionListNewSession,
+        title: widget.title,
         // Toolbar navigation is explicit: unlike Android system back, it must
         // not be vetoed by the composer's keyboard-dismissal PopScope.
         onBack: widget.onBack == null ? null : _dismissScreen,
         // The header's project selector names the project, so the bar carries
         // no subtitle.
-        titleMode: isSending ? PregoTopNavigationTitleMode.inline : PregoTopNavigationTitleMode.backLeading,
+        titleMode: isSending ? PregoTopNavigationTitleMode.inline : widget.composingTitleMode,
         subtitle: null,
         reserveBarSpace: false,
         scrollable: false,
@@ -887,6 +894,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             ),
           ),
         ],
+        titleKeptSuffix: null,
       ),
     );
   }

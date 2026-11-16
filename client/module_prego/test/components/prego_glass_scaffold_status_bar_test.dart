@@ -10,6 +10,7 @@ Widget _harness({required PregoDesignSystem prego}) {
       title: "Title",
       automaticallyImplyLeading: false,
       slivers: [SliverToBoxAdapter(child: SizedBox(height: 10))],
+      titleKeptSuffix: null,
     ),
   );
 }
@@ -44,6 +45,7 @@ void main() {
               ),
             ),
           ],
+          titleKeptSuffix: null,
         ),
       ),
     );
@@ -79,6 +81,7 @@ void main() {
                     ),
                   ),
                 ],
+                titleKeptSuffix: null,
               ),
             ),
           ),

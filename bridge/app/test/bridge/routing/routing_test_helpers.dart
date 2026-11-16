@@ -186,7 +186,7 @@ class FakeSessionDao() {
       title: null,
       catalogTitle: null,
       approvalOverride: null,
-      pinned: false,
+      pinOrder: null,
       forkedFromSessionId: null,
       forkedFromTitle: null,
       scheduledTaskId: null,
@@ -212,7 +212,7 @@ class FakeSessionDao() {
 }
 
 DeletedSessionSubtree _deletedSession(String sessionId) =>
-    (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId]);
+    (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId], projectId: "project-1", worktreePath: null);
 
 Session _deletedSessionInfo(String sessionId) => Session(
   approvalOverride: null,
@@ -227,6 +227,7 @@ Session _deletedSessionInfo(String sessionId) => Session(
   time: null,
   promptDefaults: null,
   lastUserActivityAt: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,
@@ -294,6 +295,7 @@ Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
     },
     promptDefaults: null,
     lastUserActivityAt: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,
@@ -327,9 +329,20 @@ class FakeSessionRepository({
   @override
   Future<SessionReadiness> getSessionReadiness({required String sessionId}) async => SessionReadiness.unavailable;
 
+  /// What [compactSession] answers, and the sessions it was asked for.
+  SessionCompactionResult compactionResult = SessionCompactionResult.unsupported;
+  final List<String> compacted = [];
+
   @override
-  Future<SessionCompactionResult> compactSession({required String sessionId, required String promptId}) async =>
-      SessionCompactionResult.unsupported;
+  Future<SessionCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    compacted.add(sessionId);
+    return compactionResult;
+  }
+
+  Duration? promptCacheLife;
+
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => promptCacheLife;
 
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
@@ -402,6 +415,9 @@ class FakeSessionRepository({
   Future<Session?> setPinned({required String sessionId, required bool pinned}) async => null;
 
   @override
+  Future<List<Session>?> movePin({required String sessionId, required String? afterSessionId}) async => null;
+
+  @override
   Future<SessionApprovalMode?> resolveApprovalOverride({required String sessionId}) async => null;
 
   @override
@@ -424,6 +440,7 @@ class FakeSessionRepository({
       time: SessionTime(created: stored.createdAt, updated: stored.updatedAt, archived: stored.archivedAt),
       promptDefaults: null,
       lastUserActivityAt: stored.lastUserMessageAt,
+      pinOrder: null,
       scheduledTask: null,
       interruption: null,
       forkedFrom: null,
@@ -453,6 +470,7 @@ class FakeSessionRepository({
         activeSessions: [
           for (final active in summary.activeSessions)
             ActiveSession(
+              sending: null,
               id: active.id,
               mainAgentRunning: active.mainAgentRunning,
               awaitingInput: active.awaitingInput,
@@ -474,6 +492,13 @@ class FakeSessionRepository({
   @override
   Future<SessionQuietness> getSessionQuietness({required String sessionId}) async =>
       quietness[sessionId] ?? SessionQuietness.quiet;
+
+  /// Newest first, per task, for archiving old scheduled runs.
+  final Map<String, List<String>> archivableScheduledRunSessionIds = {};
+
+  @override
+  Future<List<String>> listArchivableScheduledRunSessionIds({required String taskId}) async =>
+      archivableScheduledRunSessionIds[taskId] ?? const [];
 
   @override
   Future<Session> createSession({
@@ -508,6 +533,7 @@ class FakeSessionRepository({
     time: null,
     promptDefaults: null,
     lastUserActivityAt: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,
@@ -636,6 +662,20 @@ class FakeSessionRepository({
   }) async => false;
 
   @override
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) async => false;
+
+  @override
+  Future<void> recordWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) async {}
+
+  @override
   Future<String?> getProjectPath({required String projectId}) async => projectPathResult;
 
   @override
@@ -751,10 +791,26 @@ class FakeSessionRepository({
   Message stampLiveMessage({required Message message}) => message;
 
   @override
+  Message stampNotSentRequest({required Message message}) => message;
+
+  @override
+  void holdRequest({required String sessionId, required QueuedSessionPrompt request}) {}
+
+  @override
+  void releaseRequest({required String sessionId}) {}
+
+  @override
   void markHandoffNotSent({required String sessionId, required String promptId}) {}
 
   @override
-  List<QueuedSessionPrompt> stampQueuedCommandSources({
+  void markRequestNotSent({
+    required String sessionId,
+    required String messageId,
+    required MessageHandoffNotSent notSent,
+  }) {}
+
+  @override
+  List<QueuedSessionPrompt> stampQueuedPrompts({
     required String sessionId,
     required List<QueuedSessionPrompt> prompts,
   }) => prompts;

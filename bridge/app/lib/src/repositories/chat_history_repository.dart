@@ -272,25 +272,38 @@ class ChatHistoryRepository({
     );
   }
 
-  /// Turns the stored `sent` handoff of the user message [messageId] into its
-  /// not-sent form, as an update at [updatedAt] so a later replay still pairs
-  /// the row with its replayed turn. Anything else stored for it is left as it is.
-  Future<void> markHandoffNotSent({
+  /// Stamps the user message [messageId] with [notSent] in place of its stored
+  /// `sent` handoff, or of none when the harness stored the request without
+  /// its live echo. It is an update at [updatedAt], so a later replay still
+  /// pairs the row with its replayed turn. Any other stored stamp is left as it is.
+  ///
+  /// Returns the marked message with its text, which a request stored without
+  /// its echo has not shown yet, or null when nothing was marked. A summary
+  /// request is text only.
+  Future<MessageWithParts?> markHandoffNotSent({
     required String sessionId,
     required String messageId,
+    required MessageHandoffNotSent notSent,
     required int updatedAt,
   }) async {
     final existing = await _chatHistoryDao.getMessage(sessionId: sessionId, messageId: messageId);
-    if (existing == null) return;
+    if (existing == null) return null;
     final stored = Message.fromJson(jsonDecodeMap(existing.infoJson));
-    if (stored case MessageUser(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle))) {
-      final marked = stored.copyWith(
-        handoff: MessageHandoff.notSent(targetSessionId: targetSessionId, targetTitle: targetTitle),
-      );
+    if (stored case MessageUser(handoff: MessageHandoffSent() || null)) {
+      final marked = stored.copyWith(handoff: notSent);
       await _chatHistoryDao.upsertMessage(
         row: existing.copyWith(infoJson: jsonEncode(marked.toJson()), updatedAt: updatedAt),
       );
+      final partRows = await _chatHistoryDao.getParts(sessionId: sessionId, messageIds: [messageId]);
+      return MessageWithParts(
+        info: marked,
+        parts: [
+          for (final row in partRows)
+            if (MessagePart.fromJson(jsonDecodeMap(row.partJson)) case final MessagePartText text) text,
+        ],
+      );
     }
+    return null;
   }
 
   /// [update] with the command invocation and handoff [stored] already
@@ -395,43 +408,15 @@ class ChatHistoryRepository({
     return leftovers;
   }
 
-  /// [unreplayedInvocationIndexes] plus the rows of each run's reply that the
-  /// replay doesn't hold either: the rows after the invocation turn, up to the
-  /// next user turn or the first reply row the replay holds.
-  ///
-  /// A harness that runs a command itself, such as Hermes `/compress` or
-  /// `/help`, records neither the turn nor its reply. That reply would sit
-  /// between the turns around the run and keep them from matching their
-  /// replayed rows, so the prompt after the run and the answer before it
-  /// would each show twice.
-  Set<int> _unreplayedRunIndexes({
-    required Set<int> unreplayedInvocationIndexes,
-    required List<_SemanticMessageFingerprints?> importedFingerprints,
-    required List<HistoryMessagesTableData> storedRows,
-    required List<_SemanticMessageFingerprints?> storedFingerprints,
-    required Set<String> importedIds,
-  }) {
-    if (unreplayedInvocationIndexes.isEmpty) return const {};
-    final importedContents = {for (final fingerprint in importedFingerprints) ?fingerprint?.content};
-    final runIndexes = {...unreplayedInvocationIndexes};
-    for (final invocationIndex in unreplayedInvocationIndexes) {
-      for (var index = invocationIndex + 1; index < storedRows.length; index++) {
-        final row = storedRows[index];
-        final content = storedFingerprints[index]?.content;
-        if (content == null ||
-            importedContents.contains(content) ||
-            importedIds.contains(row.messageId) ||
-            _isUserRow(row: row)) {
-          break;
-        }
-        runIndexes.add(index);
-      }
-    }
-    return runIndexes;
-  }
-
   bool _isUserRow({required HistoryMessagesTableData row}) =>
       Message.fromJson(jsonDecodeMap(row.infoJson)) is MessageUser;
+
+  bool _isStoppedRow({required HistoryMessagesTableData row}) => switch (Message.fromJson(
+    jsonDecodeMap(row.infoJson),
+  )) {
+    MessageError(kind: MessageErrorKind.stopped) => true,
+    _ => false,
+  };
 
   bool _isInvocationRow({required HistoryMessagesTableData row}) => switch (Message.fromJson(
     jsonDecodeMap(row.infoJson),
@@ -767,10 +752,11 @@ class ChatHistoryRepository({
   /// same nearest-distinct visible-message context drops retained duplicates up
   /// to the imported multiplicity while preserving truly live-only rows and
   /// additional identical messages. Exact identities consume replay capacity
-  /// first and anchor neighboring context by ID even when their payload changes;
-  /// stale rows due for removal do not shape semantic context, a compaction
-  /// row matches by its creation time instead of its neighbors and is no
-  /// neighbor itself, and a
+  /// first and anchor neighboring context by ID even when their payload changes.
+  /// Only stored rows whose content the replay holds shape semantic context,
+  /// stale rows due for removal included, so a row the replay doesn't hold
+  /// never separates the replayed rows around it. A compaction row matches by
+  /// its creation time instead of its neighbors and is no neighbor itself, and a
   /// repeated run matches only occurrences with equal creation times. A unique
   /// exact standalone-tool identity can additionally anchor one adjacent
   /// assistant/tool/assistant replay window when replay strictly completes the
@@ -778,6 +764,11 @@ class ChatHistoryRepository({
   /// agree. Conflicting known times also keep singleton rows distinct, while
   /// internal parts hidden from clients do not affect visible equivalence. The
   /// imported row remains authoritative for replay metadata.
+  ///
+  /// [interruptedAfterMessageId] is the stored row a bridge stop may have cut
+  /// its turn off after, if any. While that row is still the store's newest,
+  /// it matches by its previous neighbor and content alone (see
+  /// [_interruptedTailPair]).
   ///
   /// Returns, for each stored row an imported row replaced under a different
   /// id, that imported row's id.
@@ -798,6 +789,7 @@ class ChatHistoryRepository({
     required int watermark,
     required int backendActivityAt,
     required int syncedAt,
+    required String? interruptedAfterMessageId,
   }) async {
     final importedIds = {for (final message in messages) message.info.id};
     final storedRows = await _chatHistoryDao.getMessages(sessionId: sessionId, limit: null, before: null);
@@ -855,23 +847,22 @@ class ChatHistoryRepository({
       );
     }
 
+    final storedFingerprintById = <String, _SemanticMessageFingerprints?>{};
+    for (final row in storedRows) {
+      storedFingerprintById[row.messageId] = await _semanticMessageFingerprints(
+        sessionId: sessionId,
+        messageId: row.messageId,
+        storageScope: storageScope,
+        infoJson: row.infoJson,
+        partJsons: storedPartJsonByMessage[row.messageId] ?? const [],
+      );
+    }
     bool isCurrent(HistoryMessagesTableData row) => lastImportedAt == null || row.updatedAt > lastImportedAt;
     final storedContextRows = [
       for (final row in storedRows)
         if (importedIds.contains(row.messageId) || isCurrent(row)) row,
     ];
-    final storedSemanticFingerprints = <_SemanticMessageFingerprints?>[];
-    for (final row in storedContextRows) {
-      storedSemanticFingerprints.add(
-        await _semanticMessageFingerprints(
-          sessionId: sessionId,
-          messageId: row.messageId,
-          storageScope: storageScope,
-          infoJson: row.infoJson,
-          partJsons: storedPartJsonByMessage[row.messageId] ?? const [],
-        ),
-      );
-    }
+    final storedSemanticFingerprints = [for (final row in storedContextRows) storedFingerprintById[row.messageId]];
 
     final anchoredReplayExtensionStoredIds = _anchoredReplayExtensionStoredIds(
       importedMessages: messages,
@@ -921,15 +912,6 @@ class ChatHistoryRepository({
       for (final MapEntry(key: importedIndex, value: storedIndex) in invocationTurnPairs.entries)
         storedIndex: invocationTurnAnchors[importedIndex],
     };
-    // An invocation turn the replay doesn't hold sits between its neighbors
-    // without separating them, so they still match their replayed rows.
-    final unreplayedRunIndexes = _unreplayedRunIndexes(
-      unreplayedInvocationIndexes: leftoverInvocationIndexes.difference(invocationTurnPairs.values.toSet()),
-      importedFingerprints: importedSemanticFingerprints,
-      storedRows: storedContextRows,
-      storedFingerprints: storedSemanticFingerprints,
-      importedIds: importedIds,
-    );
 
     final importedSemanticContexts = _semanticContextFingerprints(
       fingerprints: importedSemanticFingerprints,
@@ -940,18 +922,39 @@ class ChatHistoryRepository({
               : invocationTurnAnchors[index],
       ],
     );
-    final storedSemanticContexts = _semanticContextFingerprints(
+    // Neighbors come from every stored row the replay holds by id or by its
+    // neighbor fingerprint, stale ones included: Oh My Pi replays under fresh ids, so a live turn
+    // after an import otherwise has no stored row before it. A row the replay
+    // doesn't hold at all sits between its neighbors without separating them,
+    // such as a command Hermes runs itself or a failed reply Oh My Pi never
+    // replays.
+    final importedNeighbors = {for (final fingerprint in importedSemanticFingerprints) ?fingerprint?.context};
+    final storedContextIndexById = {
+      for (var index = 0; index < storedContextRows.length; index++) storedContextRows[index].messageId: index,
+    };
+    final neighborContexts = _semanticContextFingerprints(
       fingerprints: [
-        for (var index = 0; index < storedSemanticFingerprints.length; index++)
-          unreplayedRunIndexes.contains(index) ? null : storedSemanticFingerprints[index],
+        for (final row in storedRows)
+          switch (storedFingerprintById[row.messageId]) {
+            final fingerprint?
+                when importedIds.contains(row.messageId) || importedNeighbors.contains(fingerprint.context) =>
+              fingerprint,
+            _ => null,
+          },
       ],
       anchorOverrides: [
-        for (var index = 0; index < storedContextRows.length; index++)
-          importedIds.contains(storedContextRows[index].messageId)
-              ? _exactIdentityAnchor(messageId: storedContextRows[index].messageId)
-              : storedInvocationTurnAnchors[index],
+        for (final row in storedRows)
+          importedIds.contains(row.messageId)
+              ? _exactIdentityAnchor(messageId: row.messageId)
+              : storedInvocationTurnAnchors[storedContextIndexById[row.messageId]],
       ],
     );
+    final storedSemanticContexts = List<String?>.filled(storedContextRows.length, null);
+    for (var index = 0; index < storedRows.length; index++) {
+      if (storedContextIndexById[storedRows[index].messageId] case final contextIndex?) {
+        storedSemanticContexts[contextIndex] = neighborContexts[index];
+      }
+    }
     final importedIndexesByContext = <String, List<int>>{};
     for (var index = 0; index < importedSemanticContexts.length; index++) {
       if (storedIds.contains(messages[index].info.id) || invocationTurnPairs.containsKey(index)) continue;
@@ -967,13 +970,21 @@ class ChatHistoryRepository({
       if (fingerprint != null) storedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
     }
 
+    // A stale row the replay holds stands for a replayed occurrence too. A
+    // current row sharing its context is no unique match: skipping a live row
+    // the replay doesn't hold can make a live-only reply look like it.
+    final staleContexts = {
+      for (var index = 0; index < storedRows.length; index++)
+        if (!storedContextIndexById.containsKey(storedRows[index].messageId)) ?neighborContexts[index],
+    };
+
     final semanticallyImportedStoredIds = <String>{...anchoredReplayExtensionStoredIds};
     // Imported index -> the stored context row it replaces by content.
     final semanticPairs = <int, int>{};
     for (final entry in storedIndexesByContext.entries) {
       final importedIndexes = importedIndexesByContext[entry.key] ?? const [];
       final storedIndexes = entry.value;
-      if (importedIndexes.length == 1 && storedIndexes.length == 1) {
+      if (importedIndexes.length == 1 && storedIndexes.length == 1 && !staleContexts.contains(entry.key)) {
         final importedCreatedAt = importedSemanticFingerprints[importedIndexes.single]?.createdAt;
         final storedCreatedAt = storedSemanticFingerprints[storedIndexes.single]?.createdAt;
         if (importedCreatedAt == null || storedCreatedAt == null || importedCreatedAt == storedCreatedAt) {
@@ -1012,9 +1023,23 @@ class ChatHistoryRepository({
       semanticPairs[importedIndex] = storedIndex;
     }
 
-    final storedContextIndexById = {
-      for (var index = 0; index < storedContextRows.length; index++) storedContextRows[index].messageId: index,
-    };
+    if (_interruptedTailPair(
+          interruptedAfterMessageId: interruptedAfterMessageId,
+          messages: messages,
+          importedFingerprints: importedSemanticFingerprints,
+          importedContexts: importedSemanticContexts,
+          storedRows: storedContextRows,
+          storedFingerprints: storedSemanticFingerprints,
+          storedContexts: storedSemanticContexts,
+          storedIds: storedIds,
+          pairedStoredIds: semanticallyImportedStoredIds,
+          pairedImportedIndexes: semanticPairs.keys.toSet(),
+        )
+        case (:final importedIndex, :final storedIndex)) {
+      semanticallyImportedStoredIds.add(storedContextRows[storedIndex].messageId);
+      semanticPairs[importedIndex] = storedIndex;
+    }
+
     final importedIndexByStoredIndex = <int, int>{};
     // Imported index -> its stored row, for a user turn named only by the bridge.
     final storedNamedTurns = <int, int>{};
@@ -1028,10 +1053,12 @@ class ChatHistoryRepository({
       if ((imported, stored) case (MessageUser(invocation: null), MessageUser(invocation: _?))) {
         storedNamedTurns[index] = storedIndex;
       }
-      final notice = _reconciledNotice(imported: imported, stored: stored, sameIdentity: exactStoredIndex != null);
-      // The stored row's stamps survive the import that replaces it, unless
-      // the import carries its own.
-      final reconciled = notice ?? _withStoredStamps(update: imported, stored: stored);
+      // The stored row's stamps and time survive the import that replaces it,
+      // unless the import carries its own: a replay that can't date a row
+      // keeps the time it was captured live with.
+      final dated = imported.time == null && stored.time != null ? imported.copyWith(time: stored.time) : imported;
+      final notice = _reconciledNotice(imported: dated, stored: stored, sameIdentity: exactStoredIndex != null);
+      final reconciled = notice ?? _withStoredStamps(update: dated, stored: stored);
       if (!identical(reconciled, imported)) {
         importedMessageRows[index] = importedMessageRows[index].copyWith(infoJson: jsonEncode(reconciled.toJson()));
       }
@@ -1064,14 +1091,9 @@ class ChatHistoryRepository({
       }
       final staleRowsByContent = <String, List<HistoryMessagesTableData>>{};
       for (final row in staleRows) {
-        final fingerprint = await _semanticMessageFingerprints(
-          sessionId: sessionId,
-          messageId: row.messageId,
-          storageScope: storageScope,
-          infoJson: row.infoJson,
-          partJsons: storedPartJsonByMessage[row.messageId] ?? const [],
-        );
-        if (fingerprint != null) staleRowsByContent.putIfAbsent(fingerprint.content, () => []).add(row);
+        if (storedFingerprintById[row.messageId] case final fingerprint?) {
+          staleRowsByContent.putIfAbsent(fingerprint.content, () => []).add(row);
+        }
       }
       // A row the previous import wrote and this replay lacks was removed by
       // the harness (an edit or a rollback), so only live rows can stay. An
@@ -1122,6 +1144,24 @@ class ChatHistoryRepository({
           inUnreplayedRun = false;
         }
       }
+    }
+    // A stopped turn keeps the rows the replay doesn't hold, up to its stopped
+    // row: Codex records none of the reply it was streaming, and most ACP
+    // harnesses record no stop at all. The turn lasts while the replay still
+    // holds its prompt; a rollback that removes the prompt removes the rest.
+    bool replayHolds(HistoryMessagesTableData row) =>
+        importedIds.contains(row.messageId) || semanticallyImportedStoredIds.contains(row.messageId);
+    var turnStart = 0;
+    for (var index = 0; index <= storedRows.length; index++) {
+      if (index < storedRows.length && !_isUserRow(row: storedRows[index])) continue;
+      final turn = storedRows.sublist(turnStart, index);
+      turnStart = index;
+      final stoppedIndex = turn.lastIndexWhere((row) => _isStoppedRow(row: row));
+      if (stoppedIndex < 0 || !_isUserRow(row: turn.first) || !replayHolds(turn.first)) continue;
+      keptStaleIds.addAll([
+        for (final row in turn.sublist(1, stoppedIndex + 1))
+          if (!replayHolds(row)) row.messageId,
+      ]);
     }
 
     final retained = [
@@ -1396,7 +1436,11 @@ class ChatHistoryRepository({
   ///
   /// The rows come from one database snapshot. Attachments decode as metadata
   /// and never touch spill files: the index needs only their names.
-  Future<List<SessionPromptIndexEntry>> getPromptIndex({required String sessionId}) async {
+  /// [turnEndMessageIds] are as in [PromptIndexMapper.indexOf].
+  Future<List<SessionPromptIndexEntry>> getPromptIndex({
+    required String sessionId,
+    required Set<String> turnEndMessageIds,
+  }) async {
     final rows = await _chatHistoryDao.getPageRowsWithSyncState(sessionId: sessionId, limit: null, before: null);
     final partJsonByMessage = <String, List<String>>{};
     for (final row in rows.parts) {
@@ -1416,12 +1460,17 @@ class ChatHistoryRepository({
             ),
           ),
       ],
+      turnEndMessageIds: turnEndMessageIds,
     );
   }
 
   /// Every prompt in the session's audit file, oldest first, or null when no
-  /// audit file exists. Attachments decode as in [getPromptIndex].
-  Future<List<SessionPromptIndexEntry>?> getArchivedPromptIndex({required String sessionId}) async {
+  /// audit file exists. Attachments and [turnEndMessageIds] are as in
+  /// [getPromptIndex].
+  Future<List<SessionPromptIndexEntry>?> getArchivedPromptIndex({
+    required String sessionId,
+    required Set<String> turnEndMessageIds,
+  }) async {
     final ordered = await _readArchivedMessages(sessionId: sessionId);
     if (ordered == null) return null;
     return _promptIndexMapper.indexOf(
@@ -1435,6 +1484,7 @@ class ChatHistoryRepository({
             ),
           ),
       ],
+      turnEndMessageIds: turnEndMessageIds,
     );
   }
 
@@ -1772,7 +1822,7 @@ class ChatHistoryRepository({
         );
         canonicalParts.add(canonicalPart);
         final partContent = await _jsonFingerprint(value: canonicalPart);
-        if (part case MessagePartText(:final text)) {
+        if (part case MessagePartText(:final text) || MessagePartReasoning(:final text)) {
           partFingerprints.add((
             content: partContent,
             contentWithoutText: await _jsonFingerprint(
@@ -1818,6 +1868,61 @@ class ChatHistoryRepository({
   }
 
   String _exactIdentityAnchor({required String messageId}) => jsonEncode({"exactMessageId": messageId});
+
+  /// The replayed row for the newest stored row when a bridge stop cut its
+  /// turn off right after it. The stop landed before the bridge stored the
+  /// row the replay has next, so the stored row has no next neighbor and its
+  /// full context can't match. It pairs with the one unpaired replayed row of
+  /// the same previous neighbor whose content equals or completes its own.
+  ({int importedIndex, int storedIndex})? _interruptedTailPair({
+    required String? interruptedAfterMessageId,
+    required List<MessageWithParts> messages,
+    required List<_SemanticMessageFingerprints?> importedFingerprints,
+    required List<String?> importedContexts,
+    required List<HistoryMessagesTableData> storedRows,
+    required List<_SemanticMessageFingerprints?> storedFingerprints,
+    required List<String?> storedContexts,
+    required Set<String> storedIds,
+    required Set<String> pairedStoredIds,
+    required Set<int> pairedImportedIndexes,
+  }) {
+    final storedIndex = storedRows.indexWhere((row) => row.messageId == interruptedAfterMessageId);
+    if (storedIndex == -1 || pairedStoredIds.contains(interruptedAfterMessageId)) return null;
+    final storedContext = storedContexts[storedIndex];
+    if (storedContext == null) return null;
+    final storedFingerprint = storedFingerprints[storedIndex];
+    if ((storedFingerprint, jsonDecode(storedContext)) case (
+      final storedFingerprint?,
+      [final previous, final content, null],
+    )) {
+      bool continuesStoredRow(int index) {
+        if (pairedImportedIndexes.contains(index) || storedIds.contains(messages[index].info.id)) return false;
+        final importedFingerprint = importedFingerprints[index];
+        final context = importedContexts[index];
+        if (importedFingerprint == null ||
+            context == null ||
+            !_knownTimesAgree(imported: importedFingerprint, stored: storedFingerprint)) {
+          return false;
+        }
+        // The stop can land mid-stream, so the stored row may hold only the
+        // start of the text the replay completes.
+        return switch (jsonDecode(context)) {
+          [final importedPrevious, final importedContent, _] =>
+            importedPrevious == previous &&
+                (importedContent == content ||
+                    _isStrictImportedTextExtension(imported: importedFingerprint, stored: storedFingerprint)),
+          _ => false,
+        };
+      }
+
+      final candidates = [
+        for (var index = 0; index < messages.length; index++)
+          if (continuesStoredRow(index)) index,
+      ];
+      if (candidates case [final importedIndex]) return (importedIndex: importedIndex, storedIndex: storedIndex);
+    }
+    return null;
+  }
 
   List<String?> _semanticContextFingerprints({
     required List<_SemanticMessageFingerprints?> fingerprints,

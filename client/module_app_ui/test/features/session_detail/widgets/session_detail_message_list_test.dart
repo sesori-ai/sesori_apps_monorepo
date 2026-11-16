@@ -11,6 +11,8 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/compaction_part_widget.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/handoff_card.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/handoff_marker_row.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/invocation_card.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
@@ -20,6 +22,7 @@ import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sti
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 class const _SessionDetailMessageListHarness({
@@ -39,6 +42,15 @@ class const _SessionDetailMessageListHarness({
   final DateTime? launchStartedAt,
   final List<LaunchFollowUp> launchFollowUps = const [],
   final PromptTurnShapes promptTurnShapes = const PromptTurnShapes(),
+  final SessionForkOrigin? forkedFrom,
+  final void Function({required String sessionId, required String? sessionTitle})? onOpenForkOrigin,
+  final void Function({
+    required MessageWithParts message,
+    required MessageEditRefusal? refusal,
+    required VoidCallback? onFork,
+  })?
+  onEditMessage,
+  final void Function({required ForkPoint point, required MessageWithParts? ownMessage})? onForkMessage,
 }) extends StatefulWidget {
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
@@ -66,8 +78,12 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   int? lastCancelledQueuedMessageIndex;
 
   late PromptTurnShapes _promptTurnShapes = widget.promptTurnShapes;
+  InterruptedTurnView _interruptedTurn = const InterruptedTurnView.absent();
+  int continueTaps = 0;
 
   void setPromptTurnShapes(PromptTurnShapes shapes) => setState(() => _promptTurnShapes = shapes);
+
+  void setInterruptedTurn(InterruptedTurnView turn) => setState(() => _interruptedTurn = turn);
 
   void setPromptIndex(List<SessionPromptIndexEntry>? index) {
     setState(() => _promptIndex = index);
@@ -238,6 +254,21 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     }
   }
 
+  /// Mirrors the cubit parking a send the bridge accepted, as an edit's is.
+  void parkAccepted(QueuedSessionSubmission submission) {
+    setState(() => _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, (submission: submission, since: null)]);
+  }
+
+  /// Mirrors the cubit settling a parked send once its echo lands.
+  void echoParked({required String promptId, required MessageWithParts message}) {
+    setState(() {
+      _messages = [..._messages, message];
+      _awaitingBridgeSubmissions = [
+        ..._awaitingBridgeSubmissions.where((item) => item.submission.promptId != promptId),
+      ];
+    });
+  }
+
   void updateBridgeQueue({
     required List<QueuedSessionPrompt> prompts,
     required Map<String, List<ComposerAttachment>> attachments,
@@ -286,7 +317,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SessionDetailMessageList(
-          onEditMessage: null,
+          onEditMessage: widget.onEditMessage,
+          onForkMessage: widget.onForkMessage,
+          forkedFrom: widget.forkedFrom,
+          onOpenForkOrigin: widget.onOpenForkOrigin ?? ({required sessionId, required sessionTitle}) {},
           editingMessageId: null,
           bridgeQueuedPrompts: _bridgeQueuedPrompts,
           bridgePromptAttachments: _bridgePromptAttachments,
@@ -331,6 +365,15 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           childStatuses: _childStatuses,
           isBusy: _isBusy,
           mainAgentRunning: _mainAgentRunning,
+          interruptedTurn: _interruptedTurn,
+          onContinueInterruptedTurn: () async {
+            continueTaps++;
+            // Answers as the cubit does: the shown line's refusal, if any.
+            return switch (_interruptedTurn) {
+              InterruptedTurnShown(:final continueRefusal) => continueRefusal,
+              InterruptedTurnAbsent() => InterruptedTurnContinueRefusal.noInterruptedTurn,
+            };
+          },
           retryErrorMessage: _retryErrorMessage,
           onCancelQueuedMessage: cancelQueuedMessage,
           promptTurnShapes: _promptTurnShapes,
@@ -555,23 +598,7 @@ Future<void> _pumpPointerTurns(
   await tester.pumpWidget(
     PregoInteractionScope(
       mode: PregoInteractionMode.pointer,
-      child: SessionDetailPresentationScope(
-        messageImageRepository: _UnpreviewedImageRepository.new,
-        imageSaver: () => throw UnimplementedError("Saving images is not under test"),
-        imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
-        imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
-        sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
-        createExternalActionCubit: ({required requestId, required sessionId}) =>
-            throw UnimplementedError("External actions are not under test"),
-        createPendingFormCubit: ({required requestId, required sessionId}) =>
-            throw UnimplementedError("Forms are not under test"),
-        createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
-        canShareImages: false,
-        openExternalLink: ({required url, required mode}) async => false,
-        openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-        openHarnessSettings: () {},
-        openBridgeSettings: () {},
-        openSideChat: null,
+      child: _presented(
         child: _SessionDetailMessageListHarness(
           initialMessages: messages,
           initialStreamingText: const {},
@@ -583,6 +610,28 @@ Future<void> _pumpPointerTurns(
   );
   await tester.pumpAndSettle();
 }
+
+/// [child] on a session page, for rows that read its presentation scope.
+Widget _presented({required Widget child}) => SessionDetailPresentationScope(
+  messageImageRepository: _UnpreviewedImageRepository.new,
+  imageSaver: () => throw UnimplementedError("Saving images is not under test"),
+  imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
+  imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
+  sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
+  createExternalActionCubit: ({required requestId, required sessionId}) =>
+      throw UnimplementedError("External actions are not under test"),
+  createPendingFormCubit: ({required requestId, required sessionId}) =>
+      throw UnimplementedError("Forms are not under test"),
+  createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
+  canShareImages: false,
+  openExternalLink: ({required url, required mode}) async => false,
+  openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+  returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+  openHarnessSettings: () {},
+  openBridgeSettings: () {},
+  openSideChat: null,
+  child: child,
+);
 
 /// Previews no attachment, so an image keeps its placeholder: a tile the size
 /// its preview takes.
@@ -783,6 +832,7 @@ void main() {
 
     const listed = QueuedSessionPrompt(
       commandSource: null,
+      handoff: null,
       id: "prm_sent",
       text: "Fresh",
       command: null,
@@ -1279,6 +1329,7 @@ void main() {
     QueuedSessionPrompt listed({QueuedPromptDispatchState state = QueuedPromptDispatchState.queued}) =>
         QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_sent",
           text: "Fresh",
           command: null,
@@ -1749,6 +1800,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -1757,6 +1809,7 @@ void main() {
           ),
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_2",
             text: "src",
             command: "review",
@@ -1811,6 +1864,7 @@ void main() {
       );
       final prompt = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: submission.promptId,
         text: submission.displayText,
         command: null,
@@ -1901,6 +1955,7 @@ void main() {
     );
     const prompt = QueuedSessionPrompt(
       commandSource: null,
+      handoff: null,
       id: "image-prompt",
       text: "Review this image",
       command: null,
@@ -2061,6 +2116,7 @@ void main() {
             child: SizedBox(
               width: 280,
               child: QueuedMessageBubble(
+                body: null,
                 displayText: "first",
                 isCommand: false,
                 attachmentCount: 0,
@@ -2104,6 +2160,7 @@ void main() {
               child: SizedBox(
                 width: 280,
                 child: QueuedMessageBubble(
+                  body: null,
                   displayText: "first",
                   isCommand: false,
                   attachmentCount: 0,
@@ -2345,6 +2402,7 @@ void main() {
       prompts: const [
         QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_wake",
           text: "wake it",
           command: null,
@@ -2367,6 +2425,138 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("a bridge-queued summary request shows its writing marker from the start and keeps it on arrival", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _presented(
+        child: _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: [
+            _message(messageId: "user-0", role: "user", text: "Earlier"),
+            _message(messageId: "assistant-0", role: "assistant", text: "Earlier reply"),
+          ],
+          initialStreamingText: const {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final harness = harnessKey.harness;
+    const handoff = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Codex review");
+    const requestText = "Fixture summary request";
+    final marker = find.byType(HandoffMarkerRow);
+    void expectNoRawRequest({required String reason}) {
+      // Offstage too: a row is measured before it eases in.
+      expect(find.byType(HandoffMarkerRow, skipOffstage: false), findsOneWidget, reason: reason);
+      expect(find.text(requestText, skipOffstage: false), findsNothing, reason: reason);
+      expect(find.byType(TranscriptWorkingRow, skipOffstage: false), findsNothing, reason: reason);
+    }
+
+    harness.updateBridgeQueue(
+      prompts: const [
+        QueuedSessionPrompt(
+          commandSource: null,
+          handoff: handoff,
+          id: "prm_request",
+          text: requestText,
+          command: null,
+          createdAt: 100,
+          dispatchState: QueuedPromptDispatchState.dispatched,
+        ),
+      ],
+      attachments: const {},
+    );
+    await tester.pump();
+    expectNoRawRequest(reason: "queued");
+    harness.setBusy(true);
+    for (var frame = 0; frame < 40; frame++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      expectNoRawRequest(reason: "queued frame $frame");
+    }
+    expect(find.text("Writing a summary for Codex review…"), findsWidgets);
+    final markerTop = tester.getTopLeft(marker).dy;
+    final markerRow = tester.element(marker);
+
+    final request = _message(messageId: "request", role: "user", text: requestText, promptId: "prm_request");
+    final requestInfo = switch (request.info) {
+      final MessageUser user => user.copyWith(handoff: handoff),
+      final other => other,
+    };
+    // The user message can land before its parts, while the bridge still lists the prompt.
+    harness.appendNewestMessage(MessageWithParts(info: requestInfo, parts: const []));
+    for (var frame = 0; frame < 4; frame++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      expectNoRawRequest(reason: "partless frame $frame");
+    }
+    harness.removeMessage("request");
+    harness.deliverBridgePrompt(
+      promptId: "prm_request",
+      message: MessageWithParts(info: requestInfo, parts: request.parts),
+      insertionIndex: 2,
+    );
+    for (var frame = 0; frame < 12; frame++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      expectNoRawRequest(reason: "delivered frame $frame");
+      expect(tester.getTopLeft(marker).dy, moreOrLessEquals(markerTop, epsilon: 0.5), reason: "frame $frame");
+    }
+    expect(tester.element(marker), same(markerRow));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("a bridge-queued handoff prompt shows as its card, never as a bubble, and can be cancelled", (
+    tester,
+  ) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _presented(
+        child: _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: [_message(messageId: "assistant-0", role: "assistant", text: "Earlier reply")],
+          initialStreamingText: const {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    const promptText = "Fixture handoff prompt";
+    harnessKey.harness.updateBridgeQueue(
+      prompts: const [
+        QueuedSessionPrompt(
+          commandSource: null,
+          handoff: MessageHandoff.received(
+            sourceSessionId: "source",
+            sourceTitle: "Relay retries",
+            summary: "Fixture summary",
+            transcriptPath: "/tmp/fixture/transcript.md",
+          ),
+          id: "prm_handoff",
+          text: promptText,
+          command: null,
+          createdAt: 100,
+          dispatchState: QueuedPromptDispatchState.queued,
+        ),
+      ],
+      attachments: const {},
+    );
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      // Offstage too: a row is measured before it eases in.
+      expect(find.byType(HandoffCard, skipOffstage: false), findsOneWidget, reason: "frame $frame");
+      expect(find.text(promptText, skipOffstage: false), findsNothing, reason: "frame $frame");
+      expect(find.byType(UserMessageBubble, skipOffstage: false), findsNothing, reason: "frame $frame");
+    }
+    expect(find.byType(HandoffCard), findsOneWidget);
+    // The source has finished its part, so only the target can withdraw the card.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Cancel"));
+    await tester.pumpAndSettle();
+    expect(harnessKey.harness.cancelledBridgePromptIds, ["prm_handoff"]);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets("a prompt from another surface that wakes the session sits above Working… when busy lands first", (
     tester,
   ) async {
@@ -2385,6 +2575,7 @@ void main() {
       prompts: const [
         QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_remote",
           text: "from the desktop",
           command: null,
@@ -2565,6 +2756,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "thanks",
             command: null,
@@ -2632,6 +2824,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -2676,6 +2869,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -2713,6 +2907,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -3192,6 +3387,9 @@ void main() {
 
     // The oldest message stays, so only the shorter layout can ask for the page.
     key.harness.replaceMessages(messages.take(2).toList());
+    // The removed turn keeps its room a moment for what might replace it.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(requested, 1);
   });
@@ -3447,7 +3645,10 @@ void main() {
     await settle();
     expect(find.text("Working…"), findsNothing);
 
+    // Once the stream ends, Working waits out a short grace before it returns.
     harnessKey.harness.clearStreamingText();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
     await settle();
     expect(find.text("Working…"), findsOneWidget);
 
@@ -3461,6 +3662,68 @@ void main() {
       ..setRetryErrorMessage("Rate limited");
     await settle();
     expect(find.text("Working…"), findsNothing);
+  });
+
+  group("a streamed reply that ends", () {
+    final prompt = _message(messageId: "prompt", role: "user", text: "Write a story", createdAtMs: 100);
+    MessageWithParts reply({required String text}) =>
+        _message(messageId: "reply", role: "assistant", text: text, createdAtMs: 200);
+
+    /// Streams the reply while the session works, then installs its final
+    /// part, which ends the stream with the session still busy.
+    Future<_SessionDetailMessageListHarnessState> pumpStreamEnded(WidgetTester tester) async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: [
+          prompt,
+          reply(text: ""),
+        ],
+      );
+      harness
+        ..setBusy(true)
+        ..updateStreamingText(partId: "reply-part", text: "Once upon");
+      await tester.pumpAndSettle();
+      expect(find.byType(TranscriptWorkingRow), findsNothing, reason: "streaming text already shows progress");
+      harness
+        ..replaceMessages([prompt, reply(text: "Once upon a time")])
+        ..clearStreamingText();
+      await tester.pump();
+      return harness;
+    }
+
+    testWidgets("keeps Working… away, and the rows still, when idle lands just after", (tester) async {
+      final harness = await pumpStreamEnded(tester);
+      final top = tester.getTopLeft(find.text("Write a story")).dy;
+      void expectStill(String reason) {
+        expect(find.byType(TranscriptWorkingRow), findsNothing, reason: reason);
+        expect(tester.getTopLeft(find.text("Write a story")).dy, moreOrLessEquals(top, epsilon: 0.01), reason: reason);
+      }
+
+      // The harness reports idle about 50 ms after its stream ends.
+      for (var ms = 16; ms <= 64; ms += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expectStill("$ms ms after the stream ended");
+      }
+      harness.setBusy(false);
+      for (var ms = 0; ms <= 600; ms += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expectStill("$ms ms after idle");
+      }
+    });
+
+    testWidgets("brings Working… back once a real gap outlasts the grace", (tester) async {
+      await pumpStreamEnded(tester);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(TranscriptWorkingRow), findsNothing, reason: "a short gap may be the idle on its way");
+
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        find.byType(TranscriptWorkingRow),
+        findsOneWidget,
+        reason: "the session still works with nothing else showing it",
+      );
+    });
   });
 
   testWidgets("a running compaction ticks in its own row instead of Working…, then settles in place", (tester) async {
@@ -3551,6 +3814,7 @@ void main() {
         branchName: null,
         lastUserActivityAt: null,
         autoContinuation: null,
+        pinOrder: null,
         scheduledTask: null,
         interruption: null,
         forkedFrom: null,
@@ -3717,6 +3981,9 @@ void main() {
     harness
       ..replaceMessages([..._userMessages(count: 2), thoughtDone])
       ..clearStreamingText();
+    // Working waits out a short grace after a stream before it returns.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text("Working…"), findsOneWidget);
@@ -4535,6 +4802,7 @@ void main() {
         prompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_other",
             text: "From elsewhere",
             command: null,
@@ -6164,8 +6432,12 @@ void main() {
 
       harness.removeMessage("user-11");
       await tester.pump();
-      expect(_leavingRows(tester), contains("user-11"));
       expect(_topOf(tester, "user-10"), before);
+      // With nothing joining, it keeps its room a moment for a replacement.
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(_topOf(tester, "user-10"), before);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(_leavingRows(tester), contains("user-11"));
       await tester.pump(const Duration(milliseconds: 100));
       final partway = _topOf(tester, "user-10");
       await tester.pumpAndSettle();
@@ -6262,6 +6534,59 @@ void main() {
       expect(_position(tester).pixels, 0);
     });
 
+    /// Removes the edited rows and parks the accepted edit in one frame, as
+    /// they reach the client together, then marks the session busy on
+    /// [busyFrame] (-1 for together) and echoes the prompt on frame 3.
+    Future<void> editAndSettle(WidgetTester tester, {required int busyFrame}) async {
+      final harness = await pump(tester);
+      final text = _multilineText(label: "Edited", lines: 8);
+      final tops = <double>[];
+
+      harness
+        ..removeMessage("user-10")
+        ..removeMessage("user-11")
+        ..parkAccepted(_textSubmission(promptId: "prm_edit", text: text));
+      if (busyFrame < 0) harness.setBusy(true);
+      await tester.pump();
+      for (var frame = 0; frame < 20; frame++) {
+        if (frame == busyFrame) harness.setBusy(true);
+        if (frame == 3) {
+          harness.echoParked(
+            promptId: "prm_edit",
+            message: _message(messageId: "edited", role: "user", text: text, promptId: "prm_edit"),
+          );
+        }
+        tops.add(_topOf(tester, "user-9"));
+        if (frame > 0) {
+          expect(
+            _topOf(tester, "session-detail-prompt-prm_edit"),
+            lessThan(_topOf(tester, "session-detail-working-row")),
+            reason: "The prompt woke the session, so it stays above the working row on frame $frame",
+          );
+        }
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      // The working row animates for as long as the turn runs.
+      await tester.pump(const Duration(milliseconds: 500));
+      tops.add(_topOf(tester, "user-9"));
+
+      final steps = [for (var i = 1; i < tops.length; i++) tops[i] - tops[i - 1]];
+      expect(steps.where((step) => step < -0.5), isEmpty, reason: "user-9 turned back up: $tops");
+      expect(_messageKey("user-11"), findsNothing);
+      expect(find.textContaining("Edited line 0"), findsOneWidget);
+      expect(_position(tester).pixels, 0);
+    }
+
+    testWidgets(
+      "an accepted edit's prompt rises as its removals fold, so the rows above settle in one move",
+      (tester) => editAndSettle(tester, busyFrame: -1),
+    );
+
+    testWidgets(
+      "an accepted edit's working row rises with its prompt, so a busy status coming later moves nothing back",
+      (tester) => editAndSettle(tester, busyFrame: 2),
+    );
+
     testWidgets("comes back if its message does before it has folded", (tester) async {
       final harness = await pump(tester);
       final removed = _userMessages(count: 12).last;
@@ -6274,6 +6599,44 @@ void main() {
 
       expect(_messageKey("user-11"), findsOneWidget);
       expect(_leavingRows(tester), isEmpty);
+    });
+
+    testWidgets("an edit watched from another surface moves the rows above one way only", (tester) async {
+      final harness = await pump(tester);
+      final tops = <double>[];
+
+      // A watching surface hears of the edit's removals first, and of the
+      // turn starting and the edited prompt's echo some frames later.
+      harness
+        ..removeMessage("user-10")
+        ..removeMessage("user-11");
+      await tester.pump();
+      for (var frame = 0; frame < 30; frame++) {
+        if (frame == 3) {
+          harness
+            ..setBusy(true)
+            ..appendNewestMessage(
+              _message(
+                messageId: "edited",
+                role: "user",
+                text: _multilineText(label: "Edited", lines: 8),
+              ),
+            );
+        }
+        tops.add(_topOf(tester, "user-9"));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      // The Working row runs on, so the list never settles.
+      await tester.pump(const Duration(milliseconds: 500));
+      tops.add(_topOf(tester, "user-9"));
+
+      final steps = [for (var i = 1; i < tops.length; i++) tops[i] - tops[i - 1]];
+      // Two prompts leave and one comes back with the Working row, so the
+      // rows above settle lower, without first overshooting.
+      expect(steps.where((step) => step < -0.5), isEmpty, reason: "The rows above came back up: $tops");
+      expect(tops.last, greaterThan(tops.first));
+      expect(_messageKey("user-11"), findsNothing);
+      expect(_position(tester).pixels, 0);
     });
   });
 
@@ -6890,6 +7253,123 @@ void main() {
     });
   });
 
+  group("a text selection", () {
+    const first = "The first reply's text";
+    const second = "The second reply's text";
+    final replies = [
+      // Timestamped, so each row has one beside it to leave out.
+      _message(messageId: "u0", role: "user", text: "A prompt", createdAtMs: 1700000000000),
+      _message(messageId: "a0", role: "assistant", text: first, createdAtMs: 1700000001000),
+      _message(messageId: "a1", role: "assistant", text: second, createdAtMs: 1700000002000),
+    ];
+
+    PregoReadableSelectionAreaState transcriptArea(WidgetTester tester) => tester.state(
+      find.ancestor(
+        of: find.byKey(const Key("session-detail-message-list-view")),
+        matching: find.byType(PregoReadableSelectionArea),
+      ),
+    );
+
+    PregoReadableSelectionAreaState messageArea(WidgetTester tester, String text) =>
+        tester.state(find.ancestor(of: find.text(text), matching: find.byType(PregoReadableSelectionArea)).first);
+
+    /// Drags from the start of the first reply to the end of the second.
+    Future<void> dragFromFirstIntoSecond(WidgetTester tester) async {
+      final start = tester.getTopLeft(find.text(first)) + const Offset(1, 5);
+      final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+      await tester.pump();
+      await drag.moveTo(tester.getCenter(find.text(second)));
+      await tester.pump();
+      await drag.moveTo(tester.getTopRight(find.text(second)) + const Offset(-1, 5));
+      await tester.pump();
+      await drag.up();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      "dragged with a mouse runs from one message into the next, and copies their text in order",
+      (tester) async {
+        await _pumpPointerTurns(tester, messages: replies);
+
+        await dragFromFirstIntoSecond(tester);
+
+        // Line by line, without the prompt above or either row's timestamp,
+        // and each message's menu copies all of it.
+        expect(messageArea(tester, first).selectedText, "$first\n$second");
+        expect(messageArea(tester, second).selectedText, "$first\n$second");
+        expect(transcriptArea(tester).selectedText, "$first\n$second");
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+    );
+
+    testWidgets(
+      "a right-click on it offers Copy selected text, and a message outside it still offers Copy",
+      (tester) async {
+        await _pumpPointerTurns(tester, messages: replies);
+        await dragFromFirstIntoSecond(tester);
+        final selected = transcriptArea(tester).selectedText;
+
+        await tester.tapAt(
+          tester.getCenter(find.text(first)),
+          buttons: kSecondaryButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text("Copy selected text"), findsOneWidget);
+        expect(transcriptArea(tester).selectedText, selected, reason: "the open menu keeps the selection");
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+
+        await tester.tapAt(
+          tester.getCenter(find.text("A prompt")),
+          buttons: kSecondaryButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text("Copy"), findsOneWidget);
+        expect(find.text("Copy selected text"), findsNothing);
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+    );
+
+    testWidgets("Select text selects only its own message, with the selection's toolbar", (tester) async {
+      await _pumpTurns(tester, messages: replies);
+
+      await tester.longPress(find.text(second));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Select text"));
+      await tester.pumpAndSettle();
+
+      expect(transcriptArea(tester).selectedText, second);
+      expect(messageArea(tester, first).selectedText, isNull);
+      expect(find.byType(AdaptiveTextSelectionToolbar), findsOneWidget);
+    });
+
+    testWidgets(
+      "after Select text, the start handle runs into the message above",
+      (tester) async {
+        await _pumpTurns(tester, messages: replies);
+        await tester.longPress(find.text(second));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text("Select text"));
+        await tester.pumpAndSettle();
+
+        // The start handle stands on the selection's first character.
+        final handle = await tester.startGesture(tester.getTopLeft(find.text(second)) + const Offset(0, 4));
+        await tester.pump();
+        await handle.moveTo(tester.getCenter(find.text(second)) - const Offset(0, 20));
+        await tester.pump();
+        await handle.moveTo(tester.getTopLeft(find.text(first)) + const Offset(1, 5));
+        await tester.pump();
+        await handle.up();
+        await tester.pumpAndSettle();
+
+        expect(transcriptArea(tester).selectedText, "$first\n$second");
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
+  });
+
   group("a turn that ends early", () {
     final prompt = _message(messageId: "prompt", role: "user", text: "Write a story", createdAtMs: 100);
     final reply = _message(messageId: "reply", role: "assistant", text: "Half a story", createdAtMs: 200);
@@ -7007,6 +7487,349 @@ void main() {
       );
     });
   });
+
+  group("a turn a bridge stop cut off", () {
+    final prompt = _message(messageId: "prompt", role: "user", text: "Write a story", createdAtMs: 100);
+    final reply = _message(messageId: "reply", role: "assistant", text: "Half a story", createdAtMs: 200);
+    final interruptedLine = find.textContaining(
+      "Interrupted · Sesori's bridge stopped during this turn",
+      findRichText: true,
+    );
+    final continueButton = find.widgetWithText(PregoButtonsSolid, "Continue");
+    InterruptedTurnView shownAfter({required String messageId, required InterruptedTurnContinueRefusal? refusal}) =>
+        InterruptedTurnView.shown(
+          afterMessageId: messageId,
+          lineAfterMessageId: messageId,
+          supersededStoppedIds: const {},
+          continueRefusal: refusal,
+        );
+
+    testWidgets("ends the turn under its reply, and Continue sends", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: null));
+      await tester.pumpAndSettle();
+
+      expect(interruptedLine, findsOneWidget);
+      expect(
+        tester.getTopLeft(interruptedLine).dy,
+        greaterThan(tester.getBottomLeft(find.text("Half a story")).dy),
+      );
+      await tester.tap(continueButton);
+      await tester.pump();
+      expect(harness.continueTaps, 1);
+    });
+
+    testWidgets("ends a turn cut off before any reply under its prompt", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt]);
+      harness.setInterruptedTurn(shownAfter(messageId: "prompt", refusal: null));
+      await tester.pumpAndSettle();
+
+      expect(interruptedLine, findsOneWidget);
+      expect(continueButton, findsOneWidget);
+      expect(
+        tester.getTopLeft(interruptedLine).dy,
+        greaterThan(tester.getBottomLeft(find.text("Write a story")).dy),
+      );
+    });
+
+    testWidgets("draws no Stopped line for a stopped row the Interrupted line replaces", (tester) async {
+      final stopped = MessageWithParts(
+        info: Message.error(
+          id: reply.info.id,
+          sessionID: "session-1",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          errorName: "aborted",
+          errorMessage: "Step interrupted",
+          kind: MessageErrorKind.stopped,
+          time: reply.info.time,
+        ),
+        parts: reply.parts,
+      );
+      final harness = await _pumpTurns(tester, messages: [prompt, stopped]);
+      harness.setInterruptedTurn(
+        const InterruptedTurnView.shown(
+          afterMessageId: "reply",
+          lineAfterMessageId: "reply",
+          supersededStoppedIds: {"reply"},
+          continueRefusal: null,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("Half a story"), findsOneWidget);
+      expect(find.text("Stopped", findRichText: true), findsNothing);
+      expect(interruptedLine, findsOneWidget);
+    });
+
+    testWidgets("folds Continue away over frames while the line and the reply stay", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: null));
+      await tester.pumpAndSettle();
+      final lineTop = tester.getTopLeft(interruptedLine).dy;
+      final replyTop = tester.getTopLeft(find.text("Half a story")).dy;
+      final buttonHeight = tester.getSize(continueButton).height;
+
+      harness.setInterruptedTurn(
+        shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.promptPending),
+      );
+      await tester.pump();
+      final drops = <double>[];
+      for (var ms = 0; ms <= 300; ms += 16) {
+        drops.add(tester.getTopLeft(interruptedLine).dy - lineTop);
+        expect(
+          tester.getTopLeft(find.text("Half a story")).dy - replyTop,
+          moreOrLessEquals(drops.last, epsilon: 0.01),
+          reason: "the reply moves with the line",
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      expect(continueButton, findsNothing);
+      expect(interruptedLine, findsOneWidget);
+      for (var i = 1; i < drops.length; i++) {
+        expect(drops[i] - drops[i - 1], lessThan(buttonHeight / 3), reason: "frame $i moves a fraction of the button");
+      }
+    });
+
+    testWidgets("an open edit dims Continue, and each tap says why it waits", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.editOpen));
+      await tester.pumpAndSettle();
+
+      final opacity = tester.widget<AnimatedOpacity>(
+        find.ancestor(of: continueButton, matching: find.byType(AnimatedOpacity)).first,
+      );
+      expect(opacity.opacity, 0.6);
+      for (var tap = 1; tap <= 2; tap++) {
+        await tester.tap(continueButton);
+        await tester.pump();
+        expect(harness.continueTaps, tap);
+        expect(find.text("Finish or cancel your edit first."), findsOneWidget, reason: "tap $tap");
+        await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
+      }
+    });
+
+    testWidgets("a tap on Continue while it folds away says why", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: null));
+      await tester.pumpAndSettle();
+
+      harness.setInterruptedTurn(
+        shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.promptPending),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(continueButton, warnIfMissed: false);
+      await tester.pump();
+
+      expect(harness.continueTaps, 1);
+      expect(find.text("Your message is already on its way."), findsOneWidget);
+      await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
+    });
+
+    testWidgets("after Continue, its prompt and the Working row ease in with no frame jumping", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: null));
+      await tester.pumpAndSettle();
+      var lineTop = tester.getTopLeft(interruptedLine).dy;
+
+      harness
+        ..setInterruptedTurn(shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.promptPending))
+        ..sendDirectly(_textSubmission(promptId: "prm_continue", text: "Continue where you left off."));
+      await tester.pump();
+      for (var ms = 0; ms <= 1000; ms += 16) {
+        if (ms == 160) harness.setBusy(true);
+        if (ms == 320) harness.acceptSendingSubmission();
+        await tester.pump(const Duration(milliseconds: 16));
+        final top = tester.getTopLeft(interruptedLine).dy;
+        expect((top - lineTop).abs(), lessThan(12), reason: "the transcript glides at $ms ms");
+        lineTop = top;
+      }
+      expect(find.byType(TranscriptWorkingRow), findsOneWidget);
+    });
+
+    testWidgets("offers no Continue once a later turn follows", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(
+        shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.laterTurn),
+      );
+      await tester.pumpAndSettle();
+
+      expect(interruptedLine, findsOneWidget);
+      expect(continueButton, findsNothing);
+    });
+  });
+
+  group("a fork's Forked from line", () {
+    const origin = SessionForkOrigin(sessionId: "origin", title: "Math Utilities Summary");
+    final forkedFromLine = find.byKey(const ValueKey("forked-from-row"));
+
+    testWidgets("shows above the oldest message only once no older page is left", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          forkedFrom: origin,
+          onLoadOlderMessages: () => Completer<void>().future,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(forkedFromLine, findsNothing);
+
+      key.harness.prependOlderMessages(older: _page(prefix: "oldest", count: 1), hasOlderMessages: false);
+      await tester.pumpAndSettle();
+
+      expect(find.text("Forked from Math Utilities Summary"), findsOneWidget);
+      expect(
+        tester.getBottomLeft(forkedFromLine).dy,
+        lessThanOrEqualTo(tester.getTopLeft(find.text("oldest message 0")).dy),
+      );
+    });
+
+    testWidgets("shows for a fork only", (tester) async {
+      await _pumpTurns(tester, messages: _page(prefix: "turn", count: 2));
+
+      expect(forkedFromLine, findsNothing);
+    });
+
+    testWidgets("a tap returns to the origin", (tester) async {
+      final opened = <(String, String?)>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: _page(prefix: "turn", count: 1),
+          initialStreamingText: const {},
+          forkedFrom: origin,
+          onOpenForkOrigin: ({required sessionId, required sessionTitle}) => opened.add((sessionId, sessionTitle)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(forkedFromLine);
+      await tester.pump();
+
+      expect(opened, [("origin", "Math Utilities Summary")]);
+    });
+
+    testWidgets("a deleted untitled origin leaves plain text", (tester) async {
+      final opened = <String>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: _page(prefix: "turn", count: 1),
+          initialStreamingText: const {},
+          forkedFrom: const SessionForkOrigin(sessionId: null, title: null),
+          onOpenForkOrigin: ({required sessionId, required sessionTitle}) => opened.add(sessionId),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("Forked from an untitled session"), findsOneWidget);
+      expect(tester.widget(forkedFromLine), isNot(isA<TextButton>()), reason: "Plain text, not a dimmed button.");
+      await tester.tap(forkedFromLine, warnIfMissed: false);
+      await tester.pump();
+      expect(opened, isEmpty);
+    });
+  });
+
+  group("Edit and resend on a follow-up sent mid-turn", () {
+    final messages = [
+      _message(messageId: "opener", role: "user", text: "Fix the build"),
+      _message(messageId: "follow-up", role: "user", text: "Also the tests"),
+    ];
+
+    Future<({MessageEditRefusal? refusal, VoidCallback? onFork})> editFollowUp(
+      WidgetTester tester, {
+      required void Function({required ForkPoint point, required MessageWithParts? ownMessage})? onForkMessage,
+    }) async {
+      final edits = <({MessageEditRefusal? refusal, VoidCallback? onFork})>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: messages,
+          initialStreamingText: const {},
+          onEditMessage: ({required message, required refusal, required onFork}) =>
+              edits.add((refusal: refusal, onFork: onFork)),
+          onForkMessage: onForkMessage,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.longPress(find.text("Also the tests"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Edit and resend"));
+      await tester.pumpAndSettle();
+      return edits.single;
+    }
+
+    testWidgets("hands its Fork from here to the explanation when the session forks", (tester) async {
+      final forks = <(ForkPoint, String?)>[];
+      final edit = await editFollowUp(
+        tester,
+        onForkMessage: ({required point, required ownMessage}) => forks.add((point, ownMessage?.info.id)),
+      );
+
+      expect(edit.refusal, MessageEditRefusal.sentMidTurn);
+      final onFork = edit.onFork ?? fail("The explanation got no Fork.");
+      onFork();
+      expect(forks, [(const ForkPoint.afterMessage(messageId: "follow-up"), "follow-up")]);
+    });
+
+    testWidgets("hands no Fork when the session does not fork", (tester) async {
+      final edit = await editFollowUp(tester, onForkMessage: null);
+
+      expect(edit.refusal, MessageEditRefusal.sentMidTurn);
+      expect(edit.onFork, isNull);
+    });
+  });
+
+  testWidgets(
+    "a right-click offers Edit and resend and Fork from here on a prompt, and Fork from here on a reply",
+    (tester) async {
+      final edits = <String>[];
+      final forks = <(ForkPoint, String?)>[];
+      await tester.pumpWidget(
+        PregoInteractionScope(
+          mode: PregoInteractionMode.pointer,
+          child: _presented(
+            child: _SessionDetailMessageListHarness(
+              initialMessages: [
+                _message(messageId: "prompt", role: "user", text: "Fix the build"),
+                _message(messageId: "reply", role: "assistant", text: "Fixed it"),
+              ],
+              initialStreamingText: const {},
+              onEditMessage: ({required message, required refusal, required onFork}) => edits.add(message.info.id),
+              onForkMessage: ({required point, required ownMessage}) => forks.add((point, ownMessage?.info.id)),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Future<void> rightClick(String text) async {
+        await tester.tapAt(tester.getCenter(find.text(text)), buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
+        await tester.pumpAndSettle();
+      }
+
+      await rightClick("Fix the build");
+      expect(find.text("Fork from here"), findsOneWidget);
+      await tester.tap(find.text("Edit and resend"));
+      await tester.pumpAndSettle();
+      expect(edits, ["prompt"]);
+
+      await rightClick("Fix the build");
+      await tester.tap(find.text("Fork from here"));
+      await tester.pumpAndSettle();
+      await rightClick("Fixed it");
+      expect(find.text("Edit and resend"), findsNothing);
+      await tester.tap(find.text("Fork from here"));
+      await tester.pumpAndSettle();
+
+      expect(forks, [
+        (const ForkPoint.beforeMessage(messageId: "prompt"), "prompt"),
+        (const ForkPoint.afterMessage(messageId: "reply"), null),
+      ]);
+    },
+    variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+  );
 }
 
 QueuedSessionSubmission _textSubmission({required String promptId, required String text}) =>

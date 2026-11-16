@@ -74,9 +74,12 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
     titleMode: PregoTopNavigationTitleMode.backLeading,
     banner: ConnectionBanner.maybeFor(context),
     slivers: const [],
+    titleKeptSuffix: null,
   );
 
   Widget _prompt({required NewSessionProjectSelected onProjectSelected}) => NewSessionProjectPrompt(
+    title: context.loc.sessionListNewSession,
+    titleMode: PregoTopNavigationTitleMode.backLeading,
     key: const Key("home-composer-pane-prompt"),
     onProjectSelected: onProjectSelected,
     onBack: null,
@@ -174,6 +177,8 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
       duration: _motionDuration,
       child: switch (listed) {
         true => NewSessionView(
+          title: context.loc.sessionListNewSession,
+          composingTitleMode: PregoTopNavigationTitleMode.backLeading,
           key: const Key("home-composer-pane-composer"),
           onProjectSelected: select,
           onBack: null,
