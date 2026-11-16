@@ -35,6 +35,7 @@ void main() {
       haltClassifier: null,
       toolPartReplacement: null,
       toolPartSuppression: GrokSessionProtocol.isSpawnSubagentUpdate,
+      separatesToolMessages: false,
     );
     replayCollector = GrokSessionReplayCollector(
       sessionId: "root",

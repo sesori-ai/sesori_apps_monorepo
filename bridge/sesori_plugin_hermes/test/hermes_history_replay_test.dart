@@ -141,6 +141,7 @@ List<PluginMessageWithParts> _replay({required List<Map<String, dynamic>> frames
     haltClassifier: mapper.classifyHaltNotice,
     toolPartReplacement: null,
     toolPartSuppression: null,
+    separatesToolMessages: false,
   );
   for (final update in frames) {
     collector.consumeNotification(
