@@ -103,14 +103,16 @@ the `Session` wire.
 
 ### D3. Detecting an interrupted turn
 
-- Data owner: `SessionInterruptionDao` and `SessionInterruptionRepository` (with a record model and mapper, as the
-  `session_continuation_*` family) own both new tables, in one new `sesori.db` schema version:
+- Data owner: `SessionInterruptionDao` and `SessionInterruptionRepository` (interruptions as the Drift DTO, which a record
+  would only copy) own both new tables, in one new `sesori.db` schema version:
   `session_running_turns(sessionId PK, FK cascade, startedAt)` and
   `session_interruptions(sessionId PK, FK cascade, afterMessageId, acknowledged)`. The repository exposes mark
   running, clear running, leftover rows of a plugin started before a time (joined with sessions on `pluginId`), a
   transactional convert-or-adopt, acknowledge, re-anchor and `readMany(sessionIds)`.
 - Writer: `RunningTurnListener` (Layer 4, `listeners/`) subscribes to the session event dispatcher's normalized
-  events, marks running when a session goes busy (including first seen busy) and clears it when it goes idle. It
+  events, marks running when a session goes busy or retries (every busy status overwrites the row and re-stamps
+  `startedAt`, so it records when this run last saw the turn running) and clears it when it goes idle. Child
+  sessions get rows like any other session. It
   tracks its pending writes and drains them on dispose, as `ChatHistoryActivityListener` does. Its `beginShutdown()`
   is a signal-phase shutdown action registered before `interruptActiveWorkForShutdown`, so the idles those interrupts
   produce do not clear rows: a SIGTERM or update restart leaves the row exactly like a SIGKILL. A plugin stop, plugin
@@ -120,7 +122,9 @@ the `Session` wire.
   idempotent because resolved rows are gone or adopted). It calls `InterruptedTurnService.resolve(pluginId)`, whose
   collaborators are `SessionInterruptionRepository`, a new `SessionRepository.getPluginSessionStatuses(pluginId)`
   (one plugin's statuses keyed by bridge session id, throwing on a failed read, mapped as the aggregate read maps
-  backend ids), `ChatHistoryService` (the anchor read) and `SessionMutationDispatcher`. The service captures the
+  backend ids; ready plugins start lazily, so this read starts a ready but idle plugin, and the service calls it
+  only for a plugin that has leftover rows), `ChatHistoryService` (the anchor read) and `SessionMutationDispatcher`.
+  The service captures the
   bridge run's start time at construction; a leftover row is one with `startedAt` before it.
 - Resolution, per leftover row: still busy → adopt (restamp `startedAt` to now; the OpenCode 2 shared-service case);
   idle → convert (below). A failed status read is no evidence the turn ended, so it keeps the plugin's rows; the next
@@ -130,11 +134,14 @@ the `Session` wire.
   interruption (unacknowledged, anchored to that message, replacing an older one) and delete the running row in one
   transaction. A session with no stored message only loses its running row. `InterruptedTurnService` then emits
   `SessionInterruptionUpdated` (D4).
+- Convert and adopt are compare-and-set on the leftover row's `startedAt` as read: marking running upserts the row's
+  time, so a turn this run started after the status read has a newer time and the resolution leaves its row alone.
 - Re-import replaces stored ids with imported ones (ACP fallback ids differ live and on replay), so
   `ChatHistoryService`, inside the queued replacement that computes the stored→imported mapping, re-anchors the
   session's interruption through the repository. Resolution and the hydration import fire on the same readiness;
   because the anchor read, the interruption write and the replacement share that queue, either order leaves the
-  anchor on an id the store holds. A test pauses a conversion between its anchor read and its write while a
+  anchor on an id the store holds. A re-anchor that moves the anchor emits `SessionInterruptionUpdated` so clients
+  place the line on the new id. A test pauses a conversion between its anchor read and its write while a
   replacement is queued.
 
 ### D4. Wire shape and publication
@@ -144,8 +151,8 @@ the `Session` wire.
   ignore the field. It is projected in `SessionViewService.enrichMany` from `SessionInterruptionRepository.readMany`,
   next to the other bridge-owned per-session state, not in the catalog mapper.
 - `unacknowledged` is a stored flag, not a clock comparison, so a skewed host clock cannot stick or hide the label.
-  `SessionUnseenService`, which owns the view-declaration and sent-prompt marker writes, calls
-  `SessionInterruptionRepository.acknowledge(sessionId)` there; when a row flipped it emits
+  `SessionMutationDispatcher.acknowledgeInterruption(sessionId)` is the one route for both the view and send
+  triggers: it calls `SessionInterruptionRepository.acknowledge(sessionId)` and, when a row flipped, emits
   `SessionInterruptionUpdated`. The send acknowledgement happens when the bridge accepts the prompt, not when the
   harness echoes it, so a lost echo cannot leave the label up.
 - `SessionInterruptionUpdated` is a new `SessionMutationDispatcher` local mutation, the one route for all three
@@ -286,7 +293,7 @@ Workspaces: `shared/sesori_shared` (`SessionInterruption`, `Session.interruption
 `SessionInterruptionRepository` with record and mapper; `RunningTurnListener` with its signal-phase
 `beginShutdown`; `SessionRepository.getPluginSessionStatuses`; `InterruptedTurnService` and
 `InterruptedTurnListener`; `ChatHistoryService.convertInterruptedTurn` and re-anchoring in its replacement;
-acknowledgement in `SessionUnseenService` (send at acceptance); `SessionInterruptionUpdated` and the `enrichMany`
+acknowledgement through `SessionMutationDispatcher.acknowledgeInterruption` (view, and send at acceptance); `SessionInterruptionUpdated` and the `enrichMany`
 projection. Tests: DAO and repository (convert-or-adopt transaction), service (leftover vs adopted vs failed read
 keeping rows vs no stored message), idles after `beginShutdown` ignored, re-anchor after a replacement with changed
 ids, a conversion paused between anchor read and write while a replacement is queued, acknowledgement on view and on

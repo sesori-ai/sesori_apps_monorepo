@@ -1,7 +1,9 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/session_cleanup_result.dart";
@@ -12,6 +14,7 @@ import "package:sesori_shared/sesori_shared.dart" show SessionApprovalMode;
 import "package:test/test.dart";
 
 import "../../helpers/fakes/fake_derived_bridge_plugin.dart";
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -33,6 +36,7 @@ void main() {
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       dispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: repository,
         sessionOperationDispatcher: operationDispatcher,
       );
@@ -212,6 +216,7 @@ void main() {
       final gatedRepository = _GatedSubtreeSessionRepository();
       final gatedOperationDispatcher = SessionOperationDispatcher(sessionRepository: gatedRepository);
       final gatedDispatcher = SessionMutationDispatcher(
+        interruptions: const NoSessionInterruptions(),
         sessionRepository: gatedRepository,
         sessionOperationDispatcher: gatedOperationDispatcher,
       );
@@ -351,6 +356,30 @@ void main() {
       await dispatcher.setApprovalOverride(sessionId: "child", approvalOverride: SessionApprovalMode.ask);
       expect(await repository.resolveApprovalOverride(sessionId: "child"), SessionApprovalMode.ask);
       expect(await repository.resolveApprovalOverride(sessionId: "missing"), isNull);
+    });
+
+    test("acknowledging an interruption announces it once", () async {
+      await insertSession();
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      await interruptions.markRunning(sessionId: "s1", at: DateTime.utc(2026));
+      final leftover = (await interruptions.readLeftovers(pluginId: "codex", startedBefore: DateTime.utc(2027))).single;
+      await interruptions.convertLeftover(leftover: leftover, afterMessageId: "m1");
+      final acknowledging = SessionMutationDispatcher(
+        interruptions: interruptions,
+        sessionRepository: repository,
+        sessionOperationDispatcher: operationDispatcher,
+      );
+      final mutations = <LocalSessionMutation>[];
+      final subscription = acknowledging.mutations.listen(mutations.add);
+
+      await acknowledging.acknowledgeInterruption(sessionId: "s1");
+      await acknowledging.acknowledgeInterruption(sessionId: "s1");
+      await pumpEventQueue();
+
+      expect(mutations.single, isA<SessionInterruptionUpdated>().having((m) => m.session.id, "id", "s1"));
+      expect((await interruptions.readMany(sessionIds: {"s1"}))["s1"]?.acknowledged, isTrue);
+      await subscription.cancel();
+      await acknowledging.dispose();
     });
   });
 }

@@ -8,6 +8,8 @@ import "package:test/test.dart";
 
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
+import "../../helpers/session_continuation_test_support.dart";
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -59,6 +61,7 @@ void main() {
         unseenRepository: unseenRepository(),
         projectRepository: projectRepository(),
         viewTracker: viewTracker,
+        mutations: const UnusedContinuationMutations(),
         now: () => clock,
       );
     });
@@ -190,6 +193,24 @@ void main() {
       clock = 3000;
       await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: null);
       expect(await unseen("s1"), isFalse);
+    });
+
+    test("a view start acknowledges the session's interruption", () async {
+      final mutations = RecordingInterruptionMutations();
+      final viewing = SessionUnseenService(
+        unseenRepository: unseenRepository(),
+        projectRepository: projectRepository(),
+        viewTracker: viewTracker,
+        mutations: mutations,
+        now: () => clock,
+      );
+      await persistRoot(sessionId: "s1");
+
+      viewTracker.setViewing(connID: 1, sessionId: "s1");
+      await pumpEventQueue();
+
+      expect(mutations.acknowledged, ["s1"]);
+      await viewing.dispose();
     });
 
     test("mark unread then mark read toggles bold", () async {
@@ -677,6 +698,7 @@ void main() {
         unseenRepository: unseenRepository(),
         projectRepository: _ThrowingProjectRepository(),
         viewTracker: SessionViewTracker(),
+        mutations: const UnusedContinuationMutations(),
         now: () => clock,
       );
       addTearDown(failing.dispose);
@@ -712,6 +734,7 @@ void main() {
         unseenRepository: unseenRepository(),
         projectRepository: _ThrowingProjectRepository(),
         viewTracker: SessionViewTracker(),
+        mutations: const UnusedContinuationMutations(),
         now: () => clock,
       );
       addTearDown(failing.dispose);

@@ -47,6 +47,7 @@ void main() {
         lastUserActivityAt: null,
         hasWorktree: true,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
 
