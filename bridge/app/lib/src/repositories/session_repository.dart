@@ -25,6 +25,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginSessionStatus,
         PluginSessionVariant,
         PluginSideExchange,
+        SessionForkPluginApi,
         SessionRewindPluginApi,
         SideQuestionPluginApi;
 import "package:sesori_shared/sesori_shared.dart"
@@ -344,64 +345,36 @@ class SessionRepository({
         );
       },
       commit: (created, generation) async {
-        final projectionUpdatedAt = captureProjectionTimestamp();
-        final createdAt = created.time?.created ?? projectionUpdatedAt;
-        final updatedAt = created.time?.updated ?? createdAt;
-        final committedRow = await _sessionDao.attachedDatabase.transaction(() async {
-          final existingBinding = await _sessionDao.getSessionByBinding(
-            pluginId: pluginId,
-            backendSessionId: created.id,
-          );
-          if (existingBinding?.parentSessionId != null) {
-            throw PluginOperationException(
-              operation: SessionOperation.createSession.name,
-              statusCode: 409,
-              message: "backend session ${created.id} is already bound as a child session",
-            );
-          }
-          final sessionId = existingBinding?.sessionId ?? reservedSessionId;
-          await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
-          await _sessionDao.insertSession(
-            sessionId: sessionId,
-            backendSessionId: created.id,
-            projectId: projectId,
-            isDedicated: isDedicated,
-            createdAt: createdAt,
-            worktreePath: worktreePath,
-            baseBranch: baseBranch,
-            baseCommit: baseCommit,
-            lastAgent: lastAgent,
-            lastAgentModel: lastAgentModel,
-            fastMode: fastMode,
-            pluginId: pluginId,
-          );
-          if (scheduledRun != null) {
-            await _sessionDao.setScheduledRun(
-              sessionId: sessionId,
-              scheduledTaskId: scheduledRun.taskId,
-              approvalOverride: scheduledRun.approvalOverride,
-            );
-          }
-          if (parentBinding != null) {
-            await _sessionDao.setParentSessionId(
-              sessionId: sessionId,
-              parentSessionId: parentBinding.sessionId,
-            );
-          }
-          await _sessionDao.updateObservedSessionProjection(
-            sessionId: sessionId,
-            directory: directory,
-            catalogTitle: created.title,
-            updateCatalogTitle: true,
-            updatedAt: updatedAt,
-            projectionUpdatedAt: projectionUpdatedAt,
-          );
-          final committed = await _sessionDao.getSession(sessionId: sessionId);
-          if (committed == null) {
-            throw StateError("session $sessionId is missing right after it was inserted in this transaction");
-          }
-          return committed;
-        });
+        final committedRow = await _commitCreatedSession(
+          operation: SessionOperation.createSession,
+          pluginId: pluginId,
+          reservedSessionId: reservedSessionId,
+          created: created,
+          projectId: projectId,
+          directory: directory,
+          isDedicated: isDedicated,
+          worktreePath: worktreePath,
+          baseBranch: baseBranch,
+          baseCommit: baseCommit,
+          lastAgent: lastAgent,
+          lastAgentModel: lastAgentModel,
+          fastMode: fastMode,
+          completeRow: ({required sessionId}) async {
+            if (scheduledRun != null) {
+              await _sessionDao.setScheduledRun(
+                sessionId: sessionId,
+                scheduledTaskId: scheduledRun.taskId,
+                approvalOverride: scheduledRun.approvalOverride,
+              );
+            }
+            if (parentBinding != null) {
+              await _sessionDao.setParentSessionId(
+                sessionId: sessionId,
+                parentSessionId: parentBinding.sessionId,
+              );
+            }
+          },
+        );
         return (row: committedRow, backendSessionId: created.id, generation: generation);
       },
     );
@@ -420,6 +393,165 @@ class SessionRepository({
         seen: result.row.lastSeenAt,
       ),
     );
+  }
+
+  /// Forks root session [originSessionId] into a new root session in the
+  /// same directory or worktree: through [throughMessageId] by the plugin's
+  /// native fork, or, when it is null, as an unstarted session that keeps
+  /// nothing. The new row copies the origin's project, worktree and prompt
+  /// defaults, never its approval override. A backend session catalog import
+  /// already bound keeps its row, which gains the fork's columns.
+  ///
+  /// A plugin without native fork cannot cut at any message, so it is
+  /// refused the way a plugin refuses a message it cannot map.
+  Future<Session> forkSession({
+    required String originSessionId,
+    required String? throughMessageId,
+    required String? title,
+    required String? forkedFromTitle,
+  }) async {
+    final origin = await _requireBinding(sessionId: originSessionId, operation: SessionOperation.forkSession);
+    if (origin.parentSessionId != null) {
+      throw PluginOperationException(
+        operation: SessionOperation.forkSession.name,
+        statusCode: 409,
+        message: "session $originSessionId is a sub-agent session; only root sessions can be forked",
+      );
+    }
+    final reservedSessionId = await reserveSessionId();
+    final result = await _runtime.useAndCommit(
+      pluginId: origin.pluginId,
+      operation: SessionOperation.forkSession,
+      prepare: (plugin) {
+        _primeDerivedSessionDirectory(binding: origin, plugin: plugin);
+        return switch (throughMessageId) {
+          final messageId? => _requireSessionForkApi(plugin: plugin).forkSession(
+            sessionId: origin.backendSessionId,
+            throughMessageId: messageId,
+          ),
+          // Every plugin can create a session that has not started; its first
+          // prompt takes the session's prompt defaults copied below.
+          null => plugin.createSession(
+            directory: origin.directory,
+            parentSessionId: null,
+            parts: const [],
+            userVisibleText: null,
+            variant: null,
+            fastMode: origin.fastMode,
+            agent: null,
+            model: null,
+          ),
+        };
+      },
+      commit: (created, generation) async {
+        final committedRow = await _commitCreatedSession(
+          operation: SessionOperation.forkSession,
+          pluginId: origin.pluginId,
+          reservedSessionId: reservedSessionId,
+          created: created,
+          projectId: origin.projectId,
+          directory: origin.directory,
+          isDedicated: origin.isDedicated,
+          worktreePath: origin.worktreePath,
+          baseBranch: origin.baseBranch,
+          baseCommit: origin.baseCommit,
+          lastAgent: origin.lastAgent,
+          lastAgentModel: origin.lastAgentModel,
+          fastMode: origin.fastMode,
+          completeRow: ({required sessionId}) => _sessionDao.setForkOrigin(
+            sessionId: sessionId,
+            forkedFromSessionId: origin.sessionId,
+            forkedFromTitle: forkedFromTitle,
+            title: title,
+            branchName: origin.branchName,
+          ),
+        );
+        return (row: committedRow, backendSessionId: created.id, generation: generation);
+      },
+    );
+    _publishBindingsCommitted(
+      pluginId: origin.pluginId,
+      projectId: origin.projectId,
+      generation: result.generation,
+      kind: SessionBindingCommitKind.sessionCreation,
+      backendSessionIds: [result.backendSessionId],
+    );
+    return _sessionCatalogMapper.map(
+      row: result.row,
+      unseen: _unseenCalculator.isUnseen(
+        activity: result.row.lastActivityAt,
+        userMessage: result.row.lastUserMessageAt,
+        seen: result.row.lastSeenAt,
+      ),
+    );
+  }
+
+  /// Binds the backend session a create or fork just made, in one
+  /// transaction: under [reservedSessionId], or under the root row catalog
+  /// import already gave it. [completeRow] writes what the caller adds to
+  /// the row before it is read back.
+  Future<SessionDto> _commitCreatedSession({
+    required SessionOperation operation,
+    required String pluginId,
+    required String reservedSessionId,
+    required PluginSession created,
+    required String projectId,
+    required String directory,
+    required bool isDedicated,
+    required String? worktreePath,
+    required String? baseBranch,
+    required String? baseCommit,
+    required String? lastAgent,
+    required AgentModel? lastAgentModel,
+    required bool fastMode,
+    required Future<void> Function({required String sessionId}) completeRow,
+  }) {
+    final projectionUpdatedAt = captureProjectionTimestamp();
+    final createdAt = created.time?.created ?? projectionUpdatedAt;
+    final updatedAt = created.time?.updated ?? createdAt;
+    return _sessionDao.attachedDatabase.transaction(() async {
+      final existingBinding = await _sessionDao.getSessionByBinding(
+        pluginId: pluginId,
+        backendSessionId: created.id,
+      );
+      if (existingBinding?.parentSessionId != null) {
+        throw PluginOperationException(
+          operation: operation.name,
+          statusCode: 409,
+          message: "backend session ${created.id} is already bound as a child session",
+        );
+      }
+      final sessionId = existingBinding?.sessionId ?? reservedSessionId;
+      await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await _sessionDao.insertSession(
+        sessionId: sessionId,
+        backendSessionId: created.id,
+        projectId: projectId,
+        isDedicated: isDedicated,
+        createdAt: createdAt,
+        worktreePath: worktreePath,
+        baseBranch: baseBranch,
+        baseCommit: baseCommit,
+        lastAgent: lastAgent,
+        lastAgentModel: lastAgentModel,
+        fastMode: fastMode,
+        pluginId: pluginId,
+      );
+      await completeRow(sessionId: sessionId);
+      await _sessionDao.updateObservedSessionProjection(
+        sessionId: sessionId,
+        directory: directory,
+        catalogTitle: created.title,
+        updateCatalogTitle: true,
+        updatedAt: updatedAt,
+        projectionUpdatedAt: projectionUpdatedAt,
+      );
+      final committed = await _sessionDao.getSession(sessionId: sessionId);
+      if (committed == null) {
+        throw StateError("session $sessionId is missing right after it was inserted in this transaction");
+      }
+      return committed;
+    });
   }
 
   Future<void> renameSession({required String sessionId, required String title}) => _useSessionPlugin(
@@ -2197,6 +2329,15 @@ class SessionRepository({
     if (plugin case final SessionRewindPluginApi rewindApi) return rewindApi;
     throw PluginBranchPointUnavailableException(
       operation: SessionOperation.rewindSession.name,
+      userFacingReason: null,
+      cause: null,
+    );
+  }
+
+  SessionForkPluginApi _requireSessionForkApi({required BridgePluginApi plugin}) {
+    if (plugin case final SessionForkPluginApi forkApi) return forkApi;
+    throw PluginBranchPointUnavailableException(
+      operation: SessionOperation.forkSession.name,
       userFacingReason: null,
       cause: null,
     );

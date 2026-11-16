@@ -93,6 +93,7 @@ void main() {
         ),
         scheduledTask: null,
         interruption: null,
+        forkedFrom: null,
       );
 
       final json = session.toJson();

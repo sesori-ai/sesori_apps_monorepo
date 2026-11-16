@@ -27,8 +27,16 @@ class const SessionCatalogMapper() {
       pinned: row.pinned,
       scheduledTask: null,
       interruption: null,
+      forkedFrom: _forkOrigin(row),
     );
   }
+
+  /// A fork whose untitled origin was deleted has neither column left, and
+  /// reads as an ordinary session: there is nothing left to name or open.
+  static SessionForkOrigin? _forkOrigin(SessionDto row) => switch ((row.forkedFromSessionId, row.forkedFromTitle)) {
+    (null, null) => null,
+    (final sessionId, final title) => SessionForkOrigin(sessionId: sessionId, title: title),
+  };
 
   /// The newest instant the bridge knows about for this session.
   ///

@@ -51,6 +51,7 @@ Session _childSession({required String id}) => Session(
   approvalOverride: null,
   scheduledTask: null,
   interruption: null,
+  forkedFrom: null,
 );
 
 void main() {

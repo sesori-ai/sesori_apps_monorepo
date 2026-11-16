@@ -320,6 +320,7 @@ void main() {
           lastUserActivityAt: null,
           scheduledTask: null,
           interruption: null,
+          forkedFrom: null,
         ),
       ),
     );

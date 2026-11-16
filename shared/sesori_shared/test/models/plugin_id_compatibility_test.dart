@@ -19,6 +19,7 @@ void main() {
         lastUserActivityAt: null,
         scheduledTask: null,
         interruption: null,
+        forkedFrom: null,
       );
 
       expect(Session.fromJson(session.toJson()).pluginId, "opencode");

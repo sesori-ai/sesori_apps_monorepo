@@ -300,6 +300,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
             branchName: null,
             scheduledTask: null,
             interruption: null,
+            forkedFrom: null,
           ).toJson(),
           titleChanged: false,
         ),

@@ -297,6 +297,7 @@ void main() {
         lastUserActivityAt: null,
         scheduledTask: null,
         interruption: null,
+        forkedFrom: null,
       );
       globalEvents.add(
         SseEvent(data: const SesoriSessionCreated(info: childSession)),

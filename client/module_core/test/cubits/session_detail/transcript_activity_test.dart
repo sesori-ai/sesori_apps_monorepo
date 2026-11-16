@@ -50,6 +50,7 @@ Session _child({required String id, required int? createdAt}) => Session(
   autoContinuation: null,
   scheduledTask: null,
   interruption: null,
+  forkedFrom: null,
 );
 
 MessagePart _tool({required ToolStatus status}) => MessagePart.tool(

@@ -705,6 +705,42 @@
             "dsl_features": []
           },
           {
+            "name": "forked_from_session_id",
+            "getter_name": "forkedFromSessionId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES sessions_table (session_id) ON DELETE SET NULL",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES sessions_table (session_id) ON DELETE SET NULL"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "sessions_table",
+                    "column": "session_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "setNull"
+                }
+              }
+            ]
+          },
+          {
+            "name": "forked_from_title",
+            "getter_name": "forkedFromTitle",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
             "name": "scheduled_task_id",
             "getter_name": "scheduledTaskId",
             "moor_type": "string",
@@ -1678,6 +1714,25 @@
     {
       "id": 17,
       "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_sessions_forked_from",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "forked_from_session_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "references": [
         9
       ],
       "type": "index",
@@ -1703,7 +1758,7 @@
       }
     },
     {
-      "id": 18,
+      "id": 19,
       "references": [
         1
       ],
@@ -1722,7 +1777,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 20,
       "references": [
         10
       ],
@@ -1745,7 +1800,7 @@
       }
     },
     {
-      "id": 20,
+      "id": 21,
       "references": [
         10
       ],
@@ -1788,7 +1843,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"sessions_table\" (\"session_id\" TEXT NOT NULL, \"backend_session_id\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"parent_session_id\" TEXT NULL REFERENCES sessions_table (session_id) ON DELETE CASCADE, \"directory\" TEXT NOT NULL, \"worktree_path\" TEXT NULL, \"branch_name\" TEXT NULL, \"is_dedicated\" INTEGER NOT NULL CHECK (\"is_dedicated\" IN (0, 1)), \"archived_at\" INTEGER NULL, \"base_branch\" TEXT NULL, \"base_commit\" TEXT NULL, \"last_agent\" TEXT NULL, \"last_agent_model\" TEXT NULL, \"fast_mode\" INTEGER NOT NULL DEFAULT 0 CHECK (\"fast_mode\" IN (0, 1)), \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"projection_updated_at\" INTEGER NOT NULL, \"last_activity_at\" INTEGER NULL, \"last_seen_at\" INTEGER NULL, \"last_user_message_at\" INTEGER NULL, \"plugin_id\" TEXT NOT NULL, \"title\" TEXT NULL, \"catalog_title\" TEXT NULL, \"approval_override\" TEXT NULL, \"pinned\" INTEGER NOT NULL DEFAULT 0 CHECK (\"pinned\" IN (0, 1)), \"scheduled_task_id\" TEXT NULL REFERENCES scheduled_tasks (id) ON DELETE SET NULL, PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"sessions_table\" (\"session_id\" TEXT NOT NULL, \"backend_session_id\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"parent_session_id\" TEXT NULL REFERENCES sessions_table (session_id) ON DELETE CASCADE, \"directory\" TEXT NOT NULL, \"worktree_path\" TEXT NULL, \"branch_name\" TEXT NULL, \"is_dedicated\" INTEGER NOT NULL CHECK (\"is_dedicated\" IN (0, 1)), \"archived_at\" INTEGER NULL, \"base_branch\" TEXT NULL, \"base_commit\" TEXT NULL, \"last_agent\" TEXT NULL, \"last_agent_model\" TEXT NULL, \"fast_mode\" INTEGER NOT NULL DEFAULT 0 CHECK (\"fast_mode\" IN (0, 1)), \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"projection_updated_at\" INTEGER NOT NULL, \"last_activity_at\" INTEGER NULL, \"last_seen_at\" INTEGER NULL, \"last_user_message_at\" INTEGER NULL, \"plugin_id\" TEXT NOT NULL, \"title\" TEXT NULL, \"catalog_title\" TEXT NULL, \"approval_override\" TEXT NULL, \"pinned\" INTEGER NOT NULL DEFAULT 0 CHECK (\"pinned\" IN (0, 1)), \"forked_from_session_id\" TEXT NULL REFERENCES sessions_table (session_id) ON DELETE SET NULL, \"forked_from_title\" TEXT NULL, \"scheduled_task_id\" TEXT NULL REFERENCES scheduled_tasks (id) ON DELETE SET NULL, PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
         }
       ]
     },
@@ -1915,6 +1970,15 @@
         {
           "dialect": "sqlite",
           "sql": "CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_sessions_forked_from",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_sessions_forked_from ON sessions_table (forked_from_session_id)"
         }
       ]
     },

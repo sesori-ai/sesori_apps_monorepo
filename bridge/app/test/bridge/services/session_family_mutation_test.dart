@@ -537,6 +537,7 @@ class _SessionRecord({
     branchName: "branch-$id",
     scheduledTask: null,
     interruption: null,
+    forkedFrom: null,
   );
 }
 

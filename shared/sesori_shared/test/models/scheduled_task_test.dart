@@ -134,6 +134,7 @@ void main() {
       approvalOverride: null,
       scheduledTask: SessionScheduledTaskMark(taskId: "task-1", name: "Morning triage", kind: ScheduledTaskKind.once),
       interruption: null,
+      forkedFrom: null,
     );
 
     expect(Session.fromJson(roundTrip(session.toJson())).scheduledTask, session.scheduledTask);

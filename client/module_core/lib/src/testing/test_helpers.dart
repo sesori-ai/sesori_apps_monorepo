@@ -671,6 +671,7 @@ const Session testConstSession = Session(
   unseen: false,
   scheduledTask: null,
   interruption: null,
+  forkedFrom: null,
 );
 
 Session testSession({
@@ -706,6 +707,7 @@ Session testSession({
     lastUserActivityAt: lastUserActivityAt,
     scheduledTask: null,
     interruption: null,
+    forkedFrom: null,
   );
 }
 

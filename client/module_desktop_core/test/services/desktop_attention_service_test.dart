@@ -36,6 +36,7 @@ const _session = Session(
   lastUserActivityAt: null,
   scheduledTask: null,
   interruption: null,
+  forkedFrom: null,
 );
 
 void main() {

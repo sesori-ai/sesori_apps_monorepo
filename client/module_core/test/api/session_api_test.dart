@@ -147,6 +147,7 @@ void main() {
         lastUserActivityAt: null,
         scheduledTask: null,
         interruption: null,
+        forkedFrom: null,
       );
 
       when(
@@ -203,6 +204,7 @@ void main() {
         lastUserActivityAt: null,
         scheduledTask: null,
         interruption: null,
+        forkedFrom: null,
       );
       var priorEventLoopTurnRan = false;
       unawaited(
@@ -287,6 +289,7 @@ void main() {
         lastUserActivityAt: null,
         scheduledTask: null,
         interruption: null,
+        forkedFrom: null,
       );
       when(
         () => client.post<Session>(
@@ -580,6 +583,7 @@ void main() {
             lastUserActivityAt: null,
             scheduledTask: null,
             interruption: null,
+            forkedFrom: null,
           ),
         ),
       );

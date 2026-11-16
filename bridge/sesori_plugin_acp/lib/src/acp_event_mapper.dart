@@ -538,6 +538,7 @@ class AcpEventMapper({
         lastUserActivityAt: null,
         scheduledTask: null,
         interruption: null,
+        forkedFrom: null,
       ).toJson(),
     );
   }
@@ -1438,6 +1439,7 @@ class AcpEventMapper({
       lastUserActivityAt: null,
       scheduledTask: null,
       interruption: null,
+      forkedFrom: null,
     );
   }
 

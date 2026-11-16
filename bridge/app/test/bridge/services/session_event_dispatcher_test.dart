@@ -53,6 +53,7 @@ void main() {
       branchName: null,
       scheduledTask: null,
       interruption: null,
+      forkedFrom: null,
     );
     final deletedDispatch = dispatcher.dispatchLocalEvent(
       source: (
@@ -88,6 +89,7 @@ void main() {
       branchName: null,
       scheduledTask: null,
       interruption: null,
+      forkedFrom: null,
     );
 
     await dispatcher.dispatchLocalEvent(

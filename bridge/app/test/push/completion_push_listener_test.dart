@@ -288,5 +288,6 @@ Session _session({
     lastUserActivityAt: null,
     scheduledTask: null,
     interruption: null,
+    forkedFrom: null,
   );
 }

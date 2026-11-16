@@ -61,6 +61,7 @@ class const V2ModelMapper({required final String _pluginId}) {
     approvalOverride: null,
     scheduledTask: null,
     interruption: null,
+    forkedFrom: null,
   );
 
   shared.Session mapSessionDetails({

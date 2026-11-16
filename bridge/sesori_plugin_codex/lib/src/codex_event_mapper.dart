@@ -875,6 +875,7 @@ class CodexEventMapper({
       lastUserActivityAt: null,
       scheduledTask: null,
       interruption: null,
+      forkedFrom: null,
     );
   }
 
@@ -927,6 +928,7 @@ class CodexEventMapper({
       lastUserActivityAt: null,
       scheduledTask: null,
       interruption: null,
+      forkedFrom: null,
     );
   }
 

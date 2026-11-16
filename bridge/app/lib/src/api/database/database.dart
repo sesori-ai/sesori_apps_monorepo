@@ -379,7 +379,13 @@ class AppDatabase(super.e) extends _$AppDatabase {
         await m.createIndex(schema.idxScheduledTaskRunsSession);
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.scheduledTaskId);
       },
-      from26To28: (m, schema) async {
+      from26To27: (m, schema) async {
+        // No session was forked before v27, so null is the honest backfill.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.forkedFromSessionId);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.forkedFromTitle);
+        await m.createIndex(schema.idxSessionsForkedFrom);
+      },
+      from27To28: (m, schema) async {
         // No bridge recorded running turns before v28, so both start empty.
         await m.createTable(schema.sessionRunningTurns);
         await m.createTable(schema.sessionInterruptions);

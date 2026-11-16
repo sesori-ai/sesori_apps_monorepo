@@ -187,6 +187,8 @@ class FakeSessionDao() {
       catalogTitle: null,
       approvalOverride: null,
       pinned: false,
+      forkedFromSessionId: null,
+      forkedFromTitle: null,
       scheduledTaskId: null,
     );
   }
@@ -227,6 +229,7 @@ Session _deletedSessionInfo(String sessionId) => Session(
   lastUserActivityAt: null,
   scheduledTask: null,
   interruption: null,
+  forkedFrom: null,
 );
 
 Future<void> recordSessionBinding({
@@ -293,6 +296,7 @@ Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
     lastUserActivityAt: null,
     scheduledTask: null,
     interruption: null,
+    forkedFrom: null,
   );
 }
 
@@ -422,6 +426,7 @@ class FakeSessionRepository({
       lastUserActivityAt: stored.lastUserMessageAt,
       scheduledTask: null,
       interruption: null,
+      forkedFrom: null,
     );
   }
 
@@ -505,6 +510,7 @@ class FakeSessionRepository({
     lastUserActivityAt: null,
     scheduledTask: null,
     interruption: null,
+    forkedFrom: null,
   );
 
   SessionPage sessionPage = (
@@ -908,6 +914,14 @@ class FakeSessionRepository({
     required String? agent,
     required PromptModel? model,
   }) => throw UnimplementedError("FakeSessionRepository does not replace harness sessions");
+
+  @override
+  Future<Session> forkSession({
+    required String originSessionId,
+    required String? throughMessageId,
+    required String? title,
+    required String? forkedFromTitle,
+  }) => throw UnimplementedError("FakeSessionRepository does not fork sessions");
 
   @override
   Future<void> renameSession({required String sessionId, required String title}) async {}

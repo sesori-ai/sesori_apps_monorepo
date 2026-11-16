@@ -1494,6 +1494,8 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
   String? get catalogTitle;
   String? get approvalOverride;
   int get pinned;
+  String? get forkedFromSessionId;
+  String? get forkedFromTitle;
   String? get scheduledTaskId;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1551,6 +1553,12 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
       map['approval_override'] = Variable<String>(approvalOverride);
     }
     map['pinned'] = Variable<int>(pinned);
+    if (!nullToAbsent || forkedFromSessionId != null) {
+      map['forked_from_session_id'] = Variable<String>(forkedFromSessionId);
+    }
+    if (!nullToAbsent || forkedFromTitle != null) {
+      map['forked_from_title'] = Variable<String>(forkedFromTitle);
+    }
     if (!nullToAbsent || scheduledTaskId != null) {
       map['scheduled_task_id'] = Variable<String>(scheduledTaskId);
     }
@@ -1768,6 +1776,24 @@ class SessionsTable extends Table
     $customConstraints: 'NOT NULL DEFAULT 0 CHECK (pinned IN (0, 1))',
     defaultValue: const CustomExpression('0'),
   );
+  late final GeneratedColumn<String> forkedFromSessionId =
+      GeneratedColumn<String>(
+        'forked_from_session_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        $customConstraints:
+            'NULL REFERENCES sessions_table(session_id)ON DELETE SET NULL',
+      );
+  late final GeneratedColumn<String> forkedFromTitle = GeneratedColumn<String>(
+    'forked_from_title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
   late final GeneratedColumn<String> scheduledTaskId = GeneratedColumn<String>(
     'scheduled_task_id',
     aliasedName,
@@ -1803,6 +1829,8 @@ class SessionsTable extends Table
     catalogTitle,
     approvalOverride,
     pinned,
+    forkedFromSessionId,
+    forkedFromTitle,
     scheduledTaskId,
   ];
   @override
@@ -1916,6 +1944,14 @@ class SessionsTable extends Table
         DriftSqlType.int,
         data['${effectivePrefix}pinned'],
       )!,
+      forkedFromSessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}forked_from_session_id'],
+      ),
+      forkedFromTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}forked_from_title'],
+      ),
       scheduledTaskId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}scheduled_task_id'],
@@ -1988,6 +2024,10 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   @override
   final int pinned;
   @override
+  final String? forkedFromSessionId;
+  @override
+  final String? forkedFromTitle;
+  @override
   final String? scheduledTaskId;
   const SessionsTableData({
     required this.sessionId,
@@ -2015,6 +2055,8 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     this.catalogTitle,
     this.approvalOverride,
     required this.pinned,
+    this.forkedFromSessionId,
+    this.forkedFromTitle,
     this.scheduledTaskId,
   });
   SessionsTableCompanion toCompanion(bool nullToAbsent) {
@@ -2072,6 +2114,12 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ? const Value.absent()
           : Value(approvalOverride),
       pinned: Value(pinned),
+      forkedFromSessionId: forkedFromSessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(forkedFromSessionId),
+      forkedFromTitle: forkedFromTitle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(forkedFromTitle),
       scheduledTaskId: scheduledTaskId == null && nullToAbsent
           ? const Value.absent()
           : Value(scheduledTaskId),
@@ -2111,6 +2159,10 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       catalogTitle: serializer.fromJson<String?>(json['catalogTitle']),
       approvalOverride: serializer.fromJson<String?>(json['approvalOverride']),
       pinned: serializer.fromJson<int>(json['pinned']),
+      forkedFromSessionId: serializer.fromJson<String?>(
+        json['forkedFromSessionId'],
+      ),
+      forkedFromTitle: serializer.fromJson<String?>(json['forkedFromTitle']),
       scheduledTaskId: serializer.fromJson<String?>(json['scheduledTaskId']),
     );
   }
@@ -2143,6 +2195,8 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       'catalogTitle': serializer.toJson<String?>(catalogTitle),
       'approvalOverride': serializer.toJson<String?>(approvalOverride),
       'pinned': serializer.toJson<int>(pinned),
+      'forkedFromSessionId': serializer.toJson<String?>(forkedFromSessionId),
+      'forkedFromTitle': serializer.toJson<String?>(forkedFromTitle),
       'scheduledTaskId': serializer.toJson<String?>(scheduledTaskId),
     };
   }
@@ -2173,6 +2227,8 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     Value<String?> catalogTitle = const Value.absent(),
     Value<String?> approvalOverride = const Value.absent(),
     int? pinned,
+    Value<String?> forkedFromSessionId = const Value.absent(),
+    Value<String?> forkedFromTitle = const Value.absent(),
     Value<String?> scheduledTaskId = const Value.absent(),
   }) => SessionsTableData(
     sessionId: sessionId ?? this.sessionId,
@@ -2210,6 +2266,12 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
         ? approvalOverride.value
         : this.approvalOverride,
     pinned: pinned ?? this.pinned,
+    forkedFromSessionId: forkedFromSessionId.present
+        ? forkedFromSessionId.value
+        : this.forkedFromSessionId,
+    forkedFromTitle: forkedFromTitle.present
+        ? forkedFromTitle.value
+        : this.forkedFromTitle,
     scheduledTaskId: scheduledTaskId.present
         ? scheduledTaskId.value
         : this.scheduledTaskId,
@@ -2271,6 +2333,12 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ? data.approvalOverride.value
           : this.approvalOverride,
       pinned: data.pinned.present ? data.pinned.value : this.pinned,
+      forkedFromSessionId: data.forkedFromSessionId.present
+          ? data.forkedFromSessionId.value
+          : this.forkedFromSessionId,
+      forkedFromTitle: data.forkedFromTitle.present
+          ? data.forkedFromTitle.value
+          : this.forkedFromTitle,
       scheduledTaskId: data.scheduledTaskId.present
           ? data.scheduledTaskId.value
           : this.scheduledTaskId,
@@ -2305,6 +2373,8 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ..write('catalogTitle: $catalogTitle, ')
           ..write('approvalOverride: $approvalOverride, ')
           ..write('pinned: $pinned, ')
+          ..write('forkedFromSessionId: $forkedFromSessionId, ')
+          ..write('forkedFromTitle: $forkedFromTitle, ')
           ..write('scheduledTaskId: $scheduledTaskId')
           ..write(')'))
         .toString();
@@ -2337,6 +2407,8 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     catalogTitle,
     approvalOverride,
     pinned,
+    forkedFromSessionId,
+    forkedFromTitle,
     scheduledTaskId,
   ]);
   @override
@@ -2368,6 +2440,8 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           other.catalogTitle == this.catalogTitle &&
           other.approvalOverride == this.approvalOverride &&
           other.pinned == this.pinned &&
+          other.forkedFromSessionId == this.forkedFromSessionId &&
+          other.forkedFromTitle == this.forkedFromTitle &&
           other.scheduledTaskId == this.scheduledTaskId);
 }
 
@@ -2397,6 +2471,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   final Value<String?> catalogTitle;
   final Value<String?> approvalOverride;
   final Value<int> pinned;
+  final Value<String?> forkedFromSessionId;
+  final Value<String?> forkedFromTitle;
   final Value<String?> scheduledTaskId;
   const SessionsTableCompanion({
     this.sessionId = const Value.absent(),
@@ -2424,6 +2500,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.catalogTitle = const Value.absent(),
     this.approvalOverride = const Value.absent(),
     this.pinned = const Value.absent(),
+    this.forkedFromSessionId = const Value.absent(),
+    this.forkedFromTitle = const Value.absent(),
     this.scheduledTaskId = const Value.absent(),
   });
   SessionsTableCompanion.insert({
@@ -2452,6 +2530,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.catalogTitle = const Value.absent(),
     this.approvalOverride = const Value.absent(),
     this.pinned = const Value.absent(),
+    this.forkedFromSessionId = const Value.absent(),
+    this.forkedFromTitle = const Value.absent(),
     this.scheduledTaskId = const Value.absent(),
   }) : sessionId = Value(sessionId),
        backendSessionId = Value(backendSessionId),
@@ -2488,6 +2568,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Expression<String>? catalogTitle,
     Expression<String>? approvalOverride,
     Expression<int>? pinned,
+    Expression<String>? forkedFromSessionId,
+    Expression<String>? forkedFromTitle,
     Expression<String>? scheduledTaskId,
   }) {
     return RawValuesInsertable({
@@ -2517,6 +2599,9 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       if (catalogTitle != null) 'catalog_title': catalogTitle,
       if (approvalOverride != null) 'approval_override': approvalOverride,
       if (pinned != null) 'pinned': pinned,
+      if (forkedFromSessionId != null)
+        'forked_from_session_id': forkedFromSessionId,
+      if (forkedFromTitle != null) 'forked_from_title': forkedFromTitle,
       if (scheduledTaskId != null) 'scheduled_task_id': scheduledTaskId,
     });
   }
@@ -2547,6 +2632,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Value<String?>? catalogTitle,
     Value<String?>? approvalOverride,
     Value<int>? pinned,
+    Value<String?>? forkedFromSessionId,
+    Value<String?>? forkedFromTitle,
     Value<String?>? scheduledTaskId,
   }) {
     return SessionsTableCompanion(
@@ -2575,6 +2662,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       catalogTitle: catalogTitle ?? this.catalogTitle,
       approvalOverride: approvalOverride ?? this.approvalOverride,
       pinned: pinned ?? this.pinned,
+      forkedFromSessionId: forkedFromSessionId ?? this.forkedFromSessionId,
+      forkedFromTitle: forkedFromTitle ?? this.forkedFromTitle,
       scheduledTaskId: scheduledTaskId ?? this.scheduledTaskId,
     );
   }
@@ -2657,6 +2746,14 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     if (pinned.present) {
       map['pinned'] = Variable<int>(pinned.value);
     }
+    if (forkedFromSessionId.present) {
+      map['forked_from_session_id'] = Variable<String>(
+        forkedFromSessionId.value,
+      );
+    }
+    if (forkedFromTitle.present) {
+      map['forked_from_title'] = Variable<String>(forkedFromTitle.value);
+    }
     if (scheduledTaskId.present) {
       map['scheduled_task_id'] = Variable<String>(scheduledTaskId.value);
     }
@@ -2691,6 +2788,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
           ..write('catalogTitle: $catalogTitle, ')
           ..write('approvalOverride: $approvalOverride, ')
           ..write('pinned: $pinned, ')
+          ..write('forkedFromSessionId: $forkedFromSessionId, ')
+          ..write('forkedFromTitle: $forkedFromTitle, ')
           ..write('scheduledTaskId: $scheduledTaskId')
           ..write(')'))
         .toString();
@@ -6077,6 +6176,10 @@ class DatabaseAtV28 extends GeneratedDatabase {
     'idx_sessions_children',
     'CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)',
   );
+  late final Index idxSessionsForkedFrom = Index(
+    'idx_sessions_forked_from',
+    'CREATE INDEX idx_sessions_forked_from ON sessions_table (forked_from_session_id)',
+  );
   late final Index idxSideChatExchangesSession = Index(
     'idx_side_chat_exchanges_session',
     'CREATE INDEX idx_side_chat_exchanges_session ON side_chat_exchanges (session_id, side_chat_id, answered_at)',
@@ -6115,6 +6218,7 @@ class DatabaseAtV28 extends GeneratedDatabase {
     idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
+    idxSessionsForkedFrom,
     idxSideChatExchangesSession,
     idxScheduledTasksNextDue,
     idxScheduledTaskRunsTask,
@@ -6142,6 +6246,13 @@ class DatabaseAtV28 extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('sessions_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sessions_table', kind: UpdateKind.update)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(

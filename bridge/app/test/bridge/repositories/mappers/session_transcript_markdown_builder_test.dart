@@ -404,6 +404,7 @@ Session _session({required String? title}) => Session(
   approvalOverride: null,
   scheduledTask: null,
   interruption: null,
+  forkedFrom: null,
 );
 
 MessageWithParts _user({required String text}) => MessageWithParts(

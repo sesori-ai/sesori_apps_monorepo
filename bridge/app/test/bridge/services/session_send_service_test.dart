@@ -744,6 +744,7 @@ Session _session({
   approvalOverride: null,
   scheduledTask: null,
   interruption: null,
+  forkedFrom: null,
 );
 
 final class _Sessions() implements SessionRepository {

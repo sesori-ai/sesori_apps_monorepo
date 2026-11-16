@@ -95,6 +95,7 @@ class _FakeYoloSettingsService() implements YoloSettingsService {
       approvalOverride: approvalOverride,
       scheduledTask: null,
       interruption: null,
+      forkedFrom: null,
     );
   }
 

@@ -5,9 +5,9 @@ import "package:test/test.dart";
 import "generated/schema.dart";
 
 void main() {
-  test("v26 to v28 adds empty running-turn and interruption tables", () async {
+  test("v27 to v28 adds empty running-turn and interruption tables", () async {
     final verifier = SchemaVerifier(GeneratedHelper());
-    final schema = await verifier.schemaAt(26);
+    final schema = await verifier.schemaAt(27);
     schema.rawDatabase.execute(
       "INSERT INTO projects_table (project_id, path, hidden, created_at, updated_at, projection_updated_at) "
       "VALUES (?, ?, ?, ?, ?, ?)",

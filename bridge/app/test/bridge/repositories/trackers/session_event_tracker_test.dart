@@ -183,6 +183,7 @@ void main() {
         branchName: null,
         scheduledTask: null,
         interruption: null,
+        forkedFrom: null,
       );
 
       tracker.addChild(
@@ -256,6 +257,7 @@ PendingSessionEvent _pending({
     branchName: null,
     scheduledTask: null,
     interruption: null,
+    forkedFrom: null,
   );
   return PendingSessionEvent(
     pluginId: pluginId,

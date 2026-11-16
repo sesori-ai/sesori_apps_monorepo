@@ -71,6 +71,7 @@ const _child = Session(
   lastUserActivityAt: null,
   scheduledTask: null,
   interruption: null,
+  forkedFrom: null,
 );
 
 /// A child session: the sidebar inventory never holds one, the page does.
@@ -91,6 +92,7 @@ const _session = Session(
   unseen: true,
   scheduledTask: null,
   interruption: null,
+  forkedFrom: null,
 );
 
 const _message = MessageWithParts(

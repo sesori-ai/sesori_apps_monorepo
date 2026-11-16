@@ -379,6 +379,7 @@ class _FakeSessionCreation({required final AppDatabase _database}) implements Se
       lastUserActivityAt: null,
       scheduledTask: null,
       interruption: null,
+      forkedFrom: null,
     );
   }
 
