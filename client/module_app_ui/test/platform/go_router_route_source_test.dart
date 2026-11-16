@@ -205,6 +205,8 @@ void main() {
       AppRouteDef.settingsProjects: "/settings/projects",
       AppRouteDef.archivedSessions: "/archived-sessions",
       AppRouteDef.archivedSessionDetail: "/archived-sessions/p1/s1",
+      AppRouteDef.scheduledTasks: "/scheduled-tasks",
+      AppRouteDef.scheduledTaskDetail: "/scheduled-tasks/t1",
       AppRouteDef.newSession: "/sessions/new",
       AppRouteDef.sessionDetail: "/sessions/p1/s1",
       AppRouteDef.sessionDiffs: "/sessions/p1/s1/diffs",

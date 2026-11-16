@@ -4,6 +4,7 @@ const projectNameQueryParam = "name";
 const projectIdPathParam = "projectId";
 const sessionIdPathParam = "sessionId";
 const pluginIdPathParam = "pluginId";
+const taskIdPathParam = "taskId";
 const harnessSettingsPresentationQueryParam = "presentation";
 
 /// How the harness settings page was raised, which decides both its page
@@ -50,6 +51,8 @@ enum AppRouteDef(final String path) {
   settingsProfile("/settings/profile"),
   archivedSessions("/archived-sessions"),
   archivedSessionDetail("/archived-sessions/:$projectIdPathParam/:$sessionIdPathParam"),
+  scheduledTasks("/scheduled-tasks"),
+  scheduledTaskDetail("/scheduled-tasks/:$taskIdPathParam"),
   newSession("/sessions/new"),
   sessionDetail("/sessions/:$projectIdPathParam/:$sessionIdPathParam"),
   sessionDiffs("/sessions/:$projectIdPathParam/:$sessionIdPathParam/diffs"),
@@ -102,6 +105,8 @@ sealed class const AppRoute() {
     required String sessionId,
     required String? sessionTitle,
   }) = AppRouteArchivedSessionDetail;
+  const factory scheduledTasks() = AppRouteScheduledTasks;
+  const factory scheduledTaskDetail({required String taskId}) = AppRouteScheduledTaskDetail;
   const factory newSession({
     required String? projectId,
     required String? projectName,
@@ -150,6 +155,8 @@ sealed class const AppRoute() {
         pathParams: pathParams,
         queryParams: queryParams,
       ),
+      AppRouteDef.scheduledTasks => const AppRoute.scheduledTasks(),
+      AppRouteDef.scheduledTaskDetail => AppRouteScheduledTaskDetail.fromParams(pathParams: pathParams),
       AppRouteDef.newSession => AppRouteNewSession.fromParams(queryParams: queryParams),
       AppRouteDef.sessionDetail => AppRouteSessionDetail.fromParams(
         pathParams: pathParams,
@@ -496,4 +503,27 @@ class const AppRouteArchivedSessionDetail({
     };
     return _appendQuery(path: base, queryParameters: queryParams);
   }
+}
+
+/// The current computer's scheduled tasks, under Recurring and Once headings.
+class const AppRouteScheduledTasks() extends AppRoute {
+  @override
+  AppRouteDef get def => AppRouteDef.scheduledTasks;
+
+  @override
+  String buildPath() => def.path;
+}
+
+/// One scheduled task's page: its run history and actions.
+class const AppRouteScheduledTaskDetail({required final String taskId}) extends AppRoute {
+  /// Decodes from path parameters (inverse of [buildPath]).
+  factory fromParams({required Map<String, String> pathParams}) => AppRouteScheduledTaskDetail(
+    taskId: pathParams[taskIdPathParam] ?? (throw ArgumentError("Missing task identity")),
+  );
+
+  @override
+  AppRouteDef get def => AppRouteDef.scheduledTaskDetail;
+
+  @override
+  String buildPath() => "/scheduled-tasks/${Uri.encodeComponent(taskId)}";
 }

@@ -434,6 +434,8 @@ void main() {
           "new_session",
           "session_detail",
           "session_diffs",
+          "scheduled_tasks",
+          "scheduled_task_detail",
         },
       ),
     ];
