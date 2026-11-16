@@ -6213,6 +6213,28 @@ void main() {
       expect(find.byKey(_jumpToLatestKey), findsOneWidget);
     });
 
+    testWidgets("folding away while detached leaves the reader's own scrolling alone", (tester) async {
+      final harness = await pump(tester);
+      await _scrollRowTo(tester, rowId: "user-6", top: 200);
+
+      harness.removeMessage("user-7");
+      await tester.pump();
+      final gesture = await tester.startGesture(tester.getCenter(find.byType(SessionDetailMessageList)));
+      await gesture.moveBy(const Offset(0, 30));
+      await tester.pump(const Duration(milliseconds: 16));
+      final before = _topOf(tester, "user-6");
+      for (var frame = 0; frame < 4; frame++) {
+        await gesture.moveBy(const Offset(0, 10));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final dragged = _topOf(tester, "user-6") - before;
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(_leavingRows(tester), isEmpty);
+      expect(dragged, 40);
+    });
+
     testWidgets("an edit's removals fold away together, with the edited prompt arriving below them", (tester) async {
       final harness = await pump(tester);
       final above = _topOf(tester, "user-8");

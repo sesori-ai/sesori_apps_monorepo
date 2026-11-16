@@ -262,9 +262,9 @@ class _RenderRowsHeldInPlace({
   RenderBox? _heldRow;
   double? _heldOffset;
 
-  /// The topmost row in view, and how far it was from the viewport's newest
-  /// edge.
-  ({RenderBox row, double position})? _readerRow;
+  /// The topmost row in view, and how far into the scrolled content it was
+  /// laid out.
+  ({RenderBox row, double offset})? _readerRow;
 
   @override
   void performLayout() {
@@ -275,7 +275,8 @@ class _RenderRowsHeldInPlace({
     }
     super.performLayout();
     if (geometry?.scrollOffsetCorrection == null && _putHeldRowBack()) super.performLayout();
-    if (geometry?.scrollOffsetCorrection == null) {
+    final listCorrection = geometry?.scrollOffsetCorrection;
+    if (listCorrection == null) {
       final correction = _keepReaderRowStill();
       if (correction != 0) {
         geometry = SliverGeometry(scrollOffsetCorrection: correction);
@@ -285,46 +286,54 @@ class _RenderRowsHeldInPlace({
     final first = firstChild;
     _heldRow = first;
     _heldOffset = first == null ? null : childScrollOffset(first);
-    _readerRow = detached() && rowsLeaving() ? _topmostRowInView() : null;
+    _readerRow = switch ((listCorrection, _readerRow)) {
+      (null, _) => detached() && rowsLeaving() ? _topmostRowInView() : null,
+      // The list moves every row and the scroll offset by as much, which leaves
+      // the reader's row where it is on screen.
+      (final correction?, final reader?) => (row: reader.row, offset: reader.offset + correction),
+      (_, null) => null,
+    };
   }
 
   /// How far the scroll offset must move for the reader's row to stay where it
-  /// was: no further than the newest end, where the list may follow again.
+  /// was: no further than the newest end, where the list may follow again. Only
+  /// layout moves a row within the content, so the reader's own scrolling
+  /// stands.
   double _keepReaderRowStill() {
     final reader = _readerRow;
     if (reader == null || !detached()) return 0;
-    final position = _positionOf(row: reader.row);
-    if (position == null) return 0;
-    final change = position - reader.position;
+    final offset = _contentOffsetOf(row: reader.row);
+    if (offset == null) return 0;
+    final change = offset - reader.offset;
     if (change == 0) return 0;
+    _readerRow = (row: reader.row, offset: offset);
     final scrolled = _scrolled();
     if (scrolled > 0 && change <= -scrolled) {
       SchedulerBinding.instance.addPostFrameCallback((_) => onCarriedToNewestEnd());
     }
-    final correction = max(change, -scrolled);
-    _readerRow = (row: reader.row, position: position - correction);
-    return correction;
+    return max(change, -scrolled);
   }
 
-  ({RenderBox row, double position})? _topmostRowInView() {
-    ({RenderBox row, double position})? topmost;
+  ({RenderBox row, double offset})? _topmostRowInView() {
+    ({RenderBox row, double offset})? topmost;
     for (var child = firstChild; child != null; child = childAfter(child)) {
-      final position = _positionOf(row: child);
-      if (position == null) continue;
+      final offset = _contentOffsetOf(row: child);
+      if (offset == null) continue;
+      final position = offset - _scrolled();
       if (position < constraints.viewportMainAxisExtent && position + paintExtentOf(child) > 0) {
-        topmost = (row: child, position: position);
+        topmost = (row: child, offset: offset);
       }
     }
     return topmost;
   }
 
-  /// How far [row] sits from the viewport's newest edge, or null once it is
+  /// How far into the scrolled content [row] is laid out, or null once it is
   /// not one of the rows.
-  double? _positionOf({required RenderBox row}) {
+  double? _contentOffsetOf({required RenderBox row}) {
     if (row.parent != this) return null;
     final offset = childScrollOffset(row);
     if (offset == null) return null;
-    return constraints.precedingScrollExtent + offset - _scrolled();
+    return constraints.precedingScrollExtent + offset;
   }
 
   double _scrolled() => switch (RenderAbstractViewport.maybeOf(this)) {
