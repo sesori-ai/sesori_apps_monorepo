@@ -339,6 +339,5 @@ class OpenCodeV2Plugin._({
       PluginSessionReadiness.unavailable;
 
   @override
-  Future<Duration?> getPromptCacheLife({required String sessionId}) =>
-      _service.promptCacheLife(sessionId: sessionId);
+  Future<Duration?> getPromptCacheLife({required String sessionId}) => _service.promptCacheLife(sessionId: sessionId);
 }
