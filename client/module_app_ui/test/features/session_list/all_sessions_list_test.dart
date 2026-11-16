@@ -2551,8 +2551,9 @@ void main() {
     }
 
     Future<(SessionActionsCubit, StreamController<AllSessionsState>, Completer<bool>)> pumpPinned(
-      WidgetTester tester,
-    ) async {
+      WidgetTester tester, {
+      required List<AllSessionsRow> rows,
+    }) async {
       final actions = _MockSessionActionsCubit();
       final answer = Completer<bool>();
       when(
@@ -2569,7 +2570,7 @@ void main() {
         interaction: PregoInteractionMode.pointer,
         actions: actions,
         updates: updates.stream,
-        initial: listing([first, second, third, unpinned]),
+        initial: listing(rows),
       );
       await settle(tester);
       return (actions, updates, answer);
@@ -2578,7 +2579,7 @@ void main() {
     testWidgets("with a mouse, the row lifts, the others slide out of its way, and it stays where it is dropped", (
       tester,
     ) async {
-      final (actions, updates, answer) = await pumpPinned(tester);
+      final (actions, updates, answer) = await pumpPinned(tester, rows: [first, second, third, unpinned]);
       final rest = roomTops(tester);
       final rowHeight = rest[1] - rest[0];
 
@@ -2612,7 +2613,7 @@ void main() {
     });
 
     testWidgets("a refused move slides the rows back and says so", (tester) async {
-      final (_, _, answer) = await pumpPinned(tester);
+      final (_, _, answer) = await pumpPinned(tester, rows: [first, second, third, unpinned]);
       final rest = roomTops(tester);
       final rowHeight = rest[1] - rest[0];
 
@@ -2636,7 +2637,7 @@ void main() {
     });
 
     testWidgets("a cancelled drag puts the row back and moves nothing", (tester) async {
-      final (actions, _, _) = await pumpPinned(tester);
+      final (actions, _, _) = await pumpPinned(tester, rows: [first, second, third, unpinned]);
       final rest = roomTops(tester);
 
       final drag = await tester.startGesture(tester.getCenter(find.text("Third")), kind: PointerDeviceKind.mouse);
@@ -2658,7 +2659,7 @@ void main() {
     });
 
     testWidgets("a click still opens the row instead of lifting it", (tester) async {
-      final (actions, _, _) = await pumpPinned(tester);
+      final (actions, _, _) = await pumpPinned(tester, rows: [first, second, third, unpinned]);
 
       await tester.tap(find.text("Second"), kind: PointerDeviceKind.mouse);
       await settle(tester);
@@ -2669,6 +2670,126 @@ void main() {
           afterSessionId: any(named: "afterSessionId"),
         ),
       );
+    });
+
+    group("held at the list's edge", () {
+      final many = [for (var at = 0; at < 20; at++) pinnedRow(title: "Pin $at", pinOrder: 100 - at)];
+
+      ScrollPosition position(WidgetTester tester) =>
+          tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+
+      /// The top of the lifted copy: the one of [title]'s two rows that is not
+      /// its room, which stays empty while the row is lifted.
+      double copyTop(WidgetTester tester, {required String title}) {
+        bool inEmptyRoom(Element element) {
+          var empty = false;
+          element.visitAncestorElements((ancestor) {
+            empty = ancestor.widget is Opacity && (ancestor.widget as Opacity).opacity == 0;
+            return !empty;
+          });
+          return empty;
+        }
+
+        final copy = find.text(title).evaluate().singleWhere((element) => !inEmptyRoom(element));
+        return tester.getTopLeft(find.byElementPredicate((element) => element == copy)).dy;
+      }
+
+      testWidgets("the list scrolls under the held row and stops where the pinned rows end", (tester) async {
+        final (actions, _, _) = await pumpPinned(tester, rows: [...many, unpinned]);
+        final viewportBottom = tester.getBottomLeft(find.byType(Scrollable).first).dy;
+
+        final start = tester.getCenter(find.text("Pin 1"));
+        final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+        await drag.moveBy(const Offset(0, 6));
+        await tester.pump();
+        // Fully lifted first, so the copy's scale holds still.
+        await tester.pump(const Duration(milliseconds: 200));
+        await drag.moveTo(Offset(start.dx, viewportBottom - 4));
+        await tester.pump();
+        final held = copyTop(tester, title: "Pin 1");
+        expect(position(tester).pixels, 0);
+
+        // It scrolls smoothly, a little each frame, with the copy still under
+        // the pointer.
+        final scrolled = <double>[];
+        for (var frame = 0; frame < 10; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          scrolled.add(position(tester).pixels);
+        }
+        for (final (at, pixels) in scrolled.indexed.skip(1)) {
+          expect(pixels - scrolled[at - 1], inExclusiveRange(0, 40));
+        }
+        expect(copyTop(tester, title: "Pin 1"), moreOrLessEquals(held));
+
+        // It stops once the last pinned row shows, clear of the edge.
+        for (var frame = 0; frame < 300; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        final stopped = position(tester).pixels;
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(position(tester).pixels, stopped);
+        expect(stopped, lessThan(position(tester).maxScrollExtent));
+        expect(tester.getBottomLeft(find.text("Pin 19")).dy, lessThan(viewportBottom));
+
+        await drag.up();
+        await tester.pump();
+        verify(() => actions.movePin(sessionId: "Pin 1", afterSessionId: "Pin 19")).called(1);
+        await settle(tester);
+      });
+
+      testWidgets("held at the top, it scrolls back through rows built on the way, to the pinned rows' start", (
+        tester,
+      ) async {
+        final (actions, _, _) = await pumpPinned(tester, rows: [...many, unpinned]);
+        // The rows above are scrolled away, past being built.
+        position(tester).jumpTo(position(tester).maxScrollExtent);
+        await tester.pump();
+        expect(find.text("Pin 2"), findsNothing);
+        final viewportTop = tester.getTopLeft(find.byType(Scrollable).first).dy;
+
+        final start = tester.getCenter(find.text("Pin 14"));
+        final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+        await drag.moveBy(const Offset(0, -6));
+        await tester.pump();
+        await drag.moveTo(Offset(start.dx, viewportTop + 4));
+        // It scrolls back steadily: no row it builds or passes on the way
+        // makes the list jump.
+        var pixels = position(tester).pixels;
+        for (var frame = 0; frame < 300; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(pixels - position(tester).pixels, inInclusiveRange(0, 17));
+          pixels = position(tester).pixels;
+        }
+        expect(tester.getTopLeft(find.text("Pin 0")).dy, greaterThan(viewportTop));
+
+        await drag.up();
+        await tester.pump();
+        verify(() => actions.movePin(sessionId: "Pin 14", afterSessionId: null)).called(1);
+        await settle(tester);
+      });
+
+      testWidgets("a scroll mid-drag keeps the copy under the pointer and moves its room along", (tester) async {
+        final (actions, _, _) = await pumpPinned(tester, rows: [...many, unpinned]);
+        final rest = [
+          for (final title in ["Pin 0", "Pin 1"]) tester.getTopLeft(find.text(title)).dy,
+        ];
+        final rowHeight = rest[1] - rest[0];
+
+        final drag = await tester.startGesture(tester.getCenter(find.text("Pin 2")), kind: PointerDeviceKind.mouse);
+        await drag.moveBy(const Offset(0, 6));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+        final held = copyTop(tester, title: "Pin 2");
+        position(tester).jumpTo(3 * rowHeight);
+        await tester.pump();
+        await settle(tester);
+        expect(copyTop(tester, title: "Pin 2"), moreOrLessEquals(held));
+
+        await drag.up();
+        await tester.pump();
+        verify(() => actions.movePin(sessionId: "Pin 2", afterSessionId: "Pin 5")).called(1);
+        await settle(tester);
+      });
     });
   });
 }

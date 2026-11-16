@@ -1,7 +1,9 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
+import "package:flutter/scheduler.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -20,6 +22,13 @@ typedef PinnedRowMove = Future<bool> Function({required String sessionId, requir
 /// How long a lifted row takes to lift or settle back into the list.
 const Duration _liftDuration = Duration(milliseconds: 150);
 
+/// How near the list's top or bottom edge a held row scrolls the list.
+const double _edgeScrollZone = 40;
+
+/// How fast the list scrolls, in logical pixels a second, under a row held
+/// right at its edge or past it; it scrolls slower the farther in it is held.
+const double _edgeScrollMaxSpeed = 1000;
+
 /// The drag and drop that reorders a list's pinned rows: which row is lifted,
 /// where the list should show it meanwhile, and where the lifted copy
 /// floats. The list lists its pinned rows by [place] and wraps each in a
@@ -27,10 +36,12 @@ const Duration _liftDuration = Duration(milliseconds: 150);
 ///
 /// While a row is lifted, the list shows it at its [place] with the other
 /// pinned rows sliding out of its way; the copy floats over the list under
-/// the pointer, held within the pinned rows. A drop asks the window to move
-/// it there, and keeps [place] only until the rows the list shows stand that
-/// way, which the window's optimistic order brings at once, or until the
-/// move is answered; a refused move slides the rows back.
+/// the pointer, held within the pinned rows. Held near the list's top or
+/// bottom edge, it scrolls the list until the pinned rows' end shows. A drop
+/// asks the window to move it there, and keeps [place] only until the rows
+/// the list shows stand that way, which the window's optimistic order brings
+/// at once, or until the move is answered; a refused move slides the rows
+/// back.
 final class PinnedRowDragTracker() extends ChangeNotifier {
   final Map<String, BuildContext> _rows = {};
 
@@ -67,51 +78,108 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
     if (identical(_rows[sessionId], context)) _rows.remove(sessionId);
   }
 
-  /// Lifts [sessionId]'s row under a pointer at [pointerY]; false when no row
-  /// can be lifted now, as while another one is.
-  bool _start({required String sessionId, required double pointerY}) {
-    if (_lift != null) return false;
-    final rows = <_Slot>[];
-    for (final id in _shown) {
-      // Only rows on screen are targets: one scrolled away, built or not,
-      // keeps its place.
-      if (_rows[id]?.findRenderObject() case final RenderBox box? when box.attached && box.hasSize) {
-        final top = box.localToGlobal(Offset.zero).dy;
-        if (RenderAbstractViewport.maybeOf(box) case final RenderBox viewport?) {
-          final viewportTop = viewport.localToGlobal(Offset.zero).dy;
-          if (top + box.size.height <= viewportTop || top >= viewportTop + viewport.size.height) continue;
-        }
-        rows.add((sessionId: id, top: top, height: box.size.height));
-      }
-    }
-    final index = rows.indexWhere((row) => row.sessionId == sessionId);
-    if (index < 0) return false;
-    final firstShown = _shown.indexOf(rows.first.sessionId);
-    final lifted = rows[index];
-    final others = [...rows]..removeAt(index);
-    _lift = _Lift(
+  /// [sessionId]'s row as the list last laid it out, if it is built.
+  RenderBox? _box({required String sessionId}) => switch (_rows[sessionId]?.findRenderObject()) {
+    final RenderBox box when box.attached && box.hasSize => box,
+    _ => null,
+  };
+
+  /// Lifts the row [room] lays out for [sessionId] in [scrollable], under a
+  /// pointer at [pointerY]; false when no row can be lifted now, as while
+  /// another one is. [vsync] drives the scrolling at the list's edges.
+  bool _start({
+    required String sessionId,
+    required RenderBox room,
+    required ScrollableState scrollable,
+    required double pointerY,
+    required TickerProvider vsync,
+  }) {
+    final viewport = scrollable.context.findRenderObject();
+    if (_lift != null || viewport is! RenderBox || !viewport.hasSize) return false;
+    final position = scrollable.position;
+    final viewportTop = viewport.localToGlobal(Offset.zero).dy;
+    final top = room.localToGlobal(Offset.zero).dy;
+    final lift = _Lift(
       sessionId: sessionId,
-      aboveSessionId: firstShown > 0 ? _shown[firstShown - 1] : null,
-      others: others,
-      height: lifted.height,
-      groupTop: rows.first.top,
-      groupBottom: rows.last.top + rows.last.height,
-      startTop: lifted.top,
-      startPointerY: pointerY,
-      index: index,
-    )..top = lifted.top;
-    liftedTop.value = lifted.top;
+      position: position,
+      viewportTop: viewportTop,
+      viewportBottom: viewportTop + viewport.size.height,
+      height: room.size.height,
+      groupTop: top - viewportTop + position.pixels,
+      grab: pointerY - top,
+      pointerY: pointerY,
+      autoscroll: vsync.createTicker(_scrollAtEdge),
+    );
+    _lift = lift;
+    position.addListener(_follow);
+    _follow();
     notifyListeners();
     return true;
   }
 
   void _update({required double pointerY}) {
+    if (_lift case final lift?) {
+      lift.pointerY = pointerY;
+      _follow();
+    }
+  }
+
+  /// Stands the lifted row where the pointer and the list's scroll put it,
+  /// and scrolls the list while it is held at an edge.
+  void _follow() {
     final lift = _lift;
     if (lift == null) return;
+    _takeInBuiltRows(lift: lift);
     final index = lift.index;
-    lift.moveTo(pointerY: pointerY);
+    lift.follow();
     liftedTop.value = lift.top;
+    if (!lift.autoscroll.isActive && lift.edgeScroll() != null) {
+      lift.scrolledAt = Duration.zero;
+      lift.autoscroll.start();
+    }
     if (lift.index != index) notifyListeners();
+  }
+
+  /// Takes in the pinned rows built right above and below the ones the lift
+  /// knows, as a scroll builds them, so each is a place to drop on and the
+  /// edge scrolling runs on to the pinned rows' true end.
+  void _takeInBuiltRows({required _Lift lift}) {
+    while (true) {
+      final at = _shown.indexOf(lift.firstSessionId);
+      if (at <= 0) {
+        lift.aboveSessionId = null;
+        break;
+      }
+      lift.aboveSessionId = _shown[at - 1];
+      final box = _box(sessionId: _shown[at - 1]);
+      if (box == null) break;
+      lift.takeInAbove(sessionId: _shown[at - 1], height: box.size.height);
+    }
+    while (true) {
+      final at = _shown.indexOf(lift.lastSessionId);
+      if (at < 0 || at == _shown.length - 1) break;
+      final box = _box(sessionId: _shown[at + 1]);
+      if (box == null) break;
+      lift.takeInBelow(sessionId: _shown[at + 1], height: box.size.height);
+    }
+  }
+
+  /// Scrolls the list a frame's worth toward the edge the lifted row is held
+  /// at, until it is held there no more; the scroll moves the row along.
+  void _scrollAtEdge(Duration elapsed) {
+    final lift = _lift;
+    if (lift == null) return;
+    final seconds = (elapsed - lift.scrolledAt).inMicroseconds / Duration.microsecondsPerSecond;
+    lift.scrolledAt = elapsed;
+    _takeInBuiltRows(lift: lift);
+    final pixels = lift.position.pixels;
+    switch (lift.edgeScroll()) {
+      case null:
+        lift.autoscroll.stop();
+      case (:final speed, :final limit):
+        final to = pixels + speed * seconds;
+        lift.position.jumpTo(speed < 0 ? math.max(to, limit) : math.min(to, limit));
+    }
   }
 
   /// Puts the lifted row back where it was lifted, for a drag the pointer
@@ -123,9 +191,14 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
   /// Lets go of [sessionId]'s lift when its row leaves the list mid-drag, so
   /// later drags are not refused. Its list is rebuilding already.
   void _abandon({required String sessionId}) {
-    if (_lift?.sessionId != sessionId) return;
+    if (_lift case final lift? when lift.sessionId == sessionId) _letGo(lift: lift);
+  }
+
+  void _letGo({required _Lift lift}) {
     _lift = null;
     liftedTop.value = null;
+    lift.position.removeListener(_follow);
+    lift.autoscroll.dispose();
   }
 
   /// Drops the lifted row where it stands and, when that moved it, asks
@@ -133,8 +206,7 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
   Future<bool> _drop({required PinnedRowMove move}) async {
     final lift = _lift;
     if (lift == null) return false;
-    _lift = null;
-    liftedTop.value = null;
+    _letGo(lift: lift);
     if (lift.index == lift.startIndex) {
       notifyListeners();
       return false;
@@ -159,44 +231,84 @@ final class PinnedRowDragTracker() extends ChangeNotifier {
   }
 }
 
-/// A pinned row's room as a drag started: its global top and its height.
-typedef _Slot = ({String sessionId, double top, double height});
+/// A pinned row's room in the list: whose it is and its height.
+typedef _Slot = ({String sessionId, double height});
 
-/// The lifted row: the other pinned rows on screen as the drag started, top
-/// first, and the index among them the lifted one stands at.
+/// The lifted row and the other pinned rows built around it, top first, in
+/// the list's scroll content, where they keep their places however it
+/// scrolls; [index] is where among those others the lifted row stands.
 final class _Lift({
   required final String sessionId,
+  required final ScrollPosition position,
 
-  /// The pinned row scrolled away right above the first one on screen, which
-  /// a row dropped first lands below; null when the first is the group's.
-  required final String? aboveSessionId,
-  required final List<_Slot> others,
+  /// The list's global top and bottom edges.
+  required final double viewportTop,
+  required final double viewportBottom,
   required final double height,
-  required final double groupTop,
-  required final double groupBottom,
-  required final double startTop,
-  required final double startPointerY,
-  required int index,
+
+  /// Where the known pinned rows start, in the list's scroll content.
+  required double groupTop,
+
+  /// How far below the copy's top the pointer holds it.
+  required final double grab,
+
+  /// Where the pointer is now, globally.
+  required double pointerY,
+
+  /// Scrolls the list while the copy is held at its edge.
+  required final Ticker autoscroll,
 }) {
-  final int startIndex = index;
-  int index = index;
+  double groupTop = groupTop;
+  double pointerY = pointerY;
+  final List<_Slot> others = [];
+  int startIndex = 0;
+  int index = 0;
+
+  /// The pinned row right above the known ones, which a row dropped first
+  /// lands below; null when the known ones start the pinned rows.
+  String? aboveSessionId;
 
   /// The floating copy's global top.
   double top = 0;
 
+  /// When [autoscroll] last scrolled the list.
+  Duration scrolledAt = Duration.zero;
+
+  double get groupBottom => others.fold(groupTop + height, (bottom, other) => bottom + other.height);
+
+  /// The topmost and bottommost known rows, as the list orders them before
+  /// the lift moved any.
+  String get firstSessionId => startIndex == 0 ? sessionId : others.first.sessionId;
+  String get lastSessionId => startIndex == others.length ? sessionId : others.last.sessionId;
+
   String? get afterSessionId => index == 0 ? aboveSessionId : others[index - 1].sessionId;
+
+  /// How far the list's top edge is into its scroll content.
+  double get _toContent => position.pixels - viewportTop;
+
+  void takeInAbove({required String sessionId, required double height}) {
+    others.insert(0, (sessionId: sessionId, height: height));
+    groupTop -= height;
+    startIndex++;
+    index++;
+  }
+
+  void takeInBelow({required String sessionId, required double height}) =>
+      others.add((sessionId: sessionId, height: height));
 
   /// Follows the pointer, held within the pinned rows, and stands the row
   /// before the first other row whose middle it has not passed, as those
   /// rows now stand around its room. Held against either end, it stands
   /// there, however its height compares with the row it meets.
-  void moveTo({required double pointerY}) {
-    top = (startTop + pointerY - startPointerY).clamp(groupTop, groupBottom - height);
-    if (top <= groupTop || top >= groupBottom - height) {
-      index = top <= groupTop ? 0 : others.length;
+  void follow() {
+    final groupBottom = this.groupBottom;
+    final contentTop = (pointerY - grab + _toContent).clamp(groupTop, groupBottom - height);
+    top = contentTop - _toContent;
+    if (contentTop <= groupTop || contentTop >= groupBottom - height) {
+      index = contentTop <= groupTop ? 0 : others.length;
       return;
     }
-    final middle = top + height / 2;
+    final middle = contentTop + height / 2;
     var y = groupTop;
     var passed = 0;
     for (final (at, other) in others.indexed) {
@@ -205,6 +317,30 @@ final class _Lift({
       y += other.height;
     }
     index = passed;
+  }
+
+  /// How the list scrolls under the copy: toward the edge the copy is held
+  /// within [_edgeScrollZone] of, faster the nearer it is, and no farther
+  /// than [limit], where the pinned rows' end shows that far in from the
+  /// edge or the list ends. Null when it does not scroll. A copy held at the
+  /// pinned rows' end rides toward the edge with them, slowing the scroll as
+  /// it nears [limit], so it stops within a pixel of it rather than creep on.
+  ({double speed, double limit})? edgeScroll() {
+    final pixels = position.pixels;
+    final fromTop = top - viewportTop;
+    if (fromTop < _edgeScrollZone) {
+      final limit = math.max(position.minScrollExtent, groupTop - _edgeScrollZone);
+      if (pixels <= limit + 1) return null;
+      return (speed: -_edgeScrollMaxSpeed * math.min(1, (_edgeScrollZone - fromTop) / _edgeScrollZone), limit: limit);
+    }
+    final fromBottom = viewportBottom - top - height;
+    if (fromBottom < _edgeScrollZone) {
+      final viewportExtent = viewportBottom - viewportTop;
+      final limit = math.min(position.maxScrollExtent, groupBottom + _edgeScrollZone - viewportExtent);
+      if (pixels >= limit - 1) return null;
+      return (speed: _edgeScrollMaxSpeed * math.min(1, (_edgeScrollZone - fromBottom) / _edgeScrollZone), limit: limit);
+    }
+    return null;
   }
 }
 
@@ -277,7 +413,16 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
 
   void _onStart(DragStartDetails details) {
     final room = _roomBox();
-    if (room == null || !widget.tracker._start(sessionId: widget.sessionId, pointerY: details.globalPosition.dy)) {
+    final scrollable = Scrollable.maybeOf(context);
+    if (room == null ||
+        scrollable == null ||
+        !widget.tracker._start(
+          sessionId: widget.sessionId,
+          room: room,
+          scrollable: scrollable,
+          pointerY: details.globalPosition.dy,
+          vsync: this,
+        )) {
       return;
     }
     _width = room.size.width;

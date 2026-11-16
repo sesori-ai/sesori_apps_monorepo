@@ -167,6 +167,10 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       }
       entries.addAll(closingAfter[itemKey] ?? const []);
     }
+    final anchor = switch (shown) {
+      final shown? => _steadyRow(shown: shown, moved: moved),
+      null => null,
+    };
     _setEntries(entries);
     if (context.findRenderObject() case final _RenderPregoAnimatedSliverList sliver when moved.isNotEmpty && animates) {
       final slide = _slide ?? _makeSlide();
@@ -179,12 +183,11 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
     // screen, and the rows on it hold still. At its top, the list instead
     // keeps its indices in place, so a row arriving first opens in view.
     final anchorIndex = _indexByKey[shown?.anchor];
-    if ((context.findRenderObject(), shown, anchorIndex) case (
+    if ((context.findRenderObject(), anchor) case (
       final _RenderPregoAnimatedSliverList sliver,
-      final shown?,
-      final index?,
+      (:final key, :final offset)?,
     )) {
-      sliver.keepRow(index: index, offset: shown.firstOffset);
+      if (_indexByKey[key] case final index?) sliver.keepRow(index: index, offset: offset);
     }
     if (shown == null || !animates) return;
     for (final index in arrivals) {
@@ -238,6 +241,25 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       // Only a list scrolled past its top has rows above the screen.
       anchor: constraints.scrollOffset > 0 && first < _entries.length ? _entries[first].key : null,
     );
+  }
+
+  /// The row an update keeps where it stands, and the scroll offset it had:
+  /// the first one visible, or, when that one moved among the sliding rows,
+  /// the first row below them that did not, since the rows they moved among
+  /// fill the same room as before. Read before the update is laid out, at
+  /// the old indices.
+  ({Key key, double offset})? _steadyRow({required _ShownRows shown, required Set<int> moved}) {
+    final anchor = shown.anchor;
+    final sliver = context.findRenderObject();
+    if (anchor == null || !moved.contains(shown.first) || sliver is! _RenderPregoAnimatedSliverList) {
+      return anchor == null ? null : (key: anchor, offset: shown.firstOffset);
+    }
+    for (var child = sliver.firstChild; child != null; child = sliver.childAfter(child)) {
+      final index = sliver.indexOf(child);
+      if (index <= shown.first || moved.contains(index)) continue;
+      if (sliver.childScrollOffset(child) case final offset?) return (key: _entries[index].key, offset: offset);
+    }
+    return (key: anchor, offset: shown.firstOffset);
   }
 
   /// Opens or closes [motion] once the frame the update lands in has painted.
