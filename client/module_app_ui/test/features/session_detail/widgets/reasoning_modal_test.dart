@@ -233,6 +233,7 @@ void main() {
               openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
               openHarnessSettings: () {},
               openBridgeSettings: () {},
+              openSideChat: null,
               child: Scaffold(
                 body: ReasoningPartCard(text: text, isStreaming: streaming, partId: "reasoning", messageId: "message"),
               ),

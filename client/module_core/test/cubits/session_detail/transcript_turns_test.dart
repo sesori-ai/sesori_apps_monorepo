@@ -98,6 +98,49 @@ List<String> _byPosition({required List<MessageWithParts> messages}) {
 }
 
 void main() {
+  group("TranscriptTurns edit points", () {
+    final turns = _turns(
+      messages: [
+        _prompt(id: "u1"),
+        _agent(id: "a1", parts: [_text()]),
+        _prompt(id: "u2"),
+        _prompt(id: "u3"),
+      ],
+    );
+    const bubble = PromptTurnShape.bubble();
+
+    test("a turn's opener can be edited, a follow-up and a command cannot", () {
+      expect(turns.editRefusal(messageId: "u1", shape: bubble), isNull);
+      expect(turns.editRefusal(messageId: "u2", shape: bubble), isNull);
+      expect(turns.editRefusal(messageId: "u3", shape: bubble), MessageEditRefusal.sentMidTurn);
+      expect(
+        turns.editRefusal(
+          messageId: "u1",
+          shape: const PromptTurnShape.invocation(name: "review", source: CommandSource.command, arguments: null),
+        ),
+        MessageEditRefusal.command,
+      );
+    });
+
+    test("a message before the first loaded prompt is no edit point", () {
+      final partial = _turns(
+        messages: [
+          _hiddenUser(id: "h1"),
+          _agent(id: "a0", parts: [_text()]),
+          _prompt(id: "u1"),
+        ],
+        hasOlderMessages: true,
+      );
+      expect(partial.editRefusal(messageId: "a0", shape: bubble), MessageEditRefusal.sentMidTurn);
+    });
+
+    test("only the newest turn's messages are in it", () {
+      expect(turns.inNewestTurn(messageId: "u1"), isFalse);
+      expect(turns.inNewestTurn(messageId: "u2"), isTrue);
+      expect(turns.inNewestTurn(messageId: "u3"), isTrue);
+    });
+  });
+
   group("TranscriptTurnBuilder follow-up rule", () {
     test("the first loaded message opens a turn when it is a prompt", () {
       final turns = _turns(

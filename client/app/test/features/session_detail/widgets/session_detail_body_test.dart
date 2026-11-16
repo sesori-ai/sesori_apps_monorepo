@@ -27,6 +27,7 @@ import "package:sesori_dart_core/testing.dart" as core_testing;
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_composer_controls.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
+import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../helpers/test_helpers.dart";
@@ -84,6 +85,7 @@ Widget _buildApp({
   SessionExternalActionCubitFactory? createExternalActionCubit,
   PendingFormCubitFactory? createPendingFormCubit,
   SessionDetailPageChrome? pageChrome,
+  SideChatOpener? openSideChat,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -107,6 +109,7 @@ Widget _buildApp({
           child: SessionDetailPresentationScope(
             openHarnessSettings: onOpenHarnessSettings ?? () {},
             openBridgeSettings: onOpenBridgeSettings ?? () {},
+            openSideChat: openSideChat,
             messageImageRepository: MockMessageImageRepository.new,
             imageSaver: MockImageSaver.new,
             imageClipboard: () => imageClipboard,
@@ -579,6 +582,7 @@ void main() {
                 onDraftCleared: () {},
                 onAbort: () {},
                 surfaceStyleController: surfaceStyle,
+                sideQuestion: null,
                 composerHeader: null,
                 composerTrailing: null,
                 availableCommands: const [],
@@ -7160,6 +7164,123 @@ void main() {
       expect(find.text("Retry"), findsNothing);
       await tester.tap(find.text("Remove"));
       verify(() => cubit.removeFailedSend()).called(1);
+    });
+  });
+
+  group("side questions", () {
+    final opened = <({String pluginId, SideQuestionAvailability availability, bool isArchived})>[];
+    void openSideChat({
+      required BuildContext context,
+      required String sessionId,
+      required String pluginId,
+      required SideQuestionAvailability availability,
+      required bool isArchived,
+    }) => opened.add((pluginId: pluginId, availability: availability, isArchived: isArchived));
+
+    setUp(opened.clear);
+
+    final sideQuestionButton = find.byKey(ComposerOptionsAccordion.sideQuestionButtonKey);
+
+    Future<void> pumpComposer(WidgetTester tester, {required SessionDetailLoaded state}) async {
+      when(() => cubit.state).thenReturn(state);
+      await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ComposerOptionsAccordion),
+          matching: find.byIcon(TablerRegular.chevron_right),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    SessionDetailLoaded withSideQuestions(SideQuestionAvailability availability) =>
+        _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(sideQuestions: availability);
+
+    testWidgets("the composer's side-question action opens the side chat", (tester) async {
+      await pumpComposer(tester, state: withSideQuestions(SideQuestionAvailability.available));
+
+      await tester.tap(sideQuestionButton);
+      await tester.pumpAndSettle();
+
+      expect(opened, [(pluginId: "opencode", availability: SideQuestionAvailability.available, isArchived: false)]);
+    });
+
+    testWidgets("an old bridge answers the tap with why", (tester) async {
+      await pumpComposer(tester, state: withSideQuestions(SideQuestionAvailability.bridgeUpdateRequired));
+
+      await tester.tap(sideQuestionButton);
+      await tester.pump();
+
+      expect(find.text("Update Sesori on this computer to ask side questions."), findsOneWidget);
+      expect(opened, isEmpty);
+      await tester.pumpAndSettle(const Duration(seconds: 4));
+    });
+
+    testWidgets("a harness without side questions answers the tap with why", (tester) async {
+      await pumpComposer(tester, state: withSideQuestions(SideQuestionAvailability.harnessUnsupported));
+
+      await tester.tap(sideQuestionButton);
+      await tester.pump();
+
+      expect(find.text("OpenCode can't answer side questions in Sesori yet."), findsOneWidget);
+      expect(opened, isEmpty);
+      await tester.pumpAndSettle(const Duration(seconds: 4));
+    });
+
+    testWidgets("the action holds its place disabled until availability is known", (tester) async {
+      await pumpComposer(tester, state: withSideQuestions(SideQuestionAvailability.unresolved));
+
+      final tappable = tester.widget<PregoTappable>(
+        find.descendant(of: sideQuestionButton, matching: find.byType(PregoTappable)),
+      );
+      expect(tappable.onTap, isNull);
+    });
+
+    testWidgets("a sub-agent session offers no side questions", (tester) async {
+      final state = withSideQuestions(
+        SideQuestionAvailability.available,
+      ).copyWith(session: testConstSession.copyWith(parentID: "parent-session"));
+      await pumpComposer(tester, state: state);
+
+      expect(sideQuestionButton, findsNothing);
+    });
+
+    group("archived", () {
+      final link = find.byKey(SessionDetailArchivedNotice.sideChatsLinkKey);
+
+      SessionDetailLoaded archived({required int sideChatCount}) => withSideQuestions(
+        SideQuestionAvailability.available,
+      ).copyWith(isArchived: true, archivedSideChatCount: sideChatCount);
+
+      testWidgets("links its side chats and opens them read-only", (tester) async {
+        when(() => cubit.state).thenReturn(archived(sideChatCount: 2));
+        await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+        await tester.pumpAndSettle();
+
+        expect(link, findsOneWidget);
+        await tester.tap(find.text("Side chats (2)"));
+        await tester.pumpAndSettle();
+
+        expect(opened, [(pluginId: "opencode", availability: SideQuestionAvailability.available, isArchived: true)]);
+      });
+
+      testWidgets("shows no link without side chats", (tester) async {
+        when(() => cubit.state).thenReturn(archived(sideChatCount: 0));
+        await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SessionDetailArchivedNotice), findsOneWidget);
+        expect(link, findsNothing);
+      });
+
+      testWidgets("shows no link where the shell has no side chat", (tester) async {
+        when(() => cubit.state).thenReturn(archived(sideChatCount: 2));
+        await tester.pumpWidget(_buildApp(cubit: cubit));
+        await tester.pumpAndSettle();
+
+        expect(link, findsNothing);
+      });
     });
   });
 }

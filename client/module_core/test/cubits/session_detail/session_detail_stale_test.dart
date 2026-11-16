@@ -64,6 +64,7 @@ void main() {
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
         pluginRepository: stubbedPluginRepository(),
+        sideChatRepository: MockSideChatRepository(),
         connectionService: mockConnectionService,
       );
       promptDispatcher = mockSessionRepository;
@@ -135,6 +136,7 @@ void main() {
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
+      composerRestore: MockMessageComposerRestoreService(),
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );

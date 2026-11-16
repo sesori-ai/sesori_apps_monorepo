@@ -21,6 +21,7 @@ import "models/session_page_result.dart";
 import "models/session_pin_result.dart";
 import "models/session_prompt_index_result.dart";
 import "models/session_prompt_search_result.dart";
+import "models/session_rewind_result.dart";
 import "models/tool_output_result.dart";
 
 @lazySingleton
@@ -478,6 +479,64 @@ class SessionRepository({
       command: command?.normalize(),
       commandSource: commandSource,
     );
+  }
+
+  /// Edits [messageId], a user message that opens a turn: the bridge removes
+  /// it and every later message, then sends [text] and [attachments] instead.
+  Future<SessionRewindResult> rewindSession({
+    required String sessionId,
+    required String messageId,
+    required String promptId,
+    required String text,
+    required List<ComposerAttachment> attachments,
+    required String? agent,
+    required PromptModel? model,
+    required SessionVariant? variant,
+    required bool fastMode,
+  }) async {
+    final response = await _api.rewindSession(
+      sessionId: sessionId,
+      messageId: messageId,
+      promptId: promptId,
+      text: text,
+      attachments: attachments,
+      agent: agent,
+      model: _normalizeModel(model: model),
+      variant: variant,
+      fastMode: fastMode,
+    );
+    return switch (response) {
+      SuccessResponse() => const SessionRewindAccepted(),
+      ErrorResponse(:final NonSuccessCodeError error) when error.errorCode >= 400 && error.errorCode < 500 =>
+        switch (_branchErrorResponse(error: error)) {
+          SessionBranchErrorResponse(code: SessionBranchErrorCode.sessionBusy) => const SessionRewindBusy(),
+          SessionBranchErrorResponse(code: SessionBranchErrorCode.branchPointUnavailable, :final message) =>
+            SessionRewindUnavailable(reason: message),
+          SessionBranchErrorResponse(code: SessionBranchErrorCode.staleSessionOptions) =>
+            const SessionRewindOptionsChanged(),
+          SessionBranchErrorResponse(code: SessionBranchErrorCode.refused, :final message) => SessionRewindRejected(
+            reason: message,
+          ),
+          SessionBranchErrorResponse(code: SessionBranchErrorCode.nothingToFork || SessionBranchErrorCode.unknown) =>
+            const SessionRewindRejected(reason: null),
+          // Without a refusal the bridge may have rewound before failing, so
+          // this stays a failure the same prompt id can retry.
+          null => SessionRewindFailed(error: error),
+        },
+      ErrorResponse(error: NotAuthenticatedError()) => const SessionRewindRejected(reason: null),
+      ErrorResponse(:final error) => SessionRewindFailed(error: error),
+    };
+  }
+
+  static SessionBranchErrorResponse? _branchErrorResponse({required NonSuccessCodeError error}) {
+    if (error.rawErrorString case final raw?) {
+      try {
+        return SessionBranchErrorResponse.fromJson(jsonDecodeMap(raw));
+      } on Object catch (parseError, stackTrace) {
+        logw("Session branch error carried no structured refusal", parseError, stackTrace);
+      }
+    }
+    return null;
   }
 
   PromptModel? _normalizeModel({required PromptModel? model}) {

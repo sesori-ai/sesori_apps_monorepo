@@ -58,6 +58,7 @@ void main() {
               openedSessionIds.add(sessionId),
           openHarnessSettings: () {},
           openBridgeSettings: () {},
+          openSideChat: null,
           child: Scaffold(
             body: Align(
               alignment: alignment,

@@ -286,6 +286,8 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SessionDetailMessageList(
+          onEditMessage: null,
+          editingMessageId: null,
           bridgeQueuedPrompts: _bridgeQueuedPrompts,
           bridgePromptAttachments: _bridgePromptAttachments,
           onCancelBridgeQueuedPrompt: (promptId) {
@@ -569,6 +571,7 @@ Future<void> _pumpPointerTurns(
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
         openHarnessSettings: () {},
         openBridgeSettings: () {},
+        openSideChat: null,
         child: _SessionDetailMessageListHarness(
           initialMessages: messages,
           initialStreamingText: const {},
@@ -631,6 +634,23 @@ bool _rectsMatch(Rect a, Rect b) =>
     (a.bottom - b.bottom).abs() < 0.01;
 
 double _topOf(WidgetTester tester, String rowId) => tester.getTopLeft(_messageKey(rowId)).dy;
+
+/// The ids of the rows folding away.
+List<String> _leavingRows(WidgetTester tester) {
+  final rowIds = <String>[];
+  for (final element in find.byType(TranscriptPresence).evaluate()) {
+    if (element.widget case TranscriptPresence(exiting: true)) {
+      element.visitAncestorElements((ancestor) {
+        if (ancestor.widget.key case ValueKey<String>(:final value)) {
+          rowIds.add(value);
+          return false;
+        }
+        return true;
+      });
+    }
+  }
+  return rowIds;
+}
 
 /// Every scroll offset the list takes from now on.
 List<double> _recordMoves(WidgetTester tester) {
@@ -729,14 +749,21 @@ void main() {
     bool easing() =>
         tester.stateList(find.byType(TranscriptPresence)).any((state) => "$state".contains("tracking 1 ticker"));
 
-    // The history twins replace both live rows at the same place.
-    harness.replaceMessages([
-      _message(messageId: "history-prompt", role: "user", text: "Keep going", createdAtMs: 100),
-      _message(messageId: "history-reply", role: "assistant", text: "Context compacted", createdAtMs: 200),
-    ]);
+    // The history twins replace both live rows at the same place, as the
+    // refresh lands.
+    harness.setRefreshing(refreshing: true);
+    await tester.pump();
+    harness
+      ..replaceMessages([
+        _message(messageId: "history-prompt", role: "user", text: "Keep going", createdAtMs: 100),
+        _message(messageId: "history-reply", role: "assistant", text: "Context compacted", createdAtMs: 200),
+      ])
+      ..setRefreshing(refreshing: false);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(easing(), isFalse);
+    expect(_leavingRows(tester), isEmpty);
+    expect(find.text("Context compacted"), findsOneWidget);
     expect(tester.getTopLeft(find.text("Context compacted")).dy, top);
 
     harness.appendNewestMessage(_message(messageId: "new-reply", role: "assistant", text: "Next", createdAtMs: 300));
@@ -6115,29 +6142,139 @@ void main() {
     });
   });
 
-  testWidgets("removing a message while following drops its row and stays pinned", (tester) async {
-    await tester.binding.setSurfaceSize(const Size(900, 700));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  group("a removed message's row", () {
+    Future<_SessionDetailMessageListHarnessState> pump(WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: _userMessages(count: 12),
+          initialStreamingText: const {},
+        ),
+      );
+      await tester.pumpAndSettle();
+      return harnessKey.harness;
+    }
 
-    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
-    await tester.pumpWidget(
-      _SessionDetailMessageListHarness(
-        key: harnessKey,
-        initialMessages: _userMessages(count: 12),
-        initialStreamingText: const {},
-      ),
-    );
-    await tester.pumpAndSettle();
+    testWidgets("folds away while following, the rows above easing down after it", (tester) async {
+      final harness = await pump(tester);
+      final before = _topOf(tester, "user-10");
 
-    expect(_messageKey("user-10"), findsOneWidget);
+      harness.removeMessage("user-11");
+      await tester.pump();
+      expect(_leavingRows(tester), contains("user-11"));
+      expect(_topOf(tester, "user-10"), before);
+      await tester.pump(const Duration(milliseconds: 100));
+      final partway = _topOf(tester, "user-10");
+      await tester.pumpAndSettle();
 
-    harnessKey.harness.removeMessage("user-10");
-    await _pumpListUpdate(tester);
+      expect(_messageKey("user-11"), findsNothing);
+      expect(partway, greaterThan(before));
+      expect(_topOf(tester, "user-10"), greaterThan(partway));
+      expect(_position(tester).pixels, 0);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+    });
 
-    expect(_messageKey("user-10"), findsNothing);
-    expect(_messageKey("user-11"), findsOneWidget);
-    expect(_position(tester).pixels, 0);
-    expect(find.byKey(_jumpToLatestKey), findsNothing);
+    testWidgets("goes at once under reduced motion", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final harness = await pump(tester);
+
+      harness.removeMessage("user-11");
+      await tester.pump();
+
+      expect(_messageKey("user-11"), findsNothing);
+      expect(_leavingRows(tester), isEmpty);
+    });
+
+    testWidgets("folds away while detached without moving the rows being read", (tester) async {
+      final harness = await pump(tester);
+      await _scrollRowTo(tester, rowId: "user-6", top: 200);
+      final moves = <double>[];
+
+      // One row shows below the reader's, one is built out of view below it,
+      // and the newest is not built at all.
+      harness
+        ..removeMessage("user-7")
+        ..removeMessage("user-9")
+        ..removeMessage("user-11");
+      await tester.pump();
+      expect(_leavingRows(tester), contains("user-7"));
+      for (var frame = 0; frame < 20; frame++) {
+        moves.add(_topOf(tester, "user-6"));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await tester.pumpAndSettle();
+
+      expect(moves, everyElement(200));
+      expect(_topOf(tester, "user-6"), 200);
+      for (final rowId in ["user-7", "user-9", "user-11"]) {
+        expect(_messageKey(rowId), findsNothing);
+      }
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    });
+
+    testWidgets("folding away while detached leaves the reader's own scrolling alone", (tester) async {
+      final harness = await pump(tester);
+      await _scrollRowTo(tester, rowId: "user-6", top: 200);
+
+      harness.removeMessage("user-7");
+      await tester.pump();
+      final gesture = await tester.startGesture(tester.getCenter(find.byType(SessionDetailMessageList)));
+      await gesture.moveBy(const Offset(0, 30));
+      await tester.pump(const Duration(milliseconds: 16));
+      final before = _topOf(tester, "user-6");
+      for (var frame = 0; frame < 4; frame++) {
+        await gesture.moveBy(const Offset(0, 10));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final dragged = _topOf(tester, "user-6") - before;
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(_leavingRows(tester), isEmpty);
+      expect(dragged, 40);
+    });
+
+    testWidgets("an edit's removals fold away together, with the edited prompt arriving below them", (tester) async {
+      final harness = await pump(tester);
+      final above = _topOf(tester, "user-8");
+
+      // The echo can come first; the removals follow one event at a time.
+      harness.appendNewestMessage(_message(messageId: "edited", role: "user", text: "Edited prompt"));
+      await tester.pump();
+      for (final messageId in ["user-9", "user-10", "user-11"]) {
+        harness.removeMessage(messageId);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(_leavingRows(tester), containsAll(["user-9", "user-10", "user-11"]));
+      expect(_topOf(tester, "edited"), greaterThan(_topOf(tester, "user-11")));
+      await tester.pumpAndSettle();
+
+      expect(_messageKey("user-9"), findsNothing);
+      expect(_messageKey("user-11"), findsNothing);
+      expect(_topOf(tester, "edited"), greaterThan(_topOf(tester, "user-8")));
+      expect(_topOf(tester, "user-8"), greaterThan(above));
+      expect(_position(tester).pixels, 0);
+    });
+
+    testWidgets("comes back if its message does before it has folded", (tester) async {
+      final harness = await pump(tester);
+      final removed = _userMessages(count: 12).last;
+
+      harness.removeMessage("user-11");
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      harness.appendNewestMessage(removed);
+      await tester.pumpAndSettle();
+
+      expect(_messageKey("user-11"), findsOneWidget);
+      expect(_leavingRows(tester), isEmpty);
+    });
   });
 
   testWidgets("streaming text growth is visible while following", (tester) async {
