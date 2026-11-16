@@ -15,6 +15,8 @@ import "repositories/trackers/claude_tool_tracker.dart";
 final class const ClaudeHistoryMapper({
   required final ClaudeContentMapper _content,
 }) {
+  static const String _modelCommand = "model";
+
   /// [residentTaskToolUseIds] names the sub-agent tasks the session's current
   /// resident process is still running. It reopens a task whose transcript has
   /// an earlier terminal notification when Claude resumed the same agent. Any
@@ -136,6 +138,11 @@ final class const ClaudeHistoryMapper({
           }
           final blocks = _content.map(content: record.content);
           if (_content.commandEnvelope(blocks: blocks) case final command?) {
+            // The `set_model` request that applies the picked model makes the
+            // CLI record a `/model` envelope nobody typed. A `/model` the host
+            // sent carries turn attribution, and one typed in the terminal UI
+            // comes from another entrypoint, so both stay.
+            if (command.name == _modelCommand && record.isUnattributedSdkRecord) continue;
             final turn = _MappedHistoryMessage(
               message: _commandTurn(
                 sessionId: sessionId,

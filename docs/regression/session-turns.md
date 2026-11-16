@@ -306,7 +306,9 @@ defaults and queued client sends coherent.
   and a later transcript backfill converges on the same message instead of
   duplicating it. The bridge worktree context envelope is stripped from the
   echo, and a slash command renders one synthetic user message because its
-  echo is the CLI's internal command envelope.
+  echo is the CLI's internal command envelope. Switching the model from the
+  picker adds no `/model` message to the history or to a sent transcript, while
+  a `/model` the user sends stays visible.
 - Codex user prompts use the same visible content live and after rollout replay:
   the bridge worktree context envelope and the tags Codex writes around a local
   image are hidden, authored text items remain a blank line apart, and

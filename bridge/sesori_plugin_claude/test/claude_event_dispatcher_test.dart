@@ -953,6 +953,7 @@ void main() {
                 isCompactSummary: false,
                 toolUseResult: const ClaudeToolUseResultAbsent(),
                 originKind: ClaudeMessageOriginKind.unknown,
+                isUnattributedSdkRecord: false,
                 cwd: "/tmp/project",
                 timestamp: timestamp,
                 isSidechain: false,
