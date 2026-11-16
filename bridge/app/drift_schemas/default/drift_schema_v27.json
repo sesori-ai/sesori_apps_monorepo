@@ -1590,6 +1590,25 @@
     {
       "id": 15,
       "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_sessions_forked_from",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "forked_from_session_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "references": [
         9
       ],
       "type": "index",
@@ -1615,7 +1634,7 @@
       }
     },
     {
-      "id": 16,
+      "id": 17,
       "references": [
         1
       ],
@@ -1634,7 +1653,7 @@
       }
     },
     {
-      "id": 17,
+      "id": 18,
       "references": [
         10
       ],
@@ -1657,7 +1676,7 @@
       }
     },
     {
-      "id": 18,
+      "id": 19,
       "references": [
         10
       ],
@@ -1809,6 +1828,15 @@
         {
           "dialect": "sqlite",
           "sql": "CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_sessions_forked_from",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_sessions_forked_from ON sessions_table (forked_from_session_id)"
         }
       ]
     },

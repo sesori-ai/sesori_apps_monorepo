@@ -379,6 +379,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // No session was forked before v27, so null is the honest backfill.
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.forkedFromSessionId);
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.forkedFromTitle);
+        await m.createIndex(schema.idxSessionsForkedFrom);
       },
     ),
     beforeOpen: (details) async {

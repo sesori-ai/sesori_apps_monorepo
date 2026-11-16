@@ -5725,6 +5725,10 @@ class DatabaseAtV27 extends GeneratedDatabase {
     'idx_sessions_children',
     'CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)',
   );
+  late final Index idxSessionsForkedFrom = Index(
+    'idx_sessions_forked_from',
+    'CREATE INDEX idx_sessions_forked_from ON sessions_table (forked_from_session_id)',
+  );
   late final Index idxSideChatExchangesSession = Index(
     'idx_side_chat_exchanges_session',
     'CREATE INDEX idx_side_chat_exchanges_session ON side_chat_exchanges (session_id, side_chat_id, answered_at)',
@@ -5761,6 +5765,7 @@ class DatabaseAtV27 extends GeneratedDatabase {
     idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
+    idxSessionsForkedFrom,
     idxSideChatExchangesSession,
     idxScheduledTasksNextDue,
     idxScheduledTaskRunsTask,

@@ -26,7 +26,23 @@ class const AssistantMessageCard({
   /// from it.
   required final int? createdAtMs,
   required final EdgeInsets contentPadding,
+
+  /// The key of the card's selection area, through which a message menu
+  /// selects its text; null where no menu does.
+  required final GlobalKey<PregoReadableSelectionAreaState>? selectionArea,
 }) extends StatelessWidget {
+  /// The reply's text as Markdown, its paragraphs as they stream, or null when
+  /// it has none yet.
+  static String? markdownOf({required List<TranscriptBlock> blocks, required Map<String, String> streamingText}) {
+    final texts = [
+      for (final block in blocks)
+        if (block case TranscriptPartsBlock(:final parts))
+          for (final part in parts)
+            if (part case MessagePartText(:final id, :final text)) streamingText[id] ?? text,
+    ].where((text) => text.isNotEmpty);
+    return texts.isEmpty ? null : texts.join("\n\n");
+  }
+
   @override
   Widget build(BuildContext context) {
     // The column stays mounted while empty, so the first block counts as
@@ -38,6 +54,7 @@ class const AssistantMessageCard({
       curve: transcriptMotionCurve,
       padding: blocks.isEmpty ? contentPadding.copyWith(top: 0, bottom: 0) : contentPadding,
       child: PregoReadableSelectionArea(
+        key: selectionArea,
         child: TranscriptPresenceColumn(
           children: [
             for (final block in blocks)

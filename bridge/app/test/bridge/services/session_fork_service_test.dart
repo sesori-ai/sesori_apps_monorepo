@@ -93,6 +93,23 @@ void main() {
   Matcher refusedWith(SessionBranchErrorCode code) =>
       throwsA(isA<SessionBranchRefusedException>().having((error) => error.code, "code", code));
 
+  SessionPromptService promptService() {
+    final prompts = SessionPromptService(
+      continuations: RecordingSessionContinuations(),
+      mutations: const UnusedContinuationMutations(),
+      views: const PassThroughSessionViews(),
+      sessionRepository: sessionRepository,
+      acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: db)),
+      dispatcher: dispatcher,
+      archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+      sessionOptionsService: FakeSessionOptionsService(),
+      promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+      chatHistory: history.service,
+    );
+    addTearDown(prompts.dispose);
+    return prompts;
+  }
+
   void runningSecondTurn() => plugin.activeSummaries = const [
     PluginProjectActivitySummary(
       id: "/repo",
@@ -175,6 +192,19 @@ void main() {
       runningSecondTurn();
 
       await expectLater(fork(const ForkPoint.latest()), refusedWith(SessionBranchErrorCode.nothingToFork));
+    });
+
+    test("messages before the first prompt belong to no turn", () async {
+      plugin.messagesByBackendId["backend-s1"] = [_agent(id: "a0", text: "setup"), ..._transcript.take(1)];
+      runningSecondTurn();
+
+      await expectLater(fork(const ForkPoint.latest()), refusedWith(SessionBranchErrorCode.nothingToFork));
+      await expectLater(
+        fork(const ForkPoint.afterMessage(messageId: "a0")),
+        refusedWith(SessionBranchErrorCode.branchPointUnavailable),
+      );
+      await fork(const ForkPoint.beforeMessage(messageId: "u1"));
+      expect(plugin.forks, isEmpty);
     });
 
     test("latest on an empty session answers nothingToFork", () async {
@@ -395,19 +425,7 @@ void main() {
 
   test("an empty fork's first prompt carries the worktree context, later prompts do not", () async {
     final forked = await fork(const ForkPoint.beforeMessage(messageId: "u1"));
-    final prompts = SessionPromptService(
-      continuations: RecordingSessionContinuations(),
-      mutations: const UnusedContinuationMutations(),
-      views: const PassThroughSessionViews(),
-      sessionRepository: sessionRepository,
-      acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: db)),
-      dispatcher: dispatcher,
-      archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
-      sessionOptionsService: FakeSessionOptionsService(),
-      promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
-      chatHistory: history.service,
-    );
-    addTearDown(prompts.dispose);
+    final prompts = promptService();
     Future<List<String>> send(String promptId) async {
       await prompts.sendPrompt(
         sessionId: forked.id,
@@ -442,6 +460,27 @@ void main() {
       ),
     );
     expect(await send("p2"), ["hello"]);
+  });
+
+  test("a command opening an empty fork carries the worktree context in its arguments", () async {
+    final forked = await fork(const ForkPoint.beforeMessage(messageId: "u1"));
+
+    await promptService().sendPrompt(
+      sessionId: forked.id,
+      promptId: "p1",
+      parts: const [PromptPart.text(text: "the diff")],
+      variant: null,
+      fastMode: false,
+      agent: null,
+      model: null,
+      command: "review",
+      commandSource: CommandSource.command,
+      handoff: null,
+    );
+
+    final context = buildWorktreeSystemContext(worktreePath: _worktree, baseBranch: "main").trimRight();
+    expect(plugin.lastSendCommandArguments, "$context\n\nthe diff");
+    expect(plugin.lastSendCommandUserVisibleArguments, "the diff");
   });
 
   test("POST /session/fork answers the new session, and a refusal answers SessionBranchErrorResponse", () async {

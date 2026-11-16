@@ -5538,6 +5538,7 @@ final class Schema27 extends i0.VersionedSchema {
     idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
+    idxSessionsForkedFrom,
     idxSideChatExchangesSession,
     idxScheduledTasksNextDue,
     idxScheduledTaskRunsTask,
@@ -5781,6 +5782,10 @@ final class Schema27 extends i0.VersionedSchema {
   final i1.Index idxSessionsChildren = i1.Index(
     'idx_sessions_children',
     'CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)',
+  );
+  final i1.Index idxSessionsForkedFrom = i1.Index(
+    'idx_sessions_forked_from',
+    'CREATE INDEX idx_sessions_forked_from ON sessions_table (forked_from_session_id)',
   );
   final i1.Index idxSideChatExchangesSession = i1.Index(
     'idx_side_chat_exchanges_session',

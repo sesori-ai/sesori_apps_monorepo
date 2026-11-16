@@ -11,7 +11,8 @@ import "user_message_card.dart";
 
 /// A command, skill or MCP prompt the user ran, as an event in the transcript
 /// rather than a chat bubble: what ran over the arguments typed with it. It is
-/// a record, not a control, so it takes no taps.
+/// a record, not a control, so it takes no taps; its message menu answers a
+/// long-press or right-click.
 class const InvocationCard({
   super.key,
   required final String name,
@@ -22,6 +23,10 @@ class const InvocationCard({
   /// Whether the card waits, outlined, for the harness to take it.
   required final bool outlined,
   required final Duration transitionDuration,
+
+  /// The key of the arguments' selection area, through which a message menu
+  /// selects them; null where no menu does.
+  required final GlobalKey<PregoReadableSelectionAreaState>? selectionArea,
 }) extends StatelessWidget {
   static const double _padding = PregoSpacing.lg;
 
@@ -84,6 +89,7 @@ class const InvocationCard({
                 arguments: arguments,
                 attachments: attachments,
                 onHeaderLayout: null,
+                selectionArea: selectionArea,
               ),
             ),
           ),
@@ -107,6 +113,10 @@ class const InvocationCardContent({
   /// Told the header's height each time it lays out, so a pin can compact to
   /// the header and the start of the arguments; null when nothing asks.
   required final ValueSetter<double>? onHeaderLayout,
+
+  /// The key of the arguments' selection area, through which a message menu
+  /// selects them; null where no menu does.
+  required final GlobalKey<PregoReadableSelectionAreaState>? selectionArea,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -142,7 +152,12 @@ class const InvocationCardContent({
         if (onHeaderLayout == null) header else _HeaderExtent(onLayout: onHeaderLayout, child: header),
         if (attachments.isNotEmpty || arguments != null) ...[
           const SizedBox(height: bodyGap),
-          UserMessageBubbleContent(markdown: arguments, attachments: attachments, alignment: .start),
+          UserMessageBubbleContent(
+            markdown: arguments,
+            attachments: attachments,
+            alignment: .start,
+            selectionArea: selectionArea,
+          ),
         ],
       ],
     );
