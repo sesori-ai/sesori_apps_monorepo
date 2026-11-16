@@ -10,14 +10,22 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../widgets/rename_sheet.dart";
+import "../project_list/project_path_labels.dart";
 import "../session_list/session_list_headings.dart";
 import "scheduled_task_formatter.dart";
 import "scheduled_tasks_view.dart";
 
+typedef OpenScheduledTaskRunSession = void Function({
+  required String projectId,
+  required String? projectName,
+  required String sessionId,
+});
+
 /// A scheduled task's own page: when it runs, Run now, Pause/Resume, Edit,
-/// Rename and Delete, and its run history. A task with parts from a newer app
-/// can still be run, paused and deleted, but not edited or renamed. The product shell owns
-/// the cubit's dependencies and the routes.
+/// Rename and Delete, and its run history. A run row opens the run's session,
+/// or, for a run that couldn't start, a sheet saying why. A task with parts
+/// from a newer app can still be run, paused and deleted, but not edited or
+/// renamed. The product shell owns the cubit's dependencies and the routes.
 class const ScheduledTaskDetailView({
   super.key,
   required final ScheduledTaskDetailCubit Function() createCubit,
@@ -28,6 +36,9 @@ class const ScheduledTaskDetailView({
 
   /// Opens the task in the editor.
   required final VoidCallback onEdit,
+
+  /// Opens a run's session over this page, so Back returns here.
+  required final OpenScheduledTaskRunSession onOpenSession,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocProvider(
@@ -94,7 +105,13 @@ class const ScheduledTaskDetailView({
                       _Summary(task: task, deviceTimeZone: deviceTimeZone),
                       _Actions(task: task, editable: editable, onDeleted: onDeleted, onEdit: onEdit),
                       SessionListHeading(heading: context.loc.scheduledTaskRunsHeading, isFirst: false, action: null),
-                      _History(task: task, runs: runs),
+                      _History(
+                        task: task,
+                        runs: runs,
+                        editable: editable,
+                        onEdit: onEdit,
+                        onOpenSession: onOpenSession,
+                      ),
                     ],
                   ),
               },
@@ -297,9 +314,16 @@ class const _DeleteConfirmation() extends StatelessWidget {
   }
 }
 
-/// The run history, newest first. A new run slides in at the top.
-class const _History({required final ScheduledTask task, required final List<ScheduledTaskRun> runs})
-    extends StatelessWidget {
+/// The run history, newest first. A new run slides in at the top. A started
+/// run opens its session and a failed one a sheet saying why; both carry an
+/// arrow. A run whose session was deleted has none, and a tap says so.
+class const _History({
+  required final ScheduledTask task,
+  required final List<ScheduledTaskRun> runs,
+  required final bool editable,
+  required final VoidCallback onEdit,
+  required final OpenScheduledTaskRunSession onOpenSession,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // The first run replaces "No runs yet" with a cross-fade, not a snap.
@@ -329,6 +353,7 @@ class const _History({required final ScheduledTask task, required final List<Sch
           itemBuilder: (context, index, run) => PregoGroupedRowPosition(
             isLast: index == runs.length - 1,
             child: PregoGroupedRow(
+              key: ValueKey("scheduled-task-run-${run.id}"),
               icon: switch (run.outcome) {
                 ScheduledTaskRunStarted(late: false) => TablerRegular.circle_check,
                 ScheduledTaskRunStarted(late: true) => TablerRegular.clock,
@@ -339,10 +364,124 @@ class const _History({required final ScheduledTask task, required final List<Sch
               },
               title: Text(labels.runOutcome(outcome: run.outcome)),
               subtitle: Text(labels.instant(task: task, instant: run.scheduledFor)),
+              trailing: switch (run.outcome) {
+                ScheduledTaskRunStarted(sessionId: _?) || ScheduledTaskRunFailed() => const Icon(
+                  TablerRegular.chevron_right,
+                ),
+                _ => null,
+              },
+              onTap: _tapAction(context: context, labels: labels, outcome: run.outcome),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// What a tap on a run row does; null for a row with nothing more to show.
+  VoidCallback? _tapAction({
+    required BuildContext context,
+    required ScheduledTaskFormatter labels,
+    required ScheduledTaskRunOutcome outcome,
+  }) => switch (outcome) {
+    // The run's session is in the task's project, unless the task was moved
+    // to another project after this run.
+    ScheduledTaskRunStarted(:final sessionId?) => () => onOpenSession(
+      projectId: task.definition.projectId,
+      projectName: switch (_listedProject(context: context)) {
+        final project? => projectDisplayName(loc: context.loc, project: project),
+        null => null,
+      },
+      sessionId: sessionId,
+    ),
+    ScheduledTaskRunStarted() => () => PregoPopupAlertPresenter.of(
+      context,
+    ).show(title: context.loc.scheduledTaskRunSessionDeleted, variant: PregoPopupAlertsNotificationsVariant.info),
+    ScheduledTaskRunFailed(:final reason) => () => unawaited(
+      _showFailure(
+        context: context,
+        details: labels.failureDetails(reason: reason),
+        canEdit:
+            editable &&
+            switch (reason) {
+              TaskRunFailureReason.projectMissing ||
+              TaskRunFailureReason.harnessUnavailable ||
+              TaskRunFailureReason.modelUnavailable => true,
+              TaskRunFailureReason.startFailed || TaskRunFailureReason.unknown => false,
+            },
+      ),
+    ),
+    ScheduledTaskRunSkipped() || ScheduledTaskRunMissed() || ScheduledTaskRunOutcomeUnknown() => null,
+  };
+
+  /// The task's project as this computer lists it, or null while the list
+  /// loads or once the project is no longer on it.
+  ProjectSummary? _listedProject({required BuildContext context}) => switch (context.read<ProjectListCubit>().state) {
+    ProjectListLoaded(:final projects) =>
+      projects.where((project) => project.id == task.definition.projectId).firstOrNull,
+    ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => null,
+  };
+
+  /// A sheet over the page saying what went wrong and what to do next, offering the editor when that is where the fix is.
+  Future<void> _showFailure({
+    required BuildContext context,
+    required ({String detail, String? nextStep}) details,
+    required bool canEdit,
+  }) async {
+    final edit = await showPregoModal<bool>(
+      context: context,
+      title: context.loc.scheduledTaskRunFailureTitle,
+      builder: (_) => _RunFailureDetails(details: details, canEdit: canEdit),
+    );
+    if (edit ?? false) onEdit();
+  }
+}
+
+class const _RunFailureDetails({
+  required final ({String detail, String? nextStep}) details,
+  required final bool canEdit,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+    final nextStep = details.nextStep;
+    final close = PregoButtonsSolid(
+      key: const Key("scheduled-task-run-failure-close"),
+      label: loc.scheduledTaskRunFailureClose,
+      hierarchy: PregoButtonsSolidHierarchy.secondary,
+      size: PregoButtonsSolidSize.lg,
+      fullWidth: true,
+      onPressed: () => context.pop(false),
+    );
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(details.detail, style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary)),
+          if (nextStep != null) ...[
+            const SizedBox(height: PregoSpacing.sm),
+            Text(nextStep, style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary)),
+          ],
+          const SizedBox(height: PregoSpacing.x2l),
+          if (canEdit)
+            PregoSheetActions(
+              secondary: close,
+              primary: PregoButtonsSolid(
+                key: const Key("scheduled-task-run-failure-edit"),
+                label: loc.scheduledTaskEditTitle,
+                hierarchy: PregoButtonsSolidHierarchy.primary,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => context.pop(true),
+              ),
+            )
+          else
+            close,
+        ],
+      ),
     );
   }
 }

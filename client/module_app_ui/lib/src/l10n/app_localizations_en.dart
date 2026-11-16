@@ -4457,6 +4457,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduledTaskFailureUnknown => 'an unknown reason';
 
   @override
+  String get scheduledTaskRunFailureTitle => 'Why this run couldn’t start';
+
+  @override
+  String get scheduledTaskRunFailureProject => 'This task’s project folder wasn’t found on the computer.';
+
+  @override
+  String get scheduledTaskRunFailureHarness => 'This task’s harness wasn’t available on the computer.';
+
+  @override
+  String get scheduledTaskRunFailureModel => 'The harness didn’t offer this task’s model anymore.';
+
+  @override
+  String get scheduledTaskRunFailureStart =>
+      'The computer couldn’t start the session. Sesori Bridge’s log on that computer has the error.';
+
+  @override
+  String get scheduledTaskRunFailureUnknown =>
+      'The computer gave a reason this app doesn’t know. Update the app to see it.';
+
+  @override
+  String get scheduledTaskRunFailureNextProject => 'Put the folder back, or pick another project in the task editor.';
+
+  @override
+  String get scheduledTaskRunFailureNextHarness =>
+      'Check it in harness settings, or pick another harness in the task editor.';
+
+  @override
+  String get scheduledTaskRunFailureNextModel => 'Pick another model in the task editor.';
+
+  @override
+  String get scheduledTaskRunFailureNextStart => 'Run now tries again.';
+
+  @override
+  String get scheduledTaskRunFailureClose => 'Close';
+
+  @override
+  String get scheduledTaskRunSessionDeleted => 'This run’s session was deleted.';
+
+  @override
   String get scheduledTaskNew => 'New task';
 
   @override

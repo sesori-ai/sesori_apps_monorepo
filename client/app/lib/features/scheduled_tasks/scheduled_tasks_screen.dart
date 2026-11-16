@@ -38,6 +38,16 @@ class const ScheduledTaskDetailScreen({super.key, required final String taskId})
     onBack: () => _leave(context: context),
     onDeleted: () => _leave(context: context),
     onEdit: () => context.pushRoute<void>(AppRoute.scheduledTaskEditor(taskId: taskId)),
+    onOpenSession: ({required projectId, required projectName, required sessionId}) => context.pushRoute<void>(
+      AppRoute.sessionDetail(
+        projectId: projectId,
+        projectName: projectName,
+        sessionId: sessionId,
+        sessionTitle: null,
+        readOnly: false,
+        fromLaunch: false,
+      ),
+    ),
   );
 }
 

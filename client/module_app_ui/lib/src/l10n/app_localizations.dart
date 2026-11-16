@@ -7717,6 +7717,78 @@ abstract class AppLocalizations {
   /// **'an unknown reason'**
   String get scheduledTaskFailureUnknown;
 
+  /// Title of the sheet a failed run row opens on the task page.
+  ///
+  /// In en, this message translates to:
+  /// **'Why this run couldn’t start'**
+  String get scheduledTaskRunFailureTitle;
+
+  /// Failed run details: the task's project or its folder was missing. Names no project, since the task may have been edited since that run.
+  ///
+  /// In en, this message translates to:
+  /// **'This task’s project folder wasn’t found on the computer.'**
+  String get scheduledTaskRunFailureProject;
+
+  /// Failed run details: the task's harness was not available. Names no harness, since the task may have been edited since that run.
+  ///
+  /// In en, this message translates to:
+  /// **'This task’s harness wasn’t available on the computer.'**
+  String get scheduledTaskRunFailureHarness;
+
+  /// Failed run details: the task's model was no longer offered. Names no model, since the task may have been edited since that run. A run never swaps in another model.
+  ///
+  /// In en, this message translates to:
+  /// **'The harness didn’t offer this task’s model anymore.'**
+  String get scheduledTaskRunFailureModel;
+
+  /// Failed run details: starting the run's session failed.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer couldn’t start the session. Sesori Bridge’s log on that computer has the error.'**
+  String get scheduledTaskRunFailureStart;
+
+  /// Failed run details: a reason from a newer computer.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer gave a reason this app doesn’t know. Update the app to see it.'**
+  String get scheduledTaskRunFailureUnknown;
+
+  /// Failed run details: what to do when the project folder was missing.
+  ///
+  /// In en, this message translates to:
+  /// **'Put the folder back, or pick another project in the task editor.'**
+  String get scheduledTaskRunFailureNextProject;
+
+  /// Failed run details: what to do when the harness was not available.
+  ///
+  /// In en, this message translates to:
+  /// **'Check it in harness settings, or pick another harness in the task editor.'**
+  String get scheduledTaskRunFailureNextHarness;
+
+  /// Failed run details: what to do when the model is no longer offered.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick another model in the task editor.'**
+  String get scheduledTaskRunFailureNextModel;
+
+  /// Failed run details: what to do when the session did not start.
+  ///
+  /// In en, this message translates to:
+  /// **'Run now tries again.'**
+  String get scheduledTaskRunFailureNextStart;
+
+  /// Closes the failed run details sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get scheduledTaskRunFailureClose;
+
+  /// Alert when tapping a run whose session was deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'This run’s session was deleted.'**
+  String get scheduledTaskRunSessionDeleted;
+
   /// Title of the screen that sets up a new scheduled task, and the Scheduled page's add button label.
   ///
   /// In en, this message translates to:
