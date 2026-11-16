@@ -52,13 +52,13 @@ class ScheduledTaskCompactionService({
   /// so a run held across one follows its missed-run policy as usual.
   final Set<String> _heldTaskIds = {};
 
-  /// Compacts the session of each auto-compact task whose latest run has
-  /// been quiet for its window, unless the user has prompted in it since.
+  /// Compacts the target session of each auto-compact task whose run there
+  /// has been quiet for its window, unless the user has prompted in it since.
   Future<void> compactQuietRuns() async {
     for (final task in await _repository.listUncompleted()) {
-      if (!task.enabled || !_autoCompacts(task: task)) continue;
+      if (!task.enabled) continue;
       try {
-        final run = await _repository.latestStartedRun(taskId: task.id);
+        final run = await _targetRun(task: task);
         if (run == null || run.compactRequestedAt != null || run.userPromptedAt != null) continue;
         final activity = _activity.lastActivity(sessionId: run.sessionId);
         final lastUse = activity.isAfter(run.firedAt) ? activity : run.firedAt;
@@ -85,8 +85,7 @@ class ScheduledTaskCompactionService({
   }
 
   Future<DueRunGate> _gate({required ScheduledTaskRecord task}) async {
-    if (!_autoCompacts(task: task)) return DueRunGate.fire;
-    final run = await _repository.latestStartedRun(taskId: task.id);
+    final run = await _targetRun(task: task);
     if (run == null || !await _isUnarchived(sessionId: run.sessionId)) return DueRunGate.fire;
     final quietness = await _sessions.getSessionQuietness(sessionId: run.sessionId);
     final requestedAt = run.compactRequestedAt;
@@ -99,10 +98,20 @@ class ScheduledTaskCompactionService({
     return busy && _clock.now().isBefore(requestedAt.add(compactionWait)) ? DueRunGate.hold : DueRunGate.fire;
   }
 
-  static bool _autoCompacts({required ScheduledTaskRecord task}) => switch (task.definition.runMode) {
-    TaskRunModeSameSession(:final autoCompact) => autoCompact,
-    TaskRunModeNewSession() || TaskRunModeUnknown() => false,
-  };
+  /// The task's latest started run while auto-compact is on and the run's
+  /// session is still the one the task continues in. An edit that changes the
+  /// project, harness or worktree clears the target, so its old session is
+  /// left alone and the next run starts fresh without waiting.
+  Future<StartedRunState?> _targetRun({required ScheduledTaskRecord task}) async {
+    final autoCompact = switch (task.definition.runMode) {
+      TaskRunModeSameSession(:final autoCompact) => autoCompact,
+      TaskRunModeNewSession() || TaskRunModeUnknown() => false,
+    };
+    final targetId = task.targetSessionId;
+    if (!autoCompact || targetId == null) return null;
+    final run = await _repository.latestStartedRun(taskId: task.id);
+    return run?.sessionId == targetId ? run : null;
+  }
 
   Future<bool> _isUnarchived({required String sessionId}) async {
     final session = await _sessions.getStoredSession(sessionId: sessionId);
@@ -130,7 +139,9 @@ class ScheduledTaskCompactionService({
     sessionId: run.sessionId,
     operation: SessionOperation.compactSession,
     body: () async {
-      final current = await _repository.latestStartedRun(taskId: task.id);
+      // An edit can clear the target while this waits for the lane.
+      final fresh = await _repository.get(taskId: task.id);
+      final current = fresh == null ? null : await _targetRun(task: fresh);
       if (current == null || current.runId != run.runId || current.compactRequestedAt != null) return null;
       if (afterRun && current.userPromptedAt != null) return null;
       if (await _sessions.getSessionQuietness(sessionId: run.sessionId) != SessionQuietness.quiet) return null;

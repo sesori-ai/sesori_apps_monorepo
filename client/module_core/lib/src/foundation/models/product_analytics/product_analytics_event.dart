@@ -431,7 +431,7 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsScheduledTaskRepeat repeat,
     required AnalyticsScheduledTaskRunMode runMode,
     required AnalyticsScheduledTaskApprovalMode approvalMode,
-    required AnalyticsScheduledTaskMissedRunPolicy missedRunPolicy,
+    required AnalyticsScheduledTaskMissedRunPolicy? missedRunPolicy,
     required bool? autoCompact,
   }) = ScheduledTaskSavedEvent;
   const factory sessionMessageEdited({
@@ -852,7 +852,10 @@ final class const ScheduledTaskSavedEvent({
   required final AnalyticsScheduledTaskRepeat repeat,
   required final AnalyticsScheduledTaskRunMode runMode,
   required final AnalyticsScheduledTaskApprovalMode approvalMode,
-  required final AnalyticsScheduledTaskMissedRunPolicy missedRunPolicy,
+
+  /// Null for a one-off task, which runs when the bridge is back whatever
+  /// its policy.
+  required final AnalyticsScheduledTaskMissedRunPolicy? missedRunPolicy,
 
   /// Null for a new-session task, which has nothing to compact.
   required final bool? autoCompact,
@@ -892,7 +895,7 @@ final class const ScheduledTaskSavedEvent({
       repeat: repeat,
       runMode: runMode,
       approvalMode: approvalMode,
-      missedRunPolicy: missedRunPolicy,
+      missedRunPolicy: repeat == AnalyticsScheduledTaskRepeat.once ? null : missedRunPolicy,
       autoCompact: autoCompact,
     );
   }
@@ -906,7 +909,7 @@ final class const ScheduledTaskSavedEvent({
     "repeat_kind": repeat.wireValue,
     "run_mode": runMode.wireValue,
     "approval_mode": approvalMode.wireValue,
-    "missed_run_policy": missedRunPolicy.wireValue,
+    if (missedRunPolicy case final missedRunPolicy?) "missed_run_policy": missedRunPolicy.wireValue,
     if (autoCompact case final autoCompact?) "auto_compact": autoCompact.toString(),
   };
 }
