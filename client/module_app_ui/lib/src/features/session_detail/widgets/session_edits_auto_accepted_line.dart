@@ -29,7 +29,7 @@ class const SessionEditsAutoAcceptedLine({
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: PregoSpacing.xs),
+            // The link's own padding already separates it from the text.
             PregoButtonsSolid(
               key: const Key("session-edits-auto-accepted-turn-off"),
               label: loc.sessionEditsAutoAcceptedTurnOff,
