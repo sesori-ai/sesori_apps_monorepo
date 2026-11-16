@@ -119,8 +119,8 @@ reconnect or restart.
   the next prompt shown both above and below the card, the card below the
   last reply, or the card or its reply gone.
 - A tool call the harness replays inside the stamped assistant message before
-  it (Oh My Pi and DeepSeek stamp a model call's thinking and tool calls with
-  one message id)
+  it (Oh My Pi and DeepSeek stamp their reasoning and text chunks with a
+  message id)
   is replayed as its own message, the shape the live stream captured, so a
   re-import or the first read after a bridge restart matches the live tool row
   by id. Failure signal: after a forced re-import or a restart mid-turn, a tool
