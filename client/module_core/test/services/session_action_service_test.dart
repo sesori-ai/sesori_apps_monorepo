@@ -1,3 +1,6 @@
+import "dart:async";
+
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
@@ -182,7 +185,6 @@ void main() {
       ),
       (SendToSessionFailed(error: ApiError.generic()), AnalyticsSessionSendOutcome.failed),
       (const SendToSessionUnsupported(), AnalyticsSessionSendOutcome.unsupported),
-      (SendToSessionUnconfirmed(error: ApiError.generic()), AnalyticsSessionSendOutcome.unconfirmed),
     ];
     for (final (result, outcome) in outcomes) {
       test("returns and reports ${result.runtimeType.toString()} as ${outcome.wireValue}", () async {
@@ -201,18 +203,155 @@ void main() {
     test("hides the outcome when the app moved to another computer meanwhile, but still reports it", () async {
       stubSend(() async {
         when(() => selectedComputer.targetBridgeId()).thenAnswer((_) async => "computer-b");
-        return SendToSessionUnconfirmed(error: ApiError.generic());
+        return const SendToSessionSent();
       });
 
       expect(await send(), isA<SendToSessionComputerSwitched>());
 
       expect(reportedEvents(), [
-        isA<SessionSentToSessionEvent>().having(
-          (e) => e.outcome,
-          "outcome",
-          AnalyticsSessionSendOutcome.unconfirmed,
-        ),
+        isA<SessionSentToSessionEvent>().having((e) => e.outcome, "outcome", AnalyticsSessionSendOutcome.sent),
       ]);
+    });
+
+    group("whose answer was lost", () {
+      MessageWithParts user({required String id, required String sessionId, required MessageHandoff? handoff}) =>
+          MessageWithParts(
+            info: Message.user(
+              id: id,
+              sessionID: sessionId,
+              agent: null,
+              time: null,
+              promptId: null,
+              invocation: null,
+              handoff: handoff,
+            ),
+            parts: const [],
+          );
+
+      const request = MessageHandoff.sent(targetSessionId: "target", targetTitle: null);
+      const notSent = MessageHandoff.notSent(targetSessionId: "target", targetTitle: null);
+      const received = MessageHandoff.received(
+        sourceSessionId: "source",
+        sourceTitle: null,
+        summary: "Summary",
+        transcriptPath: "/transcript.md",
+      );
+
+      // Each session's newest page, or null while the app is offline.
+      late Map<String, List<MessageWithParts>?> pages;
+
+      setUp(() {
+        pages = {"source": null, "target": null};
+        when(
+          () => sessionRepository.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: null,
+            storedOnly: false,
+          ),
+        ).thenAnswer((invocation) async {
+          final messages = pages[invocation.namedArguments[#sessionId]];
+          return messages == null
+              ? ApiResponse.error(ApiError.generic())
+              : ApiResponse.success(
+                  MessageWithPartsResponse(
+                    messages: messages,
+                    nextCursor: null,
+                    replayedPromptDefaults: null,
+                    userMessagesBefore: null,
+                    cannotContinueMessage: null,
+                  ),
+                );
+        });
+        stubSend(() async => SendToSessionUnconfirmed(error: ApiError.generic()));
+      });
+
+      /// Sends, lets [elapsed] pass after [meanwhile], and returns the result
+      /// if it came by then.
+      SendToSessionResult? sendFor({required Duration elapsed, void Function(FakeAsync async)? meanwhile}) {
+        SendToSessionResult? result;
+        fakeAsync((async) {
+          unawaited(send().then((value) => result = value));
+          meanwhile?.call(async);
+          async.elapse(elapsed);
+        });
+        return result;
+      }
+
+      test("is sent once the target holds the handoff, after the app is back online", () {
+        final result = sendFor(
+          elapsed: const Duration(seconds: 15),
+          meanwhile: (async) {
+            async.elapse(const Duration(seconds: 25));
+            // Still being written: the target holds nothing yet.
+            pages["source"] = [user(id: "request", sessionId: "source", handoff: request)];
+            pages["target"] = [];
+            async.elapse(const Duration(seconds: 10));
+            pages["target"] = [
+              user(id: "prompt", sessionId: "target", handoff: received),
+              user(id: "next", sessionId: "target", handoff: null),
+            ];
+          },
+        );
+
+        expect(result, isA<SendToSessionSent>());
+        expect(reportedEvents(), [
+          isA<SessionSentToSessionEvent>().having((e) => e.outcome, "outcome", AnalyticsSessionSendOutcome.sent),
+        ]);
+      });
+
+      test("is not sent when the source's newest request for the target is marked not sent", () {
+        pages["source"] = [
+          user(id: "earlier", sessionId: "source", handoff: request),
+          user(id: "request", sessionId: "source", handoff: notSent),
+        ];
+        // An earlier send's handoff doesn't count for this one.
+        pages["target"] = [user(id: "prompt", sessionId: "target", handoff: received)];
+
+        expect(sendFor(elapsed: const Duration(seconds: 10)), isA<SendToSessionNotSent>());
+        expect(reportedEvents(), [
+          isA<SessionSentToSessionEvent>().having(
+            (e) => e.outcome,
+            "outcome",
+            AnalyticsSessionSendOutcome.refusedOther,
+          ),
+        ]);
+      });
+
+      test("stays unconfirmed when no outcome shows within the bridge's wait", () {
+        pages["source"] = [user(id: "request", sessionId: "source", handoff: request)];
+        pages["target"] = [];
+
+        expect(sendFor(elapsed: const Duration(minutes: 14, seconds: 50)), isNull);
+        expect(sendFor(elapsed: const Duration(minutes: 15)), isA<SendToSessionUnconfirmed>());
+        expect(
+          reportedEvents(),
+          [
+            isA<SessionSentToSessionEvent>().having(
+              (e) => e.outcome,
+              "outcome",
+              AnalyticsSessionSendOutcome.unconfirmed,
+            ),
+          ],
+        );
+      });
+
+      test("stops looking when the app moves to another computer", () {
+        final result = sendFor(
+          elapsed: const Duration(seconds: 10),
+          meanwhile: (_) => when(() => selectedComputer.targetBridgeId()).thenAnswer((_) async => "computer-b"),
+        );
+
+        expect(result, isA<SendToSessionComputerSwitched>());
+        verifyNever(
+          () => sessionRepository.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
+          ),
+        );
+      });
     });
 
     test("an analytics failure doesn't change the send's result", () async {
