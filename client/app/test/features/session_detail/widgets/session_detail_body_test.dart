@@ -890,6 +890,7 @@ void main() {
     final bubble = find.ancestor(of: find.text(firstText), matching: find.byType(UserMessageBubble));
     const listedQueued = QueuedSessionPrompt(
       commandSource: null,
+      handoff: null,
       id: "prm_first",
       text: firstText,
       command: null,
@@ -1222,6 +1223,7 @@ void main() {
             bridgeQueuedPrompts: const [
               QueuedSessionPrompt(
                 commandSource: null,
+                handoff: null,
                 id: "prm_follow",
                 text: "Typed next",
                 command: null,
@@ -1261,6 +1263,7 @@ void main() {
             bridgeQueuedPrompts: const [
               QueuedSessionPrompt(
                 commandSource: null,
+                handoff: null,
                 id: "prm_follow",
                 text: "Typed next",
                 command: null,
@@ -2316,6 +2319,7 @@ void main() {
           bridgeQueuedPrompts: const [
             QueuedSessionPrompt(
               commandSource: null,
+              handoff: null,
               dispatchState: QueuedPromptDispatchState.queued,
               id: "remote",
               text: "Remote queued prompt",
@@ -6167,6 +6171,7 @@ void main() {
         for (final dispatchState in QueuedPromptDispatchState.values)
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: dispatchState.name,
             text: dispatchState.name,
             command: null,
@@ -6212,6 +6217,7 @@ void main() {
         bridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             dispatchState: QueuedPromptDispatchState.queued,
             id: "remote",
             text: "One line\nthen another",
@@ -6283,6 +6289,7 @@ void main() {
       bridgeQueuedPrompts: const [
         QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           dispatchState: QueuedPromptDispatchState.queued,
           id: "handoff",
           text: "Follow-up prompt",

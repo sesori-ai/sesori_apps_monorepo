@@ -275,13 +275,15 @@ class ChatHistoryRepository({
   /// Turns the stored `sent` handoff of the user message [messageId] into its
   /// not-sent form, as an update at [updatedAt] so a later replay still pairs
   /// the row with its replayed turn. Anything else stored for it is left as it is.
-  Future<void> markHandoffNotSent({
+  ///
+  /// Returns whether a stored `sent` handoff was marked.
+  Future<bool> markHandoffNotSent({
     required String sessionId,
     required String messageId,
     required int updatedAt,
   }) async {
     final existing = await _chatHistoryDao.getMessage(sessionId: sessionId, messageId: messageId);
-    if (existing == null) return;
+    if (existing == null) return false;
     final stored = Message.fromJson(jsonDecodeMap(existing.infoJson));
     if (stored case MessageUser(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle))) {
       final marked = stored.copyWith(
@@ -290,7 +292,9 @@ class ChatHistoryRepository({
       await _chatHistoryDao.upsertMessage(
         row: existing.copyWith(infoJson: jsonEncode(marked.toJson()), updatedAt: updatedAt),
       );
+      return true;
     }
+    return false;
   }
 
   /// [update] with the command invocation and handoff [stored] already

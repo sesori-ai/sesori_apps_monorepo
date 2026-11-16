@@ -67,9 +67,10 @@ final class const CapturedPartShapes({
 /// fallback is bounded to the released inline-wire budget.
 final class const CapturedPartUnavailable({required final MessagePart inlineFallbackPart}) extends CapturedPartDelivery;
 
-/// A session whose stored pages changed after a background re-read: the
-/// re-read transcript landed, the backend newly refused to restore the
-/// session, or finalizing dead tool parts rewrote the store.
+/// A session whose stored pages changed under the clients that read them: a
+/// background re-read's transcript landed, the backend newly refused to
+/// restore the session, finalizing dead tool parts rewrote the store, or a
+/// handoff request was marked not sent.
 typedef SessionHistoryRefresh = ({
   String sessionId,
 
@@ -122,7 +123,8 @@ class ChatHistoryService({
   /// Each session re-read in the background after a read served it behind its
   /// harness, once its stored pages changed: the re-read transcript landed,
   /// the backend newly reported it cannot restore the session, or dead tool
-  /// parts were finalized.
+  /// parts were finalized; and each session whose handoff request was marked
+  /// not sent.
   Stream<SessionHistoryRefresh> get historyRefreshes => _historyRefreshes.stream;
 
   /// The [window] of the session's messages, served from the store whenever
@@ -1169,15 +1171,22 @@ class ChatHistoryService({
   }
 
   /// Turns the stored `sent` handoff of the user message [messageId] into its
-  /// not-sent form, after the session's pending captures.
-  Future<void> markHandoffNotSent({required String sessionId, required String messageId}) => _enqueue(
-    sessionId: sessionId,
-    write: () => _chatHistoryRepository.markHandoffNotSent(
+  /// not-sent form, after the session's pending captures, and announces the
+  /// change on [historyRefreshes], so a client showing "Summary sent" reloads
+  /// it without waiting for its next history load.
+  Future<void> markHandoffNotSent({required String sessionId, required String messageId}) async {
+    final marked = await _enqueue(
       sessionId: sessionId,
-      messageId: messageId,
-      updatedAt: DateTime.now().millisecondsSinceEpoch,
-    ),
-  );
+      write: () => _chatHistoryRepository.markHandoffNotSent(
+        sessionId: sessionId,
+        messageId: messageId,
+        updatedAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+    if (marked && !_historyRefreshes.isClosed) {
+      _historyRefreshes.add((sessionId: sessionId, replayedPromptDefaults: null));
+    }
+  }
 
   Future<SessionPromptDefaults?> _backfillSessionForRead({required String sessionId}) {
     final inFlight = _inFlightBackfills[sessionId];

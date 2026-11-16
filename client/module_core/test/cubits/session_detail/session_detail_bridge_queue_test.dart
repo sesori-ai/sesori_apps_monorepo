@@ -59,6 +59,7 @@ SesoriMessagePartUpdated _textPartFor({required String messageId, required Strin
 
 const _queuedPrompt = QueuedSessionPrompt(
   commandSource: null,
+  handoff: null,
   id: "prm_1",
   text: "steer it",
   command: null,
@@ -1635,6 +1636,7 @@ void main() {
       // local copy hands over in the same emission.
       final acceptedPrompt = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: promptId ?? "",
         text: "steer it",
         command: null,
@@ -1692,6 +1694,7 @@ void main() {
           prompts: [
             QueuedSessionPrompt(
               commandSource: null,
+              handoff: null,
               id: failed?.promptId ?? "",
               text: "lost",
               command: null,
@@ -1803,6 +1806,7 @@ void main() {
               prompts: [
                 QueuedSessionPrompt(
                   commandSource: null,
+                  handoff: null,
                   id: promptId,
                   text: "Review image",
                   command: null,
@@ -1876,6 +1880,7 @@ void main() {
           prompts: [
             QueuedSessionPrompt(
               commandSource: null,
+              handoff: null,
               id: promptId ?? "",
               text: "steer it",
               command: null,
@@ -2338,6 +2343,7 @@ void main() {
       final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.submission.promptId;
       final queued = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: promptId,
         text: "hello",
         command: null,
@@ -2550,6 +2556,7 @@ void main() {
     test("an accepted stop returns the bridge queue to the composer, in order, before the draft", () async {
       const dictated = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: "prm_2",
         dispatchState: QueuedPromptDispatchState.queued,
         text: '🎙️ "spoken words"',
@@ -2558,6 +2565,7 @@ void main() {
       );
       const dispatched = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: "prm_steering",
         dispatchState: QueuedPromptDispatchState.dispatched,
         text: "steered, never echoed",
@@ -2566,6 +2574,7 @@ void main() {
       );
       const command = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: "prm_3",
         dispatchState: QueuedPromptDispatchState.queued,
         text: "the diff",
@@ -2857,6 +2866,7 @@ void main() {
           prompts: [
             QueuedSessionPrompt(
               commandSource: null,
+              handoff: null,
               id: promptId ?? "",
               text: "steer it",
               command: null,
@@ -2971,6 +2981,7 @@ void main() {
           prompts: [
             QueuedSessionPrompt(
               commandSource: null,
+              handoff: null,
               id: promptId ?? "",
               text: "steer it",
               command: null,
@@ -3282,6 +3293,7 @@ void main() {
             prompts: [
               QueuedSessionPrompt(
                 commandSource: null,
+                handoff: null,
                 id: promptId,
                 text: "one",
                 command: null,
@@ -3545,6 +3557,7 @@ void main() {
       test("puts the sends back ahead of the draft, and the bridge's rows with them", () async {
         const dispatched = QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_steering",
           dispatchState: QueuedPromptDispatchState.dispatched,
           text: "steered, never echoed",
@@ -3794,6 +3807,7 @@ void main() {
               _queuedPrompt,
               QueuedSessionPrompt(
                 commandSource: null,
+                handoff: null,
                 id: "prm_2",
                 text: "Hello",
                 command: null,
@@ -4121,6 +4135,7 @@ void main() {
                   prompts: [
                     QueuedSessionPrompt(
                       commandSource: null,
+                      handoff: null,
                       id: "prm_a",
                       text: "and then prm_a",
                       command: null,
@@ -4180,6 +4195,7 @@ void main() {
               prompts: [
                 QueuedSessionPrompt(
                   commandSource: null,
+                  handoff: null,
                   id: "prm_a",
                   text: "and then prm_a",
                   command: null,
@@ -4226,6 +4242,7 @@ void main() {
               prompts: [
                 QueuedSessionPrompt(
                   commandSource: null,
+                  handoff: null,
                   id: "prm_a",
                   text: "and then prm_a",
                   command: null,
@@ -4297,6 +4314,7 @@ void main() {
                     prompts: [
                       QueuedSessionPrompt(
                         commandSource: null,
+                        handoff: null,
                         id: "prm_a",
                         text: "and then prm_a",
                         command: null,
@@ -4779,6 +4797,7 @@ void main() {
             prompts: [
               QueuedSessionPrompt(
                 commandSource: null,
+                handoff: null,
                 id: promptId,
                 text: "steer it",
                 command: null,

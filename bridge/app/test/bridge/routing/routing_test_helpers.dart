@@ -729,7 +729,7 @@ class FakeSessionRepository({
   void markHandoffNotSent({required String sessionId, required String promptId}) {}
 
   @override
-  List<QueuedSessionPrompt> stampQueuedCommandSources({
+  List<QueuedSessionPrompt> stampQueuedPrompts({
     required String sessionId,
     required List<QueuedSessionPrompt> prompts,
   }) => prompts;

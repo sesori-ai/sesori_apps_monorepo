@@ -532,21 +532,21 @@ class SessionRepository({
     }
   }
 
-  /// [prompts] with the source of each command this bridge sent to [sessionId].
-  List<QueuedSessionPrompt> stampQueuedCommandSources({
+  /// [prompts] with the stamps this bridge recorded for its sends to
+  /// [sessionId]: the source of each command, and the handoff of each prompt
+  /// that sends one session into another, so a client never shows a handoff
+  /// prompt as a plain message while it waits for its echo.
+  List<QueuedSessionPrompt> stampQueuedPrompts({
     required String sessionId,
     required List<QueuedSessionPrompt> prompts,
   }) => [
     for (final prompt in prompts)
-      if (prompt.command != null && prompt.commandSource == null)
-        prompt.copyWith(
-          commandSource: switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
-            PromptStampCommand(:final invocation) => invocation.source,
-            PromptStampHandoff() || null => null,
-          },
-        )
-      else
-        prompt,
+      switch (_stamps.stampFor(sessionId: sessionId, promptId: prompt.id)) {
+        PromptStampCommand(:final invocation) when prompt.command != null && prompt.commandSource == null =>
+          prompt.copyWith(commandSource: invocation.source),
+        PromptStampHandoff(:final handoff) => prompt.copyWith(handoff: handoff),
+        PromptStampCommand() || null => prompt,
+      },
   ];
 
   /// Sends [parts] as the prompt [promptId]. A [handoff] is remembered under
@@ -754,7 +754,7 @@ class SessionRepository({
       body: (plugin, _) async =>
           (await plugin.getQueuedPrompts(sessionId: binding.backendSessionId)).toSharedQueuedPrompts(),
     );
-    return stampQueuedCommandSources(sessionId: sessionId, prompts: prompts ?? const []);
+    return stampQueuedPrompts(sessionId: sessionId, prompts: prompts ?? const []);
   }
 
   /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.

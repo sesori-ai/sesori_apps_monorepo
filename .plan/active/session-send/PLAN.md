@@ -428,6 +428,8 @@ Two more additive fields:
 - `Message.user` gains a nullable `handoff: MessageHandoff?` (D11). Null is the honest meaning for every other
   message, so it needs no `@Default` or compatibility comment.
 - `PluginMetadata.busyPromptHandling` (D3).
+- `QueuedSessionPrompt` gains the same nullable `handoff` (step 8.a), so a queued handoff prompt renders as its
+  marker or card before its echo. Null is again the honest meaning for every other prompt.
 
 No `sesori.db` schema change. The history store's stored message JSON gains the optional `handoff` key; its schema
 does not change.
@@ -465,7 +467,7 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
     (`repositories/trackers/command_invocation_tracker.dart`) becomes `PromptStampTracker`. It keeps its key, capacity
     and eviction, and stores a sealed `PromptStamp` (bridge-internal, beside the tracker):
     `PromptStampCommand(invocation)` or `PromptStampHandoff(handoff)`. A prompt is either a command or a handoff, never
-    both. `stampQueuedCommandSources` reads only command stamps.
+    both. `stampQueuedPrompts` applies a command's source or a handoff to each queued prompt.
   - **Recorded inside the send, as commands are.** `SessionRepository.sendPrompt` gains
     `required MessageHandoff? handoff`. When it is set, the repository records it under the prompt id before the plugin
     call, because the echo can arrive before the call returns. It forgets it again on a definite 4xx refusal, exactly as
@@ -484,8 +486,9 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
     `ChatHistoryService.markHandoffNotSent({sessionId, messageId})`, which runs on the session's history write lane
     and replaces the stored `sent` stamp; when the refresh before the split replaced the echo with a replayed message
     under another id, that id is marked too. A definite 4xx refusal of the summarise prompt still forgets the
-    stamp in `sendPrompt`, because no turn happened, so the mark finds nothing. A client that had the marker live
-    keeps the `sent` state until its next history load; the requesting client gets the failure alert.
+    stamp in `sendPrompt`, because no turn happened, so the mark finds nothing. A stored mark pushes a history refresh,
+    so an open chat turns its marker into "Couldn't send" without a reload; the requesting client also gets the
+    failure alert.
   - The history store's replay matching ignores `handoff` as it ignores `invocation`, so a replay under another id
     still pairs with the stamped live row and keeps its stamp. Marking a stored stamp `notSent` refreshes the row's
     `updatedAt`, so the next replay still treats the row as current and pairs it.
@@ -636,7 +639,7 @@ Dart rules:
 
 ### Step 1: raise the plan
 
-`🌱 [session-send] Raise the session sending plan [step 1/13]`
+`🌱 [session-send] Raise the session sending plan [step 1/14]`
 
 - **Complexity:** trivial. Documents only.
 - **What:** adds `.plan/active/session-send/PLAN.md` and `TRACKER.md`.
@@ -646,7 +649,7 @@ Dart rules:
 
 ### Step 2: transcript Markdown and its file store
 
-`⚙️ [session-send] Render a session transcript as Markdown and store it with the receiving session [step 2/13]`. About
+`⚙️ [session-send] Render a session transcript as Markdown and store it with the receiving session [step 2/14]`. About
 650 lines.
 
 - **Complexity:** moderate. A pure builder with many part kinds, plus file lifetime wired into deletion.
@@ -663,7 +666,7 @@ Dart rules:
 
 ### Step 3: the bridge send flow
 
-`🚧 [session-send] Send one session into another from the bridge [step 3/13]`. About 1,450 lines, about 370 of them
+`🚧 [session-send] Send one session into another from the bridge [step 3/14]`. About 1,450 lines, about 370 of them
 generated.
 
 - **Complexity:** complex. A cross-layer flow with an event-driven wait, cancellation and new wire contracts.
@@ -692,7 +695,7 @@ generated.
 
 ### Step 4: the handoff marker in the bridge
 
-`🚧 [session-send] Mark handoff messages in the bridge [step 4/13]`. About 650 lines, about 350 of them generated.
+`🚧 [session-send] Mark handoff messages in the bridge [step 4/14]`. About 650 lines, about 350 of them generated.
 
 - **Complexity:** complex. A new field on the core message model, stamped live and kept through the history store's
   merge and replay paths.
@@ -719,7 +722,7 @@ generated.
 
 ### Step 5: Claude reads the transcripts and uploads folders without asking
 
-`🌿 [session-send] Let Claude Code read Sesori transcripts and uploads without a prompt [step 5/13]`. About 120 lines plus
+`🌿 [session-send] Let Claude Code read Sesori transcripts and uploads without a prompt [step 5/14]`. About 120 lines plus
 docs.
 
 - **Complexity:** straightforward. Two launch arguments, their test and two doc lines.
@@ -738,7 +741,7 @@ docs.
 
 ### Step 6: declare what a prompt to a busy session does
 
-`🌿 [session-send] Declare each harness's busy-prompt behaviour [step 6/13]`. About 300 lines, mostly generated.
+`🌿 [session-send] Declare each harness's busy-prompt behaviour [step 6/14]`. About 300 lines, mostly generated.
 
 - **Complexity:** straightforward. One required descriptor field per plugin and one wire field.
 - **What:**
@@ -754,7 +757,7 @@ docs.
 
 ### Step 7: the client send and stop pipeline
 
-`⚙️ [session-send] Add the client send and stop pipeline [step 7/13]`. About 600 lines.
+`⚙️ [session-send] Add the client send and stop pipeline [step 7/14]`. About 600 lines.
 
 - **Complexity:** moderate. A sealed result over a long request, new cubit dependencies with a live subscription, and
   the desktop palette moving to a factory.
@@ -781,7 +784,7 @@ docs.
 
 ### Step 7.a: send from the session menu
 
-`⚙️ [session-send] Send a session into another from its menu [step 7.a/13]`, stacked on step 7. About 1,150 lines
+`⚙️ [session-send] Send a session into another from its menu [step 7.a/14]`, stacked on step 7. About 1,150 lines
 including l10n output.
 
 - **Complexity:** moderate. A new sheet and picker, menu wiring on four surfaces, and an async outcome.
@@ -811,7 +814,7 @@ including l10n output.
 
 ### Step 8: the handoff marker and card in the chats
 
-`⚙️ [session-send] Show handoffs as a marker in the source and a card in the target [step 8/13]`. About 900 lines.
+`⚙️ [session-send] Show handoffs as a marker in the source and a card in the target [step 8/14]`. About 900 lines.
 
 - **Complexity:** moderate. Turn folding in the transcript builder, two new transcript items and an in-place expansion.
 - **What:**
@@ -845,17 +848,27 @@ including l10n output.
 
 ### Step 8.a: queued handoff prompts stay hidden, and a failed send updates live
 
-`⚙️ [session-send] Keep queued handoff prompts hidden and show a failed send live [step 8.a/13]`.
+`⚙️ [session-send] Keep queued handoff prompts hidden and show a failed send live [step 8.a/14]`.
 
 - **What:** stamp the handoff on the queued-prompt wire model (`QueuedSessionPrompt`) and have the bridge stamp it,
   so the source's request and the target's handoff prompt never show as a raw bubble before their echo. Push a
   message update after the bridge marks a request not sent, so an open chat turns "Summary sent" into "Couldn't
   send". Decide whether the stamp also carries the other session's project id.
 - **Why:** step 8's live run showed both gaps; each needs a bridge or wire change.
+- **As built:**
+  - `QueuedSessionPrompt.handoff` reuses `MessageHandoff`. `SessionRepository.stampQueuedPrompts` (was
+    `stampQueuedCommandSources`) applies whichever stamp the tracker holds for each queued prompt.
+  - The transcript builder turns a queued `sent` or `notSent` prompt into a marker and a queued `received` prompt into
+    a card, keyed by prompt id. The message list shows them in the queued prompt's own row, so the row keeps its
+    place and its element when the echo arrives. A queued handoff has no Cancel; stopping the source covers it.
+  - `ChatHistoryService.markHandoffNotSent` adds a history refresh when it marked a stored row. Clients already reload
+    on that event, so no new event type was needed.
+  - The stamp carries no project id. Open already reads the session to learn whether it is archived, and that read
+    returns its project, so a stamped id would save nothing and could go stale.
 
 ### Step 9: archive the source after sending
 
-`🌿 [session-send] Archive the source after a send when asked [step 9/13]`. About 350 lines.
+`🌿 [session-send] Archive the source after a send when asked [step 9/14]`. About 350 lines.
 
 - **Complexity:** straightforward. Reuses the archive flow behind a remembered switch.
 - **What:**
@@ -873,7 +886,7 @@ including l10n output.
 
 ### Step 10: analytics
 
-`🌿 [session-send] Report sessions sent into another session [step 10/13]`. About 250 lines.
+`🌿 [session-send] Report sessions sent into another session [step 10/14]`. About 250 lines.
 
 - **Complexity:** straightforward. A closed event that follows the existing pattern.
 - **What:**
@@ -889,7 +902,7 @@ including l10n output.
 
 ### Step 11: reconcile docs and harness rows
 
-`🌿 [session-send] Document session sending and its harness differences [step 11/13]`
+`🌿 [session-send] Document session sending and its harness differences [step 11/14]`
 
 - **Complexity:** straightforward. Docs, plus live read checks.
 - **What:**
@@ -907,7 +920,7 @@ including l10n output.
 
 ### Step 12: verify and retire
 
-`🌱 [session-send] Verify session sending and retire its plan [step 12/13]`
+`🌱 [session-send] Verify session sending and retire its plan [step 12/14]`
 
 Run the matrix under Verification, record results in `TRACKER.md`, then move the plan to
 `.plan/completed/session-send/`.

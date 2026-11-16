@@ -317,7 +317,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   final ValueNotifier<double> _topReserve = ValueNotifier(0);
 
   /// The handoffs among the rows, from the last build.
-  TranscriptHandoffs _handoffs = const TranscriptHandoffs(markers: {}, foldedMessageIds: {}, cards: {});
+  TranscriptHandoffs _handoffs = const TranscriptHandoffs(
+    markers: {},
+    foldedMessageIds: {},
+    cards: {},
+    queuedMarkers: {},
+    queuedCards: {},
+  );
 
   /// The attached user message bubbles, by message id.
   final _promptSlots = TranscriptPromptSlots();
@@ -1058,6 +1064,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       messages: messages,
       turns: turns,
       isBusy: isBusy,
+      queuedPrompts: widget.bridgeQueuedPrompts,
     );
     // A summary being written shows its own live line in place of the working row.
     final activity = handoffs.writing
@@ -1416,6 +1423,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       final promptId = entryId.substring(_kPromptRowPrefix.length);
       final prompt = widget.bridgeQueuedPrompts.where((candidate) => candidate.id == promptId).firstOrNull;
       if (prompt != null) {
+        // A handoff shows as it will once delivered, in the same row.
+        if (_queuedHandoffRow(promptId: prompt.id) case final handoff?) {
+          return _revealable(createdAtMs: prompt.createdAt, child: handoff);
+        }
         final onCancel = widget.onCancelBridgeQueuedPrompt;
         return _revealable(
           createdAtMs: prompt.createdAt,
@@ -1588,6 +1599,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final id = message.info.id;
     if (_handoffs.markers[id] case final marker?) return HandoffMarkerRow(marker: marker);
     if (_handoffs.cards[id] case final card?) return HandoffCard(messageId: id, card: card);
+    return null;
+  }
+
+  /// The marker or card a bridge-queued handoff prompt shows until its user
+  /// message arrives, or null for any other queued prompt.
+  Widget? _queuedHandoffRow({required String promptId}) {
+    if (_handoffs.queuedMarkers[promptId] case final marker?) return HandoffMarkerRow(marker: marker);
+    if (_handoffs.queuedCards[promptId] case final card?) return HandoffCard(messageId: promptId, card: card);
     return null;
   }
 
