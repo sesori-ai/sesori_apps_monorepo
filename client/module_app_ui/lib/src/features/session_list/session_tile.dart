@@ -407,12 +407,21 @@ class const SessionTile({
   Widget? _time({required BuildContext context, required double resumeMaxWidth, required double column}) {
     if (!awaitingInput && !isRunning) {
       if (sessionScheduledResumeAt(view: session.autoContinuation) case final continueAt?) {
-        // Half the row at most: the title keeps the other half, and both ellipsize.
+        // Half the row at most: the title keeps the other half, and both
+        // ellipsize. It holds the mark's column like the time does.
         return ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: resumeMaxWidth),
-          child: Padding(
-            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-            child: SessionScheduledResume(continueAt: continueAt, labelled: true),
+          constraints: BoxConstraints(
+            minWidth: min(_pointerTimeWidth * column, resumeMaxWidth),
+            maxWidth: resumeMaxWidth,
+          ),
+          // Its own width, at least the column's, flush with the row's end.
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            widthFactor: 1,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+              child: SessionScheduledResume(continueAt: continueAt, labelled: true),
+            ),
           ),
         );
       }
