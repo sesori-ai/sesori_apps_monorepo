@@ -72,6 +72,8 @@ const _actions = SessionListActionDispatcher(
   onSessionArchived: null,
   onSessionDeleted: null,
   onSessionMarkedUnread: null,
+  openSession: _openNothing,
+  createSessionSearch: _searchNothing,
 );
 
 const _question = SesoriQuestionAsked(
@@ -103,6 +105,7 @@ const _child = Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   scheduledTask: null,
+  forkedFrom: null,
 );
 
 /// A child session: the sidebar inventory never holds one, the page does.
@@ -122,6 +125,7 @@ const _session = Session(
   // Local state can still say unseen just after opening.
   unseen: true,
   scheduledTask: null,
+  forkedFrom: null,
 );
 
 const _message = MessageWithParts(
@@ -567,6 +571,8 @@ void main() {
                         onSessionArchived: null,
                         onSessionDeleted: null,
                         onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session),
+                        openSession: _openNothing,
+                        createSessionSearch: _searchNothing,
                       ),
                       onMarkedUnread: () => leftPage++,
                       readOnly: readOnly,
@@ -1133,3 +1139,11 @@ void main() {
     });
   });
 }
+
+void _openNothing({required String projectId, required String projectName, required Session session}) {}
+
+SessionSearchCubit _searchNothing({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) => throw UnimplementedError("These tests do not send sessions");

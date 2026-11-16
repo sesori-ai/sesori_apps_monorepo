@@ -43,6 +43,34 @@ void main() {
       expect(fake.killed, isTrue);
     });
 
+    test("names the option a CLI that does not know it refused at startup", () async {
+      final fake = FakeClaudeProcess();
+      addTearDown(fake.close);
+      final client = ClaudeStreamClient(
+        launchSpec: testLaunchSpec(),
+        processFactory: (_) async => fake,
+        controlTimeout: const Duration(seconds: 5),
+      );
+
+      final connecting = client.connect();
+      await waitForFrame(fake, "control_request");
+      // Recorded from 2.1.221 given a flag it predates: the exit can land
+      // before the stderr line.
+      fake.exit(1);
+      await pump();
+      fake.emitStderrRaw(utf8.encode("error: unknown option '--resume-session-at=$testSessionId'\n"));
+      await fake.close();
+
+      await expectLater(
+        connecting,
+        throwsA(
+          isA<ClaudeUnknownOptionException>()
+              .having((error) => error.option, "option", "--resume-session-at")
+              .having((error) => error.innerError, "innerError", isA<ClaudeControlException>()),
+        ),
+      );
+    });
+
     test("refuses a second connect and a connect after dispose", () async {
       final connected = await connectTestClient();
       await expectLater(connected.client.connect(), throwsStateError);

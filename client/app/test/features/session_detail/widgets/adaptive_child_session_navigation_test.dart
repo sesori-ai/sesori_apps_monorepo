@@ -105,6 +105,7 @@ Session _childSession({required String id, String? title}) {
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    forkedFrom: null,
   );
 }
 

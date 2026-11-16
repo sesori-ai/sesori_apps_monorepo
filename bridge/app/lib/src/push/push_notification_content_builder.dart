@@ -69,6 +69,7 @@ class const PushNotificationContentBuilder() {
       SesoriPluginManagementChanged() ||
       SesoriMcpInventoryChanged() ||
       SesoriMcpAuthenticationChanged() ||
+      SesoriScheduledTasksChanged() ||
       SesoriPluginInstallProgress() ||
       SesoriPluginAuthenticationProgress() ||
       SesoriSessionOptionsUpdated() ||

@@ -332,6 +332,7 @@ void main() {
           child: SizedBox(
             width: 402,
             child: UserMessageBubble(
+              selectionArea: null,
               markdown: null,
               attachments: [
                 AttachmentCollectionWidget(

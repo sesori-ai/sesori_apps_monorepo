@@ -50,6 +50,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        forkedFrom: null,
       );
 
       final json = session.toJson();

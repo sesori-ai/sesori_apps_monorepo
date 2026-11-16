@@ -64,6 +64,33 @@ class OmpEventMapper({
     return idle;
   }
 
+  /// OMP sends an aborted reply that produced nothing as one whole text chunk
+  /// holding its abort reason: on history replay (`acp-agent.ts`
+  /// `#replayAssistantMessage`) and, for a failed request that never streamed,
+  /// live (`#flushUnreportedTurnError`). "Interrupted by user" is the reason of
+  /// a stop, "Request was aborted" that of a bare abort. Shown as an error row,
+  /// as Pi shows its aborted replies, instead of a reply bubble.
+  @override
+  AcpHaltNotice? classifyHaltNotice({required String text}) =>
+      _abortReasons.contains(text.trim()) ? const AcpHaltNotice(errorName: "omp_aborted") : null;
+
+  static const Set<String> _abortReasons = {"Interrupted by user", "Request was aborted", "Request was aborted."};
+
+  /// Drops the message id from an abort-reason chunk (see
+  /// [classifyHaltNotice]). The shared mapper reads only id-less chunks as
+  /// halt notices, because an identified message may still grow; OMP sends the
+  /// reason whole, as the message's only content.
+  @override
+  Map<String, dynamic> normalizeSessionUpdate({required Map<String, dynamic> params}) {
+    final update = params["update"];
+    if (update is! Map || update["sessionUpdate"] != "agent_message_chunk") return params;
+    final content = update["content"];
+    if (content is! Map || content["type"] != "text") return params;
+    final text = content["text"];
+    if (text is! String || classifyHaltNotice(text: text) == null) return params;
+    return {...params, "update": Map<String, dynamic>.of(update.cast<String, dynamic>())..remove("messageId")};
+  }
+
   @override
   bool shouldBufferDuringPromptWrite({required AcpNotification notification}) =>
       // A compaction at the start of a prompt must not reach the client before

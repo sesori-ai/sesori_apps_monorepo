@@ -152,6 +152,8 @@ void main() {
                         onSessionArchived: null,
                         onSessionDeleted: null,
                         onSessionMarkedUnread: null,
+                        openSession: _openNothing,
+                        createSessionSearch: _searchNothing,
                       ),
                       createActions: ({required window}) => throw StateError("no row to act on"),
                       selectedSessionId: null,
@@ -2504,3 +2506,11 @@ Widget _offlinePage({required BuildContext context, required ProjectListBridgeDi
 
 /// A surface that knows the computer is about to connect.
 Widget? _aboutToConnect({required BuildContext context, required ProjectListBridgeDisconnected state}) => null;
+
+void _openNothing({required String projectId, required String projectName, required Session session}) {}
+
+SessionSearchCubit _searchNothing({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) => throw UnimplementedError("These tests do not send sessions");

@@ -46,6 +46,7 @@ class const SystemMessageCard({
                 streamingText: streamingText,
                 createdAtMs: createdAtMs,
                 contentPadding: EdgeInsets.zero,
+                selectionArea: null,
               ),
             ],
           ),

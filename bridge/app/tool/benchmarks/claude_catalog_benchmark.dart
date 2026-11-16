@@ -22,6 +22,7 @@ import "package:args/args.dart";
 import "package:claude_plugin/claude_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
@@ -98,6 +99,7 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
       sessionDao: sessionDao,
       catalogHydrationsDao: database.catalogHydrationsDao,
       sessionOptionsCacheDao: SessionOptionsCacheDao(database: database),
+      scheduledTaskDao: ScheduledTaskDao(database: database),
       projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
         scratchRoot: "/scratch",
         pathContext: p.context,

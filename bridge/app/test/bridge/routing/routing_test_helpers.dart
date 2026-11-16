@@ -16,6 +16,7 @@ import "package:sesori_bridge/src/repositories/models/session_abort_result.dart"
 import "package:sesori_bridge/src/repositories/models/session_compaction_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_page_cursor.dart";
+import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
 import "package:sesori_bridge/src/repositories/models/session_readiness.dart";
 import "package:sesori_bridge/src/repositories/models/side_question_ask_result.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
@@ -184,6 +185,9 @@ class FakeSessionDao() {
       catalogTitle: null,
       approvalOverride: null,
       pinned: false,
+      forkedFromSessionId: null,
+      forkedFromTitle: null,
+      scheduledTaskId: null,
     );
   }
 
@@ -222,6 +226,7 @@ Session _deletedSessionInfo(String sessionId) => Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   scheduledTask: null,
+  forkedFrom: null,
 );
 
 Future<void> recordSessionBinding({
@@ -287,6 +292,7 @@ Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    forkedFrom: null,
   );
 }
 
@@ -304,6 +310,9 @@ class FakeSessionRepository({
 
   @override
   bool inlineImagesSupported({required String pluginId}) => true;
+
+  @override
+  bool isPluginEligible({required String pluginId}) => eligiblePluginIds.contains(pluginId);
 
   @override
   Future<bool> inlineImagesSupportedForSession({required String sessionId}) async => true;
@@ -349,6 +358,7 @@ class FakeSessionRepository({
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
   String? projectPathResult;
+  Set<String> eligiblePluginIds = {"fake"};
   Object? publicationError;
 
   @override
@@ -411,6 +421,7 @@ class FakeSessionRepository({
       promptDefaults: null,
       lastUserActivityAt: stored.lastUserMessageAt,
       scheduledTask: null,
+      forkedFrom: null,
     );
   }
 
@@ -452,6 +463,13 @@ class FakeSessionRepository({
   @override
   Future<bool> isSessionRunning({required String sessionId}) async => false;
 
+  /// Quietness by session id; a session absent here reads as quiet.
+  final Map<String, SessionQuietness> quietness = {};
+
+  @override
+  Future<SessionQuietness> getSessionQuietness({required String sessionId}) async =>
+      quietness[sessionId] ?? SessionQuietness.quiet;
+
   @override
   Future<Session> createSession({
     required String reservedSessionId,
@@ -471,6 +489,7 @@ class FakeSessionRepository({
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required ScheduledRunSessionLink? scheduledRun,
   }) async => const Session(
     approvalOverride: null,
     autoContinuation: null,
@@ -485,6 +504,7 @@ class FakeSessionRepository({
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    forkedFrom: null,
   );
 
   SessionPage sessionPage = (
@@ -884,6 +904,14 @@ class FakeSessionRepository({
     required String? agent,
     required PromptModel? model,
   }) => throw UnimplementedError("FakeSessionRepository does not replace harness sessions");
+
+  @override
+  Future<Session> forkSession({
+    required String originSessionId,
+    required String? throughMessageId,
+    required String? title,
+    required String? forkedFromTitle,
+  }) => throw UnimplementedError("FakeSessionRepository does not fork sessions");
 
   @override
   Future<void> renameSession({required String sessionId, required String title}) async {}

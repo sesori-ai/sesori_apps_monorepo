@@ -323,15 +323,33 @@ Codex (live probe against 0.169.0 with a local test provider, 2026-11-15):
 
 Editing rewinds the conversation in place: the edited message and everything
 after it leave the session, then the edited message is sent. Files are never
-touched. The bridge refuses an edit of a session's first message for now,
-because no native point precedes it. Edits run only
+touched. An edit of a session's first message has no native point before it,
+so the bridge swaps in a new harness session instead, on every harness. Edits run only
 on a message that opens a turn; a follow-up sent while the agent was working is
 refused with a reason.
 
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
+| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ⬜ Not implemented yet |
 | Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ⬜ `thread/fork {lastTurnId}` |
 | Every other harness | ⬜ Not implemented yet; the bridge refuses the edit | ⬜ Not implemented yet |
+
+Claude Code (live probes against 2.1.221 and 2.1.322 in a scratch config
+directory, 2026-11-15):
+
+- The new prompt's `parentUuid` is the entry Sesori resumes at, and a later
+  plain `--resume` continues from the edited branch. A respawn at the cut
+  without a prompt appends only a `cost-state` record, so the transcript is not
+  changed until the edited prompt is sent.
+- The first message has no entry before it. The bridge edits it by swapping in
+  a new session, and the plugin refuses it if asked to rewind there.
+- 2.1.322 resumes only from the latest compaction on: an entry before it fails
+  with `No message found with message.uuid of: …`. Sesori refuses such a prompt
+  before stopping the session.
+- An unknown entry fails the same way on both versions, and the CLI exits
+  before answering `initialize`. A CLI that does not know the flag exits with
+  `error: unknown option`, which Sesori reports as "This Claude Code version
+  can't edit messages from Sesori."
 
 ## Explicit shell-command presentation
 
@@ -1035,7 +1053,10 @@ harness exposes it.
 | Codex | ✅ Live from `item/started`, timed from `startedAtMs` or the bridge's stamp, settling in place at `item/completed`. Codex reports no failure, tokens or trigger, so a missing completion is left to the bridge sweep's note and the row has no details. | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
 | DeepSeek | ✅ Live only, from `compaction_started`, timed from the bridge's stamp and settling at `compaction_completed`. The statuses carry no ids, tokens, trigger or failure kind, and DeepSeek's history has no compaction record, so the row has no details, a warning or turn end leaves it to the bridge sweep's note, and it survives one history re-import, then disappears. | ⬜ The runtime reports no summary. |
 | OMP | ✅ Automatic compaction only, live from `_omp/compaction/start`, timed from the bridge's stamp (OMP sends no time), settling in place at `_omp/compaction/end` as completed with "· auto", or as a failure note reading "stopped" for an abort, "nothing to compact yet" for OMP's benign skip, and no reason for an error (logged locally). A compaction outside a prompt (the opt-in idle compaction) reports the session busy to status reads until it ends, so a history read keeps the row running, but sends no live busy status and so no completion notification; OMP holds a prompt sent meanwhile until it ends. When a method fails and OMP falls back to the next preferred one, the fallback gets its own row under the failure note. No freed count (OMP reports only the tokens before), and the row is live only. 🚫 A manual `/compact` sends no ACP signal, so it shows no row. | ⬜ The ACP notifications carry no summary; what history replay shows of OMP's stored summary was not verified. |
-| Antigravity, Copilot, Cursor, Hermes, Grok | ⬜ | ⬜ The ACP session updates Sesori consumes (message, thought and user chunks, tool calls, plan, commands, session info) have no compaction variant, so a compaction, such as Cursor's `/summarize` behind Sesori's `compact` command, arrives as ordinary agent text. A row needs a harness extension signal. Grok 1.0.30 sends `_x.ai/session_notification` `sessionUpdate: "auto_compact_completed"` with `tokens_before` and `tokens_after` after a `/compact` (probed live 2026-11-15); Sesori does not consume it yet. The others were not probed for one. |
+| Grok | ✅ Live only. An automatic compaction shows from `_x.ai/session_notification` `auto_compact_started`, timed from the bridge's stamp (Grok sends no time), settling in place at `auto_compact_completed` with the freed `tokens_before − tokens_after` and "· auto"; `auto_compact_failed` becomes a failure note with no reason (the error is logged locally), and the retry Grok makes of a failed request gets its own row. A manual `/compact` sends no start, so its row shows from the `_x.ai/queue/changed` entry that runs it and settles at the same completion, with no trigger label. A count is shown only when tokens were freed. A failed manual compaction fails its prompt instead, and a Stop sends no end, so both leave the running row to the bridge sweep's note. History replay carries the same frames but is not mapped, so the row survives one history re-import, then disappears (verified on 1.0.30). | ⬜ `summary_preview` was null in every probe. |
+| Cursor | 🚫 The ACP adapter (2026.07.23) sends no compaction update or extension notification, so `/summarize` behind Sesori's `compact` command arrives as ordinary agent text. | 🚫 |
+| Hermes | ⬜ No start signal: an automatic compaction that splits the session sends a `session_info_update` whose `_meta.hermes.sessionProvenance` has `reason: "compression"`, only at the end of its turn, and `/compress` answers with plain text. History replay marks a summary chunk with `_meta.hermes.compactionSummary`. Sesori maps neither yet (source of v0.21.4, not probed live). | ⬜ The replayed summary chunk. |
+| Antigravity, Copilot | ⬜ The ACP session updates Sesori consumes have no compaction variant. Copilot's own SDK protocol has `session.compaction_start` and `session.compaction_complete` events; whether its ACP mode forwards them was not probed. Antigravity was not probed for a signal. | ⬜ |
 
 A row without a summary is inert. Apps at v1.9.0 or older ignore the
 compaction state and show no row.
@@ -1143,6 +1164,7 @@ live one.
 | Harness | Sesori availability |
 |---|---|
 | Cursor | ✅ The account/plan gate ("Check your settings to continue"), live and after history load. |
+| Oh My Pi | ✅ An aborted reply that produced nothing, which OMP sends as its bare abort reason ("Interrupted by user" after a stop, "Request was aborted" otherwise): after history load, and live when a failed request never streamed. ⚠️ A live stop shows no notice, since OMP sends none then, so a reload can add one. Wording read in the OMP 18.20.2 source on 2026-11-15. |
 | Hermes | ✅ The English failure copy Hermes sends as its final response, live and after history load: retries exhausted (including the stream-lifetime cap), first-attempt rate limits, usage limits, rejected credentials, unknown models, content policy, data-policy refusals, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions, shutdown, the "No reply:" explanations for exits that fail the turn (a stop on a pending tool result, no answer after all retries, a local context window too small, an error near the iteration limit, repeated errors, and every session-storage failure), a scheduled-job chat, a missing working folder and a chat whose launch API key is gone (in other languages by its untranslated `Details: launch_credentials_unavailable (<field>: <detail>)` line after a one-line notice naming the same key; Hermes's other translated copy stays a plain reply). Hermes saves a different row for a failed turn ("Your request was not processed…", "This turn did not complete. Some actions may already have run…" after a tool ran, or "An automated delivery was interrupted…" for a lost cron or webhook turn, and "This message was refused by the model's safety filter…" for a refused turn); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows only Hermes's live reason, followed by the row's warning when actions may already have run. Wording read in the Hermes 0.21.5 source on 2026-11-09 and the 0.23.1 source on 2026-11-12. Hermes appends its generic "Your request was not processed…" row to a live reason; Sesori drops it so the notice reads the same live and after a reload. Hermes then fails the prompt with `admitted_turn_failed`, which adds no second notice; when the model streamed part of a reply first, Hermes sends no failure text, so that failed prompt shows as Hermes's own "Your request was not processed…" notice. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts, and so do the "No reply:" explanations for exits that do not fail the turn (no reply after retries, a partial stream recovered, prior context shown, restart limits, budget or iteration limit reached, an interrupted call). 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
 
 Claude Code does not need text matching: it tags a failed turn's assistant

@@ -8,6 +8,7 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../di/injection.dart";
 import "desktop_sidebar.dart";
 
 /// One app-wide command: the palette lists it and the cockpit binds its
@@ -76,7 +77,12 @@ Future<void> showDesktopCommandPalette({
         listenWhen: (_, state) => state is AuthGateSignedOut,
         listener: (_, _) => close(),
         child: BlocProvider(
-          create: (_) => SessionSearchCubit(window: window, projectInventory: projectInventory),
+          create: (_) => createSessionSearchCubit(
+            locator: getIt,
+            window: window,
+            projectInventory: projectInventory,
+            excludedSessionId: null,
+          ),
           child: _CommandPalette(
             commands: commands,
             projects: [

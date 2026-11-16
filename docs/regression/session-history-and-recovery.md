@@ -110,9 +110,14 @@ reconnect or restart.
   goes to the replayed user turn between the same neighbors (an OMP prompt
   template's expanded text), or stays where it was when the replay has no row
   for it (an OMP skill run), and its neighbors still match their replayed
-  rows. Failure signals after an OMP command or skill run and a reload or
-  forced re-import: the card and the expanded text both shown, a reply shown
-  twice, the card below the last reply, or the card gone.
+  rows. A run the harness handles itself and records nowhere, reply included
+  (Hermes `/compress` and `/help`, OMP `/session`), keeps its card and reply
+  in place, and the turns before and after it still match their replayed
+  rows. Failure signals after an OMP command or skill run, or a Hermes
+  `/compress` or `/help` followed by another prompt, and a reload or forced
+  re-import: the card and the expanded text both shown, a reply shown twice,
+  the next prompt shown both above and below the card, the card below the
+  last reply, or the card or its reply gone.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
@@ -317,6 +322,10 @@ reconnect or restart.
   reasoning-only stop, which carries the model's last thoughts. Live and on
   replay, a notice shows Hermes's inline code without backticks
   (``run `hermes setup` `` reads "run hermes setup").
+- An OMP reply that was aborted before it produced anything replays as one
+  error notice with OMP's abort reason ("Interrupted by user" after a stop,
+  "Request was aborted" otherwise), never as a reply bubble. A reply that only
+  mentions those words stays a reply.
 - For any harness, a live error notice and the replayed error notice in the
   same place of the transcript are one notice even when they are worded
   differently. The error name is the notice's kind. A replayed notice of the
@@ -342,7 +351,10 @@ reconnect or restart.
   live compaction row
   pairs with its replayed row even beside a live-only row such as the
   bridge's own `/compact` bubble, while distinct compactions, which never
-  share a time, stay apart.
+  share a time, stay apart. A compaction row is no neighbour in any other
+  row's context, so the live prompt and reply around a live-only compaction
+  row (DeepSeek, OMP, Grok) still pair with their replayed rows and the row
+  stays between them, without duplicating the turn.
   The content fingerprint ignores identity, time, agent/model attribution, and
   internal parts hidden from transcripts; alignment still uses available
   creation times as above, normalizes spilled attachments, and keeps replay
@@ -632,6 +644,8 @@ rules where supported.
   request was not processed…" text, loses the partial-turn warning or the live
   reason, repeats the generic saved row after the live reason, merges the
   failed prompt into the next one, or hides a reply.
+- A reloaded OMP session shows "Request was aborted" or "Interrupted by user"
+  as a normal assistant reply.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
   a nested tile to the root instead of its direct parent, changes live child
   activity, loses latest terminal metadata across pages, or collapses/reorders

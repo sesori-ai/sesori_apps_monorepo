@@ -1808,6 +1808,7 @@ class SessionDetailCubit(
       SesoriCatalogImportProgress() ||
       SesoriMcpInventoryChanged() ||
       SesoriMcpAuthenticationChanged() ||
+      SesoriScheduledTasksChanged() ||
       SesoriPluginManagementChanged() ||
       SesoriPluginInstallProgress() ||
       SesoriPluginAuthenticationProgress() ||
@@ -1886,6 +1887,7 @@ class SessionDetailCubit(
             SesoriCatalogImportProgress() ||
             SesoriMcpInventoryChanged() ||
             SesoriMcpAuthenticationChanged() ||
+            SesoriScheduledTasksChanged() ||
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||

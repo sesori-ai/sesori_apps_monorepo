@@ -4894,6 +4894,994 @@ i1.GeneratedColumn<int> _column_73(String aliasedName) =>
       type: i1.DriftSqlType.int,
       $customConstraints: 'NOT NULL',
     );
+
+final class Schema26 extends i0.VersionedSchema {
+  Schema26({required super.database}) : super(version: 26);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    projectsTable,
+    scheduledTasks,
+    sessionsTable,
+    deletedSessionsTable,
+    catalogHydrationsTable,
+    sessionOptionsCacheTable,
+    newSessionDefaultsTable,
+    acceptedPromptsTable,
+    sessionContinuations,
+    sideChatExchanges,
+    scheduledTaskRuns,
+    idxProjectsUpdated,
+    idxSessionsPluginBackend,
+    idxSessionsRoots,
+    idxSessionsChildren,
+    idxSideChatExchangesSession,
+    idxScheduledTasksNextDue,
+    idxScheduledTaskRunsTask,
+    idxScheduledTaskRunsSession,
+  ];
+  late final Shape11 projectsTable = Shape11(
+    source: i0.VersionedTable(
+      entityName: 'projects_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(project_id)'],
+      columns: [
+        _column_0,
+        _column_27,
+        _column_1,
+        _column_2,
+        _column_28,
+        _column_12,
+        _column_31,
+        _column_35,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape29 scheduledTasks = Shape29(
+    source: i0.VersionedTable(
+      entityName: 'scheduled_tasks',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_67,
+        _column_74,
+        _column_75,
+        _column_0,
+        _column_30,
+        _column_57,
+        _column_76,
+        _column_77,
+        _column_78,
+        _column_79,
+        _column_80,
+        _column_81,
+        _column_82,
+        _column_83,
+        _column_84,
+        _column_85,
+        _column_63,
+        _column_86,
+        _column_87,
+        _column_88,
+        _column_12,
+        _column_31,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape30 sessionsTable = Shape30(
+    source: i0.VersionedTable(
+      entityName: 'sessions_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(session_id)'],
+      columns: [
+        _column_4,
+        _column_36,
+        _column_13,
+        _column_37,
+        _column_38,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_2,
+        _column_11,
+        _column_22,
+        _column_23,
+        _column_61,
+        _column_12,
+        _column_31,
+        _column_35,
+        _column_24,
+        _column_25,
+        _column_26,
+        _column_30,
+        _column_32,
+        _column_39,
+        _column_65,
+        _column_66,
+        _column_89,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape13 deletedSessionsTable = Shape13(
+    source: i0.VersionedTable(
+      entityName: 'deleted_sessions_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(owner_identity, plugin_id, backend_session_id)',
+      ],
+      columns: [_column_33, _column_36, _column_30, _column_34],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape14 catalogHydrationsTable = Shape14(
+    source: i0.VersionedTable(
+      entityName: 'catalog_hydrations_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(plugin_id, projection_version)'],
+      columns: [_column_30, _column_40, _column_41],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape20 sessionOptionsCacheTable = Shape20(
+    source: i0.VersionedTable(
+      entityName: 'session_options_cache_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(plugin_id, scope, owner_id)',
+        'CHECK(owner_id <> \'\' AND((scope = \'plugin\' AND project_id IS NULL AND captured_project_path IS NULL)OR(scope = \'project\' AND project_id IS NOT NULL AND owner_id = project_id AND captured_project_path IS NOT NULL AND captured_project_path <> \'\')))',
+      ],
+      columns: [
+        _column_30,
+        _column_42,
+        _column_43,
+        _column_44,
+        _column_45,
+        _column_46,
+        _column_47,
+        _column_49,
+        _column_50,
+        _column_51,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape23 newSessionDefaultsTable = Shape23(
+    source: i0.VersionedTable(
+      entityName: 'new_session_defaults_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(plugin_id)', 'CHECK(plugin_id <> \'\')'],
+      columns: [_column_30, _column_57, _column_58, _column_61],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape21 acceptedPromptsTable = Shape21(
+    source: i0.VersionedTable(
+      entityName: 'accepted_prompts_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(session_id, prompt_id)',
+        'CHECK(session_id <> \'\')',
+        'CHECK(prompt_id <> \'\')',
+      ],
+      columns: [_column_4, _column_59, _column_60],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape24 sessionContinuations = Shape24(
+    source: i0.VersionedTable(
+      entityName: 'session_continuations',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(session_id)'],
+      columns: [_column_62, _column_63, _column_64],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape28 sideChatExchanges = Shape28(
+    source: i0.VersionedTable(
+      entityName: 'side_chat_exchanges',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_67,
+        _column_62,
+        _column_68,
+        _column_69,
+        _column_70,
+        _column_71,
+        _column_72,
+        _column_73,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape31 scheduledTaskRuns = Shape31(
+    source: i0.VersionedTable(
+      entityName: 'scheduled_task_runs',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_67,
+        _column_90,
+        _column_91,
+        _column_92,
+        _column_93,
+        _column_94,
+        _column_95,
+        _column_96,
+        _column_97,
+        _column_98,
+        _column_99,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index idxProjectsUpdated = i1.Index(
+    'idx_projects_updated',
+    'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
+  );
+  final i1.Index idxSessionsPluginBackend = i1.Index(
+    'idx_sessions_plugin_backend',
+    'CREATE UNIQUE INDEX idx_sessions_plugin_backend ON sessions_table (plugin_id, backend_session_id)',
+  );
+  final i1.Index idxSessionsRoots = i1.Index(
+    'idx_sessions_roots',
+    'CREATE INDEX idx_sessions_roots ON sessions_table (project_id, parent_session_id, updated_at, session_id)',
+  );
+  final i1.Index idxSessionsChildren = i1.Index(
+    'idx_sessions_children',
+    'CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)',
+  );
+  final i1.Index idxSideChatExchangesSession = i1.Index(
+    'idx_side_chat_exchanges_session',
+    'CREATE INDEX idx_side_chat_exchanges_session ON side_chat_exchanges (session_id, side_chat_id, answered_at)',
+  );
+  final i1.Index idxScheduledTasksNextDue = i1.Index(
+    'idx_scheduled_tasks_next_due',
+    'CREATE INDEX idx_scheduled_tasks_next_due ON scheduled_tasks (next_due_at)',
+  );
+  final i1.Index idxScheduledTaskRunsTask = i1.Index(
+    'idx_scheduled_task_runs_task',
+    'CREATE INDEX idx_scheduled_task_runs_task ON scheduled_task_runs (task_id, fired_at)',
+  );
+  final i1.Index idxScheduledTaskRunsSession = i1.Index(
+    'idx_scheduled_task_runs_session',
+    'CREATE INDEX idx_scheduled_task_runs_session ON scheduled_task_runs (session_id)',
+  );
+}
+
+class Shape29 extends i0.VersionedTable {
+  Shape29({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get promptJson =>
+      columnsByName['prompt_json']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get projectId =>
+      columnsByName['project_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get pluginId =>
+      columnsByName['plugin_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get agent =>
+      columnsByName['agent']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get modelJson =>
+      columnsByName['model_json']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get variant =>
+      columnsByName['variant']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get fastMode =>
+      columnsByName['fast_mode']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get dedicatedWorktree =>
+      columnsByName['dedicated_worktree']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get scheduleJson =>
+      columnsByName['schedule_json']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get timeZone =>
+      columnsByName['time_zone']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get missedRunPolicy =>
+      columnsByName['missed_run_policy']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get runMode =>
+      columnsByName['run_mode']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get autoCompact =>
+      columnsByName['auto_compact']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get approvalMode =>
+      columnsByName['approval_mode']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get enabled =>
+      columnsByName['enabled']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get nextDueAt =>
+      columnsByName['next_due_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get targetSessionId =>
+      columnsByName['target_session_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get completedAt =>
+      columnsByName['completed_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_74(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'name',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_75(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'prompt_json',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_76(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'model_json',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_77(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'variant',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<int> _column_78(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'fast_mode',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL CHECK (fast_mode IN (0, 1))',
+    );
+i1.GeneratedColumn<int> _column_79(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'dedicated_worktree',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL CHECK (dedicated_worktree IN (0, 1))',
+    );
+i1.GeneratedColumn<String> _column_80(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'schedule_json',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_81(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'time_zone',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_82(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'missed_run_policy',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_83(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'run_mode',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<int> _column_84(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'auto_compact',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL CHECK (auto_compact IN (0, 1))',
+    );
+i1.GeneratedColumn<String> _column_85(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'approval_mode',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<int> _column_86(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'next_due_at',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_87(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'target_session_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints:
+          'NULL REFERENCES sessions_table(session_id)ON DELETE SET NULL',
+    );
+i1.GeneratedColumn<int> _column_88(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'completed_at',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NULL',
+    );
+
+class Shape30 extends i0.VersionedTable {
+  Shape30({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get sessionId =>
+      columnsByName['session_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get backendSessionId =>
+      columnsByName['backend_session_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get projectId =>
+      columnsByName['project_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get parentSessionId =>
+      columnsByName['parent_session_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get directory =>
+      columnsByName['directory']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get worktreePath =>
+      columnsByName['worktree_path']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get branchName =>
+      columnsByName['branch_name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get isDedicated =>
+      columnsByName['is_dedicated']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get archivedAt =>
+      columnsByName['archived_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get baseBranch =>
+      columnsByName['base_branch']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get baseCommit =>
+      columnsByName['base_commit']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get lastAgent =>
+      columnsByName['last_agent']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get lastAgentModel =>
+      columnsByName['last_agent_model']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get fastMode =>
+      columnsByName['fast_mode']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get projectionUpdatedAt =>
+      columnsByName['projection_updated_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lastActivityAt =>
+      columnsByName['last_activity_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lastSeenAt =>
+      columnsByName['last_seen_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lastUserMessageAt =>
+      columnsByName['last_user_message_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get pluginId =>
+      columnsByName['plugin_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get title =>
+      columnsByName['title']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get catalogTitle =>
+      columnsByName['catalog_title']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get approvalOverride =>
+      columnsByName['approval_override']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get pinned =>
+      columnsByName['pinned']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get scheduledTaskId =>
+      columnsByName['scheduled_task_id']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_89(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'scheduled_task_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints:
+          'NULL REFERENCES scheduled_tasks(id)ON DELETE SET NULL',
+    );
+
+class Shape31 extends i0.VersionedTable {
+  Shape31({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get taskId =>
+      columnsByName['task_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get sessionId =>
+      columnsByName['session_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get scheduledFor =>
+      columnsByName['scheduled_for']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get scheduledForOffsetMinutes =>
+      columnsByName['scheduled_for_offset_minutes']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get firedAt =>
+      columnsByName['fired_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get outcome =>
+      columnsByName['outcome']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get reason =>
+      columnsByName['reason']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get late =>
+      columnsByName['late']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get userPromptedAt =>
+      columnsByName['user_prompted_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get compactRequestedAt =>
+      columnsByName['compact_requested_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_90(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'task_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints:
+          'NOT NULL REFERENCES scheduled_tasks(id)ON DELETE CASCADE',
+    );
+i1.GeneratedColumn<String> _column_91(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'session_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints:
+          'NULL REFERENCES sessions_table(session_id)ON DELETE SET NULL',
+    );
+i1.GeneratedColumn<int> _column_92(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'scheduled_for',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<int> _column_93(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'scheduled_for_offset_minutes',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<int> _column_94(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'fired_at',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_95(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'outcome',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_96(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'reason',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<int> _column_97(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'late',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL CHECK (late IN (0, 1))',
+    );
+i1.GeneratedColumn<int> _column_98(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'user_prompted_at',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<int> _column_99(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'compact_requested_at',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NULL',
+    );
+
+final class Schema27 extends i0.VersionedSchema {
+  Schema27({required super.database}) : super(version: 27);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    projectsTable,
+    scheduledTasks,
+    sessionsTable,
+    deletedSessionsTable,
+    catalogHydrationsTable,
+    sessionOptionsCacheTable,
+    newSessionDefaultsTable,
+    acceptedPromptsTable,
+    sessionContinuations,
+    sideChatExchanges,
+    scheduledTaskRuns,
+    idxProjectsUpdated,
+    idxSessionsPluginBackend,
+    idxSessionsRoots,
+    idxSessionsChildren,
+    idxSessionsForkedFrom,
+    idxSideChatExchangesSession,
+    idxScheduledTasksNextDue,
+    idxScheduledTaskRunsTask,
+    idxScheduledTaskRunsSession,
+  ];
+  late final Shape11 projectsTable = Shape11(
+    source: i0.VersionedTable(
+      entityName: 'projects_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(project_id)'],
+      columns: [
+        _column_0,
+        _column_27,
+        _column_1,
+        _column_2,
+        _column_28,
+        _column_12,
+        _column_31,
+        _column_35,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape29 scheduledTasks = Shape29(
+    source: i0.VersionedTable(
+      entityName: 'scheduled_tasks',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_67,
+        _column_74,
+        _column_75,
+        _column_0,
+        _column_30,
+        _column_57,
+        _column_76,
+        _column_77,
+        _column_78,
+        _column_79,
+        _column_80,
+        _column_81,
+        _column_82,
+        _column_83,
+        _column_84,
+        _column_85,
+        _column_63,
+        _column_86,
+        _column_87,
+        _column_88,
+        _column_12,
+        _column_31,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape32 sessionsTable = Shape32(
+    source: i0.VersionedTable(
+      entityName: 'sessions_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(session_id)'],
+      columns: [
+        _column_4,
+        _column_36,
+        _column_13,
+        _column_37,
+        _column_38,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_2,
+        _column_11,
+        _column_22,
+        _column_23,
+        _column_61,
+        _column_12,
+        _column_31,
+        _column_35,
+        _column_24,
+        _column_25,
+        _column_26,
+        _column_30,
+        _column_32,
+        _column_39,
+        _column_65,
+        _column_66,
+        _column_100,
+        _column_101,
+        _column_89,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape13 deletedSessionsTable = Shape13(
+    source: i0.VersionedTable(
+      entityName: 'deleted_sessions_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(owner_identity, plugin_id, backend_session_id)',
+      ],
+      columns: [_column_33, _column_36, _column_30, _column_34],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape14 catalogHydrationsTable = Shape14(
+    source: i0.VersionedTable(
+      entityName: 'catalog_hydrations_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(plugin_id, projection_version)'],
+      columns: [_column_30, _column_40, _column_41],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape20 sessionOptionsCacheTable = Shape20(
+    source: i0.VersionedTable(
+      entityName: 'session_options_cache_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(plugin_id, scope, owner_id)',
+        'CHECK(owner_id <> \'\' AND((scope = \'plugin\' AND project_id IS NULL AND captured_project_path IS NULL)OR(scope = \'project\' AND project_id IS NOT NULL AND owner_id = project_id AND captured_project_path IS NOT NULL AND captured_project_path <> \'\')))',
+      ],
+      columns: [
+        _column_30,
+        _column_42,
+        _column_43,
+        _column_44,
+        _column_45,
+        _column_46,
+        _column_47,
+        _column_49,
+        _column_50,
+        _column_51,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape23 newSessionDefaultsTable = Shape23(
+    source: i0.VersionedTable(
+      entityName: 'new_session_defaults_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(plugin_id)', 'CHECK(plugin_id <> \'\')'],
+      columns: [_column_30, _column_57, _column_58, _column_61],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape21 acceptedPromptsTable = Shape21(
+    source: i0.VersionedTable(
+      entityName: 'accepted_prompts_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(session_id, prompt_id)',
+        'CHECK(session_id <> \'\')',
+        'CHECK(prompt_id <> \'\')',
+      ],
+      columns: [_column_4, _column_59, _column_60],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape24 sessionContinuations = Shape24(
+    source: i0.VersionedTable(
+      entityName: 'session_continuations',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(session_id)'],
+      columns: [_column_62, _column_63, _column_64],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape28 sideChatExchanges = Shape28(
+    source: i0.VersionedTable(
+      entityName: 'side_chat_exchanges',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_67,
+        _column_62,
+        _column_68,
+        _column_69,
+        _column_70,
+        _column_71,
+        _column_72,
+        _column_73,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape31 scheduledTaskRuns = Shape31(
+    source: i0.VersionedTable(
+      entityName: 'scheduled_task_runs',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_67,
+        _column_90,
+        _column_91,
+        _column_92,
+        _column_93,
+        _column_94,
+        _column_95,
+        _column_96,
+        _column_97,
+        _column_98,
+        _column_99,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index idxProjectsUpdated = i1.Index(
+    'idx_projects_updated',
+    'CREATE INDEX idx_projects_updated ON projects_table (updated_at DESC, project_id DESC)',
+  );
+  final i1.Index idxSessionsPluginBackend = i1.Index(
+    'idx_sessions_plugin_backend',
+    'CREATE UNIQUE INDEX idx_sessions_plugin_backend ON sessions_table (plugin_id, backend_session_id)',
+  );
+  final i1.Index idxSessionsRoots = i1.Index(
+    'idx_sessions_roots',
+    'CREATE INDEX idx_sessions_roots ON sessions_table (project_id, parent_session_id, updated_at, session_id)',
+  );
+  final i1.Index idxSessionsChildren = i1.Index(
+    'idx_sessions_children',
+    'CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)',
+  );
+  final i1.Index idxSessionsForkedFrom = i1.Index(
+    'idx_sessions_forked_from',
+    'CREATE INDEX idx_sessions_forked_from ON sessions_table (forked_from_session_id)',
+  );
+  final i1.Index idxSideChatExchangesSession = i1.Index(
+    'idx_side_chat_exchanges_session',
+    'CREATE INDEX idx_side_chat_exchanges_session ON side_chat_exchanges (session_id, side_chat_id, answered_at)',
+  );
+  final i1.Index idxScheduledTasksNextDue = i1.Index(
+    'idx_scheduled_tasks_next_due',
+    'CREATE INDEX idx_scheduled_tasks_next_due ON scheduled_tasks (next_due_at)',
+  );
+  final i1.Index idxScheduledTaskRunsTask = i1.Index(
+    'idx_scheduled_task_runs_task',
+    'CREATE INDEX idx_scheduled_task_runs_task ON scheduled_task_runs (task_id, fired_at)',
+  );
+  final i1.Index idxScheduledTaskRunsSession = i1.Index(
+    'idx_scheduled_task_runs_session',
+    'CREATE INDEX idx_scheduled_task_runs_session ON scheduled_task_runs (session_id)',
+  );
+}
+
+class Shape32 extends i0.VersionedTable {
+  Shape32({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get sessionId =>
+      columnsByName['session_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get backendSessionId =>
+      columnsByName['backend_session_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get projectId =>
+      columnsByName['project_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get parentSessionId =>
+      columnsByName['parent_session_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get directory =>
+      columnsByName['directory']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get worktreePath =>
+      columnsByName['worktree_path']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get branchName =>
+      columnsByName['branch_name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get isDedicated =>
+      columnsByName['is_dedicated']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get archivedAt =>
+      columnsByName['archived_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get baseBranch =>
+      columnsByName['base_branch']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get baseCommit =>
+      columnsByName['base_commit']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get lastAgent =>
+      columnsByName['last_agent']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get lastAgentModel =>
+      columnsByName['last_agent_model']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get fastMode =>
+      columnsByName['fast_mode']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get updatedAt =>
+      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get projectionUpdatedAt =>
+      columnsByName['projection_updated_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lastActivityAt =>
+      columnsByName['last_activity_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lastSeenAt =>
+      columnsByName['last_seen_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lastUserMessageAt =>
+      columnsByName['last_user_message_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get pluginId =>
+      columnsByName['plugin_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get title =>
+      columnsByName['title']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get catalogTitle =>
+      columnsByName['catalog_title']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get approvalOverride =>
+      columnsByName['approval_override']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get pinned =>
+      columnsByName['pinned']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get forkedFromSessionId =>
+      columnsByName['forked_from_session_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get forkedFromTitle =>
+      columnsByName['forked_from_title']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get scheduledTaskId =>
+      columnsByName['scheduled_task_id']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_100(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'forked_from_session_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints:
+          'NULL REFERENCES sessions_table(session_id)ON DELETE SET NULL',
+    );
+i1.GeneratedColumn<String> _column_101(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'forked_from_title',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
@@ -4919,6 +5907,8 @@ i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema23 schema) from22To23,
   required Future<void> Function(i1.Migrator m, Schema24 schema) from23To24,
   required Future<void> Function(i1.Migrator m, Schema25 schema) from24To25,
+  required Future<void> Function(i1.Migrator m, Schema26 schema) from25To26,
+  required Future<void> Function(i1.Migrator m, Schema27 schema) from26To27,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -5042,6 +6032,16 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from24To25(migrator, schema);
         return 25;
+      case 25:
+        final schema = Schema26(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from25To26(migrator, schema);
+        return 26;
+      case 26:
+        final schema = Schema27(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from26To27(migrator, schema);
+        return 27;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -5073,6 +6073,8 @@ i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema23 schema) from22To23,
   required Future<void> Function(i1.Migrator m, Schema24 schema) from23To24,
   required Future<void> Function(i1.Migrator m, Schema25 schema) from24To25,
+  required Future<void> Function(i1.Migrator m, Schema26 schema) from25To26,
+  required Future<void> Function(i1.Migrator m, Schema27 schema) from26To27,
 }) => i0.VersionedSchema.stepByStepHelper(
   step: migrationSteps(
     from1To2: from1To2,
@@ -5099,5 +6101,7 @@ i1.OnUpgrade stepByStep({
     from22To23: from22To23,
     from23To24: from23To24,
     from24To25: from24To25,
+    from25To26: from25To26,
+    from26To27: from26To27,
   ),
 );
