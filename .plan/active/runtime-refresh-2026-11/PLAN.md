@@ -51,9 +51,12 @@ All 11 `knownPlugins` entries in `bridge/app/lib/src/runtime/plugin_registry.dar
   only personal OAuth.
 - OpenCode 2.3.0 background sub-agent report rows in the parent session: handled in 7.b.
 
-Owner decisions still open:
+Owner decisions:
 
-- Raise the OMP floor to 18.20.1, which would delete two workarounds for upstream bugs fixed there.
+- OMP floor stays 17.2.13 (2026-11-16): 18.20.1 is too new to require, so both workarounds for the upstream
+  bugs it fixes stay.
+- Open: whether Claude "Always" on a file edit switches the session to `acceptEdits` (Claude suggests only
+  that mode change for edits, so after 7.a edits show Once and Reject only).
 
 Track only: OpenCode first-token timing, Copilot `--resume` marking sessions in use, Claude sandbox prompts and
 `auto` permission-mode fallback, OMP late background results carried into the next prompt.
