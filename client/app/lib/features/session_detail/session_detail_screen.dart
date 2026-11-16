@@ -98,26 +98,6 @@ void _openSideChat({
   ),
 );
 
-void _openSideChat({
-  required BuildContext context,
-  required String sessionId,
-  required String pluginId,
-  required SideQuestionAvailability availability,
-  required bool isArchived,
-}) => showSideChatSheet(
-  context: context,
-  pluginId: pluginId,
-  createCubit: () => SideChatCubit(
-    repository: getIt<SideChatRepository>(),
-    productAnalyticsService: getIt<ProductAnalyticsService>(),
-    sessionId: sessionId,
-    pluginId: pluginId,
-    availability: availability,
-    isArchived: isArchived,
-    initialQuestion: null,
-  ),
-);
-
 void _leaveMarkedUnreadSession({required BuildContext context, required Session session}) =>
     closeDeletedSessionRoute(context: context, sessionId: session.id);
 
