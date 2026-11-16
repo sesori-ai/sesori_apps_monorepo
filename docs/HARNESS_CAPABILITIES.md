@@ -331,7 +331,7 @@ refused with a reason.
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
 | Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ⬜ Not implemented yet |
-| Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ⬜ `thread/fork {lastTurnId}` |
+| Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ✅ `thread/fork {lastTurnId}` into a new persisted thread in the same directory; the source is not loaded, so it can run a later turn or be archived. Verified live on 2026-11-15 with Codex 0.169.0. Runtimes before 0.143.0 predate `lastTurnId`; by their source they ignore the unknown field and would copy the whole thread (not run live), so they are refused with a reason before anything is created, as are an unknown message, a missing rollout and a turn still running. A reply that a steered follow-up continued in the same native turn is 🚫: Codex forks only whole turns. Deleting a source keeps the rollouts a fork builds on and `thread/archive`s them, which Codex allows and forks keep reading |
 | Every other harness | ⬜ Not implemented yet for in-place rewinds; the bridge accepts a first-message swap, but the app shows no Edit because the harness does not declare `rewind` | ⬜ Not implemented yet |
 
 Claude Code (live probes against 2.1.221 and 2.1.322 in a scratch config
@@ -654,14 +654,18 @@ app ignores `kind` and shows the row's text in red.
 | Pi | ✅ `stopReason: aborted`. | ✅ The same record. |
 | OpenCode v1 | ✅ `MessageAbortedError`. | ✅ The same record. |
 | OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
-| OMP | ⬜ | ⬜ |
-| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ⬜ | ⬜ |
+| OMP | ✅ The shared ACP plugin's line, as below. | ⚠️ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing; it folds into the live line. A reply that streamed first keeps its line only until the history is re-read. |
+| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ⚠️ They record no stop, so the line shows only until the history is re-read. |
 | Claude Code | ⬜ | ⬜ |
 | Codex | ⬜ | ⬜ |
 
 Pi and OpenCode do not tell a user Stop from another abort of the turn, so any abort they record reads Stopped.
 OpenCode v2 (2.2.7 source) records the same `aborted` error when the user declines a permission, which ends the turn
 too.
+
+On the ACP harnesses a shutdown, a plugin restart or a follow-up that replaces the running turn cancels it without a
+Stopped line, and so does a Stop that lands before the prompt reached the agent. A turn that already showed a failed-turn
+notice (see [Failed-turn notices sent as text](#failed-turn-notices-sent-as-text)) keeps that notice as its one row.
 
 ## Pre-start catalog import
 
@@ -1200,7 +1204,7 @@ live one.
 | Harness | Sesori availability |
 |---|---|
 | Cursor | ✅ The account/plan gate ("Check your settings to continue"), live and after history load. |
-| Oh My Pi | ✅ An aborted reply that produced nothing, which OMP sends as its bare abort reason ("Interrupted by user" after a stop, "Request was aborted" otherwise): after history load, and live when a failed request never streamed. ⚠️ A live stop shows no notice, since OMP sends none then, so a reload can add one. Wording read in the OMP 18.20.2 source on 2026-11-15. |
+| Oh My Pi | ✅ An aborted reply that produced nothing, which OMP sends as its bare abort reason ("Interrupted by user" after a stop, "Request was aborted" otherwise): after history load, and live when a failed request never streamed. The stop's reason is the Stopped line (see Stopped turns), named like the live stop's line so a reload keeps one; "Request was aborted" stays a red notice. Wording read in the OMP 18.20.2 source on 2026-11-15. |
 | Hermes | ✅ The English failure copy Hermes sends as its final response, live and after history load: retries exhausted (including the stream-lifetime cap), first-attempt rate limits, usage limits, rejected credentials, unknown models, content policy, data-policy refusals, billing, the Nous free tier's refusals and outage, loop errors, context overflow, cut-off actions, shutdown, the "No reply:" explanations for exits that fail the turn (a stop on a pending tool result, no answer after all retries, a local context window too small, an error near the iteration limit, repeated errors, and every session-storage failure), a scheduled-job chat, a missing working folder and a chat whose launch API key is gone (in other languages by its untranslated `Details: launch_credentials_unavailable (<field>: <detail>)` line after a one-line notice naming the same key; Hermes's other translated copy stays a plain reply). Hermes saves a different row for a failed turn ("Your request was not processed…", "This turn did not complete. Some actions may already have run…" after a tool ran, or "An automated delivery was interrupted…" for a lost cron or webhook turn, and "This message was refused by the model's safety filter…" for a refused turn); it replays as the turn's notice, so a turn that failed outside Sesori still shows one, and a reload of a turn seen live shows only Hermes's live reason, followed by the row's warning when actions may already have run. Wording read in the Hermes 0.21.5 source on 2026-11-09 and the 0.23.1 source on 2026-11-12. Hermes appends its generic "Your request was not processed…" row to a live reason; Sesori drops it so the notice reads the same live and after a reload. Hermes then fails the prompt with `admitted_turn_failed`, which adds no second notice; when the model streamed part of a reply first, Hermes sends no failure text, so that failed prompt shows as Hermes's own "Your request was not processed…" notice. ⚠️ A reasoning-only stop stays a reply, since it carries the model's last thoughts, and so do the "No reply:" explanations for exits that do not fail the turn (no reply after retries, a partial stream recovered, prior context shown, restart limits, budget or iteration limit reached, an interrupted call). 🚫 Hermes does not report its provider retries over ACP, so such a turn shows "Working…" for about 6.5 minutes before the error arrives. |
 
 Claude Code does not need text matching: it tags a failed turn's assistant
@@ -1248,6 +1252,61 @@ session set to Ask: one prompt attached a `.txt` and named a file under
 `~/.sesori/transcripts`, Claude read and quoted both, and no permission request
 was raised. A read of a file outside both folders in the same session did raise
 one.
+
+## Sending a session into another
+
+The bridge core builds session sending the same way on every harness (see
+`docs/regression/session-sending.md`). The source's agent writes the summary in
+a normal turn, and the bridge stamps the handoff marker on the live echo, so no
+harness needs native merge support. What differs is how the target's agent
+treats the transcript file outside its working directory, and what the handoff
+prompt does to a target that is running, from each plugin's
+`busyPromptHandling`:
+
+| Harness | Summary turn | Handoff marker | Reads the transcript file | Asks first | Running target |
+|---|---|---|---|---|---|
+| Claude Code 2.1.325 | ✅ | ✅ | ✅ Read it when asked, with Read. | No: step 5's read-only `Read(//<folder>/**)` rule for `~/.sesori/transcripts` (#2613), verified 2026-11-15 and rechecked 2026-11-16. | Steers into the running turn. |
+| Codex 0.169.0 | ✅ | ✅ | ✅ Read it when asked, through the shell. | No. | Steers into the running turn. |
+| OpenCode 2.3.0 | ✅ | ✅ | ✅ Read it when asked, with read. | No, on the user's config and on a stock config. | Steers into the running turn. |
+| Pi 1.5.2 | ✅ | ✅ | ✅ Read it when asked, with read. | No. | Steers into the running turn. |
+| OMP 18.20.2 (ACP) | ✅ | ✅ | ✅ Read it when asked, but kept working on its own todo instead of answering. | No. | Steers into the running turn.¹ |
+| Grok Build 1.0.30 | ✅ | ✅ | ✅ Read it when asked, with read. | No, with `permission_mode` both `always-approve` and `ask`. | Stops the running turn. |
+| Hermes 0.21.5 (ACP) | ✅ | ✅ | ✅ Read it when asked.² | No. | Stops the running turn. |
+| DeepSeek runtime 0.2.2 (ACP) | ✅ | ✅ | Unverified: the runtime needs a DeepSeek account, and live checks run only on the test proxy. | Unverified. | Stops the running turn. |
+| Cursor (ACP) | ✅ | ✅ | Unverified: the installed CLI (2026.07.23) is older than the 2026.09.23 Sesori requires. | Unverified. | Stops the running turn. |
+| Copilot (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
+| Antigravity (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
+
+¹ OMP's `busyPromptHandling` is static. The bundled OMP 18.19.0 advertises
+`_session/steering`. An older OMP on PATH without it stops the running turn,
+and the picker still shows the plain "Running" label instead of the warning. A
+steer that OMP admits as `promptRequired` runs as the next turn, without
+cancelling the current one.
+
+² Hermes ignored the first question after an aborted turn, answering "Stopped
+waiting for another Hermes process on this session. Your message was not
+processed."; the same question sent again was read and answered.
+
+Checked live on 2026-11-16 (UTC) against a source-run bridge on its local debug
+server, with one Pi session as the source and a fresh session of each installed
+harness as the target. Each target was set to Ask by its per-session approval
+override, and harnesses that need a model endpoint used the local test proxy.
+Every target received the handoff with its stamp. None read the file on
+arrival: each began on the summary's next steps, and Codex and OMP raised
+permission requests for that work, not for the read. Asked for a timestamp
+that only the transcript file held, every target read the file and quoted it,
+with no permission request for the read. On a headless iOS simulator, the Pi
+source showed "Summary sent to … · Open" and "Couldn't send to …" markers and
+the "Handoff summary" sheet. The Codex target showed the "From …" card, which
+Show all expanded.
+
+On the ACP plugin, a target whose saved agent or mode the harness rejects when
+the turn starts accepts the handoff and then drops the turn
+(`applyTurnSelection … failed; dropping turn` in the bridge log). The app
+reports Sent while the target receives nothing. This was seen on an OMP session
+whose saved agent OMP did not offer, and it applies to every ACP harness,
+because the plugin fails closed after accepting the prompt rather than refusing
+it as stale.
 
 ## Sub-agents
 

@@ -1646,6 +1646,8 @@
   "@sendSessionSending": {"description": "Alert while a send runs. {source} is the sent session's title, {target} the receiving session's.", "placeholders": {"source": {"type": "String"}, "target": {"type": "String"}}},
   "sendSessionSent": "Sent to “{target}”",
   "@sendSessionSent": {"description": "Alert when a send succeeded. {target} is the receiving session's title.", "placeholders": {"target": {"type": "String"}}},
+  "sendSessionSentArchived": "Sent to “{target}”. Archived “{source}”.",
+  "@sendSessionSentArchived": {"description": "Alert when a send succeeded and the sent session was archived, as the send sheet's switch asked. {target} is the receiving session's title, {source} the sent session's.", "placeholders": {"target": {"type": "String"}, "source": {"type": "String"}}},
   "sendSessionOpen": "Open",
   "@sendSessionOpen": {"description": "Action on the sent alert that opens the receiving session."},
   "sendSessionUnsupported": "Update Sesori on this computer to send sessions.",
@@ -1844,6 +1846,33 @@
   "sessionListInterrupted": "Interrupted",
   "@sessionListInterrupted": {
     "description": "Grey word leading a session row's meta line when the Sesori bridge stopped during the session's last turn, until the user opens the session or sends something"
+  },
+  "sessionListRecurringTaskRun": "Run of recurring task {name}",
+  "@sessionListRecurringTaskRun": {
+    "description": "Screen-reader label for the session-list mark on a session a recurring scheduled task started",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionListScheduledTaskRun": "Run of scheduled task {name}",
+  "@sessionListScheduledTaskRun": {
+    "description": "Screen-reader label for the session-list mark on a session a scheduled task of a kind this app does not know started",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionListOnceTaskRun": "Run of one-time task {name}",
+  "@sessionListOnceTaskRun": {
+    "description": "Screen-reader label for the session-list mark on a session a one-time scheduled task started",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   },
   "sessionListBackgroundTasks": "{count, plural, =1{1 background task} other{{count} background tasks}}",
   "@sessionListBackgroundTasks": {

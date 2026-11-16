@@ -558,6 +558,33 @@ void main() {
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
   });
 
+  testWidgets("a scheduled run names its task after the state and before the project", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session").copyWith(
+          scheduledTask: const SessionScheduledTaskMark(
+            taskId: "stk_1",
+            name: "Nightly cleanup",
+            kind: ScheduledTaskKind.recurring,
+          ),
+        ),
+        projectLabel: "demo-app",
+        awaitingInput: true,
+      ),
+    );
+
+    final task = find.textContaining("Nightly cleanup");
+    expect(task, findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("Run of recurring task Nightly cleanup")), findsOneWidget);
+    expect(find.byIcon(TablerRegular.repeat), findsOneWidget);
+    expect(tester.getTopRight(find.text("Waiting")).dx, lessThan(tester.getTopLeft(task).dx));
+    expect(tester.getTopRight(task).dx, lessThan(tester.getTopLeft(find.text("demo-app")).dx));
+    expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+    semantics.dispose();
+  });
+
   testWidgets("retrying leads the meta line in its colour", (tester) async {
     await pumpTile(tester, tile(session: testSession(title: "My Session"), isRunning: true, isRetrying: true));
     expect(tester.widget<Text>(find.text("Running (retrying)")).style?.color, colors.fgErrorPrimary);

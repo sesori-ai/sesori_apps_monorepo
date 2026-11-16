@@ -513,7 +513,8 @@ class const SessionTile({
   }
 
   /// The row's second line, starting under the logo: any state that needs
-  /// words, then the project, then the background tasks, apart by middle dots.
+  /// words, then the scheduled task that started the session, then the
+  /// project, then the background tasks, apart by middle dots.
   /// Under a pointer it starts on the title's edge and the harness logo ends it.
   Widget _metaLine({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
@@ -525,6 +526,7 @@ class const SessionTile({
       final project? => Text(project, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
       null => null,
     };
+    final task = _taskMark(context: context, style: style);
     final backgroundTasks = _backgroundTasks(context: context, pointer: pointer, style: style);
     if (pointer) {
       Widget separator() => ExcludeSemantics(
@@ -544,8 +546,8 @@ class const SessionTile({
                 builder: (context, constraints) => Row(
                   children: [
                     // The status keeps its words and the count its number; the
-                    // project gives way first. Only a status too long for the
-                    // whole line, with its separator, ellipsizes.
+                    // task and the project give way first. Only a status too
+                    // long for the whole line, with its separator, ellipsizes.
                     if (status != null)
                       ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: constraints.maxWidth),
@@ -553,17 +555,19 @@ class const SessionTile({
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Flexible(child: status),
-                            if (project != null) separator(),
+                            if (task != null || project != null) separator(),
                           ],
                         ),
                       ),
+                    if (task != null) Flexible(child: task),
+                    if (task != null && project != null) separator(),
                     if (project != null) Flexible(child: project),
-                    if (project != null && backgroundTasks != null) separator(),
+                    if ((task != null || project != null) && backgroundTasks != null) separator(),
                     ?backgroundTasks,
                     // With no words at all, a line of the meta text's height holds
                     // the line box, so the row is as tall as one with words at
                     // any text size.
-                    if (status == null && project == null && backgroundTasks == null)
+                    if (status == null && task == null && project == null && backgroundTasks == null)
                       SizedBox(height: context.lineHeightOf(style)),
                   ],
                 ),
@@ -579,7 +583,7 @@ class const SessionTile({
         ),
       );
     }
-    final details = <Widget>[?status, ?project, ?backgroundTasks];
+    final details = <Widget>[?status, ?task, ?project, ?backgroundTasks];
 
     Widget separator() => ExcludeSemantics(
       child: Text(_separator, style: style, maxLines: 1, softWrap: false, overflow: TextOverflow.clip),
@@ -637,6 +641,39 @@ class const SessionTile({
       return awaitingInput ? ExcludeSemantics(child: text) : text;
     }
     return null;
+  }
+
+  /// The repeat or clock glyph and the name of the scheduled task that
+  /// started the session, or null for a session the user started.
+  Widget? _taskMark({required BuildContext context, required TextStyle style}) {
+    final mark = session.scheduledTask;
+    if (mark == null) return null;
+    final loc = context.loc;
+    final (glyph, words) = switch (mark.kind) {
+      ScheduledTaskKind.recurring => (TablerRegular.repeat, loc.sessionListRecurringTaskRun(mark.name)),
+      ScheduledTaskKind.once => (TablerRegular.clock, loc.sessionListOnceTaskRun(mark.name)),
+      ScheduledTaskKind.unknown => (TablerRegular.calendar_time, loc.sessionListScheduledTaskRun(mark.name)),
+    };
+    // One paragraph, so the glyph sits in the text's own line box and the
+    // name ellipsizes with the text when the line runs out of room.
+    return Text.rich(
+      TextSpan(
+        children: [
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
+              child: Icon(glyph, size: _backgroundTasksGlyphSize, color: style.color),
+            ),
+          ),
+          TextSpan(text: mark.name),
+        ],
+      ),
+      semanticsLabel: words,
+      style: style,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
   }
 
   /// The tasks running behind the turn, as a quiet count: a stack glyph and

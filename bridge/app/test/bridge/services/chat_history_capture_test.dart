@@ -14,6 +14,9 @@ import "package:claude_plugin/claude_plugin.dart"
         ClaudeToolTracker,
         ClaudeTranscriptApi,
         ClaudeTranscriptCatalogRepository;
+import "package:omp_plugin/src/omp_event_mapper.dart";
+import "package:omp_plugin/src/omp_identity.dart";
+import "package:omp_plugin/src/trackers/omp_compaction_tracker.dart";
 import "package:sesori_bridge/src/api/database/daos/session_interruption_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
@@ -2694,6 +2697,78 @@ void main() {
       });
     });
 
+    // OMP sends nothing live for a stop, so the shared ACP plugin adds the
+    // stopped row; OMP replays the stop as its "Interrupted by user" reason.
+    test("an OMP stop seen live stays one stopped row after a reload", () async {
+      const sessionId = "ses_a";
+      final replayTranscript = <MessageWithParts>[];
+      final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: replayTranscript));
+      final mapper = OmpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: OmpPluginIdentity.id,
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
+        compactionTracker: OmpCompactionTracker(clock: const ServerClock()),
+        hasPendingTurn: ({required sessionId}) => false,
+      )..beginTurn(sessionId: sessionId, messageId: "live-user");
+      await _captureAcpEvents(
+        history: history,
+        sessionId: sessionId,
+        events: [
+          ...mapper.mapSentPrompt(
+            sessionId: sessionId,
+            messageId: "live-user",
+            promptId: "prompt-1",
+            parts: const [PluginPromptPart.text(text: "request")],
+            createdAtMs: 100,
+          ),
+          ...mapper.mapUserStop(sessionId: sessionId),
+        ],
+      );
+      final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
+        shellCommandResolver: null,
+        toolNameResolver: null,
+        sessionId: sessionId,
+        agentId: OmpPluginIdentity.id,
+        initialUserMessage: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: mapper.classifyHaltNotice,
+        toolPartReplacement: null,
+        toolPartSuppression: null,
+        separatesToolMessages: false,
+      );
+      for (final update in [
+        {
+          "sessionUpdate": "user_message_chunk",
+          "content": {"type": "text", "text": "request"},
+          "messageId": "user-1",
+        },
+        {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Interrupted by user"},
+          "messageId": "assistant-1",
+        },
+      ]) {
+        collector.consume({"update": update});
+      }
+      replayTranscript.addAll(collector.build().toSharedMessageWithParts(sessionId: sessionId));
+
+      for (var reload = 0; reload < 2; reload++) {
+        await history.service.backfillSession(sessionId: sessionId);
+
+        final errors = [
+          for (final message in await _storedMessages(history: history, sessionId: sessionId))
+            if (message.info case final MessageError error) error,
+        ];
+        expect(
+          errors.map((error) => (error.kind, error.errorMessage)),
+          [(MessageErrorKind.stopped, "Stopped")],
+        );
+      }
+    });
+
     // Editing a message in the backend's own client rolls the session back and
     // deletes what followed. A bridge that was not watching never sees the
     // removal events, so the re-import's gap is the only evidence it gets.
@@ -2942,6 +3017,112 @@ void main() {
 
       expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay");
       expect(mutations.updated, ["ses_a"]);
+    });
+
+    // The bridge stopped after storing the turn's reasoning and before the
+    // tool row the replay has next.
+    test("a re-import matches the live row the interrupted turn ends on once", () async {
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Run it", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "replay-thinking", text: "Thinking", reasoning: null, createdAt: null),
+            _assistantMessageWithText(id: "replay-tool", text: "Ran it", reasoning: null, createdAt: null),
+          ],
+        ),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessages(
+        history: history,
+        messages: [
+          _messageWithText(id: "live-prompt", text: "Run it", createdAt: 100, promptId: "p1"),
+          _assistantMessageWithText(id: "live-thinking", text: "Thinking", reasoning: null, createdAt: null),
+        ],
+      );
+      await history.service.convertInterruptedTurn(leftover: await leftover(interruptions: interruptions));
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "replay-thinking", "replay-tool"],
+      );
+      expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay-thinking");
+    });
+
+    test("the first read matches that row before the plugin resolves the running turn", () async {
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Run it", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "replay-thinking", text: "Thinking", reasoning: null, createdAt: null),
+            _assistantMessageWithText(id: "replay-tool", text: "Ran it", reasoning: null, createdAt: null),
+          ],
+        ),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessages(
+        history: history,
+        messages: [
+          _messageWithText(id: "live-prompt", text: "Run it", createdAt: 100, promptId: "p1"),
+          _assistantMessageWithText(id: "live-thinking", text: "Thinking", reasoning: null, createdAt: null),
+        ],
+      );
+      await leftover(interruptions: interruptions);
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "replay-thinking", "replay-tool"],
+      );
+    });
+
+    test("a re-import matches that row when the stop cut its reasoning off mid-stream", () async {
+      MessageWithParts thinking({required String id, required String text}) => MessageWithParts(
+        info: Message.assistant(
+          id: id,
+          sessionID: "ses_a",
+          agent: "copilot",
+          modelID: null,
+          providerID: null,
+          sender: MessageSender.agent,
+          time: null,
+        ),
+        parts: [MessagePart.reasoning(id: "$id-reasoning", sessionID: "ses_a", messageID: id, text: text)],
+      );
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Run it", createdAt: null, promptId: null),
+            thinking(id: "replay-thinking", text: "Thinking"),
+            _assistantMessageWithText(id: "replay-tool", text: "Ran it", reasoning: null, createdAt: null),
+          ],
+        ),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessages(
+        history: history,
+        messages: [
+          _messageWithText(id: "live-prompt", text: "Run it", createdAt: 100, promptId: "p1"),
+          thinking(id: "live-thinking", text: ""),
+        ],
+      );
+      await history.service.convertInterruptedTurn(leftover: await leftover(interruptions: interruptions));
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "replay-thinking", "replay-tool"],
+      );
+      expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay-thinking");
     });
 
     test("a re-import queued while a conversion is between its read and its write anchors to a stored row", () async {

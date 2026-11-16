@@ -1450,6 +1450,18 @@ void main() {
       expect(again, isEmpty);
     });
 
+    test("a stopped turn that showed a halt notice keeps the notice as its one row", () {
+      mapper.beginTurn(sessionId: "s1", messageId: null);
+      mapper.map(
+        update({
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "HALT: fix it"},
+        }),
+      );
+
+      expect(mapper.mapUserStop(sessionId: "s1"), isEmpty);
+    });
+
     test("a tool clears unrendered id-less state before a later halt", () {
       mapper.beginTurn(sessionId: "s1", messageId: null);
       expect(
@@ -1757,7 +1769,7 @@ class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper 
   AcpHaltNotice? classifyHaltNotice({required String text}) {
     final trimmed = text.trim();
     if (trimmed.startsWith("HALT:")) {
-      return const AcpHaltNotice(errorName: "test_halt");
+      return const AcpHaltNotice(errorName: "test_halt", kind: PluginErrorKind.failure);
     }
     return null;
   }

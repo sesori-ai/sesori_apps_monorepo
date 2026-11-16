@@ -129,7 +129,10 @@ The bridge sends the source session a summarise prompt through the existing prom
   through the normal prompt path, and filtering transcripts the harness owns (Claude's JSONL keeps it) would differ per
   harness. So the turn stays in the harness's history, the bridge marks it (D11), and the client folds it into the
   one-line marker (D12). The same rule holds on every harness.
-- **It uses the source's prompt defaults** (agent, model, variant, fast mode), like continuation does.
+- **It uses the source's prompt defaults** (agent, model, variant, fast mode), like continuation does. When the
+  harness refuses them as stale, `SessionPromptService.sendWithDefaults` corrects the agent, variant and fast mode
+  against the rediscovered catalog and resends once, for both the summary request and the handoff; the model is
+  never replaced.
 - **Draft wording**, kept short. Sesori hides it behind the marker, but the harness's own transcript and terminal UI
   still show it:
 
@@ -158,11 +161,11 @@ The bridge sends the source session a summarise prompt through the existing prom
     `sourceUnavailable`. Any other failure of the summarise send itself, including a refusal, is also
     `sourceUnavailable`.
 - A stale-options rejection of a bridge send is its own code: `sourceOptionsUnavailable` for the summarise send (step 3)
-  and `targetOptionsUnavailable` for the handoff to the target (step 3). It means the harness no longer offers that
-  session's saved model, agent or variant. The session keeps its own model and the bridge never swaps it silently,
+  and `targetOptionsUnavailable` for the handoff to the target (step 3). The bridge first corrects a stale agent,
+  variant or fast mode and resends once, so the code means the harness no longer offers that session's saved model,
+  or the correction changed nothing. The session keeps its own model and the bridge never swaps it silently,
   because a typed prompt fails the same way and lets the user pick a replacement. The user sends that session a
-  message, which the app corrects for a stale agent or variant and which needs another model for a stale one, then
-  sends again.
+  message with another model, then sends again.
 - Readiness comes from sources that every plugin supplies:
   - `SessionRepository.getSessionStatuses()` decides idle, busy or retrying;
   - `PermissionRepository.getPendingPermissions` and `QuestionRepository.getPendingQuestions` decide awaiting input.
@@ -326,7 +329,8 @@ the summary, the transcript or prompt text.
 - **Owner: the target session.** The path is part of the target's prompt, and the target agent may read the file again
   later. So the file is deleted with the target session: `SessionDeletionService.onDeleted` removes the family's
   transcript folders as best effort, next to `_deletePromptUploads`. Deleting the source leaves the target's copy.
-  Archiving keeps the file, because an archived session can be unarchived.
+  Archiving keeps the file, because the archived session stays readable and its card still names the file (archiving
+  is final; there is no unarchive).
 - **Approval prompts.**
   - Claude Code asks today, so step 5 adds two read-only rules at every launch (S4 = B):
     `--allowedTools "Read(/<transcripts root>/**)" "Read(/<uploads root>/**)"`. With each root's leading `/`, that is
@@ -903,6 +907,15 @@ including l10n output.
 - **Risk and test focus:** low to medium. Check the refusal modal and Undo behave as in a plain archive, and that
   leaving the source page during the send still archives it.
 - **Expected result:** with the switch on, the source is archived after the summary lands. No database change.
+- **As built:**
+  - `PendingSessionArchiveCubit.archive` takes a required `callerOffersUndo`, carried on `PendingArchiveOpen`.
+    `PendingArchiveAlerts` then leaves out its own "Session archived" alert, because the send's combined alert carries
+    the archive's Undo. The flag is generic, so no `module_core` class learns about sends.
+  - `undo` takes the session id and only takes back that session's open window. The send's alert and the shared
+    alert can sit on different overlays, so a late Undo on one must never cancel a newer archive.
+  - The combined alert lasts the Undo window (5 s), not the 8 s of the other send alerts, so Undo never outlives the
+    window.
+  - The sheet reads the remembered choice before it opens, so the switch never flips while the sheet slides in.
 
 ### Step 10: analytics
 

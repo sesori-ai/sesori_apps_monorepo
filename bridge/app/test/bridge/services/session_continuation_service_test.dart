@@ -496,6 +496,13 @@ class _Prompts({required final SessionContinuationRepository records}) implement
   }
 
   @override
+  Future<void> sendWithDefaults({
+    required String sessionId,
+    required SessionPromptDefaults? defaults,
+    required Future<void> Function(PromptSettings settings) send,
+  }) => send(SessionPromptService.settingsFrom(defaults: defaults));
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

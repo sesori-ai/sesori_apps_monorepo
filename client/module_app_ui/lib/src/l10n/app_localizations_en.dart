@@ -2229,6 +2229,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String sendSessionSentArchived(String target, String source) {
+    return 'Sent to “$target”. Archived “$source”.';
+  }
+
+  @override
   String get sendSessionOpen => 'Open';
 
   @override
@@ -2543,6 +2548,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListInterrupted => 'Interrupted';
+
+  @override
+  String sessionListRecurringTaskRun(String name) {
+    return 'Run of recurring task $name';
+  }
+
+  @override
+  String sessionListScheduledTaskRun(String name) {
+    return 'Run of scheduled task $name';
+  }
+
+  @override
+  String sessionListOnceTaskRun(String name) {
+    return 'Run of one-time task $name';
+  }
 
   @override
   String sessionListBackgroundTasks(int count) {

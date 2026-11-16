@@ -56,6 +56,11 @@ entirely along with its transcript and its dedicated worktree.
   Archive and Cancel; a running pinned session gets that one question, which also says archiving stops it.
   The phone's swipe pill, full swipe and row menu, both detail menus and the desktop list all archive this
   way; a full swipe that asks springs its row back while the question is open, so Cancel leaves it in place.
+- A send into another session can archive its source (see [Session sending](session-sending.md)). With the
+  send sheet's archive switch on, the source enters the same Undo window once the target accepts the handoff,
+  removing its dedicated worktree as Archive does. The sent alert carries both Open and Undo for the five
+  seconds. A pinned source is asked about in the send sheet before anything is sent, and the archive after
+  the send asks nothing more. A send that fails archives nothing.
 - Neither shell ever asks whether the worktree survives, and no menu, checkbox or button offers to keep it.
   Archive and Delete both request removal of a dedicated worktree, and send no worktree request for a session
   that has none. The bridge's cleanup refusal is the only thing that protects unfinished work.
@@ -95,6 +100,10 @@ entirely along with its transcript and its dedicated worktree.
   reconciliation. Worktree cleanup happens whenever the session has one; unsafe
   cleanup is refused with its issues and proceeds only on a forced retry.
   Session retirement never deletes a Git branch.
+- Transcript files that sends saved for a session under `~/.sesori/transcripts/<session id>/` live as long
+  as that session. Deleting it, or a family it belongs to, removes them best-effort with its uploads; a
+  logged failure leaves only the files. Archiving keeps them, because the archived session stays readable
+  and its handoff card still names the file.
 - Deletion never depends on a reachable backend. A session whose plugin is
   uninstalled, disabled, or unstartable still deletes: worktree cleanup is Git
   only, the unreachable backend delete is logged and skipped, and the plugin

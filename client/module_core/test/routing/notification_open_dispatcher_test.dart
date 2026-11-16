@@ -59,9 +59,11 @@ void main() {
 
     test("rebuilds the home -> detail stack through route dispatcher", () async {
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
-        projectId: "project-1",
-        sessionId: "session-1",
-        sessionTitle: "Weekly planning",
+        target: NotificationOpenTarget.session(
+          projectId: "project-1",
+          sessionId: "session-1",
+          sessionTitle: "Weekly planning",
+        ),
         accountId: null,
         bridgeId: null,
       );
@@ -88,9 +90,11 @@ void main() {
 
     test("a push for the current computer opens without switching", () async {
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
-        projectId: "project-1",
-        sessionId: "session-1",
-        sessionTitle: "Weekly planning",
+        target: NotificationOpenTarget.session(
+          projectId: "project-1",
+          sessionId: "session-1",
+          sessionTitle: "Weekly planning",
+        ),
         accountId: null,
         bridgeId: "br_current",
       );
@@ -107,9 +111,11 @@ void main() {
       // not keep the app there.
       routeSource.currentLocation = "/sessions/project-1/session-1";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
-        projectId: "project-1",
-        sessionId: "session-1",
-        sessionTitle: "Weekly planning",
+        target: NotificationOpenTarget.session(
+          projectId: "project-1",
+          sessionId: "session-1",
+          sessionTitle: "Weekly planning",
+        ),
         accountId: null,
         bridgeId: "br_other",
       );
@@ -138,9 +144,11 @@ void main() {
 
     test("a push without a computer id opens on the current computer", () async {
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
-        projectId: "project-1",
-        sessionId: "session-1",
-        sessionTitle: "Weekly planning",
+        target: NotificationOpenTarget.session(
+          projectId: "project-1",
+          sessionId: "session-1",
+          sessionTitle: "Weekly planning",
+        ),
         accountId: null,
         bridgeId: null,
       );
@@ -156,9 +164,11 @@ void main() {
       // build; they must not defeat the match.
       routeSource.currentLocation = "/sessions/project-1/session-1?readOnly=false&title=Renamed";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
-        projectId: "project-1",
-        sessionId: "session-1",
-        sessionTitle: "Weekly planning",
+        target: NotificationOpenTarget.session(
+          projectId: "project-1",
+          sessionId: "session-1",
+          sessionTitle: "Weekly planning",
+        ),
         accountId: null,
         bridgeId: null,
       );
@@ -178,9 +188,11 @@ void main() {
       final startFuture = dispatcher.start();
       initialOpenCompleter.complete(
         const NotificationOpenRequest(
-          projectId: "project-1",
-          sessionId: "session-1",
-          sessionTitle: "First title",
+          target: NotificationOpenTarget.session(
+            projectId: "project-1",
+            sessionId: "session-1",
+            sessionTitle: "First title",
+          ),
           accountId: null,
           bridgeId: null,
         ),
@@ -189,9 +201,11 @@ void main() {
 
       localNotificationClient.emitOpen(
         const NotificationOpenRequest(
-          projectId: "project-2",
-          sessionId: "session-2",
-          sessionTitle: "Latest title",
+          target: NotificationOpenTarget.session(
+            projectId: "project-2",
+            sessionId: "session-2",
+            sessionTitle: "Latest title",
+          ),
           accountId: null,
           bridgeId: null,
         ),
@@ -221,9 +235,11 @@ void main() {
       await dispatcher.start();
 
       const request = NotificationOpenRequest(
-        projectId: "project-1",
-        sessionId: "session-1",
-        sessionTitle: "Weekly planning",
+        target: NotificationOpenTarget.session(
+          projectId: "project-1",
+          sessionId: "session-1",
+          sessionTitle: "Weekly planning",
+        ),
         accountId: null,
         bridgeId: null,
       );
@@ -255,9 +271,11 @@ void main() {
       await dispatcher.dispose();
       initialOpenCompleter.complete(
         const NotificationOpenRequest(
-          projectId: "project-1",
-          sessionId: "session-1",
-          sessionTitle: "Late title",
+          target: NotificationOpenTarget.session(
+            projectId: "project-1",
+            sessionId: "session-1",
+            sessionTitle: "Late title",
+          ),
           accountId: null,
           bridgeId: null,
         ),
@@ -344,6 +362,7 @@ class FakeLocalNotificationClient() implements LocalNotificationClient {
     required String? sessionId,
     required String? projectId,
     required String? sessionTitle,
+    required String? taskId,
     required String? accountId,
     required String? bridgeId,
   }) async {}

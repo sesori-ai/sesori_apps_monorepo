@@ -164,19 +164,17 @@ class FirebasePushMessagingSource implements PushMessagingSource {
       return null;
     }
 
-    final sessionId = notificationData.sessionId;
-    final projectId = notificationData.projectId;
-    if (sessionId == null || projectId == null) {
+    final target = NotificationOpenTarget.of(
+      projectId: notificationData.projectId,
+      sessionId: notificationData.sessionId,
+      sessionTitle: message.notification?.title,
+      taskId: notificationData.taskId,
+    );
+    if (target == null) {
       return null;
     }
 
-    return NotificationOpenRequest(
-      projectId: projectId,
-      sessionId: sessionId,
-      sessionTitle: message.notification?.title,
-      accountId: null,
-      bridgeId: notificationData.bridgeId,
-    );
+    return NotificationOpenRequest(target: target, accountId: null, bridgeId: notificationData.bridgeId);
   }
 
   @visibleForTesting
