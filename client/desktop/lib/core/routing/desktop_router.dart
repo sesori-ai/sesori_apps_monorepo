@@ -141,6 +141,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           filterTracker: getIt<SessionListFilterTracker>(),
           sseEventTracker: getIt<SseEventTracker>(),
           sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+          sessionSendTracker: getIt<SessionSendTracker>(),
           child: ArchivedSessionsView(
             emptyState: const SessionArchivedEmptyState(artwork: null),
             // The connection pill and the sidebar's recovery card already say so.

@@ -82,6 +82,7 @@ void main() {
       test("returns ${outcome.runtimeType.toString()}", () async {
         when(
           () => actionService.sendToSession(
+            targetTitle: any(named: "targetTitle"),
             sourceSessionId: "source",
             sourcePluginId: "codex",
             targetSessionId: "target",
@@ -89,7 +90,12 @@ void main() {
         ).thenAnswer((_) async => outcome);
 
         expect(
-          await cubit.sendToSession(sourceSessionId: "source", sourcePluginId: "codex", targetSessionId: "target"),
+          await cubit.sendToSession(
+            targetTitle: "Target",
+            sourceSessionId: "source",
+            sourcePluginId: "codex",
+            targetSessionId: "target",
+          ),
           same(outcome),
         );
       });

@@ -289,6 +289,8 @@ import 'package:sesori_dart_core/src/services/session_list_filter_tracker.dart'
     as _i1070;
 import 'package:sesori_dart_core/src/services/session_list_refresh_service.dart'
     as _i478;
+import 'package:sesori_dart_core/src/services/session_send_tracker.dart'
+    as _i183;
 import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
     as _i28;
 import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
@@ -329,6 +331,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i414.SessionInteractionCalculator>(
       () => const _i414.SessionInteractionCalculator(),
+    );
+    gh.lazySingleton<_i183.SessionSendTracker>(
+      () => _i183.SessionSendTracker(),
     );
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
@@ -949,6 +954,7 @@ extension GetItInjectableX on _i174.GetIt {
         selectedComputerService: gh<_i370.SelectedComputerService>(),
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
         pluginRepository: gh<_i337.PluginRepository>(),
+        sendTracker: gh<_i183.SessionSendTracker>(),
       ),
     );
     gh.lazySingleton<_i8.SessionLaunchService>(

@@ -66,6 +66,11 @@ class const SessionTile({
   required final bool isInterrupted,
   final int backgroundTaskCount = 0,
 
+  /// This app's send of the session into another, while the session writes
+  /// its summary: a paper plane takes the sparkle's place and the meta line
+  /// says where it goes.
+  required final SessionSending? sending,
+
   /// Opens the session.
   required final VoidCallback onTap,
 
@@ -91,6 +96,9 @@ class const SessionTile({
   /// Whether the row shows an agent at work: running, unless waiting on the
   /// user, which wins. The turning sparkle and the breathing harness logo say it.
   bool get _working => isRunning && !awaitingInput;
+
+  /// The send the row shows. Waiting for the user still wins.
+  SessionSending? get _shownSending => awaitingInput ? null : sending;
 
   /// How the harness logo shows: breathing while an agent works, in colour
   /// while the session has unread activity or is the open one, grey otherwise.
@@ -290,7 +298,7 @@ class const SessionTile({
             child: _TitleLine(
               title: _title(context: context, pointer: false),
               pin: _LeadingPin(pinned: session.pinned, pointer: false),
-              mark: state != null ? Semantics(label: state.label, child: state.mark) : null,
+              mark: state != null ? _crossFadeMark(context: context, label: state.label, mark: state.mark) : null,
             ),
           ),
           ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2, holdsColumn: false),
@@ -322,7 +330,7 @@ class const SessionTile({
                       child: SizedBox.square(
                         dimension: _markSize,
                         child: Center(
-                          child: Semantics(label: state.label, child: state.mark),
+                          child: _crossFadeMark(context: context, label: state.label, mark: state.mark),
                         ),
                       ),
                     ),
@@ -518,6 +526,9 @@ class const SessionTile({
         ),
       );
     }
+    if (_shownSending case final sending?) {
+      return (label: _sendingWords(context: context, sending: sending), mark: const _SendingMark());
+    }
     if (isRunning) {
       return (label: loc.sessionListRunning, mark: const PregoAiLoader(size: _markSize));
     }
@@ -562,34 +573,39 @@ class const SessionTile({
           spacing: PregoSpacing.xs,
           children: [
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) => Row(
-                  children: [
-                    // The status keeps its words and the count its number; the
-                    // task and the project give way first. Only a status too
-                    // long for the whole line, with its separator, ellipsizes.
-                    if (status != null)
-                      ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: constraints.maxWidth),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(child: status),
-                            if (task != null || project != null) separator(),
-                          ],
+              child: _crossFadeWords(
+                context: context,
+                style: style,
+                pointer: pointer,
+                details: LayoutBuilder(
+                  builder: (context, constraints) => Row(
+                    children: [
+                      // The status keeps its words and the count its number; the
+                      // task and the project give way first. Only a status too
+                      // long for the whole line, with its separator, ellipsizes.
+                      if (status != null)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(child: status),
+                              if (task != null || project != null) separator(),
+                            ],
+                          ),
                         ),
-                      ),
-                    if (task != null) Flexible(child: task),
-                    if (task != null && project != null) separator(),
-                    if (project != null) Flexible(child: project),
-                    if ((task != null || project != null) && backgroundTasks != null) separator(),
-                    ?backgroundTasks,
-                    // With no words at all, a line of the meta text's height holds
-                    // the line box, so the row is as tall as one with words at
-                    // any text size.
-                    if (status == null && task == null && project == null && backgroundTasks == null)
-                      SizedBox(height: context.lineHeightOf(style)),
-                  ],
+                      if (task != null) Flexible(child: task),
+                      if (task != null && project != null) separator(),
+                      if (project != null) Flexible(child: project),
+                      if ((task != null || project != null) && backgroundTasks != null) separator(),
+                      ?backgroundTasks,
+                      // With no words at all, a line of the meta text's height holds
+                      // the line box, so the row is as tall as one with words at
+                      // any text size.
+                      if (status == null && task == null && project == null && backgroundTasks == null)
+                        SizedBox(height: context.lineHeightOf(style)),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -613,28 +629,85 @@ class const SessionTile({
     // the line instead of being cropped to the 1x line box.
     return ConstrainedBox(
       constraints: BoxConstraints(minHeight: _metaLineHeightOf(pointer: pointer)),
-      child: Row(
-        children: [
-          for (final (index, detail) in details.indexed)
-            // Each separator yields with the detail it leads, so scaled-up
-            // text shrinks details rather than overflowing the line.
-            Flexible(
-              child: index == 0
-                  ? detail
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(child: separator()),
-                        Flexible(flex: 3, child: detail),
-                      ],
-                    ),
-            ),
-          // With nothing to show, a line of the meta text's height still
-          // holds the line at the current text scale, so the row stays as
-          // tall as its neighbours and as the launching row it replaces.
-          if (details.isEmpty) SizedBox(height: context.lineHeightOf(style)),
-        ],
+      child: _crossFadeWords(
+        context: context,
+        style: style,
+        pointer: pointer,
+        details: Row(
+          children: [
+            for (final (index, detail) in details.indexed)
+              // Each separator yields with the detail it leads, so scaled-up
+              // text shrinks details rather than overflowing the line.
+              Flexible(
+                child: index == 0
+                    ? detail
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(child: separator()),
+                          Flexible(flex: 3, child: detail),
+                        ],
+                      ),
+              ),
+            // With nothing to show, a line of the meta text's height still
+            // holds the line at the current text scale, so the row stays as
+            // tall as its neighbours and as the launching row it replaces.
+            if (details.isEmpty) SizedBox(height: context.lineHeightOf(style)),
+          ],
+        ),
       ),
+    );
+  }
+
+  /// The target's name in "Sending to …" words.
+  String _sendingWords({required BuildContext context, required SessionSending sending}) {
+    final loc = context.loc;
+    return loc.sessionListSending(sending.targetTitle ?? loc.sessionDetailTitle);
+  }
+
+  /// The status mark, cross-fading as a send starts and ends; the other marks
+  /// change in place, so the sparkle keeps its own settle when a turn ends.
+  Widget _crossFadeMark({required BuildContext context, required String label, required Widget mark}) =>
+      AnimatedSwitcher(
+        duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+        switchInCurve: transcriptMotionCurve,
+        switchOutCurve: transcriptMotionCurve.flipped,
+        child: Semantics(key: ValueKey(_shownSending != null), label: label, child: mark),
+      );
+
+  /// The meta line's words, which cross-fade to "Sending to …" while this app
+  /// sends the session and back when the send ends, in the line's own room so
+  /// nothing moves. The mark already speaks the send to a screen reader.
+  Widget _crossFadeWords({
+    required BuildContext context,
+    required TextStyle style,
+    required bool pointer,
+    required Widget details,
+  }) {
+    final sending = _shownSending;
+    return AnimatedSwitcher(
+      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      switchInCurve: transcriptMotionCurve,
+      switchOutCurve: transcriptMotionCurve.flipped,
+      layoutBuilder: (current, previous) => Stack(
+        alignment: AlignmentDirectional.centerStart,
+        children: [...previous, ?current],
+      ),
+      child: switch (sending) {
+        null => KeyedSubtree(key: const ValueKey("details"), child: details),
+        final sending => ExcludeSemantics(
+          key: const ValueKey("sending"),
+          child: Text(
+            _sendingWords(context: context, sending: sending),
+            style: _metaStyleOf(context: context, pointer: pointer).copyWith(
+              fontWeight: FontWeight.w500,
+              color: context.prego.colors.textSecondary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      },
     );
   }
 
@@ -1031,6 +1104,67 @@ class const _HarnessLogo({required final String pluginId, required final _LogoTo
   }
 }
 
+/// The paper plane that takes the turning sparkle's place while this app
+/// sends the session into another. It loops gently: drifts a little forward
+/// while fading in and out, so the wrap back never shows. Under reduced
+/// motion it holds still.
+class const _SendingMark() extends StatefulWidget {
+  @override
+  State<_SendingMark> createState() => _SendingMarkState();
+}
+
+class _SendingMarkState() extends State<_SendingMark> with SingleTickerProviderStateMixin {
+  static const Duration _period = Duration(milliseconds: 1200);
+
+  /// How far the plane drifts each way along its heading, up and to the end.
+  static const double _drift = 1.5;
+
+  /// The part of the loop spent fading in, and again fading out.
+  static const double _fade = 0.25;
+
+  late final AnimationController _loop = AnimationController(vsync: this, duration: _period);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (context.isReducedMotion) {
+      _loop.stop();
+    } else if (!_loop.isAnimating) {
+      _loop.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _loop.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(TablerRegular.send, size: _sendGlyphSize, color: context.prego.colors.textPrimary);
+    if (context.isReducedMotion) return ExcludeSemantics(child: icon);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _loop,
+          child: icon,
+          builder: (context, child) {
+            final t = _loop.value;
+            final along = _drift * (2 * Curves.easeInOut.transform(t) - 1);
+            final opacity = min(1.0, min(t, 1 - t) / _fade);
+            return Opacity(
+              opacity: opacity,
+              child: Transform.translate(offset: Offset(rtl ? -along : along, -along), child: child),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 /// Whether the pointer is over the row or keyboard focus is inside it.
 class const _PointerReveal({required final Widget Function(BuildContext context, bool revealed) builder})
     extends StatefulWidget {
@@ -1142,6 +1276,9 @@ const double _titleFadeWidth = 18;
 /// padding. A date is wider and widens its own row's column.
 const double _pointerTimeWidth = 31;
 const double _waitingDotSize = 8;
+
+/// The paper plane's glyph inside the mark's slot, as the sparkle's is.
+const double _sendGlyphSize = 14;
 
 /// As large as the status marks, so the logo and the mark read as glyphs of
 /// one size around the title.

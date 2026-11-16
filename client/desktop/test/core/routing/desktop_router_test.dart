@@ -614,6 +614,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                           label: "open archived row",
                           action: () => archived.onSessionTap(
                             row: const AllSessionsRow(
+                              sending: null,
                               session: _session,
                               project: ProjectSummary(id: "p", name: "UI / Core", path: "/fixture", time: null),
                               isRunning: false,

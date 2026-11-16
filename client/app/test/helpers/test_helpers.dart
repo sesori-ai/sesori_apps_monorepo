@@ -127,6 +127,7 @@ void _registerListServices({
   }
   getIt.registerFactory<SessionActionService>(
     () => SessionActionService(
+      sendTracker: SessionSendTracker(),
       sessionRepository: getIt<SessionRepository>(),
       sessionCleanupService: getIt<SessionCleanupService>(),
       sessionUnseenTracker: getIt<SessionUnseenTracker>(),
@@ -219,6 +220,7 @@ Widget testHome() {
   final filterTracker = _MockSessionListFilterTracker();
   when(() => filterTracker.projectId).thenAnswer((_) => BehaviorSubject<String?>.seeded(null).stream);
   return SessionScope(
+    sessionSendTracker: SessionSendTracker(),
     createProjectInventory: getIt.call<ProjectInventoryService>,
     createSessionWindow: ({required mode, required projectInventory}) =>
         getIt<SessionWindowService>(param1: mode, param2: projectInventory),
@@ -272,6 +274,7 @@ Widget sessionRowApp({
   final sessions = _MockAllSessionsCubit();
   final rows = [
     AllSessionsRow(
+      sending: null,
       session: session,
       project: project,
       isRunning: false,

@@ -156,6 +156,7 @@ void main() {
       catalogRescanService: catalog,
     );
     final cubit = AllSessionsCubit(
+      sessionSendTracker: SessionSendTracker(),
       window: window,
       projectInventory: projectInventory,
       filterTracker: filterTracker,

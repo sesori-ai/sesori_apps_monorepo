@@ -179,6 +179,18 @@ The bridge answers a send that did not happen with 409 and a
   request before the send marks it, or an update held behind the stop, still
   never shows it as a bubble.
 
+### Source row in the list
+
+- While a send is in flight from this device, including while the app reads
+  back an answer it lost, the source's row in the session list shows a send
+  glyph in place of the running sparkle, drifting forward and fading on a
+  1.2 s loop (still under reduce motion). Its meta line cross-fades to
+  "Sending to “<target>”…" ("Session" for an untitled target, as in the alerts) and back
+  when the send ends. Waiting for input still wins over sending.
+- The row keeps its height and the title its place; only the mark and the
+  meta line's words cross-fade.
+- Other devices don't show it yet.
+
 ### Target card
 
 - The handoff prompt shows as a card in place of a bubble: "From <source>",
@@ -220,7 +232,7 @@ The bridge answers a send that did not happen with 409 and a
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated bridge tests: `session_send_service_test` (refusals before anything is sent, readiness, the summary split and earlier summary exchanges left out, stop, error, timeout and shutdown failures, the not-sent stamp before and after the echo, the request's marker held until its stored message replaces it, stale source and target options, a target archived during the summary, the transcript removed after a target refusal, a failed transcript write, no text in the log), `session_prompt_service_test` (the stale-option correction), `omp_session_options_service_test` and `omp_plugin_test` (OMP refusing a stale model, mode or thinking level before accepting the send), `cursor_plugin_test` (Cursor refusing the same before accepting the send, and failing the turn when it rejects an option it still lists), `hermes_session_options_service_test` (Hermes refusing a stale model before accepting the send), `deepseek_session_options_test` (DeepSeek refusing a stale model or reasoning level, or a stale model against the session's own list), `send_to_session_handler_test`, `session_transcript_markdown_builder_test`, `prompt_stamp_tracker_test`, `session_repository_test` (the held request listed until released), `orchestrator_emit_bridge_event_test` (a request marked while its update waits goes out stamped), `chat_history_capture_test` (the marked request announced with its text) and `message_handoff_test`. Automated client tests: `session_send_flow_test` (the archive switch, Open and Undo, the pinned question, leaving the page mid-send), `send_session_sheet_test` and `session_search_cubit_test` (the source excluded, Running labels, same-named projects), `transcript_handoffs_test` and `handoff_rows_test` (marker height and Open, folding, an earlier request no longer written once a newer one is queued, card Show all and Show less without moving the rows above), `session_detail_bridge_queue_test` (a bridge-owned request never restored to the composer), `pending_archive_alerts_test` and `archive_after_send_preference_storage_test`. |
+| L2 Routine | Automated bridge tests: `session_send_service_test` (refusals before anything is sent, readiness, the summary split and earlier summary exchanges left out, stop, error, timeout and shutdown failures, the not-sent stamp before and after the echo, the request's marker held until its stored message replaces it, stale source and target options, a target archived during the summary, the transcript removed after a target refusal, a failed transcript write, no text in the log), `session_prompt_service_test` (the stale-option correction), `omp_session_options_service_test` and `omp_plugin_test` (OMP refusing a stale model, mode or thinking level before accepting the send), `cursor_plugin_test` (Cursor refusing the same before accepting the send, and failing the turn when it rejects an option it still lists), `hermes_session_options_service_test` (Hermes refusing a stale model before accepting the send), `deepseek_session_options_test` (DeepSeek refusing a stale model or reasoning level, or a stale model against the session's own list), `send_to_session_handler_test`, `session_transcript_markdown_builder_test`, `prompt_stamp_tracker_test`, `session_repository_test` (the held request listed until released), `orchestrator_emit_bridge_event_test` (a request marked while its update waits goes out stamped), `chat_history_capture_test` (the marked request announced with its text) and `message_handoff_test`. Automated client tests: `session_send_flow_test` (the archive switch, Open and Undo, the pinned question, leaving the page mid-send), `session_tile_states_test` (the sending row swapping its mark and words in place), `send_session_sheet_test` and `session_search_cubit_test` (the source excluded, Running labels, same-named projects), `transcript_handoffs_test` and `handoff_rows_test` (marker height and Open, folding, an earlier request no longer written once a newer one is queued, card Show all and Show less without moving the rows above), `session_detail_bridge_queue_test` (a bridge-owned request never restored to the composer), `pending_archive_alerts_test` and `archive_after_send_preference_storage_test`. |
 | L3 Release | On a headless iOS simulator against a local bridge: send from a session's menu into a session of another harness; check the loading and Sent alerts, Open, the source marker without a jump when the turn ends, the summary sheet, and the target card with Show all. Repeat with the archive switch on and use Undo. |
 | L4 Extended | Every installed harness as a target, through `POST /session/send-to-session`: ask the target for a detail only the transcript file holds, in Ask mode, and record whether it reads the file and whether it asks (see `docs/HARNESS_CAPABILITIES.md`). A busy source and Stop; Stop during the summary; a running steer target and a running stopTurn target; a pinned source with the switch on; a bridge without the route. |
 | L5 Full | No additional coverage. |
@@ -256,6 +268,8 @@ flight.
 - A transcript file outlives a deleted target, or is gone while an archived
   target still names it.
 - Show all moves the rows above the card.
+- The source's row keeps its sparkle while a send is in flight, keeps
+  "Sending to …" after the send ends, or changes height as it swaps.
 
 ## Known Limitations
 

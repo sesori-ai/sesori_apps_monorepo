@@ -37,6 +37,7 @@ class const SessionScope({
   required final SessionListFilterTracker filterTracker,
   required final SseEventTracker sseEventTracker,
   required final SessionUnseenTracker sessionUnseenTracker,
+  required final SessionSendTracker sessionSendTracker,
 
   /// The navigator whose overlay shows the scope's alerts, so they share one
   /// alert slot with the pages' own alerts when the scope sits above that
@@ -76,6 +77,7 @@ class const SessionScope({
               filterTracker: filterTracker,
               sseEventTracker: sseEventTracker,
               sessionUnseenTracker: sessionUnseenTracker,
+              sessionSendTracker: sessionSendTracker,
             ),
           ),
           // For each list's own launching rows.
@@ -102,12 +104,14 @@ AllSessionsCubit createAllSessionsCubit({
   required SessionListFilterTracker filterTracker,
   required SseEventTracker sseEventTracker,
   required SessionUnseenTracker sessionUnseenTracker,
+  required SessionSendTracker sessionSendTracker,
 }) => AllSessionsCubit(
   window: context.read<SessionWindowService>(),
   projectInventory: context.read<ProjectInventoryService>(),
   filterTracker: filterTracker,
   sseEventTracker: sseEventTracker,
   sessionUnseenTracker: sessionUnseenTracker,
+  sessionSendTracker: sessionSendTracker,
 );
 
 /// A route's archived list under the enclosing [SessionScope]: its own
@@ -125,6 +129,7 @@ class const ArchivedSessionsScope({
   required final SessionListFilterTracker filterTracker,
   required final SseEventTracker sseEventTracker,
   required final SessionUnseenTracker sessionUnseenTracker,
+  required final SessionSendTracker sessionSendTracker,
   required final Widget child,
 }) extends StatelessWidget {
   @override
@@ -147,6 +152,7 @@ class const ArchivedSessionsScope({
             filterTracker: filterTracker,
             sseEventTracker: sseEventTracker,
             sessionUnseenTracker: sessionUnseenTracker,
+            sessionSendTracker: sessionSendTracker,
           ),
         ),
       ],
