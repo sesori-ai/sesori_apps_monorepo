@@ -2037,6 +2037,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       createdAtMs: createdAtMs,
       contentPadding: _kReplyPadding,
       selectionArea: selectionArea,
+      showsLoneStep: false,
     ),
   );
 

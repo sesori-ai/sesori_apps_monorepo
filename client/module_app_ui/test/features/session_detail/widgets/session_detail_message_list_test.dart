@@ -1790,6 +1790,90 @@ void main() {
     expect(find.text("Future sender"), findsOneWidget);
   });
 
+  testWidgets(
+    "an Automation card shows a lone step's row; a turn and a card of two steps, even split by text, keep their counts",
+    (
+      tester,
+    ) async {
+      MessagePart tool({required String messageId, required String id, required String name}) => MessagePart.tool(
+        id: id,
+        sessionID: "session-1",
+        messageID: messageId,
+        tool: name,
+        state: const ToolState(
+          status: ToolStatus.completed,
+          title: null,
+          shellCommand: null,
+          output: null,
+          error: null,
+        ),
+      );
+      MessageWithParts assistant({
+        required String id,
+        required MessageSender sender,
+        required List<MessagePart> parts,
+      }) => MessageWithParts(
+        info: Message.assistant(
+          id: id,
+          sessionID: "session-1",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          sender: sender,
+          time: null,
+        ),
+        parts: parts,
+      );
+
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: [
+            assistant(
+              id: "turn",
+              sender: MessageSender.agent,
+              parts: [tool(messageId: "turn", id: "turn-tool", name: "read")],
+            ),
+            assistant(
+              id: "lone",
+              sender: MessageSender.system,
+              parts: [tool(messageId: "lone", id: "lone-tool", name: "lint report")],
+            ),
+            assistant(
+              id: "pair",
+              sender: MessageSender.system,
+              parts: [
+                tool(messageId: "pair", id: "pair-tool-1", name: "build report"),
+                tool(messageId: "pair", id: "pair-tool-2", name: "test report"),
+              ],
+            ),
+            // Text splits these steps into two groups; the card still holds two.
+            assistant(
+              id: "split",
+              sender: MessageSender.system,
+              parts: [
+                tool(messageId: "split", id: "split-tool-1", name: "audit report"),
+                const MessagePart.text(id: "split-text", sessionID: "session-1", messageID: "split", text: "Between"),
+                tool(messageId: "split", id: "split-tool-2", name: "deploy report"),
+              ],
+            ),
+          ],
+          initialStreamingText: const {},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("Between"), findsOneWidget);
+      expect(find.text("Audit report"), findsNothing);
+      expect(find.text("Deploy report"), findsNothing);
+      // The agent turn's group and each of the split card's two groups.
+      expect(find.text("1 step"), findsNWidgets(3));
+      expect(find.text("Read"), findsNothing);
+      expect(find.text("Lint report"), findsOneWidget);
+      expect(find.text("2 steps"), findsOneWidget);
+      expect(find.text("Build report"), findsNothing);
+    },
+  );
+
   testWidgets("renders bridge-queued prompts as cancellable queued bubbles", (tester) async {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(

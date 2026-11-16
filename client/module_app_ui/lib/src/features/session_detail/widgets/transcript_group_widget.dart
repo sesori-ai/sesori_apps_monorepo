@@ -24,6 +24,11 @@ class const TranscriptGroupWidget({
   super.key,
   required final String? projectId,
   required final TranscriptGroupBlock group,
+
+  /// Whether a group of one step shows that step's row in place of a
+  /// one-step summary. An Automation card's does, so a lone background report
+  /// reads, and opens, at a glance.
+  required final bool showsLoneStep,
 }) extends StatelessWidget {
   /// The popover's size: wide enough for a command, short enough to stay a
   /// glance; past the height its steps scroll.
@@ -32,6 +37,11 @@ class const TranscriptGroupWidget({
 
   @override
   Widget build(BuildContext context) {
+    // A lone step keeps its key whether it runs or has finished, so its live
+    // row settles in place instead of folding into a summary.
+    if (group.steps case [final step] when showsLoneStep) {
+      return TranscriptPresenceColumn(children: [_step(step: step)]);
+    }
     final finishedCount = group.finishedSteps.length;
     return TranscriptPresenceColumn(
       children: [
