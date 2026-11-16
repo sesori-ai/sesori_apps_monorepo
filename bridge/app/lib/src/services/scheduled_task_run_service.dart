@@ -15,32 +15,40 @@ import "scheduled_task_occurrence_calculator.dart";
 import "scheduled_task_request_exception.dart";
 import "scheduled_task_run_failure.dart";
 import "session_creation_service.dart";
+import "session_operation_dispatcher.dart";
 import "session_options_service.dart";
+import "session_prompt_service.dart";
 import "stale_session_prompt_options_exception.dart";
+import "yolo_settings_service.dart";
 
 /// Fires tasks: every due task on each timer pass, and one task on Run now.
 ///
 /// A fire writes its history row, with the task's advanced next due time, in
-/// one transaction before the session is created, so a crash can lose a run
-/// but never start one twice. Every history row written is announced on
-/// [changes], and every run that could not start on [failures].
+/// one transaction before the prompt is sent, so a crash can lose a run but
+/// never start one twice. A new-session run creates a session; a same-session
+/// run continues in the task's target session, creating and targeting one
+/// when there is none. Every history row written is announced on [changes],
+/// and every run that could not start on [failures].
 class ScheduledTaskRunService({
   required final ScheduledTaskRepository _repository,
   required final SessionCreationService _sessionCreation,
+  required final SessionPromptService _prompts,
+  required final SessionOperationDispatcher _operations,
+  required final YoloSettingsService _yoloSettings,
   required final SessionRepository _sessions,
   required final SessionOptionsService _sessionOptions,
   required final ScheduledTaskOccurrenceCalculator _calculator,
   required final Clock _clock,
 }) {
-  /// How long after its session is created a run counts as going before the
+  /// How long after its prompt goes out a run counts as going before its
   /// session's quietness decides.
   static const Duration startupGrace = Duration(seconds: 30);
 
   /// Serializes every pass and Run now, so no two fire the same task.
   final ParallelLock _lock = ParallelLock(maxParallelOperations: 1);
 
-  /// When each task's latest run got its session.
-  final Map<String, DateTime> _sessionCreatedAt = {};
+  /// When each task's latest run's prompt went out.
+  final Map<String, DateTime> _promptSentAt = {};
   final StreamController<void> _changes = StreamController<void>.broadcast();
   final StreamController<ScheduledTaskRunFailure> _failures = StreamController<ScheduledTaskRunFailure>.broadcast();
 
@@ -63,9 +71,6 @@ class ScheduledTaskRunService({
 
   Future<void> _runDueLocked() async {
     for (final (:task, :dueAt) in await _repository.listDue(now: _clock.now())) {
-      // Same-session tasks need their target session flow and are not fired
-      // yet; they stay due until it lands.
-      if (task.definition.runMode is! TaskRunModeNewSession) continue;
       try {
         await _fireDue(task: task, dueAt: dueAt);
       } on Object catch (error, stackTrace) {
@@ -105,7 +110,6 @@ class ScheduledTaskRunService({
   Future<ScheduledTaskRun> _runNowLocked({required String taskId}) async {
     final task = await _repository.get(taskId: taskId);
     if (task == null || task.completedAt != null) _refuse(code: ScheduledTaskErrorCode.taskNotFound);
-    if (task.definition.runMode is! TaskRunModeNewSession) _refuse(code: ScheduledTaskErrorCode.unsupportedByBridge);
     if (await _isPreviousRunActive(taskId: task.id)) _refuse(code: ScheduledTaskErrorCode.previousRunActive);
     final now = _clock.now();
     final blocker = await _startBlocker(task: task);
@@ -132,14 +136,14 @@ class ScheduledTaskRunService({
   Future<bool> _isPreviousRunActive({required String taskId}) async {
     final sessionId = await _repository.latestStartedSessionId(taskId: taskId);
     if (sessionId == null) return false;
-    // A harness reports a new turn's busy status a moment after the create
-    // returns, so until then the session reads quiet. A run whose session was
-    // created this recently counts as going whatever its session reads.
+    // A harness reports a new turn's busy status a moment after the prompt
+    // goes out, so until then the session reads quiet. A run whose prompt went
+    // out this recently counts as going whatever its session reads.
     // ponytail: a run that really ends inside the grace still refuses Run now
     // until the grace passes, and a bridge restart forgets the grace; track
     // the first busy status if either bites.
-    final createdAt = _sessionCreatedAt[taskId];
-    if (createdAt != null && _clock.now().difference(createdAt) < startupGrace) return true;
+    final sentAt = _promptSentAt[taskId];
+    if (sentAt != null && _clock.now().difference(sentAt) < startupGrace) return true;
     return switch (await _sessions.getSessionQuietness(sessionId: sessionId)) {
       SessionQuietness.working || SessionQuietness.awaitingUser => true,
       // Unknown is no sign of a run still going, and a session its harness
@@ -221,12 +225,9 @@ class ScheduledTaskRunService({
     required bool late,
   }) async {
     final definition = task.definition;
-    final Session session;
+    final String sessionId;
     try {
-      session = await _sessionCreation.createScheduledRunSession(
-        request: _createRequest(definition: definition),
-        scheduledRun: (taskId: task.id, approvalOverride: _approvalOverride(mode: definition.approvalMode)),
-      );
+      sessionId = await _sendRunPrompt(task: task);
     } on Object catch (error, stackTrace) {
       final reason = switch (error) {
         ProjectNotFoundException() => TaskRunFailureReason.projectMissing,
@@ -234,7 +235,7 @@ class ScheduledTaskRunService({
         _ => TaskRunFailureReason.startFailed,
       };
       Log.w(
-        "Scheduled task ${task.id} could not start a session in project ${definition.projectId} "
+        "Scheduled task ${task.id} could not start its run in project ${definition.projectId} "
         "with ${definition.pluginId} (${reason.name})",
         error,
         stackTrace,
@@ -245,14 +246,96 @@ class ScheduledTaskRunService({
       _failures.add(ScheduledTaskRunFailure(taskId: task.id, taskName: definition.name, reason: reason));
       return failed;
     }
-    _sessionCreatedAt[task.id] = _clock.now();
-    if (await _repository.setRunSession(runId: run.id, sessionId: session.id)) {
+    _promptSentAt[task.id] = _clock.now();
+    if (await _repository.setRunSession(runId: run.id, sessionId: sessionId)) {
       _changes.add(null);
     } else {
-      Log.i("Scheduled task ${task.id} was deleted while its run started session ${session.id}");
+      Log.i("Scheduled task ${task.id} was deleted while its run went to session $sessionId");
     }
     return run.copyWith(
-      outcome: ScheduledTaskRunOutcome.started(sessionId: session.id, late: late),
+      outcome: ScheduledTaskRunOutcome.started(sessionId: sessionId, late: late),
+    );
+  }
+
+  /// Sends the run's prompt and returns the session it went to: the target of
+  /// a same-session task while it can still be prompted, otherwise a new
+  /// session, which a same-session task then continues in.
+  Future<String> _sendRunPrompt({required ScheduledTaskRecord task}) async {
+    switch (task.definition.runMode) {
+      case TaskRunModeSameSession():
+        if (await _promptableTarget(task: task) case final targetId?) {
+          await _continueIn(sessionId: targetId, definition: task.definition);
+          return targetId;
+        }
+        final session = await _createSession(task: task);
+        if (!await _repository.setTargetSession(task: task, sessionId: session.id)) {
+          Log.i(
+            "Scheduled task ${task.id} changed while its run started session ${session.id}; the change keeps its target",
+          );
+        }
+        return session.id;
+      case TaskRunModeNewSession() || TaskRunModeUnknown():
+        return (await _createSession(task: task)).id;
+    }
+  }
+
+  /// The task's target session, or null when it has none or it is gone: a
+  /// deleted target is cleared with its row, and an archived one can never be
+  /// prompted again, so the run starts a fresh session (D9).
+  Future<String?> _promptableTarget({required ScheduledTaskRecord task}) async {
+    final targetId = task.targetSessionId;
+    if (targetId == null) return null;
+    final target = await _sessions.getStoredSession(sessionId: targetId);
+    if (target == null || target.archivedAt != null) {
+      Log.i("Scheduled task ${task.id} starts a fresh session: its session $targetId is archived or deleted");
+      return null;
+    }
+    return targetId;
+  }
+
+  Future<Session> _createSession({required ScheduledTaskRecord task}) {
+    final definition = task.definition;
+    final (:command, :commandSource, :parts) = _promptOf(definition: definition);
+    return _sessionCreation.createScheduledRunSession(
+      request: CreateSessionRequest(
+        projectId: definition.projectId,
+        pluginId: definition.pluginId,
+        parts: parts,
+        agent: definition.agent,
+        model: definition.model,
+        command: command,
+        commandSource: commandSource,
+        variant: definition.variant,
+        fastMode: definition.fastMode,
+        dedicatedWorktree: definition.dedicatedWorktree,
+      ),
+      scheduledRun: (taskId: task.id, approvalOverride: _approvalOverride(mode: definition.approvalMode)),
+    );
+  }
+
+  /// Sends the prompt on [sessionId]'s lane with the task's current options,
+  /// after putting the session in the task's approval mode.
+  Future<void> _continueIn({required String sessionId, required ScheduledTaskDefinition definition}) async {
+    await _yoloSettings.setSessionOverride(
+      sessionId: sessionId,
+      approvalOverride: _approvalOverride(mode: definition.approvalMode),
+    );
+    final (:command, :commandSource, :parts) = _promptOf(definition: definition);
+    await _operations.dispatch(
+      sessionId: sessionId,
+      operation: command == null ? SessionOperation.sendPrompt : SessionOperation.sendCommand,
+      body: () => _prompts.sendPromptAlreadyReserved(
+        sessionId: sessionId,
+        promptId: SessionPromptService.generatePromptId(),
+        parts: parts,
+        variant: definition.variant,
+        fastMode: definition.fastMode,
+        agent: definition.agent,
+        model: definition.model,
+        command: command,
+        commandSource: commandSource,
+        handoff: null,
+      ),
     );
   }
 
@@ -261,24 +344,15 @@ class ScheduledTaskRunService({
     offsetMinutes: _calculator.offsetMinutesAt(instant: at, timeZone: timeZone),
   );
 
-  static CreateSessionRequest _createRequest({required ScheduledTaskDefinition definition}) {
+  static ({String? command, CommandSource? commandSource, List<PromptPart> parts}) _promptOf({
+    required ScheduledTaskDefinition definition,
+  }) {
     final (command, commandSource, text) = switch (definition.prompt) {
       ScheduledTaskPromptText(:final text) => (null, null, text),
       ScheduledTaskPromptCommand(:final name, :final source, :final arguments) => (name, source, arguments),
       ScheduledTaskPromptUnknown() => throw StateError("a saved task has an unknown prompt kind"),
     };
-    return CreateSessionRequest(
-      projectId: definition.projectId,
-      pluginId: definition.pluginId,
-      parts: [if (text != null) PromptPart.text(text: text)],
-      agent: definition.agent,
-      model: definition.model,
-      command: command,
-      commandSource: commandSource,
-      variant: definition.variant,
-      fastMode: definition.fastMode,
-      dedicatedWorktree: definition.dedicatedWorktree,
-    );
+    return (command: command, commandSource: commandSource, parts: [if (text != null) PromptPart.text(text: text)]);
   }
 
   static SessionApprovalMode _approvalOverride({required TaskApprovalMode mode}) => switch (mode) {

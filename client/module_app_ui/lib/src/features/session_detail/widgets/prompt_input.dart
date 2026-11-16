@@ -232,7 +232,8 @@ class const PromptInput({
   required final ValueChanged<bool>? onBusyChanged,
 
   /// Takes keyboard focus on the first frame, for a composer that continues
-  /// one which had it.
+  /// one which had it, and as it takes up a restored draft, for one the user
+  /// filled on purpose, such as with a message to edit.
   required final bool autofocus,
 
   /// Optional widget rendered inside the composer, above the text-field row.
@@ -814,6 +815,10 @@ class _PromptInputState() extends State<PromptInput> {
       _attachments.clear();
       _applyDraft(draft: widget.initialDraft, notify: false);
       _restoreInitialAttachments();
+      if (restorationRequested && widget.autofocus) {
+        _typingRequested = true;
+        _focusComposerField();
+      }
     }
     // Switching the new-session harness to one that drops image parts strands
     // the images staged for the previous pick, and a bridge that turns out not

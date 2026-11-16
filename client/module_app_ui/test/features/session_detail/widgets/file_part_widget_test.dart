@@ -1602,7 +1602,13 @@ void main() {
 
     await tester.pumpWidget(
       _app(
-        child: const UserMessageCard(message: message, outlineFade: null, shape: PromptTurnShape.bubble()),
+        child: const UserMessageCard(
+          message: message,
+          outlineFade: null,
+          shape: PromptTurnShape.bubble(),
+          editing: false,
+          onEdit: null,
+        ),
       ),
     );
 
