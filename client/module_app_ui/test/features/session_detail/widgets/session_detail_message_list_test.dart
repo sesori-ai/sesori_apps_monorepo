@@ -7433,6 +7433,27 @@ void main() {
       await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
     });
 
+    testWidgets("after Continue, its prompt and the Working row ease in with no frame jumping", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: null));
+      await tester.pumpAndSettle();
+      var lineTop = tester.getTopLeft(interruptedLine).dy;
+
+      harness
+        ..setInterruptedTurn(shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.promptPending))
+        ..sendDirectly(_textSubmission(promptId: "prm_continue", text: "Continue where you left off."));
+      await tester.pump();
+      for (var ms = 0; ms <= 1000; ms += 16) {
+        if (ms == 160) harness.setBusy(true);
+        if (ms == 320) harness.acceptSendingSubmission();
+        await tester.pump(const Duration(milliseconds: 16));
+        final top = tester.getTopLeft(interruptedLine).dy;
+        expect((top - lineTop).abs(), lessThan(12), reason: "the transcript glides at $ms ms");
+        lineTop = top;
+      }
+      expect(find.byType(TranscriptWorkingRow), findsOneWidget);
+    });
+
     testWidgets("offers no Continue once a later turn follows", (tester) async {
       final harness = await _pumpTurns(tester, messages: [prompt, reply]);
       harness.setInterruptedTurn(
