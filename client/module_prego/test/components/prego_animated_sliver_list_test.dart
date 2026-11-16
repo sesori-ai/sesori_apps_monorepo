@@ -75,6 +75,34 @@ void main() {
     expect([topOf("A"), topOf("B")], [0, _rowHeight]);
   });
 
+  testWidgets("in a scrolled list, the first visible row moving among the sliding rows moves nothing else", (
+    tester,
+  ) async {
+    bool slides(String item) => true;
+    final rows = [for (var at = 0; at < 30; at++) "$at"];
+    await tester.pumpWidget(_harness(rows, slidesWhenMoved: slides));
+    final position = tester.state<ScrollableState>(find.byType(Scrollable)).position..jumpTo(10.5 * _rowHeight);
+    await tester.pump();
+    double topOf(String item) => tester.getTopLeft(find.byKey(ValueKey("row-$item"))).dy;
+    final tops = {
+      for (final item in ["10", "11", "12"]) item: topOf(item),
+    };
+
+    // The row under the top edge and the one below it swap, as a row dragged
+    // up at the list's top edge passes another.
+    await tester.pumpWidget(
+      _harness(
+        [...rows]
+          ..insert(10, rows[11])
+          ..removeAt(12),
+        slidesWhenMoved: slides,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(position.pixels, 10.5 * _rowHeight);
+    expect([topOf("11"), topOf("10"), topOf("12")], [tops["10"], tops["11"], tops["12"]]);
+  });
+
   testWidgets("removed row closes while the following row moves into place", (tester) async {
     await tester.pumpWidget(_harness(["A", "B"]));
     expect(tester.getTopLeft(find.byKey(const ValueKey("row-B"))).dy, _rowHeight);
