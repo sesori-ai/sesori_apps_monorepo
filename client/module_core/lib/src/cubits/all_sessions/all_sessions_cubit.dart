@@ -163,7 +163,9 @@ class AllSessionsCubit({
                   (session.interruption?.unacknowledged ?? false) &&
                   !(activity[project.id]?[session.id]?.isRunning ?? false),
               backgroundTaskCount: activity[project.id]?[session.id]?.backgroundTaskCount ?? 0,
-              sending: sending[session.id],
+              // This device's own send lasts until its answer, even while
+              // the source is idle, so it wins over the bridge's.
+              sending: sending[session.id] ?? activity[project.id]?[session.id]?.sending,
             ),
     ];
     final next = AllSessionsState(

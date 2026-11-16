@@ -18,6 +18,11 @@ _ActiveSession _$ActiveSessionFromJson(Map json) => _ActiveSession(
   isRetrying: json['isRetrying'] as bool? ?? false,
   lastUserActivityAt: (json['lastUserActivityAt'] as num?)?.toInt(),
   updatedAt: (json['updatedAt'] as num?)?.toInt(),
+  sending: json['sending'] == null
+      ? null
+      : ActiveSessionSending.fromJson(
+          Map<String, dynamic>.from(json['sending'] as Map),
+        ),
 );
 
 Map<String, dynamic> _$ActiveSessionToJson(_ActiveSession instance) =>
@@ -29,4 +34,12 @@ Map<String, dynamic> _$ActiveSessionToJson(_ActiveSession instance) =>
       'isRetrying': instance.isRetrying,
       'lastUserActivityAt': ?instance.lastUserActivityAt,
       'updatedAt': ?instance.updatedAt,
+      'sending': ?instance.sending?.toJson(),
     };
+
+_ActiveSessionSending _$ActiveSessionSendingFromJson(Map json) =>
+    _ActiveSessionSending(targetTitle: json['targetTitle'] as String?);
+
+Map<String, dynamic> _$ActiveSessionSendingToJson(
+  _ActiveSessionSending instance,
+) => <String, dynamic>{'targetTitle': ?instance.targetTitle};

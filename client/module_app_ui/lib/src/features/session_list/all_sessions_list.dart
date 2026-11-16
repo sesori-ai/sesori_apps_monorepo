@@ -265,6 +265,9 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   /// sessions' order.
   final PinnedRowDragTracker _dragTracker = PinnedRowDragTracker();
 
+  /// Whether a touch list shows its pinned rows' handles, reordering them.
+  bool _editingPinned = false;
+
   @override
   void initState() {
     super.initState();
@@ -428,6 +431,22 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     final isLoading = awaitingConnection || state.isLoading;
     final loading = isLoading && entries.isEmpty;
     final isActive = cubit.mode == AllSessionsMode.active;
+    // Searched or narrowed to running or unread rows, the pinned rows shown
+    // are too few to place one among.
+    final reorders = isActive && !searching && state.quickFilter == SessionListQuickFilter.all;
+    final pinnedShown = entries
+        .where(
+          (entry) => switch (entry) {
+            SessionListItemEntry(item: _SessionItem(:final row)) => row.session.pinned,
+            _ => false,
+          },
+        )
+        .length;
+    // Reordering ends where it stops applying, and as the list's screen is
+    // left.
+    if (pointer || !reorders || pinnedShown < 2 || !(ModalRoute.isCurrentOf(context) ?? true)) {
+      _editingPinned = false;
+    }
     // The skeleton fades out where it stood, or in where it will stand:
     // hanging from the Retry row it stands under, else from the room above
     // that row. At most one place holds it.
@@ -782,7 +801,25 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                 }
                 final bottomPadding = index == shownEntries.length - 1 ? endPadding : 0.0;
                 return switch (entry) {
-                  SessionListHeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0),
+                  SessionListHeadingEntry(:final heading) => SessionListHeading(
+                    heading: heading,
+                    isFirst: index == 0,
+                    // Pinned's heading, on a touch list with rows to reorder.
+                    action:
+                        !pointer &&
+                            reorders &&
+                            pinnedShown >= 2 &&
+                            index + 1 < shownEntries.length &&
+                            switch (shownEntries[index + 1]) {
+                              SessionListItemEntry(item: _SessionItem(:final row)) => row.session.pinned,
+                              _ => false,
+                            }
+                        ? (
+                            label: _editingPinned ? loc.sessionListPinnedEditDone : loc.sessionListPinnedEdit,
+                            onTap: () => setState(() => _editingPinned = !_editingPinned),
+                          )
+                        : null,
+                  ),
                   SessionListItemEntry(item: _LaunchItem(:final launch)) => IgnorePointer(
                     ignoring: _replacing,
                     child: _launchRowSettling(
@@ -799,10 +836,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                     row: row,
                     bottomPadding: bottomPadding,
                     tookLaunchRow: launchRows[row.project.id]?.rowKeys.containsKey(row.session.id) ?? false,
-                    // Searched or narrowed to running or unread rows, the
-                    // pinned rows shown are too few to place one among.
-                    reorders:
-                        isActive && !searching && state.quickFilter == SessionListQuickFilter.all && row.session.pinned,
+                    reorders: reorders && row.session.pinned,
                     pointer: pointer,
                     // Across every project each row names its own, a "No project"
                     // session's as "No project", as its session header does.
@@ -949,56 +983,58 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     // Actions run against the list's context, not the row's: a delete
     // unmounts the row before its follow-ups run.
     SessionActionsCubit actions() => context.read<SessionActionsCubit>();
-    final tile = Padding(
-      padding: EdgeInsetsDirectional.only(bottom: bottomPadding),
-      child: SessionTile(
+    final tile = SessionTile(
+      session: row.session,
+      projectLabel: labelsProject ? projectDisplayName(loc: context.loc, project: row.project) : null,
+      isArchived: row.session.time?.archived != null,
+      isRunning: row.isRunning,
+      unseen: row.isUnseen,
+      selected: list.selectedSessionId == row.session.id,
+      awaitingInput: row.isAwaitingInput,
+      isRetrying: row.isRetrying,
+      isInterrupted: row.isInterrupted,
+      backgroundTaskCount: row.backgroundTaskCount,
+      sending: row.sending,
+      onTap: () => list.onSessionTap(row: row),
+      menuEntries: () => dispatcher.sessionMenuEntries(
+        context: context,
+        actions: actions(),
         session: row.session,
-        projectLabel: labelsProject ? projectDisplayName(loc: context.loc, project: row.project) : null,
-        isArchived: row.session.time?.archived != null,
         isRunning: row.isRunning,
+        canFork: actions().canFork(session: row.session),
+        readEntry: SessionReadMenuToggle(unseen: row.isUnseen),
+        surfaceEntries: const [],
+      ),
+      onArchive: () =>
+          dispatcher.handleSessionArchive(context: context, session: row.session, isRunning: row.isRunning),
+      onDelete: () => dispatcher.handleSessionDelete(context: context, actions: actions(), session: row.session),
+      onToggleUnread: () => dispatcher.handleSessionToggleUnread(
+        context: context,
+        actions: actions(),
+        session: row.session,
         unseen: row.isUnseen,
-        selected: list.selectedSessionId == row.session.id,
-        awaitingInput: row.isAwaitingInput,
-        isRetrying: row.isRetrying,
-        isInterrupted: row.isInterrupted,
-        backgroundTaskCount: row.backgroundTaskCount,
-        sending: row.sending,
-        onTap: () => list.onSessionTap(row: row),
-        menuEntries: () => dispatcher.sessionMenuEntries(
-          context: context,
-          actions: actions(),
-          session: row.session,
-          isRunning: row.isRunning,
-          canFork: actions().canFork(session: row.session),
-          readEntry: SessionReadMenuToggle(unseen: row.isUnseen),
-          surfaceEntries: const [],
-        ),
-        onArchive: () =>
-            dispatcher.handleSessionArchive(context: context, session: row.session, isRunning: row.isRunning),
-        onDelete: () => dispatcher.handleSessionDelete(context: context, actions: actions(), session: row.session),
-        onToggleUnread: () => dispatcher.handleSessionToggleUnread(
-          context: context,
-          actions: actions(),
-          session: row.session,
-          unseen: row.isUnseen,
-        ),
       ),
     );
-    final placed = reorders
-        ? PinnedRowDrag(
-            sessionId: row.session.id,
-            tracker: _dragTracker,
-            onMove: ({required sessionId, required afterSessionId}) =>
-                actions().movePin(sessionId: sessionId, afterSessionId: afterSessionId),
-            onMoveRefused: () => PregoPopupAlertPresenter.of(context).show(
-              title: context.loc.sessionListPinMoveFailed,
-              variant: PregoPopupAlertsNotificationsVariant.error,
-            ),
-            borderRadius: pointer ? BorderRadius.circular(PregoRadius.sm) : BorderRadius.zero,
-            liftedColor: pointer ? context.prego.colors.pointerPanelFill : Theme.of(context).scaffoldBackgroundColor,
-            child: tile,
-          )
-        : tile;
+    // The list's end room stays below a row, not part of what lifts.
+    final placed = Padding(
+      padding: EdgeInsetsDirectional.only(bottom: bottomPadding),
+      child: reorders
+          ? PinnedRowDrag(
+              sessionId: row.session.id,
+              tracker: _dragTracker,
+              editing: _editingPinned,
+              onMove: ({required sessionId, required afterSessionId}) =>
+                  actions().movePin(sessionId: sessionId, afterSessionId: afterSessionId),
+              onMoveRefused: () => PregoPopupAlertPresenter.of(context).show(
+                title: context.loc.sessionListPinMoveFailed,
+                variant: PregoPopupAlertsNotificationsVariant.error,
+              ),
+              borderRadius: pointer ? BorderRadius.circular(PregoRadius.sm) : BorderRadius.zero,
+              liftedColor: pointer ? context.prego.colors.pointerPanelFill : Theme.of(context).scaffoldBackgroundColor,
+              child: tile,
+            )
+          : tile,
+    );
     // A row a load replaces fades out without taking taps.
     return IgnorePointer(
       ignoring: _replacing,

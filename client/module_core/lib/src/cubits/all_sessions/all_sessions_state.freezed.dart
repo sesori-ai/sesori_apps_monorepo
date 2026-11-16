@@ -17,7 +17,8 @@ mixin _$AllSessionsRow {
 
  Session get session; ProjectSummary get project; bool get isRunning; bool get isUnseen; bool get isAwaitingInput; bool get isRetrying;/// A bridge stop cut the session's last turn off and the user has not
 /// opened the session or sent anything since; never while it runs again.
- bool get isInterrupted; int get backgroundTaskCount;/// This app's send of the session into another, while it lasts.
+ bool get isInterrupted; int get backgroundTaskCount;/// A send of the session into another, while it lasts: this app's own,
+/// or one the bridge reports from any device.
  SessionSending? get sending;
 /// Create a copy of AllSessionsRow
 /// with the given fields replaced by the non-null parameter values.
@@ -125,7 +126,8 @@ class _AllSessionsRow implements AllSessionsRow {
 /// opened the session or sent anything since; never while it runs again.
 @override final  bool isInterrupted;
 @override final  int backgroundTaskCount;
-/// This app's send of the session into another, while it lasts.
+/// A send of the session into another, while it lasts: this app's own,
+/// or one the bridge reports from any device.
 @override final  SessionSending? sending;
 
 /// Create a copy of AllSessionsRow

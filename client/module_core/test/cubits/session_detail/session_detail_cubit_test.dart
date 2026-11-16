@@ -228,6 +228,7 @@ void main() {
       tracker.emitSessionActivity(const {
         "project-1": {
           sessionId: SessionActivityInfo(
+            sending: null,
             mainAgentRunning: true,
             isRunning: true,
             lastUserActivityAt: null,
@@ -247,6 +248,7 @@ void main() {
       tracker.emitSessionActivity(const {
         "project-1": {
           sessionId: SessionActivityInfo(
+            sending: null,
             backgroundTaskCount: 1,
             isRunning: true,
             lastUserActivityAt: null,

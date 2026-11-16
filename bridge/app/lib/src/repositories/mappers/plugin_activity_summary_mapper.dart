@@ -16,6 +16,8 @@ extension PluginActiveSessionMapper on PluginActiveSession {
       childSessionIds: childSessionIds,
       lastUserActivityAt: lastUserActivityAt,
       updatedAt: updatedAt,
+      // The send service overlays its own sends where the summary is built.
+      sending: null,
     );
   }
 }

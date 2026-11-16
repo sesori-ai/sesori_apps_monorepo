@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -93,6 +94,7 @@ void main() {
     // The launches the list's launching rows come from.
     SessionLaunchRepository? launches,
     SessionActionsCubit? actions,
+    void Function({required AllSessionsRow row})? onSessionTap,
   }) async {
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, updates, initialState: initial);
@@ -153,7 +155,7 @@ void main() {
                   PregoInteractionScope(
                     mode: interaction,
                     child: AllSessionsList(
-                      onSessionTap: ({required row}) {},
+                      onSessionTap: onSessionTap ?? ({required row}) {},
                       actionDispatcher: const SessionListActionDispatcher(
                         deleteConfirmation: SessionDeleteConfirmation.sheet,
                         onSessionArchived: null,
@@ -2559,6 +2561,8 @@ void main() {
     Future<(SessionActionsCubit, StreamController<AllSessionsState>, Completer<bool>)> pumpPinned(
       WidgetTester tester, {
       required List<AllSessionsRow> rows,
+      PregoInteractionMode interaction = PregoInteractionMode.pointer,
+      void Function({required AllSessionsRow row})? onSessionTap,
     }) async {
       final actions = _MockSessionActionsCubit();
       final answer = Completer<bool>();
@@ -2573,10 +2577,11 @@ void main() {
       await pumpList(
         tester,
         mode: AllSessionsMode.active,
-        interaction: PregoInteractionMode.pointer,
+        interaction: interaction,
         actions: actions,
         updates: updates.stream,
         initial: listing(rows),
+        onSessionTap: onSessionTap,
       );
       await settle(tester);
       return (actions, updates, answer);
@@ -2676,6 +2681,102 @@ void main() {
           afterSessionId: any(named: "afterSessionId"),
         ),
       );
+    });
+
+    group("on a phone", () {
+      Finder handleOf(String title) => find.descendant(
+        of: find.ancestor(of: find.text(title).first, matching: find.byType(PinnedRowDrag)),
+        matching: find.byIcon(TablerRegular.menu_2),
+      );
+
+      double handleOpacity(WidgetTester tester, String title) => tester
+          .widget<AnimatedOpacity>(find.ancestor(of: handleOf(title), matching: find.byType(AnimatedOpacity)).first)
+          .opacity;
+
+      testWidgets("Edit on Pinned fades the handles in, and Done fades them out", (tester) async {
+        await pumpPinned(tester, rows: [first, second, third, unpinned], interaction: PregoInteractionMode.touch);
+        final rest = roomTops(tester);
+        expect(handleOpacity(tester, "First"), 0);
+
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+        expect(find.text("Done"), findsOneWidget);
+        for (final title in ["First", "Second", "Third"]) {
+          expect(handleOpacity(tester, title), 1);
+        }
+        // The handles cover the rows' ends, moving nothing.
+        expect(roomTops(tester), rest);
+
+        await tester.tap(find.text("Done"));
+        await settle(tester);
+        expect(find.text("Edit"), findsOneWidget);
+        expect(handleOpacity(tester, "First"), 0);
+      });
+
+      testWidgets("there is no Edit with one pinned row, nor under a mouse", (tester) async {
+        await pumpPinned(tester, rows: [first, unpinned], interaction: PregoInteractionMode.touch);
+        expect(find.text("Pinned"), findsOneWidget);
+        expect(find.text("Edit"), findsNothing);
+
+        await pumpPinned(tester, rows: [first, second, third, unpinned]);
+        expect(find.text("Edit"), findsNothing);
+      });
+
+      testWidgets("a touch on a handle lifts the row at once with a light tap, and the drag moves it", (tester) async {
+        final haptics = <String>[];
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == "HapticFeedback.vibrate") haptics.add(call.arguments as String);
+          return null;
+        });
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null),
+        );
+        final (actions, _, _) = await pumpPinned(
+          tester,
+          rows: [first, second, third, unpinned],
+          interaction: PregoInteractionMode.touch,
+        );
+        final rest = roomTops(tester);
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+
+        final drag = await tester.startGesture(tester.getCenter(handleOf("Third")));
+        await tester.pump();
+        // Lifted with no hold and no movement.
+        expect(find.text("Third"), findsNWidgets(2));
+        expect(haptics, ["HapticFeedbackType.lightImpact"]);
+
+        await drag.moveBy(Offset(0, -2 * (rest[1] - rest[0])));
+        await tester.pump();
+        await settle(tester);
+        // The finger moved the row, not the list.
+        expect(roomTops(tester), [rest[1], rest[2], rest[0]]);
+        await drag.up();
+        await tester.pump();
+        verify(() => actions.movePin(sessionId: "Third", afterSessionId: null)).called(1);
+      });
+
+      testWidgets("while editing, a tap on a pinned row does not open it, while an unpinned row still opens", (
+        tester,
+      ) async {
+        final tapped = <String>[];
+        await pumpPinned(
+          tester,
+          rows: [first, second, third, unpinned],
+          interaction: PregoInteractionMode.touch,
+          onSessionTap: ({required row}) => tapped.add(row.session.id),
+        );
+        await tester.tap(find.text("Edit"));
+        await settle(tester);
+
+        await tester.tap(find.text("Second"));
+        await settle(tester);
+        expect(tapped, isEmpty);
+        expect(find.text("Second"), findsOneWidget);
+
+        await tester.tap(find.text("Unpinned"));
+        expect(tapped, ["Unpinned"]);
+      });
     });
 
     group("held at the list's edge", () {

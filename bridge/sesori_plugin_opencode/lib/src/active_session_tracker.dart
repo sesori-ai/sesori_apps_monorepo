@@ -667,6 +667,7 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
           .putIfAbsent(worktree, () => [])
           .add(
             ActiveSession(
+              sending: null,
               id: rootId,
               mainAgentRunning: activeRoots.contains(rootId),
               awaitingInput: _rootHasPendingInput(rootId, childIds: children),
