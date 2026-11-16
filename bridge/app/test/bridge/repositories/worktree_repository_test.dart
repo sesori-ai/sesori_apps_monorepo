@@ -389,9 +389,11 @@ void main() {
       await repo.keepWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
       await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
 
+      expect(await repo.hasKeptWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), isTrue);
       await repo.releaseWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
       await repo.releaseWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
 
+      expect(await repo.hasKeptWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), isFalse);
       expect(await git(cwd: repoPath, args: ["for-each-ref", "refs/sesori"]), isEmpty);
       expect(await recreate(branchName: null, fromBase: false), WorktreeRecreation.branchMissing);
     });

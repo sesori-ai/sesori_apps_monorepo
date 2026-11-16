@@ -79,7 +79,8 @@ entirely along with its transcript and its dedicated worktree.
 - Before archiving removes a dedicated worktree, it records where HEAD stood: the branch it is on goes on every
   session row naming the worktree (null for a detached HEAD), and the HEAD commit is pinned under
   `refs/sesori/worktrees/<path hash>` so garbage collection keeps detached commits. Uncommitted changes are not kept.
-  A failure to record is logged and the archive goes on. Deleting the last session that names the worktree deletes
+  A failure to record is logged and the archive goes on. While the ref exists, a new session never takes that worktree
+  path, so a later archive cannot overwrite what an archived session kept. Deleting the last session that names the worktree deletes
   the ref; deleting one while another session, archived or not, still names it keeps the ref.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly

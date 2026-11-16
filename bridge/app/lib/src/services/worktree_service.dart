@@ -253,7 +253,8 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       "${_workspaceColors[colorIndex]}-${_workspaceAnimals[animalIndex]}";
 
   /// Creates the worktree for [slug] on a detached HEAD unless its path is
-  /// taken.
+  /// taken, by a folder or by an archived session that may recreate its
+  /// removed worktree there.
   Future<_WorktreeCandidateAttempt> _attemptWorktreeCandidate({
     required String projectPath,
     required String slug,
@@ -262,7 +263,8 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     required String baseCommit,
   }) async {
     final worktreePath = _worktreeRepository.worktreePathFor(projectPath: projectPath, slug: slug);
-    if (_worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
+    if (_worktreeRepository.worktreePathExists(worktreePath: worktreePath) ||
+        await _worktreeRepository.hasKeptWorktreeHead(projectPath: projectPath, worktreePath: worktreePath)) {
       return const _WorktreeCandidateTaken();
     }
     final created = await _worktreeRepository.createWorktree(

@@ -83,6 +83,16 @@ class WorktreeRepository({
     return await _gitApi.readHeadBranch(worktreePath: worktreePath);
   }
 
+  /// Whether [keepWorktreeHead] holds a HEAD for [worktreePath], so an
+  /// archived session may still recreate the worktree there.
+  Future<bool> hasKeptWorktreeHead({required String projectPath, required String worktreePath}) async {
+    final kept = await _gitApi.resolveCommit(
+      projectPath: projectPath,
+      ref: _headRef(worktreePath: worktreePath),
+    );
+    return kept != null;
+  }
+
   /// Drops what [keepWorktreeHead] kept, once no session names the worktree.
   Future<void> releaseWorktreeHead({required String projectPath, required String worktreePath}) {
     return _gitApi.deleteRef(
