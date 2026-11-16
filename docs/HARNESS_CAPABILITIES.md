@@ -220,9 +220,13 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
 
 - Claude recognizes tagged `rate_limit` assistant errors beginning “You've
   hit your session limit” or “You've hit your weekly limit”. The observed time/zone format yields a UTC reset
-  only when it identifies one future time on the original local date. Unrecognized
-  dates, past times, unknown zones, and ambiguous/nonexistent DST times remain
-  unknown. Root errors report only after an unsuccessful, non-aborted result;
+  only when it identifies one future time: a bare time (`6pm`) falls on the
+  original local date; a dated time (`Nov 19 at 6pm`, `Jan 2, 2027 at 6pm`) uses
+  its own date, and an omitted year is the observed local year, or the next year
+  when that date has already passed. Formats verified against Claude Code
+  2.1.322's formatter on 2026-11-15. Invalid dates, past times, unknown zones,
+  and ambiguous/nonexistent DST times remain unknown. Root errors report only
+  after an unsuccessful, non-aborted result;
   forwarded subagent traffic cannot arm or replace the root candidate.
   Process-wide SDK rate-limit frames remain ignored because their rejected
   window has no verified message attribution.

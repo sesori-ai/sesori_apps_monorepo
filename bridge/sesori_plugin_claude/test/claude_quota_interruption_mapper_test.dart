@@ -45,11 +45,54 @@ void main() {
     expect((interruption.reset as PluginQuotaResetKnown).resetAt, DateTime.utc(2026, 11, 6, 2));
   });
 
+  test("weekly quota reads a dated reset in the named zone", () {
+    const timestamp = {"timestamp": "2026-11-15T20:00:00Z"};
+    for (final (reset, resetAt) in [
+      ("Nov 19 at 6pm", DateTime.utc(2026, 11, 20, 2)),
+      ("Nov 19 at 6:30pm", DateTime.utc(2026, 11, 20, 2, 30)),
+      ("Nov 15, 2026 at 11pm", DateTime.utc(2026, 11, 16, 7)),
+    ]) {
+      final interruption =
+          map(text: "You've hit your weekly limit · resets $reset (America/Los_Angeles)", fields: timestamp) ??
+          fail("weekly quota was not recognized: $reset");
+      expect((interruption.reset as PluginQuotaResetKnown).resetAt, resetAt, reason: reset);
+    }
+  });
+
+  test("a dated reset in January after a December observation lands in the next year", () {
+    for (final reset in ["Jan 2 at 6pm", "Jan 2, 2027 at 6pm"]) {
+      final interruption =
+          map(
+            text: "You've hit your weekly limit · resets $reset (America/Los_Angeles)",
+            fields: {"timestamp": "2026-12-30T20:00:00Z"},
+          ) ??
+          fail("weekly quota was not recognized: $reset");
+      expect((interruption.reset as PluginQuotaResetKnown).resetAt, DateTime.utc(2027, 1, 3, 2), reason: reset);
+    }
+  });
+
+  test("invalid, past and unknown-zone dated resets remain unknown", () {
+    for (final reset in [
+      "Feb 30 at 6pm (America/Los_Angeles)",
+      "Foo 19 at 6pm (America/Los_Angeles)",
+      "Nov 19 at 6pm (Unknown/Zone)",
+      "Nov 10, 2026 at 6pm (America/Los_Angeles)",
+      "Nov 19 at 13pm (America/Los_Angeles)",
+    ]) {
+      final interruption =
+          map(
+            text: "You've hit your weekly limit · resets $reset",
+            fields: {"timestamp": "2026-11-15T20:00:00Z"},
+          ) ??
+          fail("weekly quota was not recognized: $reset");
+      expect(interruption.reset, isA<PluginQuotaResetUnknown>(), reason: reset);
+    }
+  });
+
   test("weekly quota with an unusable reset remains an explicit unknown interruption", () {
     for (final suffix in [
       "",
       " · resets tomorrow",
-      " · resets Nov 12 at 6pm (America/Los_Angeles)",
       " · resets 13pm (America/Los_Angeles)",
       " · resets 6pm (Unknown/Zone)",
     ]) {
