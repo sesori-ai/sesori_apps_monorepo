@@ -230,8 +230,8 @@ The main pane hosts one full-width routed page.
   clear of its leading edge, moving with the panel's own slide (at once under reduced motion), so neither the
   pill nor the panel's close button loses a click. Where the window leaves the pill no room beside the panel, it
   heads for the page's middle instead, over the panel's top, so it stays fully on screen. There it can cover the
-  panel's earlier-chats button while the connection is lost (a chosen trade-off); a soft drop shadow, in light and
-  dark, keeps it reading as a layer on top, and fades and moves with it.
+  panel's title and earlier-chats button while the connection is lost (a chosen trade-off); a soft drop shadow, in
+  light and dark, keeps it reading as a layer on top, and fades and moves with it.
   A subtask or Changes page pushed over it takes the pill back
   to its place, and popping back hands it to the panel again.
 - Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project",
