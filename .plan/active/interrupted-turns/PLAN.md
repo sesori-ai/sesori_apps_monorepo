@@ -73,8 +73,9 @@ the per-harness persistence is exactly the decided one:
 | Claude Code | interrupted branch of the result handler → stopped | the two `[Request interrupted by user…]` records → stopped instead of a user bubble |
 
 Synthesized rows use `errorMessage: "Stopped"`; native rows keep their text. Only a stop requested through
-`abortSession` (Stop, Stop on archive) produces a live stopped row; shutdown's `interruptActiveWork` does not, so a
-bridge shutdown never says Stopped live.
+`abortSession` (Stop, Stop on archive) produces a live stopped row. Shutdown's `interruptActiveWork` does not, except
+in Claude Code, whose shutdown runs the same `abort` as Stop and can record a live stopped row; Step 6's supersession
+rule hides it behind the Interrupted line.
 
 A reload must never show two Stopped lines for one stop. `errorName` and `errorMessage` take no part in
 `replaceSessionMessages` pairing (they only choose which wording survives), so each synthesized live row needs a real
