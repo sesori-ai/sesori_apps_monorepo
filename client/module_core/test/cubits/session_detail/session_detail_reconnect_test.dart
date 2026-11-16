@@ -43,6 +43,7 @@ void main() {
     final loadService = SessionDetailLoadService(
       repository: mockSessionRepository,
       pluginRepository: stubbedPluginRepository(),
+      sideChatRepository: MockSideChatRepository(),
       connectionService: mockConnectionService,
     );
     final promptDispatcher = mockSessionRepository;
@@ -100,6 +101,7 @@ void main() {
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
+      composerRestore: MockMessageComposerRestoreService(),
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -191,6 +193,7 @@ void main() {
           isArchived: false,
           cannotContinueMessage: null,
           namesCommandInvocations: false,
+          supportsRewind: false,
         ),
       ),
     );
@@ -217,6 +220,7 @@ void main() {
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
+      composerRestore: MockMessageComposerRestoreService(),
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -301,6 +305,7 @@ void main() {
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
       fileReferenceOpenService: MockFileReferenceOpenService(),
+      composerRestore: MockMessageComposerRestoreService(),
       window: idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -361,6 +366,7 @@ const _emptySnapshot = SessionDetailSnapshot(
   isArchived: false,
   cannotContinueMessage: null,
   namesCommandInvocations: false,
+  supportsRewind: false,
 );
 
 void _stubLoadApis(MockSessionRepository sourceRepository, {required MockSessionApi optionsApi}) {

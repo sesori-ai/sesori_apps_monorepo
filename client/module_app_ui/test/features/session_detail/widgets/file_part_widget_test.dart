@@ -80,6 +80,7 @@ Widget _presentationScope({required Widget child, required bool canShareImages})
   return SessionDetailPresentationScope(
     openHarnessSettings: () {},
     openBridgeSettings: () {},
+    openSideChat: null,
     messageImageRepository: dependencies.get<MessageImageRepository>,
     imageSaver: dependencies.get<ImageSaver>,
     imageClipboard: dependencies.get<ImageClipboard>,
@@ -1601,7 +1602,13 @@ void main() {
 
     await tester.pumpWidget(
       _app(
-        child: const UserMessageCard(message: message, outlineFade: null, shape: PromptTurnShape.bubble()),
+        child: const UserMessageCard(
+          message: message,
+          outlineFade: null,
+          shape: PromptTurnShape.bubble(),
+          editing: false,
+          onEdit: null,
+        ),
       ),
     );
 

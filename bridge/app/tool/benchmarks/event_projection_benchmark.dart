@@ -299,6 +299,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
             lastUserActivityAt: null,
             branchName: null,
             scheduledTask: null,
+            forkedFrom: null,
           ).toJson(),
           titleChanged: false,
         ),

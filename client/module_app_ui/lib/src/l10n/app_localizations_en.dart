@@ -3113,6 +3113,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailSelectText => 'Select text';
 
   @override
+  String get sessionDetailEditAndResend => 'Edit and resend';
+
+  @override
+  String get sessionDetailEditResend => 'Resend';
+
+  @override
+  String get sessionDetailEditBannerTitle => 'Editing your message';
+
+  @override
+  String get sessionDetailEditBannerStopping => 'Stopping the session…';
+
+  @override
+  String get sessionDetailEditBannerSending => 'Resending…';
+
+  @override
+  String get sessionDetailEditBannerBody => 'Resend replaces it and everything after it. Files stay as they are.';
+
+  @override
+  String get sessionDetailEditCancel => 'Cancel';
+
+  @override
+  String get sessionDetailEditUnavailableOk => 'OK';
+
+  @override
+  String get sessionDetailEditMidTurnTitle => 'This message can\'t be edited';
+
+  @override
+  String get sessionDetailEditMidTurnBody =>
+      'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead.';
+
+  @override
+  String get sessionDetailEditCommandTitle => 'Commands can\'t be edited';
+
+  @override
+  String get sessionDetailEditCommandBody =>
+      'An edit resends text and attachments only, so it can\'t run a command, skill or MCP prompt again. Run it again from the composer instead.';
+
+  @override
+  String get sessionDetailEditBusyTitle => 'The agent is still working';
+
+  @override
+  String get sessionDetailEditBusyBody =>
+      'Resending replaces this conversation from the edited message on, so the session has to stop first.';
+
+  @override
+  String get sessionDetailEditStopAndResend => 'Stop and resend';
+
+  @override
+  String get sessionDetailEditRefused => 'Couldn\'t edit this message';
+
+  @override
+  String get sessionDetailEditRefusedBody => 'The session didn\'t accept the edit. Nothing changed.';
+
+  @override
+  String get sessionDetailEditOptionsChanged =>
+      'The available models or agents changed. Check your selection and resend.';
+
+  @override
+  String get sessionDetailEditStopFailed => 'The session didn\'t stop, so the edit wasn\'t sent.';
+
+  @override
+  String get sessionDetailEditFailed => 'Couldn\'t confirm the edit. Resend to try again; it won\'t apply twice.';
+
+  @override
+  String sessionDetailEditBannerLeftOut(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count attachments couldn\'t be brought back',
+      one: '1 attachment couldn\'t be brought back',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sessionDetailMessageCopied => 'Copied to clipboard';
 
   @override
@@ -4020,4 +4095,80 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mcpCancel => 'Cancel';
+
+  @override
+  String get sideQuestionAsk => 'Ask a side question';
+
+  @override
+  String get sideQuestionBridgeUpdateRequired => 'Update Sesori on this computer to ask side questions.';
+
+  @override
+  String sideQuestionHarnessUnsupported(String harness) {
+    return '$harness can\'t answer side questions in Sesori yet.';
+  }
+
+  @override
+  String get sideChatTitle => 'Side question';
+
+  @override
+  String get sideChatEarlier => 'Earlier side chats';
+
+  @override
+  String get sideChatNew => 'New side chat';
+
+  @override
+  String get sideChatWaitForAnswer => 'Wait for the answer to arrive first.';
+
+  @override
+  String sideChatQuestionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count questions',
+      one: '1 question',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sideChatFootnote =>
+      'Answers from what this session already knows. No tools, and nothing is added to the chat.';
+
+  @override
+  String get sideChatArchived => 'This session is archived. Its side chats are read-only.';
+
+  @override
+  String get sideChatLoadFailed => 'Couldn\'t load the side chats.';
+
+  @override
+  String get sideChatRetry => 'Retry';
+
+  @override
+  String get sideChatCopyAnswer => 'Copy answer';
+
+  @override
+  String sideChatRefusedHarnessUpdateRequired(String harness) {
+    return 'Update $harness on this computer to ask side questions.';
+  }
+
+  @override
+  String get sideChatRefusedNoTurnYet =>
+      'Send this session a message first. Side questions answer from what it already knows.';
+
+  @override
+  String get sideChatRefusedTooLong => 'This side chat is too long to continue. Start a new one.';
+
+  @override
+  String get sideChatRefusedNoAnswer => 'No answer came back.';
+
+  @override
+  String get sideChatRefusedUnknown => 'This side question couldn\'t be answered.';
+
+  @override
+  String get sideChatAskFailed => 'Couldn\'t reach your computer to ask.';
+
+  @override
+  String sessionDetailArchivedSideChats(int count) {
+    return 'Side chats ($count)';
+  }
 }

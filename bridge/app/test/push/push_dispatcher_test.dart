@@ -638,5 +638,6 @@ Session _session({
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    forkedFrom: null,
   );
 }

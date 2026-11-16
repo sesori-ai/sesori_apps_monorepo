@@ -141,13 +141,20 @@ class SideChatCubit({
     if (isClosed) return;
     switch (response) {
       case SuccessResponse(:final data):
-        emit(
-          SideChatState.ready(
-            earlierChats: data.sideChats,
+        emit(switch (data.sideChats) {
+          // Nothing can be asked in an archived session, so it opens on the
+          // newest chat to read instead of an empty new one.
+          [final newest, ...final earlier] when _isArchived => SideChatState.ready(
+            earlierChats: earlier,
+            thread: SideChatThread.existing(chat: newest),
+            ask: const SideQuestionAsk.idle(),
+          ),
+          final chats => SideChatState.ready(
+            earlierChats: chats,
             thread: const SideChatThread.newChat(),
             ask: const SideQuestionAsk.idle(),
           ),
-        );
+        });
         final initialQuestion = _initialQuestion;
         _initialQuestion = null;
         if (initialQuestion != null) await ask(text: initialQuestion);

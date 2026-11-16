@@ -124,6 +124,7 @@ Session _session({required String id}) => Session(
   projectID: "/repo",
   directory: "/repo",
   parentID: null,
+  forkedFrom: null,
   title: null,
   time: null,
   promptDefaults: null,
