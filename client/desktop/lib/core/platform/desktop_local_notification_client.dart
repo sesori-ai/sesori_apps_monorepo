@@ -92,19 +92,17 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
     }
     try {
       final tapEvent = LocalNotificationPayload.fromJson(jsonDecodeMap(payload));
-      final sessionId = tapEvent.sessionId;
-      final projectId = tapEvent.projectId;
+      final target = NotificationOpenTarget.of(
+        projectId: tapEvent.projectId,
+        sessionId: tapEvent.sessionId,
+        sessionTitle: tapEvent.sessionTitle,
+        taskId: tapEvent.taskId,
+      );
       final accountId = tapEvent.accountId;
-      if (sessionId == null || projectId == null || accountId == null) {
+      if (target == null || accountId == null) {
         return null;
       }
-      return NotificationOpenRequest(
-        projectId: projectId,
-        sessionId: sessionId,
-        sessionTitle: tapEvent.sessionTitle,
-        accountId: accountId,
-        bridgeId: tapEvent.bridgeId,
-      );
+      return NotificationOpenRequest(target: target, accountId: accountId, bridgeId: tapEvent.bridgeId);
     } on Object catch (error, stackTrace) {
       logw("Failed to parse desktop local-notification payload", error, stackTrace);
       return null;
@@ -126,6 +124,7 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
     required String? sessionId,
     required String? projectId,
     required String? sessionTitle,
+    required String? taskId,
     required String? accountId,
     required String? bridgeId,
   }) async {
@@ -137,6 +136,7 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
         sessionId: sessionId,
         projectId: projectId,
         sessionTitle: sessionTitle,
+        taskId: taskId,
         accountId: accountId,
         bridgeId: bridgeId,
       ).toJson(),

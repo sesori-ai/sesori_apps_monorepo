@@ -5,6 +5,7 @@ import "package:flutter/foundation.dart" show TargetPlatform, debugDefaultTarget
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/platform/desktop_local_notification_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -126,8 +127,14 @@ void main() {
     await client.initialize();
 
     final first = await client.getInitialNotificationOpen();
-    expect(first?.sessionId, "session-1");
-    expect(first?.projectId, "project-1");
+    expect(
+      first?.target,
+      const NotificationOpenTarget.session(
+        projectId: "project-1",
+        sessionId: "session-1",
+        sessionTitle: "Session title",
+      ),
+    );
     expect(first?.accountId, "user-1");
     expect(await client.getInitialNotificationOpen(), isNull);
   });
@@ -164,6 +171,7 @@ void main() {
       sessionId: "session-1",
       projectId: "project-1",
       sessionTitle: "Session title",
+      taskId: null,
       accountId: "user-1",
       bridgeId: null,
     );
@@ -206,9 +214,14 @@ void main() {
     );
 
     final request = await open;
-    expect(request.sessionId, "session-1");
-    expect(request.projectId, "project-1");
-    expect(request.sessionTitle, "Session title");
+    expect(
+      request.target,
+      const NotificationOpenTarget.session(
+        projectId: "project-1",
+        sessionId: "session-1",
+        sessionTitle: "Session title",
+      ),
+    );
     expect(request.accountId, "user-1");
   });
 

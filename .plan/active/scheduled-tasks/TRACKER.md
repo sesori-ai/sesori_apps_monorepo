@@ -45,7 +45,7 @@ mirror PR state; live status is on GitHub:
 | 7 | `scheduled-tasks/composer-reuse` | ⚙️ [scheduled-tasks] Let the new-session composer serve a task editor [step 7/14] | ≤ 900 | 1 |
 | 8.a.1 | `scheduled-tasks/scheduled-page-core` | ⚙️ [scheduled-tasks] Add the scheduled-task client core [step 8.a.1/17] | ≤ 900 | 3.b, 4.b |
 | 8.a.2 | `scheduled-tasks/scheduled-page` | ⚙️ [scheduled-tasks] Add the Scheduled page and task page [step 8.a.2/17] | ≤ 1,100 authored, generated l10n extra | 8.a.1 |
-| 8.b | `scheduled-tasks/run-marks` | 🌿 [scheduled-tasks] Mark task runs in the session list and open task pushes [step 8.b/17] | ≤ 600 | 6, 8.a.2 |
+| 8.b | `scheduled-tasks/run-marks` | 🌿 [scheduled-tasks] Mark task runs in the session list and open task pushes [step 8.b/18] | ≤ 600 | 6, 8.a.2 |
 | 9 | `scheduled-tasks/new-task-screen` | 🚧 [scheduled-tasks] Add the New task screen [step 9/17] | ≤ 1,500 (split 9.a fields / 9.b screen if over) | 4.b, 7, 8.a.2 |
 | 10 | `scheduled-tasks/compact-on-request` | ⚙️ [scheduled-tasks] Compact sessions on request in every harness that can [step 10/14] | ≤ 1,200 | 1 |
 | 11 | `scheduled-tasks/auto-compact` | 🚧 [scheduled-tasks] Auto-compact same-session tasks [step 11/17] | ≤ 800 | 5, 9, 10 |
