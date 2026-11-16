@@ -17,6 +17,18 @@ enum MessageSender() {
   unknown,
 }
 
+/// Why a [MessageError] ended its turn.
+///
+/// Unknown values decode as [failure], the meaning every older error row had.
+@JsonEnum()
+enum MessageErrorKind() {
+  /// The turn failed.
+  failure,
+
+  /// The user stopped the turn.
+  stopped,
+}
+
 /// Sealed class representing a message in a session.
 ///
 /// Three variants:
@@ -86,6 +98,11 @@ sealed class const Message._() with _$Message {
 
     /// The backend-provided error text, unchanged when the backend supplied it.
     required String errorMessage,
+
+    /// Whether the turn failed or the user stopped it.
+    // COMPATIBILITY 2026-11-15 (v1.14.0): Older bridges omit kind because every error row they sent was a failure.
+    // Default to failure until the minimum supported bridge always sends kind, then remove @Default.
+    @JsonKey(unknownEnumValue: MessageErrorKind.failure) @Default(MessageErrorKind.failure) MessageErrorKind kind,
     required MessageTime? time,
   }) = MessageError;
 

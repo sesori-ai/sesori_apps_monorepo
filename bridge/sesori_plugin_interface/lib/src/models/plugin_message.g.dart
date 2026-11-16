@@ -261,9 +261,15 @@ Map<String, dynamic> _$PluginMessageErrorToJson(PluginMessageError instance) =>
       'variant': ?instance.variant,
       'errorName': instance.errorName,
       'errorMessage': instance.errorMessage,
+      'kind': _$PluginErrorKindEnumMap[instance.kind]!,
       'time': ?instance.time?.toJson(),
       'role': instance.$type,
     };
+
+const _$PluginErrorKindEnumMap = {
+  PluginErrorKind.failure: 'failure',
+  PluginErrorKind.stopped: 'stopped',
+};
 
 Map<String, dynamic> _$PluginMessageTimeToJson(_PluginMessageTime instance) =>
     <String, dynamic>{

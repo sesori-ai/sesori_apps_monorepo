@@ -409,6 +409,9 @@ void main() {
       expect(messages, hasLength(2));
       expect(messages.first.info, isA<PluginMessageError>());
       expect((messages.first.info as PluginMessageError).errorMessage, backendError);
+      expect((messages.first.info as PluginMessageError).kind, PluginErrorKind.failure);
+      expect((messages.last.info as PluginMessageError).kind, PluginErrorKind.stopped);
+      expect((messages.last.info as PluginMessageError).errorMessage, "The Pi assistant response was aborted.");
       expect(_reasoning(messages), ["visible reasoning"]);
       final completed = messages.first.parts.singleWhere((part) => part.id == "completed");
       final unfinished = messages.first.parts.singleWhere((part) => part.id == "unfinished");

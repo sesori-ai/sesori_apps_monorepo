@@ -2365,7 +2365,7 @@ $PluginMessageTimeCopyWith<$Res>? get time {
 @JsonSerializable(createFactory: false)
 
 class PluginMessageError implements PluginMessage {
-  const PluginMessageError({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.variant, required this.errorName, required this.errorMessage, required this.time,  String? $type}): $type = $type ?? 'error';
+  const PluginMessageError({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.variant, required this.errorName, required this.errorMessage, required this.kind, required this.time,  String? $type}): $type = $type ?? 'error';
   
 
 @override final  String id;
@@ -2378,6 +2378,8 @@ class PluginMessageError implements PluginMessage {
 /// Backend-provided error text must be preserved verbatim when present.
 /// A plugin may synthesize a fallback only when its backend supplied no text.
  final  String errorMessage;
+/// Whether the turn failed or the user stopped it.
+ final  PluginErrorKind kind;
 @override final  PluginMessageTime? time;
 
 @JsonKey(name: 'role')
@@ -2397,18 +2399,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageError&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.errorName, errorName) || other.errorName == errorName)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.time, time) || other.time == time));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageError&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.errorName, errorName) || other.errorName == errorName)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,variant,errorName,errorMessage,time);
+    return Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,variant,errorName,errorMessage,kind,time);
 }
 
 @override
 String toString() {
-    return 'PluginMessage.error(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, variant: $variant, errorName: $errorName, errorMessage: $errorMessage, time: $time)';
+    return 'PluginMessage.error(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, variant: $variant, errorName: $errorName, errorMessage: $errorMessage, kind: $kind, time: $time)';
 }
 
 
@@ -2419,7 +2421,7 @@ abstract mixin class $PluginMessageErrorCopyWith<$Res> implements $PluginMessage
   factory $PluginMessageErrorCopyWith(PluginMessageError value, $Res Function(PluginMessageError) _then) = _$PluginMessageErrorCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String? agent, String? modelID, String? providerID, String? variant, String errorName, String errorMessage, PluginMessageTime? time
+ String id, String sessionID, String? agent, String? modelID, String? providerID, String? variant, String errorName, String errorMessage, PluginErrorKind kind, PluginMessageTime? time
 });
 
 
@@ -2436,7 +2438,7 @@ class _$PluginMessageErrorCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessage
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? variant = freezed,Object? errorName = null,Object? errorMessage = null,Object? time = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? variant = freezed,Object? errorName = null,Object? errorMessage = null,Object? kind = null,Object? time = freezed,}) {
   return _then(PluginMessageError(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -2446,7 +2448,8 @@ as String?,providerID: freezed == providerID ? _self.providerID : providerID // 
 as String?,variant: freezed == variant ? _self.variant : variant // ignore: cast_nullable_to_non_nullable
 as String?,errorName: null == errorName ? _self.errorName : errorName // ignore: cast_nullable_to_non_nullable
 as String,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
-as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
+as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as PluginErrorKind,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as PluginMessageTime?,
   ));
 }

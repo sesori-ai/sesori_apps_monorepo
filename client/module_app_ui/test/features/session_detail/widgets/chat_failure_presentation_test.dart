@@ -40,6 +40,23 @@ const _terminalError = ErrorMessageCard(
     errorMessage: _errorText,
     time: null,
   ),
+  followsReply: false,
+);
+
+const _abortText = "Pi response aborted";
+const _stoppedError = ErrorMessageCard(
+  message: MessageError(
+    id: "stopped",
+    sessionID: "session",
+    agent: null,
+    modelID: null,
+    providerID: null,
+    errorName: "Pi response aborted",
+    errorMessage: _abortText,
+    kind: MessageErrorKind.stopped,
+    time: null,
+  ),
+  followsReply: false,
 );
 
 void main() {
@@ -58,6 +75,28 @@ void main() {
       expect(text.maxLines, isNull);
       expect(tester.getTopLeft(find.text(_errorText)).dx, 16);
       expect(find.byType(PregoAiLoader), findsNothing);
+      expect(find.byType(PregoShimmer), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("${brightness.name} a stopped turn ends with the quiet Stopped line, not its native text", (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(child: _stoppedError, brightness: brightness, disableAnimations: true, width: 320, textScale: 1),
+      );
+      final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
+      final line = find.text("Stopped", findRichText: true);
+      expect(line, findsOneWidget);
+      expect(find.text(_abortText, findRichText: true), findsNothing);
+      expect(tester.widget<RichText>(line).text.style?.color, prego.colors.textSecondary);
+      expect(tester.widget<Icon>(find.byIcon(TablerSolid.circle_x)).color, prego.colors.textSecondary);
+      expect(
+        tester.getSize(find.byType(ErrorMessageCard)).height,
+        TranscriptWorkingRow.heightAsFirstRow(context: tester.element(line)),
+        reason: "it takes the folding working row's place without moving the rows above",
+      );
+      expect(tester.getTopLeft(find.byIcon(TablerSolid.circle_x)).dx, greaterThanOrEqualTo(16));
       expect(find.byType(PregoShimmer), findsNothing);
       expect(tester.takeException(), isNull);
     });

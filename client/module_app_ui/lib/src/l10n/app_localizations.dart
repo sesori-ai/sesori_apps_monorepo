@@ -5371,6 +5371,12 @@ abstract class AppLocalizations {
   /// **'stopped'**
   String get sessionDetailCompactionCancelled;
 
+  /// Quiet line that ends an agent turn the user stopped with the Stop button. Not an error.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get sessionDetailTurnStopped;
+
   /// Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator.
   ///
   /// In en, this message translates to:

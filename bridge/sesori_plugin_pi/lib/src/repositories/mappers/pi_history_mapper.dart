@@ -677,6 +677,7 @@ final class PiHistoryMapper({
         modelID: model,
         providerID: provider,
         variant: variant,
+        kind: PluginErrorKind.failure,
         errorName: "Pi response failed",
         errorMessage: errorMessage ?? "The Pi assistant response failed.",
         time: _time(timestamp),
@@ -688,6 +689,8 @@ final class PiHistoryMapper({
         modelID: model,
         providerID: provider,
         variant: variant,
+        // Pi records a user Stop as an aborted response; it does not tell other aborts apart.
+        kind: PluginErrorKind.stopped,
         errorName: "Pi response aborted",
         errorMessage: errorMessage ?? "The Pi assistant response was aborted.",
         time: _time(timestamp),

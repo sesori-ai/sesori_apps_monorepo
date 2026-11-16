@@ -3093,6 +3093,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailCompactionCancelled => 'stopped';
 
   @override
+  String get sessionDetailTurnStopped => 'Stopped';
+
+  @override
   String get sessionDetailCompactionTurnEnded => 'the turn ended first';
 
   @override
