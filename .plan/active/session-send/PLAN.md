@@ -485,10 +485,11 @@ and replays (`ChatHistoryRepository._withStoredInvocation`).
     and replaces the stored `sent` stamp; when the refresh before the split replaced the echo with a replayed message
     under another id, that id is marked too. A harness can also store the request without ever echoing it live
     (a Claude source stopped before its echo). For a failure before the echo, `SessionSendService` waits up to ten
-    seconds for the source's next idle. It then refreshes the history and marks the last user message with the exact
-    request text, which the store stamps `notSent` even though it had no stamp. A definite 4xx refusal of the summarise prompt still forgets the
-    stamp in `sendPrompt`, because no turn happened, so the mark finds nothing. A client that had the marker live
-    keeps the `sent` state until its next history load; the requesting client gets the failure alert.
+    seconds for the source's next idle. It then refreshes the history and finds the last user message with the exact
+    request text. When that message has no stamp, the store stamps it `notSent`; a stamped match is an earlier
+    send's request and stays as it is. A definite 4xx refusal of the summarise prompt still forgets the stamp in
+    `sendPrompt`, because no turn happened, so the mark finds nothing. A client that had the marker live keeps the
+    `sent` state until its next history load; the requesting client gets the failure alert.
   - The history store's replay matching ignores `handoff` as it ignores `invocation`, so a replay under another id
     still pairs with the stamped live row and keeps its stamp. Marking a stored stamp `notSent` refreshes the row's
     `updatedAt`, so the next replay still treats the row as current and pairs it.

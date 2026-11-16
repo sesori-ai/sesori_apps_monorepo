@@ -385,6 +385,15 @@ void main() {
 
     test("before the echo: a stop marks nothing when the source never stored the request", () async {
       prompts.onSummaryAccepted = (_) {
+        // An earlier send to the same target asked with the same text.
+        history.messages = [
+          ...history.messages,
+          _userMessage(
+            id: "earlier-sent",
+            text: prompts.sends.first.text,
+            handoff: const MessageHandoff.sent(targetSessionId: _target, targetTitle: "Target title"),
+          ),
+        ];
         aborts.add(_source);
         Future(() => events.add(const NormalizedStatusEvent(sessionId: _source, status: SessionStatus.idle())))
             .ignore();

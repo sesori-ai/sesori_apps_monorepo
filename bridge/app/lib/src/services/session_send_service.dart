@@ -163,6 +163,7 @@ class SessionSendService({
   /// no prompt id names it: Claude records a request it was stopped before
   /// echoing. Once the source has settled, the request is the last user
   /// message with its exact text in the refreshed history, as in the split.
+  /// A stamped match is an earlier send's request, kept as it is.
   Future<void> _markUnechoedRequestNotSent({
     required String sessionId,
     required String promptId,
@@ -184,12 +185,12 @@ class SessionSendService({
       return;
     }
     final request = messages.where((message) => _isRequest(message: message, requestText: requestText)).lastOrNull;
-    if (request == null) {
-      Log.i("Session $sessionId stored no summary request for prompt $promptId");
-      return;
+    if (request?.info case MessageUser(:final id, handoff: null)) {
+      Log.i("Marking summary request $id of session $sessionId, stored without its echo, as not sent");
+      await _markStoredRequestNotSent(sessionId: sessionId, messageId: id, notSent: notSent);
+    } else {
+      Log.i("Session $sessionId stored no unstamped summary request for prompt $promptId");
     }
-    Log.i("Marking summary request ${request.info.id} of session $sessionId, stored without its echo, as not sent");
-    await _markStoredRequestNotSent(sessionId: sessionId, messageId: request.info.id, notSent: notSent);
   }
 
   Future<void> _markStoredRequestNotSent({
