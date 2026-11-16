@@ -941,13 +941,21 @@ class ChatHistoryRepository({
       if (fingerprint != null) storedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
     }
 
+    // A stale row the replay holds stands for a replayed occurrence too. A
+    // current row sharing its context is no unique match: skipping a live row
+    // the replay doesn't hold can make a live-only reply look like it.
+    final staleContexts = {
+      for (var index = 0; index < storedRows.length; index++)
+        if (!storedContextIndexById.containsKey(storedRows[index].messageId)) ?neighborContexts[index],
+    };
+
     final semanticallyImportedStoredIds = <String>{...anchoredReplayExtensionStoredIds};
     // Imported index -> the stored context row it replaces by content.
     final semanticPairs = <int, int>{};
     for (final entry in storedIndexesByContext.entries) {
       final importedIndexes = importedIndexesByContext[entry.key] ?? const [];
       final storedIndexes = entry.value;
-      if (importedIndexes.length == 1 && storedIndexes.length == 1) {
+      if (importedIndexes.length == 1 && storedIndexes.length == 1 && !staleContexts.contains(entry.key)) {
         final importedCreatedAt = importedSemanticFingerprints[importedIndexes.single]?.createdAt;
         final storedCreatedAt = storedSemanticFingerprints[storedIndexes.single]?.createdAt;
         if (importedCreatedAt == null || storedCreatedAt == null || importedCreatedAt == storedCreatedAt) {

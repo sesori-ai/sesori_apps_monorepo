@@ -2101,6 +2101,45 @@ void main() {
         );
       });
 
+      // A live turn the replay doesn't hold yet separates no neighbors, so its
+      // reply sits in the same context as an imported reply of the same text.
+      test("keeps a live reply that looks like a replayed one", () async {
+        final transcript = [
+          _messageWithText(id: "r1-q", text: "Say Q", createdAt: null, promptId: null),
+          _assistantMessageWithText(id: "r1-a", text: "A", reasoning: null, createdAt: null),
+        ];
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-q", text: "Say Q", createdAt: 100, promptId: "p1"),
+            _assistantMessageWithText(id: "live-a", text: "A", reasoning: null, createdAt: null),
+          ],
+        );
+        await history.service.backfillSession(sessionId: "ses_a");
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await _captureMessages(
+          history: history,
+          messages: [
+            _messageWithText(id: "live-x", text: "Say X", createdAt: 300, promptId: "p2"),
+            _assistantMessageWithText(id: "live-x-a", text: "A", reasoning: null, createdAt: null),
+          ],
+        );
+        transcript
+          ..clear()
+          ..addAll([
+            _messageWithText(id: "r2-q", text: "Say Q", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "r2-a", text: "A", reasoning: null, createdAt: null),
+          ]);
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          const ["r2-q", "r2-a", "live-x", "live-x-a"],
+        );
+      });
+
       // Oh My Pi replays no row for a reply whose model call failed.
       test("keeps each failed reply after its own turn", () async {
         final history = createTestChatHistory(
