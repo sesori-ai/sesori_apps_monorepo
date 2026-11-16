@@ -36,7 +36,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   For v1 changes, inspect `bridge/sesori_plugin_opencode/tool/opencode_v1_surface.json`
   and the plugin's DB-first import before promising that a new API can replace
   it; v2 audits use `tool/opencode_v2_surface.json` instead. Keep
-  minimum-surface metadata aligned only if a floor increase is approved.
+  minimum-surface metadata aligned only if a floor increase is approved. When the
+  old and new tags have diverged (neither is an ancestor of the other), diff the
+  codeload source tarballs of the two commits.
 - **Regenerate models on every target update:** from
   `bridge/sesori_plugin_opencode/`, run the matching commands below with the
   selected release tag (replace the `X.Y` placeholders; use `--commit <sha>`
@@ -63,8 +65,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
   release/revision and an explicit no-diff result when output is unchanged.
   A v2 target update must not overwrite v1 models with v2 schemas; regenerate
   each supported adapter only against its own protocol-compatible source.
-  Run affected model/union round-trip, API and SSE tests plus the package
-  analyzer. Never hand-edit generated output or treat generation alone as
+  Always run the package tests and analyzer after regenerating: the analyzer
+  excludes `**.g.dart`, so only the tests catch a compile error in regenerated
+  models.
+  Never hand-edit generated output or treat generation alone as
   live-protocol verification.
 - **Probe:** production current-host managed install, exact version, isolated
   loopback `opencode serve`, and the REST/SSE startup paths the plugin actually
@@ -115,13 +119,22 @@ concrete problem can justify a documented temporary hold with a resolution path.
   native delegation or generic ACP features. Closed source limits remain explicit.
   Inspect model selection's client-identity gates too: the official 1.3.0–1.4.5 packages
   keep non-Gemini models only for recognized Zed/JetBrains/Android Studio/Xcode identities
-  (1.4.5 adds JetBrains Air). Antigravity CLI 1.5.1+ also ships its own `agy acp`, which
+  (1.4.5 adds JetBrains Air; 1.5.0 adds Android Performance Analyzer and T3 Code and
+  matches Zed only as the exact name `zed`). Antigravity CLI 1.5.1+ also ships its own `agy acp`, which
   offers every account model to every ACP client; the registry package does not.
   Account entitlement alone does not prove what ACP advertises. Any explicitly
   approved compatibility identity stays inside the Antigravity plugin and must
   reach live, replay, login and validation initialization consistently; preserve
   the standard Sesori identity for other ACP harnesses. Verify this gate again
   on future releases rather than inferring it from product model documentation.
+- **Quick diffs:** `strings` on the macOS server binary exposes readable embedded
+  Python source (`client_info.py`, `model_selection.py`, `settings.py`,
+  `telemetry.py`), so diffing it between versions is a cheap audit of the identity
+  gate, settings and telemetry. The registry's `.protocol-matrix/latest.json` is
+  independent third-party initialize evidence (Linux x64).
+- **Telemetry:** 1.5.0 sends telemetry only for business (Gemini Enterprise)
+  OAuth with a project; Sesori allows only `oauth-personal`, and the parsed
+  `telemetry.*` settings block is unused. Recheck both on each bump.
 
 ## Codex
 
@@ -206,6 +219,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   `copilot-linux-{arm64,x64}.tar.gz`, `copilot-win32-{arm64,x64}.zip`, with
   GitHub digests. Current layout extracts `copilot` / `copilot.exe` as a single
   binary; verify packaging rather than imposing Pi/Codex package assumptions.
+  Releases also publish `copilot-linuxmusl-*` archives, which Sesori does not
+  manage. The platform binary's embedded JS is compressed, so string diffs
+  between versions do not work.
 - **Probe:** production current-host install, isolated `COPILOT_HOME` and
   `COPILOT_CACHE_HOME` (the loader can run a newer package cached there unless
   auto-update is off), branded `GitHub Copilot CLI X.Y.Z.` version, then
@@ -241,7 +257,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   final follow-up. Confirm download URLs resolve before consumer publication.
 - **Audit:** model switching, history/load, the native `subagent_spawned` /
   `subagent_state_update` shapes and Task `rawInput`, and settings. Report
-  inaccessible upstream source rather than guessing from CLI UX.
+  inaccessible upstream source rather than guessing from CLI UX. String-diffing
+  the downloaded `dist-package/*.js` bundles of the two builds is a cheap check
+  for added or removed ACP methods.
 
 ## Claude Code
 
@@ -262,6 +280,11 @@ concrete problem can justify a documented temporary hold with a resolution path.
   use the exceptional temporary-hold policy only for concrete severe harm.
   Version/help/source checks do not re-verify live streams; keep existing
   historical `Verified against` claims unless that trace is repeated.
+  Anthropic-format probes against the local test proxy use the proxy root as
+  the base URL (the CLI appends `/v1/messages`). Rewinding behind a compaction
+  (`--resume-session-at` a pre-compaction uuid) still fails on 2.1.325 with
+  "No message found with message.uuid", so Sesori's refusal stays; recheck on
+  each bump.
 - **Audit:** stream-json/control envelopes, tool and subagent lifecycle, replay,
   permissions, questions, models and settings. This plugin drives the CLI seam,
   not an arbitrary new SDK feature. Use approved live probes for adopted changes.
@@ -365,12 +388,13 @@ concrete problem can justify a documented temporary hold with a resolution path.
   forward. Current-host execution is the ordinary existing-platform scope.
   Run the deletion probe without credentials: `session/new`, a prompt of
   `/session delete`, then `session/list` from a fresh process. From `18.18.9`
+  until `18.20.1` (the fix landed there, not in `18.20.0` as the changelog says)
   the raw list holds a new empty, untitled replacement session (upstream
-  #19068); confirm it still has `_meta.messageCount` 0 and no title, so the
-  plugin's listing omits it. Keep the filter while any supported PATH version
-  (`18.18.9` up to the upstream fix) can still write that leftover.
+  #19068). `session/new` alone still writes an empty untitled session
+  (`_meta.messageCount` 0, no title) on `18.21.0`, so the plugin's listing
+  filter stays; confirm both shapes on each bump.
   Also run the model-restore probe on a session whose saved model was removed.
-  From `18.6.3` (still in the `18.19.0` source), `session/load` and `session/resume` fail
+  From `18.6.3` (still in the `18.21.0` source), `session/load` and `session/resume` fail
   closed with JSON-RPC `-32603` and `details: "Could not restore model
   <provider/id>"`: ACP `#openStoredSession` calls `switchSession(path)` without
   `allowSessionModelFallback` (upstream PR #13689). The owner accepted this
@@ -385,13 +409,19 @@ concrete problem can justify a documented temporary hold with a resolution path.
   user-assisted verification, without claiming it passed.
 - **Audit:** OMP's ACP projection, not Pi RPC. Trace auth, configuration, history,
   models, tools, subagent and cancellation behavior at that seam.
+- **Busy window:** from 18.20.1 `session/prompt` stays open while a background
+  bash job or live sub-agent can resume it (job end plus a short follow-up
+  turn, no updates in between). On each bump, start a background job and probe
+  `_session/steering`, `session/cancel` and the history read inside that
+  window; record the results in `docs/HARNESS_CAPABILITIES.md`.
 - **Forms:** The shared ACP mapper supports finite array `items.anyOf` string
   choices and number/integer fields. Keep one question/encoder per property:
   checkbox selections and separate custom text retain their keys, order, required
   flags and answer slots, even for identical text. Since 18.18.3 the built-in
-  `ask` tool sends HTML-field keys with `<name>_other`, and may include `number`,
-  `boolean`, `required` and `default`; `qN`/`qN__other` names now come only from
-  an extension's `ui.askDialog`. Do not interpret OMP's naming in the generic
+  `ask` tool sends HTML-field keys, and may include `number`, `boolean`,
+  `required` and `default`; the "other" field is `<name>__other` from 18.20.0
+  (`12c017d1`) and `<name>_other` only in 18.18.3–18.19.0. `qN`/`qN__other`
+  names now come only from an extension's `ui.askDialog`. Do not interpret OMP's naming in the generic
   mapper or add a second wire answer shape. Live
   `OmpPlugin.supportsFormElicitation` remains enabled; `OmpAcpApi.open()` keeps
   scratch/catalog/cleanup form elicitation disabled. See
@@ -427,9 +457,14 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Producer work:** work in a fresh worktree of the local
   `~/sesori-ai/sesori-deepseek-acp` clone, branched from `origin/main`. Inspect its
   `release/config.json`, package/lockfile, extension protocol, packaging workflow and
-  conformance tests. Use the previous migration (PR #24, adapter v0.2.2 over dsh 0.2.2-rc.2) as the template:
+  conformance tests. Use the previous migration (PR #25, adapter v0.2.3 over dsh 0.2.2-rc.3) as the template:
   dsh pins, lockfile, `deepSeekHarnessVersion`, package version, runtime/session
-  source, smoke script, README and fixtures. Audit the upstream
+  source, smoke script, README and fixtures. After bumping the exact dsh pins,
+  `npm install` fails with ERESOLVE because the old dsh packages pin each other
+  exactly: delete only the `@deepseek-ai/dsh-*` entries from `package-lock.json`,
+  remove `node_modules`, then run `npm install` and confirm the third-party tree
+  is unchanged. The npm `min-release-age=2` gate needs an override only while
+  the RC is under two days old; record whether one was used. Audit the upstream
   `dsh-v<old>...dsh-v<new>` delta for APIs the adapter uses. Run `npm run check`
   and the current-host packaged smoke before opening its PR. `consumerCommit` must identify an exact pushed consumer
   conformance snapshot; preserve frozen protocol baselines unless their contract
@@ -447,6 +482,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   `darwin`/`linux` arm64/x64 `.tar.gz`, `windows` arm64/x64 `.zip`, plus
   `checksums.txt`. Reconcile GitHub/list/download hashes. Preserve launchers,
   bundled Node, dependencies, protocol files and runtime assets as one package.
+  Release packaging unpacks the official Node zip with `tar -xf`;
+  `Expand-Archive` broke on the `windows-11-arm` runner image when Windows
+  PowerShell loaded PowerShell 7's Archive module, so do not reintroduce it.
   Inspect `BUILD-METADATA.json` and embedded harness pins against producer facts.
 - **Probe:** current-host production installation, `--version` identity including
   adapter, `deepseek-harness/<pin>` and `acp/1`, `check`, then the producer's

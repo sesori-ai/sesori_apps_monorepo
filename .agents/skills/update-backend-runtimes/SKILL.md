@@ -110,6 +110,8 @@ identify the release channel; query it afresh rather than copying example pins.
   a patch-version increment does not guarantee a small diff.
 - Resolve old/new public source tags to immutable commits before auditing;
   re-check their identities before finalizing the plan and before implementation.
+  `gh api repos/<owner>/<repo>/commits/<tag> --jq .sha` resolves a tag; worktree
+  isolation may block `gh api .../git/ref/tags/...`.
   Resolve moved tags or ambiguous identities from official evidence; never guess
   a version/digest or turn uncertainty into a permanent old pin. Escalate an
   exceptional unresolved supply-chain problem under the temporary-hold policy.
@@ -134,13 +136,16 @@ independent minimum. Ask before broadening or tightening its compatibility polic
 
 Compare the complete old/new release range in aggregate, then inspect relevant
 source and intermediate release notes. Inventory every changed area, including
-packaging, dependencies, helpers, schemas and launch wrappers. Check GitHub
-compare pagination/truncation; a capped file list or missing patch is not proof
-of absence. If needed, fetch source-only objects into a disposable bare Git store
-under the allowed worktree and diff immutable commits there. Never fetch upstream
-objects into Sesori's shared Git database, create another checkout/worktree when
-prohibited, or execute upstream build code during source inspection. Retain
-partial evidence until inspected or recorded as incomplete.
+packaging, dependencies, helpers, schemas and launch wrappers. The GitHub compare
+API caps at 250 commits and 300 files and its pagination is unreliable; a capped
+file list or missing patch is not proof of absence. Diff large ranges in a
+disposable blobless bare clone under `/tmp` (`git fetch --depth=1
+--filter=blob:none <url> <old> <new>`, then `git diff`), or diff the codeload
+source tarballs of the two commits; avoid `git grep` across a blobless tree,
+which fetches every blob. Never fetch upstream objects into Sesori's shared Git
+database, create another checkout/worktree when prohibited, or execute upstream
+build code during source inspection. Retain partial evidence until inspected or
+recorded as incomplete.
 
 For each worthwhile change, trace serialization and forwarding to the production
 seam: REST/SSE, app-server, stream-json, Pi RPC, or the specific ACP adapter.
@@ -220,7 +225,8 @@ Keep official release evidence and real digests for **every selected managed
 asset**. Update targets/assets and affected fixtures together; run focused owning
 package tests/analyzer and useful safely available native checks. Reuse accepted
 results whose inputs have not changed. Do not delay all updates until every
-provider, platform or lifecycle scenario can run.
+provider, platform or lifecycle scenario can run. Search tests for hard-coded
+"newer than the pin" version strings that the new target can now equal or pass.
 
 **OpenCode target updates also require model code generation.** Rerun the
 applicable REST/model generator against the selected upstream release, audit its
@@ -228,8 +234,9 @@ SSE event manifest against that release and regenerate the event models. Include
 source/manifest changes and generated output in the target-update PR; record an
 unchanged-output result when there is no diff. Use the protocol-specific commands
 in [the OpenCode reference](references/harnesses.md#opencode), preserve the other
-supported adapter, and run affected model/API/event tests plus the package
-analyzer. Updating only the runtime pin and asset hashes is not sufficient.
+supported adapter, and run the package tests plus the analyzer (the analyzer
+skips generated files, so only the tests catch a broken regeneration). Updating
+only the runtime pin and asset hashes is not sufficient.
 
 Retain named checks from the approved plan, including detailed harness prose,
 but place unavailable or inconclusive checks in the final follow-up stage under
@@ -275,6 +282,12 @@ than re-asking the same decision or enforcing superseded pin-blocking language.
   check as unavailable, not compliant. No ambient tokens, credential helpers,
   SSH agent, sessions, MCP config or user files. Preserve production launch flags
   and approval policy; use the existing narrow production API when sufficient.
+  Pass a child `HOME` through the injected environment, not as a shell prefix
+  (`HOME=… cmd`), which the agent harness may block.
+- Executable lookup reads the bridge process's own `PATH`. On a machine with the
+  harness installed, run managed-install probes with a `PATH` that hides user
+  installs, or the probe exercises the user's runtime (OpenCode refuses with
+  "The global OpenCode runtime now takes precedence").
 - Start the trusted outer bound before fixture setup/compilation, not only the
   final probe. Bound startup, reads and shutdown; correlate responses by ID and
   distinguish server requests. Own process handles/groups or Windows Job Objects;
