@@ -287,7 +287,13 @@ class SessionPromptService({
         Log.w("Could not publish quota cancellation before prompt for session $sessionId", error, stackTrace);
       }
     }
-    await _sendMappingRejections(sessionId: sessionId, send: sendToPlugin);
+    await _sendMappingRejections(
+      sessionId: sessionId,
+      agent: agent,
+      model: model,
+      variant: variant,
+      send: sendToPlugin,
+    );
     try {
       await _acceptedPromptsRepository.recordAccepted(sessionId: sessionId, promptId: promptId);
     } catch (error, stackTrace) {
@@ -313,13 +319,22 @@ class SessionPromptService({
   /// and triggers forced discovery.
   Future<void> _sendMappingRejections({
     required String sessionId,
+    required String? agent,
+    required PromptModel? model,
+    required SessionVariant? variant,
     required Future<void> Function() send,
   }) async {
     try {
       await send();
     } on PluginStaleOptionsException catch (error, stackTrace) {
       await _invalidateStaleOptionsCache(sessionId: sessionId);
-      throw StaleSessionPromptOptionsException(cause: error, causeStackTrace: stackTrace);
+      throw StaleSessionPromptOptionsException(
+        cause: error,
+        causeStackTrace: stackTrace,
+        agent: agent,
+        model: model,
+        variant: variant,
+      );
     } on PluginRefusalException catch (error, stackTrace) {
       throw SessionPromptRefusedException(cause: error, causeStackTrace: stackTrace);
     }

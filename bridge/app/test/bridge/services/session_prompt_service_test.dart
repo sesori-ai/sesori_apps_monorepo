@@ -508,6 +508,35 @@ void main() {
       expect(optionsService.explicitInvalidations.single, (pluginId: "fake", projectId: "/repo"));
     });
 
+    test("names the sent catalog ids and the plugin's reason in the stale refusal's log text", () async {
+      plugin.sendPromptError = const PluginStaleOptionsException(operation: "sendPrompt", message: "unsupported agent");
+
+      await expectLater(
+        service.sendPrompt(
+          commandSource: null,
+          fastMode: false,
+          promptId: "prompt-1",
+          sessionId: "s1",
+          parts: const [PromptPart.text(text: "Hello")],
+          variant: const SessionVariant(id: "high"),
+          agent: "removed-agent",
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-x"),
+          command: null,
+          handoff: null,
+        ),
+        throwsA(
+          isA<StaleSessionPromptOptionsException>().having(
+            (error) => error.toString(),
+            "toString",
+            allOf(
+              contains("agent removed-agent, model anthropic/claude-x, variant high"),
+              contains("unsupported agent"),
+            ),
+          ),
+        ),
+      );
+    });
+
     test("invalidates the options cache and rethrows when the plugin reports stale options", () async {
       plugin.sendPromptError = const PluginStaleOptionsException(operation: "sendPrompt", message: "unsupported agent");
 
@@ -547,6 +576,9 @@ void main() {
       const staleRefusal = StaleSessionPromptOptionsException(
         cause: PluginStaleOptionsException(operation: "sendPrompt", message: "unsupported agent"),
         causeStackTrace: StackTrace.empty,
+        agent: null,
+        model: null,
+        variant: null,
       );
 
       Future<List<PromptSettings>> sendRefusingFirst({required SessionPromptDefaults defaults}) async {

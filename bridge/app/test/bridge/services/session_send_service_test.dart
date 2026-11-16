@@ -870,6 +870,9 @@ typedef _Send = ({
 StaleSessionPromptOptionsException _staleOptions() => StaleSessionPromptOptionsException(
   cause: const PluginStaleOptionsException(operation: "sendPrompt", message: "no longer offers the selected model"),
   causeStackTrace: StackTrace.current,
+  agent: null,
+  model: null,
+  variant: null,
 );
 
 final class _Prompts() implements SessionPromptService {
