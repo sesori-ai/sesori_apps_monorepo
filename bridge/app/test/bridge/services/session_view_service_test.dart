@@ -85,7 +85,11 @@ void main() {
     await storeSession(sessionId: "ses_plain", taskId: null);
 
     final sessions = await views.enrichMany(
-      sessions: [_session(id: "ses_run_1"), _session(id: "ses_plain"), _session(id: "ses_run_2")],
+      sessions: [
+        _session(id: "ses_run_1"),
+        _session(id: "ses_plain"),
+        _session(id: "ses_run_2"),
+      ],
     );
 
     expect([for (final session in sessions) session.scheduledTask?.taskId], [task.id, null, task.id]);

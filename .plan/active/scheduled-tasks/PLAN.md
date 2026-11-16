@@ -471,8 +471,9 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   repositories. It is true when the session's latest run has
   `userPromptedAt == null`; such completions are not pushed. Once the user
   sends their own prompt into that session, it behaves like any session.
-- `userPromptedAt` has one writer: `SessionPromptService.sendPrompt`, the human
-  path behind `send_prompt_handler.dart`, through a new
+- `userPromptedAt` has one writer, `SessionPromptService`: its user-facing
+  `sendPrompt` (behind `send_prompt_handler.dart`, and a send-to-session
+  handoff) and `rewindAndSendPrompt`, through a new
   `ScheduledTaskRepository` dependency (mirroring its existing
   `SessionContinuationRepository` one). `sendPromptAlreadyReserved`, used by
   the scheduler and quota continuation, never writes it. Needs-you pushes are
@@ -495,9 +496,8 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
     `updateArchiveStatus` with `deleteWorktree: true, force: false`.
   - Pinned sessions are neither archived nor counted among the 5. A session
     whose quietness reads `unknown` counts as not finished and stays.
-  - `userPromptedAt` is also written by `rewindAndSendPrompt`: an edit is the
-    user's own prompt too. The bridge's `sendPromptAlreadyReserved` never
-    writes it.
+  - `rewindAndSendPrompt` writes `userPromptedAt` because an edit is the
+    user's own prompt too, and so does a user's send-to-session handoff.
   - The can't-start push is limited and collapsed per task
     (`session_message-task-<taskId>`).
 - Auth-server check (2026-11-15, `sesori_auth_server` master `4987730`): an
