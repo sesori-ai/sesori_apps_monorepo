@@ -7447,6 +7447,192 @@ abstract class AppLocalizations {
   /// **'an unknown reason'**
   String get scheduledTaskFailureUnknown;
 
+  /// Title of the screen that sets up a new scheduled task, and the Scheduled page's add button label.
+  ///
+  /// In en, this message translates to:
+  /// **'New task'**
+  String get scheduledTaskNew;
+
+  /// Title of the screen that edits a scheduled task.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit task'**
+  String get scheduledTaskEditTitle;
+
+  /// Task page action that opens the task in the editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get scheduledTaskEdit;
+
+  /// The task editor's submit button.
+  ///
+  /// In en, this message translates to:
+  /// **'Save task'**
+  String get scheduledTaskSave;
+
+  /// Task editor row label for how each run starts and handles approvals.
+  ///
+  /// In en, this message translates to:
+  /// **'Each run'**
+  String get scheduledTaskEachRun;
+
+  /// When sheet preset: the task runs one time.
+  ///
+  /// In en, this message translates to:
+  /// **'Once'**
+  String get scheduledTaskRepeatOnce;
+
+  /// When sheet preset: the task runs every day.
+  ///
+  /// In en, this message translates to:
+  /// **'Every day'**
+  String get scheduledTaskRepeatDaily;
+
+  /// When sheet preset: the task runs Monday to Friday.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays'**
+  String get scheduledTaskRepeatWeekdays;
+
+  /// When sheet preset: the task runs on chosen days of the week.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get scheduledTaskRepeatWeekly;
+
+  /// When sheet preset: the task runs every few hours.
+  ///
+  /// In en, this message translates to:
+  /// **'Every few hours'**
+  String get scheduledTaskRepeatEveryHours;
+
+  /// When sheet field for the time of day a task runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get scheduledTaskTime;
+
+  /// When sheet field for a one-off task's date and time.
+  ///
+  /// In en, this message translates to:
+  /// **'Date and time'**
+  String get scheduledTaskDateAndTime;
+
+  /// When sheet field for when an every-few-hours task first runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting'**
+  String get scheduledTaskStarting;
+
+  /// Accessibility label of the button that shortens the every-few-hours interval.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer hours'**
+  String get scheduledTaskFewerHours;
+
+  /// Accessibility label of the button that lengthens the every-few-hours interval.
+  ///
+  /// In en, this message translates to:
+  /// **'More hours'**
+  String get scheduledTaskMoreHours;
+
+  /// When sheet heading for what happens to a run missed while the computer was off.
+  ///
+  /// In en, this message translates to:
+  /// **'If the computer was off'**
+  String get scheduledTaskMissedHeading;
+
+  /// Missed-run choice: run once as soon as the computer is back.
+  ///
+  /// In en, this message translates to:
+  /// **'Run when it’s back'**
+  String get scheduledTaskRunWhenBack;
+
+  /// Missed-run choice: skip the missed run.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for the next time'**
+  String get scheduledTaskWaitForNext;
+
+  /// Each run choice: every run starts its own session.
+  ///
+  /// In en, this message translates to:
+  /// **'New session'**
+  String get scheduledTaskStartsNewSession;
+
+  /// Each run choice: every run continues the session the first run started.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue in the same session'**
+  String get scheduledTaskContinuesSession;
+
+  /// Each run sheet heading for how a run answers permission requests.
+  ///
+  /// In en, this message translates to:
+  /// **'Approvals'**
+  String get scheduledTaskApprovalsHeading;
+
+  /// Approval choice: a run waits for the user to answer each request.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask me'**
+  String get scheduledTaskApprovalsAsk;
+
+  /// Approval choice: a run approves every request on its own.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve everything'**
+  String get scheduledTaskApprovalsAll;
+
+  /// Shown in the task editor while the computer saves the task.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get scheduledTaskSaving;
+
+  /// Shown in the task editor when saving failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t save the task. Try again.'**
+  String get scheduledTaskSaveFailed;
+
+  /// When line error: a one-off task's time is already past.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a time that hasn’t passed'**
+  String get scheduledTaskOnceInPast;
+
+  /// When line error: a weekly task has no days.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least one day'**
+  String get scheduledTaskNoDays;
+
+  /// When line error: the computer refused the schedule or its time zone.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer can’t use this schedule'**
+  String get scheduledTaskInvalidSchedule;
+
+  /// Task editor error: the prompt is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Write what the task should do'**
+  String get scheduledTaskEmptyPrompt;
+
+  /// Task editor error: the computer no longer has the chosen project.
+  ///
+  /// In en, this message translates to:
+  /// **'This project isn’t on the computer anymore'**
+  String get scheduledTaskUnknownProject;
+
+  /// Task editor error: the computer does not offer the chosen harness.
+  ///
+  /// In en, this message translates to:
+  /// **'This harness isn’t available on the computer'**
+  String get scheduledTaskUnknownHarness;
+
   /// Label of the composer's side-question button, and the hint of the side chat's question field. A side question is answered from what the session knows, without interrupting it.
   ///
   /// In en, this message translates to:

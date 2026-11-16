@@ -4295,6 +4295,99 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduledTaskFailureUnknown => 'an unknown reason';
 
   @override
+  String get scheduledTaskNew => 'New task';
+
+  @override
+  String get scheduledTaskEditTitle => 'Edit task';
+
+  @override
+  String get scheduledTaskEdit => 'Edit';
+
+  @override
+  String get scheduledTaskSave => 'Save task';
+
+  @override
+  String get scheduledTaskEachRun => 'Each run';
+
+  @override
+  String get scheduledTaskRepeatOnce => 'Once';
+
+  @override
+  String get scheduledTaskRepeatDaily => 'Every day';
+
+  @override
+  String get scheduledTaskRepeatWeekdays => 'Weekdays';
+
+  @override
+  String get scheduledTaskRepeatWeekly => 'Weekly';
+
+  @override
+  String get scheduledTaskRepeatEveryHours => 'Every few hours';
+
+  @override
+  String get scheduledTaskTime => 'Time';
+
+  @override
+  String get scheduledTaskDateAndTime => 'Date and time';
+
+  @override
+  String get scheduledTaskStarting => 'Starting';
+
+  @override
+  String get scheduledTaskFewerHours => 'Fewer hours';
+
+  @override
+  String get scheduledTaskMoreHours => 'More hours';
+
+  @override
+  String get scheduledTaskMissedHeading => 'If the computer was off';
+
+  @override
+  String get scheduledTaskRunWhenBack => 'Run when it’s back';
+
+  @override
+  String get scheduledTaskWaitForNext => 'Wait for the next time';
+
+  @override
+  String get scheduledTaskStartsNewSession => 'New session';
+
+  @override
+  String get scheduledTaskContinuesSession => 'Continue in the same session';
+
+  @override
+  String get scheduledTaskApprovalsHeading => 'Approvals';
+
+  @override
+  String get scheduledTaskApprovalsAsk => 'Ask me';
+
+  @override
+  String get scheduledTaskApprovalsAll => 'Approve everything';
+
+  @override
+  String get scheduledTaskSaving => 'Saving…';
+
+  @override
+  String get scheduledTaskSaveFailed => 'Couldn’t save the task. Try again.';
+
+  @override
+  String get scheduledTaskOnceInPast => 'Pick a time that hasn’t passed';
+
+  @override
+  String get scheduledTaskNoDays => 'Pick at least one day';
+
+  @override
+  String get scheduledTaskInvalidSchedule => 'This computer can’t use this schedule';
+
+  @override
+  String get scheduledTaskEmptyPrompt => 'Write what the task should do';
+
+  @override
+  String get scheduledTaskUnknownProject => 'This project isn’t on the computer anymore';
+
+  @override
+  String get scheduledTaskUnknownHarness => 'This harness isn’t available on the computer';
+
+  @override
   String get sideQuestionAsk => 'Ask a side question';
 
   @override

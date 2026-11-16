@@ -120,6 +120,7 @@ void main() {
       AppRouteDef.sessionDiffs,
       AppRouteDef.scheduledTasks,
       AppRouteDef.scheduledTaskDetail,
+      AppRouteDef.scheduledTaskEditor,
     ];
     for (final route in sequence) {
       routeSource.emit(route: route);
@@ -144,6 +145,7 @@ void main() {
         AnalyticsScreen.sessionDiffs,
         AnalyticsScreen.scheduledTasks,
         AnalyticsScreen.scheduledTaskDetail,
+        AnalyticsScreen.scheduledTaskEditor,
       ],
     );
     expect(AppRouteDef.values, hasLength(sequence.length + 1));
