@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$NotificationData {
 
-@JsonKey(unknownEnumValue: NotificationCategory.unknown) NotificationCategory get category;@JsonKey(unknownEnumValue: NotificationEventType.unknown) NotificationEventType? get eventType; String? get sessionId; String? get projectId; String? get bridgeId;
+@JsonKey(unknownEnumValue: NotificationCategory.unknown) NotificationCategory get category;@JsonKey(unknownEnumValue: NotificationEventType.unknown) NotificationEventType? get eventType; String? get sessionId; String? get projectId; String? get bridgeId; String? get taskId;
 /// Create a copy of NotificationData
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $NotificationDataCopyWith<NotificationData> get copyWith => _$NotificationDataCo
 @override
 bool operator ==(Object other) {
   final _this = this as NotificationData;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationData&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.eventType, _this.eventType) || other.eventType == _this.eventType)&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationData&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.eventType, _this.eventType) || other.eventType == _this.eventType)&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId)&&(identical(other.taskId, _this.taskId) || other.taskId == _this.taskId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as NotificationData;
-  return Object.hash(runtimeType,_this.category,_this.eventType,_this.sessionId,_this.projectId,_this.bridgeId);
+  return Object.hash(runtimeType,_this.category,_this.eventType,_this.sessionId,_this.projectId,_this.bridgeId,_this.taskId);
 }
 
 @override
 String toString() {
   final _this = this as NotificationData;
-  return 'NotificationData(category: ${_this.category}, eventType: ${_this.eventType}, sessionId: ${_this.sessionId}, projectId: ${_this.projectId}, bridgeId: ${_this.bridgeId})';
+  return 'NotificationData(category: ${_this.category}, eventType: ${_this.eventType}, sessionId: ${_this.sessionId}, projectId: ${_this.projectId}, bridgeId: ${_this.bridgeId}, taskId: ${_this.taskId})';
 }
 
 
@@ -54,7 +54,7 @@ abstract mixin class $NotificationDataCopyWith<$Res>  {
   factory $NotificationDataCopyWith(NotificationData value, $Res Function(NotificationData) _then) = _$NotificationDataCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: NotificationCategory.unknown) NotificationCategory category,@JsonKey(unknownEnumValue: NotificationEventType.unknown) NotificationEventType? eventType, String? sessionId, String? projectId, String? bridgeId
+@JsonKey(unknownEnumValue: NotificationCategory.unknown) NotificationCategory category,@JsonKey(unknownEnumValue: NotificationEventType.unknown) NotificationEventType? eventType, String? sessionId, String? projectId, String? bridgeId, String? taskId
 });
 
 
@@ -71,13 +71,14 @@ class _$NotificationDataCopyWithImpl<$Res>
 
 /// Create a copy of NotificationData
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? category = null,Object? eventType = freezed,Object? sessionId = freezed,Object? projectId = freezed,Object? bridgeId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? category = null,Object? eventType = freezed,Object? sessionId = freezed,Object? projectId = freezed,Object? bridgeId = freezed,Object? taskId = freezed,}) {
   return _then(NotificationData(
 category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as NotificationCategory,eventType: freezed == eventType ? _self.eventType : eventType // ignore: cast_nullable_to_non_nullable
 as NotificationEventType?,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,taskId: freezed == taskId ? _self.taskId : taskId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -90,7 +91,7 @@ as String?,
 @JsonSerializable()
 
 class _NotificationData implements NotificationData {
-  const _NotificationData({@JsonKey(unknownEnumValue: NotificationCategory.unknown) required this.category, @JsonKey(unknownEnumValue: NotificationEventType.unknown) required this.eventType, required this.sessionId, required this.projectId, required this.bridgeId});
+  const _NotificationData({@JsonKey(unknownEnumValue: NotificationCategory.unknown) required this.category, @JsonKey(unknownEnumValue: NotificationEventType.unknown) required this.eventType, required this.sessionId, required this.projectId, required this.bridgeId, required this.taskId});
   factory _NotificationData.fromJson(Map<String, dynamic> json) => _$NotificationDataFromJson(json);
 
 @override@JsonKey(unknownEnumValue: NotificationCategory.unknown) final  NotificationCategory category;
@@ -98,6 +99,7 @@ class _NotificationData implements NotificationData {
 @override final  String? sessionId;
 @override final  String? projectId;
 @override final  String? bridgeId;
+@override final  String? taskId;
 
 /// Create a copy of NotificationData
 /// with the given fields replaced by the non-null parameter values.
@@ -112,18 +114,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationData&&(identical(other.category, category) || other.category == category)&&(identical(other.eventType, eventType) || other.eventType == eventType)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationData&&(identical(other.category, category) || other.category == category)&&(identical(other.eventType, eventType) || other.eventType == eventType)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.taskId, taskId) || other.taskId == taskId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,category,eventType,sessionId,projectId,bridgeId);
+    return Object.hash(runtimeType,category,eventType,sessionId,projectId,bridgeId,taskId);
 }
 
 @override
 String toString() {
-    return 'NotificationData(category: $category, eventType: $eventType, sessionId: $sessionId, projectId: $projectId, bridgeId: $bridgeId)';
+    return 'NotificationData(category: $category, eventType: $eventType, sessionId: $sessionId, projectId: $projectId, bridgeId: $bridgeId, taskId: $taskId)';
 }
 
 
@@ -134,7 +136,7 @@ abstract mixin class _$NotificationDataCopyWith<$Res> implements $NotificationDa
   factory _$NotificationDataCopyWith(_NotificationData value, $Res Function(_NotificationData) _then) = __$NotificationDataCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: NotificationCategory.unknown) NotificationCategory category,@JsonKey(unknownEnumValue: NotificationEventType.unknown) NotificationEventType? eventType, String? sessionId, String? projectId, String? bridgeId
+@JsonKey(unknownEnumValue: NotificationCategory.unknown) NotificationCategory category,@JsonKey(unknownEnumValue: NotificationEventType.unknown) NotificationEventType? eventType, String? sessionId, String? projectId, String? bridgeId, String? taskId
 });
 
 
@@ -151,13 +153,14 @@ class __$NotificationDataCopyWithImpl<$Res>
 
 /// Create a copy of NotificationData
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? category = null,Object? eventType = freezed,Object? sessionId = freezed,Object? projectId = freezed,Object? bridgeId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? category = null,Object? eventType = freezed,Object? sessionId = freezed,Object? projectId = freezed,Object? bridgeId = freezed,Object? taskId = freezed,}) {
   return _then(_NotificationData(
 category: null == category ? _self.category : category // ignore: cast_nullable_to_non_nullable
 as NotificationCategory,eventType: freezed == eventType ? _self.eventType : eventType // ignore: cast_nullable_to_non_nullable
 as NotificationEventType?,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,taskId: freezed == taskId ? _self.taskId : taskId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

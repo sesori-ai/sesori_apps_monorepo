@@ -475,8 +475,9 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   repositories. It is true when the session's latest run has
   `userPromptedAt == null`; such completions are not pushed. Once the user
   sends their own prompt into that session, it behaves like any session.
-- `userPromptedAt` has one writer: `SessionPromptService.sendPrompt`, the human
-  path behind `send_prompt_handler.dart`, through a new
+- `userPromptedAt` has one writer, `SessionPromptService`: its user-facing
+  `sendPrompt` (behind `send_prompt_handler.dart`, and a send-to-session
+  handoff) and `rewindAndSendPrompt`, through a new
   `ScheduledTaskRepository` dependency (mirroring its existing
   `SessionContinuationRepository` one). `sendPromptAlreadyReserved`, used by
   the scheduler and quota continuation, never writes it. Needs-you pushes are
@@ -490,6 +491,26 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   `taskId`; the client routes a tap to the task's page (step 8) through
   `NotificationOpenDispatcher`, which gains a task target. An older app opens
   its home.
+- Step 6 as built:
+  - The mark is read in `SessionViewService.enrichMany`, one join of
+    `sessions.scheduledTaskId` to the task per list, so the single-session
+    path, lists and `session.created` all carry it.
+  - Auto-archive runs after a new-session run starts, outside the run lock and
+    one pass at a time, so it never delays or fails a fire. It goes through
+    `updateArchiveStatus` with `deleteWorktree: true, force: false`.
+  - Pinned sessions are neither archived nor counted among the 5. A session
+    whose quietness reads `unknown` counts as not finished and stays.
+  - `rewindAndSendPrompt` writes `userPromptedAt` because an edit is the
+    user's own prompt too, and so does a user's send-to-session handoff.
+  - The can't-start push is limited and collapsed per task
+    (`session_message-task-<taskId>`).
+- Auth-server check (2026-11-15, `sesori_auth_server` master `4987730`): an
+  unknown `eventType` passes through, because `notificationDataSchema` types
+  it as `z.string()`. `taskId` is silently stripped: the plain `z.object` in
+  `src/models/api.ts:294-301` drops unknown keys, and the flatten step in
+  `src/services/notification-service.ts:150-163` copies only the four known
+  fields. Resolved by auth-server PR #116 (live in production, `/version`
+  builtAt 2026-11-16T00:31:39Z), which passes `taskId` through; step 8's push tap can rely on it.
 
 ### P9. Compaction on request (all harnesses)
 

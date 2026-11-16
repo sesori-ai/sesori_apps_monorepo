@@ -62,6 +62,7 @@ void main() {
         sessionId: sessionId,
         projectId: null,
         bridgeId: "br_this_computer",
+        taskId: null,
       );
 
       expect(payload.title, equals("Question requires input"));
@@ -87,6 +88,7 @@ void main() {
         sessionId: sessionId,
         projectId: null,
         bridgeId: "br_this_computer",
+        taskId: null,
       );
 
       expect(payload.collapseKey, equals("system_update-global"));
@@ -96,6 +98,36 @@ void main() {
         payload.data?.eventType,
         equals(NotificationEventType.installationUpdateAvailable),
       );
+    });
+  });
+
+  group("scheduledTaskFailure", () {
+    test("titles the push with the task name and gives every reason a short body", () {
+      final bodies = {
+        for (final reason in TaskRunFailureReason.values)
+          reason: contentBuilder.scheduledTaskFailure(taskName: "Morning summary", reason: reason).body,
+      };
+
+      expect(
+        contentBuilder.scheduledTaskFailure(taskName: "Morning summary", reason: .startFailed).title,
+        "Morning summary",
+      );
+      expect(bodies[TaskRunFailureReason.projectMissing], "Couldn't start: the project is gone.");
+      expect(bodies[TaskRunFailureReason.harnessUnavailable], "Couldn't start: the harness isn't available.");
+      expect(bodies[TaskRunFailureReason.modelUnavailable], "Couldn't start: the model is no longer offered.");
+      expect(bodies[TaskRunFailureReason.startFailed], "Couldn't start this run.");
+      expect(bodies[TaskRunFailureReason.unknown], "Couldn't start this run.");
+    });
+
+    test("shortens a long task name like a session title", () {
+      final title = contentBuilder
+          .scheduledTaskFailure(
+            taskName: "Summarize every pull request merged into the main branch yesterday",
+            reason: TaskRunFailureReason.startFailed,
+          )
+          .title;
+
+      expect(title, "Summarize every pull request merged into the main...");
     });
   });
 

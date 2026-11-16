@@ -190,6 +190,27 @@ void main() {
       expect(worktreeCreates.single.arguments, contains(success.path));
     });
 
+    test("a path an archived session kept its HEAD for skips to the next name", () async {
+      processRunner.keptHeads = 1;
+      _enqueueResolvedMain(processRunner: processRunner);
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.prepareWorktreeForSession(projectId: _projectId);
+
+      final success = result as WorktreeSuccess;
+      final lookedUp = processRunner.invocations
+          .where(
+            (invocation) =>
+                invocation.arguments.first == "rev-parse" && invocation.arguments.last.startsWith("refs/sesori/"),
+          )
+          .toList(growable: false);
+      expect(lookedUp, hasLength(2));
+      final worktreeCreates = processRunner.invocations
+          .where((invocation) => invocation.arguments.take(2).join(" ") == "worktree add")
+          .toList(growable: false);
+      expect(worktreeCreates.single.arguments, contains(success.path));
+    });
+
     // -----------------------------------------------------------------------
     // Git failure fallback (all normal and suffixed attempts fail)
     // -----------------------------------------------------------------------
@@ -945,6 +966,7 @@ class _FakeProcessRunner() implements ProcessRunner {
 
   final List<_Invocation> invocations = <_Invocation>[];
   final List<Object> _queue = <Object>[];
+  int keptHeads = 0;
 
   void enqueue({required ProcessResult result}) {
     _queue.add(result);
@@ -969,6 +991,14 @@ class _FakeProcessRunner() implements ProcessRunner {
         workingDirectory: workingDirectory,
       ),
     );
+
+    // Kept-HEAD lookups answer apart from the queued sequence: the first
+    // [keptHeads] paths are held by an archived session, the rest are free.
+    if (arguments.length == 2 && arguments[0] == "rev-parse" && arguments[1].startsWith("refs/sesori/")) {
+      if (keptHeads == 0) return ProcessResult(0, 1, "", "");
+      keptHeads--;
+      return ProcessResult(0, 0, "abc123\n", "");
+    }
 
     if (_queue.isEmpty) {
       throw StateError("No ProcessResult queued for: $executable $arguments");

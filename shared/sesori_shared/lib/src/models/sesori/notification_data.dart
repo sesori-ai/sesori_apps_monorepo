@@ -16,6 +16,9 @@ sealed class NotificationData with _$NotificationData {
     // revocation, until it re-registers) or is a v1.9.1 bridge that predates
     // the field; such a push opens on the current computer.
     required String? bridgeId,
+    // The scheduled task a scheduled-task push is about, so tapping it can
+    // open that task. Null on every other push.
+    required String? taskId,
   }) = _NotificationData;
 
   factory fromJson(Map<String, dynamic> json) => _$NotificationDataFromJson(json);
@@ -74,6 +77,8 @@ enum NotificationEventType() {
   installationUpdateAvailable,
   @JsonValue("agent_turn_completed")
   agentTurnCompleted,
+  @JsonValue("scheduled_task_run_failed")
+  scheduledTaskRunFailed,
   // Permanent forward-compatible fallback for event types added by newer peers.
   @JsonValue("unknown")
   unknown,
