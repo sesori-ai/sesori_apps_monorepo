@@ -60,7 +60,7 @@ _Session _$SessionFromJson(Map json) => _Session(
     json['approvalOverride'],
     unknownValue: JsonKey.nullForUndefinedEnumValue,
   ),
-  pinned: json['pinned'] as bool? ?? false,
+  pinOrder: (json['pinOrder'] as num?)?.toInt(),
   scheduledTask: json['scheduledTask'] == null
       ? null
       : SessionScheduledTaskMark.fromJson(
@@ -93,7 +93,7 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'lastUserActivityAt': ?instance.lastUserActivityAt,
   'autoContinuation': ?instance.autoContinuation?.toJson(),
   'approvalOverride': ?_$SessionApprovalModeEnumMap[instance.approvalOverride],
-  'pinned': instance.pinned,
+  'pinOrder': ?instance.pinOrder,
   'scheduledTask': ?instance.scheduledTask?.toJson(),
   'interruption': ?instance.interruption?.toJson(),
   'forkedFrom': ?instance.forkedFrom?.toJson(),

@@ -14,6 +14,7 @@ import "../../widgets/project_launch_rows_builder.dart";
 import "../../widgets/remote_failure_view.dart";
 import "../project_list/project_path_labels.dart";
 import "../session_detail/widgets/transcript_motion.dart";
+import "pinned_row_drag.dart";
 import "session_date_label.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_headings.dart";
@@ -260,6 +261,10 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   String? _note;
   bool _noteLeaving = false;
 
+  /// The pinned rows' drag and drop, which places a dragged row ahead of the
+  /// sessions' order.
+  final PinnedRowDragTracker _dragTracker = PinnedRowDragTracker();
+
   @override
   void initState() {
     super.initState();
@@ -270,7 +275,10 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
 
     _handOff.addStatusListener(rebuildOnEnd);
     _chipsIn.addStatusListener(rebuildOnEnd);
+    _dragTracker.addListener(_onDragTracker);
   }
+
+  void _onDragTracker() => setState(() {});
 
   /// Fades the content in where the skeleton stands, timed from the next
   /// frame: this one mounts the content and can be slow enough to use up the
@@ -285,6 +293,9 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _dragTracker
+      ..removeListener(_onDragTracker)
+      ..dispose();
     _contentOpacity.dispose();
     _handOff.dispose();
     _chipsOpacity.dispose();
@@ -336,12 +347,25 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
             _SessionItem(row: row, heading: headings[index]),
       ];
       // Pinned rows lead the list, so launches lead Today right below them.
-      final pinned = sessions.takeWhile((item) => item.row.session.pinned).length;
+      final pinnedCount = sessions.takeWhile((item) => item.row.session.pinned).length;
+      final pinned = sessions.take(pinnedCount).toList();
+      if (identical(state, current)) {
+        _dragTracker.showPinned(sessionIds: [for (final item in pinned) item.row.session.id]);
+      }
+      // A dragged row stands where it was dragged until the rows show it there.
+      if (_dragTracker.place case (:final sessionId, :final afterSessionId)?) {
+        final at = pinned.indexWhere((item) => item.row.session.id == sessionId);
+        final anchor = pinned.indexWhere((item) => item.row.session.id == afterSessionId);
+        if (at >= 0 && (afterSessionId == null || anchor >= 0)) {
+          final dragged = pinned.removeAt(at);
+          pinned.insert(afterSessionId == null ? 0 : (anchor > at ? anchor : anchor + 1), dragged);
+        }
+      }
       return groupUnderHeadings<_HeadedItem>(
         items: [
-          ...sessions.take(pinned),
+          ...pinned,
           for (final launch in launchesOf(state)) _LaunchItem(launch: launch),
-          ...sessions.skip(pinned),
+          ...sessions.skip(pinnedCount),
         ],
         headingOf: (item) => switch (item) {
           // A launch is the newest running thing, so it leads Today.
@@ -733,6 +757,12 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
             opacity: _contentOpacity,
             sliver: PregoAnimatedSliverList<SessionListEntry<_Item>>(
               items: shownEntries,
+              // Pinned rows slide as the user drags one among them, or as
+              // another surface reorders them.
+              slidesWhenMoved: (entry) => switch (entry) {
+                SessionListItemEntry(item: _SessionItem(:final row)) => row.session.pinned,
+                _ => false,
+              },
               itemKey: (entry) => switch (entry) {
                 final SessionListHeadingEntry<_Item> heading => heading.key,
                 SessionListItemEntry(item: _LaunchItem(:final launch)) => ValueKey<Object>(launch.launchId),
@@ -769,6 +799,11 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                     row: row,
                     bottomPadding: bottomPadding,
                     tookLaunchRow: launchRows[row.project.id]?.rowKeys.containsKey(row.session.id) ?? false,
+                    // Searched or narrowed to running or unread rows, the
+                    // pinned rows shown are too few to place one among.
+                    reorders:
+                        isActive && !searching && state.quickFilter == SessionListQuickFilter.all && row.session.pinned,
+                    pointer: pointer,
                     // Across every project each row names its own, a "No project"
                     // session's as "No project", as its session header does.
                     labelsProject: state.projectId == null,
@@ -906,6 +941,8 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     required double bottomPadding,
     required bool tookLaunchRow,
     required bool labelsProject,
+    required bool reorders,
+    required bool pointer,
   }) {
     final list = widget.list;
     final dispatcher = list.actionDispatcher;
@@ -923,6 +960,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
         selected: list.selectedSessionId == row.session.id,
         awaitingInput: row.isAwaitingInput,
         isRetrying: row.isRetrying,
+        isInterrupted: row.isInterrupted,
         backgroundTaskCount: row.backgroundTaskCount,
         onTap: () => list.onSessionTap(row: row),
         menuEntries: () => dispatcher.sessionMenuEntries(
@@ -944,10 +982,25 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
         ),
       ),
     );
+    final placed = reorders
+        ? PinnedRowDrag(
+            sessionId: row.session.id,
+            tracker: _dragTracker,
+            onMove: ({required sessionId, required afterSessionId}) =>
+                actions().movePin(sessionId: sessionId, afterSessionId: afterSessionId),
+            onMoveRefused: () => PregoPopupAlertPresenter.of(context).show(
+              title: context.loc.sessionListPinMoveFailed,
+              variant: PregoPopupAlertsNotificationsVariant.error,
+            ),
+            borderRadius: pointer ? BorderRadius.circular(PregoRadius.sm) : BorderRadius.zero,
+            liftedColor: pointer ? context.prego.colors.pointerPanelFill : Theme.of(context).scaffoldBackgroundColor,
+            child: tile,
+          )
+        : tile;
     // A row a load replaces fades out without taking taps.
     return IgnorePointer(
       ignoring: _replacing,
-      child: tookLaunchRow ? _launchRowSettling(context: context, launching: false, child: tile) : tile,
+      child: tookLaunchRow ? _launchRowSettling(context: context, launching: false, child: placed) : placed,
     );
   }
 }

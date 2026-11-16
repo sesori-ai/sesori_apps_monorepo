@@ -61,6 +61,9 @@ class const SessionTile({
   final bool selected = false,
   final bool awaitingInput = false,
   final bool isRetrying = false,
+
+  /// A bridge stop cut the last turn off and the user has not been back since.
+  required final bool isInterrupted,
   final int backgroundTaskCount = 0,
 
   /// Opens the session.
@@ -615,16 +618,17 @@ class const SessionTile({
     );
   }
 
-  /// The states that need words: waiting for the user and a retry loop. A
-  /// plain running session has none; its turning sparkle and breathing harness logo
-  /// say it.
+  /// The states that need words: waiting for the user, a retry loop and a
+  /// turn a bridge stop cut off. A plain running session has none; its turning
+  /// sparkle and breathing harness logo say it.
   Widget? _statusLabel({required BuildContext context, required bool pointer}) {
     final loc = context.loc;
     final prego = context.prego;
-    final (String, Color)? status = switch ((awaitingInput, isRetrying)) {
-      (true, _) => (loc.sessionListWaiting, prego.colors.smallWarningText),
-      (false, true) => (loc.sessionListRunningRetrying, prego.colors.fgErrorPrimary),
-      (false, false) => null,
+    final (String, Color)? status = switch ((awaitingInput, isRetrying, isInterrupted)) {
+      (true, _, _) => (loc.sessionListWaiting, prego.colors.smallWarningText),
+      (false, true, _) => (loc.sessionListRunningRetrying, prego.colors.fgErrorPrimary),
+      (false, false, true) => (loc.sessionListInterrupted, prego.colors.textSecondary),
+      (false, false, false) => null,
     };
     if (status case (final label, final color)) {
       final text = Text(

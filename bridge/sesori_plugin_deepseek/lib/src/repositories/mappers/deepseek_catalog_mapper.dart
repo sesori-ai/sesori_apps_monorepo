@@ -1,4 +1,4 @@
-import "package:acp_plugin/acp_plugin.dart" show AcpNewSessionResult;
+import "package:acp_plugin/acp_plugin.dart" show AcpConfigOptionParser, AcpNewSessionResult;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../../api/models/deepseek_protocol_dto.dart";
@@ -71,6 +71,17 @@ class const DeepSeekCatalogMapper() {
           ? PluginSessionOptionsCompleteness.complete
           : PluginSessionOptionsCompleteness.partial,
     );
+  }
+
+  /// The model ids session/new or session/load offered, or null when the
+  /// result carries no model option.
+  Set<String>? mapSessionModelIds({required AcpNewSessionResult result}) {
+    final config = result.configOptions.where((option) => option["id"] == "deepseek.model").firstOrNull;
+    if (config?["options"] is! List) return null;
+    return {
+      for (final option in AcpConfigOptionParser.flattenedOptions(config: config))
+        if (option["value"] case final String value when value.isNotEmpty) value,
+    };
   }
 
   ({String modelId, String providerId, String? variant})? mapSessionSelection({

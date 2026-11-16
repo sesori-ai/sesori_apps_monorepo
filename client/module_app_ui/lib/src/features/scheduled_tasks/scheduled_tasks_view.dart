@@ -29,6 +29,9 @@ class const ScheduledTasksView({
   required final ScheduledPageExit exit,
   required final VoidCallback onExit,
   required final void Function({required String taskId}) onOpenTask,
+
+  /// Opens the New task screen.
+  required final VoidCallback onNewTask,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocProvider(
@@ -43,6 +46,15 @@ class const ScheduledTasksView({
         },
         automaticallyImplyLeading: false,
         actions: [
+          PregoButtonsIconGlass(
+            key: const Key("scheduled-tasks-new"),
+            icon: TablerRegular.plus,
+            semanticLabel: context.loc.scheduledTaskNew,
+            // An older computer cannot take a task; the tap says how to update it.
+            onPressed: () => context.read<ScheduledTasksCubit>().state is ScheduledTasksBridgeOutdated
+                ? unawaited(showBridgeUpdateSheet(context: context))
+                : onNewTask(),
+          ),
           if (exit == ScheduledPageExit.close)
             PregoButtonsIconGlass(
               icon: TablerRegular.x,
@@ -141,6 +153,7 @@ class const _TaskList({
   @override
   Widget build(BuildContext context) => PregoAnimatedSliverList<_Entry>(
     items: entries,
+    slidesWhenMoved: (_) => false,
     itemKey: (entry) => switch (entry) {
       // A task moving between headings is a new row there.
       _HeadingEntry(:final heading) => ValueKey("heading-$heading"),

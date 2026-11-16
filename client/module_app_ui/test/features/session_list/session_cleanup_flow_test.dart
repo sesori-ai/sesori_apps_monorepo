@@ -57,7 +57,7 @@ void main() {
                     builder: (context) => TextButton(
                       onPressed: () => dispatcher.handleSessionArchive(
                         context: context,
-                        session: session.copyWith(pinned: pinned),
+                        session: session.copyWith(pinOrder: pinned ? 1 : null),
                         isRunning: running,
                       ),
                       child: const Text("go"),
@@ -200,7 +200,7 @@ void main() {
       List<String> titlesOf(List<PregoMenuItem> entries) => [for (final entry in entries) entry.title];
 
       expect(titlesOf(await menuFor(tester: tester, target: session)).take(3), ["Pin", "Page action", "Rename"]);
-      expect(titlesOf(await menuFor(tester: tester, target: session.copyWith(pinned: true))).first, "Unpin");
+      expect(titlesOf(await menuFor(tester: tester, target: session.copyWith(pinOrder: 1))).first, "Unpin");
       final archivedSession = testSession(id: "s1", title: "Fix the build", archivedAt: DateTime(2026));
       expect(titlesOf(await menuFor(tester: tester, target: archivedSession)), isNot(contains("Pin")));
       final child = testSession(id: "c1", parentID: "s1", title: "Sub-task");
@@ -375,7 +375,7 @@ void main() {
       testWidgets("the ${confirmation.name} says a pinned session is pinned", (tester) async {
         await pumpDeleteButton(
           tester: tester,
-          target: session.copyWith(pinned: true),
+          target: session.copyWith(pinOrder: 1),
           deleteConfirmation: confirmation,
         );
 

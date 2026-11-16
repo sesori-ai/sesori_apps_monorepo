@@ -12,8 +12,11 @@ void main() {
       "time": null,
     });
 
+    expect(session.pinOrder, isNull);
     expect(session.pinned, isFalse);
-    expect(Session.fromJson(session.copyWith(pinned: true).toJson()).pinned, isTrue);
+    final pinned = Session.fromJson(session.copyWith(pinOrder: 7).toJson());
+    expect(pinned.pinOrder, 7);
+    expect(pinned.pinned, isTrue);
   });
 
   test("a page request from an app before pinning keeps time order", () {
@@ -24,5 +27,11 @@ void main() {
     });
 
     expect(request.pinnedFirst, isFalse);
+  });
+
+  test("a pin move round-trips its top-of-group anchor", () {
+    const request = MoveSessionPinRequest(sessionId: "ses_1", afterSessionId: null);
+
+    expect(MoveSessionPinRequest.fromJson(request.toJson()), request);
   });
 }

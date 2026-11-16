@@ -18,6 +18,10 @@ sealed class AllSessionsRow with _$AllSessionsRow {
     required bool isUnseen,
     required bool isAwaitingInput,
     required bool isRetrying,
+
+    /// A bridge stop cut the session's last turn off and the user has not
+    /// opened the session or sent anything since; never while it runs again.
+    required bool isInterrupted,
     required int backgroundTaskCount,
   }) = _AllSessionsRow;
 }

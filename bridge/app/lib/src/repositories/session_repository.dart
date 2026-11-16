@@ -54,6 +54,7 @@ import "package:sesori_shared/sesori_shared.dart"
         SessionPageCounts,
         SessionPageFilter,
         SessionPageMode,
+        SessionPinOrderCalculator,
         SessionPromptDefaults,
         SessionStatus,
         SessionStatusBusy,
@@ -147,6 +148,7 @@ class SessionRepository({
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
   static const ActiveSessionRunningCalculator _runningCalculator = ActiveSessionRunningCalculator();
+  static const SessionPinOrderCalculator _pinOrderCalculator = SessionPinOrderCalculator();
 
   final Map<String, Set<String>> _tombstonedBackendSessionIds = <String, Set<String>>{};
   final Set<String> _deletedSessionIds = <String>{};
@@ -276,14 +278,14 @@ class SessionRepository({
       ],
       filter: filter,
       runningIds: runningIds,
-      after: cursor == null ? null : (pinned: cursor.pinned, sortAt: cursor.sortAt, sessionId: cursor.sessionId),
+      after: cursor == null ? null : (pinOrder: cursor.pinOrder, sortAt: cursor.sortAt, sessionId: cursor.sessionId),
       limit: limit,
     );
     return (
       items: _mapCatalogSessions(rows: page.rows),
       nextCursor: switch (page.nextKey) {
-        (:final pinned, :final sortAt, :final sessionId) => SessionPageCursor(
-          pinned: pinned,
+        (:final pinOrder, :final sortAt, :final sessionId) => SessionPageCursor(
+          pinOrder: pinOrder,
           sortAt: sortAt,
           sessionId: sessionId,
         ),
@@ -1049,6 +1051,26 @@ class SessionRepository({
     }
   }
 
+  /// How long [sessionId]'s prompt cache stays warm after its last use, or
+  /// null when its harness cannot tell or is not running.
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async {
+    try {
+      final binding = await _sessionDao.getSession(sessionId: sessionId);
+      if (binding == null) return null;
+      return await _runtime.useIfActive<Duration?>(
+        pluginId: binding.pluginId,
+        operation: SessionOperation.getPromptCacheLife,
+        body: (plugin, _) {
+          _primeDerivedSessionDirectory(binding: binding, plugin: plugin);
+          return plugin.getPromptCacheLife(sessionId: binding.backendSessionId);
+        },
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not read session $sessionId's prompt-cache life", error, stackTrace);
+      return null;
+    }
+  }
+
   Future<SessionQuietness> _readQuietness({required BridgePluginApi plugin, required String backendSessionId}) async {
     for (final summary in plugin.getActiveSessionsSummary()) {
       for (final active in summary.activeSessions) {
@@ -1131,6 +1153,24 @@ class SessionRepository({
   Future<Session?> setPinned({required String sessionId, required bool pinned}) async {
     final stored = await _sessionDao.setPinned(sessionId: sessionId, pinned: pinned);
     return stored ? await getCatalogSession(sessionId: sessionId) : null;
+  }
+
+  /// Places pinned [sessionId] directly below pinned [afterSessionId], or at
+  /// the top of the pinned group when it is null, and returns every session
+  /// whose pin order changed, top first; empty when it already stood there.
+  /// Null when either is not pinned or they are the same session.
+  Future<List<Session>?> movePin({required String sessionId, required String? afterSessionId}) async {
+    final rewrites = await _sessionDao.attachedDatabase.transaction(() async {
+      final rewrites = _pinOrderCalculator.move(
+        pinned: await _sessionDao.getPinnedOrder(),
+        sessionId: sessionId,
+        afterSessionId: afterSessionId,
+      );
+      if (rewrites != null) await _sessionDao.setPinOrders(orders: rewrites);
+      return rewrites;
+    });
+    if (rewrites == null) return null;
+    return [for (final (:sessionId, pinOrder: _) in rewrites) ?await getCatalogSession(sessionId: sessionId)];
   }
 
   /// The override that governs [sessionId]'s permission requests: its own, or

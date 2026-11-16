@@ -324,9 +324,42 @@ void main() {
         isA<SessionPinnedUpdated>().having((mutation) => mutation.session.pinned, "pinned", isTrue),
       );
       final after = await db.sessionDao.getSession(sessionId: "s1") ?? fail("session s1 is not stored");
-      expect((after.pinned, after.updatedAt), (true, before.updatedAt));
+      expect((after.pinOrder, after.updatedAt), (pinned.pinOrder, before.updatedAt));
 
       expect((await dispatcher.setPinned(sessionId: "s1", pinned: false)).pinned, isFalse);
+      await subscription.cancel();
+    });
+
+    test("moves a pin and announces every session whose place changed, top first", () async {
+      for (final sessionId in ["s1", "s2", "s3"]) {
+        await insertTestSession(
+          db: db,
+          sessionId: sessionId,
+          backendSessionId: "backend-$sessionId",
+          pluginId: "codex",
+          projectId: "/repo",
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          baseBranch: null,
+          baseCommit: null,
+          agent: null,
+          agentModel: null,
+        );
+        await dispatcher.setPinned(sessionId: sessionId, pinned: true);
+      }
+      // Listed s3, s2, s1.
+      final mutations = <LocalSessionMutation>[];
+      final subscription = dispatcher.mutations.listen(mutations.add);
+
+      final moved = await dispatcher.movePin(sessionId: "s3", afterSessionId: "s2");
+
+      expect([for (final session in moved) session.id], ["s2", "s3"]);
+      expect([for (final mutation in mutations) (mutation as SessionPinnedUpdated).session.id], ["s2", "s3"]);
+      await expectLater(
+        dispatcher.movePin(sessionId: "s3", afterSessionId: "missing"),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
       await subscription.cancel();
     });
 

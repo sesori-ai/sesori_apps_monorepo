@@ -521,15 +521,29 @@ state.
   occur in the title or in the project's own name; "No project" matches on its
   title only. Running is main-agent work, a retry or a child task, by the same
   shared rule the app uses. With `pinnedFirst`, an active page lists pinned
-  sessions first, each group in that order, and the cursor carries the group, so
-  pages continue across it; archived pages ignore the flag. An app that omits it
-  gets the time order unchanged, and a cursor written before pinning is a 400.
+  sessions first in their pin order, highest first, then the rest by time, and
+  the cursor carries the pin order, so pages continue across the group; archived
+  pages ignore the flag. An app that omits it gets the time order unchanged, and
+  a cursor written before pin orders is a 400.
 - `PATCH /session/pinned` pins an unarchived root session or unpins any session.
-  The bridge alone stores the pin, so every harness supports it. It answers the
-  updated session and announces it through `session.updated` without moving its
-  updated time; catalog imports and backend session updates keep the pin, except
-  an import that stores the session under a parent, which drops it. Pinning
-  a missing, child or archived session is the route's own 404, never the router's.
+  The bridge alone stores the pin, as the session's `pinOrder`, so every
+  harness supports it. A new pin goes above every pinned session; pinning an
+  already pinned one keeps its place, and unpinning or archiving clears it. It
+  answers the updated session and announces it through `session.updated`
+  without moving its updated time; agent activity never moves a pinned session
+  within the group. Catalog imports and backend session updates keep the pin,
+  except an import that stores the session under a parent, which drops it.
+  Pinning a missing, child or archived session is the route's own 404, never
+  the router's. Upgrading the database keeps existing pins in the order they
+  last showed, by latest activity.
+- `PATCH /session/pin-position` moves a pinned session directly below another
+  pinned one, or to the top with no anchor. It rewrites the pin order of the
+  rows from the top down to the moved one, all above the current highest, and
+  answers and announces each, top first; a session already there rewrites
+  nothing. A missing or unpinned session or anchor, or a self anchor, is a
+  404. The app moves the row at once
+  and keeps it there through loads and live updates until the bridge answers;
+  a refused move puts the rows back.
 - The phone's project picker and Settings › Projects show a project's path cut
   to the last two folders, growing one folder at a time while a same-named
   project still ends the same way; a path shown whole keeps its root. Adding a
@@ -576,7 +590,9 @@ state.
   time, except that a scheduled auto-continuation shows "Resumes <time>" in
   its place while the session is neither running nor waiting for the user;
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, starting under the logo, one tertiary meta line holds any state that needs
-  words ("Waiting" in amber, else retrying), then the project when the list gives
+  words ("Waiting" in amber, else retrying, else "Interrupted" in secondary for a
+  session that is not running, whose turn a bridge stop cut off, until the user
+  opens it or sends to it), then the project when the list gives
   one, then background tasks as a quiet count: a stack glyph and the number,
   which screen readers hear as "2 background tasks". Waiting and retrying hide
   the count. A plain running session has no words on the line; the sparkle and
@@ -614,8 +630,8 @@ state.
   heading when needed, without moving any row above it on screen. At the
   list's top, a row arriving first opens in view instead.
 - The active list, on the phone home and in the desktop sidebar, leads with a
-  Pinned heading holding the pinned top-level sessions by latest activity,
-  above Today; with nothing pinned the heading is absent. A running pinned row
+  Pinned heading holding the pinned top-level sessions in the order the user
+  gave them, which agent activity never changes, above Today; with nothing pinned the heading is absent. A running pinned row
   stays in Pinned, and a launching row leads Today below it. A pinned row shows
   a small grey pin before its title, centred on the title's line; pinning or
   unpinning a row where it stands opens or closes the pin's room as it fades,
@@ -632,6 +648,16 @@ state.
   list by time. A
   bridge without the route keeps Pin offered and answers a tap with "Update
   this computer to pin sessions"; a failed pin or unpin says so.
+  In the desktop sidebar a mouse drag reorders the pinned rows, under the All
+  chip with no search typed, also within a project filter, where the row lands
+  below the pinned row it was dropped under. A press that moves lifts the row
+  (slight scale and shadow) and it follows the pointer vertically, held within
+  Pinned, while the other pinned rows slide to open its gap and show no hover
+  or tooltip beneath it. On release it glides into the gap and nothing moves
+  when the bridge confirms. A refused move slides the rows back and says
+  "Couldn't save the pinned order". A click still opens the row and a right
+  click its menu; touch still scrolls. Only pinned rows on screen are drop
+  targets, and the list does not scroll while a row is dragged.
 - Above the active session list, on the phone and the sidebar alike, chips
   read All, Running and Unread with the bridge's counts under the project
   filter and the search, whatever chip is chosen. A chip narrows the loaded
@@ -1166,6 +1192,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
 - Session pages and shared rules: `bridge/app/lib/src/routing/get_session_page_handler.dart`,
   `bridge/app/lib/src/routing/set_session_pinned_handler.dart`,
+  `bridge/app/lib/src/routing/move_session_pin_handler.dart`,
+  `shared/sesori_shared/lib/src/models/sesori/session_pin_order_calculator.dart`,
   `bridge/app/lib/src/api/database/daos/session_dao.dart`,
   `shared/sesori_shared/lib/src/models/sesori/session_page.dart`,
   `shared/sesori_shared/lib/src/search/title_matcher.dart`, and
@@ -1198,6 +1226,9 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   `bridge/app/test/bridge/routing/get_session_page_handler_test.dart`,
   `bridge/app/test/bridge/persistence/session_page_query_test.dart`,
   `bridge/app/test/bridge/routing/set_session_pinned_handler_test.dart`,
+  `bridge/app/test/bridge/routing/move_session_pin_handler_test.dart`,
+  `bridge/app/test/drift/default/session_pin_order_migration_test.dart`,
+  `shared/sesori_shared/test/models/session_pin_order_calculator_test.dart`,
   `client/module_core/test/services/session_window_service_test.dart`,
   `client/module_core/test/cubits/all_sessions/all_sessions_cubit_test.dart`,
   `client/module_prego/test/components/prego_animated_sliver_list_test.dart`,

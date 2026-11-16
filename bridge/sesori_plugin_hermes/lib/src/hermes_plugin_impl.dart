@@ -43,6 +43,15 @@ class HermesPlugin({
     fromNewSession: fromNewSession,
   );
 
+  @override
+  Future<void> validateTurnSelection({
+    required String operation,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) async => _hermesSessionOptionsService.validateTurnSelection(operation: operation, model: model);
+
   /// Hermes selects models through its `session/set_model` extension, so the
   /// standard config repository is unused; the write goes through the Hermes
   /// repository over the live client.
@@ -82,12 +91,40 @@ class HermesPlugin({
     _hermesSessionOptionsService.forgetSession(sessionId: sessionId);
   }
 
+  /// Hermes keeps a `session/cancel` that reaches an idle session and refuses
+  /// that session's next prompt with "Stopped waiting for another Hermes
+  /// process on this session. Your message was not processed." (verified
+  /// 0.21.5). A stop with no turn running or queued and no sub-agent work has
+  /// nothing to cancel, so it doesn't reach Hermes.
+  @override
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
+  }) async {
+    if (!hasPendingTurn(sessionId: sessionId) && !childSessionTracker.hasActiveWorkForRoot(sessionId: sessionId)) {
+      return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+    }
+    return await super.abortSession(
+      sessionId: sessionId,
+      subAgents: subAgents,
+      useAtomicStop: useAtomicStop,
+      knownSubAgentSessionIds: knownSubAgentSessionIds,
+    );
+  }
+
   @override
   void onConnectionReset() => _hermesSessionOptionsService.resetConnection();
 
   /// Hermes advertises its compaction as `/compress` (verified v0.21.5).
   @override
   String get compactionCommandName => "compress";
+
+  /// Hermes' `cache_ttl` defaults to 5 minutes; Sesori does not read the
+  /// user's Hermes config, so a longer setting still reads as the default.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => const Duration(minutes: 5);
 
   @override
   Future<AcpSessionReplayCollector> createSessionReplayCollector({

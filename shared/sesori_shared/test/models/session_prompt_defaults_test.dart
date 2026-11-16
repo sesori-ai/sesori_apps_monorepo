@@ -91,6 +91,7 @@ void main() {
             variant: "variant-1",
           ),
         ),
+        pinOrder: null,
         scheduledTask: null,
         interruption: null,
         forkedFrom: null,

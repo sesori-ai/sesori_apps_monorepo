@@ -337,7 +337,7 @@ refused with a reason.
 
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
-| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ✅ Sesori writes the kept active branch, through the kept turn's last record, to `<new id>.jsonl` under the fork's id; the first prompt then runs `--resume=<new id>`. Verified live on 2026-11-15 with Claude Code 2.1.322. The origin is only read, so it may be running. A point before the latest compaction is 🚫 and refused with a reason, as for edit; a message off the active branch and an origin without a transcript are refused too. Sub-agent transcripts stay with the origin |
+| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ✅ Sesori writes the kept active branch, through the kept turn's last record, to `<new id>.jsonl` under the fork's id; the first prompt then runs `--resume=<new id>`. Verified live on 2026-11-15 with Claude Code 2.1.322. The origin is only read, so it may be running. A point before a compaction forks from the full turns before it, leaving the compaction behind; a message off the active branch and an origin without a transcript are refused with a reason. Sub-agent transcripts stay with the origin |
 | Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ✅ `thread/fork {lastTurnId}` into a new persisted thread in the same directory; the source is not loaded, so it can run a later turn or be archived. Verified live on 2026-11-15 with Codex 0.169.0. Runtimes before 0.143.0 predate `lastTurnId`; by their source they ignore the unknown field and would copy the whole thread (not run live), so they are refused with a reason before anything is created, as are an unknown message, a missing rollout and a turn still running. A reply that a steered follow-up continued in the same native turn is 🚫: Codex forks only whole turns. Deleting a source keeps the rollouts a fork builds on and `thread/archive`s them, which Codex allows and forks keep reading |
 | Every other harness | ⬜ Not implemented yet for in-place rewinds; the bridge accepts a first-message swap, but the app shows no Edit because the harness does not declare `rewind` | ⬜ Not implemented yet |
 
@@ -365,6 +365,10 @@ directory, 2026-11-15):
   first prompt and needs no fork flags. A plain `--resume=<new>` of the written
   file reports the new id and parents the next prompt to the kept turn's last
   record.
+- A fork written from before a compaction holds no compaction, and a
+  `--resume=<new>` of it sends the full turns before the compaction
+  (checked live on 2.1.322 on 2026-11-16). Only an edit must stay after the
+  latest compaction, because it resumes the original transcript.
 
 ## Explicit shell-command presentation
 
@@ -669,8 +673,8 @@ app ignores `kind` and shows the row's text in red.
 | Pi | ✅ `stopReason: aborted`. | ✅ The same record. |
 | OpenCode v1 | ✅ `MessageAbortedError`. | ✅ The same record. |
 | OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
-| OMP | ✅ The shared ACP plugin's line, as below. | ⚠️ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing; it folds into the live line. A reply that streamed first keeps its line only until the history is re-read. |
-| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ⚠️ They record no stop, so the line shows only until the history is re-read. |
+| OMP | ✅ The shared ACP plugin's line, as below. | ✅ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing, folds into the live line. For a reply that streamed first, the bridge keeps the live line while the replay holds the turn's prompt. |
+| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ✅ They record no stop; the bridge keeps the live line while the replay holds the turn's prompt. |
 | Claude Code | ✅ The CLI's `[Request interrupted by user]` record (`… for tool use` when a tool was cut off), streamed before the turn's result. | ✅ The same record, by its uuid; the CLI's `<synthetic>` "No response requested." reply after it is hidden. |
 | Codex | ✅ `turn/completed` `interrupted` for a turn a Stop interrupted, keyed by the turn id. | ✅ Rollout `turn_aborted` with reason `interrupted`, keyed by its turn id. |
 
@@ -684,12 +688,35 @@ record before the shutdown ends the process, which a shutdown does not wait for.
 seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds,
 including for a turn the CLI started on its own, such as a wakeup.
 
-Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so that text
-shows live but is gone after a reload, leaving the Stopped line directly under the prompt. Claude Code keeps it.
+Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so the bridge
+snapshots that text live.
+
+The bridge's chat history keeps the live rows that the replay lacks of a turn with a row marked `kind: stopped` (a
+user Stop), its streamed reply and its Stopped row alike, for as long as the replay still holds the turn's prompt. A
+Stopped line shown live therefore stays after a reload on every harness, including those that record no stop; a
+rollback that removes the prompt removes them too. Rows not marked stopped, such as OMP's "Request was aborted"
+notices, stay failures and this rule keeps none of them. A session the bridge did not watch live shows only what the
+harness recorded.
 
 On the ACP harnesses a shutdown, a plugin restart or a follow-up that replaces the running turn cancels it without a
 Stopped line, and so does a Stop that lands before the prompt reached the agent. A turn that already showed a failed-turn
 notice (see [Failed-turn notices sent as text](#failed-turn-notices-sent-as-text)) keeps that notice as its one row.
+
+Hermes 0.21.5 keeps a `session/cancel` that reaches an idle session and refuses that session's next prompt with "Stopped
+waiting for another Hermes process on this session. Your message was not processed." So the Hermes plugin sends no
+cancel while the session has no turn running or queued and no sub-agent work. Verified live on 2026-11-16 on the test
+proxy: after a Stop on an idle session, the next prompt is answered. ⚠️ A Stop that reaches Hermes just after its turn
+ended can still cost the next prompt, which then needs resending.
+
+## Interrupted turns
+
+The bridge records a running turn for every harness from the session's busy and idle status, with no plugin
+involvement. After a restart it resolves each leftover turn from the owning plugin's session status: still busy is
+adopted, idle becomes Interrupted (see [session-history-and-recovery.md](regression/session-history-and-recovery.md)).
+OpenCode 2 on the shared background server keeps running a
+turn after the bridge dies: a turn still busy at restart is adopted and shows no Interrupted line, but one that finished
+while the bridge was down reads idle and shows Interrupted with Continue although it completed. No harness-neutral
+signal tells the two apart.
 
 ## Pre-start catalog import
 
@@ -1112,8 +1139,11 @@ compaction state and show no row.
 ## Compaction on request
 
 The bridge can ask a harness to compact a session's context without a client
-command, through `compactSession`, for scheduled tasks to call before a run
-resumes a quiet session (no scheduled-task consumer calls it yet). It only starts a compaction on a quiet session: a session that
+command, through `compactSession`. Same-session scheduled tasks with auto-compact on
+call it once a run's session has been quiet for `min(cache life - 2 minutes,
+25 minutes)` (25 minutes when the life is unknown), or before the next run
+when that comes first. It only starts a compaction on a
+quiet session: a session that
 is running, retrying, holding queued prompts or waiting for input answers
 "busy", and the request never stops or queues behind that work. A harness that
 cannot compact answers "unsupported". Each plugin's descriptor declares
@@ -1129,7 +1159,7 @@ plugin's answer is authoritative.
 | Pi | ✅ RPC `compact`, even when a Pi command is named `compact`. |
 | Cursor | ✅ Native `/summarize`. |
 | Copilot | ✅ `/compact`, advertised and verified after a real turn on 1.0.109 ("Compacted conversation history"). |
-| Hermes | ✅ `/compress`, verified on v0.21.5. A real compression may start a new Hermes session id; this was not observed. |
+| Hermes | ✅ `/compress`, verified on v0.21.5. `/compress` keeps the ACP session id (live-verified on v0.21.5+2453); only Hermes' internal head id rotates on automatic compression, and Sesori never uses it. |
 | OMP | ✅ `/compact`, handled natively on 18.20.2. A compaction with real history was not exercised; an empty session answers "Nothing to compact". |
 | Grok | ✅ `/compact`, verified on an idle session on 1.0.30. |
 | DeepSeek | ✅ `compact` from `deepseek/catalog` on 0.2.2. A compaction with real history was not exercised; an empty session answers "No compactable history yet." |
@@ -1141,6 +1171,24 @@ answer unsupported otherwise, so an Antigravity version that adds `/compact`
 works without a bridge change. A freshly started agent process has advertised
 no commands yet, so the plugin first loads the quiet session, as its next turn
 would, and then reads them.
+
+### Prompt-cache life
+
+Each plugin answers `getPromptCacheLife` with how long its harness keeps a
+session's prompt cache after the last use, so the bridge can compact a quiet
+scheduled-task session while the cache is still warm. Null means unknown.
+
+| Harness | Prompt-cache life |
+|---|---|
+| Claude | Read from the init handshake's account: 1 hour when it reports `subscriptionType` (even with `apiProvider`), 5 minutes when it reports `apiProvider` without one (API key, Bedrock or Vertex), and 1 hour when it reports neither. |
+| Codex | 30 minutes. |
+| OpenCode v2 | 5 minutes for an Anthropic model (OpenCode sends no cache lifetime); unknown for other providers. |
+| OpenCode v1 | Unknown; v1 does not compact on request. |
+| Pi | 5 minutes (Pi's default "short" retention). |
+| Cursor | 5 minutes for an Anthropic model; unknown for the others, which cache for 30 minutes or longer. |
+| Hermes | 5 minutes (the default `cache_ttl`; Sesori does not read the user's Hermes config). |
+| OMP | 5 minutes. An Anthropic subscription seat caches for an hour, but the seat is not visible over ACP, so the shorter life is answered. |
+| Copilot, Grok, DeepSeek, Antigravity | Unknown: not published, or evicted without a fixed lifetime. |
 
 ## Command limitations
 
@@ -1308,9 +1356,10 @@ and the picker still shows the plain "Running" label instead of the warning. A
 steer that OMP admits as `promptRequired` runs as the next turn, without
 cancelling the current one.
 
-² Hermes ignored the first question after an aborted turn, answering "Stopped
-waiting for another Hermes process on this session. Your message was not
-processed."; the same question sent again was read and answered.
+² A first check found that Hermes ignored the first question after a Stop,
+answering "Stopped waiting for another Hermes process on this session. Your
+message was not processed." A Stop on an idle session no longer does this; a
+Stop that lands just after a turn ends still can. See [Stopped turns](#stopped-turns).
 
 Checked live on 2026-11-16 (UTC) against a source-run bridge on its local debug
 server, with one Pi session as the source and a fresh session of each installed
@@ -1325,13 +1374,16 @@ source showed "Summary sent to … · Open" and "Couldn't send to …" markers a
 the "Handoff summary" sheet. The Codex target showed the "From …" card, which
 Show all expanded.
 
-On the ACP plugin, a target whose saved agent or mode the harness rejects when
-the turn starts accepts the handoff and then drops the turn
-(`applyTurnSelection … failed; dropping turn` in the bridge log). The app
-reports Sent while the target receives nothing. This was seen on an OMP session
-whose saved agent OMP did not offer, and it applies to every ACP harness,
-because the plugin fails closed after accepting the prompt rather than refusing
-it as stale.
+Stale saved options on the target, a model, mode or reasoning level the harness
+no longer lists:
+
+| Harness | When the stale option is caught |
+|---|---|
+| Copilot, Grok, Antigravity (ACP) | ✅ Refused before the prompt is accepted, against the options each harness last reported. |
+| OMP (ACP) | ✅ Refused before the prompt is accepted, so the bridge's stale-option correction runs or the send fails visibly. |
+| Cursor (ACP) | ✅ Refused before the prompt is accepted, against the catalog Cursor last reported. An option kind Cursor has not reported yet is not checked. An option the catalog still lists but Cursor rejects when the turn applies it fails that turn with a session error, instead of running on the previous settings. |
+| Hermes (ACP) | ✅ A model the catalog no longer lists is refused before the prompt is accepted (checked live on 0.21.5 through the test proxy). Hermes applies no reasoning level or mode, so neither is checked. A model Hermes rejects when the turn applies it fails that turn with a session error. |
+| DeepSeek (ACP) | ✅ A model or reasoning level missing from the last `deepseek/catalog` result for the project is refused before the prompt is accepted; a model that lists no reasoning levels refuses any. Without a catalog for the project, only the model is checked, against the list the session itself reported. Before either was reported, nothing is checked, and a rejection when the turn applies it fails that turn with a session error. Not checked live: the runtime needs a DeepSeek account. |
 
 ## Sub-agents
 

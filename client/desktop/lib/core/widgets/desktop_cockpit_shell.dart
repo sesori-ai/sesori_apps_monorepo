@@ -91,6 +91,12 @@ class const DesktopCockpitShell({
   /// Opens the Archived page over the current one.
   required final VoidCallback onOpenArchived,
 
+  /// Opens the Scheduled page over the current one.
+  required final VoidCallback onOpenScheduled,
+
+  /// Opens the New task page.
+  required final VoidCallback onNewTask,
+
   /// Closes what the page has open, such as its Prompts screen, else leaves a
   /// pushed page; a page reached from the sidebar has nowhere to go.
   required final VoidCallback onGoBack,
@@ -196,6 +202,20 @@ class const DesktopCockpitShell({
                 shortcut: null,
                 run: () => switchComputer(bridgeId: computer.id, source: ComputerSwitchSource.commandPalette),
               ),
+          // The sidebar's Scheduled row, and the page's + for a new task. On an
+          // older computer the New task page says how to update.
+          DesktopCommand(
+            label: loc.scheduledTasksTitle,
+            icon: TablerRegular.calendar_time,
+            shortcut: null,
+            run: onOpenScheduled,
+          ),
+          DesktopCommand(
+            label: loc.scheduledTaskNew,
+            icon: TablerRegular.calendar_plus,
+            shortcut: null,
+            run: onNewTask,
+          ),
         ];
         void openPalette() => unawaited(
           showDesktopCommandPalette(
@@ -246,6 +266,7 @@ class const DesktopCockpitShell({
                   onStartNewSession: startNewSession,
                   onOpenSearch: openPalette,
                   onOpenArchived: onOpenArchived,
+                  onOpenScheduled: onOpenScheduled,
                   sessionActions: sessionActions,
                   onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
                   onSwitchComputer: switchComputer,

@@ -308,14 +308,25 @@ void main() {
       expect(messages.last, "assistant: done");
     });
 
-    test("refuses a message before the latest compaction and allows one after it", () async {
+    test("from before a compaction keeps the whole conversation up to it, without the compaction", () async {
       install(fixture: "compacted", sessionId: _compacted);
 
-      expect(await forkThrough(sessionId: _compacted, messageId: "1794776073924"), _forkRefused(.beforeCompaction));
-      expect(File(p.join(temp.path, "projects", "-work-fixture-project", "$fork.jsonl")).existsSync(), isFalse);
+      expect(await forkThrough(sessionId: _compacted, messageId: "1794776073924"), isA<ClaudeForkWritten>());
+
+      expect(await transcript(sessionId: fork), ["user: Reply with just the word: red", "assistant: red"]);
+      expect(forkRecords().map((record) => record["subtype"]), isNot(contains("compact_boundary")));
+      expect(forkRecords().last["uuid"], startsWith("55fd8efa"));
+    });
+
+    test("from after a compaction keeps the compaction and what follows it", () async {
+      install(fixture: "compacted", sessionId: _compacted);
 
       expect(await forkThrough(sessionId: _compacted, messageId: "1794776107383"), isA<ClaudeForkWritten>());
-      expect((await transcript(sessionId: fork)).last, "assistant: blue");
+
+      final messages = await transcript(sessionId: fork);
+      expect(messages.first, "user: Reply with just the word: red");
+      expect(messages.last, "assistant: blue");
+      expect(forkRecords().map((record) => record["subtype"]), contains("compact_boundary"));
     });
 
     test("refuses a message off the active branch and a missing session", () async {

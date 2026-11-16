@@ -1345,6 +1345,7 @@ Session _session({required String id, required String projectId, required int up
   promptDefaults: null,
   lastUserActivityAt: null,
   unseen: false,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,

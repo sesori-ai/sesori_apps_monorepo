@@ -8,6 +8,11 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
       PluginSessionReadiness.unavailable;
 
+  Duration? promptCacheLife;
+
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => promptCacheLife;
+
   PluginCompactionResult compactionResult = PluginCompactionResult.unsupported;
   final List<({String sessionId, String promptId})> compactSessionCalls = [];
 

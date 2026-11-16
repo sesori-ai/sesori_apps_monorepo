@@ -55,7 +55,7 @@ void main() {
     required String projectId,
     required int updatedAt,
     String? title,
-    bool pinned = false,
+    int? pinOrder,
   }) {
     return db
         .into(db.sessionTable)
@@ -71,7 +71,7 @@ void main() {
             projectionUpdatedAt: 1,
             pluginId: plugin.id,
             title: Value(title),
-            pinned: Value(pinned),
+            pinOrder: Value(pinOrder),
           ),
         );
   }
@@ -124,15 +124,36 @@ void main() {
   test("pinned-first pages list pinned sessions first and continue through the cursor", () async {
     await insert(id: "a", projectId: "/work/app", updatedAt: 3);
     await insert(id: "b", projectId: "/work/app", updatedAt: 2);
-    await insert(id: "pin", projectId: "/work/app", updatedAt: 1, pinned: true);
+    await insert(id: "pin", projectId: "/work/app", updatedAt: 1, pinOrder: 1);
 
     final first = await page(limit: 1, pinnedFirst: true);
     expect(ids(page: first), ["pin"]);
-    expect(first.items.single.pinned, isTrue);
-    expect(first.nextCursor?.pinned, isTrue);
+    expect(first.items.single.pinOrder, 1);
+    expect(first.nextCursor?.pinOrder, 1);
     final rest = await page(limit: 2, pinnedFirst: true, cursor: first.nextCursor);
     expect(ids(page: rest), ["a", "b"]);
     expect(ids(page: await page()), ["a", "b", "pin"]);
+  });
+
+  test("a pin move keeps its place through activity and every page lists it", () async {
+    await insert(id: "top", projectId: "/work/app", updatedAt: 1, pinOrder: 3);
+    await insert(id: "mid", projectId: "/work/app", updatedAt: 2, pinOrder: 2);
+    await insert(id: "low", projectId: "/work/app", updatedAt: 3, pinOrder: 1);
+    await insert(id: "rest", projectId: "/work/app", updatedAt: 9);
+
+    final moved = await repository.movePin(sessionId: "low", afterSessionId: "top");
+
+    expect(
+      [for (final session in moved ?? const <Session>[]) (session.id, session.pinOrder)],
+      [
+        ("top", 5),
+        ("low", 4),
+      ],
+    );
+    expect(ids(page: await page(pinnedFirst: true)), ["top", "low", "mid", "rest"]);
+    expect(await repository.movePin(sessionId: "low", afterSessionId: "top"), isEmpty);
+    expect(await repository.movePin(sessionId: "rest", afterSessionId: null), isNull);
+    expect(await repository.movePin(sessionId: "low", afterSessionId: "rest"), isNull);
   });
 
   test("search words match titles or the project's own name", () async {

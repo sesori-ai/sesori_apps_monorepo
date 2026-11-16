@@ -12,7 +12,8 @@ Issue #2618: a bridge killed mid-turn (OOM, SIGKILL) left an omp session that lo
 2. **Stopped turns.** A user Stop ends the turn with a small grey "Stopped" line on every harness. It is not an error
    and it fades in when the turn ends. It replaces today's red rows and Claude's bubble. After a reload it stays on the
    harnesses that record the stop (Pi, OpenCode, omp, Claude Code, Codex); on Hermes, Cursor, DeepSeek, Grok, Copilot
-   and Antigravity it shows only until the transcript is re-read, because they don't record a stop. The Interrupted
+   and Antigravity it shows only until the transcript is re-read, because they don't record a stop (#2675 later
+   made the bridge keep the live line across reloads there too). The Interrupted
    line uses the same visual style.
 
 ## Scope
@@ -73,8 +74,9 @@ the per-harness persistence is exactly the decided one:
 | Claude Code | the echoed `[Request interrupted by user…]` record → stopped | the two `[Request interrupted by user…]` records → stopped instead of a user bubble |
 
 Synthesized rows use `errorMessage: "Stopped"`; native rows keep their text. Only a stop requested through
-`abortSession` (Stop, Stop on archive) produces a live stopped row; shutdown's `interruptActiveWork` does not, so a
-bridge shutdown never says Stopped live.
+`abortSession` (Stop, Stop on archive) produces a live stopped row. Shutdown's `interruptActiveWork` does not, except
+in Claude Code, whose shutdown runs the same `abort` as Stop and can record a live stopped row; Step 6's supersession
+rule hides it behind the Interrupted line.
 
 A reload must never show two Stopped lines for one stop. `errorName` and `errorMessage` take no part in
 `replaceSessionMessages` pairing (they only choose which wording survives), so each synthesized live row needs a real
@@ -172,8 +174,8 @@ the `Session` wire.
 - The interruption closes its turn. A bridge death before any output leaves the prompt unanswered, and
   `splitPromptTurns` would fold the Continue prompt into it, moving the line below the continued reply and offering
   Continue again. `splitPromptTurns` therefore takes the message ids after which a turn has ended (required named
-  parameter; the bridge's prompt index passes none), and the calculator passes `afterMessageId`. The calculator tests
-  cover an interruption before the first output followed by Continue.
+  parameter; the bridge's rewind, fork and prompt index pass the stored interruption), and the calculator passes
+  `afterMessageId`. The calculator tests cover an interruption before the first output followed by Continue.
 - Motion: both lines enter through `TranscriptPresence`. The live Stopped row takes the place of the folding Working
   row in the same frame, so the rows above hold still. Nothing above the line moves when it appears or when the
   Continue button leaves.
@@ -312,6 +314,14 @@ Workspaces: `shared/sesori_shared` (`splitPromptTurns` turn-end ids), `bridge/ap
 followed by Continue. Simulator recording of the Continue flow and the list label for the PR. Docs:
 projects-and-sessions and session-turns. ~700 lines.
 
+- Claude Code and Codex record a bridge shutdown like a user Stop, so a reload shows a stopped row in the cut-off turn,
+  sometimes after the interrupted message. Every stopped row in that turn is superseded: only the Interrupted line shows,
+  never both. A calculator test covers it.
+- #2651 thread 8: a phone left open on the session can reconnect while resolution starts the plugin, so its view
+  declaration arrives before the conversion and the list keeps "Interrupted" although the user is looking. The open
+  `SessionDetailCubit` re-sends its view declaration (the existing acknowledgement route) when a session update brings a
+  new unacknowledged interruption. A cubit test covers it.
+
 ### Step 7: reconcile regression docs and harness rows
 
 Make the feature docs and HARNESS_CAPABILITIES match what shipped; remove stale "Stopped shows as an error" text.
@@ -329,7 +339,7 @@ for Interrupted (bridge-owned after a normalized status boundary).
 | Cell | Boundary | Plugins |
 |---|---|---|
 | Stop mid-reply shows grey Stopped, fading in, no jump | Client end to end | Every installed harness; at least omp, Claude Code, Codex, Pi, OpenCode, one other ACP harness |
-| Stopped after reload | Client end to end | Pi, OpenCode, omp, Claude Code, Codex stay; ACP harness drops after re-read |
+| Stopped after reload | Client end to end | Every harness: the native record or, since #2675, the bridge's retained live row stays while the replay holds the turn's prompt |
 | `kill -9` bridge mid-turn, restart: Interrupted line, list label, Continue sends the prompt, opening clears the label | Client end to end + headless bridge | Representative (omp) |
 | SIGTERM bridge mid-turn, restart: Interrupted, no live Stopped | Headless bridge | Representative |
 | OpenCode 2 shared service still busy after `kill -9`: no Interrupted | Headless bridge | OpenCode 2, if runnable; otherwise Blocked |
@@ -348,6 +358,5 @@ prompts, a different purpose). No other obsolete code found.
 
 ## Later phases (rough)
 
-- Bridge-recorded stops so Stopped survives reloads on ACP harnesses too, if the gap bothers users.
 - Distinguish a harness process that died mid-turn while the bridge stayed up (needs its own wording).
 - Keep every interruption of a session rather than the latest, if multiple crashes in one session prove common.

@@ -13,6 +13,8 @@ import "package:sesori_bridge/src/routing/request_router.dart";
 import "package:sesori_bridge/src/routing/run_scheduled_task_now_handler.dart";
 import "package:sesori_bridge/src/routing/set_scheduled_task_enabled_handler.dart";
 import "package:sesori_bridge/src/routing/update_scheduled_task_handler.dart";
+import "package:sesori_bridge/src/services/scheduled_task_activity_tracker.dart";
+import "package:sesori_bridge/src/services/scheduled_task_compaction_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
 import "package:sesori_bridge/src/services/scheduled_task_run_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_service.dart";
@@ -67,11 +69,19 @@ void main() {
       clock: clock,
     );
     addTearDown(service.dispose);
+    final operations = _UnusedOperations();
     final runService = ScheduledTaskRunService(
       repository: repository,
+      compaction: ScheduledTaskCompactionService(
+        repository: repository,
+        sessions: sessions,
+        operations: operations,
+        activity: ScheduledTaskActivityTracker(clock: clock),
+        clock: clock,
+      ),
       sessionCreation: _UnusedSessionCreation(),
       prompts: _UnusedPrompts(),
-      operations: _UnusedOperations(),
+      operations: operations,
       yoloSettings: _UnusedYoloSettings(),
       lifecycle: _UnusedLifecycle(),
       sessions: sessions,

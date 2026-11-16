@@ -103,6 +103,9 @@ class CodexPlugin._({
   Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async =>
       PluginSessionReadiness.unavailable;
 
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => CodexModelRepository.promptCacheLife;
+
   static final String pluginId = Harness.codex.name;
   static const Duration _renameRetryDelay = Duration(milliseconds: 100);
   static const Duration _renameRetryTimeout = Duration(seconds: 2);
@@ -562,10 +565,10 @@ class CodexPlugin._({
     // final tool updates. Forced runtime teardown waits for this transition
     // before disconnecting the generation's event stream.
     final subAgentTerminalEvents = _subAgentTerminalEvents(notification: notification);
-    final stoppedRow =
+    final stoppedTurnEvents =
         notification.method == "turn/completed" && threadId != null && _userStoppedThreadIds.remove(threadId)
         ? _eventMapper.mapStoppedTurn(threadId: threadId, params: notification.params)
-        : null;
+        : const <BridgeSseEvent>[];
     final activityChanged = _maintainBookkeeping(notification: notification);
     final projectedTool = correlatableItem == null
         ? _toolLifecycleTracker.observeUncorrelatedAppServerItem(
@@ -603,7 +606,7 @@ class CodexPlugin._({
           sessionIsIdle: mappedThreadId != null && _sessionStatuses[mappedThreadId] is PluginSessionStatusIdle,
           activityChanged: activityChanged,
           sessionClosed: notification.method == "thread/closed",
-          events: [...subAgentTerminalEvents, ?stoppedRow, ...mappedEvents],
+          events: [...subAgentTerminalEvents, ...stoppedTurnEvents, ...mappedEvents],
         )
         .forEach(_eventBuffer.add);
     if (notification.method == "turn/started" && threadId != null) {

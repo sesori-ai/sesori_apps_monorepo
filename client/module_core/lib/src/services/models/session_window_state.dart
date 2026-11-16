@@ -15,7 +15,8 @@ final class const SessionWindowLoading() extends SessionWindowState;
 final class const SessionWindowLoaded({
   /// Root sessions under the window's key, newest first (archived: most
   /// recently archived first), ties broken by id descending, as the bridge
-  /// orders them.
+  /// orders them. Active windows list pinned sessions first, in the order
+  /// the user gave them.
   required final List<Session> sessions,
 
   /// What each chip holds under the key's project and query.

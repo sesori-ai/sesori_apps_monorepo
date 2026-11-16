@@ -186,7 +186,7 @@ class FakeSessionDao() {
       title: null,
       catalogTitle: null,
       approvalOverride: null,
-      pinned: false,
+      pinOrder: null,
       forkedFromSessionId: null,
       forkedFromTitle: null,
       scheduledTaskId: null,
@@ -227,6 +227,7 @@ Session _deletedSessionInfo(String sessionId) => Session(
   time: null,
   promptDefaults: null,
   lastUserActivityAt: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,
@@ -294,6 +295,7 @@ Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
     },
     promptDefaults: null,
     lastUserActivityAt: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,
@@ -327,9 +329,20 @@ class FakeSessionRepository({
   @override
   Future<SessionReadiness> getSessionReadiness({required String sessionId}) async => SessionReadiness.unavailable;
 
+  /// What [compactSession] answers, and the sessions it was asked for.
+  SessionCompactionResult compactionResult = SessionCompactionResult.unsupported;
+  final List<String> compacted = [];
+
   @override
-  Future<SessionCompactionResult> compactSession({required String sessionId, required String promptId}) async =>
-      SessionCompactionResult.unsupported;
+  Future<SessionCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    compacted.add(sessionId);
+    return compactionResult;
+  }
+
+  Duration? promptCacheLife;
+
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => promptCacheLife;
 
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
@@ -402,6 +415,9 @@ class FakeSessionRepository({
   Future<Session?> setPinned({required String sessionId, required bool pinned}) async => null;
 
   @override
+  Future<List<Session>?> movePin({required String sessionId, required String? afterSessionId}) async => null;
+
+  @override
   Future<SessionApprovalMode?> resolveApprovalOverride({required String sessionId}) async => null;
 
   @override
@@ -424,6 +440,7 @@ class FakeSessionRepository({
       time: SessionTime(created: stored.createdAt, updated: stored.updatedAt, archived: stored.archivedAt),
       promptDefaults: null,
       lastUserActivityAt: stored.lastUserMessageAt,
+      pinOrder: null,
       scheduledTask: null,
       interruption: null,
       forkedFrom: null,
@@ -515,6 +532,7 @@ class FakeSessionRepository({
     time: null,
     promptDefaults: null,
     lastUserActivityAt: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,

@@ -60,6 +60,10 @@ final class const TaskComposerSubmission({
   required final NewSessionProject project,
   required final String pluginId,
 
+  /// Whether the harness compacts a session when the bridge asks, which a
+  /// same-session task's auto-compact needs.
+  required final bool compactsOnRequest,
+
   /// Null where the harness offers no choice, which runs on its default.
   required final String? agent,
   required final PromptModel? model,

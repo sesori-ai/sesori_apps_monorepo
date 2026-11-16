@@ -14,7 +14,10 @@ Future<void> main() async {
     await timeRuns(
       label: "Index",
       operation: () async {
-        entries = (await session.repository.getPromptIndex(sessionId: syntheticSessionId)).length;
+        entries = (await session.repository.getPromptIndex(
+          sessionId: syntheticSessionId,
+          turnEndMessageIds: const {},
+        )).length;
       },
     );
     stdout.writeln("The index lists $entries prompts.");

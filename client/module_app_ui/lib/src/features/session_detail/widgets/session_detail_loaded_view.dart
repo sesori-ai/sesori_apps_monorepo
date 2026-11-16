@@ -356,6 +356,10 @@ class SessionDetailLoadedView extends StatelessWidget {
       childStatuses: state.childStatuses,
       isBusy: _isBusy(state: state),
       mainAgentRunning: state.mainAgentRunning,
+      interruptedTurn: state.interruptedTurn,
+      onContinueInterruptedTurn: readOnly || !state.interaction.canInteract
+          ? null
+          : context.read<SessionDetailCubit>().continueInterruptedTurn,
       // Null once the start of the transcript is loaded,
       // so the list stops asking for more.
       onLoadOlderMessages: state.olderMessagesCursor == null
