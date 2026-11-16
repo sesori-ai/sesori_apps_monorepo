@@ -77,10 +77,14 @@ class _SideChatViewState() extends State<SideChatView> {
     super.dispose();
   }
 
+  /// The thread's scroll position. The thread and the earlier chats take
+  /// turns on the sheet's controller, and both hold it while they cross-fade;
+  /// the thread attaches last when it comes back.
+  ScrollPosition? get _threadPosition => widget.scrollController.positions.lastOrNull;
+
   bool get _isAtBottom {
-    final controller = widget.scrollController;
-    if (!controller.hasClients) return true;
-    final position = controller.position;
+    final position = _threadPosition;
+    if (position == null) return true;
     return position.pixels >= position.maxScrollExtent - _bottomSlack;
   }
 
@@ -126,14 +130,14 @@ class _SideChatViewState() extends State<SideChatView> {
   });
 
   void _scrollToBottom() {
-    final controller = widget.scrollController;
-    if (!controller.hasClients) return;
-    final target = controller.position.maxScrollExtent;
+    final position = _threadPosition;
+    if (position == null) return;
+    final target = position.maxScrollExtent;
     final duration = _motion(_scrollDuration);
     if (duration == Duration.zero) {
-      controller.jumpTo(target);
+      position.jumpTo(target);
     } else {
-      controller.animateTo(target, duration: duration, curve: Curves.easeOutCubic);
+      unawaited(position.animateTo(target, duration: duration, curve: Curves.easeOutCubic));
     }
   }
 
@@ -210,6 +214,7 @@ class _SideChatViewState() extends State<SideChatView> {
                         duration: _motion(_fadeDuration),
                         child: _showingEarlier && ready.earlierChats.isNotEmpty
                             ? _EarlierChats(
+                                scrollController: widget.scrollController,
                                 chats: ready.earlierChats,
                                 onOpen: (chat) => _openChat(chat: chat),
                               )
@@ -301,45 +306,51 @@ class _SideChatViewState() extends State<SideChatView> {
     };
     GlobalKey turnKey(int index) => _turnKeys.putIfAbsent(index, GlobalKey.new);
     final pending = ready.ask;
-    return ListView(
+    // Not a lazy list: every turn stays built, so the newest one can be
+    // brought into view however long the chat is.
+    return SingleChildScrollView(
       key: ValueKey(_threadEpoch),
-      controller: widget.scrollController,
+      // The earlier chats take the sheet's drags while they cover the thread.
+      controller: _showingEarlier ? null : widget.scrollController,
       padding: const EdgeInsets.fromLTRB(PregoSpacing.xl, PregoSpacing.xs, PregoSpacing.xl, PregoSpacing.xl),
-      children: [
-        if (canAsk) const _Footnote(),
-        for (final (index, exchange) in exchanges.indexed)
-          _SideChatTurn(
-            key: turnKey(index),
-            question: exchange.question,
-            animateIn: false,
-            reply: _Answer(key: ValueKey(exchange.id), exchange: exchange),
-          ),
-        if (pending
-            case SideQuestionWaiting(:final question) ||
-                SideQuestionRefused(:final question) ||
-                SideQuestionFailed(:final question))
-          _SideChatTurn(
-            key: turnKey(exchanges.length),
-            question: question,
-            animateIn: true,
-            reply: switch (pending) {
-              SideQuestionRefused(:final reason) => _Unanswered(
-                key: ValueKey(reason),
-                message: _refusalMessage(reason: reason),
-                onRetry: switch (reason) {
-                  SideQuestionRefusal.harnessUnsupported || SideQuestionRefusal.tooLong => null,
-                  _ => _retry,
-                },
-              ),
-              SideQuestionFailed() => _Unanswered(
-                key: const ValueKey("failed"),
-                message: context.loc.sideChatAskFailed,
-                onRetry: _retry,
-              ),
-              SideQuestionWaiting() || SideQuestionIdle() => const _Thinking(key: ValueKey("thinking")),
-            },
-          ),
-      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (canAsk) const _Footnote(),
+          for (final (index, exchange) in exchanges.indexed)
+            _SideChatTurn(
+              key: turnKey(index),
+              question: exchange.question,
+              animateIn: false,
+              reply: _Answer(key: ValueKey(exchange.id), exchange: exchange),
+            ),
+          if (pending
+              case SideQuestionWaiting(:final question) ||
+                  SideQuestionRefused(:final question) ||
+                  SideQuestionFailed(:final question))
+            _SideChatTurn(
+              key: turnKey(exchanges.length),
+              question: question,
+              animateIn: true,
+              reply: switch (pending) {
+                SideQuestionRefused(:final reason) => _Unanswered(
+                  key: ValueKey(reason),
+                  message: _refusalMessage(reason: reason),
+                  onRetry: switch (reason) {
+                    SideQuestionRefusal.harnessUnsupported || SideQuestionRefusal.tooLong => null,
+                    _ => _retry,
+                  },
+                ),
+                SideQuestionFailed() => _Unanswered(
+                  key: const ValueKey("failed"),
+                  message: context.loc.sideChatAskFailed,
+                  onRetry: _retry,
+                ),
+                SideQuestionWaiting() || SideQuestionIdle() => const _Thinking(key: ValueKey("thinking")),
+              },
+            ),
+        ],
+      ),
     );
   }
 
@@ -422,6 +433,7 @@ class const _SideChatTurn({
 
 class _SideChatTurnState() extends State<_SideChatTurn> with SingleTickerProviderStateMixin {
   late final AnimationController _entrance = AnimationController(vsync: this, duration: _slideInDuration, value: 1);
+  late final CurvedAnimation _curved = CurvedAnimation(parent: _entrance, curve: Curves.easeOutCubic);
 
   bool _entranceDecided = false;
 
@@ -436,6 +448,7 @@ class _SideChatTurnState() extends State<_SideChatTurn> with SingleTickerProvide
 
   @override
   void dispose() {
+    _curved.dispose();
     _entrance.dispose();
     super.dispose();
   }
@@ -443,11 +456,10 @@ class _SideChatTurnState() extends State<_SideChatTurn> with SingleTickerProvide
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final curved = CurvedAnimation(parent: _entrance, curve: Curves.easeOutCubic);
     return FadeTransition(
-      opacity: curved,
+      opacity: _curved,
       child: SlideTransition(
-        position: Tween(begin: const Offset(0, 0.12), end: Offset.zero).animate(curved),
+        position: Tween(begin: const Offset(0, 0.12), end: Offset.zero).animate(_curved),
         child: Padding(
           padding: const EdgeInsets.only(bottom: PregoSpacing.lg),
           child: Column(
@@ -586,6 +598,7 @@ class const _Answer({super.key, required final SideChatExchange exchange}) exten
 /// The session's other side chats, newest first, titled by their first
 /// question; it covers the shown chat and fades with it.
 class const _EarlierChats({
+  required final ScrollController scrollController,
   required final List<SideChat> chats,
   required final ValueChanged<SideChat> onOpen,
 }) extends StatelessWidget {
@@ -595,6 +608,8 @@ class const _EarlierChats({
     return ColoredBox(
       color: prego.colors.bgSecondary,
       child: ListView(
+        // The sheet's, so the list grows and closes the sheet like the thread.
+        controller: scrollController,
         padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xs),
         children: [
           for (final chat in chats)

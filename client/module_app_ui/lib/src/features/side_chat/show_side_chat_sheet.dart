@@ -13,13 +13,16 @@ import "side_chat_view.dart";
 /// sheet's cubit, which lives as long as the sheet.
 ///
 /// [context] is under the session page's [SessionDetailPresentationScope],
-/// which the answers' links use.
+/// and [SessionDetailCubit], which the answers' links use.
 void showSideChatSheet({
   required BuildContext context,
   required String pluginId,
   required SideChatCubit Function() createCubit,
 }) {
   final scope = SessionDetailPresentationScope.read(context);
+  // The answers' file links read the session cubit, which the sheet's route
+  // does not inherit.
+  final sessionCubit = context.read<SessionDetailCubit>();
   // ignore: no_slop_linter/avoid_navigator_of, the sheet is a transient route over the session page
   final navigator = Navigator.of(context);
   unawaited(
@@ -30,8 +33,11 @@ void showSideChatSheet({
           navigator.pop();
           scope.openSession(projectId: projectId, sessionId: sessionId, sessionTitle: sessionTitle, readOnly: readOnly);
         },
-        child: BlocProvider(
-          create: (_) => createCubit(),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: sessionCubit),
+            BlocProvider(create: (_) => createCubit()),
+          ],
           child: SideChatView(
             scrollController: scrollController,
             harnessName: PregoBrandLogo.displayNameFor(pluginId),

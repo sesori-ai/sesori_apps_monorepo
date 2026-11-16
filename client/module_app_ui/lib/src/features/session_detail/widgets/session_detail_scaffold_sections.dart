@@ -157,9 +157,10 @@ class const SessionDetailArchivedNotice({
               title: Text(context.loc.sessionDetailArchivedNotice),
               titleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
             ),
-            // A zero-duration AnimatedSize would re-dirty itself mid-layout.
+            // Reduced motion keeps only the fade; a zero-duration AnimatedSize
+            // would re-dirty itself mid-layout.
             if (reducedMotion)
-              link
+              AnimatedSwitcher(duration: const Duration(milliseconds: 200), child: link)
             else
               AnimatedSize(
                 duration: const Duration(milliseconds: 200),

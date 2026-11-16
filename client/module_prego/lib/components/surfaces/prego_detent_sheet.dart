@@ -152,7 +152,13 @@ class const _PregoDetentSheet({
 class _PregoDetentSheetState() extends State<_PregoDetentSheet> with SingleTickerProviderStateMixin {
   /// The sheet's height in points while it isn't resting.
   late final AnimationController _height = AnimationController.unbounded(vsync: this);
-  late final CurvedAnimation _presence = CurvedAnimation(parent: widget.animation, curve: Curves.easeOutCubic);
+  // A close leaves at once and slows into the edge; the entrance curve run
+  // backwards would hold still for half the exit and then rush off.
+  late final CurvedAnimation _presence = CurvedAnimation(
+    parent: widget.animation,
+    curve: Curves.easeOutCubic,
+    reverseCurve: Curves.easeIn,
+  );
   late final Listenable _frame = Listenable.merge([_presence, _height]);
   late final _SheetScrollController _scrollController = _SheetScrollController(sheet: this);
   _SheetMotion _motion = const _Resting(detent: .half);

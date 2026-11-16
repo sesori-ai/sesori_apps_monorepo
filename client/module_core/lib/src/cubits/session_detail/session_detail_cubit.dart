@@ -858,6 +858,11 @@ class SessionDetailCubit(
                 session: session,
                 parkEpochAtFetch: parkEpochAtFetch,
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
+                // Read before the loading state replaced it.
+                previousSideChatCount: switch (previous) {
+                  SessionDetailLoaded(:final archivedSideChatCount) => archivedSideChatCount,
+                  _ => 0,
+                },
               ),
             );
             unawaited(_fetchPromptIndex());
@@ -4013,6 +4018,7 @@ class SessionDetailCubit(
     required Session session,
     required int parkEpochAtFetch,
     required SessionInteractionState interaction,
+    required int previousSideChatCount,
   }) {
     // The load replaces the loading state, keeping what was sent or staged
     // meanwhile: the launch bubble with its follow-up ids, and the command.
@@ -4072,10 +4078,7 @@ class SessionDetailCubit(
       isArchived: snapshot.isArchived,
       // A reload keeps the count until it is counted again, so the notice's
       // link doesn't fold away and back.
-      archivedSideChatCount: switch (loading) {
-        SessionDetailLoaded(:final archivedSideChatCount) when snapshot.isArchived => archivedSideChatCount,
-        _ => 0,
-      },
+      archivedSideChatCount: snapshot.isArchived ? previousSideChatCount : 0,
       cannotContinueMessage: snapshot.cannotContinueMessage,
       queuedMessages: queue.queuedMessages,
       awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,

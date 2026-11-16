@@ -1598,6 +1598,40 @@ void main() {
         }
       });
 
+      test("keep their count through a reload until counted again", () async {
+        final (cubit, loadService) = await load(sideQuestions: SideQuestionAvailability.available);
+        await _awaitCondition(
+          () => switch (cubit.state) {
+            SessionDetailLoaded(:final archivedSideChatCount) => archivedSideChatCount == 2,
+            _ => false,
+          },
+        );
+        when(
+          () => loadService.reload(
+            session: any(named: "session"),
+            projectId: any(named: "projectId"),
+          ),
+        ).thenAnswer(
+          (_) async => SessionDetailLoadResult.loaded(
+            snapshot: _snapshot(
+              messages: const [],
+              isArchived: true,
+              sideQuestions: SideQuestionAvailability.available,
+            ),
+          ),
+        );
+        final recount = Completer<int>();
+        when(() => loadService.countSideChats(sessionId: _sessionId)).thenAnswer((_) => recount.future);
+        final loadedCounts = cubit.stream
+            .whereType<SessionDetailLoaded>()
+            .map((state) => state.archivedSideChatCount)
+            .first;
+        await cubit.reload();
+        expect(await loadedCounts, 2);
+        recount.complete(2);
+        await cubit.close();
+      });
+
       test("aren't counted on a bridge without them or with no known harness", () async {
         for (final availability in [
           SideQuestionAvailability.bridgeUpdateRequired,
