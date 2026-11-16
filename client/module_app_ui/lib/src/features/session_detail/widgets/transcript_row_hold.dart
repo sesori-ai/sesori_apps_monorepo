@@ -68,7 +68,9 @@ class const TranscriptTopReserve({super.key, required final ValueNotifier<double
 
 /// Keeps the empty space above a transcript shorter than its viewport, plus
 /// [ahead] for the growth to come, as room to scroll into, before the row at
-/// [context] grows with its top held. Returns whether it kept any.
+/// [context] grows with its top held. Returns the room it kept, which the row
+/// gives back with [giveBackTranscriptSpaceAbove]; none when the transcript
+/// already fills its viewport.
 ///
 /// A reversed transcript sits on its newest edge, so the space is already
 /// empty and reserving it moves nothing; it lets the transcript scroll by the
@@ -76,35 +78,31 @@ class const TranscriptTopReserve({super.key, required final ValueNotifier<double
 /// The room only counts once the transcript has laid out with it, and each
 /// hold runs before that frame's layout, so the room ahead keeps every hold
 /// in range; past the end, a hold would start a spring back.
-bool reserveTranscriptSpaceAbove({required BuildContext context, required double ahead}) {
+double reserveTranscriptSpaceAbove({required BuildContext context, required double ahead}) {
   final reserve = TranscriptTopReserve._of(context);
   final scrollable = Scrollable.maybeOf(context);
   var node = context.findRenderObject();
   while (node != null && node is! RenderViewportBase) {
     node = node.parent;
   }
-  if (reserve == null || scrollable == null || node is! RenderViewportBase) return false;
+  if (reserve == null || scrollable == null || node is! RenderViewportBase) return 0;
   var content = 0.0;
   node.visitChildren((child) {
     if (child is RenderSliver) content += child.geometry?.scrollExtent ?? 0;
   });
   final empty = scrollable.position.viewportDimension - content;
-  if (empty <= 0) return false;
+  if (empty <= 0) return 0;
   // The extra pixel absorbs rounding between the holds and the laid-out
   // growth, which would otherwise leave the offset a hair past the end.
-  reserve.value += empty + ahead + 1;
-  return true;
+  final room = empty + ahead + 1;
+  reserve.value += room;
+  return room;
 }
 
-/// Gives back [extent] of the room [reserveTranscriptSpaceAbove] kept ahead,
-/// once the row has grown into the rest; the room left is all on screen.
+/// Gives back [extent] of the room [reserveTranscriptSpaceAbove] kept for a
+/// row, leaving the room other rows kept: what was ahead once the row has
+/// grown, the rest once it is back to its height. Neither moves anything.
 void giveBackTranscriptSpaceAbove({required BuildContext context, required double extent}) {
   final reserve = TranscriptTopReserve._of(context);
   if (reserve != null) reserve.value = max(0, reserve.value - extent);
-}
-
-/// Gives back the space [reserveTranscriptSpaceAbove] kept, once the row that
-/// needed it is back to its height; on a short transcript nothing moves.
-void releaseTranscriptSpaceAbove({required BuildContext context}) {
-  TranscriptTopReserve._of(context)?.value = 0;
 }

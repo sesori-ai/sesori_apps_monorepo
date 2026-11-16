@@ -87,48 +87,50 @@ class const TranscriptHandoffBuilder() {
         for (final id in turn.messageIds) ?byId[id],
       ];
       // A request is normally its turn's opener, but one the shared turn rule
-      // reads as a follow-up folds from where it is all the same.
-      final requestIndex = turnMessages.indexWhere(
-        (message) => switch (message.info) {
-          MessageUser(handoff: MessageHandoffSent() || MessageHandoffNotSent()) => true,
-          MessageUser() || MessageAssistant() || MessageError() => false,
-        },
-      );
-      if (requestIndex < 0) continue;
-      final request = turnMessages[requestIndex];
-      final rest = turnMessages.skip(requestIndex + 1);
-      // A prompt steered into a summary being written folds with it, but once
-      // a send has stopped, the shared turn rule can join the user's next,
-      // ordinary prompt to an unanswered request, so only the reply folds.
-      final folds = switch (request.info) {
-        MessageUser(handoff: MessageHandoffNotSent()) => rest.takeWhile((message) => message.info is! MessageUser),
-        MessageUser() || MessageAssistant() || MessageError() => rest,
-      };
-      for (final message in folds) {
-        // Another session's handoff landing in this turn keeps its card.
-        if (message.info case MessageUser(handoff: MessageHandoffReceived())) continue;
-        folded.add(message.info.id);
+      // reads as a follow-up folds from where it is all the same. A send
+      // retried after a stop, unanswered, joins the stopped one's turn, so each
+      // request folds only up to the next.
+      final requestIndexes = [
+        for (final (index, message) in turnMessages.indexed)
+          if (_isRequest(message: message)) index,
+      ];
+      for (final (position, requestIndex) in requestIndexes.indexed) {
+        final request = turnMessages[requestIndex];
+        final last = position == requestIndexes.length - 1;
+        final rest = turnMessages.sublist(requestIndex + 1, last ? null : requestIndexes[position + 1]);
+        // A prompt steered into a summary being written folds with it, but once
+        // a send has stopped, the shared turn rule can join the user's next,
+        // ordinary prompt to an unanswered request, so only the reply folds.
+        final folds = switch (request.info) {
+          MessageUser(handoff: MessageHandoffNotSent()) => rest.takeWhile((message) => message.info is! MessageUser),
+          MessageUser() || MessageAssistant() || MessageError() => rest,
+        };
+        for (final message in folds) {
+          // Another session's handoff landing in this turn keeps its card.
+          if (message.info case MessageUser(handoff: MessageHandoffReceived())) continue;
+          folded.add(message.info.id);
+        }
+        final reply = rest.takeWhile((message) => message.info is! MessageUser).toList();
+        final writing = last && isBusy && turnIndex == turns.turns.length - 1;
+        final marker = switch (request.info) {
+          MessageUser(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle)) =>
+            TranscriptHandoffMarker(
+              targetSessionId: targetSessionId,
+              targetTitle: targetTitle,
+              status: writing ? TranscriptHandoffMarkerStatus.writing : TranscriptHandoffMarkerStatus.sent,
+              summary: _summaryOf(reply: reply),
+            ),
+          MessageUser(handoff: MessageHandoffNotSent(:final targetSessionId, :final targetTitle)) =>
+            TranscriptHandoffMarker(
+              targetSessionId: targetSessionId,
+              targetTitle: targetTitle,
+              status: TranscriptHandoffMarkerStatus.notSent,
+              summary: _summaryOf(reply: reply),
+            ),
+          MessageUser() || MessageAssistant() || MessageError() => null,
+        };
+        if (marker != null) markers[request.info.id] = marker;
       }
-      final reply = rest.takeWhile((message) => message.info is! MessageUser).toList();
-      final newest = turnIndex == turns.turns.length - 1;
-      final marker = switch (request.info) {
-        MessageUser(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle)) => TranscriptHandoffMarker(
-          targetSessionId: targetSessionId,
-          targetTitle: targetTitle,
-          status: newest && isBusy ? TranscriptHandoffMarkerStatus.writing : TranscriptHandoffMarkerStatus.sent,
-          summary: _summaryOf(reply: reply),
-        ),
-        MessageUser(handoff: MessageHandoffNotSent(:final targetSessionId, :final targetTitle)) =>
-          TranscriptHandoffMarker(
-            targetSessionId: targetSessionId,
-            targetTitle: targetTitle,
-            status: TranscriptHandoffMarkerStatus.notSent,
-            summary: _summaryOf(reply: reply),
-          ),
-        MessageUser() || MessageAssistant() || MessageError() => null,
-      };
-      if (marker == null) continue;
-      markers[request.info.id] = marker;
     }
     final cards = <String, TranscriptHandoffCard>{
       for (final message in messages)
@@ -156,6 +158,11 @@ class const TranscriptHandoffBuilder() {
       cards: Map.unmodifiable(cards),
     );
   }
+
+  static bool _isRequest({required MessageWithParts message}) => switch (message.info) {
+    MessageUser(handoff: MessageHandoffSent() || MessageHandoffNotSent()) => true,
+    MessageUser() || MessageAssistant() || MessageError() => false,
+  };
 
   /// The agent's text in [reply], which runs up to the next user message, as
   /// the bridge's send reads the summary it hands off.

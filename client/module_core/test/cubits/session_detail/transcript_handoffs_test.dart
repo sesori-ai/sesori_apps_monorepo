@@ -189,6 +189,27 @@ void main() {
       expect(handoffs.foldedMessageIds, {"step", "steer", "after"});
     });
 
+    test("a send retried after a stopped, unanswered one gets its own marker", () {
+      final handoffs = _build(
+        messages: [
+          _user(id: "stopped", handoff: _notSent),
+          _user(id: "retry", handoff: _sent),
+          _agent(
+            id: "reply",
+            parts: [_text(text: "Goal: fix")],
+          ),
+        ],
+        isBusy: true,
+      );
+
+      expect(handoffs.markers.keys, ["stopped", "retry"]);
+      expect(handoffs.markers["stopped"]?.status, TranscriptHandoffMarkerStatus.notSent);
+      expect(handoffs.markers["stopped"]?.summary, isNull);
+      expect(handoffs.markers["retry"]?.status, TranscriptHandoffMarkerStatus.writing);
+      expect(handoffs.markers["retry"]?.summary, "Goal: fix");
+      expect(handoffs.foldedMessageIds, {"reply"});
+    });
+
     test("a handoff from another session landing in the summary turn keeps its card", () {
       final handoffs = _build(
         messages: [
