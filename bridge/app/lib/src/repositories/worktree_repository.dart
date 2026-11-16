@@ -59,6 +59,51 @@ class WorktreeRepository({
   bool worktreePathExists({required String worktreePath}) =>
       _filesystemApi.entityType(path: worktreePath) != FileSystemEntityType.notFound;
 
+  /// Whether a git worktree is checked out at [worktreePath], rather than
+  /// nothing or some other file or folder.
+  Future<bool> worktreeExists({required String worktreePath}) async {
+    if (_filesystemApi.entityType(path: worktreePath) != FileSystemEntityType.directory) return false;
+    return await _gitApi.isWorkTreeRoot(path: worktreePath);
+  }
+
+  /// Adds a worktree again at [worktreePath], where a removed one was, so a
+  /// harness session that remembers that folder still finds it. It checks out
+  /// [branchName] when the branch still exists. Otherwise, only when
+  /// [fromBase], it starts a new [branchName] (or a detached HEAD when null)
+  /// at [baseCommit], or at [baseBranch] for rows that never stored the commit.
+  Future<WorktreeRecreation> recreateWorktree({
+    required String projectPath,
+    required String worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required bool fromBase,
+  }) async {
+    // Git still registers a worktree whose folder was deleted without it, and
+    // then refuses both its path and its branch.
+    await _gitApi.pruneWorktrees(projectPath: projectPath);
+    if (branchName != null && await _gitApi.branchExists(projectPath: projectPath, branchName: branchName)) {
+      final added = await _gitApi.addWorktreeOnBranch(
+        projectPath: projectPath,
+        worktreePath: worktreePath,
+        branchName: branchName,
+      );
+      return added ? WorktreeRecreated() : WorktreeRecreationFailed();
+    }
+    final startPoint = baseCommit ?? baseBranch;
+    if (startPoint == null) return WorktreeRecreationFailed();
+    if (!fromBase) return WorktreeRecreationBranchMissing();
+    final added = branchName == null
+        ? await _gitApi.createWorktree(projectPath: projectPath, worktreePath: worktreePath, startPoint: startPoint)
+        : await _gitApi.addWorktreeOnNewBranch(
+            projectPath: projectPath,
+            worktreePath: worktreePath,
+            branchName: branchName,
+            startPoint: startPoint,
+          );
+    return added ? WorktreeRecreated() : WorktreeRecreationFailed();
+  }
+
   /// The live directory for [projectId] — where git operations for the
   /// project must run. Unknown ids are rejected: an id is not a directory.
   Future<String> resolveProjectPath({required String projectId}) async {

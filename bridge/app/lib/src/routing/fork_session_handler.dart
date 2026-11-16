@@ -25,6 +25,10 @@ class ForkSessionHandler({required final SessionForkService _sessionForkService}
     if (point case ForkPointAfterMessage(:final messageId) || ForkPointBeforeMessage(:final messageId)) {
       requireNonEmpty(request: request, value: messageId, label: "message id");
     }
-    return await _sessionForkService.forkSession(sessionId: sessionId, point: point);
+    return await _sessionForkService.forkSession(
+      sessionId: sessionId,
+      point: point,
+      recreateFromBase: body.recreateFromBase,
+    );
   }
 }

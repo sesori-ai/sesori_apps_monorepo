@@ -12,6 +12,11 @@ sealed class ForkSessionRequest with _$ForkSessionRequest {
   const factory({
     required String sessionId,
     required ForkPoint point,
+
+    /// Whether an archived origin whose worktree and branch are both gone
+    /// gets a new worktree from its base branch, at the same path. Sent only
+    /// on the retry after a `worktreeBranchMissing` refusal.
+    required bool recreateFromBase,
   }) = _ForkSessionRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$ForkSessionRequestFromJson(json);

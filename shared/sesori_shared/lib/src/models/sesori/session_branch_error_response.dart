@@ -23,8 +23,14 @@ enum SessionBranchErrorCode() {
   /// selection.
   staleSessionOptions,
 
-  /// The harness refused the edited prompt for a reason its plugin explained
-  /// to the user. The response's `message` is that explanation.
+  /// An archived origin's worktree was removed and the branch it was on is
+  /// gone too, or it ran on a detached HEAD that kept no branch. The client
+  /// offers a new worktree from the session's base branch and retries the
+  /// fork with `ForkSessionRequest.recreateFromBase`.
+  worktreeBranchMissing,
+
+  /// The bridge or the harness refused for a reason written for the user.
+  /// The response's `message` is that explanation.
   refused,
   unknown,
 }

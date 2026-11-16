@@ -126,6 +126,17 @@ offer no Fork yet.
   history is backfilled once it is created.
 - Archiving or deleting either session protects the shared worktree like any
   other sharing sessions.
+- An archived origin whose dedicated worktree was removed gets it back at the
+  same path before the harness is asked for anything, so the harness session's
+  folder and the agent's remembered paths still hold: on its kept branch with
+  the files as last committed. When that branch is gone, or the worktree ran
+  on a detached HEAD and kept none, the fork answers `worktreeBranchMissing`;
+  the retry with `recreateFromBase` adds the worktree at the session's base
+  commit (base branch for rows without one), on a new branch of the old name
+  or detached. A path that something other than a worktree now holds, or a
+  worktree git cannot add, is refused with `refused` and a plain reason.
+  Refusals here create nothing. The archived origin is no sharer, so the
+  fork's own archive or deletion removes the recreated worktree.
 
 ## Regression Levels
 
@@ -133,7 +144,7 @@ offer no Fork yet.
 |---|---|
 | L1 Smoke | Not included. |
 | L2 Routine | Automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`; a failed resend after the harness rewound removes exactly the dropped messages, and a failure that changed nothing removes none. A first-turn edit binds the new harness session (with the worktree context in a dedicated worktree), tombstones and deletes the old one and its sub-agent rows and history, survives a failed old delete, replaces a stray imported row, and leaves the binding, rows and transcript untouched when the new session cannot be created; the event service releases the new session's held events under the old id and ignores the old session's late events. Codex plugin tests against a fake app-server: resume, revert and `turn/start` order with the prompt id; history follows the reverted rollout; steered, unknown-id, attachment and revert-error refusals happen before any revert. Claude Code plugin tests against a fake CLI: the respawn's arguments and carried-over selection, then the prompt on the respawned process; a later plain `--resume`; an armed idle reap superseded; a second edit refused and a mid-respawn send ordered after the edit; no-entry, busy and unknown-option refusals before acceptance; the rewind point against recorded transcripts and a compaction. |
-| L2 Routine (fork) | Automated bridge tests with a fake fork plugin: each fork point keeps the right turn, a follow-up keeps its whole turn, `latest` skips a running turn, and busy, non-point, nothing-to-fork, no-fork harness, plugin reason and sub-agent refusals happen before anything is created; the fork row copies the origin's worktree and options, the origin's deletion clears the link and keeps the title, an imported binding is reused, an archived origin forks from its archive record, and an empty fork's first prompt alone carries the worktree context; a migration test covers the fork columns and their `ON DELETE SET NULL`. |
+| L2 Routine (fork) | Automated bridge tests with a fake fork plugin: each fork point keeps the right turn, a follow-up keeps its whole turn, `latest` skips a running turn, and busy, non-point, nothing-to-fork, no-fork harness, plugin reason and sub-agent refusals happen before anything is created; the fork row copies the origin's worktree and options, the origin's deletion clears the link and keeps the title, an imported binding is reused, an archived origin forks from its archive record, and an empty fork's first prompt alone carries the worktree context; an archived origin's removed worktree is recreated on its kept branch before the harness forks, a missing branch answers `worktreeBranchMissing` and creates nothing until the `recreateFromBase` retry, and a taken path or failed add is refused; real-git repository tests recreate on a kept branch, after a hand-deleted folder (pruned), from the base on a new branch and detached, and fail for a branch checked out elsewhere; a migration test covers the fork columns and their `ON DELETE SET NULL`. |
 | L3 Release | Not included until clients offer Edit or Fork. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -153,6 +164,9 @@ offer no Fork yet.
 - An edit reaches the plugin while the session runs or after it was archived.
 - A fork changes its origin, includes part of a running turn, or loses the
   worktree its origin uses.
+- A fork of an archived origin whose worktree was removed points at a missing
+  folder, lands in a folder something else holds, or leaves a worktree behind
+  after a refusal.
 
 ## Known Limitations
 
@@ -161,7 +175,10 @@ offer no Fork yet.
 - Claude Code cannot edit a prompt from before the latest compaction.
 - No harness implements native fork yet; only a fork that keeps nothing
   succeeds.
-- An archived origin whose worktree was removed is not handled yet.
+- A worktree recreated from the base starts where the session started, not
+  where its work ended: a detached worktree keeps no branch to restore.
+- A worktree recreated for a fork the harness then refuses stays on disk until
+  the archived origin is deleted with its worktree.
 - A fork of an untitled origin that was later deleted reads as an ordinary
   session.
 - An edit the plugin refuses keeps the attachment files the bridge saved for
@@ -174,6 +191,7 @@ offer no Fork yet.
 - `bridge/sesori_plugin_interface/lib/src/session_fork_plugin_api.dart`
 - `bridge/app/lib/src/routing/fork_session_handler.dart`
 - `bridge/app/lib/src/services/session_fork_service.dart`
+- `bridge/app/lib/src/repositories/worktree_repository.dart`
 - `shared/sesori_shared/lib/src/models/sesori/fork_session_request.dart`
 - `bridge/app/lib/src/services/session_prompt_service.dart`
 - `bridge/app/lib/src/repositories/session_repository.dart`

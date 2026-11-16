@@ -16,7 +16,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ForkSessionRequest {
 
- String get sessionId; ForkPoint get point;
+ String get sessionId; ForkPoint get point;/// Whether an archived origin whose worktree and branch are both gone
+/// gets a new worktree from its base branch, at the same path. Sent only
+/// on the retry after a `worktreeBranchMissing` refusal.
+ bool get recreateFromBase;
 /// Create a copy of ForkSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +33,20 @@ $ForkSessionRequestCopyWith<ForkSessionRequest> get copyWith => _$ForkSessionReq
 @override
 bool operator ==(Object other) {
   final _this = this as ForkSessionRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ForkSessionRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.point, _this.point) || other.point == _this.point));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ForkSessionRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.point, _this.point) || other.point == _this.point)&&(identical(other.recreateFromBase, _this.recreateFromBase) || other.recreateFromBase == _this.recreateFromBase));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as ForkSessionRequest;
-  return Object.hash(runtimeType,_this.sessionId,_this.point);
+  return Object.hash(runtimeType,_this.sessionId,_this.point,_this.recreateFromBase);
 }
 
 @override
 String toString() {
   final _this = this as ForkSessionRequest;
-  return 'ForkSessionRequest(sessionId: ${_this.sessionId}, point: ${_this.point})';
+  return 'ForkSessionRequest(sessionId: ${_this.sessionId}, point: ${_this.point}, recreateFromBase: ${_this.recreateFromBase})';
 }
 
 
@@ -54,7 +57,7 @@ abstract mixin class $ForkSessionRequestCopyWith<$Res>  {
   factory $ForkSessionRequestCopyWith(ForkSessionRequest value, $Res Function(ForkSessionRequest) _then) = _$ForkSessionRequestCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, ForkPoint point
+ String sessionId, ForkPoint point, bool recreateFromBase
 });
 
 
@@ -71,11 +74,12 @@ class _$ForkSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of ForkSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? point = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? point = null,Object? recreateFromBase = null,}) {
   return _then(ForkSessionRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,point: null == point ? _self.point : point // ignore: cast_nullable_to_non_nullable
-as ForkPoint,
+as ForkPoint,recreateFromBase: null == recreateFromBase ? _self.recreateFromBase : recreateFromBase // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of ForkSessionRequest
@@ -96,11 +100,15 @@ $ForkPointCopyWith<$Res> get point {
 @JsonSerializable()
 
 class _ForkSessionRequest implements ForkSessionRequest {
-  const _ForkSessionRequest({required this.sessionId, required this.point});
+  const _ForkSessionRequest({required this.sessionId, required this.point, required this.recreateFromBase});
   factory _ForkSessionRequest.fromJson(Map<String, dynamic> json) => _$ForkSessionRequestFromJson(json);
 
 @override final  String sessionId;
 @override final  ForkPoint point;
+/// Whether an archived origin whose worktree and branch are both gone
+/// gets a new worktree from its base branch, at the same path. Sent only
+/// on the retry after a `worktreeBranchMissing` refusal.
+@override final  bool recreateFromBase;
 
 /// Create a copy of ForkSessionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -115,18 +123,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ForkSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.point, point) || other.point == point));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ForkSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.point, point) || other.point == point)&&(identical(other.recreateFromBase, recreateFromBase) || other.recreateFromBase == recreateFromBase));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,sessionId,point);
+    return Object.hash(runtimeType,sessionId,point,recreateFromBase);
 }
 
 @override
 String toString() {
-    return 'ForkSessionRequest(sessionId: $sessionId, point: $point)';
+    return 'ForkSessionRequest(sessionId: $sessionId, point: $point, recreateFromBase: $recreateFromBase)';
 }
 
 
@@ -137,7 +145,7 @@ abstract mixin class _$ForkSessionRequestCopyWith<$Res> implements $ForkSessionR
   factory _$ForkSessionRequestCopyWith(_ForkSessionRequest value, $Res Function(_ForkSessionRequest) _then) = __$ForkSessionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, ForkPoint point
+ String sessionId, ForkPoint point, bool recreateFromBase
 });
 
 
@@ -154,11 +162,12 @@ class __$ForkSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of ForkSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? point = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? point = null,Object? recreateFromBase = null,}) {
   return _then(_ForkSessionRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,point: null == point ? _self.point : point // ignore: cast_nullable_to_non_nullable
-as ForkPoint,
+as ForkPoint,recreateFromBase: null == recreateFromBase ? _self.recreateFromBase : recreateFromBase // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
