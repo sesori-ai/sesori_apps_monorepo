@@ -84,6 +84,13 @@ MessageError _$MessageErrorFromJson(Map json) => MessageError(
   providerID: json['providerID'] as String?,
   errorName: json['errorName'] as String,
   errorMessage: json['errorMessage'] as String,
+  kind:
+      $enumDecodeNullable(
+        _$MessageErrorKindEnumMap,
+        json['kind'],
+        unknownValue: MessageErrorKind.failure,
+      ) ??
+      MessageErrorKind.failure,
   time: json['time'] == null
       ? null
       : MessageTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
@@ -99,9 +106,15 @@ Map<String, dynamic> _$MessageErrorToJson(MessageError instance) =>
       'providerID': ?instance.providerID,
       'errorName': instance.errorName,
       'errorMessage': instance.errorMessage,
+      'kind': _$MessageErrorKindEnumMap[instance.kind]!,
       'time': ?instance.time?.toJson(),
       'role': instance.$type,
     };
+
+const _$MessageErrorKindEnumMap = {
+  MessageErrorKind.failure: 'failure',
+  MessageErrorKind.stopped: 'stopped',
+};
 
 _MessageTime _$MessageTimeFromJson(Map json) => _MessageTime(
   created: (json['created'] as num).toInt(),

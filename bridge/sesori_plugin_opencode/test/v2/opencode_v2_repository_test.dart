@@ -189,7 +189,7 @@ void main() {
     expect(details.pluginId, "fixture-plugin");
     final messages = await repository.getMessages(sessionId: "session-fixture");
     expect((messages.single.info as PluginMessageAssistant).agent, "Build");
-    expect(messages.single.parts.single.id, "message:0");
+    expect(messages.single.parts.single.id, "message:text:0");
     expect(api.agentDirectories, [worktree, worktree]);
   });
 

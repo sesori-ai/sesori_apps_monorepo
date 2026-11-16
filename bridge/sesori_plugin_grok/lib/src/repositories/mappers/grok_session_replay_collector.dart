@@ -13,6 +13,8 @@ class GrokSessionReplayCollector({
   required final GrokSessionReplayContext context,
 }) implements AcpSessionReplayCollector {
   final Map<String, _GrokReplayTile> _tilesByChild = {};
+  _GrokReplayCompaction? _runningAuto;
+  ({int? freedTokens, int? completedAtMs})? _pendingManual;
 
   @override
   void consumeNotification({required AcpNotification notification}) {
@@ -52,13 +54,48 @@ class GrokSessionReplayCollector({
           output: output,
           error: error,
         );
-      // Compaction rows are live only.
-      case GrokSubagentProgress() ||
-          GrokTurnCompleted() ||
-          GrokAutoCompactStarted() ||
-          GrokAutoCompactCompleted() ||
-          GrokAutoCompactFailed() ||
-          GrokSubagentUpdateUnknown():
+      case GrokAutoCompactStarted():
+        final eventId = dto.meta?.eventId;
+        if (eventId == null) return;
+        final compaction = (
+          messageId: GrokSessionProtocol.compactionMessageId(sessionId: sessionId, key: eventId),
+          createdAtMs: dto.meta?.agentTimestampMs,
+        );
+        _runningAuto = compaction;
+        _upsertCompaction(compaction: compaction, state: const .running(summary: null));
+      case GrokAutoCompactCompleted(:final tokensBefore, :final tokensAfter):
+        final freedTokens = GrokSessionProtocol.freedTokens(tokensBefore: tokensBefore, tokensAfter: tokensAfter);
+        final compaction = _runningAuto;
+        _runningAuto = null;
+        if (compaction == null) {
+          // A manual `/compact` has no start, and replay sends its completion
+          // before the `/compact` itself, so its row waits for the turn's end.
+          _pendingManual = (freedTokens: freedTokens, completedAtMs: dto.meta?.agentTimestampMs);
+          return;
+        }
+        _upsertCompaction(
+          compaction: compaction,
+          state: .completed(summary: null, freedTokens: freedTokens, trigger: .auto),
+        );
+      case GrokAutoCompactFailed():
+        final compaction = _runningAuto;
+        _runningAuto = null;
+        if (compaction != null) _upsertCompaction(compaction: compaction, state: const .failed(reason: null));
+      case GrokTurnCompleted(:final promptId):
+        // A stopped compaction has no end, so its row stays running for the
+        // bridge's sweep, as it did live.
+        _runningAuto = null;
+        final manual = _pendingManual;
+        _pendingManual = null;
+        if (manual == null || promptId == null) return;
+        _upsertCompaction(
+          compaction: (
+            messageId: GrokSessionProtocol.compactionMessageId(sessionId: sessionId, key: promptId),
+            createdAtMs: manual.completedAtMs,
+          ),
+          state: .completed(summary: null, freedTokens: manual.freedTokens, trigger: .manual),
+        );
+      case GrokSubagentProgress() || GrokSubagentUpdateUnknown():
         break;
     }
   }
@@ -73,6 +110,25 @@ class GrokSessionReplayCollector({
     providerId: providerId,
     variant: variant,
   );
+
+  /// The row the live mapper showed, under the same message id.
+  void _upsertCompaction({required _GrokReplayCompaction compaction, required PluginCompactionState state}) {
+    standardCollector.upsertAssistantMessage(
+      messageId: compaction.messageId,
+      parts: [
+        PluginMessagePart.compaction(
+          id: "${compaction.messageId}-part",
+          sessionID: sessionId,
+          messageID: compaction.messageId,
+          compactionState: state,
+        ),
+      ],
+      time: switch (compaction.createdAtMs) {
+        final int createdAtMs => PluginMessageTime(created: createdAtMs, completed: null),
+        null => null,
+      },
+    );
+  }
 
   void _spawn({
     required String childSessionId,
@@ -145,6 +201,8 @@ class GrokSessionReplayCollector({
   static String? _bounded(String? value) =>
       value == null || value.isEmpty ? null : String.fromCharCodes(value.runes.take(maxToolOutputLength));
 }
+
+typedef _GrokReplayCompaction = ({String messageId, int? createdAtMs});
 
 final class _GrokReplayTile({
   required final String childSessionId,
