@@ -2213,6 +2213,8 @@
   "@sessionDetailCompactionAlreadyCompacted": {"description": "Reason after 'Compaction failed' when nothing has happened since the last compaction, e.g. 'Compaction failed · already compacted'. Lowercase because it follows a separator."},
   "sessionDetailCompactionCancelled": "stopped",
   "@sessionDetailCompactionCancelled": {"description": "Reason after 'Compaction failed' when the user or the coding agent stopped the compaction, e.g. 'Compaction failed · stopped'. Lowercase because it follows a separator."},
+  "sessionDetailTurnStopped": "Stopped",
+  "@sessionDetailTurnStopped": {"description": "Quiet line that ends an agent turn the user stopped with the Stop button. Not an error."},
   "sessionDetailCompactionTurnEnded": "the turn ended first",
   "@sessionDetailCompactionTurnEnded": {"description": "Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator."},
   "sessionDetailCompactionFreedTokens": "freed {tokens} tokens",

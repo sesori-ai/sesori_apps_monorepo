@@ -77,7 +77,7 @@ final class const TranscriptGroupBlock({
 
 /// The loaded messages arranged for rendering.
 final class const Transcript({
-  /// Blocks for each assistant message row. A group that spans messages sits
+  /// Blocks for each assistant or error message row. A group that spans messages sits
   /// in the row of the message it started in, so later rows may be empty.
   required final Map<String, List<TranscriptBlock>> blocksByMessageId,
 
@@ -107,16 +107,26 @@ class const TranscriptBuilder() {
     TranscriptStep? liveStep;
 
     for (final message in messages) {
-      final info = message.info;
-      if (info is! MessageAssistant) {
-        group = null;
-        continue;
+      // Whether the message's steps may join the open group, and whether its
+      // own last group stays open for the next message's steps.
+      final bool joinsGroup;
+      final bool leavesGroupOpen;
+      switch (message.info) {
+        case MessageUser():
+          group = null;
+          continue;
+        // Automation messages render in their own frame, so their steps never
+        // join a group from outside it.
+        case MessageAssistant(:final sender):
+          joinsGroup = leavesGroupOpen = sender == MessageSender.agent;
+        // A stopped or failed turn keeps what it streamed before it ended; its
+        // end row closes the turn, so later steps start a group of their own.
+        case MessageError():
+          joinsGroup = true;
+          leavesGroupOpen = false;
       }
-      // Automation messages render in their own frame, so their steps never
-      // join a group from outside it.
-      final isAgent = info.sender == MessageSender.agent;
-      if (!isAgent) group = null;
-      final blocks = pendingByMessageId[info.id] = [];
+      if (!joinsGroup) group = null;
+      final blocks = pendingByMessageId[message.info.id] = [];
 
       for (final part in message.parts) {
         final step = _stepFor(
@@ -149,7 +159,7 @@ class const TranscriptBuilder() {
         }
       }
 
-      if (!isAgent) group = null;
+      if (!leavesGroupOpen) group = null;
     }
 
     return Transcript(

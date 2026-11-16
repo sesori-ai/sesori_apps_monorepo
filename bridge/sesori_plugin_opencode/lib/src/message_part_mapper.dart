@@ -105,7 +105,7 @@ class const MessagePartMapper() {
     Log.w("[opencode] compaction failed in $sessionId: $error");
     return .failed(
       reason: switch (openCodeError(error: error).name) {
-        "MessageAbortedError" => PluginCompactionFailureReason.cancelled,
+        openCodeAbortedErrorName => PluginCompactionFailureReason.cancelled,
         _ => null,
       },
     );

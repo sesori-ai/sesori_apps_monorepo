@@ -1607,10 +1607,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // The launch bubble's echo keeps easing like the bubble it replaced.
       MessageUser() when entryId == _launchSlotRowId => _deliveredPromptRow(message: message),
       MessageUser() => _userMessage(message: message, outlineFade: null),
-      MessageAssistant(sender: MessageSender.agent, :final id) => _agentReply(
+      MessageAssistant(sender: MessageSender.agent, :final id) => _agentRow(
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
         createdAtMs: createdAtMs,
+        end: null,
       ),
       MessageAssistant(:final id) => SystemMessageCard(
         projectId: widget.projectId,
@@ -1618,9 +1619,42 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         streamingText: streamingText,
         createdAtMs: createdAtMs,
       ),
-      final MessageError messageError => ErrorMessageCard(message: messageError),
+      final MessageError error => _agentRow(
+        blocks: transcript.blocksFor(messageId: error.id),
+        streamingText: streamingText,
+        createdAtMs: createdAtMs,
+        end: error,
+      ),
     };
     return _revealable(createdAtMs: createdAtMs, child: card);
+  }
+
+  /// An agent reply's row: what it streamed, then, once the turn stopped or
+  /// failed, the [end] row under it. A reply keeps its row when its turn ends,
+  /// so the end row grows in under it as the working row folds away.
+  Widget _agentRow({
+    required List<TranscriptBlock> blocks,
+    required Map<String, String> streamingText,
+    required int? createdAtMs,
+    required MessageError? end,
+  }) {
+    final showsReply = blocks.isNotEmpty || end == null;
+    return TranscriptPresenceColumn(
+      children: [
+        if (showsReply)
+          SizedBox(
+            key: const ValueKey("reply"),
+            width: double.infinity,
+            child: _agentReply(blocks: blocks, streamingText: streamingText, createdAtMs: createdAtMs),
+          ),
+        if (end != null)
+          SizedBox(
+            key: const ValueKey("end"),
+            width: double.infinity,
+            child: ErrorMessageCard(message: end, followsReply: showsReply),
+          ),
+      ],
+    );
   }
 
   /// An agent reply's card, with its message menu.
@@ -1738,8 +1772,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   static bool _stepJoinsShownCard({required List<MessageWithParts> messages, required Transcript transcript}) =>
       transcript.endsInOpenGroup ||
       switch (messages.lastOrNull?.info) {
-        MessageAssistant(sender: MessageSender.agent, :final id) => transcript.blocksFor(messageId: id).isNotEmpty,
-        MessageUser() || MessageAssistant() || MessageError() || null => false,
+        MessageAssistant(sender: MessageSender.agent, :final id) ||
+        MessageError(:final id) => transcript.blocksFor(messageId: id).isNotEmpty,
+        MessageUser() || MessageAssistant() || null => false,
       };
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.
