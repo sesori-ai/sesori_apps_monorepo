@@ -237,6 +237,7 @@ class SessionDetailLoadedView extends StatelessWidget {
                       pluginId: pluginId,
                       availability: state.sideQuestions,
                       isArchived: true,
+                      initialQuestion: null,
                     ),
                     _ => null,
                   },
@@ -348,7 +349,7 @@ class SessionDetailLoadedView extends StatelessWidget {
             }),
       editingMessageId: switch (state.composerMode) {
         SessionComposerEditing(:final messageId) => messageId,
-        SessionComposerNormal() => null,
+        SessionComposerNormal() || SessionComposerSideQuestion() => null,
       },
       streamingText: state.streamingText,
       children: state.children,

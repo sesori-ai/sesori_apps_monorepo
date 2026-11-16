@@ -874,7 +874,6 @@ void main() {
         haltClassifier: null,
         toolPartReplacement: null,
         toolPartSuppression: null,
-        separatesToolMessages: false,
       );
       final liveUpdates = [
         {
@@ -2806,7 +2805,6 @@ void main() {
         haltClassifier: mapper.classifyHaltNotice,
         toolPartReplacement: null,
         toolPartSuppression: null,
-        separatesToolMessages: false,
       );
       for (final update in [
         {
@@ -3086,6 +3084,112 @@ void main() {
 
       expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay");
       expect(mutations.updated, ["ses_a"]);
+    });
+
+    // The bridge stopped after storing the turn's reasoning and before the
+    // tool row the replay has next.
+    test("a re-import matches the live row the interrupted turn ends on once", () async {
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Run it", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "replay-thinking", text: "Thinking", reasoning: null, createdAt: null),
+            _assistantMessageWithText(id: "replay-tool", text: "Ran it", reasoning: null, createdAt: null),
+          ],
+        ),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessages(
+        history: history,
+        messages: [
+          _messageWithText(id: "live-prompt", text: "Run it", createdAt: 100, promptId: "p1"),
+          _assistantMessageWithText(id: "live-thinking", text: "Thinking", reasoning: null, createdAt: null),
+        ],
+      );
+      await history.service.convertInterruptedTurn(leftover: await leftover(interruptions: interruptions));
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "replay-thinking", "replay-tool"],
+      );
+      expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay-thinking");
+    });
+
+    test("the first read matches that row before the plugin resolves the running turn", () async {
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Run it", createdAt: null, promptId: null),
+            _assistantMessageWithText(id: "replay-thinking", text: "Thinking", reasoning: null, createdAt: null),
+            _assistantMessageWithText(id: "replay-tool", text: "Ran it", reasoning: null, createdAt: null),
+          ],
+        ),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessages(
+        history: history,
+        messages: [
+          _messageWithText(id: "live-prompt", text: "Run it", createdAt: 100, promptId: "p1"),
+          _assistantMessageWithText(id: "live-thinking", text: "Thinking", reasoning: null, createdAt: null),
+        ],
+      );
+      await leftover(interruptions: interruptions);
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "replay-thinking", "replay-tool"],
+      );
+    });
+
+    test("a re-import matches that row when the stop cut its reasoning off mid-stream", () async {
+      MessageWithParts thinking({required String id, required String text}) => MessageWithParts(
+        info: Message.assistant(
+          id: id,
+          sessionID: "ses_a",
+          agent: "copilot",
+          modelID: null,
+          providerID: null,
+          sender: MessageSender.agent,
+          time: null,
+        ),
+        parts: [MessagePart.reasoning(id: "$id-reasoning", sessionID: "ses_a", messageID: id, text: text)],
+      );
+      final interruptions = SessionInterruptionRepository(dao: SessionInterruptionDao(database: db));
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-prompt", text: "Run it", createdAt: null, promptId: null),
+            thinking(id: "replay-thinking", text: "Thinking"),
+            _assistantMessageWithText(id: "replay-tool", text: "Ran it", reasoning: null, createdAt: null),
+          ],
+        ),
+        interruptions: interruptions,
+        mutations: mutations,
+      );
+      await _captureMessages(
+        history: history,
+        messages: [
+          _messageWithText(id: "live-prompt", text: "Run it", createdAt: 100, promptId: "p1"),
+          thinking(id: "live-thinking", text: ""),
+        ],
+      );
+      await history.service.convertInterruptedTurn(leftover: await leftover(interruptions: interruptions));
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-prompt", "replay-thinking", "replay-tool"],
+      );
+      expect((await interruptions.readMany(sessionIds: {"ses_a"}))["ses_a"]?.afterMessageId, "replay-thinking");
     });
 
     test("a re-import queued while a conversion is between its read and its write anchors to a stored row", () async {

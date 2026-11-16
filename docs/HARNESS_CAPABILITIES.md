@@ -330,7 +330,7 @@ refused with a reason.
 
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
-| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ⬜ Not implemented yet |
+| Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ✅ Sesori writes the kept active branch, through the kept turn's last record, to `<new id>.jsonl` under the fork's id; the first prompt then runs `--resume=<new id>`. Verified live on 2026-11-15 with Claude Code 2.1.322. The origin is only read, so it may be running. A point before the latest compaction is 🚫 and refused with a reason, as for edit; a message off the active branch and an origin without a transcript are refused too. Sub-agent transcripts stay with the origin |
 | Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ✅ `thread/fork {lastTurnId}` into a new persisted thread in the same directory; the source is not loaded, so it can run a later turn or be archived. Verified live on 2026-11-15 with Codex 0.169.0. Runtimes before 0.143.0 predate `lastTurnId`; by their source they ignore the unknown field and would copy the whole thread (not run live), so they are refused with a reason before anything is created, as are an unknown message, a missing rollout and a turn still running. A reply that a steered follow-up continued in the same native turn is 🚫: Codex forks only whole turns. Deleting a source keeps the rollouts a fork builds on and `thread/archive`s them, which Codex allows and forks keep reading |
 | Every other harness | ⬜ Not implemented yet for in-place rewinds; the bridge accepts a first-message swap, but the app shows no Edit because the harness does not declare `rewind` | ⬜ Not implemented yet |
 
@@ -350,6 +350,14 @@ directory, 2026-11-15):
   before answering `initialize`. A CLI that does not know the flag exits with
   `error: unknown option`, which Sesori reports as "This Claude Code version
   can't edit messages from Sesori."
+- On 2.1.322, `--resume=<id> --fork-session --session-id=<new> --resume-session-at=<entry>`
+  writes nothing until the first prompt, then copies the kept chain with the
+  same `uuid`s, rewrites only `sessionId`, and drops metadata records such as
+  `last-prompt`. It does not copy `<id>/subagents/`. Sesori therefore writes
+  that copy itself when the fork is created, so the fork has history before its
+  first prompt and needs no fork flags. A plain `--resume=<new>` of the written
+  file reports the new id and parents the next prompt to the kept turn's last
+  record.
 
 ## Explicit shell-command presentation
 
@@ -1187,19 +1195,20 @@ reconciliation when connected to an older bridge.
 
 ## Tool calls in replayed history
 
-The live stream gives every visible ACP tool call its own message. When a
-harness stamps its reasoning and text chunks with a message id, the shared
-replay groups the next tool call into that stamped message, which no longer
-matches the live rows, so a re-import shows the tool call twice: inside the
-replayed assistant message and as the live tool row.
+The live stream gives every visible ACP tool call its own message, and the
+shared replay does the same for every ACP harness, also after reasoning or text
+chunks stamped with a message id. Before, a replayed tool call joined the
+stamped message before it, so a re-import showed it twice: inside the replayed
+assistant message and as the live tool row. A harness that replays without
+message ids was never affected.
 
 | Harness | Status |
 |---|---|
-| Oh My Pi | ✅ Replays each tool call as its own message. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
-| Hermes | ✅ Not affected: Hermes's history replays its chunks without message ids, so each replayed tool call already gets its own message. |
-| DeepSeek | ✅ Its history read replays each tool call as its own message. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
-| Cursor, Grok | ⚠️ Not verified live: they need a real account, which the test proxy can't serve. |
-| Copilot, Antigravity | ⚠️ Not verified live: runtime not installed on the test machine. |
+| Oh My Pi | ✅ Stamps its chunks. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
+| DeepSeek | ✅ Stamps its chunks. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
+| Hermes | ✅ Not affected: Hermes's history replays its chunks without message ids. |
+| Grok | ✅ Not affected as recorded: the `session/load` replay fixtures from 1.0.30 carry no message ids on their chunks. Not verified live with a tool turn. |
+| Cursor, Copilot, Antigravity | ⚠️ Not verified live, and no recorded replay shows whether they stamp chunks. Either way, a replayed tool call now gets its own message. |
 
 ## Failed-turn notices sent as text
 
@@ -1268,6 +1277,61 @@ session set to Ask: one prompt attached a `.txt` and named a file under
 `~/.sesori/transcripts`, Claude read and quoted both, and no permission request
 was raised. A read of a file outside both folders in the same session did raise
 one.
+
+## Sending a session into another
+
+The bridge core builds session sending the same way on every harness (see
+`docs/regression/session-sending.md`). The source's agent writes the summary in
+a normal turn, and the bridge stamps the handoff marker on the live echo, so no
+harness needs native merge support. What differs is how the target's agent
+treats the transcript file outside its working directory, and what the handoff
+prompt does to a target that is running, from each plugin's
+`busyPromptHandling`:
+
+| Harness | Summary turn | Handoff marker | Reads the transcript file | Asks first | Running target |
+|---|---|---|---|---|---|
+| Claude Code 2.1.325 | ✅ | ✅ | ✅ Read it when asked, with Read. | No: step 5's read-only `Read(//<folder>/**)` rule for `~/.sesori/transcripts` (#2613), verified 2026-11-15 and rechecked 2026-11-16. | Steers into the running turn. |
+| Codex 0.169.0 | ✅ | ✅ | ✅ Read it when asked, through the shell. | No. | Steers into the running turn. |
+| OpenCode 2.3.0 | ✅ | ✅ | ✅ Read it when asked, with read. | No, on the user's config and on a stock config. | Steers into the running turn. |
+| Pi 1.5.2 | ✅ | ✅ | ✅ Read it when asked, with read. | No. | Steers into the running turn. |
+| OMP 18.20.2 (ACP) | ✅ | ✅ | ✅ Read it when asked, but kept working on its own todo instead of answering. | No. | Steers into the running turn.¹ |
+| Grok Build 1.0.30 | ✅ | ✅ | ✅ Read it when asked, with read. | No, with `permission_mode` both `always-approve` and `ask`. | Stops the running turn. |
+| Hermes 0.21.5 (ACP) | ✅ | ✅ | ✅ Read it when asked.² | No. | Stops the running turn. |
+| DeepSeek runtime 0.2.2 (ACP) | ✅ | ✅ | Unverified: the runtime needs a DeepSeek account, and live checks run only on the test proxy. | Unverified. | Stops the running turn. |
+| Cursor (ACP) | ✅ | ✅ | Unverified: the installed CLI (2026.07.23) is older than the 2026.09.23 Sesori requires. | Unverified. | Stops the running turn. |
+| Copilot (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
+| Antigravity (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
+
+¹ OMP's `busyPromptHandling` is static. The bundled OMP 18.19.0 advertises
+`_session/steering`. An older OMP on PATH without it stops the running turn,
+and the picker still shows the plain "Running" label instead of the warning. A
+steer that OMP admits as `promptRequired` runs as the next turn, without
+cancelling the current one.
+
+² Hermes ignored the first question after an aborted turn, answering "Stopped
+waiting for another Hermes process on this session. Your message was not
+processed."; the same question sent again was read and answered.
+
+Checked live on 2026-11-16 (UTC) against a source-run bridge on its local debug
+server, with one Pi session as the source and a fresh session of each installed
+harness as the target. Each target was set to Ask by its per-session approval
+override, and harnesses that need a model endpoint used the local test proxy.
+Every target received the handoff with its stamp. None read the file on
+arrival: each began on the summary's next steps, and Codex and OMP raised
+permission requests for that work, not for the read. Asked for a timestamp
+that only the transcript file held, every target read the file and quoted it,
+with no permission request for the read. On a headless iOS simulator, the Pi
+source showed "Summary sent to … · Open" and "Couldn't send to …" markers and
+the "Handoff summary" sheet. The Codex target showed the "From …" card, which
+Show all expanded.
+
+On the ACP plugin, a target whose saved agent or mode the harness rejects when
+the turn starts accepts the handoff and then drops the turn
+(`applyTurnSelection … failed; dropping turn` in the bridge log). The app
+reports Sent while the target receives nothing. This was seen on an OMP session
+whose saved agent OMP did not offer, and it applies to every ACP harness,
+because the plugin fails closed after accepting the prompt rather than refusing
+it as stale.
 
 ## Sub-agents
 

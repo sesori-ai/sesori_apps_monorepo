@@ -55,7 +55,6 @@ ToolStateFull _parity({required AcpEventMapper mapper, required List<Map<String,
     haltClassifier: null,
     toolPartReplacement: null,
     toolPartSuppression: null,
-    separatesToolMessages: false,
   );
   MessagePartTool? live;
   for (final update in updates) {

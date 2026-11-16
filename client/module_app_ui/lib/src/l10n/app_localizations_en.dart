@@ -2547,6 +2547,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListWaiting => 'Waiting';
 
   @override
+  String sessionListRecurringTaskRun(String name) {
+    return 'Run of recurring task $name';
+  }
+
+  @override
+  String sessionListScheduledTaskRun(String name) {
+    return 'Run of scheduled task $name';
+  }
+
+  @override
+  String sessionListOnceTaskRun(String name) {
+    return 'Run of one-time task $name';
+  }
+
+  @override
   String sessionListBackgroundTasks(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -4420,6 +4435,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sideChatAskFailed => 'Couldn\'t reach your computer to ask.';
+
+  @override
+  String get sideQuestionComposerLabel => 'Side question';
+
+  @override
+  String get sideQuestionComposerLeave => 'Back to a message';
+
+  @override
+  String get sideQuestionComposerHint => 'Ask a side question…';
+
+  @override
+  String get sideQuestionCommandDescription => 'Ask a side question';
+
+  @override
+  String get sideQuestionCommandSource => 'Sesori';
 
   @override
   String sessionDetailArchivedSideChats(int count) {

@@ -4447,6 +4447,24 @@ abstract class AppLocalizations {
   /// **'Waiting'**
   String get sessionListWaiting;
 
+  /// Screen-reader label for the session-list mark on a session a recurring scheduled task started
+  ///
+  /// In en, this message translates to:
+  /// **'Run of recurring task {name}'**
+  String sessionListRecurringTaskRun(String name);
+
+  /// Screen-reader label for the session-list mark on a session a scheduled task of a kind this app does not know started
+  ///
+  /// In en, this message translates to:
+  /// **'Run of scheduled task {name}'**
+  String sessionListScheduledTaskRun(String name);
+
+  /// Screen-reader label for the session-list mark on a session a one-time scheduled task started
+  ///
+  /// In en, this message translates to:
+  /// **'Run of one-time task {name}'**
+  String sessionListOnceTaskRun(String name);
+
   /// Label showing the number of active background tasks for a session
   ///
   /// In en, this message translates to:
@@ -7644,6 +7662,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t reach your computer to ask.'**
   String get sideChatAskFailed;
+
+  /// Label above the session composer while typing /btw switched it to ask a side question instead of sending a message.
+  ///
+  /// In en, this message translates to:
+  /// **'Side question'**
+  String get sideQuestionComposerLabel;
+
+  /// Screen-reader label of the ✕ on the composer's Side question label, which returns the composer to sending a message and keeps the text.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to a message'**
+  String get sideQuestionComposerLeave;
+
+  /// Placeholder of the session composer while it asks a side question.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a side question…'**
+  String get sideQuestionComposerHint;
+
+  /// Description of the /btw row at the top of the composer's command picker, which switches the composer to ask a side question.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a side question'**
+  String get sideQuestionCommandDescription;
+
+  /// Tag on the /btw row of the command picker, saying the command comes from Sesori rather than the coding agent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori'**
+  String get sideQuestionCommandSource;
 
   /// Link on an archived session's notice that opens its side chats read-only, with how many there are.
   ///

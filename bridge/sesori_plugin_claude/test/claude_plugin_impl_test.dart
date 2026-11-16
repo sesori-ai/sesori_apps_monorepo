@@ -872,6 +872,78 @@ void main() {
       expect(harness.processes, isEmpty);
     });
 
+    test("a fork writes its own transcript, announces itself untitled, and resumes from it", () async {
+      // The id the linear fixture records for itself.
+      const origin = "11111111-1111-4111-8111-111111111111";
+      File("test/fixtures/transcripts/linear.jsonl").copySync(
+        (File("${harness.temporary.path}/projects/project/$origin.jsonl")..createSync(recursive: true)).path,
+      );
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      final fork = await harness.plugin.forkSession(sessionId: origin, throughMessageId: "1794774680780");
+      await pump();
+
+      expect(fork.id, testSessionId);
+      expect(fork.directory, "/work/fixture-project");
+      final created = events.whereType<BridgeSseSessionCreated>().single.info;
+      expect(created["id"], testSessionId);
+      expect(created["title"], isNull);
+      expect(harness.processes, isEmpty);
+      expect(File("${harness.temporary.path}/projects/project/$testSessionId.jsonl").existsSync(), isTrue);
+
+      await harness.plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "next")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(
+        harness.specs.last.launch,
+        isA<ClaudeResumedSession>().having((launch) => launch.sessionId, "sessionId", testSessionId),
+      );
+      await subscription.cancel();
+    });
+
+    test("a fork of a session without a transcript is refused before anything is created", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await expectLater(
+        harness.plugin.forkSession(sessionId: otherTestSessionId, throughMessageId: "message"),
+        throwsA(isA<PluginBranchPointUnavailableException>()),
+      );
+      await pump();
+
+      expect(events.whereType<BridgeSseSessionCreated>(), isEmpty);
+      expect(Directory("${harness.temporary.path}/projects").existsSync(), isFalse);
+      await subscription.cancel();
+    });
+
+    test("a primed session without a transcript is taken as unstarted after a restart", () async {
+      harness.plugin.primeSessionDirectory(sessionId: otherTestSessionId, directory: "/tmp/project");
+
+      expect(await harness.plugin.getSessionMessages(otherTestSessionId), isEmpty);
+      await harness.plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: otherTestSessionId,
+        parts: const [PluginPromptPart.text(text: "first")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(
+        harness.specs.last.launch,
+        isA<ClaudeNewSession>().having((launch) => launch.sessionId, "sessionId", otherTestSessionId),
+      );
+      expect(harness.specs.last.workingDirectory, "/tmp/project");
+    });
+
     test("delete fences the turn, reaps the process, and forgets the session", () async {
       final session = await harness.createSession();
       final process = harness.processes.single;
