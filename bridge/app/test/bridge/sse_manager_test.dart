@@ -461,6 +461,7 @@ SesoriSseEvent _event(String worktree) {
         id: worktree,
         activeSessions: [
           const ActiveSession(
+            sending: null,
             id: "s1",
             mainAgentRunning: false,
             childSessionIds: [],

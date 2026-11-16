@@ -396,6 +396,7 @@ void main() {
             id: "/repo",
             activeSessions: [
               ActiveSession(
+                sending: null,
                 id: "s1",
                 mainAgentRunning: true,
                 awaitingInput: false,

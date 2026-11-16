@@ -66,10 +66,17 @@ void main() {
       ],
       activityByProjectId: const {
         "running-z": {
-          "z": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 10, updatedAt: null),
+          "z": SessionActivityInfo(
+            sending: null,
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: 10,
+            updatedAt: null,
+          ),
         },
         "waiting-a": {
           "waiting": SessionActivityInfo(
+            sending: null,
             awaitingInput: true,
             isRunning: false,
             lastUserActivityAt: 30,
@@ -77,7 +84,13 @@ void main() {
           ),
         },
         "running-a": {
-          "a": SessionActivityInfo(backgroundTaskCount: 1, isRunning: true, lastUserActivityAt: 20, updatedAt: null),
+          "a": SessionActivityInfo(
+            sending: null,
+            backgroundTaskCount: 1,
+            isRunning: true,
+            lastUserActivityAt: 20,
+            updatedAt: null,
+          ),
         },
       },
       listStateByProjectId: const {},
@@ -101,11 +114,29 @@ void main() {
       ],
       activityByProjectId: const {
         "project-a": {
-          "a1": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 70, updatedAt: null),
-          "a2": SessionActivityInfo(isRetrying: true, isRunning: true, lastUserActivityAt: 20, updatedAt: null),
+          "a1": SessionActivityInfo(
+            sending: null,
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: 70,
+            updatedAt: null,
+          ),
+          "a2": SessionActivityInfo(
+            sending: null,
+            isRetrying: true,
+            isRunning: true,
+            lastUserActivityAt: 20,
+            updatedAt: null,
+          ),
         },
         "project-b": {
-          "b": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 80, updatedAt: null),
+          "b": SessionActivityInfo(
+            sending: null,
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: 80,
+            updatedAt: null,
+          ),
         },
       },
       listStateByProjectId: const {
@@ -128,10 +159,22 @@ void main() {
       ],
       activityByProjectId: const {
         "project-a": {
-          "a": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 100, updatedAt: 1),
+          "a": SessionActivityInfo(
+            sending: null,
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: 100,
+            updatedAt: 1,
+          ),
         },
         "project-b": {
-          "b": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 90, updatedAt: 200),
+          "b": SessionActivityInfo(
+            sending: null,
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: 90,
+            updatedAt: 200,
+          ),
         },
       },
       listStateByProjectId: const {
@@ -154,10 +197,22 @@ void main() {
       ],
       activityByProjectId: const {
         "project-a": {
-          "a": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: null, updatedAt: 100),
+          "a": SessionActivityInfo(
+            sending: null,
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: null,
+            updatedAt: 100,
+          ),
         },
         "project-b": {
-          "b": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 75, updatedAt: 1),
+          "b": SessionActivityInfo(
+            sending: null,
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: 75,
+            updatedAt: 1,
+          ),
         },
       },
       listStateByProjectId: const {
@@ -182,6 +237,7 @@ void main() {
       activityByProjectId: const {
         "older": {
           "older-root": SessionActivityInfo(
+            sending: null,
             mainAgentRunning: true,
             isRunning: true,
             lastUserActivityAt: null,
@@ -190,6 +246,7 @@ void main() {
         },
         "newer-b": {
           "newer-b-root": SessionActivityInfo(
+            sending: null,
             mainAgentRunning: true,
             isRunning: true,
             lastUserActivityAt: null,
@@ -198,6 +255,7 @@ void main() {
         },
         "newer-a": {
           "newer-a-root": SessionActivityInfo(
+            sending: null,
             mainAgentRunning: true,
             isRunning: true,
             lastUserActivityAt: null,

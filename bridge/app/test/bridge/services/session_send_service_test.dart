@@ -188,6 +188,49 @@ void main() {
     expect(history.notSentMessages, isEmpty);
   });
 
+  test("lists the source as sending to every client until the send ends", () async {
+    final changes = <Map<String, ActiveSessionSending>>[];
+    service.sendingChanges.listen((_) => changes.add(Map.of(service.sending)));
+    final whilePrompting = <Map<String, ActiveSessionSending>>[];
+    prompts.onSummaryAccepted = (promptId) {
+      whilePrompting.add(Map.of(service.sending));
+      events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
+      events.add(const NormalizedStatusEvent(sessionId: _source, status: SessionStatus.idle()));
+    };
+
+    final summaries = [
+      const ProjectActivitySummary(
+        id: "project",
+        activeSessions: [
+          ActiveSession(id: _source, sending: null, lastUserActivityAt: null, updatedAt: null),
+          ActiveSession(id: "other", sending: null, lastUserActivityAt: null, updatedAt: null),
+        ],
+      ),
+    ];
+    final marked = <List<ProjectActivitySummary>>[];
+    final playTurn = prompts.onSummaryAccepted;
+    prompts.onSummaryAccepted = (promptId) {
+      marked.add(service.markSending(projects: summaries));
+      playTurn?.call(promptId);
+    };
+
+    await send();
+
+    const sending = {_source: ActiveSessionSending(targetTitle: "Target title")};
+    expect(whilePrompting, [sending]);
+    expect([for (final active in marked.single.single.activeSessions) active.sending], [sending[_source], null]);
+    expect(service.markSending(projects: summaries), same(summaries));
+    expect(changes, [sending, <String, ActiveSessionSending>{}]);
+  });
+
+  test("a failed send stops listing its source", () async {
+    prompts.summaryFailure = _staleOptions();
+
+    await refusalOf(send());
+
+    expect(service.sending, isEmpty);
+  });
+
   test("the transcript leaves out the summary exchanges of earlier sends", () async {
     finishSummaryTurn();
     const earlierTarget = MessageHandoff.sent(targetSessionId: "earlier", targetTitle: null);
@@ -589,24 +632,24 @@ void main() {
     expect(prompts.sends.last.sessionId, _target);
   });
 
-  test("a second send racing the first is refused as busy", () async {
+  test("a second send racing the first is refused as busy, before the source reports busy", () async {
     final accepted = Completer<String>();
-    prompts.onSummaryAccepted = (promptId) {
-      // The harness reports the turn as running once it accepts the prompt.
-      sessions.statuses[_source] = const SessionStatus.busy(since: null);
-      accepted.complete(promptId);
-    };
+    // The source's busy status has yet to arrive.
+    prompts.onSummaryAccepted = accepted.complete;
 
     final first = send();
-    final second = send();
+    final second = refusalOf(send());
     final promptId = await accepted.future;
 
-    expect(await refusalOf(second), SendToSessionErrorCode.sourceBusy);
+    expect(await second, SendToSessionErrorCode.sourceBusy);
+    // The refused send leaves the first one listed.
+    expect(service.sending.keys, [_source]);
     events.add(NormalizedMessageEvent(message: _echo(promptId: promptId)));
     events.add(const NormalizedStatusEvent(sessionId: _source, status: SessionStatus.idle()));
     await first;
     expect(prompts.sends.where((send) => send.sessionId == _source), hasLength(1));
     expect(transcripts.saved, hasLength(1));
+    expect(service.sending, isEmpty);
   });
 
   test("idle before the echo does not end the wait", () async {
