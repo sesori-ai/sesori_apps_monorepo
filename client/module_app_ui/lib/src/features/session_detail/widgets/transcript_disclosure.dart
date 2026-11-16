@@ -148,7 +148,7 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
     final shown = panelHeight * _panelSize.value;
     final growth = shown - _shownHeight;
     _shownHeight = shown;
-    holdTranscriptRowTop(context: context, growth: growth, roomBelowOnly: true);
+    holdTranscriptRowTop(context: context, growth: growth);
   }
 
   @override
