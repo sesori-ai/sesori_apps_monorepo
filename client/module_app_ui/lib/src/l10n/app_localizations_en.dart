@@ -3167,6 +3167,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailEditRefusedBody => 'The session didn\'t accept the edit. Nothing changed.';
 
   @override
+  String get sessionDetailEditSendingLock => 'Sending your edit. You can type again in a moment.';
+
+  @override
   String get sessionDetailEditOptionsChanged =>
       'The available models or agents changed. Check your selection and resend.';
 

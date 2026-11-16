@@ -97,6 +97,13 @@ offer no Fork yet.
   Stop and resend stops the session, sub-agents included, waits until it is
   idle (up to 15 s), then sends; the banner reads Stopping, then Sending. A
   stop that fails or does not finish keeps the edit and says so.
+- While the edit is Stopping or Sending, the composer dims slightly and takes
+  no input: typing, paste, drops, adding or removing attachments, voice and the
+  expanded editor all answer with "Sending your edit. You can type again in a
+  moment." instead, and so does a tap anywhere on it. A focused field keeps the
+  keyboard up, so nothing moves. The dimming fades in and out over about
+  200 ms, at once under reduced motion. Phone and desktop share this through
+  the composer.
 - A refusal (no branch point, another device's edit, refused by the harness)
   keeps the edit open with its text and shows the bridge's reason. Stale
   options reload the composer's options and keep the edit. A lost answer keeps
@@ -293,6 +300,8 @@ not loaded yet.
 - Cancel or a finished edit loses the draft the composer held before the edit,
   or the edit's text is saved as the session's draft.
 - A refused edit loses the edited text.
+- Input given while an edit is Stopping or Sending is taken and then lost, or
+  is refused without the note.
 - A fork changes its origin, includes part of a running turn, or loses the
   worktree its origin uses.
 
