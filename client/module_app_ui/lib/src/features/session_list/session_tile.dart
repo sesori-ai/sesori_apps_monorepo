@@ -7,6 +7,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../session_detail/widgets/transcript_motion.dart";
 import "session_scheduled_resume.dart";
 
 /// A single session row: the harness logo, the title with its status mark and
@@ -19,9 +20,9 @@ import "session_scheduled_resume.dart";
 /// says how the session is doing: the sparkle rotates while an agent works and
 /// rests solid — the same "new activity" mark the project list uses — when the
 /// session has activity the user hasn't opened; an amber dot means it waits
-/// for the user. A pinned session's title is followed by a small grey pin,
-/// before any status mark. A long title fades out before the marks, and a
-/// quiet session shows none. The time always shows at the trailing edge; a quiet session
+/// for the user. A pinned session's title is led by a small grey pin, which
+/// slides the title over as it comes and goes. A long title fades out before
+/// the marks, and a quiet session shows none. The time always shows at the trailing edge; a quiet session
 /// with a scheduled auto-continuation shows when it resumes. States that need
 /// words lead the meta line in their colour.
 ///
@@ -285,7 +286,7 @@ class const SessionTile({
           Expanded(
             child: _TitleLine(
               title: _title(context: context, pointer: false),
-              pin: _pin(context: context, pointer: false),
+              pin: _LeadingPin(pinned: session.pinned, pointer: false),
               mark: state != null ? Semantics(label: state.label, child: state.mark) : null,
             ),
           ),
@@ -295,8 +296,9 @@ class const SessionTile({
     );
   }
 
-  /// A pointer row's first line: the title from the row's edge, then its state
-  /// right before the time, so a quiet row gives the title that room.
+  /// A pointer row's first line: the title from the row's edge, after the pin
+  /// of a pinned session, then its state right before the time, so a quiet row
+  /// gives the title that room.
   Widget _pointerTitleRow({required BuildContext context, required ({String label, Widget mark})? state}) =>
       LayoutBuilder(
         builder: (context, constraints) => Row(
@@ -304,13 +306,16 @@ class const SessionTile({
           textBaseline: TextBaseline.alphabetic,
           spacing: PregoSpacing.xs,
           children: [
-            Expanded(child: _title(context: context, pointer: true)),
-            if (_pin(context: context, pointer: true) case final pin?)
-              SizedBox(
-                width: _markSize,
-                height: _titleLineHeightOf(pointer: true),
-                child: Center(child: pin),
+            // Centred on the title's line box rather than on its baseline,
+            // and the row still sits on the title's baseline.
+            Expanded(
+              child: Row(
+                children: [
+                  _LeadingPin(pinned: session.pinned, pointer: true),
+                  Expanded(child: _title(context: context, pointer: true)),
+                ],
               ),
+            ),
             if (state != null)
               SizedBox(
                 width: _markSize,
@@ -323,21 +328,6 @@ class const SessionTile({
           ],
         ),
       );
-
-  /// The pin after a pinned session's title, in the meta line's grey; null
-  /// when the session is not pinned.
-  Widget? _pin({required BuildContext context, required bool pointer}) {
-    if (!session.pinned) return null;
-    final colors = context.prego.colors;
-    return Semantics(
-      label: context.loc.sessionListPinned,
-      child: Icon(
-        TablerRegular.pinned,
-        size: _pinGlyphSize,
-        color: pointer ? colors.textSecondary : colors.textTertiary,
-      ),
-    );
-  }
 
   /// The session's title, cut off by a fade rather than an ellipsis: a long
   /// title trails away before its status mark instead of stopping on a hard
@@ -854,34 +844,73 @@ const double _hoverActionHeight = 20;
 /// A finger needs a roomier row than a mouse does.
 double _rowVerticalPadding({required bool pointer}) => pointer ? PregoSpacing.sm : PregoSpacing.lg;
 
-/// A title with the pin and the status mark right after its text, each in a
-/// slot of the mark's size, so neither changes the line's height. A long title
-/// fades out before them, so they always show; without them the title takes
-/// the whole line.
+/// A title led by the pin and followed by the status mark right after its
+/// text, in a slot of the mark's size so it never changes the line's height. A
+/// long title fades out before the mark, so it always shows; without it the
+/// title takes the rest of the line.
 class const _TitleLine({
   required final Widget title,
+
+  /// The [_LeadingPin], which brings its own gap before the title.
   required final Widget? pin,
   required final Widget? mark,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final pin = this.pin;
     final mark = this.mark;
     return Row(
-      spacing: PregoSpacing.xs,
       children: [
+        ?pin,
         Flexible(child: title),
-        if (pin != null)
-          SizedBox.square(
-            dimension: _markSize,
-            child: Center(child: pin),
-          ),
         if (mark != null)
-          SizedBox.square(
-            dimension: _markSize,
-            child: Center(child: mark),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+            child: SizedBox.square(
+              dimension: _markSize,
+              child: Center(child: mark),
+            ),
           ),
       ],
+    );
+  }
+}
+
+/// The pin before a pinned session's title, in the meta line's grey, with a
+/// small gap after it. Pinning or unpinning a row where it stands opens or
+/// closes the pin's room while the pin fades, so the title slides over rather
+/// than snapping; under reduced motion it changes at once. Built for every row,
+/// pinned or not, so the change has a pin to animate.
+class const _LeadingPin({required final bool pinned, required final bool pointer}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.prego.colors;
+    return Semantics(
+      label: pinned ? context.loc.sessionListPinned : null,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: pinned ? 1 : 0),
+        duration: prefersReducedMotion(context) ? Duration.zero : transcriptMotionDuration,
+        curve: transcriptMotionCurve,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xs),
+          child: Icon(
+            TablerRegular.pinned,
+            size: _pinGlyphSize,
+            color: pointer ? colors.textSecondary : colors.textTertiary,
+          ),
+        ),
+        builder: (context, shown, pin) {
+          if (shown == 0) return const SizedBox.shrink();
+          // The pin rides in with the title, keeping its gap, from under the
+          // room's start edge, which clips it so it never paints past the room.
+          return ClipRect(
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              widthFactor: shown,
+              child: Opacity(opacity: shown, child: pin),
+            ),
+          );
+        },
+      ),
     );
   }
 }
