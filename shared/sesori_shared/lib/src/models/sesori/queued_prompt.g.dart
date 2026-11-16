@@ -23,6 +23,11 @@ _QueuedSessionPrompt _$QueuedSessionPromptFromJson(Map json) =>
         json['commandSource'],
         unknownValue: CommandSource.unknown,
       ),
+      handoff: json['handoff'] == null
+          ? null
+          : MessageHandoff.fromJson(
+              Map<String, dynamic>.from(json['handoff'] as Map),
+            ),
       attachmentCount: (json['attachmentCount'] as num?)?.toInt() ?? 0,
       createdAt: (json['createdAt'] as num).toInt(),
     );
@@ -35,6 +40,7 @@ Map<String, dynamic> _$QueuedSessionPromptToJson(
   'text': ?instance.text,
   'command': ?instance.command,
   'commandSource': ?_$CommandSourceEnumMap[instance.commandSource],
+  'handoff': ?instance.handoff?.toJson(),
   'attachmentCount': instance.attachmentCount,
   'createdAt': instance.createdAt,
 };

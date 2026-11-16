@@ -2118,8 +2118,11 @@ void main() {
         }
       });
 
-      test("marking a send as not sent turns only a sent stamp", () async {
+      test("marking a send as not sent turns only a sent stamp, and announces that change", () async {
         final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: const []));
+        final refreshed = <String>[];
+        final refreshes = history.service.historyRefreshes.listen((refresh) => refreshed.add(refresh.sessionId));
+        addTearDown(refreshes.cancel);
         const received = MessageHandoff.received(
           sourceSessionId: "source",
           sourceTitle: null,
@@ -2142,6 +2145,9 @@ void main() {
         for (final messageId in ["m1", "m2", "m3", "missing"]) {
           await history.service.markHandoffNotSent(sessionId: "ses_a", messageId: messageId);
         }
+        await pumpEventQueue();
+        // Only the marked request reloads the clients that show it.
+        expect(refreshed, ["ses_a"]);
         // A later update of the turn keeps the replaced stamp.
         await _captureMessageWithParts(
           history: history,
