@@ -20,7 +20,8 @@ enum ProcessLifetime() {
   /// fails too, stays outside the job. Other hosts bind nothing and keep their
   /// existing stop and stale cleanup, without crash-time binding, but
   /// signalling a running process spawned this way also signals the
-  /// descendants it has at that moment, including detached ones.
+  /// descendants it has at that moment, including detached ones. When that
+  /// snapshot fails, only the process itself is signalled.
   endsWithBridge,
 
   /// The process, or something it starts, may keep running after the bridge

@@ -440,7 +440,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   detached ones included, so tool commands and helpers it started end with it. Oh My
   Pi's named `bash` services run under a detached per-project broker that outlives
   `omp` by design; when Sesori's `omp` spawned that broker, a bridge SIGTERM ends the
-  broker and its services. Short commands keep root-only signals, so the detached
+  broker and its services, including any a terminal `omp` in the same project started
+  there; a broker another `omp` spawned is not reached. Short commands keep root-only signals, so the detached
   OpenCode 2 service survives. Failure signal: after a bridge SIGTERM mid-turn, `ps`
   still shows a tool command or `__omp_worker_daemon_broker` reparented to init.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;

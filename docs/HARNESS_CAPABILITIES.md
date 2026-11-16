@@ -490,7 +490,8 @@ V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the 
 When the bridge stops a harness process it started to end with it (bridge shutdown, plugin restart), it signals that
 process and everything descending from it at that moment, detached processes included, for every harness. Windows
 does this with `taskkill /T`; POSIX reads one `ps` snapshot just before each signal. A process that already left the
-tree (its parent exited earlier) is not reached. After `kill -9` of the bridge nothing is cleaned up on POSIX.
+tree (its parent exited earlier) or started after the snapshot is not reached, and when the `ps` snapshot fails
+only the process itself is signalled. After `kill -9` of the bridge nothing is cleaned up on POSIX.
 
 | Harness | Detail |
 | --- | --- |
