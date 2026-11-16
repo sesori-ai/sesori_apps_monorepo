@@ -44,4 +44,5 @@ enum SessionOperation() {
   getSessionReadiness,
   compactSession,
   getSessionQuietness,
+  getPromptCacheLife,
 }

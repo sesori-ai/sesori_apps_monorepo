@@ -1122,8 +1122,10 @@ compaction state and show no row.
 ## Compaction on request
 
 The bridge can ask a harness to compact a session's context without a client
-command, through `compactSession`, for scheduled tasks to call before a run
-resumes a quiet session (no scheduled-task consumer calls it yet). It only starts a compaction on a quiet session: a session that
+command, through `compactSession`. Same-session scheduled tasks with auto-compact on
+call it once a run's session has gone quiet for its prompt-cache window, or
+before the next run when that comes first. It only starts a compaction on a
+quiet session: a session that
 is running, retrying, holding queued prompts or waiting for input answers
 "busy", and the request never stops or queues behind that work. A harness that
 cannot compact answers "unsupported". Each plugin's descriptor declares

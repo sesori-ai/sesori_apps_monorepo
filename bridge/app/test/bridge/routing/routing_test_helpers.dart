@@ -329,9 +329,20 @@ class FakeSessionRepository({
   @override
   Future<SessionReadiness> getSessionReadiness({required String sessionId}) async => SessionReadiness.unavailable;
 
+  /// What [compactSession] answers, and the sessions it was asked for.
+  SessionCompactionResult compactionResult = SessionCompactionResult.unsupported;
+  final List<String> compacted = [];
+
   @override
-  Future<SessionCompactionResult> compactSession({required String sessionId, required String promptId}) async =>
-      SessionCompactionResult.unsupported;
+  Future<SessionCompactionResult> compactSession({required String sessionId, required String promptId}) async {
+    compacted.add(sessionId);
+    return compactionResult;
+  }
+
+  Duration? promptCacheLife;
+
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => promptCacheLife;
 
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();

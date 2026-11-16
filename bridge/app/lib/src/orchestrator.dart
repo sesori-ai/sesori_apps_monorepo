@@ -212,6 +212,8 @@ import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
 import "services/prompt_part_delivery_service.dart";
 import "services/pull_request_refresh_settings_service.dart";
+import "services/scheduled_task_activity_tracker.dart";
+import "services/scheduled_task_compaction_service.dart";
 import "services/scheduled_task_occurrence_calculator.dart";
 import "services/scheduled_task_run_service.dart";
 import "services/scheduled_task_service.dart";
@@ -737,8 +739,16 @@ class Orchestrator({
       permissionAutoApprovalService: permissionAutoApprovalService,
       sessionMutationDispatcher: sessionMutationDispatcher,
     );
+    final scheduledTaskActivity = ScheduledTaskActivityTracker(clock: clock);
     final scheduledTaskRunService = ScheduledTaskRunService(
       repository: scheduledTaskRepository,
+      compaction: ScheduledTaskCompactionService(
+        repository: scheduledTaskRepository,
+        sessions: sessionRepository,
+        operations: sessionOperationDispatcher,
+        activity: scheduledTaskActivity,
+        clock: clock,
+      ),
       sessionCreation: sessionCreationService,
       prompts: sessionPromptService,
       operations: sessionOperationDispatcher,
@@ -924,6 +934,7 @@ class Orchestrator({
       connectionNotificationPolicies: _connectionNotificationPolicies,
       pluginRuntime: _pluginRuntime,
       completionListener: completionListener,
+      scheduledTaskActivity: scheduledTaskActivity,
       maintenanceListener: maintenanceListener,
       accessTokenProvider: _accessTokenProvider,
       tokenRefresher: _tokenRefresher,
@@ -1063,6 +1074,7 @@ class OrchestratorSession._({
   required final SessionEventDispatcher _sessionEventDispatcher,
   required final PluginRuntime _pluginRuntime,
   required final CompletionPushListener _completionListener,
+  required final ScheduledTaskActivityTracker _scheduledTaskActivity,
   required final MaintenancePushListener _maintenanceListener,
   required final AccessTokenProvider _accessTokenProvider,
   required final TokenRefresher _tokenRefresher,
@@ -2223,6 +2235,7 @@ class OrchestratorSession._({
   /// and, for a projects summary, the desktop status notifier.
   void _feedLocalObservers(SesoriSseEvent event) {
     _completionListener.handleSseEvent(event: event);
+    _scheduledTaskActivity.recordEvent(event: event);
     if (event is SesoriProjectsSummary) {
       _statusNotifier?.handleProjectsSummary(summary: event);
     }
