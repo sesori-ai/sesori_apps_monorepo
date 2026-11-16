@@ -10,6 +10,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../features/auth_gate/auth_gate.dart";
 import "../../features/home/desktop_home_pane.dart";
 import "../../features/new_session/desktop_new_session_screen.dart";
+import "../../features/scheduled_tasks/desktop_scheduled_task_editor_screen.dart";
 import "../../features/session_diffs/desktop_session_diffs_screen.dart";
 import "../../features/sessions/desktop_session_detail_screen.dart";
 import "../../features/settings/desktop_settings_modal.dart";
@@ -93,7 +94,8 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             ),
             onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
-            onOpenArchived: () => _openArchived(context: context),
+            onOpenArchived: () => _openPage(context: context, route: const AppRoute.archivedSessions()),
+            onOpenScheduled: () => _openPage(context: context, route: const AppRoute.scheduledTasks()),
             onGoBack: () => _goBack(context: context),
             child: Builder(
               builder: (context) => SessionDetailRouteVisibility(
@@ -180,7 +182,22 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             context: context,
             route: AppRoute.scheduledTaskDetail(taskId: taskId),
           ),
+          onNewTask: () => _pushRoute(context: context, route: const AppRoute.scheduledTaskEditor(taskId: null)),
         ),
+      ),
+      GoRoute(
+        path: AppRouteDef.scheduledTaskEditor.path,
+        builder: (BuildContext context, GoRouterState state) {
+          final route = AppRouteScheduledTaskEditor.fromParams(queryParams: state.uri.queryParameters);
+          void leave() => _popRouteOrGo(context: context, fallback: const AppRoute.scheduledTasks());
+          return DesktopScheduledTaskEditorScreen(
+            key: ValueKey("scheduled-task-editor-${route.taskId}"),
+            taskId: route.taskId,
+            onBack: leave,
+            onSaved: leave,
+            onOpenHarnessSettings: () => _openHarnessSettings(context: context),
+          );
+        },
       ),
       GoRoute(
         path: AppRouteDef.scheduledTaskDetail.path,
@@ -196,6 +213,10 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             ),
             onBack: leave,
             onDeleted: leave,
+            onEdit: () => _pushRoute(
+              context: context,
+              route: AppRoute.scheduledTaskEditor(taskId: route.taskId),
+            ),
           );
         },
       ),
@@ -358,14 +379,14 @@ void _openHarnessSettings({required BuildContext context}) {
   );
 }
 
-/// Pushes Archived over the current page, which its close returns to. Already
-/// on Archived, it keeps the one page.
-void _openArchived({required BuildContext context}) {
+/// Pushes a sidebar page such as Archived over the current page, which its
+/// close returns to. Already on that page, it keeps the one page.
+void _openPage({required BuildContext context, required AppRoute route}) {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
   final router = GoRouter.of(context);
-  if (router.state.uri.path == AppRouteDef.archivedSessions.path) return;
+  if (router.state.uri.path == route.def.path) return;
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
-  unawaited(router.push<void>(const AppRoute.archivedSessions().buildPath()));
+  unawaited(router.push<void>(route.buildPath()));
 }
 
 void _closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {

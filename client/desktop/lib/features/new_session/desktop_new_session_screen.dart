@@ -54,6 +54,7 @@ class const DesktopNewSessionView({
   Widget build(BuildContext context) {
     return DesktopPaneDropTarget(
       child: NewSessionView(
+        title: context.loc.sessionListNewSession,
         onProjectSelected: ({required projectId, required projectName}) =>
             context.read<NewSessionCubit>().selectProject(
               project: NewSessionProject(

@@ -39,4 +39,26 @@ void main() {
     );
     expect(formatter.schedule(task: task), startsWith("Nov 16"));
   });
+
+  test("a new task's When line names no zone, while an edited task in another zone does", () {
+    const schedule = TaskSchedule.weekly(
+      days: {TaskWeekday.monday, TaskWeekday.friday},
+      time: TaskTimeOfDay(hour: 9, minute: 0),
+    );
+    expect(formatter.draftSchedule(schedule: schedule, editing: null), "Mon, Fri at 9:00\u202FAM");
+    expect(formatter.draftSchedule(schedule: schedule, editing: paused), "Mon, Fri at 9:00\u202FAM (UTC)");
+  });
+
+  test("each weekday reads as its own initial and full name", () {
+    expect(TaskWeekday.values.map((day) => formatter.weekdayInitial(day: day)), ["M", "T", "W", "T", "F", "S", "S"]);
+    expect(TaskWeekday.values.map((day) => formatter.weekdayName(day: day)), [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ]);
+  });
 }

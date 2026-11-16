@@ -77,6 +77,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
   );
 
   Widget _prompt({required NewSessionProjectSelected onProjectSelected}) => NewSessionProjectPrompt(
+    title: context.loc.sessionListNewSession,
     key: const Key("home-composer-pane-prompt"),
     onProjectSelected: onProjectSelected,
     onBack: null,
@@ -174,6 +175,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
       duration: _motionDuration,
       child: switch (listed) {
         true => NewSessionView(
+          title: context.loc.sessionListNewSession,
           key: const Key("home-composer-pane-composer"),
           onProjectSelected: select,
           onBack: null,
