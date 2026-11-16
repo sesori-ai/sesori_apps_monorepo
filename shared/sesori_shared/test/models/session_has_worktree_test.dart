@@ -48,6 +48,7 @@ void main() {
         lastUserActivityAt: null,
         hasWorktree: true,
         scheduledTask: null,
+        forkedFrom: null,
       );
 
       final json = session.toJson();

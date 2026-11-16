@@ -25,6 +25,7 @@ import "../../foundation/models/session_launch/launch_follow_up.dart";
 import "../../foundation/models/session_launch/session_launch_composer.dart";
 import "../../foundation/models/session_launch/session_launch_handoff.dart";
 import "../../foundation/models/session_options/session_options_request_mode.dart";
+import "../../foundation/models/side_question_availability.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
@@ -857,9 +858,15 @@ class SessionDetailCubit(
                 session: session,
                 parkEpochAtFetch: parkEpochAtFetch,
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
+                // Read before the loading state replaced it.
+                previousSideChatCount: switch (previous) {
+                  SessionDetailLoaded(:final archivedSideChatCount) => archivedSideChatCount,
+                  _ => 0,
+                },
               ),
             );
             unawaited(_fetchPromptIndex());
+            if (snapshot.isArchived) unawaited(_countArchivedSideChats(sideQuestions: snapshot.sideQuestions));
             if (becameAvailable) {
               _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
             } else if (_interaction.canInteract) {
@@ -1057,6 +1064,20 @@ class SessionDetailCubit(
     // loaded; the load service logs a failure.
     if (latest is SessionDetailLoaded && result is SessionPromptIndexAvailable) {
       emit(latest.copyWith(promptIndex: result.entries));
+    }
+  }
+
+  /// Counts an archived session's side chats, which stay readable whatever its
+  /// harness answers now, on a bridge that stores them.
+  Future<void> _countArchivedSideChats({required SideQuestionAvailability sideQuestions}) async {
+    switch (sideQuestions) {
+      case SideQuestionAvailability.available || SideQuestionAvailability.harnessUnsupported:
+        final count = await _loadService.countSideChats(sessionId: _sessionId);
+        if (isClosed) return;
+        final latest = state;
+        if (latest is SessionDetailLoaded && latest.isArchived) emit(latest.copyWith(archivedSideChatCount: count));
+      case SideQuestionAvailability.bridgeUpdateRequired || SideQuestionAvailability.unresolved:
+        return;
     }
   }
 
@@ -4014,6 +4035,7 @@ class SessionDetailCubit(
     required Session session,
     required int parkEpochAtFetch,
     required SessionInteractionState interaction,
+    required int previousSideChatCount,
   }) {
     // The load replaces the loading state, keeping what was sent or staged
     // meanwhile: the launch bubble with its follow-up ids, and the command.
@@ -4071,6 +4093,9 @@ class SessionDetailCubit(
       childStatuses: derived.childStatuses,
       isRootSession: snapshot.isRootSession,
       isArchived: snapshot.isArchived,
+      // A reload keeps the count until it is counted again, so the notice's
+      // link doesn't fold away and back.
+      archivedSideChatCount: snapshot.isArchived ? previousSideChatCount : 0,
       cannotContinueMessage: snapshot.cannotContinueMessage,
       queuedMessages: queue.queuedMessages,
       awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,

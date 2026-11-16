@@ -4058,4 +4058,80 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mcpCancel => 'Cancel';
+
+  @override
+  String get sideQuestionAsk => 'Ask a side question';
+
+  @override
+  String get sideQuestionBridgeUpdateRequired => 'Update Sesori on this computer to ask side questions.';
+
+  @override
+  String sideQuestionHarnessUnsupported(String harness) {
+    return '$harness can\'t answer side questions in Sesori yet.';
+  }
+
+  @override
+  String get sideChatTitle => 'Side question';
+
+  @override
+  String get sideChatEarlier => 'Earlier side chats';
+
+  @override
+  String get sideChatNew => 'New side chat';
+
+  @override
+  String get sideChatWaitForAnswer => 'Wait for the answer to arrive first.';
+
+  @override
+  String sideChatQuestionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count questions',
+      one: '1 question',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sideChatFootnote =>
+      'Answers from what this session already knows. No tools, and nothing is added to the chat.';
+
+  @override
+  String get sideChatArchived => 'This session is archived. Its side chats are read-only.';
+
+  @override
+  String get sideChatLoadFailed => 'Couldn\'t load the side chats.';
+
+  @override
+  String get sideChatRetry => 'Retry';
+
+  @override
+  String get sideChatCopyAnswer => 'Copy answer';
+
+  @override
+  String sideChatRefusedHarnessUpdateRequired(String harness) {
+    return 'Update $harness on this computer to ask side questions.';
+  }
+
+  @override
+  String get sideChatRefusedNoTurnYet =>
+      'Send this session a message first. Side questions answer from what it already knows.';
+
+  @override
+  String get sideChatRefusedTooLong => 'This side chat is too long to continue. Start a new one.';
+
+  @override
+  String get sideChatRefusedNoAnswer => 'No answer came back.';
+
+  @override
+  String get sideChatRefusedUnknown => 'This side question couldn\'t be answered.';
+
+  @override
+  String get sideChatAskFailed => 'Couldn\'t reach your computer to ask.';
+
+  @override
+  String sessionDetailArchivedSideChats(int count) {
+    return 'Side chats ($count)';
+  }
 }

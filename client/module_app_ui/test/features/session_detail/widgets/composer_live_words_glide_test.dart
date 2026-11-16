@@ -1144,29 +1144,45 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
           fileClipboard: null,
           droppedPaths: null,
           attachKind: ComposerAttachKind.photosAndFiles,
-          child: SentBubbleLanding(
-            child: Scaffold(
-              body: BlocBuilder<SessionDetailCubit, SessionDetailState>(
-                builder: (context, state) {
-                  final loaded = state is SessionDetailLoaded ? state : initial;
-                  return SessionDetailLoadedView.interactive(
-                    projectId: "project-1",
-                    sessionId: "session-1",
-                    state: loaded,
-                    onShowPendingQuestions: () {},
-                    onShowPendingPermissions: () {},
-                    openRequestSheet: null,
-                    bottomControls: SessionDetailComposerControls(
+          child: SessionDetailPresentationScope(
+            messageImageRepository: () => throw UnimplementedError(),
+            imageSaver: () => throw UnimplementedError(),
+            imageClipboard: () => throw UnimplementedError(),
+            imageSharer: () => throw UnimplementedError(),
+            sessionRepository: () => throw UnimplementedError(),
+            createPendingFormCubit: ({required requestId, required sessionId}) => throw UnimplementedError(),
+            createFilePreviewCubit: ({required reference}) => throw UnimplementedError(),
+            createExternalActionCubit: ({required requestId, required sessionId}) => throw UnimplementedError(),
+            canShareImages: false,
+            openExternalLink: ({required url, required mode}) async => true,
+            openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+            openHarnessSettings: () {},
+            openBridgeSettings: () {},
+            openSideChat: null,
+            child: SentBubbleLanding(
+              child: Scaffold(
+                body: BlocBuilder<SessionDetailCubit, SessionDetailState>(
+                  builder: (context, state) {
+                    final loaded = state is SessionDetailLoaded ? state : initial;
+                    return SessionDetailLoadedView.interactive(
                       projectId: "project-1",
                       sessionId: "session-1",
-                      source: LoadedSessionComposerSource(state: loaded),
-                    ),
-                    columnWidths: columnWidths,
-                    currentPromptId: currentPromptId,
-                    jumpNotifier: jumpNotifier,
-                    onPinchIn: ({required focalPoint}) {},
-                  );
-                },
+                      state: loaded,
+                      onShowPendingQuestions: () {},
+                      onShowPendingPermissions: () {},
+                      openRequestSheet: null,
+                      bottomControls: SessionDetailComposerControls(
+                        projectId: "project-1",
+                        sessionId: "session-1",
+                        source: LoadedSessionComposerSource(state: loaded),
+                      ),
+                      columnWidths: columnWidths,
+                      currentPromptId: currentPromptId,
+                      jumpNotifier: jumpNotifier,
+                      onPinchIn: ({required focalPoint}) {},
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -1266,6 +1282,7 @@ class _ScreenState() extends State<_Screen> {
                 onDraftCleared: () {},
                 onAbort: () {},
                 surfaceStyleController: _surfaceStyle,
+                sideQuestion: null,
                 composerHeader: null,
                 composerTrailing: null,
                 availableCommands: const [],

@@ -3355,6 +3355,7 @@ void main() {
             child: SessionDetailPresentationScope(
               openHarnessSettings: () {},
               openBridgeSettings: () {},
+              openSideChat: null,
               messageImageRepository: _MockMessageImageRepository.new,
               imageSaver: _MockImageSaver.new,
               imageClipboard: () => GetIt.instance<ImageClipboard>(),

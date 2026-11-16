@@ -6,10 +6,12 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../extensions/build_context_x.dart";
 import "../composer_presentation_scope.dart";
 import "../session_detail_presentation_scope.dart";
 import "agent_model_buttons.dart";
 import "background_tasks_bar.dart";
+import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
 import "prompt_input.dart";
 import "session_abort_scope_dialog.dart";
@@ -89,6 +91,10 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         composerTrailing: null,
         availableCommands: composer.commands,
         stagedCommand: stagedCommand,
+        // A launch is never a sub-agent. Its button waits for the load, in place.
+        sideQuestion: SessionDetailPresentationScope.of(context).openSideChat == null
+            ? null
+            : const ComposerSideQuestionPending(),
       ),
     };
   }
@@ -142,7 +148,34 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
           ),
     availableCommands: state.availableCommands,
     stagedCommand: state.stagedCommand,
+    sideQuestion: _sideQuestion(context: context, state: state),
   );
+
+  /// Null where side questions don't apply: a shell without a side chat, and
+  /// sub-agent sessions, whose questions belong to their parent.
+  ComposerSideQuestion? _sideQuestion({required BuildContext context, required SessionDetailLoaded state}) {
+    final openSideChat = SessionDetailPresentationScope.of(context).openSideChat;
+    if (openSideChat == null || state.session.parentID != null) return null;
+    final loc = context.loc;
+    return switch ((state.sideQuestions, state.pluginId)) {
+      (SideQuestionAvailability.available, final String pluginId) => ComposerSideQuestionOpen(
+        onOpen: () => openSideChat(
+          context: context,
+          sessionId: widget.sessionId,
+          pluginId: pluginId,
+          availability: state.sideQuestions,
+          isArchived: state.isArchived,
+        ),
+      ),
+      (SideQuestionAvailability.bridgeUpdateRequired, _) => ComposerSideQuestionBlocked(
+        reason: loc.sideQuestionBridgeUpdateRequired,
+      ),
+      (SideQuestionAvailability.harnessUnsupported, final String pluginId) => ComposerSideQuestionBlocked(
+        reason: loc.sideQuestionHarnessUnsupported(PregoBrandLogo.displayNameFor(pluginId)),
+      ),
+      _ => const ComposerSideQuestionPending(),
+    };
+  }
 
   Widget _buildComposer({
     required BuildContext context,
@@ -168,6 +201,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required Widget? composerTrailing,
     required List<CommandInfo> availableCommands,
     required CommandInfo? stagedCommand,
+    required ComposerSideQuestion? sideQuestion,
   }) {
     final composerCapabilities = ComposerPresentationScope.of(context);
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
@@ -213,6 +247,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
             ),
             surfaceStyleController: _composerSurfaceStyle,
             header: null,
+            sideQuestion: sideQuestion,
             composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
               valueListenable: _composerSurfaceStyle,
               builder: (context, surfaceStyle, _) => AgentModelButtons(

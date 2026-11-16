@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/repositories/models/project_not_found_exceptio
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_compaction_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
@@ -749,6 +750,7 @@ void main() {
         baseCommit: "abc123",
         lastAgent: "agent",
         lastAgentModel: lastAgentModel,
+        scheduledRun: null,
       );
       final publication = await committed;
       final row = await db.sessionDao.getSession(sessionId: created.id);
@@ -823,6 +825,7 @@ void main() {
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
+        scheduledRun: null,
       );
 
       expect(
@@ -891,6 +894,7 @@ void main() {
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
+        scheduledRun: null,
       );
 
       expect(created.id, "stable-session");
@@ -933,6 +937,7 @@ void main() {
           baseCommit: null,
           lastAgent: null,
           lastAgentModel: null,
+          scheduledRun: null,
         );
 
         expect(plugin.lastCreateSessionVariant, equals(variant?.id));
@@ -972,6 +977,7 @@ void main() {
           baseCommit: null,
           lastAgent: null,
           lastAgentModel: null,
+          scheduledRun: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
       );
@@ -1685,6 +1691,55 @@ void main() {
         ))?.sessionId,
         active.id,
       );
+    });
+
+    test("getSessionQuietness reads live activity first, then the session's readiness", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      for (final id in ["a", "b", "c"]) {
+        await db.sessionDao.insertSession(
+          fastMode: false,
+          sessionId: "ses_$id",
+          backendSessionId: "backend-$id",
+          projectId: "/repo",
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+          pluginId: plugin.id,
+        );
+      }
+      plugin.activitySummaries = const [
+        PluginProjectActivitySummary(
+          id: "/repo",
+          activeSessions: [
+            PluginActiveSession(id: "backend-a", awaitingInput: true),
+            PluginActiveSession(id: "backend-b", awaitingInput: false),
+          ],
+        ),
+      ];
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      Future<SessionQuietness> quietness(String sessionId) => repository.getSessionQuietness(sessionId: sessionId);
+
+      expect(await quietness("ses_a"), SessionQuietness.awaitingUser);
+      expect(await quietness("ses_b"), SessionQuietness.working);
+      expect(await quietness("ses_c"), SessionQuietness.quiet);
+      plugin.readiness = PluginSessionReadiness.queued;
+      expect(await quietness("ses_c"), SessionQuietness.working);
+      plugin.readiness = PluginSessionReadiness.awaitingInput;
+      expect(await quietness("ses_c"), SessionQuietness.awaitingUser);
+      plugin.readiness = PluginSessionReadiness.unknown;
+      expect(await quietness("ses_c"), SessionQuietness.unknown);
+      expect(await quietness("ses_gone"), SessionQuietness.unknown);
     });
 
     test("active-root hydration binds a scratch-folder root to No project and inserts no project", () async {
@@ -2793,6 +2848,10 @@ class _FakeBridgePlugin() extends FakeBridgePlugin {
   List<PluginProjectActivitySummary> activitySummaries = const [];
   Set<String> failingProjectIds = const {};
   Map<String, PluginProject> projectsByDirectory = const {};
+  PluginSessionReadiness readiness = PluginSessionReadiness.unavailable;
+
+  @override
+  Future<PluginSessionReadiness> getSessionReadiness({required String sessionId}) async => readiness;
 
   @override
   Future<List<PluginSession>> getSessions({required String projectId}) async {
@@ -2871,6 +2930,8 @@ class _CountingSessionDao({required final Set<String> tombstones, required final
       catalogTitle: null,
       approvalOverride: null,
       pinned: false,
+      forkedFromSessionId: null,
+      forkedFromTitle: null,
       scheduledTaskId: null,
     );
   }

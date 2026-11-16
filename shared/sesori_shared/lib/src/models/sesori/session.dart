@@ -75,9 +75,27 @@ sealed class Session with _$Session {
     // The task whose run started this session. Null means it is not a task
     // run, which is also what bridges before scheduled tasks mean.
     required SessionScheduledTaskMark? scheduledTask,
+    // Where this session was forked from, or null when it is not a fork.
+    // Bridges before forking omit it, which reads as null: they made no forks.
+    required SessionForkOrigin? forkedFrom,
   }) = _Session;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
+}
+
+/// The session a fork was made from, as it was when the fork was made.
+@Freezed(fromJson: true, toJson: true)
+sealed class SessionForkOrigin with _$SessionForkOrigin {
+  const factory({
+    /// The origin's id, or null once the origin was deleted.
+    required String? sessionId,
+
+    /// The origin's displayed title when the fork was made, or null when it
+    /// was untitled. A later rename of the origin is not reflected.
+    required String? title,
+  }) = _SessionForkOrigin;
+
+  factory fromJson(Map<String, dynamic> json) => _$SessionForkOriginFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: true)

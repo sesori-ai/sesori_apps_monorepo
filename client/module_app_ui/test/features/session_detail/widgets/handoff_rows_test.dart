@@ -24,6 +24,7 @@ Widget _app({required Widget child}) => MaterialApp(
     canShareImages: false,
     openExternalLink: ({required url, required mode}) async => false,
     openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+    openSideChat: null,
     openHarnessSettings: () {},
     openBridgeSettings: () {},
     child: Scaffold(body: child),
