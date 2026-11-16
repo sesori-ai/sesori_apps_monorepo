@@ -629,7 +629,6 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             surfaceStyleController: surfaceStyleController,
             header: AnimatedBanner(banner: _buildErrorBanner(state)),
             sideQuestion: null,
-            onLeaveSideQuestion: null,
             composerHeader: _buildComposerHeader(
               cubit: cubit,
               state: state,

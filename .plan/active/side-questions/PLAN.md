@@ -572,8 +572,8 @@ switches it into side-question mode.
 
 - **Where it lives.** The mode is the `sideQuestion` variant of the sealed
   composer mode in `SessionDetailCubit` (see the composer-mode seam). The cubit
-  derives it from a private flag next to the pending edit, and entering an
-  edit clears the flag, so the two modes never overlap. The
+  holds one private sealed override (an edit or a side question), so the two
+  modes never overlap, and one entry check guards both ways in. The
   cubit enters it when the composer text starts with "/btw " and the session is
   `available`. Matching is on the exact prefix "/btw " (any letter case), at
   the start of the text only.
@@ -607,8 +607,9 @@ switches it into side-question mode.
 - **The `/` picker.** On `available` sessions, the command picker also lists a
   Sesori row, "btw: ask a side question", above the harness's commands.
   Picking it enters the same mode and keeps whatever the field already holds,
-  so no typed words are lost. The row is hidden while images are staged, and
-  "/btw " is not detected then, because a side question takes no attachments.
+  so no typed words are lost. While a command or images are staged, neither
+  way enters the mode and the row is hidden, because a side question takes
+  neither.
 - **Unavailable sessions.** On a session that isn't `available`, "/btw " stays
   plain text and goes to the harness like anything else typed, and the picker
   has no btw row. The button still answers a tap with the reason, so the

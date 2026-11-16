@@ -201,14 +201,15 @@ class SessionDetailCubit(
   List<ComposerAttachment> _restoredAttachments = const [];
   int _composerRestorations = 0;
 
-  /// The earlier message the composer is editing, or null while Send adds a
-  /// prompt; see [editMessage].
-  _MessageEdit? _edit;
+  /// What Send does instead of adding a prompt, or null while it adds one; see
+  /// [editMessage], [startSideQuestion] and [_composerMode].
+  _ComposerOverride? _override;
 
-  /// Whether Send asks the composer's text as a side question. Never set
-  /// while [_edit] holds an edit, as entering either leaves the other; see
-  /// [_composerMode].
-  bool _asksSideQuestion = false;
+  /// The earlier message the composer is editing, if it is editing one.
+  _MessageEdit? get _edit => switch (_override) {
+    final _MessageEdit edit => edit,
+    _SideQuestionOverride() || null => null,
+  };
 
   /// The words returned messages put at the front of the composer's draft,
   /// for a later return to go after while the draft still starts with them.
@@ -3334,7 +3335,7 @@ class SessionDetailCubit(
   /// [_sideQuestionTyped].
   void saveComposerDraft({required ComposerDraft draft}) {
     if (_sideQuestionTyped(draft: draft) case final question?) {
-      _asksSideQuestion = true;
+      _override = const _SideQuestionOverride();
       // Only the mode is not saved: a restored draft comes back as plain text.
       _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: question);
       _fillComposer(draft: question, restoredPrefix: "", attachments: const [], stagedCommand: null);
@@ -3354,10 +3355,10 @@ class SessionDetailCubit(
   // Edit and resend
   // ---------------------------------------------------------------------------
 
-  SessionComposerMode get _composerMode => switch (_edit) {
-    null when _asksSideQuestion => const SessionComposerMode.sideQuestion(),
+  SessionComposerMode get _composerMode => switch (_override) {
     null => const SessionComposerMode.normal(),
-    final edit => SessionComposerMode.editing(
+    _SideQuestionOverride() => const SessionComposerMode.sideQuestion(),
+    final _MessageEdit edit => SessionComposerMode.editing(
       messageId: edit.messageId,
       phase: edit.phase,
       leftOutCount: edit.leftOutCount,
@@ -3390,16 +3391,15 @@ class SessionDetailCubit(
             command: current.stagedCommand,
           ),
     );
-    _edit = edit;
-    // The side question's words wait, as plain text, with what the composer
-    // held.
-    _asksSideQuestion = false;
+    // Replaces a side question, whose words wait, as plain text, with what the
+    // composer held.
+    _override = edit;
     emit(current.copyWith(composerMode: _composerMode, stagedCommand: null));
     final restored = await _composerRestore.restore(sessionId: _sessionId, message: message);
     // Cancelled meanwhile. A return meanwhile changed only what it holds.
     final latest = _edit;
     if (isClosed || latest == null || latest.promptId != edit.promptId) return;
-    _edit = _MessageEdit(
+    _override = _MessageEdit(
       messageId: edit.messageId,
       promptId: edit.promptId,
       phase: SessionEditPhase.composing,
@@ -3576,7 +3576,7 @@ class SessionDetailCubit(
 
   /// Gives the composer back what it held before the edit.
   void _endEdit({required _MessageEdit edit}) {
-    _edit = null;
+    _override = null;
     final held = edit.held;
     _fillComposer(
       draft: held.draft,
@@ -3609,7 +3609,7 @@ class SessionDetailCubit(
   }
 
   void _setEdit({required _MessageEdit edit}) {
-    _edit = edit;
+    _override = edit;
     _emitComposerMode();
   }
 
@@ -3625,18 +3625,11 @@ class SessionDetailCubit(
   static const _sideQuestionPrefix = "/btw ";
 
   /// [draft] without its "/btw " prefix (any letter case) when typing it
-  /// switches the composer to a side question: on a root session that can
-  /// ask one, in a normal composer without a staged command or images, which
-  /// a side question doesn't take. Elsewhere "/btw " stays plain text.
+  /// switches the composer to a side question; see [_canEnterSideQuestion].
+  /// Elsewhere "/btw " stays plain text.
   ComposerDraft? _sideQuestionTyped({required ComposerDraft draft}) {
     final current = state;
-    if (current is! SessionDetailLoaded ||
-        !_offersSideQuestions(state: current) ||
-        _composerMode is! SessionComposerNormal ||
-        current.stagedCommand != null ||
-        _composerAttachments.isNotEmpty) {
-      return null;
-    }
+    if (current is! SessionDetailLoaded || !_canEnterSideQuestion(state: current)) return null;
     final text = draft.text;
     if (text.length < _sideQuestionPrefix.length ||
         text.substring(0, _sideQuestionPrefix.length).toLowerCase() != _sideQuestionPrefix) {
@@ -3645,23 +3638,29 @@ class SessionDetailCubit(
     return _draftCalculator.replaceTyped(draft: draft, start: 0, end: _sideQuestionPrefix.length, replacement: "");
   }
 
-  bool _offersSideQuestions({required SessionDetailLoaded state}) =>
-      state.sideQuestions == SideQuestionAvailability.available && state.session.parentID == null;
+  /// Whether the composer may switch to a side question: on a root session
+  /// that can ask one, from a normal composer holding no staged command or
+  /// images, which a side question doesn't take.
+  bool _canEnterSideQuestion({required SessionDetailLoaded state}) =>
+      state.sideQuestions == SideQuestionAvailability.available &&
+      state.session.parentID == null &&
+      _override == null &&
+      state.stagedCommand == null &&
+      _composerAttachments.isEmpty;
 
   /// Switches the composer to a side question, keeping what it holds, as the
   /// command picker's btw row does.
   void startSideQuestion() {
     final current = state;
-    if (current is! SessionDetailLoaded || !_offersSideQuestions(state: current)) return;
-    if (_composerMode is! SessionComposerNormal) return;
-    _asksSideQuestion = true;
-    emit(current.copyWith(composerMode: _composerMode, stagedCommand: null));
+    if (current is! SessionDetailLoaded || !_canEnterSideQuestion(state: current)) return;
+    _override = const _SideQuestionOverride();
+    _emitComposerMode();
   }
 
   /// Returns the composer to sending prompts, keeping its text.
   void leaveSideQuestion() {
-    if (!_asksSideQuestion) return;
-    _asksSideQuestion = false;
+    if (_override is! _SideQuestionOverride) return;
+    _override = null;
     _emitComposerMode();
   }
 
@@ -3669,10 +3668,10 @@ class SessionDetailCubit(
   /// draft and returns the trimmed text for a new side chat to ask, or null
   /// when there is none to ask.
   String? submitSideQuestion() {
-    if (!_asksSideQuestion) return null;
+    if (_override is! _SideQuestionOverride) return null;
     final question = _composerDraft.text.trim();
     if (question.isEmpty) return null;
-    _asksSideQuestion = false;
+    _override = null;
     clearComposerDraft();
     _emitComposerMode();
     return question;
@@ -4089,7 +4088,7 @@ class SessionDetailCubit(
     switch (state) {
       case final SessionDetailLoaded current:
         // A side question takes no command.
-        if (command != null) _asksSideQuestion = false;
+        if (command != null && _override is _SideQuestionOverride) _override = null;
         emit(current.copyWith(stagedCommand: command, composerMode: _composerMode));
       case final SessionDetailLoading current:
         if (current.seededComposer case final seeded?) {
@@ -4325,7 +4324,7 @@ class SessionDetailCubit(
         ),
       };
       _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: restoration.draft);
-      _edit = edit.withHeld(
+      _override = edit.withHeld(
         held: (
           draft: restoration.draft,
           restoredPrefix: restoration.restoredPrefix,
@@ -4565,6 +4564,12 @@ typedef _HeldComposer = ({
   CommandInfo? command,
 });
 
+/// What the composer's Send does instead of adding a prompt.
+sealed class const _ComposerOverride();
+
+/// Send asks the composer's text as a side question.
+final class const _SideQuestionOverride() extends _ComposerOverride;
+
 /// An edit of an earlier message the composer holds.
 final class const _MessageEdit({
   required final String messageId,
@@ -4580,7 +4585,7 @@ final class const _MessageEdit({
   /// that same payload may go out under it again.
   required final _EditPayload? unconfirmed,
   required final _HeldComposer held,
-}) {
+}) extends _ComposerOverride {
   _MessageEdit withPhase({required SessionEditPhase phase}) => _MessageEdit(
     messageId: messageId,
     promptId: promptId,

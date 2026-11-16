@@ -194,14 +194,23 @@ void main() {
     expect(cubit.composerDraft.text, "why?");
   });
 
-  test('"/btw " with a staged command or images stays plain text', () async {
+  test("a staged command or images keep the composer out of the mode, typed or picked", () async {
     await openSession(sideQuestions: SideQuestionAvailability.available);
+    cubit.stageCommand(command);
+
+    cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "/btw why?"));
+    expect(loaded().composerMode, normal);
+    cubit.startSideQuestion();
+    expect(loaded().composerMode, normal);
+    expect(loaded().stagedCommand, command, reason: "the command stays staged");
+
+    cubit.clearStagedCommand();
     cubit.trackComposerAttachments(
       attachments: [ComposerImageAttachment(mime: "image/png", bytes: Uint8List(4), filename: null)],
     );
-
     cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "/btw why?"));
-
+    expect(loaded().composerMode, normal);
+    cubit.startSideQuestion();
     expect(loaded().composerMode, normal);
   });
 

@@ -164,18 +164,26 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     final openSideChat = SessionDetailPresentationScope.of(context).openSideChat;
     if (openSideChat == null || state.session.parentID != null) return null;
     final loc = context.loc;
+    final cubit = context.read<SessionDetailCubit>();
+    void open({required String pluginId}) => openSideChat(
+      context: context,
+      sessionId: widget.sessionId,
+      pluginId: pluginId,
+      availability: state.sideQuestions,
+      isArchived: state.isArchived,
+      initialQuestion: null,
+    );
     return switch ((state.sideQuestions, state.pluginId)) {
-      (SideQuestionAvailability.available, final String pluginId) => ComposerSideQuestionOpen(
-        onOpen: () => openSideChat(
-          context: context,
-          sessionId: widget.sessionId,
-          pluginId: pluginId,
-          availability: state.sideQuestions,
-          isArchived: state.isArchived,
-          initialQuestion: null,
+      (SideQuestionAvailability.available, final String pluginId) => switch (state.composerMode) {
+        SessionComposerSideQuestion() => ComposerSideQuestionAsking(
+          onOpen: () => open(pluginId: pluginId),
+          onLeave: cubit.leaveSideQuestion,
         ),
-        onAskInComposer: context.read<SessionDetailCubit>().startSideQuestion,
-      ),
+        SessionComposerNormal() || SessionComposerEditing() => ComposerSideQuestionOpen(
+          onOpen: () => open(pluginId: pluginId),
+          onAskInComposer: cubit.startSideQuestion,
+        ),
+      },
       (SideQuestionAvailability.bridgeUpdateRequired, _) => ComposerSideQuestionBlocked(
         reason: loc.sideQuestionBridgeUpdateRequired,
       ),
@@ -304,7 +312,6 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                 banner: editing == null ? null : EditMessageBanner(editing: editing, onCancel: cubit.cancelEditing),
               ),
               sideQuestion: sideQuestion,
-              onLeaveSideQuestion: asksSideQuestion ? cubit.leaveSideQuestion : null,
               composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
                 valueListenable: _composerSurfaceStyle,
                 builder: (context, surfaceStyle, _) => AgentModelButtons(

@@ -198,13 +198,10 @@ class const PromptInput({
   required final Widget? composerHeader,
 
   /// The options pill's side-question action; null where the composer offers
-  /// none.
+  /// none. While it is [ComposerSideQuestionAsking], Send asks a side question
+  /// instead: the strip above the input says so, with its ✕ (or Backspace in
+  /// the empty field) leaving, and the field's border darkens.
   required final ComposerSideQuestion? sideQuestion,
-
-  /// Non-null while Send asks a side question instead: the strip above the
-  /// input says so, with this as its ✕, and the field's border darkens.
-  /// Backspace in the empty field calls it too.
-  required final VoidCallback? onLeaveSideQuestion,
 
   /// Kept at the trailing edge of the strip above the input in every state,
   /// while a staged command or the voice controls take [composerHeader]'s place.
@@ -573,7 +570,12 @@ class _PromptInputState() extends State<PromptInput> {
       _asksSideQuestion ||
       _attachments.isNotEmpty;
 
-  bool get _asksSideQuestion => widget.onLeaveSideQuestion != null;
+  bool get _asksSideQuestion => widget.sideQuestion is ComposerSideQuestionAsking;
+
+  VoidCallback? get _leaveSideQuestion => switch (widget.sideQuestion) {
+    ComposerSideQuestionAsking(:final onLeave) => onLeave,
+    ComposerSideQuestionOpen() || ComposerSideQuestionBlocked() || ComposerSideQuestionPending() || null => null,
+  };
 
   /// The layout the composer would rest in right now, ignoring any pinned
   /// voice interaction.
@@ -1803,7 +1805,8 @@ class _PromptInputState() extends State<PromptInput> {
         },
       );
     } else {
-      final headerChild = switch ((widget.stagedCommand, widget.onLeaveSideQuestion)) {
+      final leaveSideQuestion = _leaveSideQuestion;
+      final headerChild = switch ((widget.stagedCommand, leaveSideQuestion)) {
         (final commandInfo?, _) => _buildHeaderChip(
           chip: GlassChip(
             label: "/${commandInfo.name}",
@@ -1823,7 +1826,7 @@ class _PromptInputState() extends State<PromptInput> {
         (null, null) => _pointerShell ? null : widget.composerHeader,
       };
       child = KeyedSubtree(
-        key: switch ((widget.stagedCommand, widget.onLeaveSideQuestion)) {
+        key: switch ((widget.stagedCommand, leaveSideQuestion)) {
           (_?, _) => const ValueKey("staged-command"),
           (null, _?) => _sideQuestionChipKey,
           (null, null) => const ValueKey("header"),
@@ -2521,7 +2524,7 @@ class _PromptInputState() extends State<PromptInput> {
                         controller: _controller,
                         activator: const SingleActivator(LogicalKeyboardKey.enter),
                       ): _handleSend,
-                    _EmptyFieldBackspaceActivator(controller: _controller): ?widget.onLeaveSideQuestion,
+                    _EmptyFieldBackspaceActivator(controller: _controller): ?_leaveSideQuestion,
                   },
                   child: ComposerWordsBoxSlot(
                     box: _wordsBox,
@@ -2968,14 +2971,16 @@ class _PromptInputState() extends State<PromptInput> {
           widget.onCommandSelected(command);
           _focusComposerField();
         },
-        // A side question takes no images, and one is already being asked.
+        // A side question takes no command or images; the cubit refuses them
+        // too, so the row only hides what wouldn't work.
         onSideQuestion: switch (widget.sideQuestion) {
-          ComposerSideQuestionOpen(:final onAskInComposer) when !_asksSideQuestion && _attachments.isEmpty => () {
-            close();
-            if (!mounted) return;
-            onAskInComposer();
-            _focusComposerField();
-          },
+          ComposerSideQuestionOpen(:final onAskInComposer) when widget.stagedCommand == null && _attachments.isEmpty =>
+            () {
+              close();
+              if (!mounted) return;
+              onAskInComposer();
+              _focusComposerField();
+            },
           _ => null,
         },
         onClose: close,
