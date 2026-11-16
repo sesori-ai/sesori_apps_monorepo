@@ -119,7 +119,8 @@ defaults and queued client sends coherent.
   or the harness's own abort wording. Pi and OpenCode (v1 and v2) mark their native abort record stopped, so the line
   shows live and after a reload. On the ACP harnesses (Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity and OMP)
   the bridge adds one stopped row when the agent ends a turn the user's Stop cancelled; they record no stop, so the
-  line lasts until the history is re-read, except that OMP's replayed "Interrupted by user" folds into it as one line.
+  line lasts until the history is re-read. The exception is an OMP stop before the reply produced anything: OMP records
+  it as "Interrupted by user", which replays as the same one line, so that line also shows after a reload.
   A shutdown, a plugin restart, a follow-up that replaces the running turn, or a Stop before the prompt reached the
   agent adds no line. The other harnesses are listed under "Stopped turns" in
   [HARNESS_CAPABILITIES](../HARNESS_CAPABILITIES.md#stopped-turns). The text and steps the turn already streamed
@@ -1071,7 +1072,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 
 - A user Stop on Pi or OpenCode shows a red row or the harness's abort text ("Pi response aborted", an OpenCode
   abort message) instead of the grey "Stopped" line, live or after a reload; a Stop on an ACP harness or OMP shows no
-  line or two lines live, a reloaded OMP stop shows two lines or a red "Interrupted by user", or a shutdown reads
+  line or two lines live, a reloaded OMP stop of a reply that produced nothing shows no line, two lines or a red
+  "Interrupted by user", or a shutdown reads
   "Stopped"; a real failure reads "Stopped"; a
   stopped or failed turn loses the text or steps it streamed; or the rows above the line move when it replaces the
   Working row.
