@@ -524,6 +524,25 @@ void main() {
       expect((await outcomes(task.id)).first, const ScheduledTaskRunOutcome.skipped());
     });
 
+    test("an edit that clears the target leaves the old session alone and the next run starts fresh", () async {
+      sessions.compactionResult = SessionCompactionResult.accepted;
+      final task = await firstRun();
+      await repository.updateDefinition(
+        taskId: task.id,
+        definition: autoCompact.copyWith(dedicatedWorktree: true),
+        nextDueAt: DateTime.utc(2026, 11, 16, 9),
+        clearTarget: true,
+        now: now,
+      );
+
+      await runDueAt(const Duration(hours: 1));
+      await runDueAt(const Duration(days: 1));
+
+      expect(sessions.compacted, isEmpty);
+      expect(creation.calls, hasLength(2));
+      expect((await repository.get(taskId: task.id))?.targetSessionId, "ses_2");
+    });
+
     test("a harness that can't compact fires the due run straight away", () async {
       final task = await firstRun();
 
@@ -697,6 +716,19 @@ void main() {
   });
 
   group("Run now", () {
+    test("a run that can't start answers the tap and sends no push", () async {
+      final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 16, 9));
+      sessions.projectPathResult = null;
+      final blocked = await service.runNow(taskId: task.id);
+      sessions.projectPathResult = "/repo";
+      creation.error = StateError("backend down");
+      final refused = await service.runNow(taskId: task.id);
+
+      expect(blocked.outcome, const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.projectMissing));
+      expect(refused.outcome, const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.startFailed));
+      expect(failures, isEmpty);
+    });
+
     test("starts a run without moving the next due time", () async {
       final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 16, 9));
 
