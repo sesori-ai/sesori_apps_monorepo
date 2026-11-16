@@ -1377,7 +1377,11 @@ class ChatHistoryRepository({
   ///
   /// The rows come from one database snapshot. Attachments decode as metadata
   /// and never touch spill files: the index needs only their names.
-  Future<List<SessionPromptIndexEntry>> getPromptIndex({required String sessionId}) async {
+  /// [turnEndMessageIds] are as in [PromptIndexMapper.indexOf].
+  Future<List<SessionPromptIndexEntry>> getPromptIndex({
+    required String sessionId,
+    required Set<String> turnEndMessageIds,
+  }) async {
     final rows = await _chatHistoryDao.getPageRowsWithSyncState(sessionId: sessionId, limit: null, before: null);
     final partJsonByMessage = <String, List<String>>{};
     for (final row in rows.parts) {
@@ -1397,12 +1401,17 @@ class ChatHistoryRepository({
             ),
           ),
       ],
+      turnEndMessageIds: turnEndMessageIds,
     );
   }
 
   /// Every prompt in the session's audit file, oldest first, or null when no
-  /// audit file exists. Attachments decode as in [getPromptIndex].
-  Future<List<SessionPromptIndexEntry>?> getArchivedPromptIndex({required String sessionId}) async {
+  /// audit file exists. Attachments and [turnEndMessageIds] are as in
+  /// [getPromptIndex].
+  Future<List<SessionPromptIndexEntry>?> getArchivedPromptIndex({
+    required String sessionId,
+    required Set<String> turnEndMessageIds,
+  }) async {
     final ordered = await _readArchivedMessages(sessionId: sessionId);
     if (ordered == null) return null;
     return _promptIndexMapper.indexOf(
@@ -1416,6 +1425,7 @@ class ChatHistoryRepository({
             ),
           ),
       ],
+      turnEndMessageIds: turnEndMessageIds,
     );
   }
 

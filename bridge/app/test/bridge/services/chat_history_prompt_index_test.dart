@@ -1,14 +1,27 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/models/archived_session_file_dto.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/session_interruption_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_chat_history.dart";
 
 const _sessionId = "ses_a";
+
+/// A bridge stop cut the session's turn off after [afterMessageId].
+final class const _CutOffAfter({required final String afterMessageId}) implements SessionInterruptionRepository {
+  @override
+  Future<Map<String, SessionInterruptionDto>> readMany({required Set<String> sessionIds}) async => {
+    _sessionId: SessionInterruptionDto(sessionId: _sessionId, afterMessageId: afterMessageId, acknowledged: false),
+  };
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 Message _user({required String id, required int? created}) => Message.user(
   invocation: null,
@@ -170,6 +183,23 @@ void main() {
     expect(_shape(entries: entries), _expected);
     final seqs = [for (final entry in entries) entry.seq];
     expect(seqs, orderedEquals([...seqs]..sort()));
+  });
+
+  test("a prompt after a turn a bridge stop cut off opens a new turn, as in the transcript", () async {
+    final history = createTestChatHistory(
+      storedSessionArchivedAt: 300,
+      interruptions: const _CutOffAfter(afterMessageId: "a1"),
+    );
+    await _captureTranscript(history: history);
+    const expected = [
+      ("opener", "u1", 1, 10, "Fix the build"),
+      ("opener", "u2", 2, null, "and the tests"),
+      ("opener", "u3", 4, 50, "shot.png"),
+    ];
+
+    expect(_shape(entries: await history.service.getPromptIndex(sessionId: _sessionId)), expected);
+    await _archive(history: history);
+    expect(_shape(entries: await history.service.getPromptIndex(sessionId: _sessionId)), expected);
   });
 
   test("an archived session lists its prompts from the audit file", () async {

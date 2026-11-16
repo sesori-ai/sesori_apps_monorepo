@@ -173,8 +173,8 @@ the `Session` wire.
 - The interruption closes its turn. A bridge death before any output leaves the prompt unanswered, and
   `splitPromptTurns` would fold the Continue prompt into it, moving the line below the continued reply and offering
   Continue again. `splitPromptTurns` therefore takes the message ids after which a turn has ended (required named
-  parameter; the bridge's prompt index passes none), and the calculator passes `afterMessageId`. The calculator tests
-  cover an interruption before the first output followed by Continue.
+  parameter; the bridge's rewind, fork and prompt index pass the stored interruption), and the calculator passes
+  `afterMessageId`. The calculator tests cover an interruption before the first output followed by Continue.
 - Motion: both lines enter through `TranscriptPresence`. The live Stopped row takes the place of the folding Working
   row in the same frame, so the rows above hold still. Nothing above the line moves when it appears or when the
   Continue button leaves.
