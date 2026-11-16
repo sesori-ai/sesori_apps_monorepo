@@ -653,7 +653,8 @@ state.
   this computer to pin sessions"; a failed pin or unpin says so.
   In the desktop sidebar a mouse drag reorders the pinned rows, under the All
   chip with no search typed, also within a project filter, where the row lands
-  below the pinned row it was dropped under. A press that moves lifts the row
+  below the pinned row it was dropped under, or first of all pinned rows when
+  dropped at the top. A press that moves lifts the row
   (slight scale and shadow) and it follows the pointer vertically, held within
   Pinned, while the other pinned rows slide to open its gap and show no hover
   or tooltip beneath it. On release it glides into the gap and nothing moves
@@ -937,6 +938,11 @@ beside each mark on both apps, with preserved swipe/menu actions and enlarged
 text.
 Verify running rows under Today keeping their place, awaiting-only date grouping,
 updated-time versus archive-time buckets, and missing-timestamp headings.
+For pinned reordering, drag with a mouse in the sidebar and with Edit's handles
+on an iPhone viewport, in All and in a project filter, scrolled and at the top:
+drop first, last and between, hold at each edge until Pinned's end shows, have
+the bridge refuse a move, and end editing with Done, a search, a chip and by
+unpinning down to one row. Watch for any row or heading that jumps.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
