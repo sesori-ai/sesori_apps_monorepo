@@ -28,11 +28,13 @@ void main() {
     getIt
       ..registerSingleton<SessionListFilterTracker>(_MockSessionListFilterTracker())
       ..registerSingleton<SseEventTracker>(activity)
-      ..registerSingleton<SessionUnseenTracker>(unseen);
+      ..registerSingleton<SessionUnseenTracker>(unseen)
+      ..registerSingleton<SessionSendTracker>(SessionSendTracker());
     addTearDown(() async {
       await getIt.unregister<SessionListFilterTracker>();
       await getIt.unregister<SseEventTracker>();
       await getIt.unregister<SessionUnseenTracker>();
+      await getIt.unregister<SessionSendTracker>();
       await activity.onDispose();
       await unseen.onDispose();
     });
@@ -614,6 +616,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                           label: "open archived row",
                           action: () => archived.onSessionTap(
                             row: const AllSessionsRow(
+                              sending: null,
                               session: _session,
                               project: ProjectSummary(id: "p", name: "UI / Core", path: "/fixture", time: null),
                               isRunning: false,

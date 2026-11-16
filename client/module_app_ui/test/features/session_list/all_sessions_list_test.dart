@@ -58,6 +58,7 @@ void main() {
     required DateTime? archivedAt,
     required bool isRunning,
   }) => AllSessionsRow(
+    sending: null,
     session: testSession(
       id: title,
       title: title,
@@ -444,6 +445,7 @@ void main() {
           row(title: "Fix the parser", updatedAt: today, archivedAt: null, isRunning: true),
           row(title: "Tidy the docs", updatedAt: today, archivedAt: null, isRunning: false),
           AllSessionsRow(
+            sending: null,
             session: testSession(
               id: "answer",
               title: "Answer the question",
@@ -503,6 +505,7 @@ void main() {
     const scratch = ProjectSummary(id: "scratch", name: null, path: "/scratch", time: null, kind: ProjectKind.scratch);
     final now = DateTime.now();
     final jot = AllSessionsRow(
+      sending: null,
       session: testSession(id: "jot", title: "Jot down ideas", updatedAt: now.millisecondsSinceEpoch),
       project: scratch,
       isRunning: false,
@@ -2371,6 +2374,7 @@ void main() {
         expect(onScreen.length, greaterThan(4));
         final renamed = onScreen[onScreen.length ~/ 2];
         final renamedRow = AllSessionsRow(
+          sending: null,
           // A pin keeps the session's time; a rename makes it the newest.
           session: pinned
               ? testSession(
@@ -2432,6 +2436,7 @@ void main() {
     AllSessionsRow pinnedRow({required String title, required DateTime updatedAt, required bool isRunning}) {
       final listed = row(title: title, updatedAt: updatedAt, archivedAt: null, isRunning: isRunning);
       return AllSessionsRow(
+        sending: null,
         session: listed.session.copyWith(pinOrder: 1),
         project: project,
         isRunning: isRunning,
@@ -2517,6 +2522,7 @@ void main() {
     AllSessionsRow pinnedRow({required String title, required int pinOrder}) {
       final listed = row(title: title, updatedAt: today, archivedAt: null, isRunning: false);
       return AllSessionsRow(
+        sending: null,
         session: listed.session.copyWith(pinOrder: pinOrder),
         project: project,
         isRunning: false,

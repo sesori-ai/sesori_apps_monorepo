@@ -14,6 +14,7 @@ import "package:sesori_dart_core/src/services/models/session_delete_result.dart"
 import "package:sesori_dart_core/src/services/selected_computer_service.dart";
 import "package:sesori_dart_core/src/services/session_action_service.dart";
 import "package:sesori_dart_core/src/services/session_cleanup_service.dart";
+import "package:sesori_dart_core/src/services/session_send_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -32,9 +33,11 @@ void main() {
   late SessionActionService actions;
   late _MockSelectedComputerService selectedComputer;
   late MockProductAnalyticsService analytics;
+  late SessionSendTracker sendTracker;
 
   setUp(() {
     analytics = stubbedProductAnalyticsService();
+    sendTracker = SessionSendTracker();
     selectedComputer = _MockSelectedComputerService();
     when(() => selectedComputer.targetBridgeId()).thenAnswer((_) async => "computer-a");
     sessionRepository = MockSessionRepository();
@@ -52,6 +55,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
     actions = SessionActionService(
+      sendTracker: sendTracker,
       sessionRepository: sessionRepository,
       sessionCleanupService: SessionCleanupService(repository: sessionRepository),
       sessionUnseenTracker: unseen,
@@ -62,7 +66,10 @@ void main() {
     );
   });
 
-  tearDown(() => unseen.onDispose());
+  tearDown(() {
+    unseen.onDispose();
+    sendTracker.onDispose();
+  });
 
   group("delete", () {
     void stubDelete(Future<ApiResponse<void>> Function() answer) => when(
@@ -149,8 +156,12 @@ void main() {
       () => sessionRepository.sendToSession(sourceSessionId: "source", targetSessionId: "target"),
     ).thenAnswer((_) => answer());
 
-    Future<SendToSessionResult> send() =>
-        actions.sendToSession(sourceSessionId: "source", sourcePluginId: "claude", targetSessionId: "target");
+    Future<SendToSessionResult> send() => actions.sendToSession(
+      targetTitle: "Target",
+      sourceSessionId: "source",
+      sourcePluginId: "claude",
+      targetSessionId: "target",
+    );
 
     List<ProductAnalyticsEvent> reportedEvents() => verify(
       () => analytics.logEvent(
@@ -364,6 +375,19 @@ void main() {
           ),
         );
       });
+    });
+
+    test("shows the source as being sent until the send ends", () async {
+      final answer = Completer<SendToSessionResult>();
+      stubSend(() => answer.future);
+
+      final result = send();
+      await pumpEventQueue();
+
+      expect(sendTracker.currentSending["source"]?.targetTitle, "Target");
+      answer.complete(const SendToSessionSent());
+      await result;
+      expect(sendTracker.currentSending, isEmpty);
     });
 
     test("an analytics failure doesn't change the send's result", () async {

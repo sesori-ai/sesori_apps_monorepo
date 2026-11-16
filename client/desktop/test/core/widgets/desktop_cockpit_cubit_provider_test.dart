@@ -69,6 +69,7 @@ void main() {
     });
     getIt.registerSingleton<SseEventTracker>(activity);
     getIt.registerSingleton<SessionUnseenTracker>(unseen);
+    getIt.registerLazySingleton<SessionSendTracker>(SessionSendTracker.new);
     getIt.registerFactoryParam<SessionWindowService, AllSessionsMode, ProjectInventoryService>((mode, project) {
       expect(mode, AllSessionsMode.active);
       expect(project, same(projectInstances.last));
@@ -95,6 +96,7 @@ void main() {
       await getIt.unregister<SessionWindowService>();
       await getIt.unregister<SseEventTracker>();
       await getIt.unregister<SessionUnseenTracker>();
+      await getIt.unregister<SessionSendTracker>();
       await getIt.unregister<SessionCleanupService>();
       await getIt.unregister<RegisteredBridgesService>();
       await getIt.unregister<ConnectionService>();

@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
 import "../../services/models/session_list_quick_filter.dart";
+import "../../services/models/session_sending.dart";
 import "../../services/models/session_window_state.dart";
 
 part "all_sessions_state.freezed.dart";
@@ -23,6 +24,9 @@ sealed class AllSessionsRow with _$AllSessionsRow {
     /// opened the session or sent anything since; never while it runs again.
     required bool isInterrupted,
     required int backgroundTaskCount,
+
+    /// This app's send of the session into another, while it lasts.
+    required SessionSending? sending,
   }) = _AllSessionsRow;
 }
 

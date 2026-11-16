@@ -1845,6 +1845,11 @@
   "@sessionListAwaitingInput": {
     "description": "Label shown next to the amber dot for sessions that are waiting for user input (question or permission)"
   },
+  "sessionListSending": "Sending to “{target}”…",
+  "@sessionListSending": {
+    "description": "Words on a session row's meta line, and the row's status for a screen reader, while this app sends the session into another one and the session writes its summary. target is the receiving session's title.",
+    "placeholders": {"target": {"type": "String"}}
+  },
   "sessionListWaiting": "Waiting",
   "@sessionListWaiting": {
     "description": "Amber word leading a session row's meta line while the session waits for the user's answer or permission"

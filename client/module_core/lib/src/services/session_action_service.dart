@@ -14,9 +14,11 @@ import "../repositories/plugin_repository.dart";
 import "../repositories/session_repository.dart";
 import "models/session_cleanup_outcome.dart";
 import "models/session_delete_result.dart";
+import "models/session_sending.dart";
 import "product_analytics_service.dart";
 import "selected_computer_service.dart";
 import "session_cleanup_service.dart";
+import "session_send_tracker.dart";
 import "session_unseen_tracker.dart";
 
 /// Deletes sessions, marks them read or unread, forks them, and sends one
@@ -31,6 +33,7 @@ class SessionActionService({
   required final SelectedComputerService _selectedComputerService,
   required final ProductAnalyticsService _productAnalyticsService,
   required final PluginRepository _pluginRepository,
+  required final SessionSendTracker _sendTracker,
 }) {
   /// The harnesses whose bridge declared fork in the latest plugin listing;
   /// empty until one loads or after one fails.
@@ -148,8 +151,28 @@ class SessionActionService({
   /// Sends [sourceSessionId] into [targetSessionId]: the source writes a
   /// summary, then the target receives it with the source's transcript. This
   /// can take minutes, while the source writes. [sourcePluginId] is the
-  /// source's harness, for analytics.
+  /// source's harness, for analytics, and [targetTitle] the target's, for the
+  /// session list, which shows the source as being sent until this completes.
   Future<SendToSessionResult> sendToSession({
+    required String sourceSessionId,
+    required String sourcePluginId,
+    required String targetSessionId,
+    required String? targetTitle,
+  }) async {
+    final sending = SessionSending(targetTitle: targetTitle);
+    _sendTracker.start(sourceSessionId: sourceSessionId, sending: sending);
+    try {
+      return await _send(
+        sourceSessionId: sourceSessionId,
+        sourcePluginId: sourcePluginId,
+        targetSessionId: targetSessionId,
+      );
+    } finally {
+      _sendTracker.end(sourceSessionId: sourceSessionId, sending: sending);
+    }
+  }
+
+  Future<SendToSessionResult> _send({
     required String sourceSessionId,
     required String sourcePluginId,
     required String targetSessionId,

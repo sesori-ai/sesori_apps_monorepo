@@ -34,10 +34,12 @@ void main() {
     bool isRetrying = false,
     bool isInterrupted = false,
     int backgroundTaskCount = 0,
+    SessionSending? sending,
     VoidCallback? onArchive,
     VoidCallback? onToggleUnread,
   }) {
     return SessionTile(
+      sending: sending,
       session: session,
       projectLabel: projectLabel,
       isArchived: isArchived,
@@ -163,6 +165,44 @@ void main() {
           expect(tester.getTopRight(sparkle).dx, lessThan(tester.getTopLeft(find.text("now")).dx));
           expect(find.text("now"), findsOneWidget);
         }
+      });
+
+      testWidgets("a session being sent swaps the sparkle and meta line for the send, in place", (tester) async {
+        final semantics = tester.ensureSemantics();
+        final session = testSession(title: "My Session", updatedAt: now);
+        await pump(tester, tile(session: session, isRunning: true, projectLabel: "Project"));
+        final rowSize = tester.getSize(find.byType(SessionTile));
+        final titleTop = tester.getTopLeft(find.text("My Session"));
+
+        await pump(
+          tester,
+          tile(
+            session: session,
+            isRunning: true,
+            projectLabel: "Project",
+            sending: const SessionSending(targetTitle: "Target"),
+          ),
+        );
+        // Mid cross-fade, only the incoming state speaks.
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.bySemanticsLabel(RegExp("Running")), findsNothing);
+        expect(find.bySemanticsLabel(RegExp("Sending to “Target”…")), findsOneWidget);
+        await tester.pump(const Duration(seconds: 1));
+
+        expect(find.byType(PregoAiLoader), findsNothing);
+        expect(find.byIcon(TablerRegular.send), findsOneWidget);
+        expect(find.text("Sending to “Target”…"), findsOneWidget);
+        expect(find.text("Project"), findsNothing);
+        // Nothing moves: the row keeps its size and the title its place.
+        expect(tester.getSize(find.byType(SessionTile)), rowSize);
+        expect(tester.getTopLeft(find.text("My Session")), titleTop);
+
+        await pump(tester, tile(session: session, isRunning: true, projectLabel: "Project"));
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byIcon(TablerRegular.send), findsNothing);
+        expect(find.text("Project"), findsOneWidget);
+        expect(sparkleTwinkles(tester), isTrue);
+        semantics.dispose();
       });
 
       testWidgets("an unread session carries its mark and weights its title", (tester) async {

@@ -33,6 +33,7 @@ void main() {
     final rows = [
       for (final session in sessions)
         AllSessionsRow(
+          sending: null,
           session: session,
           project: project,
           isRunning: false,

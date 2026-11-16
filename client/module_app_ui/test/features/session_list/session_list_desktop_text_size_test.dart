@@ -31,6 +31,7 @@ void main() {
     bool isRetrying = false,
     int backgroundTaskCount = 0,
   }) => SessionTile(
+    sending: null,
     session: testSession(title: title, updatedAt: now),
     projectLabel: projectLabel,
     isArchived: false,

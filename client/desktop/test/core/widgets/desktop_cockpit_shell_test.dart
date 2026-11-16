@@ -222,6 +222,7 @@ void main() {
             ),
             BlocProvider(
               create: (_) => sessions = AllSessionsCubit(
+                sessionSendTracker: SessionSendTracker(),
                 window: window,
                 projectInventory: projectInventory,
                 filterTracker: filterTracker,
