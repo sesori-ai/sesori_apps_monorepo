@@ -212,7 +212,7 @@ class FakeSessionDao() {
 }
 
 DeletedSessionSubtree _deletedSession(String sessionId) =>
-    (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId]);
+    (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId], projectId: "project-1", worktreePath: null);
 
 Session _deletedSessionInfo(String sessionId) => Session(
   approvalOverride: null,
@@ -475,6 +475,13 @@ class FakeSessionRepository({
   Future<SessionQuietness> getSessionQuietness({required String sessionId}) async =>
       quietness[sessionId] ?? SessionQuietness.quiet;
 
+  /// Newest first, per task, for archiving old scheduled runs.
+  final Map<String, List<String>> archivableScheduledRunSessionIds = {};
+
+  @override
+  Future<List<String>> listArchivableScheduledRunSessionIds({required String taskId}) async =>
+      archivableScheduledRunSessionIds[taskId] ?? const [];
+
   @override
   Future<Session> createSession({
     required String reservedSessionId,
@@ -636,6 +643,20 @@ class FakeSessionRepository({
   }) async => false;
 
   @override
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) async => false;
+
+  @override
+  Future<void> recordWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) async {}
+
+  @override
   Future<String?> getProjectPath({required String projectId}) async => projectPathResult;
 
   @override
@@ -754,7 +775,7 @@ class FakeSessionRepository({
   void markHandoffNotSent({required String sessionId, required String promptId}) {}
 
   @override
-  List<QueuedSessionPrompt> stampQueuedCommandSources({
+  List<QueuedSessionPrompt> stampQueuedPrompts({
     required String sessionId,
     required List<QueuedSessionPrompt> prompts,
   }) => prompts;

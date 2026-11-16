@@ -629,6 +629,26 @@ void main() {
       );
       expect(stampedHandoff(promptId: "refused"), isNull);
       expect(stampedHandoff(promptId: "accepted"), sent);
+
+      // The queued prompt waiting for that echo carries the same stamp.
+      QueuedSessionPrompt queued({required String id}) => QueuedSessionPrompt(
+        id: id,
+        text: "Fixture request",
+        command: null,
+        commandSource: null,
+        handoff: null,
+        createdAt: 1,
+      );
+      final stampedQueue = repository.stampQueuedPrompts(
+        sessionId: "s1",
+        prompts: [
+          for (final id in ["accepted", "timed-out", "refused", "unrelated"]) queued(id: id),
+        ],
+      );
+      expect(
+        [for (final prompt in stampedQueue) prompt.handoff],
+        [sent, const MessageHandoff.notSent(targetSessionId: "target", targetTitle: "Target"), null, null],
+      );
     });
 
     test("getCatalogSession returns the stored project without scanning the plugin", () async {

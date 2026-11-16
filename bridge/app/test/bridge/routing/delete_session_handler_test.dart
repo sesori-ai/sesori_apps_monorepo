@@ -264,7 +264,7 @@ void main() {
       );
     });
 
-    test("deleteWorktree=false: plugin+db delete, no git ops", () async {
+    test("deleteWorktree=false: plugin+db delete, no worktree git ops", () async {
       await _insertSession(
         db: db,
         sessionId: "s1",
@@ -287,7 +287,7 @@ void main() {
       expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
       expect(worktreeService.checkCallCount, equals(0));
       expect(worktreeService.removeCallCount, equals(0));
-      expect(operationLog, equals(["pluginDelete"]));
+      expect(operationLog, equals(["pluginDelete", "releaseHead"]));
     });
 
     test("missing binding returns 404 before plugin or cleanup calls", () async {
@@ -340,7 +340,7 @@ void main() {
       expect(worktreeService.lastRemoveForce, isFalse);
       expect(plugin.lastDeleteSessionId, equals("s2"));
       expect(await db.sessionDao.getSession(sessionId: "s2"), isNull);
-      expect(operationLog, equals(["checkSafety", "removeWorktree", "pluginDelete"]));
+      expect(operationLog, equals(["checkSafety", "removeWorktree", "pluginDelete", "releaseHead"]));
     });
 
     test("failed worktree removal preserves the session for retry", () async {
@@ -490,7 +490,7 @@ void main() {
       expect(worktreeService.lastRemoveForce, isTrue);
       expect(plugin.lastDeleteSessionId, equals("s6"));
       expect(await db.sessionDao.getSession(sessionId: "s6"), isNull);
-      expect(operationLog, equals(["removeWorktree", "pluginDelete"]));
+      expect(operationLog, equals(["removeWorktree", "pluginDelete", "releaseHead"]));
     });
 
     test("7) null worktreePath: skips git ops", () async {
@@ -551,10 +551,10 @@ void main() {
         await db.sessionDao.getTombstonedSessionIds(pluginId: "uninstalled-plugin"),
         contains("s9"),
       );
-      expect(operationLog, equals(["checkSafety", "removeWorktree"]));
+      expect(operationLog, equals(["checkSafety", "removeWorktree", "releaseHead"]));
     });
 
-    test("10) plugin delete non-404 failure: cleanup already ran and DB row remains", () async {
+    test("10) plugin delete non-404 failure: cleanup already ran, DB row and kept HEAD remain", () async {
       await _insertSession(
         db: db,
         sessionId: "s10",
@@ -580,6 +580,7 @@ void main() {
       expect(worktreeService.checkCallCount, equals(1));
       expect(worktreeService.removeCallCount, equals(1));
       expect(await db.sessionDao.getSession(sessionId: "s10"), isNotNull);
+      // The session stays, so the HEAD its archive kept stays for a fork.
       expect(operationLog, equals(["checkSafety", "removeWorktree", "pluginDelete"]));
     });
 

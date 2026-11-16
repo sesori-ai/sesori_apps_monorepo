@@ -12,12 +12,14 @@ _ForkSessionRequest _$ForkSessionRequestFromJson(Map json) =>
       point: ForkPoint.fromJson(
         Map<String, dynamic>.from(json['point'] as Map),
       ),
+      recreateFromBase: json['recreateFromBase'] as bool,
     );
 
 Map<String, dynamic> _$ForkSessionRequestToJson(_ForkSessionRequest instance) =>
     <String, dynamic>{
       'sessionId': instance.sessionId,
       'point': instance.point.toJson(),
+      'recreateFromBase': instance.recreateFromBase,
     };
 
 ForkPointAfterMessage _$ForkPointAfterMessageFromJson(Map json) =>

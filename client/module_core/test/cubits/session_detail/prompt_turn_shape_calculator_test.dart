@@ -101,6 +101,7 @@ void main() {
       text: "args",
       command: "fixture-greeter",
       commandSource: CommandSource.skill,
+      handoff: null,
       createdAt: 0,
     );
     expect(

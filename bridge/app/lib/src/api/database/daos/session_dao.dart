@@ -498,6 +498,20 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     });
   }
 
+  /// The unarchived, unpinned sessions [scheduledTaskId]'s runs started,
+  /// newest first.
+  Future<List<String>> listUnarchivedUnpinnedScheduledRunSessionIds({required String scheduledTaskId}) async {
+    final query = selectOnly(sessionTable)
+      ..addColumns([sessionTable.sessionId])
+      ..where(
+        sessionTable.scheduledTaskId.equals(scheduledTaskId) &
+            sessionTable.archivedAt.isNull() &
+            sessionTable.pinned.equals(false),
+      )
+      ..orderBy([OrderingTerm.desc(sessionTable.createdAt), OrderingTerm.desc(sessionTable.sessionId)]);
+    return [for (final row in await query.get()) ?row.read(sessionTable.sessionId)];
+  }
+
   Future<void> setParentSessionId({required String sessionId, required String parentSessionId}) async {
     await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
       SessionTableCompanion(parentSessionId: Value(parentSessionId)),
@@ -815,6 +829,34 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
               t.worktreePath.equals(worktreePath),
         ))
         .get();
+  }
+
+  /// Whether a session other than [sessionId], archived or not, names
+  /// [worktreePath] in [projectId].
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) async {
+    final query = select(sessionTable)
+      ..where(
+        (t) =>
+            t.sessionId.equals(sessionId).not() & t.projectId.equals(projectId) & t.worktreePath.equals(worktreePath),
+      )
+      ..limit(1);
+    return await query.getSingleOrNull() != null;
+  }
+
+  /// Records [branchName], the branch the worktree at [worktreePath] was on
+  /// when it was removed (null for a detached HEAD), on every session of
+  /// [projectId] that names it.
+  Future<void> setWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) async {
+    await (update(sessionTable)..where((t) => t.projectId.equals(projectId) & t.worktreePath.equals(worktreePath)))
+        .write(SessionTableCompanion(branchName: Value(branchName)));
   }
 
   Future<void> deleteSession({required String sessionId}) async {

@@ -3,7 +3,7 @@
 // ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'hermes_replay_update_dto.dart';
+part of 'hermes_session_update_dto.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -14,44 +14,44 @@ part of 'hermes_replay_update_dto.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
-mixin _$HermesReplayUpdateDto {
+mixin _$HermesSessionUpdateDto {
 
  String? get sessionUpdate;@JsonKey(name: "_meta") HermesUpdateMetaDto? get meta; HermesTextContentDto? get content;
-/// Create a copy of HermesReplayUpdateDto
+/// Create a copy of HermesSessionUpdateDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$HermesReplayUpdateDtoCopyWith<HermesReplayUpdateDto> get copyWith => _$HermesReplayUpdateDtoCopyWithImpl<HermesReplayUpdateDto>(this as HermesReplayUpdateDto, _$identity);
+$HermesSessionUpdateDtoCopyWith<HermesSessionUpdateDto> get copyWith => _$HermesSessionUpdateDtoCopyWithImpl<HermesSessionUpdateDto>(this as HermesSessionUpdateDto, _$identity);
 
-  /// Serializes this HermesReplayUpdateDto to a JSON map.
+  /// Serializes this HermesSessionUpdateDto to a JSON map.
   Map<String, dynamic> toJson();
 
 
 @override
 bool operator ==(Object other) {
-  final _this = this as HermesReplayUpdateDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HermesReplayUpdateDto&&(identical(other.sessionUpdate, _this.sessionUpdate) || other.sessionUpdate == _this.sessionUpdate)&&(identical(other.meta, _this.meta) || other.meta == _this.meta)&&(identical(other.content, _this.content) || other.content == _this.content));
+  final _this = this as HermesSessionUpdateDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HermesSessionUpdateDto&&(identical(other.sessionUpdate, _this.sessionUpdate) || other.sessionUpdate == _this.sessionUpdate)&&(identical(other.meta, _this.meta) || other.meta == _this.meta)&&(identical(other.content, _this.content) || other.content == _this.content));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-  final _this = this as HermesReplayUpdateDto;
+  final _this = this as HermesSessionUpdateDto;
   return Object.hash(runtimeType,_this.sessionUpdate,_this.meta,_this.content);
 }
 
 @override
 String toString() {
-  final _this = this as HermesReplayUpdateDto;
-  return 'HermesReplayUpdateDto(sessionUpdate: ${_this.sessionUpdate}, meta: ${_this.meta}, content: ${_this.content})';
+  final _this = this as HermesSessionUpdateDto;
+  return 'HermesSessionUpdateDto(sessionUpdate: ${_this.sessionUpdate}, meta: ${_this.meta}, content: ${_this.content})';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $HermesReplayUpdateDtoCopyWith<$Res>  {
-  factory $HermesReplayUpdateDtoCopyWith(HermesReplayUpdateDto value, $Res Function(HermesReplayUpdateDto) _then) = _$HermesReplayUpdateDtoCopyWithImpl;
+abstract mixin class $HermesSessionUpdateDtoCopyWith<$Res>  {
+  factory $HermesSessionUpdateDtoCopyWith(HermesSessionUpdateDto value, $Res Function(HermesSessionUpdateDto) _then) = _$HermesSessionUpdateDtoCopyWithImpl;
 @useResult
 $Res call({
  String? sessionUpdate,@JsonKey(name: "_meta") HermesUpdateMetaDto? meta, HermesTextContentDto? content
@@ -62,24 +62,24 @@ $HermesUpdateMetaDtoCopyWith<$Res>? get meta;$HermesTextContentDtoCopyWith<$Res>
 
 }
 /// @nodoc
-class _$HermesReplayUpdateDtoCopyWithImpl<$Res>
-    implements $HermesReplayUpdateDtoCopyWith<$Res> {
-  _$HermesReplayUpdateDtoCopyWithImpl(this._self, this._then);
+class _$HermesSessionUpdateDtoCopyWithImpl<$Res>
+    implements $HermesSessionUpdateDtoCopyWith<$Res> {
+  _$HermesSessionUpdateDtoCopyWithImpl(this._self, this._then);
 
-  final HermesReplayUpdateDto _self;
-  final $Res Function(HermesReplayUpdateDto) _then;
+  final HermesSessionUpdateDto _self;
+  final $Res Function(HermesSessionUpdateDto) _then;
 
-/// Create a copy of HermesReplayUpdateDto
+/// Create a copy of HermesSessionUpdateDto
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? sessionUpdate = freezed,Object? meta = freezed,Object? content = freezed,}) {
-  return _then(HermesReplayUpdateDto(
+  return _then(HermesSessionUpdateDto(
 sessionUpdate: freezed == sessionUpdate ? _self.sessionUpdate : sessionUpdate // ignore: cast_nullable_to_non_nullable
 as String?,meta: freezed == meta ? _self.meta : meta // ignore: cast_nullable_to_non_nullable
 as HermesUpdateMetaDto?,content: freezed == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as HermesTextContentDto?,
   ));
 }
-/// Create a copy of HermesReplayUpdateDto
+/// Create a copy of HermesSessionUpdateDto
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
@@ -91,7 +91,7 @@ $HermesUpdateMetaDtoCopyWith<$Res>? get meta {
   return $HermesUpdateMetaDtoCopyWith<$Res>(_self.meta!, (value) {
     return _then(_self.copyWith(meta: value));
   });
-}/// Create a copy of HermesReplayUpdateDto
+}/// Create a copy of HermesSessionUpdateDto
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
@@ -111,28 +111,28 @@ $HermesTextContentDtoCopyWith<$Res>? get content {
 /// @nodoc
 @JsonSerializable()
 
-class _HermesReplayUpdateDto implements HermesReplayUpdateDto {
-  const _HermesReplayUpdateDto({required this.sessionUpdate, @JsonKey(name: "_meta") required this.meta, required this.content});
-  factory _HermesReplayUpdateDto.fromJson(Map<String, dynamic> json) => _$HermesReplayUpdateDtoFromJson(json);
+class _HermesSessionUpdateDto implements HermesSessionUpdateDto {
+  const _HermesSessionUpdateDto({required this.sessionUpdate, @JsonKey(name: "_meta") required this.meta, required this.content});
+  factory _HermesSessionUpdateDto.fromJson(Map<String, dynamic> json) => _$HermesSessionUpdateDtoFromJson(json);
 
 @override final  String? sessionUpdate;
 @override@JsonKey(name: "_meta") final  HermesUpdateMetaDto? meta;
 @override final  HermesTextContentDto? content;
 
-/// Create a copy of HermesReplayUpdateDto
+/// Create a copy of HermesSessionUpdateDto
 /// with the given fields replaced by the non-null parameter values.
 @override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$HermesReplayUpdateDtoCopyWith<_HermesReplayUpdateDto> get copyWith => __$HermesReplayUpdateDtoCopyWithImpl<_HermesReplayUpdateDto>(this, _$identity);
+_$HermesSessionUpdateDtoCopyWith<_HermesSessionUpdateDto> get copyWith => __$HermesSessionUpdateDtoCopyWithImpl<_HermesSessionUpdateDto>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$HermesReplayUpdateDtoToJson(this, );
+  return _$HermesSessionUpdateDtoToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HermesReplayUpdateDto&&(identical(other.sessionUpdate, sessionUpdate) || other.sessionUpdate == sessionUpdate)&&(identical(other.meta, meta) || other.meta == meta)&&(identical(other.content, content) || other.content == content));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HermesSessionUpdateDto&&(identical(other.sessionUpdate, sessionUpdate) || other.sessionUpdate == sessionUpdate)&&(identical(other.meta, meta) || other.meta == meta)&&(identical(other.content, content) || other.content == content));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -143,15 +143,15 @@ int get hashCode {
 
 @override
 String toString() {
-    return 'HermesReplayUpdateDto(sessionUpdate: $sessionUpdate, meta: $meta, content: $content)';
+    return 'HermesSessionUpdateDto(sessionUpdate: $sessionUpdate, meta: $meta, content: $content)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$HermesReplayUpdateDtoCopyWith<$Res> implements $HermesReplayUpdateDtoCopyWith<$Res> {
-  factory _$HermesReplayUpdateDtoCopyWith(_HermesReplayUpdateDto value, $Res Function(_HermesReplayUpdateDto) _then) = __$HermesReplayUpdateDtoCopyWithImpl;
+abstract mixin class _$HermesSessionUpdateDtoCopyWith<$Res> implements $HermesSessionUpdateDtoCopyWith<$Res> {
+  factory _$HermesSessionUpdateDtoCopyWith(_HermesSessionUpdateDto value, $Res Function(_HermesSessionUpdateDto) _then) = __$HermesSessionUpdateDtoCopyWithImpl;
 @override @useResult
 $Res call({
  String? sessionUpdate,@JsonKey(name: "_meta") HermesUpdateMetaDto? meta, HermesTextContentDto? content
@@ -162,17 +162,17 @@ $Res call({
 
 }
 /// @nodoc
-class __$HermesReplayUpdateDtoCopyWithImpl<$Res>
-    implements _$HermesReplayUpdateDtoCopyWith<$Res> {
-  __$HermesReplayUpdateDtoCopyWithImpl(this._self, this._then);
+class __$HermesSessionUpdateDtoCopyWithImpl<$Res>
+    implements _$HermesSessionUpdateDtoCopyWith<$Res> {
+  __$HermesSessionUpdateDtoCopyWithImpl(this._self, this._then);
 
-  final _HermesReplayUpdateDto _self;
-  final $Res Function(_HermesReplayUpdateDto) _then;
+  final _HermesSessionUpdateDto _self;
+  final $Res Function(_HermesSessionUpdateDto) _then;
 
-/// Create a copy of HermesReplayUpdateDto
+/// Create a copy of HermesSessionUpdateDto
 /// with the given fields replaced by the non-null parameter values.
 @override @pragma('vm:prefer-inline') $Res call({Object? sessionUpdate = freezed,Object? meta = freezed,Object? content = freezed,}) {
-  return _then(_HermesReplayUpdateDto(
+  return _then(_HermesSessionUpdateDto(
 sessionUpdate: freezed == sessionUpdate ? _self.sessionUpdate : sessionUpdate // ignore: cast_nullable_to_non_nullable
 as String?,meta: freezed == meta ? _self.meta : meta // ignore: cast_nullable_to_non_nullable
 as HermesUpdateMetaDto?,content: freezed == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
@@ -180,7 +180,7 @@ as HermesTextContentDto?,
   ));
 }
 
-/// Create a copy of HermesReplayUpdateDto
+/// Create a copy of HermesSessionUpdateDto
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
@@ -192,7 +192,7 @@ $HermesUpdateMetaDtoCopyWith<$Res>? get meta {
   return $HermesUpdateMetaDtoCopyWith<$Res>(_self.meta!, (value) {
     return _then(_self.copyWith(meta: value));
   });
-}/// Create a copy of HermesReplayUpdateDto
+}/// Create a copy of HermesSessionUpdateDto
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
@@ -376,7 +376,7 @@ $HermesMetaDtoCopyWith<$Res>? get hermes {
 /// @nodoc
 mixin _$HermesMetaDto {
 
- bool? get compactionSummary;
+ bool? get compactionSummary; HermesSessionProvenanceDto? get sessionProvenance;
 /// Create a copy of HermesMetaDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -390,20 +390,20 @@ $HermesMetaDtoCopyWith<HermesMetaDto> get copyWith => _$HermesMetaDtoCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as HermesMetaDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HermesMetaDto&&(identical(other.compactionSummary, _this.compactionSummary) || other.compactionSummary == _this.compactionSummary));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HermesMetaDto&&(identical(other.compactionSummary, _this.compactionSummary) || other.compactionSummary == _this.compactionSummary)&&(identical(other.sessionProvenance, _this.sessionProvenance) || other.sessionProvenance == _this.sessionProvenance));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as HermesMetaDto;
-  return Object.hash(runtimeType,_this.compactionSummary);
+  return Object.hash(runtimeType,_this.compactionSummary,_this.sessionProvenance);
 }
 
 @override
 String toString() {
   final _this = this as HermesMetaDto;
-  return 'HermesMetaDto(compactionSummary: ${_this.compactionSummary})';
+  return 'HermesMetaDto(compactionSummary: ${_this.compactionSummary}, sessionProvenance: ${_this.sessionProvenance})';
 }
 
 
@@ -414,11 +414,11 @@ abstract mixin class $HermesMetaDtoCopyWith<$Res>  {
   factory $HermesMetaDtoCopyWith(HermesMetaDto value, $Res Function(HermesMetaDto) _then) = _$HermesMetaDtoCopyWithImpl;
 @useResult
 $Res call({
- bool? compactionSummary
+ bool? compactionSummary, HermesSessionProvenanceDto? sessionProvenance
 });
 
 
-
+$HermesSessionProvenanceDtoCopyWith<$Res>? get sessionProvenance;
 
 }
 /// @nodoc
@@ -431,13 +431,26 @@ class _$HermesMetaDtoCopyWithImpl<$Res>
 
 /// Create a copy of HermesMetaDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? compactionSummary = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? compactionSummary = freezed,Object? sessionProvenance = freezed,}) {
   return _then(HermesMetaDto(
 compactionSummary: freezed == compactionSummary ? _self.compactionSummary : compactionSummary // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,sessionProvenance: freezed == sessionProvenance ? _self.sessionProvenance : sessionProvenance // ignore: cast_nullable_to_non_nullable
+as HermesSessionProvenanceDto?,
   ));
 }
+/// Create a copy of HermesMetaDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$HermesSessionProvenanceDtoCopyWith<$Res>? get sessionProvenance {
+    if (_self.sessionProvenance == null) {
+    return null;
+  }
 
+  return $HermesSessionProvenanceDtoCopyWith<$Res>(_self.sessionProvenance!, (value) {
+    return _then(_self.copyWith(sessionProvenance: value));
+  });
+}
 }
 
 
@@ -446,10 +459,11 @@ as bool?,
 @JsonSerializable()
 
 class _HermesMetaDto implements HermesMetaDto {
-  const _HermesMetaDto({required this.compactionSummary});
+  const _HermesMetaDto({required this.compactionSummary, required this.sessionProvenance});
   factory _HermesMetaDto.fromJson(Map<String, dynamic> json) => _$HermesMetaDtoFromJson(json);
 
 @override final  bool? compactionSummary;
+@override final  HermesSessionProvenanceDto? sessionProvenance;
 
 /// Create a copy of HermesMetaDto
 /// with the given fields replaced by the non-null parameter values.
@@ -464,18 +478,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HermesMetaDto&&(identical(other.compactionSummary, compactionSummary) || other.compactionSummary == compactionSummary));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HermesMetaDto&&(identical(other.compactionSummary, compactionSummary) || other.compactionSummary == compactionSummary)&&(identical(other.sessionProvenance, sessionProvenance) || other.sessionProvenance == sessionProvenance));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,compactionSummary);
+    return Object.hash(runtimeType,compactionSummary,sessionProvenance);
 }
 
 @override
 String toString() {
-    return 'HermesMetaDto(compactionSummary: $compactionSummary)';
+    return 'HermesMetaDto(compactionSummary: $compactionSummary, sessionProvenance: $sessionProvenance)';
 }
 
 
@@ -486,11 +500,11 @@ abstract mixin class _$HermesMetaDtoCopyWith<$Res> implements $HermesMetaDtoCopy
   factory _$HermesMetaDtoCopyWith(_HermesMetaDto value, $Res Function(_HermesMetaDto) _then) = __$HermesMetaDtoCopyWithImpl;
 @override @useResult
 $Res call({
- bool? compactionSummary
+ bool? compactionSummary, HermesSessionProvenanceDto? sessionProvenance
 });
 
 
-
+@override $HermesSessionProvenanceDtoCopyWith<$Res>? get sessionProvenance;
 
 }
 /// @nodoc
@@ -503,14 +517,27 @@ class __$HermesMetaDtoCopyWithImpl<$Res>
 
 /// Create a copy of HermesMetaDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? compactionSummary = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? compactionSummary = freezed,Object? sessionProvenance = freezed,}) {
   return _then(_HermesMetaDto(
 compactionSummary: freezed == compactionSummary ? _self.compactionSummary : compactionSummary // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,sessionProvenance: freezed == sessionProvenance ? _self.sessionProvenance : sessionProvenance // ignore: cast_nullable_to_non_nullable
+as HermesSessionProvenanceDto?,
   ));
 }
 
+/// Create a copy of HermesMetaDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$HermesSessionProvenanceDtoCopyWith<$Res>? get sessionProvenance {
+    if (_self.sessionProvenance == null) {
+    return null;
+  }
 
+  return $HermesSessionProvenanceDtoCopyWith<$Res>(_self.sessionProvenance!, (value) {
+    return _then(_self.copyWith(sessionProvenance: value));
+  });
+}
 }
 
 
@@ -650,6 +677,147 @@ class __$HermesTextContentDtoCopyWithImpl<$Res>
   return _then(_HermesTextContentDto(
 type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String?,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$HermesSessionProvenanceDto {
+
+ String? get reason;
+/// Create a copy of HermesSessionProvenanceDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$HermesSessionProvenanceDtoCopyWith<HermesSessionProvenanceDto> get copyWith => _$HermesSessionProvenanceDtoCopyWithImpl<HermesSessionProvenanceDto>(this as HermesSessionProvenanceDto, _$identity);
+
+  /// Serializes this HermesSessionProvenanceDto to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as HermesSessionProvenanceDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HermesSessionProvenanceDto&&(identical(other.reason, _this.reason) || other.reason == _this.reason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as HermesSessionProvenanceDto;
+  return Object.hash(runtimeType,_this.reason);
+}
+
+@override
+String toString() {
+  final _this = this as HermesSessionProvenanceDto;
+  return 'HermesSessionProvenanceDto(reason: ${_this.reason})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $HermesSessionProvenanceDtoCopyWith<$Res>  {
+  factory $HermesSessionProvenanceDtoCopyWith(HermesSessionProvenanceDto value, $Res Function(HermesSessionProvenanceDto) _then) = _$HermesSessionProvenanceDtoCopyWithImpl;
+@useResult
+$Res call({
+ String? reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$HermesSessionProvenanceDtoCopyWithImpl<$Res>
+    implements $HermesSessionProvenanceDtoCopyWith<$Res> {
+  _$HermesSessionProvenanceDtoCopyWithImpl(this._self, this._then);
+
+  final HermesSessionProvenanceDto _self;
+  final $Res Function(HermesSessionProvenanceDto) _then;
+
+/// Create a copy of HermesSessionProvenanceDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? reason = freezed,}) {
+  return _then(HermesSessionProvenanceDto(
+reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _HermesSessionProvenanceDto implements HermesSessionProvenanceDto {
+  const _HermesSessionProvenanceDto({required this.reason});
+  factory _HermesSessionProvenanceDto.fromJson(Map<String, dynamic> json) => _$HermesSessionProvenanceDtoFromJson(json);
+
+@override final  String? reason;
+
+/// Create a copy of HermesSessionProvenanceDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$HermesSessionProvenanceDtoCopyWith<_HermesSessionProvenanceDto> get copyWith => __$HermesSessionProvenanceDtoCopyWithImpl<_HermesSessionProvenanceDto>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$HermesSessionProvenanceDtoToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HermesSessionProvenanceDto&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
+
+@override
+String toString() {
+    return 'HermesSessionProvenanceDto(reason: $reason)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$HermesSessionProvenanceDtoCopyWith<$Res> implements $HermesSessionProvenanceDtoCopyWith<$Res> {
+  factory _$HermesSessionProvenanceDtoCopyWith(_HermesSessionProvenanceDto value, $Res Function(_HermesSessionProvenanceDto) _then) = __$HermesSessionProvenanceDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String? reason
+});
+
+
+
+
+}
+/// @nodoc
+class __$HermesSessionProvenanceDtoCopyWithImpl<$Res>
+    implements _$HermesSessionProvenanceDtoCopyWith<$Res> {
+  __$HermesSessionProvenanceDtoCopyWithImpl(this._self, this._then);
+
+  final _HermesSessionProvenanceDto _self;
+  final $Res Function(_HermesSessionProvenanceDto) _then;
+
+/// Create a copy of HermesSessionProvenanceDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? reason = freezed,}) {
+  return _then(_HermesSessionProvenanceDto(
+reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

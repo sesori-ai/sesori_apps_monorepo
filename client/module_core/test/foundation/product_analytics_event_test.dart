@@ -363,6 +363,20 @@ void main() {
           "session_message_edited",
           {"harness": "codex", "outcome": wireValue},
         ),
+      // Only the source's harness and the outcome: no session, title or summary.
+      for (final (outcome, wireValue) in [
+        (AnalyticsSessionSendOutcome.sent, "sent"),
+        (AnalyticsSessionSendOutcome.refusedBusy, "refused_busy"),
+        (AnalyticsSessionSendOutcome.refusedOther, "refused_other"),
+        (AnalyticsSessionSendOutcome.failed, "failed"),
+        (AnalyticsSessionSendOutcome.unsupported, "unsupported"),
+        (AnalyticsSessionSendOutcome.unconfirmed, "unconfirmed"),
+      ])
+        (
+          ProductAnalyticsEvent.sessionSentToSession(harness: AnalyticsHarness.claudeCode, outcome: outcome),
+          "session_sent_to_session",
+          {"harness": "claude_code", "outcome": wireValue},
+        ),
     ];
 
     for (final (event, expectedName, expectedParameters) in cases) {
