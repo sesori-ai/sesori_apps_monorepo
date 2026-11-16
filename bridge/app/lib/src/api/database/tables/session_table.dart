@@ -22,6 +22,10 @@ part "session_table.freezed.dart";
   name: "idx_sessions_children",
   columns: {#parentSessionId, #updatedAt, #sessionId},
 )
+@TableIndex(
+  name: "idx_sessions_forked_from",
+  columns: {#forkedFromSessionId},
+)
 @UseRowClass(SessionDto)
 class SessionTable() extends Table {
   @override

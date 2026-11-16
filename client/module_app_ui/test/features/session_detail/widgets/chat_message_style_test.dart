@@ -26,6 +26,7 @@ void main() {
                   key: const Key("pane"),
                   width: paneWidth,
                   child: UserMessageBubble(
+                    selectionArea: null,
                     markdown:
                         "Search codebase for relevant files, checking type definitions and resolving import paths.",
                     attachments: const [],
@@ -77,6 +78,7 @@ void main() {
           child: const Column(
             children: [
               UserMessageBubble(
+                selectionArea: null,
                 markdown: "Attached file: `/tmp/uploads/ses_1/2026-11-08-Bwr8O1/$name`",
                 attachments: [],
                 outlined: false,

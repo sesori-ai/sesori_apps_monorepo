@@ -15,8 +15,8 @@ sealed class ForkSessionRequest with _$ForkSessionRequest {
 
     /// Whether an archived origin whose worktree and branch are both gone
     /// gets a new worktree at the same path, starting at the commit of its
-    /// base branch it began from. Sent only on the retry after a
-    /// `worktreeBranchMissing` refusal.
+    /// base branch it began from. Always sent; true only on the retry after
+    /// a `worktreeBranchMissing` refusal.
     required bool recreateFromBase,
   }) = _ForkSessionRequest;
 
@@ -32,8 +32,8 @@ sealed class ForkPoint with _$ForkPoint {
   @FreezedUnionValue("afterMessage")
   const factory afterMessage({required String messageId}) = ForkPointAfterMessage;
 
-  /// Keeps everything before the turn that [messageId], a user message that
-  /// opens a turn, opens. On the session's first turn that is nothing.
+  /// Keeps everything before the turn opened by [messageId], the user message
+  /// that starts that turn. On the session's first turn, this keeps nothing.
   @FreezedUnionValue("beforeMessage")
   const factory beforeMessage({required String messageId}) = ForkPointBeforeMessage;
 

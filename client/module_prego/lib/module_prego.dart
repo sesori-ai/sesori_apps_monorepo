@@ -51,6 +51,7 @@ export 'components/surfaces/prego_sheet_actions.dart';
 export 'components/surfaces/prego_surfaces.dart';
 export 'icons/tabler_icons.g.dart';
 export 'icons/vespr_icons.g.dart';
+export 'interactions/prego_context_menu.dart';
 export 'interactions/prego_horizontal_drag_gesture_detector.dart';
 export 'interactions/prego_interaction_scope.dart';
 export 'interactions/prego_swipe_actions.dart';

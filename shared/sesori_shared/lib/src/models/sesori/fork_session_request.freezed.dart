@@ -18,8 +18,8 @@ mixin _$ForkSessionRequest {
 
  String get sessionId; ForkPoint get point;/// Whether an archived origin whose worktree and branch are both gone
 /// gets a new worktree at the same path, starting at the commit of its
-/// base branch it began from. Sent only on the retry after a
-/// `worktreeBranchMissing` refusal.
+/// base branch it began from. Always sent; true only on the retry after
+/// a `worktreeBranchMissing` refusal.
  bool get recreateFromBase;
 /// Create a copy of ForkSessionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -108,8 +108,8 @@ class _ForkSessionRequest implements ForkSessionRequest {
 @override final  ForkPoint point;
 /// Whether an archived origin whose worktree and branch are both gone
 /// gets a new worktree at the same path, starting at the commit of its
-/// base branch it began from. Sent only on the retry after a
-/// `worktreeBranchMissing` refusal.
+/// base branch it began from. Always sent; true only on the retry after
+/// a `worktreeBranchMissing` refusal.
 @override final  bool recreateFromBase;
 
 /// Create a copy of ForkSessionRequest

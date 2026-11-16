@@ -209,18 +209,18 @@ class SessionPromptService({
         model: model,
         handoff: handoff,
       ),
-      _PromptSendCommand(:final command, :final commandSource) => () {
+      _PromptSendCommand(:final command, :final commandSource) => () async {
         final arguments = parts.whereType<PromptPartText>().firstOrNull?.text;
         // Per the BridgePluginApi contract, sendCommand completes once the
         // backend has accepted the command — not when its run finishes — so
         // awaiting it here never holds the phone's relay request open for
         // the duration of the command's agent run. A command sends only its
         // text, so it saves no files.
-        return _sessionRepository.sendCommand(
+        return await _sessionRepository.sendCommand(
           sessionId: sessionId,
           promptId: promptId,
           command: command,
-          arguments: arguments ?? '',
+          arguments: await _withFirstCommandContext(sessionId: sessionId, arguments: arguments ?? ''),
           userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
           variant: variant,
           fastMode: fastMode,
@@ -304,6 +304,17 @@ class SessionPromptService({
   }) async {
     if (!await _chatHistory.isKnownEmpty(sessionId: sessionId)) return parts;
     return [...await _worktreeContextParts(sessionId: sessionId), ...parts];
+  }
+
+  /// [arguments], led by the same context when a command opens the
+  /// conversation, joined as session creation joins them.
+  Future<String> _withFirstCommandContext({required String sessionId, required String arguments}) async {
+    final context = await _withFirstPromptContext(sessionId: sessionId, parts: const []);
+    if (context case [DeliverablePromptPartText(:final text)]) {
+      final trimmedArguments = arguments.trim();
+      return trimmedArguments.isEmpty ? text.trimRight() : "${text.trimRight()}\n\n$trimmedArguments";
+    }
+    return arguments;
   }
 
   /// Checks the edit, then returns the send that rewinds through the plugin

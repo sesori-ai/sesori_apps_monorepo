@@ -569,7 +569,8 @@ class ChatHistoryService({
       storedOnly: false,
       backgroundRefresh: false,
     );
-    final turns = splitPromptTurns(messages: page.messages);
+    // Messages before the first prompt belong to no turn, so no fork keeps them.
+    final turns = splitPromptTurns(messages: page.messages).whereType<PromptSegment>().toList();
     final finishedTurns = running && turns.isNotEmpty ? turns.length - 1 : turns.length;
     ForkBoundary throughTurn(int index) => ForkBoundaryThroughMessage(messageId: turns[index].messages.last.info.id);
     switch (point) {
@@ -581,7 +582,7 @@ class ChatHistoryService({
         if (index == -1) return const ForkBoundaryNotBranchPoint();
         return index < finishedTurns ? throughTurn(index) : const ForkBoundaryTurnRunning();
       case ForkPointBeforeMessage(:final messageId):
-        final index = turns.indexWhere((turn) => turn is PromptSegment && turn.opener.info.id == messageId);
+        final index = turns.indexWhere((turn) => turn.opener.info.id == messageId);
         if (index == -1) return const ForkBoundaryNotBranchPoint();
         return index == 0 ? const ForkBoundaryEmpty() : throughTurn(index - 1);
     }

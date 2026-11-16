@@ -74,8 +74,8 @@ entirely along with its transcript and its dedicated worktree.
 - A fork shares its origin's worktree, so archiving or deleting either one while the other is live takes the
   shared-worktree path above. An archived session can still be forked on the bridge (see
   session-edit-and-fork.md); the fork is a live session in the same worktree. When archiving removed that worktree,
-  the fork recreates it at the same path; the archived origin is no sharer, so archiving or deleting the fork removes
-  it again.
+  the fork recreates it at the same path; the archived origin is no sharer, so archiving or deleting the fork with worktree
+  removal removes it again.
 - Before archiving removes a dedicated worktree, it records where HEAD stood: the branch it is on goes on every
   session row naming the worktree (null for a detached HEAD), and the HEAD commit is pinned under
   `refs/sesori/worktrees/<path hash>` so garbage collection keeps detached commits. Uncommitted changes are not kept.

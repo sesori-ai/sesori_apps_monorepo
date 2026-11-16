@@ -75,6 +75,7 @@ class ProjectActivityService({
           SesoriPluginManagementChanged() ||
           SesoriMcpInventoryChanged() ||
           SesoriMcpAuthenticationChanged() ||
+          SesoriScheduledTasksChanged() ||
           SesoriPluginInstallProgress() ||
           SesoriPluginAuthenticationProgress() ||
           SesoriSessionOptionsUpdated() ||

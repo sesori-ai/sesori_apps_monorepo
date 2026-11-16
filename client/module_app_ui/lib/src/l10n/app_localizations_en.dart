@@ -2970,6 +2970,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailCopy => 'Copy';
 
   @override
+  String get sessionDetailCopySelectedText => 'Copy selected text';
+
+  @override
+  String get sessionDetailSelectText => 'Select text';
+
+  @override
+  String get sessionDetailMessageCopied => 'Copied to clipboard';
+
+  @override
   String get sessionSidebarCollapse => 'Collapse sidebar';
 
   @override
