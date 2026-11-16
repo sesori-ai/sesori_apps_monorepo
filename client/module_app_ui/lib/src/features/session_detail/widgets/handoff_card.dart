@@ -54,8 +54,9 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
   /// coming down to it, so the card isn't thrown off screen.
   bool _holdsTop = true;
 
-  /// The room a short transcript keeps above it for the growth still to come,
-  /// given back once the card has grown.
+  /// The room a short transcript keeps above it for this card, and the part of
+  /// it for the growth still to come, given back once the card has grown.
+  double _reserved = 0;
   double _roomAhead = 0;
 
   String get _storageId => "handoff-card-expanded:${widget.messageId}";
@@ -70,10 +71,24 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
     _expansion.addStatusListener((status) {
       if (status.isCompleted && _roomAhead > 0) {
         giveBackTranscriptSpaceAbove(context: context, extent: _roomAhead);
+        _reserved -= _roomAhead;
         _roomAhead = 0;
       }
-      if (status.isDismissed) releaseTranscriptSpaceAbove(context: context);
+      if (status.isDismissed && _reserved > 0) {
+        giveBackTranscriptSpaceAbove(context: context, extent: _reserved);
+        _reserved = 0;
+      }
     });
+  }
+
+  @override
+  void deactivate() {
+    // A card leaving the transcript, as when the page closes mid-motion, gives
+    // back the room it kept; the lookup needs a context still in the tree.
+    if (_reserved > 0) giveBackTranscriptSpaceAbove(context: context, extent: _reserved);
+    _reserved = 0;
+    _roomAhead = 0;
+    super.deactivate();
   }
 
   @override
@@ -88,7 +103,9 @@ class _HandoffCardState() extends State<HandoffCard> with SingleTickerProviderSt
     _holdsTop = expanding || _topOnScreen();
     PageStorage.maybeOf(context)?.writeState(context, expanding, identifier: _storageId);
     final ahead = max(0.0, (_summaryHeight ?? 0) - HandoffCard.collapsedSummaryHeight);
-    if (expanding && reserveTranscriptSpaceAbove(context: context, ahead: ahead)) {
+    final reserved = expanding ? reserveTranscriptSpaceAbove(context: context, ahead: ahead) : 0.0;
+    if (reserved > 0) {
+      _reserved += reserved;
       _roomAhead = ahead;
       // The room is there to scroll into once the transcript lays out with it.
       WidgetsBinding.instance.addPostFrameCallback((_) {
