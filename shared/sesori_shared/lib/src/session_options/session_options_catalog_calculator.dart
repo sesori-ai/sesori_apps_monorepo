@@ -12,7 +12,7 @@ import "../models/sesori/session_variant.dart";
 ///
 /// Pure and stateless: it reads a catalog and returns a value, and never
 /// emits, persists, or calls a backend.
-class const SessionSelectionRules() {
+class const SessionOptionsCatalogCalculator() {
   /// The agents a user may pick. Hidden agents and sub-agents are backend
   /// bookkeeping, never picker entries.
   List<AgentInfo> selectableAgents({required List<AgentInfo> agents}) {
@@ -73,7 +73,9 @@ class const SessionSelectionRules() {
     if (model == null) return null;
     final variants = availableVariants(providers: providers, model: model);
     if (variants.any((variant) => variant.id == model.variant)) return model;
-    return model.copyWith(variant: defaultVariant(providers: providers, model: model));
+    return model.copyWith(
+      variant: defaultVariant(providers: providers, model: model),
+    );
   }
 
   /// The fast mode [model] offers, or null when it has none or the catalog no

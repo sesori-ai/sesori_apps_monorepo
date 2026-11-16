@@ -682,15 +682,17 @@ class SessionPromptService({
     required SessionPromptDefaults defaults,
     required SessionOptionsResponse catalog,
   }) {
-    const rules = SessionSelectionRules();
+    const catalogCalculator = SessionOptionsCatalogCalculator();
     final providers = catalog.providers.items;
     final model = defaults.model;
-    if (model != null && !rules.isModelAvailable(providers: providers, model: model)) return null;
+    if (model != null && !catalogCalculator.isModelAvailable(providers: providers, model: model)) return null;
     final agent = defaults.agent;
     return SessionPromptDefaults(
-      agent: agent == null ? null : rules.validatedAgentName(agents: catalog.agents.agents, candidates: [agent]),
-      model: rules.withResolvedVariant(providers: providers, model: model),
-      fastMode: rules.resolvedFastMode(providers: providers, model: model, requested: defaults.fastMode),
+      agent: agent == null
+          ? null
+          : catalogCalculator.validatedAgentName(agents: catalog.agents.agents, candidates: [agent]),
+      model: catalogCalculator.withResolvedVariant(providers: providers, model: model),
+      fastMode: catalogCalculator.resolvedFastMode(providers: providers, model: model, requested: defaults.fastMode),
     );
   }
 }

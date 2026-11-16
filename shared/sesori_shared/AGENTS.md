@@ -26,7 +26,7 @@ lib/
     ├── voice/           Dictation and project-glossary types
     ├── notifications/   Session notification identifiers
     ├── search/          Title matching
-    ├── session_options/ Selection rules against a backend's options catalog
+    ├── session_options/ Selection calculator for a backend's options catalog
     ├── reporting/       Failure reporter interface
     ├── concurrency/     Small async helpers
     ├── constants/       SSE constants

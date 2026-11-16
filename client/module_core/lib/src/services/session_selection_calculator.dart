@@ -25,12 +25,12 @@ class const ReconciledSelection({
 /// [ProviderModel.isAvailable]. Every screen now reconciles through [reconcile]
 /// so a selection cannot be validated one way in one place and another way
 /// elsewhere. The per-option rules it builds on come from
-/// [SessionSelectionRules], which the bridge shares.
+/// [SessionOptionsCatalogCalculator], which the bridge shares.
 ///
 /// Pure and stateless: it reads a catalog and returns a selection, and never
 /// emits, persists, or calls a backend. Const-constructed by its callers rather
 /// than resolved from the container, like the other calculators in this package.
-class const SessionSelectionCalculator() extends SessionSelectionRules {
+class const SessionSelectionCalculator() extends SessionOptionsCatalogCalculator {
   static const DefaultModelSelector _defaultModelSelector = DefaultModelSelector();
 
   /// The variant a switch to [model] runs at: the first of [candidates] the
