@@ -133,22 +133,17 @@ void main() {
       });
 
       test("sets the prompt-cache lifetime from the account's billing route", () {
-        PluginFastModeSupport? fastModeFor({required Object? account}) => repository
-            .map(
-              skillNames: const {},
-              handshake: {
-                "models": [
-                  {"value": "opus", "supportsFastMode": true},
-                ],
-                "account": account,
-              },
-            )
-            .providers
-            .providers
-            .single
-            .models
-            .single
-            .fastMode;
+        ClaudeBackendCatalog catalogFor({required Object? account}) => repository.map(
+          skillNames: const {},
+          handshake: {
+            "models": [
+              {"value": "opus", "supportsFastMode": true},
+            ],
+            "account": account,
+          },
+        );
+        PluginFastModeSupport? fastModeFor({required Object? account}) =>
+            catalogFor(account: account).providers.providers.single.models.single.fastMode;
 
         // Account shapes captured from CLI 2.1.325, identity fields omitted.
         const expected = <String, (Object?, int)>{
@@ -163,6 +158,12 @@ void main() {
           expect(
             fastModeFor(account: account),
             PluginFastModeSupport.available(promptCacheTtlSeconds: ttl),
+            reason: route,
+          );
+          // Auto-compaction's quiet window reads the same lifetime.
+          expect(
+            catalogFor(account: account).promptCacheLife,
+            Duration(seconds: ttl),
             reason: route,
           );
         }

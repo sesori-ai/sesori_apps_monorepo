@@ -367,6 +367,11 @@ class OpenCodeV2Service({
     );
   }
 
+  /// The model [sessionId] runs on: its own, or the project default when it
+  /// has none yet.
+  Future<PluginAgentModel?> sessionModel({required String sessionId}) =>
+      _repository.getSessionModel(sessionId: sessionId);
+
   Future<void> _select({
     required String sessionId,
     required String? agent,

@@ -133,6 +133,20 @@ class CursorPlugin._({
   @override
   String? get authMethodId => CursorBinary.acpAuthMethodId;
 
+  /// Cursor caches Anthropic models for 5 minutes. Its other models cache
+  /// for 30 minutes or longer, which Sesori treats as unknown.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async {
+    final modelId =
+        _configurationTracker.snapshotForSession(sessionId: sessionId).modelId ?? _catalogTracker.currentModelId;
+    if (modelId == null) return null;
+    final family = modelId.split(RegExp("[-.]")).first;
+    return _anthropicFamilies.contains(family) ? const Duration(minutes: 5) : null;
+  }
+
+  /// The first word of Cursor's ids for Anthropic models, such as `sonnet-4.6`.
+  static const Set<String> _anthropicFamilies = {"claude", "sonnet", "opus", "haiku", "fable"};
+
   @override
   Future<AcpSessionReplayCollector> createSessionReplayCollector({
     required String sessionId,

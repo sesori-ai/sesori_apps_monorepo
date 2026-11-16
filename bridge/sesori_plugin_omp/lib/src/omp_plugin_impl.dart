@@ -122,6 +122,12 @@ class OmpPlugin._({
   @override
   String? get authMethodId => OmpBinary.acpAuthMethodId;
 
+  /// Oh My Pi caches for 5 minutes by default ("short" retention), and an
+  /// Anthropic subscription seat for an hour. The seat is not visible over
+  /// ACP, so this answers the shorter life, which stays warm on either.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => const Duration(minutes: 5);
+
   @override
   bool get supportsFormElicitation => true;
 
