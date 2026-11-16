@@ -77,8 +77,9 @@ the file and what a prompt to a running target does.
   writes) is not a final answer yet. The bridge finishes the send regardless,
   so the app reads the newest messages of both sessions every 10 s, failing
   quietly while it is offline, for up to 15 minutes:
-  - The target holding the handoff prompt from the source, with the source's
-    newest request for the target still marked sent, shows the Sent alert
+  - The target holding a handoff prompt from the source written after the
+    source's newest request for the target, with that request still marked
+    sent, shows the Sent alert (an earlier send's prompt doesn't count)
     above, and archives the source when the switch was on, as a direct answer
     would.
   - The source's newest request for the target marked not sent shows

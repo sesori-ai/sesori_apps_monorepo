@@ -220,22 +220,26 @@ class SessionActionService({
       if (await _selectedComputerService.targetBridgeId() != computer) return null;
       final request = await _newestSummaryRequest(sourceSessionId: sourceSessionId, targetSessionId: targetSessionId);
       switch (request) {
-        case MessageHandoffNotSent():
+        case (stamp: MessageHandoffNotSent(), created: _):
           return const SendToSessionNotSent();
-        case MessageHandoffSent():
-          if (await _targetHoldsHandoff(sourceSessionId: sourceSessionId, targetSessionId: targetSessionId)) {
-            return const SendToSessionSent();
-          }
-        case MessageHandoffReceived() || MessageHandoffUnknown() || null:
+        case (stamp: MessageHandoffSent(), :final created):
+          final accepted = await _targetHoldsHandoff(
+            sourceSessionId: sourceSessionId,
+            targetSessionId: targetSessionId,
+            notBefore: created,
+          );
+          if (accepted) return const SendToSessionSent();
+        case (stamp: MessageHandoffReceived() || MessageHandoffUnknown(), created: _) || null:
           break;
       }
     }
     return null;
   }
 
-  /// The stamp on the source's newest summary request for the target, or
-  /// null when the read failed or holds none yet.
-  Future<MessageHandoff?> _newestSummaryRequest({
+  /// The stamp on the source's newest summary request for the target, with
+  /// when the bridge wrote it, or null when the read failed or holds none
+  /// with a time yet.
+  Future<({MessageHandoff stamp, int created})?> _newestSummaryRequest({
     required String sourceSessionId,
     required String targetSessionId,
   }) async {
@@ -245,19 +249,31 @@ class SessionActionService({
           case MessageUser(
             handoff: final stamp? &&
                 (MessageHandoffSent(targetSessionId: final to) || MessageHandoffNotSent(targetSessionId: final to)),
+            time: MessageTime(:final created),
           )
           when to == targetSessionId) {
-        return stamp;
+        return (stamp: stamp, created: created);
       }
     }
     return null;
   }
 
-  Future<bool> _targetHoldsHandoff({required String sourceSessionId, required String targetSessionId}) async {
+  /// Whether the target holds a handoff prompt from the source written no
+  /// earlier than [notBefore], so one left by an earlier send of the same
+  /// source does not count.
+  Future<bool> _targetHoldsHandoff({
+    required String sourceSessionId,
+    required String targetSessionId,
+    required int notBefore,
+  }) async {
     final messages = await _newestMessages(sessionId: targetSessionId);
     return messages.any(
       (message) => switch (message.info) {
-        MessageUser(handoff: MessageHandoffReceived(sourceSessionId: final from)) => from == sourceSessionId,
+        MessageUser(
+          handoff: MessageHandoffReceived(sourceSessionId: final from),
+          time: MessageTime(:final created),
+        ) =>
+          from == sourceSessionId && created >= notBefore,
         MessageUser() || MessageAssistant() || MessageError() => false,
       },
     );

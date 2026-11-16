@@ -96,8 +96,8 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   any other refusal (summary or transcript failure, archived or same session, a harness no longer offering the session's
   options, target refusal, or a reason the app doesn't know), `failed` for a failed request, `unsupported` for a bridge
   that predates sending, and `unconfirmed` when the answer never arrived. When the answer was lost but the app later
-  read the outcome from the two sessions, it reports `sent` or `refused_other` instead. It never carries either session, a title, the
-  summary, or error text. A running source caught locally, which offers Stop instead, and a cancelled picker report
+  read the outcome from the two sessions, it reports `sent` or `refused_other` instead. It never carries either session,
+  a title, the summary, or error text. A running source caught locally, which offers Stop instead, and a cancelled picker report
   nothing. The desktop does not send it to the warehouse yet, because the auth server's product-event route doesn't
   accept it. Reporting reads it from the raw export: adoption is read as sends per harness and the share of each
   outcome.

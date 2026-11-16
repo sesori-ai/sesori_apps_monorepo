@@ -214,19 +214,23 @@ void main() {
     });
 
     group("whose answer was lost", () {
-      MessageWithParts user({required String id, required String sessionId, required MessageHandoff? handoff}) =>
-          MessageWithParts(
-            info: Message.user(
-              id: id,
-              sessionID: sessionId,
-              agent: null,
-              time: null,
-              promptId: null,
-              invocation: null,
-              handoff: handoff,
-            ),
-            parts: const [],
-          );
+      MessageWithParts user({
+        required String id,
+        required String sessionId,
+        required MessageHandoff? handoff,
+        required int created,
+      }) => MessageWithParts(
+        info: Message.user(
+          id: id,
+          sessionID: sessionId,
+          agent: null,
+          time: MessageTime(created: created, completed: null),
+          promptId: null,
+          invocation: null,
+          handoff: handoff,
+        ),
+        parts: const [],
+      );
 
       const request = MessageHandoff.sent(targetSessionId: "target", targetTitle: null);
       const notSent = MessageHandoff.notSent(targetSessionId: "target", targetTitle: null);
@@ -283,13 +287,14 @@ void main() {
           elapsed: const Duration(seconds: 15),
           meanwhile: (async) {
             async.elapse(const Duration(seconds: 25));
-            // Still being written: the target holds nothing yet.
-            pages["source"] = [user(id: "request", sessionId: "source", handoff: request)];
-            pages["target"] = [];
+            pages["source"] = [user(id: "request", sessionId: "source", handoff: request, created: 20)];
+            // Still being written: the target holds only an earlier send's handoff.
+            pages["target"] = [user(id: "earlier", sessionId: "target", handoff: received, created: 10)];
             async.elapse(const Duration(seconds: 10));
             pages["target"] = [
-              user(id: "prompt", sessionId: "target", handoff: received),
-              user(id: "next", sessionId: "target", handoff: null),
+              user(id: "earlier", sessionId: "target", handoff: received, created: 10),
+              user(id: "prompt", sessionId: "target", handoff: received, created: 30),
+              user(id: "next", sessionId: "target", handoff: null, created: 40),
             ];
           },
         );
@@ -300,13 +305,20 @@ void main() {
         ]);
       });
 
+      test("is not sent on the strength of a handoff an earlier send left in the target", () {
+        pages["source"] = [user(id: "request", sessionId: "source", handoff: request, created: 20)];
+        pages["target"] = [user(id: "earlier", sessionId: "target", handoff: received, created: 10)];
+
+        expect(sendFor(elapsed: const Duration(seconds: 30)), isNull);
+      });
+
       test("is not sent when the source's newest request for the target is marked not sent", () {
         pages["source"] = [
-          user(id: "earlier", sessionId: "source", handoff: request),
-          user(id: "request", sessionId: "source", handoff: notSent),
+          user(id: "earlier", sessionId: "source", handoff: request, created: 10),
+          user(id: "request", sessionId: "source", handoff: notSent, created: 30),
         ];
         // An earlier send's handoff doesn't count for this one.
-        pages["target"] = [user(id: "prompt", sessionId: "target", handoff: received)];
+        pages["target"] = [user(id: "prompt", sessionId: "target", handoff: received, created: 20)];
 
         expect(sendFor(elapsed: const Duration(seconds: 10)), isA<SendToSessionNotSent>());
         expect(reportedEvents(), [
@@ -319,7 +331,7 @@ void main() {
       });
 
       test("stays unconfirmed when no outcome shows within the bridge's wait", () {
-        pages["source"] = [user(id: "request", sessionId: "source", handoff: request)];
+        pages["source"] = [user(id: "request", sessionId: "source", handoff: request, created: 20)];
         pages["target"] = [];
 
         expect(sendFor(elapsed: const Duration(minutes: 14, seconds: 50)), isNull);
