@@ -669,9 +669,9 @@ notice (see [Failed-turn notices sent as text](#failed-turn-notices-sent-as-text
 
 Hermes 0.21.5 keeps a `session/cancel` that reaches an idle session and refuses that session's next prompt with "Stopped
 waiting for another Hermes process on this session. Your message was not processed." So the Hermes plugin sends no
-cancel while no turn or sub-agent of the session runs. Verified live on 2026-11-16 on the test proxy: after a Stop on an
-idle session, the next prompt is answered. ⚠️ A Stop that reaches Hermes just after its turn ended can still cost the
-next prompt, which then needs resending.
+cancel while the session has no turn running or queued and no sub-agent work. Verified live on 2026-11-16 on the test
+proxy: after a Stop on an idle session, the next prompt is answered. ⚠️ A Stop that reaches Hermes just after its turn
+ended can still cost the next prompt, which then needs resending.
 
 ## Pre-start catalog import
 
@@ -1291,7 +1291,8 @@ cancelling the current one.
 
 ² A first check found that Hermes ignored the first question after a Stop,
 answering "Stopped waiting for another Hermes process on this session. Your
-message was not processed." That is fixed: see [Stopped turns](#stopped-turns).
+message was not processed." A Stop on an idle session no longer does this; a
+Stop that lands just after a turn ends still can. See [Stopped turns](#stopped-turns).
 
 Checked live on 2026-11-16 (UTC) against a source-run bridge on its local debug
 server, with one Pi session as the source and a fresh session of each installed
