@@ -16,7 +16,7 @@ import "transcript_motion.dart";
 /// so nothing around it moves when the turn ends. Tapping the line opens the
 /// agent's reply in a sheet once the turn has ended; Open opens the target.
 class const HandoffMarkerRow({super.key, required final TranscriptHandoffMarker marker}) extends StatelessWidget {
-  /// The row's one height, a button's at the theme's density.
+  /// The row's one height: the minimum tap target, so Open is easy to hit.
   static const double height = 44;
 
   @override

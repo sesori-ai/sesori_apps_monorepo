@@ -169,7 +169,7 @@ class const _MobileSessionDetailBody({
                 ),
               ),
         pageChrome: null,
-        // Audit views retain read-only inventory without session mutations.
+        // Audit and read-only views retain read-only inventory without session mutations.
         menuEntriesBuilder: ({required context, required session, required isBusy}) {
           final pageEntries = [
             if (context.read<SessionDetailCubit>().state.offersMcp)
@@ -199,7 +199,7 @@ class const _MobileSessionDetailBody({
                 },
               ),
           ];
-          if (auditView || session.parentID != null) return pageEntries;
+          if (auditView || readOnly || session.parentID != null) return pageEntries;
           return _sessionActions.sessionMenuEntries(
             context: context,
             actions: context.read<SessionActionsCubit>(),

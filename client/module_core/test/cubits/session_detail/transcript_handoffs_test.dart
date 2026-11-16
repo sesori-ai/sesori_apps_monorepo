@@ -189,6 +189,34 @@ void main() {
       expect(handoffs.foldedMessageIds, {"step", "steer", "after"});
     });
 
+    test("a handoff from another session landing in the summary turn keeps its card", () {
+      final handoffs = _build(
+        messages: [
+          _user(id: "request", handoff: _sent),
+          _agent(
+            id: "step",
+            parts: [
+              _text(text: "Goal: fix"),
+              _runningTool(),
+            ],
+          ),
+          _user(
+            id: "received",
+            handoff: const MessageHandoff.received(
+              sourceSessionId: "other",
+              sourceTitle: "Other",
+              summary: "Goal: other",
+              transcriptPath: "/tmp/other.md",
+            ),
+          ),
+        ],
+        isBusy: true,
+      );
+
+      expect(handoffs.foldedMessageIds, {"step"});
+      expect(handoffs.cards.keys, ["received"]);
+    });
+
     test("a request the turn rule reads as a follow-up folds from where it is", () {
       final handoffs = _build(
         messages: [

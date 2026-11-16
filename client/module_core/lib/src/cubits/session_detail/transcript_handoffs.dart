@@ -104,7 +104,11 @@ class const TranscriptHandoffBuilder() {
         MessageUser(handoff: MessageHandoffNotSent()) => rest.takeWhile((message) => message.info is! MessageUser),
         MessageUser() || MessageAssistant() || MessageError() => rest,
       };
-      folded.addAll([for (final message in folds) message.info.id]);
+      for (final message in folds) {
+        // Another session's handoff landing in this turn keeps its card.
+        if (message.info case MessageUser(handoff: MessageHandoffReceived())) continue;
+        folded.add(message.info.id);
+      }
       final reply = rest.takeWhile((message) => message.info is! MessageUser).toList();
       final newest = turnIndex == turns.turns.length - 1;
       final marker = switch (request.info) {

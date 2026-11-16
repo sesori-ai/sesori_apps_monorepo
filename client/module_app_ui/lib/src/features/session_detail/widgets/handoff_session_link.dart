@@ -11,22 +11,31 @@ import "../session_detail_presentation_scope.dart";
 /// only the session, so the page reads it first; one that can't be read, as
 /// when it was deleted, answers the tap with an alert.
 Future<void> openHandoffSession({required BuildContext context, required String sessionId}) async {
-  final scope = SessionDetailPresentationScope.read(context);
-  final alerts = PregoPopupAlertPresenter.of(context);
-  final unavailable = context.loc.transcriptHandoffSessionUnavailable;
-  final session = await context.read<SessionDetailCubit>().linkedSession(sessionId: sessionId);
-  if (!context.mounted) return;
-  if (session == null) {
-    alerts.show(title: unavailable, variant: PregoPopupAlertsNotificationsVariant.error);
-    return;
+  // A second tap while the first reads the session would open it twice; the
+  // first tap's answer is on its way.
+  if (!_reading.add(sessionId)) return;
+  try {
+    final scope = SessionDetailPresentationScope.read(context);
+    final alerts = PregoPopupAlertPresenter.of(context);
+    final unavailable = context.loc.transcriptHandoffSessionUnavailable;
+    final session = await context.read<SessionDetailCubit>().linkedSession(sessionId: sessionId);
+    if (!context.mounted) return;
+    if (session == null) {
+      alerts.show(title: unavailable, variant: PregoPopupAlertsNotificationsVariant.error);
+      return;
+    }
+    scope.openSession(
+      projectId: session.projectID,
+      sessionId: session.id,
+      sessionTitle: session.title,
+      readOnly: session.time?.archived != null,
+    );
+  } finally {
+    _reading.remove(sessionId);
   }
-  scope.openSession(
-    projectId: session.projectID,
-    sessionId: session.id,
-    sessionTitle: session.title,
-    readOnly: session.time?.archived != null,
-  );
 }
+
+final _reading = <String>{};
 
 /// A session's title as a handoff names it, or the localized stand-in.
 String handoffSessionName({required BuildContext context, required String? title}) {

@@ -14,25 +14,30 @@ Future<void> showTranscriptMarkdownSheet({
   required String title,
   required String markdown,
 }) {
-  final openExternalLink = SessionDetailPresentationScope.read(context).openExternalLink;
+  final scope = SessionDetailPresentationScope.read(context);
   return showPregoModal<void>(
     context: context,
     title: title,
     width: PregoModalWidth.reading,
     builder: (modalContext) {
       final prego = modalContext.prego;
-      return DeferUntilRouteOpen(
-        contentLength: markdown.length,
-        child: PregoReadableSelectionArea(
-          child: MarkdownBody(
-            data: markdown,
-            selectable: false,
-            blockSyntaxes: sessionMarkdownBlockSyntaxes,
-            imageBuilder: (uri, title, alt) => MarkdownMessageImage(uri: uri, semanticLabel: alt),
-            onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
-            styleSheet: buildSessionMarkdownStyleSheet(
-              prego: prego,
-              paragraphStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+      // The sheet's route does not inherit the page's scope, which its images
+      // and their viewer read.
+      return scope.around(
+        openSession: scope.openSession,
+        child: DeferUntilRouteOpen(
+          contentLength: markdown.length,
+          child: PregoReadableSelectionArea(
+            child: MarkdownBody(
+              data: markdown,
+              selectable: false,
+              blockSyntaxes: sessionMarkdownBlockSyntaxes,
+              imageBuilder: (uri, title, alt) => MarkdownMessageImage(uri: uri, semanticLabel: alt),
+              onTapLink: buildMarkdownLinkTapHandler(openExternalLink: scope.openExternalLink),
+              styleSheet: buildSessionMarkdownStyleSheet(
+                prego: prego,
+                paragraphStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+              ),
             ),
           ),
         ),

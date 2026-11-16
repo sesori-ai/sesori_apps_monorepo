@@ -17,7 +17,8 @@
 | 11 Reconcile docs and harness rows | Not started | |
 | 12 Verify and retire | Not started | |
 
-Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 7.a←7; 8←4; 8.a←8; 9←7.a; 10←7; 11←5,8,9,10; 12←11.
+Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 7.a←7; 8←4; 8.a←8;
+9←7.a; 10←7; 11←5,8,9,10; 12←11.
 
 ## Product questions
 
