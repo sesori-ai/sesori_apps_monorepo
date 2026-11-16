@@ -2,16 +2,22 @@
 
 | Step | Status | PR |
 | --- | --- | --- |
-| 1 Raise the plan | In PR | #2635 |
-| 2 Stopped line: wire kind, client line, Pi and OpenCode | Not started | |
-| 3 Stopped on ACP harnesses and omp | Not started | |
-| 4 Stopped on Claude Code and Codex | Not started | |
-| 5 Bridge records interrupted turns | Not started | |
-| 6 Interrupted line, Continue and list label | Not started | |
-| 7 Reconcile regression docs and harness rows | Not started | |
+| 1 Raise the plan | Merged | #2635 |
+| 2 Stopped line: wire kind, client line, Pi and OpenCode | Merged | #2646 |
+| 3 Stopped on ACP harnesses and omp | Merged | #2668 |
+| 4 Stopped on Claude Code and Codex | Merged | #2667 |
+| 5 Bridge records interrupted turns | Merged | #2651 |
+| 6 Interrupted line, Continue and list label | Merged | #2673 |
+| 7 Reconcile regression docs and harness rows | In PR | |
 | 8 Verify and retire | Not started | |
 
 Dependencies: 2←1; 3←2; 4←2; 5←1; 6←2,5; 7←3,4,6; 8←7.
+
+Follow-ups outside the numbered steps, both merged:
+
+- #2675: a stopped turn's live-only rows (Codex's streamed reply, the live Stopped row) stay across re-imports while
+  the replay holds the turn's prompt, so Stopped persists after a reload on the ACP harnesses and OMP too.
+- #2690: the bridge's prompt index splits turns at a bridge stop, as the transcript does.
 
 ## Product questions
 
@@ -37,3 +43,4 @@ All answered (round 1, 2026-11-15).
 
 - 2026-11-15: Q1 A (Interrupted line, Continue, list label; no auto-continue) and Q3 A (grey Stopped line on every
   harness, persistence where the harness records the stop) applied.
+- #2675: Stopped also persists after a reload where the harness records no stop, through the bridge's chat history.

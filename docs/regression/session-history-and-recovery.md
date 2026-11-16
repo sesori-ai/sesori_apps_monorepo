@@ -404,6 +404,11 @@ reconnect or restart.
   so a re-read drops it. That is how a session rolled back outside Sesori — an
   edited message in the backend's own client, with no removal events reaching
   this bridge — stops showing the messages it replaced.
+  A turn holding a stopped row (`kind: stopped`) is the exception: its rows the
+  replay lacks, up to its last stopped row, stay while the replay still holds
+  the turn's prompt, so a Codex reply the rollout never recorded and the
+  Stopped row of a harness that records no stop survive re-imports. A rollback
+  that removes the prompt removes them too.
 - Live streamed messages and parts become queryable immediately after they
   finalize, with the same visibility filtering and tool-output bound a backend
   fetch returns. Reasoning finalizes when the stream advances to assistant or
@@ -793,6 +798,11 @@ rules where supported.
   name.
 - OMP omits a reply whose model call failed from its replay, so a later forced
   re-import drops those failed replies stored before the previous import.
+- A turn that finished while the bridge was down, which only OpenCode 2 on its
+  shared background server can do, reads idle at restart and shows Interrupted
+  with Continue although it completed. A harness process that dies mid-turn
+  while the bridge stays up and never reports idle keeps its running row until
+  the next bridge restart, which then reports it interrupted.
 - A first-ever open or a stale re-read still needs the backend; if it is
   unavailable and cannot auto-start, that read fails. A store-only read avoids
   that at the cost of a possibly incomplete transcript. A store-only read also

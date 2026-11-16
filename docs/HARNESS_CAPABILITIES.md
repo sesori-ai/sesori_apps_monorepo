@@ -701,6 +701,14 @@ cancel while the session has no turn running or queued and no sub-agent work. Ve
 proxy: after a Stop on an idle session, the next prompt is answered. ⚠️ A Stop that reaches Hermes just after its turn
 ended can still cost the next prompt, which then needs resending.
 
+## Interrupted turns
+
+The bridge records a turn its own stop cut off for every harness, from the session's busy and idle status, with no
+plugin involvement (see session-history-and-recovery.md). OpenCode 2 on the shared background server keeps running a
+turn after the bridge dies: a turn still busy at restart is adopted and shows no Interrupted line, but one that finished
+while the bridge was down reads idle and shows Interrupted with Continue although it completed. No harness-neutral
+signal tells the two apart.
+
 ## Pre-start catalog import
 
 | Capability | OpenCode |
