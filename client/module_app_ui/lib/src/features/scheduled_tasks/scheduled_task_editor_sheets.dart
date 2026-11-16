@@ -45,18 +45,13 @@ ScheduledTaskEditorReady? _readyOf(ScheduledTaskEditorState state) => switch (st
   ScheduledTaskEditorLoading() || ScheduledTaskEditorUnavailable() => null,
 };
 
-/// A sheet's content, growing and shrinking with its choices rather than
-/// snapping to a new height.
+/// A sheet's content. Each part that comes and goes animates its own room,
+/// so the rows below it glide rather than jump, and the sheet follows.
 class const _SheetBody({required final List<Widget> children}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
-    child: AnimatedSize(
-      duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
-      alignment: Alignment.topCenter,
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
-    ),
+    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
   );
 }
 
@@ -83,67 +78,88 @@ class const _WhenSheet() extends StatelessWidget {
           ],
         ),
         const SizedBox(height: PregoSpacing.xl),
-        PregoGroupedRows(
-          children: switch (schedule) {
-            TaskScheduleOnce(:final at) => [
-              PregoDateTimeField(
-                key: const Key("scheduled-task-once-at"),
-                icon: TablerRegular.calendar,
-                label: loc.scheduledTaskDateAndTime,
-                valueLabel: labels.localDateTime(at: at),
-                value: _dateTimeOf(at),
-                mode: PregoDateTimeFieldMode.dateAndTime,
-                // A one-off time that has passed cannot be picked.
-                minimum: cubit.zoneNow,
-                onChanged: (moment) => cubit.setDateTime(at: _localOf(moment)),
-              ),
-            ],
-            TaskScheduleDaily(:final time) || TaskScheduleWeekdays(:final time) || TaskScheduleWeekly(:final time) => [
-              _TimeField(
-                time: time,
-                label: loc.scheduledTaskTime,
-                valueLabel: labels.timeOfDay(time: time),
-              ),
-            ],
-            TaskScheduleEveryHours(:final hours, :final start) => [
-              _HoursRow(hours: hours),
-              PregoDateTimeField(
-                key: const Key("scheduled-task-interval-start"),
-                icon: TablerRegular.clock_play,
-                label: loc.scheduledTaskStarting,
-                valueLabel: labels.localDateTime(at: start),
-                value: _dateTimeOf(start),
-                mode: PregoDateTimeFieldMode.dateAndTime,
-                minimum: null,
-                onChanged: (moment) => cubit.setDateTime(at: _localOf(moment)),
-              ),
-            ],
-            TaskScheduleUnknown() => const [],
+        // Every few hours has two rows where the others have one.
+        AnimatedSize(
+          duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+          curve: transcriptMotionCurve,
+          alignment: Alignment.topCenter,
+          child: PregoGroupedRows(
+            children: switch (schedule) {
+              TaskScheduleOnce(:final at) => [
+                PregoDateTimeField(
+                  key: const Key("scheduled-task-once-at"),
+                  icon: TablerRegular.calendar,
+                  label: loc.scheduledTaskDateAndTime,
+                  valueLabel: labels.localDateTime(at: at),
+                  value: _dateTimeOf(at),
+                  mode: PregoDateTimeFieldMode.dateAndTime,
+                  // A one-off time that has passed cannot be picked.
+                  minimum: cubit.zoneNow,
+                  onChanged: (moment) => cubit.setDateTime(at: _localOf(moment)),
+                ),
+              ],
+              TaskScheduleDaily(:final time) ||
+              TaskScheduleWeekdays(:final time) ||
+              TaskScheduleWeekly(:final time) => [
+                _TimeField(
+                  time: time,
+                  label: loc.scheduledTaskTime,
+                  valueLabel: labels.timeOfDay(time: time),
+                ),
+              ],
+              TaskScheduleEveryHours(:final hours, :final start) => [
+                _HoursRow(hours: hours),
+                PregoDateTimeField(
+                  key: const Key("scheduled-task-interval-start"),
+                  icon: TablerRegular.clock_play,
+                  label: loc.scheduledTaskStarting,
+                  valueLabel: labels.localDateTime(at: start),
+                  value: _dateTimeOf(start),
+                  mode: PregoDateTimeFieldMode.dateAndTime,
+                  minimum: null,
+                  onChanged: (moment) => cubit.setDateTime(at: _localOf(moment)),
+                ),
+              ],
+              TaskScheduleUnknown() => const [],
+            },
+          ),
+        ),
+        AnimatedBanner(
+          banner: switch (schedule) {
+            TaskScheduleWeekly(:final days) => Padding(
+              padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
+              child: _Weekdays(days: days, labels: labels),
+            ),
+            _ => null,
           },
         ),
-        if (schedule case TaskScheduleWeekly(:final days)) ...[
-          const SizedBox(height: PregoSpacing.md),
-          _Weekdays(days: days, labels: labels),
-        ],
-        if (ready.offersMissedRunChoice) ...[
-          SessionListHeading(heading: loc.scheduledTaskMissedHeading, isFirst: false),
-          PregoGroupedRows(
-            children: [
-              _ChoiceRow(
-                key: const Key("scheduled-task-run-when-back"),
-                label: loc.scheduledTaskRunWhenBack,
-                selected: ready.missedRunPolicy != TaskMissedRunPolicy.waitForNext,
-                onTap: () => cubit.setMissedRunPolicy(policy: TaskMissedRunPolicy.runWhenBack),
-              ),
-              _ChoiceRow(
-                key: const Key("scheduled-task-wait-for-next"),
-                label: loc.scheduledTaskWaitForNext,
-                selected: ready.missedRunPolicy == TaskMissedRunPolicy.waitForNext,
-                onTap: () => cubit.setMissedRunPolicy(policy: TaskMissedRunPolicy.waitForNext),
-              ),
-            ],
-          ),
-        ],
+        AnimatedBanner(
+          banner: ready.offersMissedRunChoice
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SessionListHeading(heading: loc.scheduledTaskMissedHeading, isFirst: false),
+                    PregoGroupedRows(
+                      children: [
+                        _ChoiceRow(
+                          key: const Key("scheduled-task-run-when-back"),
+                          label: loc.scheduledTaskRunWhenBack,
+                          selected: ready.missedRunPolicy != TaskMissedRunPolicy.waitForNext,
+                          onTap: () => cubit.setMissedRunPolicy(policy: TaskMissedRunPolicy.runWhenBack),
+                        ),
+                        _ChoiceRow(
+                          key: const Key("scheduled-task-wait-for-next"),
+                          label: loc.scheduledTaskWaitForNext,
+                          selected: ready.missedRunPolicy == TaskMissedRunPolicy.waitForNext,
+                          onTap: () => cubit.setMissedRunPolicy(policy: TaskMissedRunPolicy.waitForNext),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : null,
+        ),
       ],
     );
   }
@@ -271,58 +287,51 @@ class const _EachRunSheet() extends StatelessWidget {
       TaskRunModeNewSession() || TaskRunModeUnknown() => null,
     };
     final approveAll = ready.approvalMode == TaskApprovalMode.approveAll;
-    // The auto-compact switch opens and folds on its own under Continue, so
-    // the Approvals rows below glide rather than jump; the sheet follows it.
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          PregoGroupedRows(
-            children: [
-              _ChoiceRow(
-                key: const Key("scheduled-task-new-session"),
-                label: loc.scheduledTaskStartsNewSession,
-                selected: autoCompact == null,
-                onTap: () => cubit.setSameSession(sameSession: false),
-              ),
-              _ChoiceRow(
-                key: const Key("scheduled-task-same-session"),
-                label: loc.scheduledTaskContinuesSession,
-                selected: autoCompact != null,
-                onTap: () => cubit.setSameSession(sameSession: true),
-              ),
-            ],
-          ),
-          AnimatedBanner(
-            banner: switch (autoCompact) {
-              final autoCompact? => Padding(
-                padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
-                child: _AutoCompactRow(autoCompact: autoCompact),
-              ),
-              null => null,
-            },
-          ),
-          SessionListHeading(heading: loc.scheduledTaskApprovalsHeading, isFirst: false),
-          PregoGroupedRows(
-            children: [
-              _ChoiceRow(
-                key: const Key("scheduled-task-approvals-ask"),
-                label: loc.scheduledTaskApprovalsAsk,
-                selected: !approveAll,
-                onTap: () => cubit.setApprovalMode(mode: TaskApprovalMode.ask),
-              ),
-              _ChoiceRow(
-                key: const Key("scheduled-task-approvals-all"),
-                label: loc.scheduledTaskApprovalsAll,
-                selected: approveAll,
-                onTap: () => cubit.setApprovalMode(mode: TaskApprovalMode.approveAll),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return _SheetBody(
+      children: [
+        PregoGroupedRows(
+          children: [
+            _ChoiceRow(
+              key: const Key("scheduled-task-new-session"),
+              label: loc.scheduledTaskStartsNewSession,
+              selected: autoCompact == null,
+              onTap: () => cubit.setSameSession(sameSession: false),
+            ),
+            _ChoiceRow(
+              key: const Key("scheduled-task-same-session"),
+              label: loc.scheduledTaskContinuesSession,
+              selected: autoCompact != null,
+              onTap: () => cubit.setSameSession(sameSession: true),
+            ),
+          ],
+        ),
+        AnimatedBanner(
+          banner: switch (autoCompact) {
+            final autoCompact? => Padding(
+              padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
+              child: _AutoCompactRow(autoCompact: autoCompact),
+            ),
+            null => null,
+          },
+        ),
+        SessionListHeading(heading: loc.scheduledTaskApprovalsHeading, isFirst: false),
+        PregoGroupedRows(
+          children: [
+            _ChoiceRow(
+              key: const Key("scheduled-task-approvals-ask"),
+              label: loc.scheduledTaskApprovalsAsk,
+              selected: !approveAll,
+              onTap: () => cubit.setApprovalMode(mode: TaskApprovalMode.ask),
+            ),
+            _ChoiceRow(
+              key: const Key("scheduled-task-approvals-all"),
+              label: loc.scheduledTaskApprovalsAll,
+              selected: approveAll,
+              onTap: () => cubit.setApprovalMode(mode: TaskApprovalMode.approveAll),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

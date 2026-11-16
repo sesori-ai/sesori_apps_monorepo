@@ -48,7 +48,11 @@ void main() {
   PregoSwitch autoCompactSwitch(WidgetTester tester) =>
       tester.widget<PregoSwitch>(find.descendant(of: autoCompactRow, matching: find.byType(PregoSwitch)));
 
-  Future<ScheduledTaskEditorCubit> openSheet(WidgetTester tester, {required PluginMetadata harness}) async {
+  Future<ScheduledTaskEditorCubit> openSheet(
+    WidgetTester tester, {
+    required PluginMetadata harness,
+    required Future<void> Function({required BuildContext context}) show,
+  }) async {
     final repository = MockScheduledTaskRepository();
     when(repository.listTasks).thenAnswer((_) async => const ScheduledTaskSuccess(value: []));
     final editor = ScheduledTaskEditorCubit(
@@ -76,8 +80,8 @@ void main() {
           home: Builder(
             builder: (context) => Scaffold(
               body: TextButton(
-                onPressed: () => showScheduledTaskEachRunSheet(context: context),
-                child: const Text("Each run"),
+                onPressed: () => show(context: context),
+                child: const Text("Open"),
               ),
             ),
           ),
@@ -85,13 +89,17 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text("Each run"));
+    await tester.tap(find.text("Open"));
     await tester.pumpAndSettle();
     return editor;
   }
 
   testWidgets("the switch opens on under Continue and folds away with New session", (tester) async {
-    final editor = await openSheet(tester, harness: _harness(displayName: "Claude Code", compacts: true));
+    final editor = await openSheet(
+      tester,
+      harness: _harness(displayName: "Claude Code", compacts: true),
+      show: showScheduledTaskEachRunSheet,
+    );
     expect(autoCompactRow, findsNothing);
 
     await tester.tap(find.byKey(const Key("scheduled-task-same-session")));
@@ -117,7 +125,11 @@ void main() {
   });
 
   testWidgets("a harness that cannot compact shows the switch off and says why on a tap", (tester) async {
-    final editor = await openSheet(tester, harness: _harness(displayName: "Copilot", compacts: false));
+    final editor = await openSheet(
+      tester,
+      harness: _harness(displayName: "Copilot", compacts: false),
+      show: showScheduledTaskEachRunSheet,
+    );
 
     await tester.tap(find.byKey(const Key("scheduled-task-same-session")));
     await tester.pumpAndSettle();
@@ -140,5 +152,31 @@ void main() {
     );
     await tester.pump(PregoPopupAlertPresenter.defaultDuration);
     await tester.pumpAndSettle();
+  });
+
+  testWidgets("the When sheet's weekdays and missed-run choice fold away rather than vanish", (tester) async {
+    await openSheet(
+      tester,
+      harness: _harness(displayName: "Claude Code", compacts: true),
+      show: showScheduledTaskWhenSheet,
+    );
+    final monday = find.byKey(const ValueKey("scheduled-task-day-monday"));
+    final runWhenBack = find.byKey(const Key("scheduled-task-run-when-back"));
+    await tester.tap(find.byKey(const ValueKey("scheduled-task-repeat-weekly")));
+    await tester.pumpAndSettle();
+    expect(monday, findsOneWidget);
+    expect(runWhenBack, findsOneWidget);
+    final runWhenBackTop = tester.getTopLeft(runWhenBack).dy;
+
+    await tester.tap(find.byKey(const ValueKey("scheduled-task-repeat-once")));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    // Both still on screen mid-fold, the missed-run rows not yet moved far.
+    expect(monday, findsOneWidget);
+    expect(runWhenBack, findsOneWidget);
+    expect(tester.getTopLeft(runWhenBack).dy, greaterThan(runWhenBackTop - 30));
+    await tester.pumpAndSettle();
+    expect(monday, findsNothing);
+    expect(runWhenBack, findsNothing);
   });
 }
