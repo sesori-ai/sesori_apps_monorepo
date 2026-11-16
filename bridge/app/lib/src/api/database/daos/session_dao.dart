@@ -540,7 +540,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
       ..where(
         sessionTable.scheduledTaskId.equals(scheduledTaskId) &
             sessionTable.archivedAt.isNull() &
-            sessionTable.pinned.equals(false),
+            sessionTable.pinOrder.isNull(),
       )
       ..orderBy([OrderingTerm.desc(sessionTable.createdAt), OrderingTerm.desc(sessionTable.sessionId)]);
     return [for (final row in await query.get()) ?row.read(sessionTable.sessionId)];

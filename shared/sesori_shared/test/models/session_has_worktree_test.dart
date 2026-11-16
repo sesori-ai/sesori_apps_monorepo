@@ -47,6 +47,7 @@ void main() {
         promptDefaults: null,
         lastUserActivityAt: null,
         hasWorktree: true,
+        pinOrder: null,
         scheduledTask: null,
         interruption: null,
         forkedFrom: null,
