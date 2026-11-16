@@ -24,7 +24,7 @@ class const SessionCatalogMapper() {
       lastUserActivityAt: row.lastUserMessageAt,
       autoContinuation: null,
       approvalOverride: row.approvalOverride,
-      pinned: row.pinned,
+      pinOrder: row.pinOrder,
       scheduledTask: null,
       interruption: null,
       forkedFrom: _forkOrigin(row),

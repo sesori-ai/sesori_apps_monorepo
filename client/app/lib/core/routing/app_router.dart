@@ -128,6 +128,7 @@ extension on AppRoute {
         key: ValueKey("scheduled-task-detail-$taskId"),
         taskId: taskId,
       ),
+      AppRouteScheduledTaskEditor(:final taskId) => ScheduledTaskEditorScreen(taskId: taskId),
       AppRouteNewSession(:final projectId, :final projectName, :final entry) => NewSessionScreen(
         projectId: projectId,
         projectName: projectName,
@@ -457,6 +458,7 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
         ),
       ],
     ),
+    AppRouteDef.scheduledTaskEditor.toGoRoute(),
     buildHarnessSettingsRoute(),
     AppRouteDef.settings.toGoRoute(
       routes: [

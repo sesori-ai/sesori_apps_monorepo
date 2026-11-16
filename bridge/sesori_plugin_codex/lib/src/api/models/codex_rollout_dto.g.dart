@@ -140,8 +140,20 @@ CodexRolloutTurnAbortedEventDto _$CodexRolloutTurnAbortedEventDtoFromJson(
   Map json,
 ) => CodexRolloutTurnAbortedEventDto(
   turnId: json['turn_id'] as String?,
+  reason: $enumDecodeNullable(
+    _$CodexRolloutTurnAbortReasonEnumMap,
+    json['reason'],
+    unknownValue: CodexRolloutTurnAbortReason.unknown,
+  ),
   $type: json['type'] as String?,
 );
+
+const _$CodexRolloutTurnAbortReasonEnumMap = {
+  CodexRolloutTurnAbortReason.interrupted: 'interrupted',
+  CodexRolloutTurnAbortReason.replaced: 'replaced',
+  CodexRolloutTurnAbortReason.reviewEnded: 'review_ended',
+  CodexRolloutTurnAbortReason.unknown: 'unknown',
+};
 
 CodexRolloutThreadRolledBackEventDto
 _$CodexRolloutThreadRolledBackEventDtoFromJson(Map json) =>

@@ -117,7 +117,7 @@ class NotificationOpenDispatcher({
     } else {
       switchedComputer = false;
     }
-    openNotificationSession(
+    openNotificationTarget(
       request: request,
       routeDispatcher: _routeDispatcher,
       routeSource: _routeSource,

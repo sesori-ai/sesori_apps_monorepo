@@ -368,6 +368,7 @@ Session adaptiveTestSession({
     time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
     promptDefaults: null,
     lastUserActivityAt: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,

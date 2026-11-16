@@ -507,6 +507,14 @@ class ChatHistoryService({
     readStore: (_) => _chatHistoryRepository.getPromptIndex(sessionId: sessionId),
   );
 
+  /// The messages after which [sessionId]'s turns ended without a reply, so
+  /// edits and forks split turns as the app shows them: the message a bridge
+  /// stop cut the turn off after, when one did.
+  Future<Set<String>> _turnEndMessageIds({required String sessionId}) async => {
+    if ((await _interruptions.readMany(sessionIds: {sessionId}))[sessionId] case final interruption?)
+      interruption.afterMessageId,
+  };
+
   /// What editing [messageId] removes from [sessionId]'s history.
   ///
   /// Reads the whole history the way a client open does, so a store that is
@@ -524,7 +532,10 @@ class ChatHistoryService({
       backgroundRefresh: false,
     );
     final openers = [
-      for (final segment in splitPromptTurns(messages: page.messages))
+      for (final segment in splitPromptTurns(
+        messages: page.messages,
+        turnEndMessageIds: await _turnEndMessageIds(sessionId: sessionId),
+      ))
         if (segment case PromptSegment(:final opener)) opener.info.id,
     ];
     final turnIndex = openers.indexOf(messageId);
@@ -577,7 +588,10 @@ class ChatHistoryService({
       backgroundRefresh: false,
     );
     // Messages before the first prompt belong to no turn, so no fork keeps them.
-    final turns = splitPromptTurns(messages: page.messages).whereType<PromptSegment>().toList();
+    final turns = splitPromptTurns(
+      messages: page.messages,
+      turnEndMessageIds: await _turnEndMessageIds(sessionId: sessionId),
+    ).whereType<PromptSegment>().toList();
     final finishedTurns = running && turns.isNotEmpty ? turns.length - 1 : turns.length;
     ForkBoundary throughTurn(int index) => ForkBoundaryThroughMessage(messageId: turns[index].messages.last.info.id);
     switch (point) {
@@ -1239,12 +1253,14 @@ class ChatHistoryService({
     );
   }
 
-  /// Fills the store from the backend's own transcript.
+  /// Fills the store from the backend's transcript as it stands after this
+  /// call. Failures propagate so a cache miss never looks like an empty thread.
   ///
-  /// Concurrent callers for the same session await one fetch. Failures
-  /// propagate so a cache miss never looks like an empty thread.
+  /// Unlike a read, this never joins a backfill already running: that one may
+  /// have fetched before the change the caller waited for reached the backend,
+  /// such as a send's summary finishing mid-fetch. The fetch queues behind it.
   Future<void> backfillSession({required String sessionId}) async {
-    await _backfillSessionForRead(sessionId: sessionId);
+    await _backfillSession(sessionId: sessionId);
   }
 
   /// Stamps the user message [messageId] with [notSent] in place of its
@@ -1310,6 +1326,12 @@ class ChatHistoryService({
             observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
         final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+        // The row the session's last turn ends on when a bridge stop cut it
+        // off. Its running row stays until the plugin is ready to turn it into
+        // the interruption, which can come after the first read imports.
+        final interruptedAfterMessageId = await _interruptions.hasRunningTurn(sessionId: sessionId)
+            ? await _chatHistoryRepository.getNewestMessageId(sessionId: sessionId)
+            : (await _interruptions.readMany(sessionIds: {sessionId}))[sessionId]?.afterMessageId;
         final replacementIds = await _chatHistoryRepository.replaceSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
@@ -1318,6 +1340,7 @@ class ChatHistoryService({
           watermark: backendActivityAt,
           backendActivityAt: backendActivityAt,
           syncedAt: DateTime.now().millisecondsSinceEpoch,
+          interruptedAfterMessageId: interruptedAfterMessageId,
         );
         await _reanchorInterruption(sessionId: sessionId, replacementIds: replacementIds);
         final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;

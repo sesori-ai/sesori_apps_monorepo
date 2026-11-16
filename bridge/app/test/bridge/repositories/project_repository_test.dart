@@ -1089,7 +1089,7 @@ void main() {
         title: null,
         catalogTitle: null,
         approvalOverride: null,
-        pinned: false,
+        pinOrder: null,
         forkedFromSessionId: null,
         forkedFromTitle: null,
         scheduledTaskId: null,

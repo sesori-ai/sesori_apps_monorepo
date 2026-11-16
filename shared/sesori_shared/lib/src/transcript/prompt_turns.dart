@@ -71,9 +71,15 @@ final class const PromptSegment({
 /// the first prompt form one [LeadingPromptSegment]. Hidden user messages
 /// ([SessionMessagePresentation.hasRenderableUserContent] false) are left out.
 ///
-/// It reads message kinds, senders, part statuses and stored text, never ids,
-/// so the same messages split the same way after a re-import.
-List<PromptTurnSegment> splitPromptTurns({required List<MessageWithParts> messages}) {
+/// It reads message kinds, senders, part statuses and stored text, so the same
+/// messages split the same way after a re-import. The only ids it reads are
+/// [turnEndMessageIds]: messages after which a turn has ended whatever they
+/// show, such as the last message before a bridge stop cut a turn off, so the
+/// next prompt opens a new turn even when the cut-off one has no output yet.
+List<PromptTurnSegment> splitPromptTurns({
+  required List<MessageWithParts> messages,
+  required Set<String> turnEndMessageIds,
+}) {
   final segments = <({MessageWithParts? opener, List<MessageWithParts> messages})>[(opener: null, messages: [])];
   _OutputEnd? lastOutput;
   for (final message in messages) {
@@ -83,7 +89,9 @@ List<PromptTurnSegment> splitPromptTurns({required List<MessageWithParts> messag
       lastOutput = null;
     }
     segments.last.messages.add(message);
-    lastOutput = _outputEndOf(message: message) ?? lastOutput;
+    lastOutput = turnEndMessageIds.contains(message.info.id)
+        ? _OutputEnd.answer
+        : _outputEndOf(message: message) ?? lastOutput;
   }
   // Only the leading segment can be empty: every other one holds its opener.
   if (segments.first.messages.isEmpty) segments.removeAt(0);

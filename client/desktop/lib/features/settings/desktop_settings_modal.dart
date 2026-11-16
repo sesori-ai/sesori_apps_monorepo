@@ -570,8 +570,9 @@ class const _DesktopBridgeSettingsPage({
                   description: loc.desktopSettingsConnectedBridgeDescription,
                   onOpenHarnesses: onOpenHarnesses,
                   onOpenProjects: null,
-                  // The main window's sidebar holds Archived.
+                  // The main window's sidebar holds Archived and Scheduled.
                   onOpenArchived: null,
+                  onOpenScheduled: null,
                   onSwitchComputer: onSwitchComputer,
                   onManageComputers: onManageComputers,
                 ),

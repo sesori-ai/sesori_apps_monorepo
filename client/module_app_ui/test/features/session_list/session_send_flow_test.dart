@@ -207,7 +207,7 @@ void main() {
 
   testWidgets("a pinned source is asked about before the send, and Cancel keeps the sheet", (tester) async {
     answerSend(() async => const SendToSessionSent());
-    await openSheet(tester: tester, sending: source.copyWith(pinned: true), remembered: true);
+    await openSheet(tester: tester, sending: source.copyWith(pinOrder: 1), remembered: true);
 
     await tapSend(tester);
     expect(find.text("Archive a pinned session?"), findsOneWidget);
@@ -241,7 +241,7 @@ void main() {
 
   testWidgets("a pinned source with the switch off is sent without a question", (tester) async {
     answerSend(() async => const SendToSessionSent());
-    await openSheet(tester: tester, sending: source.copyWith(pinned: true), remembered: false);
+    await openSheet(tester: tester, sending: source.copyWith(pinOrder: 1), remembered: false);
 
     await tapSend(tester);
 

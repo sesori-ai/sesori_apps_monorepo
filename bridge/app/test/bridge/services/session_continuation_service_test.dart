@@ -431,6 +431,7 @@ class _Sessions() implements SessionRepository {
     unseen: false,
     lastUserActivityAt: null,
     autoContinuation: null,
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,

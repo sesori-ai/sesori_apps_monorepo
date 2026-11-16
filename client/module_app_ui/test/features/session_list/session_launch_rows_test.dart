@@ -40,6 +40,7 @@ void main() {
           isAwaitingInput: false,
           isRetrying: false,
           backgroundTaskCount: 0,
+          isInterrupted: false,
         ),
     ];
     return AllSessionsState(
