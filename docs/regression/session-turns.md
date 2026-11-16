@@ -130,6 +130,8 @@ defaults and queued client sends coherent.
   line grows and fades in under the reply over the transcript's motion, like any new row, and a reader scrolled up
   into the reply sees nothing they read move. Failures keep their verbatim red text. An older bridge sends no
   kind, so its rows stay failures; an older app ignores the kind and keeps a red row.
+- The prompt after a Stop is answered on every harness, including a Stop pressed while the session was idle. Hermes
+  refuses the next prompt when a cancel reaches its idle session, so the bridge sends Hermes no cancel then.
 - A sent prompt stays on screen from send to delivered message. Scrolling while
   it is delivered, or a refresh whose fetch began before a queue event, must not
   blank its row. A wheel or trackpad touch that moves nothing at the newest edge
