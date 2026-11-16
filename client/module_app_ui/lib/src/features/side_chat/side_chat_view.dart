@@ -398,6 +398,7 @@ class _SideChatViewState() extends State<SideChatView> {
       SideQuestionRefusal.noTurnYet => loc.sideChatRefusedNoTurnYet,
       SideQuestionRefusal.tooLong => loc.sideChatRefusedTooLong,
       SideQuestionRefusal.noAnswer => loc.sideChatRefusedNoAnswer,
+      SideQuestionRefusal.repeatedRunningReply => loc.sideChatRefusedRepeatedRunningReply(widget.harnessName),
       SideQuestionRefusal.unknown => loc.sideChatRefusedUnknown,
     };
   }

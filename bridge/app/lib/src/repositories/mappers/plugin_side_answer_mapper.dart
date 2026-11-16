@@ -12,6 +12,7 @@ extension PluginSideAnswerMapper on PluginSideAnswer {
         PluginSideRefusal.noTurnYet => SideQuestionRefusal.noTurnYet,
         PluginSideRefusal.tooLong => SideQuestionRefusal.tooLong,
         PluginSideRefusal.noAnswer => SideQuestionRefusal.noAnswer,
+        PluginSideRefusal.repeatedRunningReply => SideQuestionRefusal.repeatedRunningReply,
       },
     ),
   };

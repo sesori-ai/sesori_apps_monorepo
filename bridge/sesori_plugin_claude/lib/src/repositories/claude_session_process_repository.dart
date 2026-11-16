@@ -503,15 +503,23 @@ final class ClaudeSessionProcessRepository({
     final process = _resident[sessionId];
     if (process == null) throw StateError("Claude session is not resident: $sessionId");
     const mapper = ClaudeSideAnswerMapper();
+    // The CLI writes a turn's result before a reply it sends after that turn,
+    // so every reply that could be echoed back is collected by then.
+    final turnRepliesDuringAsk = <String>[];
+    final results = process.client.messages.listen((message) {
+      if (message case ClaudeResultMessage(result: final reply?)) turnRepliesDuringAsk.add(reply);
+    });
     try {
       final response = await process.client.sendSideQuestion(
         question: question,
         history: [for (final exchange in history) (question: exchange.question, response: exchange.answer)],
         timeout: _sideQuestionTimeout,
       );
-      return mapper.map(response: response);
+      return mapper.map(response: response, turnRepliesDuringAsk: turnRepliesDuringAsk);
     } on ClaudeControlUnsupportedSubtypeException {
       return mapper.unsupported();
+    } finally {
+      await results.cancel();
     }
   }
 

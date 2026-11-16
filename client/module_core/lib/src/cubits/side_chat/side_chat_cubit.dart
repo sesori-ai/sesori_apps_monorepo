@@ -221,7 +221,9 @@ class SideChatCubit({
   void _reportOutcome({required ApiResponse<AskSideQuestionResponse> response}) {
     final outcome = switch (response) {
       SuccessResponse(data: AskSideQuestionAnswered()) => AnalyticsSideQuestionOutcome.answered,
-      SuccessResponse(data: AskSideQuestionRefused(reason: SideQuestionRefusal.noAnswer)) =>
+      SuccessResponse(
+        data: AskSideQuestionRefused(reason: SideQuestionRefusal.noAnswer || SideQuestionRefusal.repeatedRunningReply),
+      ) =>
         AnalyticsSideQuestionOutcome.noAnswer,
       SuccessResponse(data: AskSideQuestionRefused()) => AnalyticsSideQuestionOutcome.unavailable,
       SuccessResponse(data: AskSideQuestionUnknown()) || ErrorResponse() => AnalyticsSideQuestionOutcome.failed,

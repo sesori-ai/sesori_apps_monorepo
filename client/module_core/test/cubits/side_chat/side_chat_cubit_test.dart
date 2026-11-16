@@ -417,10 +417,11 @@ void main() {
           ),
           AnalyticsSideQuestionOutcome.answered,
         ),
-        (
-          ApiResponse.success(const AskSideQuestionResponse.refused(reason: SideQuestionRefusal.noAnswer)),
-          AnalyticsSideQuestionOutcome.noAnswer,
-        ),
+        for (final reason in [SideQuestionRefusal.noAnswer, SideQuestionRefusal.repeatedRunningReply])
+          (
+            ApiResponse.success(AskSideQuestionResponse.refused(reason: reason)),
+            AnalyticsSideQuestionOutcome.noAnswer,
+          ),
         for (final reason in [
           SideQuestionRefusal.harnessUnsupported,
           SideQuestionRefusal.harnessUpdateRequired,

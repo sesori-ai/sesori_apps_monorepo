@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -309,6 +310,52 @@ void main() {
 
       expect(await answer, isA<PluginSideAnswered>().having((a) => a.text, "text", "Still because."));
       expect(harness.specs, hasLength(1));
+    });
+
+    group("a side question asked while a turn streams", () {
+      const reply = "1. The ocean covers most of the planet.\n2. It holds most of its life.";
+
+      // The frames as 2.1.325 sent them (anthropics/claude-code#110490): the
+      // turn's result, then the side question's reply, in one stdout chunk.
+      Future<PluginSideAnswer> ask({required String sideReply}) async {
+        await _ensure(repository, createNew: true);
+        final process = harness.processes.single;
+        final answer = repository.sendSideQuestion(
+          sessionId: testSessionId,
+          question: "What's 2+2?",
+          history: const [],
+        );
+        await pump();
+        final requestId = process.written
+            .lastWhere((frame) => frame["type"] == "control_request")
+            .field<String>(
+              "request_id",
+            );
+        final frames = [
+          {"type": "result", "subtype": "success", "is_error": false, "result": reply, "session_id": testSessionId},
+          {
+            "type": "control_response",
+            "response": {
+              "subtype": "success",
+              "request_id": requestId,
+              "response": {"response": sideReply, "synthetic": false},
+            },
+          },
+        ];
+        process.emitRaw(utf8.encode(frames.map((frame) => "${jsonEncode(frame)}\n").join()));
+        return await answer;
+      }
+
+      test("is refused when it comes back as the turn's reply", () async {
+        expect(
+          await ask(sideReply: reply),
+          isA<PluginSideRefused>().having((r) => r.reason, "reason", PluginSideRefusal.repeatedRunningReply),
+        );
+      });
+
+      test("is answered when its reply is its own", () async {
+        expect(await ask(sideReply: "4"), isA<PluginSideAnswered>().having((a) => a.text, "text", "4"));
+      });
     });
 
     test("a CLI without the side-question handler asks for an update", () async {
