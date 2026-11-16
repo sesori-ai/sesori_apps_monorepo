@@ -23,7 +23,10 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
       // A paused one-off task has no instant; its own date and time stand in.
       TaskScheduleOnce(:final at) => switch (task.nextRunAt) {
         final next? => instant(task: task, instant: next),
-        null => _localDateTime(at: at),
+        null => _inZone(
+          task: task,
+          text: _localDateTime(at: at),
+        ),
       },
       TaskScheduleDaily(:final time) => loc.scheduledTaskDaily(at(time)),
       TaskScheduleWeekdays(:final time) => loc.scheduledTaskWeekdays(at(time)),
@@ -43,12 +46,18 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
   /// zone added when its offset at that moment differs from this device's.
   String instant({required ScheduledTask task, required ScheduledTaskInstant instant}) {
     final wall = _wallClock(instant: instant);
+    final deviceOffset = DateTime.fromMillisecondsSinceEpoch(instant.at).timeZoneOffset.inMinutes;
+    final isDeviceZone = instant.offsetMinutes == deviceOffset;
     final text = loc.scheduledTaskDayAndTime(
-      _day(wall: wall, offsetMinutes: instant.offsetMinutes),
+      // In this device's zone, today is judged at today's offset, which a DST
+      // change before the instant can make differ from the instant's own.
+      // ponytail: a remote zone across its DST change can still be a day off
+      // within an hour of midnight; the bridge would need to send the zone's
+      // current offset to fix that.
+      _day(wall: wall, offsetMinutes: isDeviceZone ? now().timeZoneOffset.inMinutes : instant.offsetMinutes),
       _time.format(wall),
     );
-    final deviceOffset = DateTime.fromMillisecondsSinceEpoch(instant.at).timeZoneOffset.inMinutes;
-    return instant.offsetMinutes == deviceOffset ? text : loc.scheduledTaskInZone(text, _zoneName(task: task));
+    return isDeviceZone ? text : loc.scheduledTaskInZone(text, _zoneName(task: task));
   }
 
   String runOutcome({required ScheduledTaskRunOutcome outcome}) => switch (outcome) {
@@ -91,11 +100,12 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
     };
   }
 
-  /// A wall-clock date and time, its day judged by this device's date.
+  /// A wall-clock date and time with no known offset, so its date is written
+  /// out rather than judged against today.
   String _localDateTime({required TaskLocalDateTime at}) {
     final wall = DateTime.utc(at.year, at.month, at.day, at.hour, at.minute);
     return loc.scheduledTaskDayAndTime(
-      _day(wall: wall, offsetMinutes: now().timeZoneOffset.inMinutes),
+      (wall.year == now().year ? _date : _dateWithYear).format(wall),
       _time.format(wall),
     );
   }
@@ -110,12 +120,15 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
   ].join(", ");
 
   /// Adds the task's zone to [text] when the zone's offset, read from the next
-  /// run, differs from this device's. A task with no next run says nothing.
+  /// or else the last run, differs from this device's. A paused task that
+  /// never ran has no offset to compare, so it always names its zone.
   String _inZone({required ScheduledTask task, required String text}) {
-    final next = task.nextRunAt;
-    if (next == null) return text;
-    final deviceOffset = DateTime.fromMillisecondsSinceEpoch(next.at).timeZoneOffset.inMinutes;
-    return next.offsetMinutes == deviceOffset ? text : loc.scheduledTaskInZone(text, _zoneName(task: task));
+    final known = task.nextRunAt ?? task.lastRun?.scheduledFor;
+    if (known != null &&
+        known.offsetMinutes == DateTime.fromMillisecondsSinceEpoch(known.at).timeZoneOffset.inMinutes) {
+      return text;
+    }
+    return loc.scheduledTaskInZone(text, _zoneName(task: task));
   }
 
   /// The city of an IANA zone name: "Europe/Bucharest" reads "Bucharest",

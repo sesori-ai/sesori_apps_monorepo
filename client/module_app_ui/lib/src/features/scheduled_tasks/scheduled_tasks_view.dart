@@ -88,29 +88,44 @@ class const _Body({required final void Function({required String taskId}) onOpen
           ),
         ),
         ScheduledTasksBridgeOutdated() => const SliverToBoxAdapter(child: ScheduledTasksBridgeOutdatedRow()),
-        ScheduledTasksLoaded(recurring: [], once: []) => SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(
-            child: Text(
-              loc.scheduledTasksEmpty,
-              key: const Key("scheduled-tasks-empty"),
-              textAlign: TextAlign.center,
-              style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+        // The list stays mounted when the last task leaves, so its row and
+        // heading collapse before the empty text fades in.
+        ScheduledTasksLoaded(:final recurring, :final once) => SliverMainAxisGroup(
+          slivers: [
+            _TaskList(
+              entries: [
+                if (recurring.isNotEmpty) _HeadingEntry(heading: loc.scheduledTasksRecurringHeading),
+                for (final task in recurring) _TaskEntry(task: task, isRecurring: true),
+                if (once.isNotEmpty) _HeadingEntry(heading: loc.scheduledTasksOnceHeading),
+                for (final task in once) _TaskEntry(task: task, isRecurring: false),
+              ],
+              onOpenTask: onOpenTask,
             ),
-          ),
-        ),
-        ScheduledTasksLoaded(:final recurring, :final once) => _TaskList(
-          entries: [
-            if (recurring.isNotEmpty) _HeadingEntry(heading: loc.scheduledTasksRecurringHeading),
-            for (final task in recurring) _TaskEntry(task: task, isRecurring: true),
-            if (once.isNotEmpty) _HeadingEntry(heading: loc.scheduledTasksOnceHeading),
-            for (final task in once) _TaskEntry(task: task, isRecurring: false),
+            if (recurring.isEmpty && once.isEmpty) const SliverFillRemaining(hasScrollBody: false, child: _EmptyText()),
           ],
-          onOpenTask: onOpenTask,
         ),
       },
     );
   }
+}
+
+/// Fades in once departing rows have had time to collapse.
+class const _EmptyText() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: context.isReducedMotion ? Duration.zero : pregoAnimatedListItemDuration * 2,
+    curve: const Interval(0.5, 1),
+    builder: (context, opacity, child) => Opacity(opacity: opacity, child: child),
+    child: Center(
+      child: Text(
+        context.loc.scheduledTasksEmpty,
+        key: const Key("scheduled-tasks-empty"),
+        textAlign: TextAlign.center,
+        style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+      ),
+    ),
+  );
 }
 
 sealed class const _Entry();

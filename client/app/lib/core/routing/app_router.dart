@@ -124,7 +124,10 @@ extension on AppRoute {
       AppRouteSettingsComputers() => const ComputersScreen(),
       AppRouteSettingsProjects() => const ProjectsSettingsScreen(),
       AppRouteScheduledTasks() => const ScheduledTasksScreen(),
-      AppRouteScheduledTaskDetail(:final taskId) => ScheduledTaskDetailScreen(taskId: taskId),
+      AppRouteScheduledTaskDetail(:final taskId) => ScheduledTaskDetailScreen(
+        key: ValueKey("scheduled-task-detail-$taskId"),
+        taskId: taskId,
+      ),
       AppRouteNewSession(:final projectId, :final projectName, :final entry) => NewSessionScreen(
         projectId: projectId,
         projectName: projectName,

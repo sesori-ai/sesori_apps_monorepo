@@ -176,8 +176,10 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           ),
           exit: ScheduledPageExit.close,
           onExit: () => _popRouteOrGo(context: context, fallback: const AppRoute.home()),
-          onOpenTask: ({required taskId}) =>
-              _pushRoute(context: context, route: AppRoute.scheduledTaskDetail(taskId: taskId)),
+          onOpenTask: ({required taskId}) => _pushRoute(
+            context: context,
+            route: AppRoute.scheduledTaskDetail(taskId: taskId),
+          ),
         ),
       ),
       GoRoute(
@@ -186,6 +188,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           final route = AppRouteScheduledTaskDetail.fromParams(pathParams: state.pathParameters);
           void leave() => _popRouteOrGo(context: context, fallback: const AppRoute.scheduledTasks());
           return ScheduledTaskDetailView(
+            key: ValueKey("scheduled-task-detail-${route.taskId}"),
             createCubit: () => ScheduledTaskDetailCubit(
               repository: getIt<ScheduledTaskRepository>(),
               connectionService: getIt<ConnectionService>(),
