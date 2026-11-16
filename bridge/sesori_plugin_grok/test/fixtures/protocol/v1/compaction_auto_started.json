@@ -1,0 +1,17 @@
+{
+  "method": "_x.ai/session_notification",
+  "params": {
+    "sessionId": "01a00000-0000-7000-8000-000000000001",
+    "update": {
+      "sessionUpdate": "auto_compact_started",
+      "tokens_used": 21022,
+      "context_window": 23000,
+      "percentage": 91,
+      "reason": "Context window 91% full"
+    },
+    "_meta": {
+      "eventId": "01a00000-0000-7000-8000-000000000001-13",
+      "agentTimestampMs": 1790000000000
+    }
+  }
+}

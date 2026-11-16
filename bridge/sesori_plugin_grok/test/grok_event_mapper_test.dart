@@ -4,6 +4,7 @@ import "dart:io";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:grok_plugin/src/api/models/grok_session_notification_dto.dart";
 import "package:grok_plugin/src/grok_event_mapper.dart";
+import "package:grok_plugin/src/trackers/grok_compaction_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
@@ -41,6 +42,7 @@ void main() {
         pluginId: "grok",
         configurationTracker: configuration,
         childSessions: tracker,
+        compactionTracker: GrokCompactionTracker(clock: const ServerClock()),
       )..setSessionProject(sessionId: _root, directory: "/project");
       mapper.beginTurn(sessionId: _root, messageId: null);
     });
@@ -321,4 +323,133 @@ void main() {
       expect(part, isA<PluginMessagePartTool>());
     });
   });
+
+  group("GrokEventMapper compaction row", () {
+    late AcpChildSessionTracker tracker;
+    late _FakeClock clock;
+    late GrokEventMapper mapper;
+
+    setUp(() {
+      tracker = AcpChildSessionTracker();
+      clock = _FakeClock(DateTime.fromMillisecondsSinceEpoch(5000));
+      mapper = GrokEventMapper(
+        launchDirectory: "/launch",
+        pluginId: "grok",
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: tracker,
+        compactionTracker: GrokCompactionTracker(clock: clock),
+      );
+      mapper.beginTurn(sessionId: _root, messageId: null);
+    });
+
+    tearDown(() => tracker.dispose());
+
+    ({PluginMessage message, PluginMessagePartCompaction part}) row(List<BridgeSseEvent> events) => (
+      message: events.whereType<BridgeSseMessageUpdated>().single.info,
+      part: events.whereType<BridgeSseMessagePartUpdated>().single.part as PluginMessagePartCompaction,
+    );
+
+    test("an automatic compaction runs from its start and settles in place with the freed tokens", () {
+      final started = row(mapper.map(_fixture("compaction_auto_started.json")));
+      expect(started.message, isA<PluginMessageAssistant>());
+      expect(started.message.sessionID, _root);
+      expect(started.message.time?.created, 5000);
+      expect(started.part.messageID, started.message.id);
+      expect(started.part.compactionState, const PluginCompactionState.running(summary: null));
+
+      clock.current = DateTime.fromMillisecondsSinceEpoch(20000);
+      final completedEvents = mapper.map(_fixture("compaction_auto_completed.json"));
+      final completed = row(completedEvents);
+      expect(completed.message.id, started.message.id);
+      expect(completed.message.time?.created, 5000, reason: "the row keeps its place and timer start");
+      expect(completed.part.id, started.part.id);
+      expect(
+        completed.part.compactionState,
+        const PluginCompactionState.completed(summary: null, freedTokens: 21022 - 18671, trigger: .auto),
+      );
+      expect(completedEvents.last, isA<BridgeSseSessionCompacted>());
+    });
+
+    test("a manual /compact runs from its queue entry, once, and settles with the freed tokens", () {
+      final started = row(mapper.map(_fixture("compaction_manual_running.json")));
+      expect(started.part.compactionState, const PluginCompactionState.running(summary: null));
+      // Every queue change while it runs repeats the running entry.
+      expect(row(mapper.map(_fixture("compaction_manual_running.json"))).message.id, started.message.id);
+
+      final completed = row(mapper.map(_fixture("compaction_manual_completed.json")));
+      expect(completed.message.id, started.message.id);
+      expect(
+        completed.part.compactionState,
+        const PluginCompactionState.completed(summary: null, freedTokens: 19992 - 19017, trigger: .manual),
+      );
+    });
+
+    test("a compaction that freed nothing shows no count", () {
+      mapper.map(_fixture("compaction_manual_running.json"));
+      final completed = row(
+        mapper.map(
+          const AcpNotification(
+            method: "_x.ai/session_notification",
+            params: {
+              "sessionId": _root,
+              "update": {"sessionUpdate": "auto_compact_completed", "tokens_before": 1474, "tokens_after": 1474},
+            },
+          ),
+        ),
+      );
+      expect(
+        completed.part.compactionState,
+        const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: .manual),
+      );
+    });
+
+    test("a failed automatic compaction becomes a failure note, and Grok's retry gets its own row", () {
+      final started = row(mapper.map(_fixture("compaction_auto_started.json")));
+      final failed = row(mapper.map(_fixture("compaction_auto_failed.json")));
+      expect(failed.message.id, started.message.id);
+      expect(failed.part.compactionState, const PluginCompactionState.failed(reason: null));
+
+      final retried = row(mapper.map(_fixture("compaction_auto_started.json")));
+      expect(retried.message.id, isNot(started.message.id));
+      expect(retried.part.compactionState, const PluginCompactionState.running(summary: null));
+    });
+
+    test("a turn that ends first leaves the running row to the bridge sweep", () {
+      mapper.map(_fixture("compaction_auto_started.json"));
+      mapper.finalizeTurn(sessionId: _root);
+      expect(mapper.map(_fixture("compaction_auto_completed.json")).single, isA<BridgeSseSessionCompacted>());
+      expect(mapper.map(_fixture("compaction_auto_failed.json")), isEmpty);
+    });
+
+    test("another running prompt starts no row", () {
+      expect(
+        mapper.map(
+          const AcpNotification(
+            method: "_x.ai/queue/changed",
+            params: {
+              "sessionId": _root,
+              "entries": <Object>[],
+              "runningText": "/compactor please",
+              "runningKind": "prompt",
+            },
+          ),
+        ),
+        isEmpty,
+      );
+    });
+
+    test("compaction frames wait behind a prompt still being written", () {
+      for (final name in ["compaction_auto_started.json", "compaction_manual_running.json"]) {
+        expect(mapper.shouldBufferDuringPromptWrite(notification: _fixture(name)), isTrue, reason: name);
+      }
+    });
+  });
+}
+
+final class _FakeClock(var DateTime current) implements ServerClock {
+  @override
+  DateTime now() => current;
+
+  @override
+  Future<void> delay({required Duration duration}) async {}
 }
