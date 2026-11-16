@@ -9,7 +9,8 @@ import "../extensions/build_context_x.dart";
 import "../features/session_list/session_list_action_dispatcher.dart";
 
 /// The one place that tells the user what a pending archive is doing: the
-/// "Archived" alert with Undo, then the refusal alert or the error toast.
+/// "Archived" alert with Undo, unless the caller offers its own, then the
+/// refusal alert or the error toast.
 class const PendingArchiveAlerts({
   super.key,
 
@@ -49,7 +50,7 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
     return overlay == null ? null : PregoPopupAlertPresenter.fromOverlayState(overlay);
   }
 
-  void _offerUndo() {
+  void _offerUndo({required String sessionId}) {
     final presenter = _presenter;
     if (presenter == null) return;
     final cubit = context.read<PendingSessionArchiveCubit>();
@@ -63,7 +64,7 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
           label: context.loc.sessionListArchiveUndo,
           onPressed: () {
             presenter.dismiss();
-            cubit.undo();
+            cubit.undo(sessionId: sessionId);
           },
         ),
       ),
@@ -88,8 +89,8 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
 
   void _onWindowChanged(PendingArchiveWindow window) {
     switch (window) {
-      case PendingArchiveOpen(:final callerOffersUndo):
-        if (!callerOffersUndo) _offerUndo();
+      case PendingArchiveOpen(:final session, :final callerOffersUndo):
+        if (!callerOffersUndo) _offerUndo(sessionId: session.id);
       case PendingArchiveIdle():
         // Archiving inside a window passes through idle on its way to the next
         // window; the failure stays held for that one.

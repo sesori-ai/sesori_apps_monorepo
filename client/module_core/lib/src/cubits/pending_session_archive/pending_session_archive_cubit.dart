@@ -46,7 +46,11 @@ class PendingSessionArchiveCubit({required final SessionCleanupService cleanupSe
     _timer = Timer(undoWindow, _commitWindow);
   }
 
-  void undo() {
+  /// Takes back [sessionId]'s archive. Does nothing once its window has closed,
+  /// so a late Undo can never take back another session's archive.
+  void undo({required String sessionId}) {
+    final window = state.window;
+    if (window is! PendingArchiveOpen || window.session.id != sessionId) return;
     _timer?.cancel();
     _timer = null;
     emit(PendingSessionArchiveState(window: const PendingArchiveIdle(), archivingIds: state.archivingIds));

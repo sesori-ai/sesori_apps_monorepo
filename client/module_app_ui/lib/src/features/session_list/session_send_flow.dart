@@ -94,7 +94,7 @@ void _sendToAnother({
               label: loc.sessionListArchiveUndo,
               onPressed: () {
                 presenter.dismiss();
-                archives.undo();
+                archives.undo(sessionId: source.id);
               },
             ),
           ),

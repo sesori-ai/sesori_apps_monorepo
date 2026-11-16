@@ -38,7 +38,7 @@ void main() {
       cubit.archive(session: first, deleteWorktree: true, callerOffersUndo: false);
       expect(cubit.state.hiddenIds, {"first"});
 
-      cubit.undo();
+      cubit.undo(sessionId: "first");
       async.elapse(PendingSessionArchiveCubit.undoWindow * 2);
 
       expect(cubit.state.hiddenIds, isEmpty);
@@ -63,6 +63,23 @@ void main() {
       expect(outcomes.single, isA<PendingSessionArchiveCommitted>());
       expect(cubit.state.window, isA<PendingArchiveIdle>());
       expect(cubit.state.hiddenIds, {"first"});
+    });
+  });
+
+  test("a late Undo for an archive already committed leaves the next window open", () {
+    fakeAsync((async) {
+      stubArchive(sessionId: "first", answer: () async => ApiResponse.success(first));
+
+      cubit
+        ..archive(session: first, deleteWorktree: true, callerOffersUndo: true)
+        ..archive(session: second, deleteWorktree: true, callerOffersUndo: false)
+        ..undo(sessionId: "first");
+      async.flushMicrotasks();
+
+      expect(cubit.state.window, isA<PendingArchiveOpen>().having((w) => w.session.id, "session", "second"));
+      expect(cubit.state.hiddenIds, {"first", "second"});
+      cubit.undo(sessionId: "second");
+      expect(cubit.state.window, isA<PendingArchiveIdle>());
     });
   });
 
