@@ -80,6 +80,7 @@ Widget _app({
     openSession: openSession ?? ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
     openHarnessSettings: () {},
     openBridgeSettings: () {},
+    openSideChat: null,
     child: BlocProvider<SessionDetailCubit>.value(
       value: _MockSessionDetailCubit(),
       child: Scaffold(

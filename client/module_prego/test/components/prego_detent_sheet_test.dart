@@ -144,6 +144,24 @@ void main() {
       expect(await harness.result, isNull);
     });
 
+    testWidgets("a close leaves at once and slows into the bottom edge", (tester) async {
+      await _open(tester);
+      Navigator.of(tester.element(find.byType(PregoSheetGrabber))).pop();
+      await tester.pump();
+
+      final tops = [_halfTop];
+      while (true) {
+        await tester.pump(const Duration(milliseconds: 16));
+        if (!_sheetOpen(tester)) break;
+        tops.add(_sheetTop(tester));
+      }
+      final steps = [for (var i = 1; i < tops.length; i++) tops[i] - tops[i - 1]];
+      // The first frame already moves the most, and no later frame jumps.
+      expect(steps.first, greaterThan(30));
+      expect(steps.every((step) => step > 0 && step <= steps.first), isTrue);
+      expect(tops.last, greaterThan(_screen.height - 10));
+    });
+
     testWidgets("a slow drag down from half returns to half, or closes past halfway", (tester) async {
       await _open(tester);
 
