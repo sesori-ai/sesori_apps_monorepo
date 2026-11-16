@@ -959,6 +959,12 @@ defaults and queued client sends coherent.
 - A selection crossing inline code stays visibly continuous in user bubbles and
   assistant responses alike: the highlight covers the code run instead of
   leaving an unhighlighted gap in the middle of the sentence.
+- The transcript shares one text selection: a mouse drag, or a touch
+  selection's handle, runs from one message on into the next, reaching past
+  the visible edge auto-scrolls, and copying takes every selected message's
+  text in order, one line break between messages. Only message text joins it:
+  timestamps, status lines and other row chrome stay unselectable. The pinned
+  prompt selects on its own.
 - Selecting across user, assistant, or reasoning text copies the rendered
   content with readable structure: each transition between vertically stacked
   Markdown blocks contributes exactly one line break regardless of their visual

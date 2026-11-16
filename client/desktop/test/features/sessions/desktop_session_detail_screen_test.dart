@@ -278,7 +278,8 @@ void main() {
     expect(find.text("Desktop transcript"), findsOneWidget);
     expect(find.byKey(const Key("desktop-session-page-back")), findsNothing);
     expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
-    expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
+    // The transcript's, and its message's, which joins it.
+    expect(find.byType(PregoReadableSelectionArea), findsNWidgets(2));
     final loadedView = tester.widget<SessionDetailLoadedView>(find.byType(SessionDetailLoadedView));
     expect(loadedView.readOnly, isFalse);
     expect(

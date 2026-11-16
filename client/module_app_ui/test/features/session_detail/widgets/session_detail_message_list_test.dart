@@ -3848,8 +3848,9 @@ void main() {
 
     expect(find.byKey(_jumpToLatestKey), findsNothing);
 
+    // Past the touch slop: the selection's tap recognizer waits that long.
     final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
-    await gesture.moveBy(const Offset(0, -12));
+    await gesture.moveBy(const Offset(0, -24));
     await tester.pump();
 
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
@@ -4595,9 +4596,10 @@ void main() {
     // gesture to increasing scroll offset (i.e. scrolling toward older
     // content, away from the newest-at-bottom edge).
     final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
-    // Establish vertical intent first so the timestamp recognizer leaves the
-    // arena, matching the stream of move events produced by a real drag.
-    await gesture.moveBy(const Offset(0, 12));
+    // Establish vertical intent first, past the touch slop, so the timestamp
+    // and selection recognizers leave the arena, matching the stream of move
+    // events produced by a real drag.
+    await gesture.moveBy(const Offset(0, 24));
     await tester.pump();
     await gesture.moveBy(const Offset(0, 288));
     await tester.pump();
@@ -6526,47 +6528,56 @@ void main() {
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 
-  testWidgets("a rightward-first drag yields when it turns into a vertical scroll", (tester) async {
-    await tester.binding.setSurfaceSize(const Size(900, 700));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    "a rightward-first drag yields when it turns into a vertical scroll",
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final created = DateTime.now().millisecondsSinceEpoch;
-    await tester.pumpWidget(
-      _SessionDetailMessageListHarness(
-        initialMessages: [
-          for (var i = 0; i < 12; i++)
-            _message(
-              messageId: "u$i",
-              role: "user",
-              text: _multilineText(label: "Message $i", lines: 6),
-              createdAtMs: created,
-            ),
-        ],
-        initialStreamingText: const {},
-      ),
-    );
-    await tester.pumpAndSettle();
+      final created = DateTime.now().millisecondsSinceEpoch;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: [
+            for (var i = 0; i < 12; i++)
+              _message(
+                messageId: "u$i",
+                role: "user",
+                text: _multilineText(label: "Message $i", lines: 6),
+                createdAtMs: created,
+              ),
+          ],
+          initialStreamingText: const {},
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    final textFinder = find.textContaining("Message 11").first;
-    final restX = tester.getTopLeft(textFinder).dx;
+      final textFinder = find.textContaining("Message 11").first;
+      final restX = tester.getTopLeft(textFinder).dx;
 
-    // A rightward drag must be left for the system back-swipe / other
-    // gestures — it must not slide the transcript.
-    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
-    await gesture.moveBy(const Offset(160, 0));
-    await tester.pump();
+      // A rightward drag must be left for the system back-swipe / other
+      // gestures — it must not slide the transcript.
+      final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+      await gesture.moveBy(const Offset(160, 0));
+      await tester.pump();
 
-    expect(tester.getTopLeft(textFinder).dx, restX, reason: "rightward drag must not open the timestamp gutter");
+      expect(tester.getTopLeft(textFinder).dx, restX, reason: "rightward drag must not open the timestamp gutter");
 
-    await gesture.moveBy(const Offset(0, 300));
-    await tester.pump();
+      // The scroll wins on the first move past its slop and takes the rest.
+      await gesture.moveBy(const Offset(0, 30));
+      await tester.pump();
+      await gesture.moveBy(const Offset(0, 270));
+      await tester.pump();
 
-    expect(_position(tester).pixels, greaterThan(20));
-    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      expect(_position(tester).pixels, greaterThan(20));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
 
-    await gesture.up();
-    await tester.pumpAndSettle();
-  });
+      await gesture.up();
+      await tester.pumpAndSettle();
+    },
+    // On Android the transcript's selection region claims a horizontal touch
+    // drag at once; on iOS it waits for the scroll to lose first.
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
 
   testWidgets("a mouse click-and-drag does not peek (left free for text selection)", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -6750,6 +6761,99 @@ void main() {
 
       expect(_position(tester).pixels, offset);
       expect(find.byKey(_jumpToLatestKey), findsNothing);
+    });
+  });
+
+  group("a text selection", () {
+    const first = "The first reply's text";
+    const second = "The second reply's text";
+    final replies = [
+      // Timestamped, so each row has one beside it to leave out.
+      _message(messageId: "u0", role: "user", text: "A prompt", createdAtMs: 1700000000000),
+      _message(messageId: "a0", role: "assistant", text: first, createdAtMs: 1700000001000),
+      _message(messageId: "a1", role: "assistant", text: second, createdAtMs: 1700000002000),
+    ];
+
+    PregoReadableSelectionAreaState transcriptArea(WidgetTester tester) => tester.state(
+      find.ancestor(
+        of: find.byKey(const Key("session-detail-message-list-view")),
+        matching: find.byType(PregoReadableSelectionArea),
+      ),
+    );
+
+    PregoReadableSelectionAreaState messageArea(WidgetTester tester, String text) =>
+        tester.state(find.ancestor(of: find.text(text), matching: find.byType(PregoReadableSelectionArea)).first);
+
+    /// Drags from the start of the first reply to the end of the second.
+    Future<void> dragFromFirstIntoSecond(WidgetTester tester) async {
+      final start = tester.getTopLeft(find.text(first)) + const Offset(1, 5);
+      final drag = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+      await tester.pump();
+      await drag.moveTo(tester.getCenter(find.text(second)));
+      await tester.pump();
+      await drag.moveTo(tester.getTopRight(find.text(second)) + const Offset(-1, 5));
+      await tester.pump();
+      await drag.up();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      "dragged with a mouse runs from one message into the next, and copies their text in order",
+      (tester) async {
+        await _pumpPointerTurns(tester, messages: replies);
+
+        await dragFromFirstIntoSecond(tester);
+
+        // Line by line, without the prompt above or either row's timestamp,
+        // and each message's menu copies all of it.
+        expect(messageArea(tester, first).selectedText, "$first\n$second");
+        expect(messageArea(tester, second).selectedText, "$first\n$second");
+        expect(transcriptArea(tester).selectedText, "$first\n$second");
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+    );
+
+    testWidgets(
+      "a right-click on it offers Copy selected text, and a message outside it still offers Copy",
+      (tester) async {
+        await _pumpPointerTurns(tester, messages: replies);
+        await dragFromFirstIntoSecond(tester);
+        final selected = transcriptArea(tester).selectedText;
+
+        await tester.tapAt(
+          tester.getCenter(find.text(first)),
+          buttons: kSecondaryButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text("Copy selected text"), findsOneWidget);
+        expect(transcriptArea(tester).selectedText, selected, reason: "the open menu keeps the selection");
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pumpAndSettle();
+
+        await tester.tapAt(
+          tester.getCenter(find.text("A prompt")),
+          buttons: kSecondaryButton,
+          kind: PointerDeviceKind.mouse,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text("Copy"), findsOneWidget);
+        expect(find.text("Copy selected text"), findsNothing);
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+    );
+
+    testWidgets("Select text selects only its own message, with the selection's toolbar", (tester) async {
+      await _pumpTurns(tester, messages: replies);
+
+      await tester.longPress(find.text(second));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Select text"));
+      await tester.pumpAndSettle();
+
+      expect(transcriptArea(tester).selectedText, second);
+      expect(messageArea(tester, first).selectedText, isNull);
+      expect(find.byType(AdaptiveTextSelectionToolbar), findsOneWidget);
     });
   });
 }
