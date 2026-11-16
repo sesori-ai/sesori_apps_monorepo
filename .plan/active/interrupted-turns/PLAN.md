@@ -274,7 +274,11 @@ exactly one stopped row. ~500 lines.
 
 Workspaces: `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_codex`, docs. Claude: map the two interrupt records to
 stopped rows in the history mapper and the live stream; emit the live row
-from the interrupted branch, folded with the replayed record. Codex: parse rollout `turn_aborted` (and its reason
+from the interrupted branch, folded with the replayed record. Verified (claude 2.1.325): stream-json echoes the
+interrupt record with its transcript uuid before the `error_during_execution` result, so the live row is that record
+itself and pairs by id; a user Stop waits (bounded) for it before teardown. The CLI's synthetic assistant reply
+"No response requested." (model `<synthetic>`, one text block) is written to the transcript only on resume, never to
+stdout, so the history mapper drops it. Codex: parse rollout `turn_aborted` (and its reason
 when present) into a stopped row on replay; emit it live for a turn `abortSession` interrupted, with the id derived from
 the turn id. Tests per mapper plus a
 reload-after-live-stop test per harness asserting exactly one stopped row. ~600 lines.

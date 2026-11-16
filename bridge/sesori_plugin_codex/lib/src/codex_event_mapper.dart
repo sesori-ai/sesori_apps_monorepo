@@ -11,6 +11,7 @@ import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
+import "repositories/mappers/codex_stopped_turn_mapper.dart";
 import "repositories/mappers/codex_tool_part_mapper.dart";
 import "repositories/mappers/codex_user_content_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
@@ -344,6 +345,26 @@ class CodexEventMapper({
       errorName: "CodexError",
       errorMessage: message,
       time: _turnMessageTime(turn: turn),
+    );
+  }
+
+  /// The stopped row for a `turn/completed` whose turn a user Stop
+  /// interrupted, or null when the turn ended any other way. It takes the turn
+  /// id, which the rollout's `turn_aborted` record carries too, so a reload
+  /// folds this row with its replay.
+  BridgeSseMessageUpdated? mapStoppedTurn({required String threadId, required Map<String, dynamic> params}) {
+    final turn = _asMap(value: params["turn"]);
+    final turnId = _optionalString(map: turn, key: "id");
+    if (turnId == null || _optionalString(map: turn, key: "status") != "interrupted") return null;
+    return BridgeSseMessageUpdated(
+      info: codexStoppedTurnMessage(
+        id: turnId,
+        sessionId: threadId,
+        modelId: _threadModel[threadId] ?? config.model,
+        providerId: _threadProvider[threadId] ?? config.effectiveModelProvider,
+        variant: _threadEffort[threadId],
+        time: _turnMessageTime(turn: turn),
+      ),
     );
   }
 

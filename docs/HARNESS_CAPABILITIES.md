@@ -656,12 +656,16 @@ app ignores `kind` and shows the row's text in red.
 | OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
 | OMP | ⬜ | ⬜ |
 | Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ⬜ | ⬜ |
-| Claude Code | ⬜ | ⬜ |
-| Codex | ⬜ | ⬜ |
+| Claude Code | ✅ The CLI's `[Request interrupted by user]` record (`… for tool use` when a tool was cut off), streamed before the turn's result. | ✅ The same record, by its uuid; the CLI's `<synthetic>` "No response requested." reply after it is hidden. |
+| Codex | ✅ `turn/completed` `interrupted` for a turn a Stop interrupted, keyed by the turn id. | ✅ Rollout `turn_aborted` with reason `interrupted`, keyed by its turn id. |
 
 Pi and OpenCode do not tell a user Stop from another abort of the turn, so any abort they record reads Stopped.
 OpenCode v2 (2.2.7 source) records the same `aborted` error when the user declines a permission, which ends the turn
 too.
+
+Claude Code (2.1.325) and Codex (0.169.0) record the interrupt a bridge shutdown sends the same way as a user Stop, so
+such a turn reads Stopped after a reload although it showed no Stopped line live. A Claude Code Stop waits up to 2
+seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds.
 
 ## Pre-start catalog import
 

@@ -1306,6 +1306,7 @@ void main() {
         final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
         final interrupt = await _waitForControlSubtype(first, "interrupt");
         first.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
+        first.emit({..._result(), "subtype": "error_during_execution", "is_error": true});
         await _waitForStdinClose(first);
 
         final answer = harness.ask();

@@ -1399,6 +1399,45 @@ void main() {
       expect(messages.single.parts, isEmpty);
     });
 
+    test("message projection replays only an interrupted turn as a stopped row", () {
+      const sessionId = "019a0000-1111-2222-3333-ffffffffffff";
+      String aborted({required String turnId, required String reason}) => jsonEncode({
+        "timestamp": "2026-11-15T08:00:09Z",
+        "type": "event_msg",
+        "payload": {"type": "turn_aborted", "turn_id": turnId, "reason": reason},
+      });
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/11/15/rollout-turn-aborted.jsonl",
+        sessionId: sessionId,
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "type": "turn_context",
+            "payload": {"model": "gpt-5.6", "effort": "high"},
+          }),
+          aborted(turnId: "turn-stopped", reason: "interrupted"),
+          aborted(turnId: "turn-replaced", reason: "replaced"),
+          aborted(turnId: "turn-review", reason: "review_ended"),
+        ],
+      );
+
+      final messages = projectRootMessagesWithoutChildReplay(
+        rolloutPath: path,
+        sessionId: sessionId,
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      final stopped = messages.map((message) => message.info).whereType<PluginMessageError>().single;
+      expect(stopped.id, "turn-stopped");
+      expect(stopped.kind, PluginErrorKind.stopped);
+      expect(stopped.modelID, "gpt-5.6");
+      expect(stopped.errorMessage, "Stopped");
+      expect(stopped.time?.created, DateTime.utc(2026, 11, 15, 8, 0, 9).millisecondsSinceEpoch);
+      expect(messages, hasLength(1));
+    });
+
     test("message projection excludes only generated Codex user context envelopes", () {
       final path = _writeRollout(
         codexHome,

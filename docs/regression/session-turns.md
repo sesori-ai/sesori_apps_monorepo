@@ -116,8 +116,10 @@ defaults and queued client sends coherent.
   operations queued behind a send (abort, permission and question replies)
   are never blocked for the duration of a turn.
 - A user Stop ends the turn with a small grey "Stopped" line in the compaction row's quiet style, never a red row
-  or the harness's own abort wording. Pi and OpenCode (v1 and v2) mark their native abort record stopped, so the line
-  shows live and after a reload; the other harnesses are listed under "Stopped turns" in
+  or the harness's own abort wording. Pi, OpenCode (v1 and v2), Claude Code and Codex mark their native stop record
+  stopped (Claude Code's interrupt record by its uuid, with the CLI's "No response requested." filler hidden; Codex's
+  interrupted turn by its turn id), so the line shows live and after a reload as one row, with no interrupt bubble;
+  the other harnesses are listed under "Stopped turns" in
   [HARNESS_CAPABILITIES](../HARNESS_CAPABILITIES.md#stopped-turns). The text and steps the turn already streamed
   stay, with the line under them where the reply ended; a failed turn likewise keeps them above its red error. The
   Working row leaves as the stopped row arrives, before the session's idle lands, and the line grows in as it folds

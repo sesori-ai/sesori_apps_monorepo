@@ -712,7 +712,17 @@ final class ClaudeSessionService({
   /// sub-agents too; `stop`, and `keep` during a live main turn or with
   /// nothing resident, interrupts and tears the process down, cancelling every
   /// task with it.
-  Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) async {
+  Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) =>
+      _abort(sessionId: sessionId, subAgents: subAgents, userStop: true);
+
+  /// [userStop] is false for a shutdown, which skips waiting for the
+  /// interrupted turn to end: only a user Stop shows the stopped row that the
+  /// turn's end carries.
+  Future<PluginAbortResult> _abort({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+    required bool userStop,
+  }) async {
     final state = _turns[sessionId];
     if (state == null) return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
     final activeAbort = state.aborting;
@@ -720,7 +730,7 @@ final class ClaudeSessionService({
       // The in-flight abort may have kept work this caller wants stopped; run
       // the requested scope once its fence releases.
       await activeAbort.future;
-      return await abort(sessionId: sessionId, subAgents: subAgents);
+      return await _abort(sessionId: sessionId, subAgents: subAgents, userStop: userStop);
     }
     final runningSubAgents = state.runningTaskIds.values.where((type) => type == ClaudeTaskType.subAgent).length;
     if (subAgents == PluginAbortSubAgentPolicy.confirm && runningSubAgents > 0) {
@@ -768,7 +778,7 @@ final class ClaudeSessionService({
       // not rearm it, so a pending wakeup cannot survive an abort.
       state.wakeupAt = null;
       try {
-        await _processes.interrupt(sessionId: sessionId);
+        await _processes.interrupt(sessionId: sessionId, awaitTurnEnd: userStop);
       } on Object catch (error, stack) {
         Log.w("[claude] interrupt failed for $sessionId", error, stack);
       } finally {
@@ -800,7 +810,7 @@ final class ClaudeSessionService({
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
         for (final sessionId in activeSessionIds)
-          abort(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop),
+          _abort(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop, userStop: false),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
