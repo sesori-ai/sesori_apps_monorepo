@@ -176,7 +176,9 @@ sub-agent parts, plus the signal that a tool changed files.
   after a 250 ms grace, on every client: a harness such as Codex can report
   idle some 50 ms after its reply's last part, and the reply's end then moves
   nothing. A real gap before the next step shows the row once the grace ends,
-  and a step or stream starting sooner takes the slot as usual.
+  and a step or stream starting sooner takes the slot as usual. There is no
+  grace when the row already showed as the stream ended, or while an accepted
+  edit's prompt raises it: it stays or shows at once.
   A prompt sent while the session is idle wakes it, so the row sits right below
   that prompt's bubble while it is sent, held and delivered, and stays put as
   the bubble becomes its message; this holds for a prompt from another surface
