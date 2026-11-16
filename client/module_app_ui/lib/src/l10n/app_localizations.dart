@@ -5512,7 +5512,7 @@ abstract class AppLocalizations {
   /// Alert shown when an edit named a model or agent the session no longer offers; the options were refreshed.
   ///
   /// In en, this message translates to:
-  /// **'The available models changed. Check your selection and resend.'**
+  /// **'The available models or agents changed. Check your selection and resend.'**
   String get sessionDetailEditOptionsChanged;
 
   /// Alert shown when Stop and resend could not stop the session.

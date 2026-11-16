@@ -2266,7 +2266,7 @@
   "@sessionDetailEditRefused": {"description": "Title of the alert shown when the computer refused an edit; nothing changed."},
   "sessionDetailEditRefusedBody": "The session didn't accept the edit. Nothing changed.",
   "@sessionDetailEditRefusedBody": {"description": "Alert body for a refused edit when the agent gave no reason."},
-  "sessionDetailEditOptionsChanged": "The available models changed. Check your selection and resend.",
+  "sessionDetailEditOptionsChanged": "The available models or agents changed. Check your selection and resend.",
   "@sessionDetailEditOptionsChanged": {"description": "Alert shown when an edit named a model or agent the session no longer offers; the options were refreshed."},
   "sessionDetailEditStopFailed": "The session didn't stop, so the edit wasn't sent.",
   "@sessionDetailEditStopFailed": {"description": "Alert shown when Stop and resend could not stop the session."},
