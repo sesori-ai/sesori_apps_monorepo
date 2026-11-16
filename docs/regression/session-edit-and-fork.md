@@ -229,6 +229,10 @@ not loaded yet.
 - Claude Code cannot edit a prompt from before the latest compaction.
 - An edit the plugin refuses keeps the attachment files the bridge saved for
   it, as a refused send does.
+- A removal that lands in the same frame as a refresh goes at once instead of
+  folding, since the refresh replaces the transcript.
+- A message menu left open on a row another device removes stays open; acting
+  from it gets the bridge's refusal.
 
 ## Sources
 
