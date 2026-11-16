@@ -26,7 +26,7 @@ class _FakeConfigSource() implements FeedbackPromptConfigSource {
   Future<FeedbackPromptConfigValues> fetchValues() async => values;
 }
 
-Message _errorMessage({required String sessionId}) => Message.error(
+Message _errorMessage({required String sessionId, required MessageErrorKind kind}) => Message.error(
   id: "msg-error",
   sessionID: sessionId,
   agent: null,
@@ -34,6 +34,7 @@ Message _errorMessage({required String sessionId}) => Message.error(
   providerID: null,
   errorName: "ProviderError",
   errorMessage: "request failed",
+  kind: kind,
   time: null,
 );
 
@@ -50,6 +51,7 @@ Session _childSession({required String id}) => Session(
   autoContinuation: null,
   approvalOverride: null,
   scheduledTask: null,
+  forkedFrom: null,
 );
 
 void main() {
@@ -272,7 +274,11 @@ void main() {
       for (final (name, failInSessionB) in <(String, Future<void> Function())>[
         (
           "an AI error message",
-          () => emitEvent(SesoriSseEvent.messageUpdated(info: _errorMessage(sessionId: "ses-b"))),
+          () => emitEvent(
+            SesoriSseEvent.messageUpdated(
+              info: _errorMessage(sessionId: "ses-b", kind: MessageErrorKind.failure),
+            ),
+          ),
         ),
         ("a session error", () => emitEvent(const SesoriSseEvent.sessionError(sessionID: "ses-b"))),
         ("a failed send or reply", () => service.recordFailure(sessionId: "ses-b")),
@@ -388,7 +394,11 @@ void main() {
         await startTurn(sessionId: "ses-a");
         service.recordUserStop(sessionId: "ses-a");
 
-        await emitEvent(SesoriSseEvent.messageUpdated(info: _errorMessage(sessionId: "ses-a")));
+        await emitEvent(
+          SesoriSseEvent.messageUpdated(
+            info: _errorMessage(sessionId: "ses-a", kind: MessageErrorKind.failure),
+          ),
+        );
         await emitEvent(const SesoriSseEvent.sessionError(sessionID: "ses-a"));
         await endTurn(sessionId: "ses-a");
         expect(
@@ -412,6 +422,45 @@ void main() {
         service.recordUserStop(sessionId: "ses-a");
         service.recordUserStopRefused(sessionId: "ses-a");
         await endTurn(sessionId: "ses-a");
+        expect(await stored(), counting(points: {"ses-a": 1}, lastShownAt: isNull));
+      });
+
+      test("a stopped row from another surface counts as a stop, not a failure", () async {
+        await finishTurns(sessionId: "ses-a");
+        await startTurn(sessionId: "ses-a");
+
+        await emitEvent(
+          SesoriSseEvent.messageUpdated(
+            info: _errorMessage(sessionId: "ses-a", kind: MessageErrorKind.stopped),
+          ),
+        );
+        await endTurn(sessionId: "ses-a");
+
+        expect(await stored(), counting(points: {"ses-a": 1}, lastShownAt: isNull));
+      });
+
+      test("a stopped row from another surface after the idle keeps the turn from earning", () async {
+        service.finishedTurnGrace = const Duration(milliseconds: 50);
+        await startTurn(sessionId: "ses-a");
+        await endTurn(sessionId: "ses-a");
+        await emitEvent(
+          SesoriSseEvent.messageUpdated(
+            info: _errorMessage(sessionId: "ses-a", kind: MessageErrorKind.stopped),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+
+        expect(await stored(), isNull);
+      });
+
+      test("a stop tapped during the grace that the bridge refuses still lets the turn earn", () async {
+        service.finishedTurnGrace = const Duration(milliseconds: 50);
+        await startTurn(sessionId: "ses-a");
+        await endTurn(sessionId: "ses-a");
+        service.recordUserStop(sessionId: "ses-a");
+        service.recordUserStopRefused(sessionId: "ses-a");
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+
         expect(await stored(), counting(points: {"ses-a": 1}, lastShownAt: isNull));
       });
 

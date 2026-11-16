@@ -127,6 +127,7 @@ class DesktopProductAnalyticsDeliveryService({
     FounderCallLinkOpenedEvent() ||
     FounderCallDeclinedEvent() ||
     SideQuestionAskedEvent() ||
+    SessionMessageEditedEvent() => null,
     // The auth server does not accept it yet.
     ScheduledTaskSavedEvent() => null,
     // The warehouse has no `finish` or `mode` column, and a server enum would

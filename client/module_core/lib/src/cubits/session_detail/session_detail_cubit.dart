@@ -25,6 +25,7 @@ import "../../foundation/models/session_launch/launch_follow_up.dart";
 import "../../foundation/models/session_launch/session_launch_composer.dart";
 import "../../foundation/models/session_launch/session_launch_handoff.dart";
 import "../../foundation/models/session_options/session_options_request_mode.dart";
+import "../../foundation/models/side_question_availability.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
@@ -36,6 +37,7 @@ import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_messages_through_result.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/models/session_prompt_index_result.dart";
+import "../../repositories/models/session_rewind_result.dart";
 import "../../repositories/models/tool_output_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
@@ -44,6 +46,7 @@ import "../../services/composer_draft_calculator.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/feedback_prompt_service.dart";
 import "../../services/file_reference_open_service.dart";
+import "../../services/message_composer_restore_service.dart";
 import "../../services/models/file_reference_open_outcome.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/plugin_management_service.dart";
@@ -67,6 +70,7 @@ import "prompt_send_queue.dart";
 import "prompt_turn_shape_calculator.dart";
 import "seeded_composer.dart";
 import "session_abort_outcome.dart";
+import "session_composer_mode.dart";
 import "session_detail_notice.dart";
 import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
@@ -131,6 +135,7 @@ class SessionDetailCubit(
   required final SseEventTracker _sseEventTracker,
   required final SessionLaunchService _sessionLaunchService,
   required final FileReferenceOpenService _fileReferenceOpenService,
+  required final MessageComposerRestoreService _composerRestore,
 
   /// The window of the scope this page opened in, whose renames its title
   /// follows the way the session's row does.
@@ -195,6 +200,10 @@ class SessionDetailCubit(
   /// until the composer stages them; see [restoredAttachments].
   List<ComposerAttachment> _restoredAttachments = const [];
   int _composerRestorations = 0;
+
+  /// The earlier message the composer is editing, or null while Send adds a
+  /// prompt; see [editMessage].
+  _MessageEdit? _edit;
 
   /// The words returned messages put at the front of the composer's draft,
   /// for a later return to go after while the draft still starts with them.
@@ -857,9 +866,15 @@ class SessionDetailCubit(
                 session: session,
                 parkEpochAtFetch: parkEpochAtFetch,
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
+                // Read before the loading state replaced it.
+                previousSideChatCount: switch (previous) {
+                  SessionDetailLoaded(:final archivedSideChatCount) => archivedSideChatCount,
+                  _ => 0,
+                },
               ),
             );
             unawaited(_fetchPromptIndex());
+            if (snapshot.isArchived) unawaited(_countArchivedSideChats(sideQuestions: snapshot.sideQuestions));
             if (becameAvailable) {
               _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
             } else if (_interaction.canInteract) {
@@ -1057,6 +1072,20 @@ class SessionDetailCubit(
     // loaded; the load service logs a failure.
     if (latest is SessionDetailLoaded && result is SessionPromptIndexAvailable) {
       emit(latest.copyWith(promptIndex: result.entries));
+    }
+  }
+
+  /// Counts an archived session's side chats, which stay readable whatever its
+  /// harness answers now, on a bridge that stores them.
+  Future<void> _countArchivedSideChats({required SideQuestionAvailability sideQuestions}) async {
+    switch (sideQuestions) {
+      case SideQuestionAvailability.available || SideQuestionAvailability.harnessUnsupported:
+        final count = await _loadService.countSideChats(sessionId: _sessionId);
+        if (isClosed) return;
+        final latest = state;
+        if (latest is SessionDetailLoaded && latest.isArchived) emit(latest.copyWith(archivedSideChatCount: count));
+      case SideQuestionAvailability.bridgeUpdateRequired || SideQuestionAvailability.unresolved:
+        return;
     }
   }
 
@@ -1502,6 +1531,7 @@ class SessionDetailCubit(
               supportsFileUploads: snapshot.supportsFileUploads,
               offersSessionMcp: snapshot.offersSessionMcp,
               namesCommandInvocations: snapshot.namesCommandInvocations,
+              supportsRewind: snapshot.supportsRewind,
               sideQuestions: snapshot.sideQuestions,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               session: refreshedSession,
@@ -3289,15 +3319,277 @@ class SessionDetailCubit(
 
   void trackComposerAttachments({required List<ComposerAttachment> attachments}) => _composerAttachments = attachments;
 
+  /// An edit's words stay off the saved draft, which keeps what the composer
+  /// held before the edit for when it ends or the screen closes.
   void saveComposerDraft({required ComposerDraft draft}) {
     _composerDraft = draft;
-    _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: draft);
+    if (_edit == null) _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: draft);
   }
 
   void clearComposerDraft() {
     _composerDraft = ComposerDraft.typed(text: "");
     _restoredDraftPrefix = "";
-    _composerDraftRepository.clearForSession(sessionId: _sessionId);
+    if (_edit == null) _composerDraftRepository.clearForSession(sessionId: _sessionId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Edit and resend
+  // ---------------------------------------------------------------------------
+
+  SessionComposerMode get _composerMode => switch (_edit) {
+    null => const SessionComposerMode.normal(),
+    final edit => SessionComposerMode.editing(
+      messageId: edit.messageId,
+      phase: edit.phase,
+      leftOutCount: edit.leftOutCount,
+    ),
+  };
+
+  /// Starts editing [message], an earlier user message: the composer takes up
+  /// its text and attachments, and Resend replaces it and everything after it.
+  /// What the composer held comes back once the edit ends.
+  Future<void> editMessage({required MessageWithParts message}) async {
+    if (_refuseComposerInput(action: "edit a message") || _refuseWhenArchived(action: "edit a message")) return;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    final previous = _edit;
+    // One edit is restoring or going out; the next tap waits for it.
+    if (previous != null && previous.phase != SessionEditPhase.composing) return;
+    final edit = _MessageEdit(
+      messageId: message.info.id,
+      promptId: generatePromptId(),
+      phase: SessionEditPhase.restoring,
+      leftOutCount: 0,
+      unconfirmed: null,
+      // Editing another message keeps what the composer held before the first.
+      held:
+          previous?.held ??
+          (
+            draft: _composerDraft,
+            restoredPrefix: _restoredDraftPrefix,
+            attachments: _restoredAttachments.isEmpty ? _composerAttachments : _restoredAttachments,
+            command: current.stagedCommand,
+          ),
+    );
+    _edit = edit;
+    emit(current.copyWith(composerMode: _composerMode, stagedCommand: null));
+    final restored = await _composerRestore.restore(sessionId: _sessionId, message: message);
+    // Cancelled meanwhile. A return meanwhile changed only what it holds.
+    final latest = _edit;
+    if (isClosed || latest == null || latest.promptId != edit.promptId) return;
+    _edit = _MessageEdit(
+      messageId: edit.messageId,
+      promptId: edit.promptId,
+      phase: SessionEditPhase.composing,
+      leftOutCount: restored.leftOutCount,
+      unconfirmed: null,
+      held: latest.held,
+    );
+    _fillComposer(draft: restored.draft, restoredPrefix: "", attachments: restored.attachments, stagedCommand: null);
+  }
+
+  /// Ends the edit without sending it.
+  void cancelEditing() {
+    final edit = _edit;
+    // A sent edit cannot be called back.
+    if (edit == null || edit.phase == SessionEditPhase.sending) return;
+    _endEdit(edit: edit);
+  }
+
+  /// Sends the edit: the bridge removes the edited message and everything
+  /// after it, then sends [text] and [attachments] in its place. A running
+  /// turn answers [SessionDetailEditBusy] instead.
+  Future<void> resendEdit({required String text, required List<ComposerAttachment> attachments}) async {
+    final edit = _edit;
+    final current = state;
+    if (edit == null || edit.phase != SessionEditPhase.composing || current is! SessionDetailLoaded) return;
+    if (!_editCanGo(current: current, text: text, attachments: attachments)) return;
+    if (current.sessionStatus is! SessionStatusIdle) {
+      _noticeStream.add(const SessionDetailEditBusy());
+      return;
+    }
+    await _sendEdit(edit: edit, text: text.trim(), attachments: attachments);
+  }
+
+  /// Stops the running turn, its sub-agents included, then sends the edit
+  /// the composer holds once the session is idle.
+  Future<void> stopAndResendEdit() async {
+    final edit = _edit;
+    if (edit == null || edit.phase != SessionEditPhase.composing) return;
+    // The busy notice's dialog covered the composer, so it holds what Resend
+    // found.
+    final text = _composerDraft.text.trim();
+    final attachments = _composerAttachments;
+    _setEdit(edit: edit.withPhase(phase: SessionEditPhase.stopping));
+    final outcome = await abort(subAgents: SessionAbortSubAgentPolicy.stop);
+    final stopped = outcome is SessionAbortAccepted && await _becomesIdle();
+    final latest = _edit;
+    final current = state;
+    // Cancelled while it stopped.
+    if (isClosed || latest == null || latest.promptId != edit.promptId || current is! SessionDetailLoaded) return;
+    if (!stopped) {
+      _setEdit(edit: latest.withPhase(phase: SessionEditPhase.composing));
+      _noticeStream.add(const SessionDetailEditStopFailed());
+      return;
+    }
+    if (!_editCanGo(current: current, text: text, attachments: attachments)) {
+      _setEdit(edit: latest.withPhase(phase: SessionEditPhase.composing));
+      return;
+    }
+    await _sendEdit(edit: latest, text: text, attachments: attachments);
+  }
+
+  /// Whether an edit holding [text] and [attachments] may be sent now.
+  bool _editCanGo({
+    required SessionDetailLoaded current,
+    required String text,
+    required List<ComposerAttachment> attachments,
+  }) {
+    if (_refuseComposerInput(action: "resend an edit") || _refuseWhenArchived(action: "resend an edit")) return false;
+    if (text.trim().isEmpty && attachments.isEmpty) return false;
+    if (!canDeliverComposerAttachments(
+      attachments: attachments,
+      inlineImages: current.supportsPromptAttachments,
+      fileUploads: current.supportsFileUploads,
+    )) {
+      logw("Refused an edit with ${attachments.length} attachment(s) because plugin or bridge support is unavailable");
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> _becomesIdle() async {
+    bool idle(SessionDetailState state) => state is SessionDetailLoaded && state.sessionStatus is SessionStatusIdle;
+    if (idle(state)) return true;
+    try {
+      // A cubit closed meanwhile ends its stream, which finds no idle state.
+      await stream.firstWhere(idle, orElse: () => state).timeout(_editStopTimeout);
+      return idle(state);
+    } on TimeoutException {
+      logw("Session $_sessionId did not turn idle after a stop for an edit");
+      return false;
+    }
+  }
+
+  Future<void> _sendEdit({
+    required _MessageEdit edit,
+    required String text,
+    required List<ComposerAttachment> attachments,
+  }) async {
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    final payload = (text: text, attachments: attachments);
+    // The bridge answers a prompt id it took with success, whatever the
+    // payload, so only an unchanged retry may reuse it.
+    final attempt = switch (edit.unconfirmed) {
+      final unconfirmed? when !_samePayload(unconfirmed, payload) => edit.withAttempt(
+        promptId: generatePromptId(),
+        unconfirmed: null,
+      ),
+      _ => edit,
+    };
+    _setEdit(edit: attempt.withPhase(phase: SessionEditPhase.sending));
+    final agentModel = current.selectedAgentModel;
+    final result = await _sessionRepository.rewindSession(
+      sessionId: _sessionId,
+      messageId: attempt.messageId,
+      promptId: attempt.promptId,
+      text: text,
+      attachments: attachments,
+      agent: current.selectedAgent,
+      model: _agentModelToPromptModel(agentModel),
+      variant: switch (agentModel?.variant) {
+        null => null,
+        final variant => SessionVariant(id: variant),
+      },
+      fastMode: current.runsFastMode,
+    );
+    // Reported even when the screen closed meanwhile, as the edit ran.
+    if (current.pluginId case final pluginId?) {
+      _reportProductEvent(
+        event: ProductAnalyticsEvent.sessionMessageEdited(
+          harness: AnalyticsHarness.fromPluginId(pluginId: pluginId),
+          outcome: switch (result) {
+            SessionRewindAccepted() => AnalyticsMessageEditOutcome.succeeded,
+            SessionRewindBusy() => AnalyticsMessageEditOutcome.refusedBusy,
+            SessionRewindUnavailable() => AnalyticsMessageEditOutcome.branchPointUnavailable,
+            SessionRewindOptionsChanged() || SessionRewindRejected() => AnalyticsMessageEditOutcome.refused,
+            SessionRewindFailed() => AnalyticsMessageEditOutcome.failed,
+          },
+        ),
+      );
+    }
+    // A return during the request may have changed what the edit holds.
+    final latest = _edit;
+    if (isClosed || latest == null || latest.promptId != attempt.promptId) return;
+    if (result is SessionRewindAccepted) {
+      _endEdit(edit: latest);
+      return;
+    }
+    // The composer still holds the edit, to change or resend. A refusal ran
+    // nothing; a failure may have, so its id stays tied to what it sent.
+    _setEdit(
+      edit: latest
+          .withAttempt(promptId: latest.promptId, unconfirmed: result is SessionRewindFailed ? payload : null)
+          .withPhase(phase: SessionEditPhase.composing),
+    );
+    switch (result) {
+      case SessionRewindAccepted():
+        break;
+      case SessionRewindBusy():
+        _noticeStream.add(const SessionDetailEditBusy());
+      case SessionRewindUnavailable(:final reason) || SessionRewindRejected(:final reason):
+        _noticeStream.add(SessionDetailEditRefused(reason: reason));
+      case SessionRewindOptionsChanged():
+        await _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false);
+        if (!isClosed) _noticeStream.add(const SessionDetailEditOptionsChanged());
+      case SessionRewindFailed(:final error):
+        logw("Could not confirm an edit of a message in $_sessionId", error);
+        _noticeStream.add(const SessionDetailEditFailed());
+    }
+  }
+
+  static bool _samePayload(_EditPayload a, _EditPayload b) =>
+      a.text == b.text && const ListEquality<ComposerAttachment>().equals(a.attachments, b.attachments);
+
+  /// Gives the composer back what it held before the edit.
+  void _endEdit({required _MessageEdit edit}) {
+    _edit = null;
+    final held = edit.held;
+    _fillComposer(
+      draft: held.draft,
+      restoredPrefix: held.restoredPrefix,
+      attachments: held.attachments,
+      stagedCommand: held.command,
+    );
+  }
+
+  /// Replaces what the composer holds, once, as a stop's return does.
+  void _fillComposer({
+    required ComposerDraft draft,
+    required String restoredPrefix,
+    required List<ComposerAttachment> attachments,
+    required CommandInfo? stagedCommand,
+  }) {
+    _composerDraft = draft;
+    _restoredDraftPrefix = restoredPrefix;
+    _restoredAttachments = attachments;
+    _composerRestorations++;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    emit(
+      current.copyWith(
+        composerMode: _composerMode,
+        composerRestorations: _composerRestorations,
+        stagedCommand: stagedCommand,
+      ),
+    );
+  }
+
+  void _setEdit({required _MessageEdit edit}) {
+    _edit = edit;
+    final current = state;
+    if (current is SessionDetailLoaded && !isClosed) emit(current.copyWith(composerMode: _composerMode));
   }
 
   void reportVoiceTranscriptionCompleted({required AnalyticsVoiceFinish finish, required AnalyticsVoiceMode mode}) {
@@ -3927,6 +4219,34 @@ class SessionDetailCubit(
   /// otherwise be its arguments, even when [unsent] brings only images.
   void _restoreToComposer({required List<ReturnedPrompt> unsent, required CommandInfo? stagedCommand}) {
     final restored = [for (final prompt in unsent) ?prompt.draft];
+    // The composer holds an edit, so they join what it held before, which
+    // comes back when the edit ends.
+    if (_edit case final edit?) {
+      final held = edit.held;
+      final restoration = switch (held.command) {
+        null => _draftCalculator.restoreParagraphs(
+          held: held.draft,
+          restoredPrefix: held.restoredPrefix,
+          restored: restored,
+        ),
+        CommandInfo(:final name) => _draftCalculator.restoreParagraphsUnderCommand(
+          command: name,
+          args: held.draft,
+          restoredPrefix: held.restoredPrefix,
+          restored: restored,
+        ),
+      };
+      _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: restoration.draft);
+      _edit = edit.withHeld(
+        held: (
+          draft: restoration.draft,
+          restoredPrefix: restoration.restoredPrefix,
+          attachments: [...held.attachments, for (final prompt in unsent) ...prompt.attachments],
+          command: null,
+        ),
+      );
+      return;
+    }
     final restoration = switch (stagedCommand) {
       null => _draftCalculator.restoreParagraphs(
         held: _composerDraft,
@@ -3999,6 +4319,7 @@ class SessionDetailCubit(
     required Session session,
     required int parkEpochAtFetch,
     required SessionInteractionState interaction,
+    required int previousSideChatCount,
   }) {
     // The load replaces the loading state, keeping what was sent or staged
     // meanwhile: the launch bubble with its follow-up ids, and the command.
@@ -4050,12 +4371,16 @@ class SessionDetailCubit(
       supportsFileUploads: snapshot.supportsFileUploads,
       offersSessionMcp: snapshot.offersSessionMcp,
       namesCommandInvocations: snapshot.namesCommandInvocations,
+      supportsRewind: snapshot.supportsRewind,
       sideQuestions: snapshot.sideQuestions,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
       childStatuses: derived.childStatuses,
       isRootSession: snapshot.isRootSession,
       isArchived: snapshot.isArchived,
+      // A reload keeps the count until it is counted again, so the notice's
+      // link doesn't fold away and back.
+      archivedSideChatCount: snapshot.isArchived ? previousSideChatCount : 0,
       cannotContinueMessage: snapshot.cannotContinueMessage,
       queuedMessages: queue.queuedMessages,
       awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
@@ -4070,6 +4395,7 @@ class SessionDetailCubit(
       fastMode: snapshot.promptDefaults?.fastMode ?? false,
       stagedCommand: loading is SessionDetailLoading ? loading.seededComposer?.stagedCommand : null,
       composerRestorations: _composerRestorations,
+      composerMode: _composerMode,
       isRefreshing: false,
       availableVariants: reconciled.availableVariants,
       bridgeYolo: _bridgeSettingsService.yoloSettings.value,
@@ -4137,6 +4463,65 @@ class SessionDetailCubit(
     return super.close();
   }
 }
+
+/// How long a stop for an edit may take to leave the session idle.
+const Duration _editStopTimeout = Duration(seconds: 15);
+
+/// What the composer held when an edit began.
+/// What the composer held before an edit. [restoredPrefix] is what earlier
+/// returns put ahead of the draft, so later ones still go after them.
+typedef _HeldComposer = ({
+  ComposerDraft draft,
+  String restoredPrefix,
+  List<ComposerAttachment> attachments,
+  CommandInfo? command,
+});
+
+/// An edit of an earlier message the composer holds.
+final class const _MessageEdit({
+  required final String messageId,
+
+  /// The edit's prompt id, so a retry after a lost answer cannot rewind twice.
+  required final String promptId,
+  required final SessionEditPhase phase,
+
+  /// How many of the message's attachments could not be brought back.
+  required final int leftOutCount,
+
+  /// What went out under [promptId] without an answer, if anything: only
+  /// that same payload may go out under it again.
+  required final _EditPayload? unconfirmed,
+  required final _HeldComposer held,
+}) {
+  _MessageEdit withPhase({required SessionEditPhase phase}) => _MessageEdit(
+    messageId: messageId,
+    promptId: promptId,
+    phase: phase,
+    leftOutCount: leftOutCount,
+    unconfirmed: unconfirmed,
+    held: held,
+  );
+
+  _MessageEdit withHeld({required _HeldComposer held}) => _MessageEdit(
+    messageId: messageId,
+    promptId: promptId,
+    phase: phase,
+    leftOutCount: leftOutCount,
+    unconfirmed: unconfirmed,
+    held: held,
+  );
+
+  _MessageEdit withAttempt({required String promptId, required _EditPayload? unconfirmed}) => _MessageEdit(
+    messageId: messageId,
+    promptId: promptId,
+    phase: phase,
+    leftOutCount: leftOutCount,
+    unconfirmed: unconfirmed,
+    held: held,
+  );
+}
+
+typedef _EditPayload = ({String text, List<ComposerAttachment> attachments});
 
 typedef _QueueView = ({
   Map<String, List<ComposerAttachment>> bridgePromptAttachments,

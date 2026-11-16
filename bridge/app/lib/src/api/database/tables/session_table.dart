@@ -22,6 +22,10 @@ part "session_table.freezed.dart";
   name: "idx_sessions_children",
   columns: {#parentSessionId, #updatedAt, #sessionId},
 )
+@TableIndex(
+  name: "idx_sessions_forked_from",
+  columns: {#forkedFromSessionId},
+)
 @UseRowClass(SessionDto)
 class SessionTable() extends Table {
   @override
@@ -82,6 +86,15 @@ class SessionTable() extends Table {
   /// Only an unarchived root is pinned; archiving drops the pin.
   BoolColumn get pinned => boolean().withDefault(const Constant(false))();
 
+  /// The session this root session was forked from. Deleting the origin
+  /// nulls it, and [forkedFromTitle] keeps naming the origin.
+  TextColumn get forkedFromSessionId =>
+      text().nullable().references(SessionTable, #sessionId, onDelete: KeyAction.setNull)();
+
+  /// The origin's displayed title when the fork was made, or null for a
+  /// session that is not a fork or whose origin was untitled.
+  TextColumn get forkedFromTitle => text().nullable()();
+
   /// The task whose run started this session. Null for every other session,
   /// and once that task is deleted, leaving an ordinary session.
   TextColumn get scheduledTaskId =>
@@ -122,6 +135,8 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required String? catalogTitle,
     required SessionApprovalMode? approvalOverride,
     required bool pinned,
+    required String? forkedFromSessionId,
+    required String? forkedFromTitle,
     required String? scheduledTaskId,
   }) = _SessionDto;
 }

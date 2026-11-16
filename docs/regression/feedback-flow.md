@@ -121,6 +121,9 @@ neither shows the row nor fires the automatic prompt.
     errors drop nothing and the stopped turn earns nothing, until the session's
     next turn starts, because some backends report a stop as an error. A stop
     the bridge refuses without changing anything leaves the turn able to earn.
+    A stopped row (`kind: stopped`) from another surface counts as a stop in
+    this app, not as an AI failure, even when it lands just after the turn's
+    idle.
   - The prompt fires right after the finished turn that brings the total across
     sessions to 5 points. On iOS the sheet opens on the root navigator, over
     whatever screen is showing; on Android Play In-App Review is requested.

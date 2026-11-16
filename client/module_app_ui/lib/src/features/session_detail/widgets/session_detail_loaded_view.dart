@@ -8,6 +8,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../session_detail_presentation_scope.dart";
+import "edit_message_dialogs.dart";
 import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
@@ -225,7 +227,20 @@ class SessionDetailLoadedView extends StatelessWidget {
               if (state.isRefreshing) const LinearProgressIndicator(),
               // Archiving is permanent, so this session is audit-only: say so
               // where the composer used to be.
-              if (state.isArchived) const SessionDetailArchivedNotice(),
+              if (state.isArchived)
+                SessionDetailArchivedNotice(
+                  sideChatCount: state.archivedSideChatCount,
+                  onOpenSideChats: switch ((SessionDetailPresentationScope.of(context).openSideChat, state.pluginId)) {
+                    (final openSideChat?, final pluginId?) => () => openSideChat(
+                      context: context,
+                      sessionId: state.session.id,
+                      pluginId: pluginId,
+                      availability: state.sideQuestions,
+                      isArchived: true,
+                    ),
+                    _ => null,
+                  },
+                ),
               // The harness can no longer restore this session; its stored
               // history stays readable beneath this floating layer, which
               // fades rather than moving the transcript.
@@ -325,6 +340,16 @@ class SessionDetailLoadedView extends StatelessWidget {
       currentPromptId: currentPromptId,
       jumpNotifier: jumpNotifier,
       onPinchIn: onPinchIn,
+      onEditMessage: readOnly || !state.interaction.canInteract || !state.editsMessages
+          ? null
+          : ({required message, required refusal}) => unawaited(switch (refusal) {
+              null => context.read<SessionDetailCubit>().editMessage(message: message),
+              final refusal => showEditUnavailableDialog(context: context, refusal: refusal),
+            }),
+      editingMessageId: switch (state.composerMode) {
+        SessionComposerEditing(:final messageId) => messageId,
+        SessionComposerNormal() => null,
+      },
       streamingText: state.streamingText,
       children: state.children,
       childStatuses: state.childStatuses,

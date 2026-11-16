@@ -75,10 +75,7 @@ class SessionPromptService({
     required CommandSource? commandSource,
     required MessageHandoff? handoff,
   }) {
-    final normalizedCommand = command?.trim();
-    final send = normalizedCommand == null || normalizedCommand.isEmpty
-        ? _PromptSendPrompt(handoff: handoff)
-        : _PromptSendCommand(command: normalizedCommand, commandSource: commandSource);
+    final send = _promptOrCommand(command: command, commandSource: commandSource, handoff: handoff);
     return _dispatcher.dispatch(
       sessionId: sessionId,
       operation: switch (send) {
@@ -152,6 +149,9 @@ class SessionPromptService({
     );
   }
 
+  /// Sends as [sendPrompt] does, for a caller that already holds the session's
+  /// lane. It is the bridge's own send (a scheduled run, a quota continuation,
+  /// a send-to-session summary request), never a person's prompt.
   Future<void> sendPromptAlreadyReserved({
     required String sessionId,
     required String promptId,
@@ -160,6 +160,8 @@ class SessionPromptService({
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required String? command,
+    required CommandSource? commandSource,
     required MessageHandoff? handoff,
   }) => _sendPrompt(
     sessionId: sessionId,
@@ -169,8 +171,19 @@ class SessionPromptService({
     fastMode: fastMode,
     agent: agent,
     model: model,
-    send: _PromptSendPrompt(handoff: handoff),
+    send: _promptOrCommand(command: command, commandSource: commandSource, handoff: handoff),
   );
+
+  static _PromptSend _promptOrCommand({
+    required String? command,
+    required CommandSource? commandSource,
+    required MessageHandoff? handoff,
+  }) {
+    final normalizedCommand = command?.trim();
+    return normalizedCommand == null || normalizedCommand.isEmpty
+        ? _PromptSendPrompt(handoff: handoff)
+        : _PromptSendCommand(command: normalizedCommand, commandSource: commandSource);
+  }
 
   Future<void> _sendPrompt({
     required String sessionId,
@@ -199,25 +212,28 @@ class SessionPromptService({
       _PromptSendPrompt(:final handoff) => () async => await _sessionRepository.sendPrompt(
         sessionId: sessionId,
         promptId: promptId,
-        parts: await _deliverableParts(sessionId: sessionId, parts: parts),
+        parts: await _withFirstPromptContext(
+          sessionId: sessionId,
+          parts: await _deliverableParts(sessionId: sessionId, parts: parts),
+        ),
         variant: variant,
         fastMode: fastMode,
         agent: agent,
         model: model,
         handoff: handoff,
       ),
-      _PromptSendCommand(:final command, :final commandSource) => () {
+      _PromptSendCommand(:final command, :final commandSource) => () async {
         final arguments = parts.whereType<PromptPartText>().firstOrNull?.text;
         // Per the BridgePluginApi contract, sendCommand completes once the
         // backend has accepted the command — not when its run finishes — so
         // awaiting it here never holds the phone's relay request open for
         // the duration of the command's agent run. A command sends only its
         // text, so it saves no files.
-        return _sessionRepository.sendCommand(
+        return await _sessionRepository.sendCommand(
           sessionId: sessionId,
           promptId: promptId,
           command: command,
-          arguments: arguments ?? '',
+          arguments: await _withFirstCommandContext(sessionId: sessionId, arguments: arguments ?? ''),
           userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
           variant: variant,
           fastMode: fastMode,
@@ -291,6 +307,28 @@ class SessionPromptService({
     inlineImages: await _sessionRepository.inlineImagesSupportedForSession(sessionId: sessionId),
     parts: parts,
   );
+
+  /// [parts], led by the bridge's worktree context when they open the
+  /// conversation of a session with a dedicated worktree, as a new session's
+  /// first prompt is. A fork that kept nothing has had no first prompt yet.
+  Future<List<DeliverablePromptPart>> _withFirstPromptContext({
+    required String sessionId,
+    required List<DeliverablePromptPart> parts,
+  }) async {
+    if (!await _chatHistory.isKnownEmpty(sessionId: sessionId)) return parts;
+    return [...await _worktreeContextParts(sessionId: sessionId), ...parts];
+  }
+
+  /// [arguments], led by the same context when a command opens the
+  /// conversation, joined as session creation joins them.
+  Future<String> _withFirstCommandContext({required String sessionId, required String arguments}) async {
+    final context = await _withFirstPromptContext(sessionId: sessionId, parts: const []);
+    if (context case [DeliverablePromptPartText(:final text)]) {
+      final trimmedArguments = arguments.trim();
+      return trimmedArguments.isEmpty ? text.trimRight() : "${text.trimRight()}\n\n$trimmedArguments";
+    }
+    return arguments;
+  }
 
   /// Checks the edit, then returns the send that rewinds through the plugin
   /// and removes the rewound messages from the store and every client by

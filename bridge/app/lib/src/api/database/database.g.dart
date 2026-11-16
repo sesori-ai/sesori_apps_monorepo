@@ -1770,6 +1770,14 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   /// Only an unarchived root is pinned; archiving drops the pin.
   bool get pinned;
 
+  /// The session this root session was forked from. Deleting the origin
+  /// nulls it, and [forkedFromTitle] keeps naming the origin.
+  String? get forkedFromSessionId;
+
+  /// The origin's displayed title when the fork was made, or null for a
+  /// session that is not a fork or whose origin was untitled.
+  String? get forkedFromTitle;
+
   /// The task whose run started this session. Null for every other session,
   /// and once that task is deleted, leaving an ordinary session.
   String? get scheduledTaskId;
@@ -1833,6 +1841,12 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
       );
     }
     map['pinned'] = Variable<bool>(pinned);
+    if (!nullToAbsent || forkedFromSessionId != null) {
+      map['forked_from_session_id'] = Variable<String>(forkedFromSessionId);
+    }
+    if (!nullToAbsent || forkedFromTitle != null) {
+      map['forked_from_title'] = Variable<String>(forkedFromTitle);
+    }
     if (!nullToAbsent || scheduledTaskId != null) {
       map['scheduled_task_id'] = Variable<String>(scheduledTaskId);
     }
@@ -2132,6 +2146,31 @@ class $SessionTableTable extends SessionTable
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _forkedFromSessionIdMeta =
+      const VerificationMeta('forkedFromSessionId');
+  @override
+  late final GeneratedColumn<String> forkedFromSessionId =
+      GeneratedColumn<String>(
+        'forked_from_session_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES sessions_table (session_id) ON DELETE SET NULL',
+        ),
+      );
+  static const VerificationMeta _forkedFromTitleMeta = const VerificationMeta(
+    'forkedFromTitle',
+  );
+  @override
+  late final GeneratedColumn<String> forkedFromTitle = GeneratedColumn<String>(
+    'forked_from_title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _scheduledTaskIdMeta = const VerificationMeta(
     'scheduledTaskId',
   );
@@ -2173,6 +2212,8 @@ class $SessionTableTable extends SessionTable
     catalogTitle,
     approvalOverride,
     pinned,
+    forkedFromSessionId,
+    forkedFromTitle,
     scheduledTaskId,
   ];
   @override
@@ -2370,6 +2411,24 @@ class $SessionTableTable extends SessionTable
         pinned.isAcceptableOrUnknown(data['pinned']!, _pinnedMeta),
       );
     }
+    if (data.containsKey('forked_from_session_id')) {
+      context.handle(
+        _forkedFromSessionIdMeta,
+        forkedFromSessionId.isAcceptableOrUnknown(
+          data['forked_from_session_id']!,
+          _forkedFromSessionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('forked_from_title')) {
+      context.handle(
+        _forkedFromTitleMeta,
+        forkedFromTitle.isAcceptableOrUnknown(
+          data['forked_from_title']!,
+          _forkedFromTitleMeta,
+        ),
+      );
+    }
     if (data.containsKey('scheduled_task_id')) {
       context.handle(
         _scheduledTaskIdMeta,
@@ -2492,6 +2551,14 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.bool,
         data['${effectivePrefix}pinned'],
       )!,
+      forkedFromSessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}forked_from_session_id'],
+      ),
+      forkedFromTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}forked_from_title'],
+      ),
       scheduledTaskId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}scheduled_task_id'],
@@ -2546,6 +2613,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String?> catalogTitle;
   final Value<SessionApprovalMode?> approvalOverride;
   final Value<bool> pinned;
+  final Value<String?> forkedFromSessionId;
+  final Value<String?> forkedFromTitle;
   final Value<String?> scheduledTaskId;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
@@ -2573,6 +2642,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.catalogTitle = const Value.absent(),
     this.approvalOverride = const Value.absent(),
     this.pinned = const Value.absent(),
+    this.forkedFromSessionId = const Value.absent(),
+    this.forkedFromTitle = const Value.absent(),
     this.scheduledTaskId = const Value.absent(),
   });
   SessionTableCompanion.insert({
@@ -2601,6 +2672,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.catalogTitle = const Value.absent(),
     this.approvalOverride = const Value.absent(),
     this.pinned = const Value.absent(),
+    this.forkedFromSessionId = const Value.absent(),
+    this.forkedFromTitle = const Value.absent(),
     this.scheduledTaskId = const Value.absent(),
   }) : sessionId = Value(sessionId),
        backendSessionId = Value(backendSessionId),
@@ -2637,6 +2710,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? catalogTitle,
     Expression<String>? approvalOverride,
     Expression<bool>? pinned,
+    Expression<String>? forkedFromSessionId,
+    Expression<String>? forkedFromTitle,
     Expression<String>? scheduledTaskId,
   }) {
     return RawValuesInsertable({
@@ -2666,6 +2741,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (catalogTitle != null) 'catalog_title': catalogTitle,
       if (approvalOverride != null) 'approval_override': approvalOverride,
       if (pinned != null) 'pinned': pinned,
+      if (forkedFromSessionId != null)
+        'forked_from_session_id': forkedFromSessionId,
+      if (forkedFromTitle != null) 'forked_from_title': forkedFromTitle,
       if (scheduledTaskId != null) 'scheduled_task_id': scheduledTaskId,
     });
   }
@@ -2696,6 +2774,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String?>? catalogTitle,
     Value<SessionApprovalMode?>? approvalOverride,
     Value<bool>? pinned,
+    Value<String?>? forkedFromSessionId,
+    Value<String?>? forkedFromTitle,
     Value<String?>? scheduledTaskId,
   }) {
     return SessionTableCompanion(
@@ -2724,6 +2804,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       catalogTitle: catalogTitle ?? this.catalogTitle,
       approvalOverride: approvalOverride ?? this.approvalOverride,
       pinned: pinned ?? this.pinned,
+      forkedFromSessionId: forkedFromSessionId ?? this.forkedFromSessionId,
+      forkedFromTitle: forkedFromTitle ?? this.forkedFromTitle,
       scheduledTaskId: scheduledTaskId ?? this.scheduledTaskId,
     );
   }
@@ -2814,6 +2896,14 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (pinned.present) {
       map['pinned'] = Variable<bool>(pinned.value);
     }
+    if (forkedFromSessionId.present) {
+      map['forked_from_session_id'] = Variable<String>(
+        forkedFromSessionId.value,
+      );
+    }
+    if (forkedFromTitle.present) {
+      map['forked_from_title'] = Variable<String>(forkedFromTitle.value);
+    }
     if (scheduledTaskId.present) {
       map['scheduled_task_id'] = Variable<String>(scheduledTaskId.value);
     }
@@ -2848,6 +2938,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('catalogTitle: $catalogTitle, ')
           ..write('approvalOverride: $approvalOverride, ')
           ..write('pinned: $pinned, ')
+          ..write('forkedFromSessionId: $forkedFromSessionId, ')
+          ..write('forkedFromTitle: $forkedFromTitle, ')
           ..write('scheduledTaskId: $scheduledTaskId')
           ..write(')'))
         .toString();
@@ -6230,6 +6322,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_sessions_children',
     'CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)',
   );
+  late final Index idxSessionsForkedFrom = Index(
+    'idx_sessions_forked_from',
+    'CREATE INDEX idx_sessions_forked_from ON sessions_table (forked_from_session_id)',
+  );
   late final Index idxSideChatExchangesSession = Index(
     'idx_side_chat_exchanges_session',
     'CREATE INDEX idx_side_chat_exchanges_session ON side_chat_exchanges (session_id, side_chat_id, answered_at)',
@@ -6271,6 +6367,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
+    idxSessionsForkedFrom,
     idxSideChatExchangesSession,
     idxScheduledTasksNextDue,
     idxScheduledTaskRunsTask,
@@ -6298,6 +6395,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('sessions_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('sessions_table', kind: UpdateKind.update)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -7615,6 +7719,8 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<String?> catalogTitle,
       Value<SessionApprovalMode?> approvalOverride,
       Value<bool> pinned,
+      Value<String?> forkedFromSessionId,
+      Value<String?> forkedFromTitle,
       Value<String?> scheduledTaskId,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
@@ -7644,6 +7750,8 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String?> catalogTitle,
       Value<SessionApprovalMode?> approvalOverride,
       Value<bool> pinned,
+      Value<String?> forkedFromSessionId,
+      Value<String?> forkedFromTitle,
       Value<String?> scheduledTaskId,
     });
 
@@ -7682,6 +7790,25 @@ final class $$SessionTableTableReferences
       $_db.sessionTable,
     ).filter((f) => f.sessionId.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_parentSessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $SessionTableTable _forkedFromSessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'sessions_table__forked_from_session_id__sessions_table__session_id',
+      );
+
+  $$SessionTableTableProcessedTableManager? get forkedFromSessionId {
+    final $_column = $_itemColumn<String>('forked_from_session_id');
+    if ($_column == null) return null;
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_forkedFromSessionIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -7957,6 +8084,11 @@ class $$SessionTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get forkedFromTitle => $composableBuilder(
+    column: $table.forkedFromTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$ProjectsTableTableFilterComposer get projectId {
     final $$ProjectsTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -7984,6 +8116,29 @@ class $$SessionTableTableFilterComposer
     final $$SessionTableTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.parentSessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$SessionTableTableFilterComposer get forkedFromSessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.forkedFromSessionId,
       referencedTable: $db.sessionTable,
       getReferencedColumn: (t) => t.sessionId,
       builder:
@@ -8255,6 +8410,11 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get forkedFromTitle => $composableBuilder(
+    column: $table.forkedFromTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ProjectsTableTableOrderingComposer get projectId {
     final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -8282,6 +8442,29 @@ class $$SessionTableTableOrderingComposer
     final $$SessionTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.parentSessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$SessionTableTableOrderingComposer get forkedFromSessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.forkedFromSessionId,
       referencedTable: $db.sessionTable,
       getReferencedColumn: (t) => t.sessionId,
       builder:
@@ -8434,6 +8617,11 @@ class $$SessionTableTableAnnotationComposer
   GeneratedColumn<bool> get pinned =>
       $composableBuilder(column: $table.pinned, builder: (column) => column);
 
+  GeneratedColumn<String> get forkedFromTitle => $composableBuilder(
+    column: $table.forkedFromTitle,
+    builder: (column) => column,
+  );
+
   $$ProjectsTableTableAnnotationComposer get projectId {
     final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -8461,6 +8649,29 @@ class $$SessionTableTableAnnotationComposer
     final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.parentSessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$SessionTableTableAnnotationComposer get forkedFromSessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.forkedFromSessionId,
       referencedTable: $db.sessionTable,
       getReferencedColumn: (t) => t.sessionId,
       builder:
@@ -8626,6 +8837,7 @@ class $$SessionTableTableTableManager
           PrefetchHooks Function({
             bool projectId,
             bool parentSessionId,
+            bool forkedFromSessionId,
             bool scheduledTaskId,
             bool scheduledTasksTableRefs,
             bool sessionContinuationTableRefs,
@@ -8672,6 +8884,8 @@ class $$SessionTableTableTableManager
                 Value<SessionApprovalMode?> approvalOverride =
                     const Value.absent(),
                 Value<bool> pinned = const Value.absent(),
+                Value<String?> forkedFromSessionId = const Value.absent(),
+                Value<String?> forkedFromTitle = const Value.absent(),
                 Value<String?> scheduledTaskId = const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
@@ -8699,6 +8913,8 @@ class $$SessionTableTableTableManager
                 catalogTitle: catalogTitle,
                 approvalOverride: approvalOverride,
                 pinned: pinned,
+                forkedFromSessionId: forkedFromSessionId,
+                forkedFromTitle: forkedFromTitle,
                 scheduledTaskId: scheduledTaskId,
               ),
           createCompanionCallback:
@@ -8729,6 +8945,8 @@ class $$SessionTableTableTableManager
                 Value<SessionApprovalMode?> approvalOverride =
                     const Value.absent(),
                 Value<bool> pinned = const Value.absent(),
+                Value<String?> forkedFromSessionId = const Value.absent(),
+                Value<String?> forkedFromTitle = const Value.absent(),
                 Value<String?> scheduledTaskId = const Value.absent(),
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
@@ -8756,6 +8974,8 @@ class $$SessionTableTableTableManager
                 catalogTitle: catalogTitle,
                 approvalOverride: approvalOverride,
                 pinned: pinned,
+                forkedFromSessionId: forkedFromSessionId,
+                forkedFromTitle: forkedFromTitle,
                 scheduledTaskId: scheduledTaskId,
               ),
           withReferenceMapper: (p0) => p0
@@ -8770,6 +8990,7 @@ class $$SessionTableTableTableManager
               ({
                 projectId = false,
                 parentSessionId = false,
+                forkedFromSessionId = false,
                 scheduledTaskId = false,
                 scheduledTasksTableRefs = false,
                 sessionContinuationTableRefs = false,
@@ -8820,6 +9041,17 @@ class $$SessionTableTableTableManager
                                 ._parentSessionIdTable(db),
                             referencedColumn: $$SessionTableTableReferences
                                 ._parentSessionIdTable(db)
+                                .sessionId,
+                          ) as T;
+                        }
+                        if (forkedFromSessionId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.forkedFromSessionId,
+                            referencedTable: $$SessionTableTableReferences
+                                ._forkedFromSessionIdTable(db),
+                            referencedColumn: $$SessionTableTableReferences
+                                ._forkedFromSessionIdTable(db)
                                 .sessionId,
                           ) as T;
                         }
@@ -8942,6 +9174,7 @@ typedef $$SessionTableTableProcessedTableManager =
       PrefetchHooks Function({
         bool projectId,
         bool parentSessionId,
+        bool forkedFromSessionId,
         bool scheduledTaskId,
         bool scheduledTasksTableRefs,
         bool sessionContinuationTableRefs,

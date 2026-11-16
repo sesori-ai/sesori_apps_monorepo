@@ -397,6 +397,7 @@ class _Sessions() implements SessionRepository {
     lastUserActivityAt: null,
     autoContinuation: null,
     scheduledTask: null,
+    forkedFrom: null,
   );
   @override
   Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {
@@ -445,6 +446,8 @@ class _Prompts({required final SessionContinuationRepository records}) implement
     required bool fastMode,
     required String? agent,
     required PromptModel? model,
+    required String? command,
+    required CommandSource? commandSource,
     required MessageHandoff? handoff,
   }) async {
     expect(handoff, isNull);

@@ -1,7 +1,6 @@
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -66,7 +65,7 @@ void main() {
   }
 
   Future<ScheduledTaskEditorState> settled(ScheduledTaskEditorCubit cubit) async =>
-      cubit.state is ScheduledTaskEditorLoading ? cubit.stream.first : cubit.state;
+      cubit.state is ScheduledTaskEditorLoading ? await cubit.stream.first : cubit.state;
 
   Future<ScheduledTaskEditorReady> ready(ScheduledTaskEditorCubit cubit) async =>
       await settled(cubit) as ScheduledTaskEditorReady;

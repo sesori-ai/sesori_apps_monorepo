@@ -111,6 +111,7 @@ import "routing/decline_form_handler.dart";
 import "routing/delete_scheduled_task_handler.dart";
 import "routing/delete_session_handler.dart";
 import "routing/filesystem_suggestions_handler.dart";
+import "routing/fork_session_handler.dart";
 import "routing/get_base_branch_handler.dart";
 import "routing/get_bridge_settings_handler.dart";
 import "routing/get_catalog_import_statuses_handler.dart";
@@ -214,6 +215,7 @@ import "services/session_deletion_service.dart";
 import "services/session_diff_service.dart";
 import "services/session_event_dispatcher.dart";
 import "services/session_event_service.dart";
+import "services/session_fork_service.dart";
 import "services/session_lifecycle_service.dart";
 import "services/session_mutation_dispatcher.dart";
 import "services/session_operation_dispatcher.dart";
@@ -538,15 +540,6 @@ class Orchestrator({
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       promptPartDelivery: promptPartDeliveryService,
     );
-    final scheduledTaskRunService = ScheduledTaskRunService(
-      repository: scheduledTaskRepository,
-      sessionCreation: sessionCreationService,
-      sessions: sessionRepository,
-      sessionOptions: sessionOptionsService,
-      calculator: scheduledTaskOccurrenceCalculator,
-      clock: clock,
-    );
-    final scheduledTaskTimer = ScheduledTaskTimerListener(service: scheduledTaskRunService);
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,
       filesystemRepository: filesystemRepository,
@@ -619,6 +612,12 @@ class Orchestrator({
       sessionOptionsService: sessionOptionsService,
       promptPartDelivery: promptPartDeliveryService,
       chatHistory: chatHistoryService,
+    );
+    final sessionForkService = SessionForkService(
+      sessionRepository: sessionRepository,
+      chatHistory: chatHistoryService,
+      views: sessionViews,
+      dispatcher: sessionOperationDispatcher,
     );
     final sessionContinuationService = SessionContinuationService(
       continuations: sessionContinuations,
@@ -717,6 +716,18 @@ class Orchestrator({
       permissionAutoApprovalService: permissionAutoApprovalService,
       sessionMutationDispatcher: sessionMutationDispatcher,
     );
+    final scheduledTaskRunService = ScheduledTaskRunService(
+      repository: scheduledTaskRepository,
+      sessionCreation: sessionCreationService,
+      prompts: sessionPromptService,
+      operations: sessionOperationDispatcher,
+      yoloSettings: yoloSettingsService,
+      sessions: sessionRepository,
+      sessionOptions: sessionOptionsService,
+      calculator: scheduledTaskOccurrenceCalculator,
+      clock: clock,
+    );
+    final scheduledTaskTimer = ScheduledTaskTimerListener(service: scheduledTaskRunService);
     final pluginEventListener = PluginEventListener(
       source: _pluginRuntime.backendEvents,
       dispatcher: sessionEventDispatcher,
@@ -798,6 +809,7 @@ class Orchestrator({
         DeleteSessionHandler(sessionDeletionService: sessionDeletionService),
         SendPromptHandler(sessionPromptService: sessionPromptService),
         RewindSessionHandler(sessionPromptService: sessionPromptService),
+        ForkSessionHandler(sessionForkService: sessionForkService),
         SendToSessionHandler(sessionSendService: sessionSendService),
         GetQueuedPromptsHandler(sessionRepository: sessionRepository),
         CancelQueuedPromptHandler(sessionPromptService: sessionPromptService),

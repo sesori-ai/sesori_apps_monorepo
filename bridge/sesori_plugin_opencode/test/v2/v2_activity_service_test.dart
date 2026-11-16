@@ -381,7 +381,7 @@ void main() {
         },
       ),
     );
-    expect((delta.single as BridgeSseMessagePartDelta).partID, "m:2");
+    expect((delta.single as BridgeSseMessagePartDelta).partID, "m:text:2");
     expect(repository.calls, isEmpty);
     final started = await service.handleEvent(
       envelope: frame(

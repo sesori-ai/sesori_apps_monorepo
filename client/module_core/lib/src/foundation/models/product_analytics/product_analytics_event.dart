@@ -229,6 +229,26 @@ enum AnalyticsFileSource({required final String wireValue}) {
   mixed(wireValue: "mixed"),
 }
 
+/// How the bridge answered one edit and resend of an earlier message.
+enum AnalyticsMessageEditOutcome({required final String wireValue}) {
+  /// The bridge removed the message and what followed it, and sent the edit.
+  succeeded(wireValue: "succeeded"),
+
+  /// The session was running a turn.
+  refusedBusy(wireValue: "refused_busy"),
+
+  /// The harness cannot cut the conversation at the message, such as before
+  /// Claude Code's latest compaction.
+  branchPointUnavailable(wireValue: "branch_point_unavailable"),
+
+  /// The bridge refused the edit otherwise: the selected options changed, the
+  /// harness refused the prompt, or a reason this app doesn't know.
+  refused(wireValue: "refused"),
+
+  /// The request failed or timed out, so the edit may or may not have run.
+  failed(wireValue: "failed"),
+}
+
 /// How one side question ended.
 enum AnalyticsSideQuestionOutcome({required final String wireValue}) {
   /// The bridge stored an answer.
@@ -373,6 +393,10 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsScheduledTaskMissedRunPolicy missedRunPolicy,
     required bool? autoCompact,
   }) = ScheduledTaskSavedEvent;
+  const factory sessionMessageEdited({
+    required AnalyticsHarness harness,
+    required AnalyticsMessageEditOutcome outcome,
+  }) = SessionMessageEditedEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -836,6 +860,19 @@ final class const ScheduledTaskSavedEvent({
     "missed_run_policy": missedRunPolicy.wireValue,
     if (autoCompact case final autoCompact?) "auto_compact": autoCompact.toString(),
   };
+}
+
+/// The bridge answered an edit and resend of an earlier message. The text,
+/// the attachments, the session and the message stay off the wire.
+final class const SessionMessageEditedEvent({
+  required final AnalyticsHarness harness,
+  required final AnalyticsMessageEditOutcome outcome,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "session_message_edited";
+
+  @override
+  Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};
 }
 
 final class ProductAnalyticsEnvelope({required final ProductAnalyticsEvent event, required DateTime occurredAtUtc}) {

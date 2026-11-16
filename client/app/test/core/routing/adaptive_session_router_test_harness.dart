@@ -287,6 +287,7 @@ class AdaptiveSessionRouterTestHarness() {
     );
     getIt.registerSingleton<AuthSession>(authSession);
     getIt.registerSingleton<FileReferenceOpenService>(MockFileReferenceOpenService());
+    getIt.registerSingleton<MessageComposerRestoreService>(MockMessageComposerRestoreService());
     // No dispose: the tracker lives in the test's fake-async zone, whose
     // microtasks no longer run when GetIt resets, so closing it would hang.
     getIt.registerLazySingleton<SessionListFilterTracker>(
@@ -367,6 +368,7 @@ Session adaptiveTestSession({
     promptDefaults: null,
     lastUserActivityAt: null,
     scheduledTask: null,
+    forkedFrom: null,
   );
 }
 
@@ -417,5 +419,6 @@ SessionDetailSnapshot _buildDetailSnapshot({
     isArchived: false,
     cannotContinueMessage: null,
     namesCommandInvocations: false,
+    supportsRewind: false,
   );
 }

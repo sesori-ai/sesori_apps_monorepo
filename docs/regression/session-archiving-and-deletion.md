@@ -71,6 +71,10 @@ entirely along with its transcript and its dedicated worktree.
   worktree, and says so once through the ordinary alert surface rather than a modal. A shared worktree
   reported together with any of the issues above is treated as the refusal above, because forcing there
   would remove a worktree another session is still using.
+- A fork shares its origin's worktree, so archiving or deleting either one while the other is live takes the
+  shared-worktree path above. An archived session can still be forked on the bridge (see
+  session-edit-and-fork.md); the fork is a live session that keeps the origin's worktree path, which archive may
+  already have removed (see that file's Known Limitations).
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
   that a dedicated worktree will be deleted and its branch kept, and, for a pinned session, that it is pinned.

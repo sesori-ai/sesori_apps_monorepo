@@ -14,11 +14,13 @@ import "../repositories/models/session_prompt_index_result.dart";
 import "../repositories/models/tool_output_result.dart";
 import "../repositories/plugin_repository.dart";
 import "../repositories/session_repository.dart";
+import "../repositories/side_chat_repository.dart";
 
 @lazySingleton
 class SessionDetailLoadService({
   required final SessionRepository _repository,
   required final PluginRepository _pluginRepository,
+  required final SideChatRepository _sideChatRepository,
   required final ConnectionService _connectionService,
 }) {
   /// Messages fetched when a session opens. Large enough that most sessions
@@ -137,6 +139,19 @@ class SessionDetailLoadService({
       logw("Failed to load the prompt index", error);
     }
     return result;
+  }
+
+  /// How many side chats the session has, for an archived session's notice to
+  /// offer them read-only. A failed listing counts none, so the notice offers
+  /// nothing to tap.
+  Future<int> countSideChats({required String sessionId}) async {
+    switch (await _sideChatRepository.listSideChats(sessionId: sessionId)) {
+      case SuccessResponse(:final data):
+        return data.sideChats.length;
+      case ErrorResponse(:final error):
+        logw("Failed to count the side chats of session $sessionId", error);
+        return 0;
+    }
   }
 
   Future<ToolOutputResult> loadToolOutput({
@@ -259,6 +274,7 @@ class SessionDetailLoadService({
           supportsFileUploads: pluginCapabilities.supportsFileUploads,
           offersSessionMcp: pluginCapabilities.offersSessionMcp,
           namesCommandInvocations: pluginCapabilities.namesCommandInvocations,
+          supportsRewind: pluginCapabilities.supportsRewind,
           sideQuestions: pluginCapabilities.sideQuestions,
           messages: messagesPage.messages,
           olderMessagesCursor: messagesPage.nextCursor,
@@ -414,6 +430,7 @@ class SessionDetailLoadService({
     supportsFileUploads: null,
     offersSessionMcp: true,
     namesCommandInvocations: false,
+    supportsRewind: false,
     sideQuestions: SideQuestionAvailability.unresolved,
   );
 
@@ -439,6 +456,9 @@ class SessionDetailLoadService({
               null => true,
             },
             namesCommandInvocations: plugin?.namesCommandInvocations ?? false,
+            // An older bridge declares no branching, so it offers no edit.
+            supportsRewind:
+                !isArchived && (plugin?.sessionBranching.contains(SessionBranchingOperation.rewind) ?? false),
             sideQuestions: switch (plugin) {
               // An older bridge has no side-question routes, whatever its
               // harnesses could answer.
@@ -482,6 +502,11 @@ class const SessionDetailSnapshot({
   /// user turn ran, so a command not confirmed yet can show its card. False
   /// when plugin metadata could not be resolved.
   required final bool namesCommandInvocations,
+
+  /// Whether the bridge can edit and resend the session's earlier messages.
+  /// False when the session is archived or plugin metadata could not be
+  /// resolved.
+  required final bool supportsRewind,
 
   /// Whether the session can ask side questions, and if not, why.
   required final SideQuestionAvailability sideQuestions,
@@ -537,6 +562,7 @@ typedef _PluginCapabilities = ({
   bool? supportsFileUploads,
   bool offersSessionMcp,
   bool namesCommandInvocations,
+  bool supportsRewind,
   SideQuestionAvailability sideQuestions,
 });
 
