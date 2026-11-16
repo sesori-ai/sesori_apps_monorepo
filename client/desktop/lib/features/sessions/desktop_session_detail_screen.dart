@@ -161,6 +161,8 @@ class const DesktopSessionDetailView({
       openSession: onOpenSession,
       openHarnessSettings: onOpenHarnessSettings,
       openBridgeSettings: onOpenBridgeSettings,
+      // Desktop has no side-chat panel yet, so it offers no side questions.
+      openSideChat: null,
       child: _MarkUnreadShortcut(
         onMarkUnread: () {
           final session = context.read<SessionDetailCubit>().state.hydratedSession;

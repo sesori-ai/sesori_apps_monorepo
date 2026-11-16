@@ -569,6 +569,7 @@ Future<void> _pumpPointerTurns(
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
         openHarnessSettings: () {},
         openBridgeSettings: () {},
+        openSideChat: null,
         child: _SessionDetailMessageListHarness(
           initialMessages: messages,
           initialStreamingText: const {},
@@ -3525,6 +3526,7 @@ void main() {
         lastUserActivityAt: null,
         autoContinuation: null,
         scheduledTask: null,
+        forkedFrom: null,
       );
       harness.setChildren(children: [child], childStatuses: const {"child-1": SessionStatus.busy(since: null)});
       await tester.pump();
