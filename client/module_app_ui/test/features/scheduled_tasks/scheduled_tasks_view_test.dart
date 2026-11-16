@@ -1,7 +1,9 @@
 import "dart:async";
 
+import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
@@ -24,6 +26,14 @@ class _FixedTimeZoneSource({required final String zone}) implements DeviceTimeZo
   Future<String> currentZoneName() async => zone;
 }
 
+class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
+
+ScheduledTaskRun _run({required String id, required ScheduledTaskRunOutcome outcome}) => ScheduledTaskRun(
+  id: id,
+  scheduledFor: ScheduledTaskInstant(at: DateTime.utc(2026, 11, 2, 9).millisecondsSinceEpoch, offsetMinutes: 0),
+  outcome: outcome,
+);
+
 void main() {
   late MockScheduledTaskRepository repository;
   late MockConnectionService connection;
@@ -37,15 +47,33 @@ void main() {
     addTearDown(statuses.close);
   });
 
-  Future<void> pump({required WidgetTester tester, required Widget child}) async {
+  Future<void> pump({
+    required WidgetTester tester,
+    required Widget child,
+    List<ProjectSummary> projects = const [],
+  }) async {
+    final projectList = _MockProjectListCubit();
+    whenListen(
+      projectList,
+      const Stream<ProjectListState>.empty(),
+      initialState: ProjectListState.loaded(projects: projects, folderProjects: projects, scratchProject: null),
+    );
+    // A router, so the task page's sheets close the way they do in the app.
+    final router = GoRouter(
+      routes: [GoRoute(path: "/", builder: (_, _) => child)],
+    );
+    addTearDown(router.dispose);
     await tester.pumpWidget(
-      BlocProvider(
-        create: (_) => testBridgeKindCubit(kind: null),
-        child: MaterialApp(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (_) => testBridgeKindCubit(kind: null)),
+          BlocProvider<ProjectListCubit>.value(value: projectList),
+        ],
+        child: MaterialApp.router(
           theme: buildPregoThemeData(brightness: Brightness.light),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: child,
+          routerConfig: router,
         ),
       ),
     );
@@ -158,11 +186,19 @@ void main() {
   });
 
   group("Task page", () {
-    Future<void> pumpTask({required WidgetTester tester, required ScheduledTask task, VoidCallback? onEdit}) {
+    Future<void> pumpTask({
+      required WidgetTester tester,
+      required ScheduledTask task,
+      VoidCallback? onEdit,
+      List<ScheduledTaskRun> runs = const [],
+      List<ProjectSummary> projects = const [],
+      OpenScheduledTaskRunSession? onOpenSession,
+    }) {
       when(() => repository.listTasks()).thenAnswer((_) async => ScheduledTaskSuccess(value: [task]));
-      when(() => repository.listRuns(taskId: task.id)).thenAnswer((_) async => const ScheduledTaskSuccess(value: []));
+      when(() => repository.listRuns(taskId: task.id)).thenAnswer((_) async => ScheduledTaskSuccess(value: runs));
       return pump(
         tester: tester,
+        projects: projects,
         child: ScheduledTaskDetailView(
           createCubit: () => ScheduledTaskDetailCubit(
             repository: repository,
@@ -173,9 +209,110 @@ void main() {
           onBack: () {},
           onDeleted: () {},
           onEdit: onEdit ?? () {},
+          onOpenSession: onOpenSession ?? ({required projectId, required projectName, required sessionId}) {},
         ),
       );
     }
+
+    Finder runRow({required String id}) => find.byKey(ValueKey("scheduled-task-run-$id"));
+    Finder arrowIn({required String id}) => find.descendant(
+      of: runRow(id: id),
+      matching: find.byIcon(TablerRegular.chevron_right),
+    );
+
+    testWidgets("a run opens its session in the task's project", (tester) async {
+      final opened = <(String, String?, String)>[];
+      await pumpTask(
+        tester: tester,
+        task: _recurring,
+        runs: [
+          _run(
+            id: "ran",
+            outcome: const ScheduledTaskRunOutcome.started(sessionId: "s1", late: false),
+          ),
+        ],
+        projects: const [ProjectSummary(id: "fixture-project", name: "Sesori", path: "/code/sesori", time: null)],
+        onOpenSession: ({required projectId, required projectName, required sessionId}) =>
+            opened.add((projectId, projectName, sessionId)),
+      );
+      expect(arrowIn(id: "ran"), findsOneWidget);
+      await tester.tap(runRow(id: "ran"));
+      expect(opened, [("fixture-project", "Sesori", "s1")]);
+    });
+
+    testWidgets("a run whose session was deleted has no arrow and says so when tapped", (tester) async {
+      var opened = 0;
+      await pumpTask(
+        tester: tester,
+        task: _recurring,
+        runs: [_run(id: "gone", outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: false))],
+        onOpenSession: ({required projectId, required projectName, required sessionId}) => opened++,
+      );
+      expect(arrowIn(id: "gone"), findsNothing);
+      await tester.tap(runRow(id: "gone"));
+      await tester.pump();
+      expect(find.text("This run’s session was deleted."), findsOneWidget);
+      expect(opened, 0);
+      await tester.pumpAndSettle(const Duration(seconds: 10));
+    });
+
+    testWidgets("a failed run explains itself without naming what the task names now", (tester) async {
+      var edits = 0;
+      // The task may have been edited since the run, so its model now need
+      // not be the one that run couldn't use.
+      final task = _recurring.copyWith(
+        definition: _recurring.definition.copyWith(
+          pluginId: Harness.claude.name,
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-new"),
+        ),
+      );
+      await pumpTask(
+        tester: tester,
+        task: task,
+        onEdit: () => edits++,
+        runs: [
+          _run(
+            id: "failed",
+            outcome: const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.modelUnavailable),
+          ),
+          _run(id: "skipped", outcome: const ScheduledTaskRunOutcome.skipped()),
+        ],
+      );
+      expect(find.text("Couldn’t start: its model isn’t offered anymore"), findsOneWidget);
+      expect(arrowIn(id: "failed"), findsOneWidget);
+      expect(arrowIn(id: "skipped"), findsNothing);
+
+      await tester.tap(runRow(id: "failed"));
+      await tester.pumpAndSettle();
+      expect(find.text("The harness didn’t offer this task’s model anymore."), findsOneWidget);
+      expect(find.textContaining("claude-new"), findsNothing);
+      expect(find.text("Pick another model in the task editor."), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key("scheduled-task-run-failure-edit")));
+      await tester.pumpAndSettle();
+      expect(edits, 1);
+      expect(find.text("The harness didn’t offer this task’s model anymore."), findsNothing);
+    });
+
+    testWidgets("a run that didn't start offers no editor", (tester) async {
+      await pumpTask(
+        tester: tester,
+        task: _recurring,
+        runs: [
+          _run(
+            id: "failed",
+            outcome: const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.startFailed),
+          ),
+        ],
+      );
+      await tester.tap(runRow(id: "failed"));
+      await tester.pumpAndSettle();
+      expect(find.text("Run now tries again."), findsOneWidget);
+      expect(find.byKey(const Key("scheduled-task-run-failure-edit")), findsNothing);
+      await tester.tap(find.byKey(const Key("scheduled-task-run-failure-close")));
+      await tester.pumpAndSettle();
+      expect(find.text("Run now tries again."), findsNothing);
+    });
 
     testWidgets("offers Edit and Rename for a task this app can edit", (tester) async {
       var edits = 0;

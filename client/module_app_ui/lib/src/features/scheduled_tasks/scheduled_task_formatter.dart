@@ -89,6 +89,30 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
     TaskRunFailureReason.unknown => loc.scheduledTaskFailureUnknown,
   };
 
+  /// A failed run's details: what went wrong and what to do next.
+  ///
+  /// They name no project, harness or model: a run records only its reason,
+  /// and the task may have been edited since, often to fix that very reason.
+  ({String detail, String? nextStep}) failureDetails({required TaskRunFailureReason reason}) => switch (reason) {
+    TaskRunFailureReason.projectMissing => (
+      detail: loc.scheduledTaskRunFailureProject,
+      nextStep: loc.scheduledTaskRunFailureNextProject,
+    ),
+    TaskRunFailureReason.harnessUnavailable => (
+      detail: loc.scheduledTaskRunFailureHarness,
+      nextStep: loc.scheduledTaskRunFailureNextHarness,
+    ),
+    TaskRunFailureReason.modelUnavailable => (
+      detail: loc.scheduledTaskRunFailureModel,
+      nextStep: loc.scheduledTaskRunFailureNextModel,
+    ),
+    TaskRunFailureReason.startFailed => (
+      detail: loc.scheduledTaskRunFailureStart,
+      nextStep: loc.scheduledTaskRunFailureNextStart,
+    ),
+    TaskRunFailureReason.unknown => (detail: loc.scheduledTaskRunFailureUnknown, nextStep: null),
+  };
+
   /// The instant's wall-clock fields, carried in a UTC value so formatting
   /// reads them unchanged.
   DateTime _wallClock({required ScheduledTaskInstant instant}) => DateTime.fromMillisecondsSinceEpoch(

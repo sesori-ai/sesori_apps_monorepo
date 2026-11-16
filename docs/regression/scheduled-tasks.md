@@ -72,6 +72,21 @@ them or can't start. Same-session tasks can compact their session between runs (
   still going (including a compaction in progress) it is refused, and the task page says "The previous run is still
   going. Try again once it finishes." Success shows "Run started"; a start failure shows its reason in the page's alert and sends no push.
 
+### Run history rows
+
+- A started run's row carries an arrow and opens its session over the task page, the way a session row opens from
+  the list; Back returns to the task. An archived run session opens read as archived. The session opens under the
+  task's current project, so a task moved to another project after the run can leave that session's page unable to
+  load.
+- A started run whose session was deleted has no arrow; a tap answers "This run's session was deleted."
+- A failed run's row keeps its short "Couldn't start: <reason>" line and carries an arrow. A tap opens a small sheet
+  (a dialog under a pointer) over the unmoved page, saying what went wrong and what to do next. It names no project,
+  harness or model: a run records only its reason and the task carries no edit time, so a task edited since the run
+  (often through this very sheet's Edit task) would otherwise be named wrongly. For a project, harness or model failure
+  on a task this app can edit, the sheet offers Edit task. A start failure points at the bridge log and Run now; a
+  reason from a newer bridge asks for an app update.
+- Skipped, missed and unknown rows have nothing more to show and no arrow.
+
 ### Approvals, marks, archiving and pushes
 
 - Approvals: **Ask me** or **Approve everything**, defaulting to the computer's current YOLO setting. The mode is
@@ -157,8 +172,8 @@ them or can't start. Same-session tasks can compact their session between runs (
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included: tasks are not a product heartbeat. |
-| L2 Routine | Automated: the occurrence calculator (zones, DST gap and overlap, every few hours, grace and missed decisions), the migration, repository history trim, run service (overlap, Run now refusal, at-most-once, failure reasons, auto-archive, the auto-compact group), handler, failure push listener and completion suppression suites; shared wire decoding with unknown fallbacks; editor, list and detail cubits; sheet, editor, list and formatter widgets. Headless bridge, representative plugin: create, edit, pause, resume and delete through the routes, and a one-off fired a few minutes ahead. |
-| L3 Release | Headless bridge: missed runs across a bridge stop under both policies, an overlap skip, Run now refused while a run works, a forced crash between reservation and send losing the run without a second send, auto-archive keeping pinned, busy and uncommitted-work sessions, completion suppression and the can't-start push dispatch in debug events. Live plugin through the local 9router proxy: run firing is Representative (Claude Code and Codex, new and same session, an archived target replaced); compaction on request is Every supporting production plugin; the auto-compact policy is Representative with Claude (readiness path) and Codex (status-only path): one compaction after the window, a run due first compacting and held, a user prompt cancelling the post-run compaction. Client end to end on a headless iOS simulator (`xcrun simctl boot`, the device the local-testing setup assigns): the Scheduled page with both headings and switches, the New task screen with both sheets and their feel checks, save and edit, Run now and its refusal, marks on rows, the inert Auto-compact switch and its explanation, and the update row against a v1.13.1 bridge. |
+| L2 Routine | Automated: the occurrence calculator (zones, DST gap and overlap, every few hours, grace and missed decisions), the migration, repository history trim, run service (overlap, Run now refusal, at-most-once, failure reasons, auto-archive, the auto-compact group), handler, failure push listener and completion suppression suites; shared wire decoding with unknown fallbacks; editor, list and detail cubits; sheet, editor, list, task page (run row taps and the failure sheet) and formatter widgets. Headless bridge, representative plugin: create, edit, pause, resume and delete through the routes, and a one-off fired a few minutes ahead. |
+| L3 Release | Headless bridge: missed runs across a bridge stop under both policies, an overlap skip, Run now refused while a run works, a forced crash between reservation and send losing the run without a second send, auto-archive keeping pinned, busy and uncommitted-work sessions, completion suppression and the can't-start push dispatch in debug events. Live plugin through the local 9router proxy: run firing is Representative (Claude Code and Codex, new and same session, an archived target replaced); compaction on request is Every supporting production plugin; the auto-compact policy is Representative with Claude (readiness path) and Codex (status-only path): one compaction after the window, a run due first compacting and held, a user prompt cancelling the post-run compaction. Client end to end on a headless iOS simulator (`xcrun simctl boot`, the device the local-testing setup assigns): the Scheduled page with both headings and switches, the New task screen with both sheets and their feel checks, save and edit, Run now and its refusal, a failed run's sheet, a run opening its session and Back returning to the task, the deleted-session answer, marks on rows, the inert Auto-compact switch and its explanation, and the update row against a v1.13.1 bridge. |
 | L4 Extended | Relay integration: two clients see one task's edits and runs live. Headless bridge with a controlled clock: a real DST transition in a non-UTC zone, a restart during a held run and inside a quiet window, a long run of skips past the history trim, and an edit racing a fire. Older v1.13.1 app against this bridge: tasks run, rows unmarked, completion suppressed. |
 | L5 Full | Packaged or external: can't-start push receipt and tap on a real device; a week-long recurring task across machine sleep; analytics rows upstream once the auth server accepts them. |
 
@@ -186,6 +201,8 @@ editor between one that can compact and one that can't. Use fixture projects and
   after a user prompt, or retries every pass after an unsupported or failed answer.
 - A held run is recorded missed, waits past 10 minutes, or Run now compacts first or pushes its start failure.
 - The Auto-compact switch shows under New session, toggles on a harness that can't compact, or a tap on it does nothing.
+- A run row tap does nothing, opens the wrong session, or leaves Back somewhere other than the task page; a failed run's
+  sheet moves the page behind it or names a project, harness or model, which may not be the one that run used.
 - A row jumps or snaps when a sheet's content changes, or the screen behind a sheet moves.
 - An older bridge shows an empty or broken Scheduled page instead of the update row, or an older app fails to decode.
 - An analytics event carries a prompt, name, project, harness or time, or fires for a refused save.
