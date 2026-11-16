@@ -3194,9 +3194,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailContinueEditOpen => 'Finish or cancel your edit first.';
 
   @override
-  String get sessionDetailContinueEditSending => 'Your edit is on its way. Continue in a moment.';
-
-  @override
   String get sessionDetailContinueSessionWorking => 'The agent is already working.';
 
   @override
@@ -4682,7 +4679,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sideChatRefusedRepeatedRunningReply(String harness) {
-    return '$harness answered with its running reply instead. Ask again.';
+    return 'Couldn\'t answer while $harness was busy. Ask again.';
   }
 
   @override

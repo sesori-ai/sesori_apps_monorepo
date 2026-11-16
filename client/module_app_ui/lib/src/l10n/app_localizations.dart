@@ -5527,12 +5527,6 @@ abstract class AppLocalizations {
   /// **'Finish or cancel your edit first.'**
   String get sessionDetailContinueEditOpen;
 
-  /// Alert shown when the user taps Continue under an interrupted turn while an edited message is stopping the session or being sent.
-  ///
-  /// In en, this message translates to:
-  /// **'Your edit is on its way. Continue in a moment.'**
-  String get sessionDetailContinueEditSending;
-
   /// Alert shown when the user taps Continue under an interrupted turn just as the session started working.
   ///
   /// In en, this message translates to:
@@ -5707,7 +5701,7 @@ abstract class AppLocalizations {
   /// **'The session didn\'t accept the edit. Nothing changed.'**
   String get sessionDetailEditRefusedBody;
 
-  /// Note shown when the user taps or types in the composer while an edited message is stopping the session or being sent.
+  /// Note shown when the user taps or types in the composer, or taps Continue under an interrupted turn, while an edited message is stopping the session or being sent.
   ///
   /// In en, this message translates to:
   /// **'Your edit is on its way. You can type again in a moment.'**
@@ -8116,7 +8110,7 @@ abstract class AppLocalizations {
   /// Shown in place of an answer, above a Retry button, when the harness sent back the reply of the turn it was running instead of answering the side question.
   ///
   /// In en, this message translates to:
-  /// **'{harness} answered with its running reply instead. Ask again.'**
+  /// **'Couldn\'t answer while {harness} was busy. Ask again.'**
   String sideChatRefusedRepeatedRunningReply(String harness);
 
   /// Shown in place of an answer when the bridge refused for a reason this app doesn't know.
