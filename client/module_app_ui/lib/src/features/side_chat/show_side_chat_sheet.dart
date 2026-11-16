@@ -56,9 +56,9 @@ void showSideChatSheet({
 /// takes the composer's focus, so the keyboard slides down under the sheet;
 /// without the hold the transcript behind it would slide down with it.
 ///
-/// On close the page eases back to the live keyboard. A composer that takes
-/// its focus back raises the keyboard again, and the page follows it up; with
-/// no keyboard coming back, the page settles down to the bottom.
+/// On close the composer takes its focus back and the keyboard rises again, so
+/// the page keeps the held keyboard while it does, then eases to the live one:
+/// with no keyboard coming back, the page settles down to the bottom.
 class const SideChatKeyboardHold({super.key, required final Widget child}) extends StatefulWidget {
   /// Holds the nearest [SideChatKeyboardHold] above [context] until [closed]
   /// completes. Without one, the page follows the keyboard as usual.
@@ -74,14 +74,18 @@ class _SideChatKeyboardHoldState() extends State<SideChatKeyboardHold> with Sing
   late final AnimationController _hold = AnimationController(vsync: this, duration: _releaseDuration);
   double _held = 0;
 
-  static const _releaseDuration = Duration(milliseconds: 350);
+  /// The first 480 ms outlast a returning keyboard's rise (about 450 ms on
+  /// iOS), so the page never drops below it; the rest eases a keyboard that
+  /// stays down out of the layout.
+  static const _releaseDuration = Duration(milliseconds: 800);
+  static const _releaseCurve = Interval(0.6, 1, curve: Curves.easeInOut);
 
   void _holdUntil({required Future<void> closed}) {
     _held = MediaQuery.viewInsetsOf(context).bottom;
     _hold.value = 1;
     unawaited(
       closed.whenComplete(() {
-        if (mounted) _hold.animateBack(0, curve: Curves.easeIn);
+        if (mounted) _hold.animateBack(0, curve: _releaseCurve);
       }),
     );
   }
@@ -100,7 +104,12 @@ class _SideChatKeyboardHoldState() extends State<SideChatKeyboardHold> with Sing
       final mediaQuery = MediaQuery.of(context);
       final keyboard = math.max(mediaQuery.viewInsets.bottom, _held * _hold.value);
       return MediaQuery(
-        data: mediaQuery.copyWith(viewInsets: mediaQuery.viewInsets.copyWith(bottom: keyboard)),
+        // The held keyboard still covers the home indicator, so its safe area
+        // stays out of the padding, as the platform reports it.
+        data: mediaQuery.copyWith(
+          viewInsets: mediaQuery.viewInsets.copyWith(bottom: keyboard),
+          padding: mediaQuery.padding.copyWith(bottom: math.max(0, mediaQuery.viewPadding.bottom - keyboard)),
+        ),
         child: child ?? const SizedBox.shrink(),
       );
     },
