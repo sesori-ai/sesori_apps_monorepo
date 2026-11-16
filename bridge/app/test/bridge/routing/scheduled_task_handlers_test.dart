@@ -17,6 +17,7 @@ import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.
 import "package:sesori_bridge/src/services/scheduled_task_run_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_service.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
+import "package:sesori_bridge/src/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
@@ -72,6 +73,7 @@ void main() {
       prompts: _UnusedPrompts(),
       operations: _UnusedOperations(),
       yoloSettings: _UnusedYoloSettings(),
+      lifecycle: _UnusedLifecycle(),
       sessions: sessions,
       sessionOptions: FakeSessionOptionsService(),
       calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -211,6 +213,11 @@ class _UnusedOperations() implements SessionOperationDispatcher {
 }
 
 class _UnusedYoloSettings() implements YoloSettingsService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedLifecycle() implements SessionLifecycleService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

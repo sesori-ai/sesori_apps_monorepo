@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/services/scheduled_task_request_exception.dart
 import "package:sesori_bridge/src/services/scheduled_task_run_failure.dart";
 import "package:sesori_bridge/src/services/scheduled_task_run_service.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
+import "package:sesori_bridge/src/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
@@ -57,6 +58,7 @@ void main() {
   late _FakePrompts prompts;
   late _FakeOperations operations;
   late _FakeYoloSettings yolo;
+  late _FakeLifecycle lifecycle;
   late ScheduledTaskRunService service;
   late List<ScheduledTaskRunFailure> failures;
   late DateTime now;
@@ -72,6 +74,7 @@ void main() {
     prompts = _FakePrompts();
     operations = _FakeOperations();
     yolo = _FakeYoloSettings();
+    lifecycle = _FakeLifecycle();
     service = ScheduledTaskRunService(
       repository: repository,
       sessionCreation: creation,
@@ -79,6 +82,7 @@ void main() {
       operations: operations,
       yoloSettings: yolo,
       sessions: sessions,
+      lifecycle: lifecycle,
       sessionOptions: options,
       calculator: const ScheduledTaskOccurrenceCalculator(),
       clock: Clock(() => now),
@@ -164,6 +168,63 @@ void main() {
       await service.runDue();
 
       expect(creation.calls, hasLength(1));
+    });
+  });
+
+  group("archiving old runs", () {
+    // The fire's own session first, then older runs, newest first.
+    const older = ["old_1", "old_2", "old_3", "old_4", "old_5", "old_6", "old_7", "old_8", "old_9"];
+
+    Future<ScheduledTaskRecord> fireWithOlderRuns({ScheduledTaskDefinition definition = _daily}) async {
+      final task = await createTask(definition: definition, nextDueAt: DateTime.utc(2026, 11, 15, 9));
+      sessions.archivableScheduledRunSessionIds[task.id] = ["ses_1", ...older];
+      sessions.quietness["ses_1"] = SessionQuietness.working;
+      await service.runDue();
+      // Archiving runs apart from the fire; disposing waits for it.
+      await service.dispose();
+      return task;
+    }
+
+    test("a new-session run archives finished runs beyond the newest five", () async {
+      await fireWithOlderRuns();
+
+      expect(lifecycle.archived, ["old_6", "old_7", "old_8", "old_9"]);
+    });
+
+    test("runs still working or waiting on the user stay and do not count among the five", () async {
+      sessions.quietness["old_2"] = SessionQuietness.working;
+      sessions.quietness["old_4"] = SessionQuietness.awaitingUser;
+      sessions.quietness["old_8"] = SessionQuietness.unknown;
+
+      await fireWithOlderRuns();
+
+      expect(lifecycle.archived, ["old_9"]);
+    });
+
+    test("a run whose worktree cleanup is refused stays, and the rest are still archived", () async {
+      lifecycle.refused.add("old_7");
+
+      final task = await fireWithOlderRuns();
+
+      expect(lifecycle.archived, ["old_6", "old_8", "old_9"]);
+      expect(lifecycle.calls, everyElement((deleteWorktree: true, force: false)));
+      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false)]);
+      expect(failures, isEmpty, reason: "a refusal is logged, not pushed");
+    });
+
+    test("an archive failure never fails the run", () async {
+      lifecycle.error = StateError("export failed");
+
+      final task = await fireWithOlderRuns();
+
+      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_1", late: false)]);
+      expect(failures, isEmpty);
+    });
+
+    test("a same-session task archives nothing", () async {
+      await fireWithOlderRuns(definition: _sameSession);
+
+      expect(lifecycle.calls, isEmpty);
     });
   });
 
@@ -568,6 +629,38 @@ Session _session({required String id, required SessionApprovalMode? approvalOver
   scheduledTask: null,
   interruption: null,
 );
+
+class _FakeLifecycle() implements SessionLifecycleService {
+  final List<({bool deleteWorktree, bool force})> calls = [];
+  final List<String> archived = [];
+  final Set<String> refused = {};
+  Object? error;
+
+  @override
+  Future<ArchiveStatusUpdate> updateArchiveStatus({
+    required String sessionId,
+    required bool archived,
+    required bool deleteWorktree,
+    required bool force,
+  }) async {
+    calls.add((deleteWorktree: deleteWorktree, force: force));
+    if (error case final error?) throw error;
+    if (refused.contains(sessionId)) {
+      throw SessionArchiveConflictException(
+        rejection: const SessionCleanupRejection(issues: [CleanupIssue.unstagedChanges()]),
+      );
+    }
+    this.archived.add(sessionId);
+    return ArchiveStatusUpdate(
+      session: _session(id: sessionId, approvalOverride: null),
+      changed: true,
+      projectId: "/repo",
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 /// Reads stored sessions from the test database the session fakes write.
 class _Sessions({required final AppDatabase _database}) extends FakeSessionRepository {

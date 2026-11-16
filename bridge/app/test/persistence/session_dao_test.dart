@@ -509,6 +509,43 @@ void main() {
       expect(byIds["ses-c"]?.projectId, equals("proj-y"));
     });
 
+    test("a removed worktree's branch is recorded on every session naming it, archived or not", () async {
+      Future<void> insert({required String sessionId, required String projectId, required String? worktreePath}) =>
+          insertTestSession(
+            db: db,
+            sessionId: sessionId,
+            backendSessionId: "backend-$sessionId",
+            pluginId: "opencode",
+            projectId: projectId,
+            isDedicated: worktreePath != null,
+            createdAt: 1,
+            worktreePath: worktreePath,
+            baseBranch: null,
+            baseCommit: null,
+            agent: null,
+            agentModel: null,
+          );
+      await insert(sessionId: "origin", projectId: "proj-1", worktreePath: "/wt/a");
+      await insert(sessionId: "fork", projectId: "proj-1", worktreePath: "/wt/a");
+      await insert(sessionId: "other", projectId: "proj-1", worktreePath: "/wt/b");
+      await insert(sessionId: "elsewhere", projectId: "proj-2", worktreePath: "/wt/a");
+      await dao.setArchived(sessionId: "origin", archivedAt: 2, updatedAt: 2, projectionUpdatedAt: 2);
+
+      await dao.setWorktreeBranch(projectId: "proj-1", worktreePath: "/wt/a", branchName: "agent/feature");
+
+      Future<String?> branch(String sessionId) async => (await dao.getSession(sessionId: sessionId))?.branchName;
+      expect(await branch("origin"), "agent/feature");
+      expect(await branch("fork"), "agent/feature");
+      expect(await branch("other"), isNull);
+      expect(await branch("elsewhere"), isNull);
+
+      Future<bool> namedByOthers(String sessionId) =>
+          dao.hasOtherSessionsNamingWorktree(sessionId: sessionId, projectId: "proj-1", worktreePath: "/wt/a");
+      expect(await namedByOthers("fork"), isTrue, reason: "the archived origin still names it");
+      await dao.deleteSession(sessionId: "origin");
+      expect(await namedByOthers("fork"), isFalse);
+    });
+
     group("getOtherActiveSessionsSharing", () {
       test("finds other session sharing worktreePath", () async {
         await dao.insertSession(

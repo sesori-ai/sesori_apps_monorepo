@@ -191,6 +191,28 @@ void main() {
       );
     });
 
+    test("a can't-start push carries its task and is limited and collapsed per task", () {
+      final harness = _newHarness(now: () => DateTime.utc(2026, 11, 15, 9));
+
+      harness.dispatcher.dispatchScheduledTaskFailure(taskId: "stk_a", title: "Morning summary", body: "Couldn't");
+      harness.dispatcher.dispatchScheduledTaskFailure(taskId: "stk_b", title: "Nightly review", body: "Couldn't");
+      harness.dispatcher.dispatchScheduledTaskFailure(taskId: "stk_a", title: "Morning summary", body: "Again");
+
+      final payloads = harness.client.sentPayloads;
+      expect([for (final payload in payloads) payload.data?.taskId], ["stk_a", "stk_b"]);
+      expect(
+        [for (final payload in payloads) payload.collapseKey],
+        [
+          "${NotificationCategory.sessionMessage.id}-task-stk_a",
+          "${NotificationCategory.sessionMessage.id}-task-stk_b",
+        ],
+      );
+      expect(payloads.first.category, NotificationCategory.sessionMessage);
+      expect(payloads.first.data?.eventType, NotificationEventType.scheduledTaskRunFailed);
+      expect(payloads.first.data?.sessionId, isNull);
+      expect(payloads.first.data?.bridgeId, "br_this_computer");
+    });
+
     test("completion dispatch sends provided outbound completion payload", () {
       final harness = _newHarness();
       const title = "Implement user authentication for the dashboard";
@@ -494,6 +516,7 @@ _newHarness({
     contentBuilder: contentBuilder,
     dispatcher: dispatcher,
     resolveSessionTitle: ({required String sessionId}) async => null,
+    isUnattendedTaskRun: ({required String sessionId}) async => false,
   );
   final maintenanceListener = MaintenancePushListener(
     tracker: resolvedTracker,

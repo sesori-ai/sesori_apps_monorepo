@@ -58,8 +58,15 @@ class SessionActionsCubit({
       _actionService.markSessionSeen(projectId: projectId, sessionId: sessionId, read: read);
 
   /// Completes once the bridge answers, which waits for the source's summary.
-  Future<SendToSessionResult> sendToSession({required String sourceSessionId, required String targetSessionId}) =>
-      _actionService.sendToSession(sourceSessionId: sourceSessionId, targetSessionId: targetSessionId);
+  Future<SendToSessionResult> sendToSession({
+    required String sourceSessionId,
+    required String sourcePluginId,
+    required String targetSessionId,
+  }) => _actionService.sendToSession(
+    sourceSessionId: sourceSessionId,
+    sourcePluginId: sourcePluginId,
+    targetSessionId: targetSessionId,
+  );
 
   /// Stops [sessionId] and its sub-agents, so a busy source can be sent.
   /// False when the bridge did not stop it.

@@ -113,6 +113,7 @@ class const PushNotificationContentBuilder() {
     required String? sessionId,
     required String? projectId,
     required String? bridgeId,
+    required String? taskId,
   }) {
     final data = NotificationData(
       category: category,
@@ -120,6 +121,7 @@ class const PushNotificationContentBuilder() {
       eventType: eventType,
       projectId: projectId,
       bridgeId: bridgeId,
+      taskId: taskId,
     );
 
     return SendNotificationPayload(
@@ -130,6 +132,21 @@ class const PushNotificationContentBuilder() {
       data: data,
     );
   }
+
+  /// The push for a scheduled task run that could not start: the task's
+  /// name, and why in a few words.
+  ({String title, String body}) scheduledTaskFailure({
+    required String taskName,
+    required TaskRunFailureReason reason,
+  }) => (
+    title: truncateTitle(title: taskName),
+    body: switch (reason) {
+      TaskRunFailureReason.projectMissing => "Couldn't start: the project is gone.",
+      TaskRunFailureReason.harnessUnavailable => "Couldn't start: the harness isn't available.",
+      TaskRunFailureReason.modelUnavailable => "Couldn't start: the model is no longer offered.",
+      TaskRunFailureReason.startFailed || TaskRunFailureReason.unknown => "Couldn't start this run.",
+    },
+  );
 
   /// A permission description is Markdown rendered by the app; the OS shows
   /// the push body verbatim. Drop the code-block indentation and fences and
