@@ -60,6 +60,7 @@ class const V2ModelMapper({required final String _pluginId}) {
     autoContinuation: null,
     approvalOverride: null,
     scheduledTask: null,
+    interruption: null,
     forkedFrom: null,
   );
 

@@ -34,6 +34,8 @@ enum AnalyticsScreen({required final String wireValue}) {
   newSession(wireValue: "new_session"),
   sessionDetail(wireValue: "session_detail"),
   sessionDiffs(wireValue: "session_diffs"),
+  scheduledTasks(wireValue: "scheduled_tasks"),
+  scheduledTaskDetail(wireValue: "scheduled_task_detail"),
 }
 
 enum AnalyticsInputMode({required final String wireValue}) {

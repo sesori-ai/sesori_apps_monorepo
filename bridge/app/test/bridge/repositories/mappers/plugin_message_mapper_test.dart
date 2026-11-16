@@ -94,6 +94,7 @@ void main() {
         modelID: "gpt",
         providerID: "openai",
         variant: null,
+        kind: PluginErrorKind.failure,
         errorName: "ProviderError",
         errorMessage: "boom",
         time: PluginMessageTime(created: 1718400000000, completed: 1718400001000),
@@ -114,6 +115,28 @@ void main() {
           ),
         ),
       );
+    });
+
+    test("carries each error kind", () {
+      for (final (kind, expected) in const [
+        (PluginErrorKind.failure, MessageErrorKind.failure),
+        (PluginErrorKind.stopped, MessageErrorKind.stopped),
+      ]) {
+        final message = PluginMessage.error(
+          id: "m3",
+          sessionID: "s1",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          variant: null,
+          kind: kind,
+          errorName: "Fixture",
+          errorMessage: "Fixture text",
+          time: null,
+        );
+
+        expect((message.toSharedMessage(sessionId: "s1") as MessageError).kind, expected);
+      }
     });
 
     test("maps a null time to null", () {
@@ -163,6 +186,7 @@ void main() {
             modelID: "gpt",
             providerID: null,
             variant: "high",
+            kind: PluginErrorKind.failure,
             errorName: "ProviderError",
             errorMessage: "boom",
             time: null,

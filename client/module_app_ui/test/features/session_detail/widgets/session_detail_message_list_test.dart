@@ -11,6 +11,8 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/compaction_part_widget.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/handoff_card.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/handoff_marker_row.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/invocation_card.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
@@ -555,23 +557,7 @@ Future<void> _pumpPointerTurns(
   await tester.pumpWidget(
     PregoInteractionScope(
       mode: PregoInteractionMode.pointer,
-      child: SessionDetailPresentationScope(
-        messageImageRepository: _UnpreviewedImageRepository.new,
-        imageSaver: () => throw UnimplementedError("Saving images is not under test"),
-        imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
-        imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
-        sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
-        createExternalActionCubit: ({required requestId, required sessionId}) =>
-            throw UnimplementedError("External actions are not under test"),
-        createPendingFormCubit: ({required requestId, required sessionId}) =>
-            throw UnimplementedError("Forms are not under test"),
-        createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
-        canShareImages: false,
-        openExternalLink: ({required url, required mode}) async => false,
-        openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-        openHarnessSettings: () {},
-        openBridgeSettings: () {},
-        openSideChat: null,
+      child: _presented(
         child: _SessionDetailMessageListHarness(
           initialMessages: messages,
           initialStreamingText: const {},
@@ -583,6 +569,27 @@ Future<void> _pumpPointerTurns(
   );
   await tester.pumpAndSettle();
 }
+
+/// [child] on a session page, for rows that read its presentation scope.
+Widget _presented({required Widget child}) => SessionDetailPresentationScope(
+  messageImageRepository: _UnpreviewedImageRepository.new,
+  imageSaver: () => throw UnimplementedError("Saving images is not under test"),
+  imageClipboard: () => throw UnimplementedError("Copying images is not under test"),
+  imageSharer: () => throw UnimplementedError("Sharing images is not under test"),
+  sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
+  createExternalActionCubit: ({required requestId, required sessionId}) =>
+      throw UnimplementedError("External actions are not under test"),
+  createPendingFormCubit: ({required requestId, required sessionId}) =>
+      throw UnimplementedError("Forms are not under test"),
+  createFilePreviewCubit: ({required reference}) => throw UnimplementedError("File previews are not under test"),
+  canShareImages: false,
+  openExternalLink: ({required url, required mode}) async => false,
+  openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+  openHarnessSettings: () {},
+  openBridgeSettings: () {},
+  openSideChat: null,
+  child: child,
+);
 
 /// Previews no attachment, so an image keeps its placeholder: a tile the size
 /// its preview takes.
@@ -783,6 +790,7 @@ void main() {
 
     const listed = QueuedSessionPrompt(
       commandSource: null,
+      handoff: null,
       id: "prm_sent",
       text: "Fresh",
       command: null,
@@ -1279,6 +1287,7 @@ void main() {
     QueuedSessionPrompt listed({QueuedPromptDispatchState state = QueuedPromptDispatchState.queued}) =>
         QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_sent",
           text: "Fresh",
           command: null,
@@ -1749,6 +1758,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -1757,6 +1767,7 @@ void main() {
           ),
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_2",
             text: "src",
             command: "review",
@@ -1811,6 +1822,7 @@ void main() {
       );
       final prompt = QueuedSessionPrompt(
         commandSource: null,
+        handoff: null,
         id: submission.promptId,
         text: submission.displayText,
         command: null,
@@ -1901,6 +1913,7 @@ void main() {
     );
     const prompt = QueuedSessionPrompt(
       commandSource: null,
+      handoff: null,
       id: "image-prompt",
       text: "Review this image",
       command: null,
@@ -2061,6 +2074,7 @@ void main() {
             child: SizedBox(
               width: 280,
               child: QueuedMessageBubble(
+                body: null,
                 displayText: "first",
                 isCommand: false,
                 attachmentCount: 0,
@@ -2104,6 +2118,7 @@ void main() {
               child: SizedBox(
                 width: 280,
                 child: QueuedMessageBubble(
+                  body: null,
                   displayText: "first",
                   isCommand: false,
                   attachmentCount: 0,
@@ -2345,6 +2360,7 @@ void main() {
       prompts: const [
         QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_wake",
           text: "wake it",
           command: null,
@@ -2367,6 +2383,138 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("a bridge-queued summary request shows its writing marker from the start and keeps it on arrival", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _presented(
+        child: _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: [
+            _message(messageId: "user-0", role: "user", text: "Earlier"),
+            _message(messageId: "assistant-0", role: "assistant", text: "Earlier reply"),
+          ],
+          initialStreamingText: const {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final harness = harnessKey.harness;
+    const handoff = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Codex review");
+    const requestText = "Fixture summary request";
+    final marker = find.byType(HandoffMarkerRow);
+    void expectNoRawRequest({required String reason}) {
+      // Offstage too: a row is measured before it eases in.
+      expect(find.byType(HandoffMarkerRow, skipOffstage: false), findsOneWidget, reason: reason);
+      expect(find.text(requestText, skipOffstage: false), findsNothing, reason: reason);
+      expect(find.byType(TranscriptWorkingRow, skipOffstage: false), findsNothing, reason: reason);
+    }
+
+    harness.updateBridgeQueue(
+      prompts: const [
+        QueuedSessionPrompt(
+          commandSource: null,
+          handoff: handoff,
+          id: "prm_request",
+          text: requestText,
+          command: null,
+          createdAt: 100,
+          dispatchState: QueuedPromptDispatchState.dispatched,
+        ),
+      ],
+      attachments: const {},
+    );
+    await tester.pump();
+    expectNoRawRequest(reason: "queued");
+    harness.setBusy(true);
+    for (var frame = 0; frame < 40; frame++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      expectNoRawRequest(reason: "queued frame $frame");
+    }
+    expect(find.text("Writing a summary for Codex review…"), findsWidgets);
+    final markerTop = tester.getTopLeft(marker).dy;
+    final markerRow = tester.element(marker);
+
+    final request = _message(messageId: "request", role: "user", text: requestText, promptId: "prm_request");
+    final requestInfo = switch (request.info) {
+      final MessageUser user => user.copyWith(handoff: handoff),
+      final other => other,
+    };
+    // The user message can land before its parts, while the bridge still lists the prompt.
+    harness.appendNewestMessage(MessageWithParts(info: requestInfo, parts: const []));
+    for (var frame = 0; frame < 4; frame++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      expectNoRawRequest(reason: "partless frame $frame");
+    }
+    harness.removeMessage("request");
+    harness.deliverBridgePrompt(
+      promptId: "prm_request",
+      message: MessageWithParts(info: requestInfo, parts: request.parts),
+      insertionIndex: 2,
+    );
+    for (var frame = 0; frame < 12; frame++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      expectNoRawRequest(reason: "delivered frame $frame");
+      expect(tester.getTopLeft(marker).dy, moreOrLessEquals(markerTop, epsilon: 0.5), reason: "frame $frame");
+    }
+    expect(tester.element(marker), same(markerRow));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("a bridge-queued handoff prompt shows as its card, never as a bubble, and can be cancelled", (
+    tester,
+  ) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _presented(
+        child: _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: [_message(messageId: "assistant-0", role: "assistant", text: "Earlier reply")],
+          initialStreamingText: const {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    const promptText = "Fixture handoff prompt";
+    harnessKey.harness.updateBridgeQueue(
+      prompts: const [
+        QueuedSessionPrompt(
+          commandSource: null,
+          handoff: MessageHandoff.received(
+            sourceSessionId: "source",
+            sourceTitle: "Relay retries",
+            summary: "Fixture summary",
+            transcriptPath: "/tmp/fixture/transcript.md",
+          ),
+          id: "prm_handoff",
+          text: promptText,
+          command: null,
+          createdAt: 100,
+          dispatchState: QueuedPromptDispatchState.queued,
+        ),
+      ],
+      attachments: const {},
+    );
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      // Offstage too: a row is measured before it eases in.
+      expect(find.byType(HandoffCard, skipOffstage: false), findsOneWidget, reason: "frame $frame");
+      expect(find.text(promptText, skipOffstage: false), findsNothing, reason: "frame $frame");
+      expect(find.byType(UserMessageBubble, skipOffstage: false), findsNothing, reason: "frame $frame");
+    }
+    expect(find.byType(HandoffCard), findsOneWidget);
+    // The source has finished its part, so only the target can withdraw the card.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Cancel"));
+    await tester.pumpAndSettle();
+    expect(harnessKey.harness.cancelledBridgePromptIds, ["prm_handoff"]);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets("a prompt from another surface that wakes the session sits above Working… when busy lands first", (
     tester,
   ) async {
@@ -2385,6 +2533,7 @@ void main() {
       prompts: const [
         QueuedSessionPrompt(
           commandSource: null,
+          handoff: null,
           id: "prm_remote",
           text: "from the desktop",
           command: null,
@@ -2565,6 +2714,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "thanks",
             command: null,
@@ -2632,6 +2782,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -2676,6 +2827,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -2713,6 +2865,7 @@ void main() {
         initialBridgeQueuedPrompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_1",
             text: "steer it",
             command: null,
@@ -3552,6 +3705,7 @@ void main() {
         lastUserActivityAt: null,
         autoContinuation: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       );
       harness.setChildren(children: [child], childStatuses: const {"child-1": SessionStatus.busy(since: null)});
@@ -4534,6 +4688,7 @@ void main() {
         prompts: const [
           QueuedSessionPrompt(
             commandSource: null,
+            handoff: null,
             id: "prm_other",
             text: "From elsewhere",
             command: null,
@@ -6886,6 +7041,124 @@ void main() {
 
       expect(_position(tester).pixels, offset);
       expect(find.byKey(_jumpToLatestKey), findsNothing);
+    });
+  });
+
+  group("a turn that ends early", () {
+    final prompt = _message(messageId: "prompt", role: "user", text: "Write a story", createdAtMs: 100);
+    final reply = _message(messageId: "reply", role: "assistant", text: "Half a story", createdAtMs: 200);
+    MessageWithParts ended({required MessageErrorKind kind}) => MessageWithParts(
+      info: Message.error(
+        id: reply.info.id,
+        sessionID: "session-1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        errorName: "aborted",
+        errorMessage: "Step interrupted",
+        kind: kind,
+        time: reply.info.time,
+      ),
+      parts: reply.parts,
+    );
+
+    Future<_SessionDetailMessageListHarnessState> pumpWorking(WidgetTester tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setBusy(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(TranscriptWorkingRow), findsOneWidget);
+      return harness;
+    }
+
+    Future<void> expectStill(WidgetTester tester, {required double top}) async {
+      for (var ms = 0; ms <= 300; ms += 20) {
+        expect(
+          tester.getTopLeft(find.text("Half a story")).dy,
+          moreOrLessEquals(top, epsilon: 0.01),
+          reason: "At $ms ms",
+        );
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+    }
+
+    testWidgets("a stop keeps the streamed reply and grows Stopped in under it as Working folds away", (tester) async {
+      final harness = await pumpWorking(tester);
+      final top = tester.getTopLeft(find.text("Half a story")).dy;
+
+      harness
+        ..replaceMessages([prompt, ended(kind: MessageErrorKind.stopped)])
+        ..setBusy(false);
+      await tester.pump();
+      await expectStill(tester, top: top);
+
+      expect(find.byType(TranscriptWorkingRow), findsNothing);
+      expect(find.text("Stopped", findRichText: true), findsOneWidget);
+      expect(find.text("Step interrupted"), findsNothing);
+      expect(
+        tester.getTopLeft(find.text("Stopped", findRichText: true)).dy,
+        greaterThan(tester.getBottomLeft(find.text("Half a story")).dy),
+      );
+    });
+
+    testWidgets("a stop whose idle lands after its stopped row still holds the reply in place", (tester) async {
+      final harness = await pumpWorking(tester);
+      final top = tester.getTopLeft(find.text("Half a story")).dy;
+
+      harness.replaceMessages([prompt, ended(kind: MessageErrorKind.stopped)]);
+      await tester.pump();
+      await expectStill(tester, top: top);
+      harness.setBusy(false);
+      await tester.pump();
+      await expectStill(tester, top: top);
+
+      expect(find.byType(TranscriptWorkingRow), findsNothing);
+      expect(find.text("Stopped", findRichText: true), findsOneWidget);
+    });
+
+    testWidgets("a stop mid-stream grows Stopped in over frames, never in one jump", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness
+        ..setBusy(true)
+        ..updateStreamingText(partId: "reply-part", text: "Half a story");
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(TranscriptWorkingRow), findsNothing, reason: "streaming text already shows progress");
+      final start = tester.getTopLeft(find.text("Half a story")).dy;
+
+      harness
+        ..replaceMessages([prompt, ended(kind: MessageErrorKind.stopped)])
+        ..clearStreamingText()
+        ..setBusy(false);
+      await tester.pump();
+      final rises = <double>[];
+      for (var ms = 0; ms <= 300; ms += 16) {
+        rises.add(start - tester.getTopLeft(find.text("Half a story")).dy);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final lineHeight = tester.getSize(find.byType(ErrorMessageCard)).height;
+      expect(rises.last, moreOrLessEquals(lineHeight, epsilon: 0.01), reason: "the line lands under the reply");
+      for (var i = 1; i < rises.length; i++) {
+        expect(rises[i], greaterThanOrEqualTo(rises[i - 1]), reason: "the reply only rises");
+        expect(rises[i] - rises[i - 1], lessThan(lineHeight / 3), reason: "frame $i moves a fraction of the line");
+      }
+    });
+
+    testWidgets("a failed turn keeps its streamed reply above the error", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: [
+          prompt,
+          ended(kind: MessageErrorKind.failure),
+        ],
+      );
+
+      expect(find.text("Half a story"), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text("Step interrupted")).dy,
+        greaterThan(tester.getBottomLeft(find.text("Half a story")).dy),
+      );
     });
   });
 }

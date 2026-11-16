@@ -518,6 +518,17 @@ void main() {
       expect(plugin.forks, isEmpty);
     });
 
+    test("is refused when a checkout of another repository now holds the path", () async {
+      git
+        ..worktrees.add(_worktree)
+        ..foreign.add(_worktree);
+
+      await expectLater(fork(const ForkPoint.latest()), refusedWith(SessionBranchErrorCode.refused));
+
+      expect(git.added, isEmpty);
+      expect(plugin.forks, isEmpty);
+    });
+
     test("is refused when git cannot add the worktree", () async {
       git
         ..branches.add("feature")
@@ -725,8 +736,15 @@ class _FakeWorktreeGit() extends FakeGitCliApi {
   Future<String?> resolveCommit({required String projectPath, required String ref}) async =>
       ref.startsWith("refs/sesori/") ? keptHead : null;
 
+  /// Checkouts of another repository, among [worktrees].
+  final foreign = <String>{};
+
   @override
   Future<bool> isWorkTreeRoot({required String path}) async => worktrees.contains(path);
+
+  @override
+  Future<String?> readGitCommonDir({required String path}) async =>
+      foreign.contains(path) ? "/elsewhere/.git" : "/repo/.git";
 
   @override
   Future<void> pruneWorktrees({required String projectPath}) async {}

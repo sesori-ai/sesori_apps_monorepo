@@ -335,6 +335,7 @@ final class const ClaudeHistoryMapper({
         modelID: modelId(entry.model),
         providerID: ClaudeBackendCatalogRepository.providerId,
         variant: null,
+        kind: PluginErrorKind.failure,
         errorName: error.name,
         errorMessage: error.message,
         time: _messageTime(entry.timestamp),

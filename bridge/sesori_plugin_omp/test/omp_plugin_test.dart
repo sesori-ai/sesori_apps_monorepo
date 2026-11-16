@@ -1050,6 +1050,51 @@ void main() {
       expect(image.toString(), isNot(contains("/private/")));
     });
 
+    // OMP stamps a model call's reasoning with a message id and replays under
+    // fresh ids, so only the live tool message id lets a re-import match it.
+    test("replays a tool call after stamped reasoning as the live tool message", () async {
+      plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
+      final loading = plugin.getSessionMessages("stored");
+      final initialize = await waitForFrame(AcpMethods.initialize);
+      respond(initialize, {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": true},
+        "authMethods": [
+          {"id": "agent", "name": "Agent"},
+        ],
+      });
+      respond(await waitForFrame(AcpMethods.authenticate), const {});
+      final load = await waitForFrame(AcpMethods.sessionLoad);
+      for (final update in <Map<String, dynamic>>[
+        {
+          "sessionUpdate": "agent_thought_chunk",
+          "messageId": "replay-1",
+          "content": {"type": "text", "text": "Thinking"},
+        },
+        {
+          "sessionUpdate": "tool_call",
+          "toolCallId": "call-1",
+          "title": "bash",
+          "kind": "execute",
+          "status": "completed",
+        },
+      ]) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {"sessionId": "stored", "update": update},
+        });
+      }
+      respond(load, {"sessionId": "stored"});
+
+      final messages = await loading;
+      expect(
+        messages.map((message) => message.info.id).last,
+        AcpEventMapper.toolMessageId(sessionId: "stored", toolCallId: "call-1"),
+      );
+      expect(messages, hasLength(2));
+    });
+
     test("names a replayed OMP skill prompt as the skill run", () async {
       plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
       final loading = plugin.getSessionMessages("stored");

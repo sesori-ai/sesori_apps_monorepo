@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../repositories/project_repository.dart";
 import "../repositories/session_unseen_repository.dart";
+import "session_mutation_dispatcher.dart";
 import "session_view_tracker.dart";
 
 /// Thrown by [SessionUnseenService.markUnread] when the target session has no
@@ -31,11 +32,13 @@ typedef UnseenChange = ({
 /// the orchestrator to forward as SSE.
 ///
 /// It also owns unseen-row deletion for live `session.deleted` events via
-/// [recordSessionDeleted].
+/// [recordSessionDeleted], and acknowledges a session's interruption when a
+/// view of it starts.
 class SessionUnseenService({
   required final SessionUnseenRepository _unseenRepository,
   required final ProjectRepository _projectRepository,
   required final SessionViewTracker _viewTracker,
+  required final SessionMutationDispatcher _mutations,
   required final int Function() _now,
 }) {
   /// Last timestamp this service issued. Used to keep [_nextTimestamp]
@@ -297,6 +300,9 @@ class SessionUnseenService({
     return _serialize(
       contextId: sessionId,
       operation: () async {
+        // Opening the session shows its interrupted turn, which is what the
+        // interruption waits for; it does not depend on an unseen row.
+        await _mutations.acknowledgeInterruption(sessionId: sessionId);
         final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
         if (row == null) return;
         // Write at least the persisted activity timestamp so a clock skew or

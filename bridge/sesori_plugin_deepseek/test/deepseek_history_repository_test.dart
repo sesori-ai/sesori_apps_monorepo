@@ -142,9 +142,9 @@ void main() {
     expect(messages.map((message) => message.info.id), [
       "s1-massistant-assistant",
       "s1-subagent-child-1",
-      "s1-massistant-assistant-deepseek-replay-run-2",
+      "s1-massistant-assistant-segment-2",
       "s1-subagent-child-2",
-      "s1-massistant-assistant-deepseek-replay-run-3",
+      "s1-massistant-assistant-segment-3",
     ]);
     expect(messages.map((message) => message.info.id).toSet(), hasLength(5));
     expect(messages.expand((message) => message.parts).map((part) => part.id).toSet(), hasLength(5));

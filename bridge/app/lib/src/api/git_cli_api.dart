@@ -257,6 +257,18 @@ class GitCliApi({
     return result.exitCode == 0 && result.stdout.toString().trim().isEmpty;
   }
 
+  /// The repository folder shared by every worktree of the repository that
+  /// [path] belongs to, as an absolute path, or null outside one.
+  Future<String?> readGitCommonDir({required String path}) async {
+    final result = await runGit(
+      projectPath: path,
+      arguments: const ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+    );
+    if (result.exitCode != 0) return null;
+    final commonDir = result.stdout.toString().trim();
+    return commonDir.isEmpty ? null : commonDir;
+  }
+
   /// The branch checked out in the working tree at [worktreePath], or null
   /// for a detached HEAD.
   Future<String?> readHeadBranch({required String worktreePath}) async {

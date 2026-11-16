@@ -643,6 +643,26 @@ archive would refuse is refused before the stop, leaving the session running.
 | DeepSeek | ✅ Native subtree stop. |
 | Pi, and Antigravity, Copilot, Hermes, OMP (no sub-agents exposed) | ✅ The turn. |
 
+## Stopped turns
+
+A user Stop ends the turn with a quiet grey "Stopped" line instead of a red error row. The plugin that sees the
+harness's own stop record marks its error row `kind: stopped`; the line never shows the harness's wording. An older
+app ignores `kind` and shows the row's text in red.
+
+| Harness | Live | After reload |
+|---|---|---|
+| Pi | ✅ `stopReason: aborted`. | ✅ The same record. |
+| OpenCode v1 | ✅ `MessageAbortedError`. | ✅ The same record. |
+| OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
+| OMP | ⬜ | ⬜ |
+| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ⬜ | ⬜ |
+| Claude Code | ⬜ | ⬜ |
+| Codex | ⬜ | ⬜ |
+
+Pi and OpenCode do not tell a user Stop from another abort of the turn, so any abort they record reads Stopped.
+OpenCode v2 (2.2.7 source) records the same `aborted` error when the user declines a permission, which ends the turn
+too.
+
 ## Pre-start catalog import
 
 | Capability | OpenCode |
@@ -1144,6 +1164,22 @@ end with `session.prompt-settled` so clients can remove its optimistic row.
 The explicit event is additive across the client/bridge wire boundary. Older
 clients ignore it and converge on refresh; newer clients retain snapshot
 reconciliation when connected to an older bridge.
+
+## Tool calls in replayed history
+
+The live stream gives every visible ACP tool call its own message. When a
+harness stamps its reasoning and text chunks with a message id, the shared
+replay groups the next tool call into that stamped message, which no longer
+matches the live rows, so a re-import shows the tool call twice: inside the
+replayed assistant message and as the live tool row.
+
+| Harness | Status |
+|---|---|
+| Oh My Pi | ✅ Replays each tool call as its own message. Verified live on 18.20.2 (2026-11-15): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
+| Hermes | ✅ Not affected: Hermes's history replays its chunks without message ids, so each replayed tool call already gets its own message. |
+| DeepSeek | ✅ Its history read replays each tool call as its own message. Verified live on adapter 0.2.2 (2026-11-15): before the change a forced re-import showed every tool call twice; after it, a tool turn shows once after a forced re-import and after a bridge kill mid-tool. |
+| Cursor, Grok | ⚠️ Not verified live: they need a real account, which the test proxy can't serve. |
+| Copilot, Antigravity | ⚠️ Not verified live: runtime not installed on the test machine. |
 
 ## Failed-turn notices sent as text
 

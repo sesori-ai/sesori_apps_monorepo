@@ -59,11 +59,14 @@ class WorktreeRepository({
   bool worktreePathExists({required String worktreePath}) =>
       _filesystemApi.entityType(path: worktreePath) != FileSystemEntityType.notFound;
 
-  /// Whether a git worktree is checked out at [worktreePath], rather than
-  /// nothing or some other file or folder.
-  Future<bool> worktreeExists({required String worktreePath}) async {
+  /// Whether a worktree of the repository at [projectPath] is checked out at
+  /// [worktreePath], rather than nothing, some other folder, or a checkout of
+  /// another repository.
+  Future<bool> worktreeExists({required String projectPath, required String worktreePath}) async {
     if (_filesystemApi.entityType(path: worktreePath) != FileSystemEntityType.directory) return false;
-    return await _gitApi.isWorkTreeRoot(path: worktreePath);
+    if (!await _gitApi.isWorkTreeRoot(path: worktreePath)) return false;
+    final commonDir = await _gitApi.readGitCommonDir(path: worktreePath);
+    return commonDir != null && commonDir == await _gitApi.readGitCommonDir(path: projectPath);
   }
 
   /// Keeps where the worktree at [worktreePath] stands before it is removed:

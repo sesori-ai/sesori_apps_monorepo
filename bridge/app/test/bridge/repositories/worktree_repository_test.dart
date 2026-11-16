@@ -309,11 +309,11 @@ void main() {
       await git(cwd: worktreePath, args: ["commit", "--quiet", "--allow-empty", "-m", "work"]);
       final workCommit = await head();
       await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
-      expect(await repo.worktreeExists(worktreePath: worktreePath), isFalse);
+      expect(await repo.worktreeExists(projectPath: repoPath, worktreePath: worktreePath), isFalse);
 
       expect(await recreate(branchName: "sesori/task", fromBase: false), WorktreeRecreation.recreated);
 
-      expect(await repo.worktreeExists(worktreePath: worktreePath), isTrue);
+      expect(await repo.worktreeExists(projectPath: repoPath, worktreePath: worktreePath), isTrue);
       expect(await headBranch(), "sesori/task");
       expect(await head(), workCommit);
     });
@@ -403,8 +403,15 @@ void main() {
     test("a plain folder at the path is not a worktree", () async {
       Directory(worktreePath).createSync(recursive: true);
 
-      expect(await repo.worktreeExists(worktreePath: worktreePath), isFalse);
+      expect(await repo.worktreeExists(projectPath: repoPath, worktreePath: worktreePath), isFalse);
       expect(repo.worktreePathExists(worktreePath: worktreePath), isTrue);
+    });
+
+    test("a checkout of another repository at the path is not the project's worktree", () async {
+      await git(cwd: root.path, args: ["init", "--quiet", worktreePath]);
+      await git(cwd: worktreePath, args: ["commit", "--quiet", "--allow-empty", "-m", "other"]);
+
+      expect(await repo.worktreeExists(projectPath: repoPath, worktreePath: worktreePath), isFalse);
     });
   });
 }
