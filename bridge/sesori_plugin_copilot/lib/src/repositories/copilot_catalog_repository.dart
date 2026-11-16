@@ -14,10 +14,12 @@ enum CopilotConfigOptionKind({required final String category}) {
 }
 
 class CopilotCatalogRepository({required final CopilotCatalogProbeApi _api}) {
-  /// Copilot's native `/model` changes the model the session selection owns.
-  /// The CLI defines it as a built-in, but no captured ACP list has confirmed
-  /// that Copilot advertises it.
-  static const Set<String> selectionCommands = {"model"};
+  /// Copilot's native `/model` changes the model the session selection owns,
+  /// and `/allow-all` and `/permissions` switch between asking and approving
+  /// everything, which the session's approval mode owns. `/allow-all` and
+  /// `/permissions` appear in Copilot's ACP list; `/model` is a CLI built-in no
+  /// captured list has confirmed.
+  static const Set<String> selectionCommands = {"model", "allow-all", "permissions"};
 
   AcpCommandTracker? _commandTracker;
   StreamSubscription<AcpNotification>? _commandSubscription;

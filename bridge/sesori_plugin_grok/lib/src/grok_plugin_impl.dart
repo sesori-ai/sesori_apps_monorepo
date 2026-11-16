@@ -37,7 +37,9 @@ class GrokPlugin._({
     required ServerClock clock,
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
-    final commandTracker = AcpCommandTracker(selectionCommands: const {});
+    // Grok's native `/always-approve` skips every permission prompt, which the
+    // session's approval mode owns.
+    final commandTracker = AcpCommandTracker(selectionCommands: const {"always-approve"});
     final childSessionTracker = AcpChildSessionTracker();
     final api = GrokAcpApi(
       binaryPath: binaryPath,
