@@ -228,7 +228,8 @@ The main pane hosts one full-width routed page.
   again while it shows keeps its chat. Switching sessions closes it with the page that holds it; a page kept under
   a pushed subtask or Changes keeps its panel for the return. While it shows, the shell's connection pill sits
   clear of its leading edge, moving with the panel's own slide (at once under reduced motion), so neither the
-  pill nor the panel's close button loses a click. A subtask or Changes page pushed over it takes the pill back
+  pill nor the panel's close button loses a click. Where the window leaves the pill no room beside the panel, it
+  heads for the page's middle instead, over the panel's top and clear of its buttons, so it stays fully on screen. A subtask or Changes page pushed over it takes the pill back
   to its place, and popping back hands it to the panel again.
 - Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project",
   else the newest session's project), so returning from a session or restarting lands on that default again, as
@@ -431,6 +432,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   session's link opens it read-only, and Escape closes it with no field focused; with the connection lost, the
   pill moves aside with the panel, never under it, and both Reconnect and the close button take their clicks; a
   subtask pushed over the open panel shows the pill in its place, and popping back puts it aside of the panel again.
+  In a 560 pt window the pill moves to the middle with the panel's slide, stays on screen, and Reconnect and the close
+  button both take their clicks.
 - The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, every
   project's sessions whatever the sidebar's filter, search and chip, filtering with No matches, Enter
   opening a session or filtering the sidebar to a project and bringing it back, Down skipping a heading,
