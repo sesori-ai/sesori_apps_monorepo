@@ -172,6 +172,11 @@ sub-agent parts, plus the signal that a tool changed files.
   opens the agent's reply or joins the one that shows, moves nothing above it.
   Streamed words that arrive before their part keep the row until the part
   shows them, so the row never leaves before the step that replaces it.
+  When streamed text ends while the session still works, the row returns only
+  after a 250 ms grace, on every client: a harness such as Codex can report
+  idle some 50 ms after its reply's last part, and the reply's end then moves
+  nothing. A real gap before the next step shows the row once the grace ends,
+  and a step or stream starting sooner takes the slot as usual.
   A prompt sent while the session is idle wakes it, so the row sits right below
   that prompt's bubble while it is sent, held and delivered, and stays put as
   the bubble becomes its message; this holds for a prompt from another surface
@@ -497,7 +502,9 @@ guarantee.
   live step or streaming text or after the session goes idle, or a live label's band is invisible
   in either theme.
 - The transcript above moves when a step takes over from “Working…”, at the
-  start of a turn or between steps.
+  start of a turn or between steps; or “Working…” folds in and away again as a
+  reply ends, moving the rows above, or never returns in a real gap after
+  streamed text.
 - “Working…” sits above the prompt that woke an idle session while it is sent,
   or moves or resizes when that prompt's message arrives; or a steer sent while
   the session works waits above the row instead of below it.
@@ -652,7 +659,10 @@ guarantee.
   details, every failure reason's note and the token
   count formatter. `transcript_step_row_test.dart` measures the running and
   failed rows with the other step kinds, and `session_detail_message_list_test.dart`
-  checks the row replaces “Working…” and settles without a re-insert.
+  checks the row replaces “Working…” and settles without a re-insert. Its
+  “a streamed reply that ends” group keeps “Working…” away and the rows still
+  through an idle landing 64 ms after the stream, and brings it back once a
+  longer gap outlasts the grace.
 - `client/module_core/test/cubits/session_detail/transcript_activity_test.dart`
   covers “Working…” and the sub-agents row giving way to a running compaction,
   and `session_detail_event_buffer_test.dart` streams a running compaction's
