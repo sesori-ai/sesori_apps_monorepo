@@ -14,7 +14,7 @@ import "../../widgets/project_launch_rows_builder.dart";
 import "../../widgets/remote_failure_view.dart";
 import "../project_list/project_path_labels.dart";
 import "../session_detail/widgets/transcript_motion.dart";
-import "pinned_rows_reorder.dart";
+import "pinned_row_drag.dart";
 import "session_date_label.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_headings.dart";
@@ -263,7 +263,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
 
   /// The pinned rows' drag and drop, which places a dragged row ahead of the
   /// sessions' order.
-  final PinnedRowsReorder _reorder = PinnedRowsReorder();
+  final PinnedRowDragTracker _dragTracker = PinnedRowDragTracker();
 
   @override
   void initState() {
@@ -275,10 +275,10 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
 
     _handOff.addStatusListener(rebuildOnEnd);
     _chipsIn.addStatusListener(rebuildOnEnd);
-    _reorder.addListener(_onReorder);
+    _dragTracker.addListener(_onDragTracker);
   }
 
-  void _onReorder() => setState(() {});
+  void _onDragTracker() => setState(() {});
 
   /// Fades the content in where the skeleton stands, timed from the next
   /// frame: this one mounts the content and can be slow enough to use up the
@@ -293,8 +293,8 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _reorder
-      ..removeListener(_onReorder)
+    _dragTracker
+      ..removeListener(_onDragTracker)
       ..dispose();
     _contentOpacity.dispose();
     _handOff.dispose();
@@ -350,10 +350,10 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
       final pinnedCount = sessions.takeWhile((item) => item.row.session.pinned).length;
       final pinned = sessions.take(pinnedCount).toList();
       if (identical(state, current)) {
-        _reorder.showPinned(sessionIds: [for (final item in pinned) item.row.session.id]);
+        _dragTracker.showPinned(sessionIds: [for (final item in pinned) item.row.session.id]);
       }
-      // A dragged row stands where it was dragged, until the bridge answers.
-      if (_reorder.place case (:final sessionId, :final afterSessionId)?) {
+      // A dragged row stands where it was dragged until the rows show it there.
+      if (_dragTracker.place case (:final sessionId, :final afterSessionId)?) {
         final at = pinned.indexWhere((item) => item.row.session.id == sessionId);
         final anchor = pinned.indexWhere((item) => item.row.session.id == afterSessionId);
         if (at >= 0 && (afterSessionId == null || anchor >= 0)) {
@@ -984,7 +984,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     final placed = reorders
         ? PinnedRowDrag(
             sessionId: row.session.id,
-            reorder: _reorder,
+            tracker: _dragTracker,
             onMove: ({required sessionId, required afterSessionId}) =>
                 actions().movePin(sessionId: sessionId, afterSessionId: afterSessionId),
             onMoveRefused: () => PregoPopupAlertPresenter.of(context).show(

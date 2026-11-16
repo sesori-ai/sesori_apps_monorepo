@@ -27,10 +27,11 @@ const Duration _liftDuration = Duration(milliseconds: 150);
 ///
 /// While a row is lifted, the list shows it at its [place] with the other
 /// pinned rows sliding out of its way; the copy floats over the list under
-/// the pointer, held within the pinned rows. A drop asks the bridge to move
-/// it there and keeps [place] until it answers: the window moved the row the
-/// same way meanwhile, and a refused move slides the rows back.
-final class PinnedRowsReorder() extends ChangeNotifier {
+/// the pointer, held within the pinned rows. A drop asks the window to move
+/// it there, and keeps [place] only until the rows the list shows stand that
+/// way, which the window's optimistic order brings at once, or until the
+/// move is answered; a refused move slides the rows back.
+final class PinnedRowDragTracker() extends ChangeNotifier {
   final Map<String, BuildContext> _rows = {};
 
   /// The pinned rows the list shows, top first, as their sessions order them.
@@ -50,9 +51,15 @@ final class PinnedRowsReorder() extends ChangeNotifier {
   /// part of what notifies the list.
   final ValueNotifier<double?> liftedTop = ValueNotifier(null);
 
-  /// Tells the reorder the pinned rows the list shows, top first, before any
-  /// [place] moved one.
-  void showPinned({required List<String> sessionIds}) => _shown = sessionIds;
+  /// Tells the tracker the pinned rows the list shows, top first, before any
+  /// [place] moved one. A dropped row's place is let go once they show it.
+  void showPinned({required List<String> sessionIds}) {
+    _shown = sessionIds;
+    if (_pending case (:final sessionId, :final afterSessionId)?) {
+      final at = sessionIds.indexOf(sessionId);
+      if (at == 0 ? afterSessionId == null : at > 0 && sessionIds[at - 1] == afterSessionId) _pending = null;
+    }
+  }
 
   void _register({required String sessionId, required BuildContext context}) => _rows[sessionId] = context;
 
@@ -61,10 +68,9 @@ final class PinnedRowsReorder() extends ChangeNotifier {
   }
 
   /// Lifts [sessionId]'s row under a pointer at [pointerY]; false when no row
-  /// can be lifted now, as while another one is or a drop waits for the
-  /// bridge.
+  /// can be lifted now, as while another one is.
   bool _start({required String sessionId, required double pointerY}) {
-    if (_lift != null || _pending != null) return false;
+    if (_lift != null) return false;
     final rows = <_Slot>[];
     for (final id in _shown) {
       // A pinned row scrolled far away is not built, and keeps its place.
@@ -116,8 +122,10 @@ final class PinnedRowsReorder() extends ChangeNotifier {
     notifyListeners();
     final moved = await move(sessionId: place.sessionId, afterSessionId: place.afterSessionId);
     if (_disposed) return !moved;
-    _pending = null;
-    notifyListeners();
+    if (identical(_pending, place)) {
+      _pending = null;
+      notifyListeners();
+    }
     return !moved;
   }
 
@@ -177,7 +185,7 @@ final class _Lift({
 class const PinnedRowDrag({
   super.key,
   required final String sessionId,
-  required final PinnedRowsReorder reorder,
+  required final PinnedRowDragTracker tracker,
 
   /// Asked on a drop that moved the row.
   required final PinnedRowMove onMove,
@@ -213,21 +221,21 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    widget.reorder._register(sessionId: widget.sessionId, context: context);
+    widget.tracker._register(sessionId: widget.sessionId, context: context);
   }
 
   @override
   void didUpdateWidget(PinnedRowDrag oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.reorder != widget.reorder || oldWidget.sessionId != widget.sessionId) {
-      oldWidget.reorder._unregister(sessionId: oldWidget.sessionId, context: context);
-      widget.reorder._register(sessionId: widget.sessionId, context: context);
+    if (oldWidget.tracker != widget.tracker || oldWidget.sessionId != widget.sessionId) {
+      oldWidget.tracker._unregister(sessionId: oldWidget.sessionId, context: context);
+      widget.tracker._register(sessionId: widget.sessionId, context: context);
     }
   }
 
   @override
   void dispose() {
-    widget.reorder._unregister(sessionId: widget.sessionId, context: context);
+    widget.tracker._unregister(sessionId: widget.sessionId, context: context);
     _lifted.dispose();
     _lift.dispose();
     _settling.dispose();
@@ -237,7 +245,7 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
 
   void _onStart(DragStartDetails details) {
     final room = _roomBox();
-    if (room == null || !widget.reorder._start(sessionId: widget.sessionId, pointerY: details.globalPosition.dy)) {
+    if (room == null || !widget.tracker._start(sessionId: widget.sessionId, pointerY: details.globalPosition.dy)) {
       return;
     }
     _width = room.size.width;
@@ -251,13 +259,13 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
     setState(() {});
   }
 
-  void _onUpdate(DragUpdateDetails details) => widget.reorder._update(pointerY: details.globalPosition.dy);
+  void _onUpdate(DragUpdateDetails details) => widget.tracker._update(pointerY: details.globalPosition.dy);
 
   void _onEnd() {
-    final top = widget.reorder.liftedTop.value;
+    final top = widget.tracker.liftedTop.value;
     if (top == null) return;
     _droppedTop = top;
-    final refused = widget.reorder._drop(move: widget.onMove);
+    final refused = widget.tracker._drop(move: widget.onMove);
     unawaited(
       refused.then((refused) {
         if (refused && mounted) widget.onMoveRefused();
@@ -304,7 +312,7 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
     final prego = context.prego;
     return _FloatAt(
       origin: _copyOrigin,
-      repaint: Listenable.merge([widget.reorder.liftedTop, _settling]),
+      repaint: Listenable.merge([widget.tracker.liftedTop, _settling]),
       width: _width,
       child: AnimatedBuilder(
         animation: _lifted,
@@ -332,7 +340,7 @@ class _PinnedRowDragState() extends State<PinnedRowDrag> with TickerProviderStat
   /// its rows out.
   Offset _copyOrigin() {
     final room = _roomBox()?.localToGlobal(Offset.zero);
-    final held = widget.reorder.liftedTop.value;
+    final held = widget.tracker.liftedTop.value;
     return Offset(
       room?.dx ?? 0,
       held ?? _droppedTop + ((room?.dy ?? _droppedTop) - _droppedTop) * _settling.value,

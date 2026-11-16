@@ -8,7 +8,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_app_ui/src/features/session_list/pinned_rows_reorder.dart";
+import "package:sesori_app_ui/src/features/session_list/pinned_row_drag.dart";
 import "package:sesori_app_ui/src/features/session_list/session_list_headings.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
