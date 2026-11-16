@@ -535,6 +535,7 @@ class _SessionRecord({
     promptDefaults: null,
     lastUserActivityAt: null,
     branchName: "branch-$id",
+    pinOrder: null,
     scheduledTask: null,
     interruption: null,
     forkedFrom: null,

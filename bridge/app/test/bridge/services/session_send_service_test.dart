@@ -764,6 +764,7 @@ Session _session({
   lastUserActivityAt: null,
   autoContinuation: null,
   approvalOverride: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,

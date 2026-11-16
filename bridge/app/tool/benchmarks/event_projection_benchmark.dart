@@ -298,6 +298,7 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
             promptDefaults: null,
             lastUserActivityAt: null,
             branchName: null,
+            pinOrder: null,
             scheduledTask: null,
             interruption: null,
             forkedFrom: null,

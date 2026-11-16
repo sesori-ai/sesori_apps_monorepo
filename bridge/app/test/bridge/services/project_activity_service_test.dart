@@ -318,6 +318,7 @@ void main() {
           time: SessionTime(created: 600, updated: 600, archived: null),
           promptDefaults: null,
           lastUserActivityAt: null,
+          pinOrder: null,
           scheduledTask: null,
           interruption: null,
           forkedFrom: null,

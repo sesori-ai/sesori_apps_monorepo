@@ -35,6 +35,12 @@ class SessionActionsCubit({
   Future<SessionPinResult> setPinned({required String sessionId, required bool pinned}) =>
       _window.setPinned(sessionId: sessionId, pinned: pinned);
 
+  /// Moves pinned [sessionId] directly below pinned [afterSessionId], or to
+  /// the top of Pinned when it is null. The row stands there at once. False
+  /// when the bridge refused it, after the rows went back to their places.
+  Future<bool> movePin({required String sessionId, required String? afterSessionId}) =>
+      _window.movePin(sessionId: sessionId, afterSessionId: afterSessionId);
+
   /// [deleteSessionFolder] also removes a "No project" session's own folder.
   Future<SessionDeleteResult> deleteSession({
     required String sessionId,

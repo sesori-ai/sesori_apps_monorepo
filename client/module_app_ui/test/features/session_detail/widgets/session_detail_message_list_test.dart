@@ -3704,6 +3704,7 @@ void main() {
         branchName: null,
         lastUserActivityAt: null,
         autoContinuation: null,
+        pinOrder: null,
         scheduledTask: null,
         interruption: null,
         forkedFrom: null,

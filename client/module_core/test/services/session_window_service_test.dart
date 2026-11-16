@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math";
 
 import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
@@ -47,8 +48,8 @@ List<Session> _sessions({required int count}) => [
 ];
 
 /// A bridge serving `/sessions/page` over [sessions]: newest first, pinned
-/// sessions before the others when asked, the cursor being the next row's
-/// index.
+/// sessions before the others by pin order when asked, the cursor being the
+/// next row's index.
 class _FakeBridge() {
   List<Session> sessions = const [];
   Set<String> runningIds = const {};
@@ -73,7 +74,10 @@ class _FakeBridge() {
                     )))
               session,
         ]..sort((a, b) {
-          if (request.pinnedFirst && a.pinned != b.pinned) return a.pinned ? -1 : 1;
+          if (request.pinnedFirst) {
+            final byPin = (b.pinOrder ?? -1).compareTo(a.pinOrder ?? -1);
+            if (byPin != 0) return byPin;
+          }
           return (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0);
         });
     final listed = counted
@@ -1042,7 +1046,10 @@ void main() {
           ),
         ).thenAnswer((invocation) async {
           final pinned = invocation.namedArguments[#pinned] as bool;
-          final session = bridge.sessions.firstWhere((session) => session.id == id).copyWith(pinned: pinned);
+          final top = bridge.sessions.map((session) => session.pinOrder ?? 0).reduce(max);
+          final session = bridge.sessions
+              .firstWhere((session) => session.id == id)
+              .copyWith(pinOrder: pinned ? top + 1 : null);
           bridge.sessions = [
             for (final listed in bridge.sessions) listed.id == id ? session : listed,
           ];
@@ -1057,19 +1064,18 @@ void main() {
         stubPin(id: "s0240");
         stubPin(id: "s0005");
 
-        // Far below the loaded rows: pinned, it is in range at the top.
         SessionPinResult? result;
-        unawaited(window.setPinned(sessionId: "s0240", pinned: true).then((value) => result = value));
+        unawaited(window.setPinned(sessionId: "s0005", pinned: true).then((value) => result = value));
         async.flushMicrotasks();
         expect(result, isA<SessionPinUpdated>());
-        expect(ids(window).take(2), ["s0240", "s0000"]);
-        unawaited(window.setPinned(sessionId: "s0005", pinned: true));
+        expect(ids(window).take(2), ["s0005", "s0000"]);
+        // Far below the loaded rows and older: pinned last, it is in range on top.
+        unawaited(window.setPinned(sessionId: "s0240", pinned: true));
         async.flushMicrotasks();
-        // Pinned rows keep time order among themselves.
-        expect(ids(window).take(3), ["s0005", "s0240", "s0000"]);
-        // A pinned session's update keeps it in Pinned, whatever its time.
-        emit(SesoriSseEvent.sessionUpdated(info: bridge.sessions[240].copyWith(title: "Renamed")));
-        expect(ids(window).take(3), ["s0005", "s0240", "s0000"]);
+        expect(ids(window).take(3), ["s0240", "s0005", "s0000"]);
+        // A pinned session's update keeps its place, whatever its time.
+        emit(SesoriSseEvent.sessionUpdated(info: bridge.sessions[5].copyWith(time: bridge.sessions[0].time)));
+        expect(ids(window).take(3), ["s0240", "s0005", "s0000"]);
 
         unawaited(window.setPinned(sessionId: "s0005", pinned: false));
         unawaited(window.setPinned(sessionId: "s0240", pinned: false));
@@ -1127,12 +1133,74 @@ void main() {
       });
     });
 
+    group("move", () {
+      /// a, b and c pinned in that order above the unpinned d.
+      void seed() => bridge.sessions = [
+        _session(id: "a", updatedAt: 1).copyWith(pinOrder: 30),
+        _session(id: "b", updatedAt: 2).copyWith(pinOrder: 20),
+        _session(id: "c", updatedAt: 3).copyWith(pinOrder: 10),
+        _session(id: "d", updatedAt: 4),
+      ];
+
+      test("the row stands in its new place at once and keeps it through updates and the answer", () {
+        inFakeTime((async) {
+          seed();
+          final window = create();
+          async.flushMicrotasks();
+          final answer = Completer<ApiResponse<MoveSessionPinResponse>>();
+          when(
+            () => sessionRepository.movePin(sessionId: "c", afterSessionId: null),
+          ).thenAnswer((_) => answer.future);
+          bool? moved;
+
+          unawaited(window.movePin(sessionId: "c", afterSessionId: null).then((value) => moved = value));
+          async.flushMicrotasks();
+          expect(ids(window), ["c", "a", "b", "d"]);
+          // An update carrying c's old place does not pull it back.
+          emit(SesoriSseEvent.sessionUpdated(info: bridge.sessions[2].copyWith(title: "Renamed")));
+          expect(ids(window), ["c", "a", "b", "d"]);
+
+          answer.complete(
+            ApiResponse.success(MoveSessionPinResponse(sessions: [bridge.sessions[2].copyWith(pinOrder: 31)])),
+          );
+          async.flushMicrotasks();
+          expect(moved, isTrue);
+          expect(ids(window), ["c", "a", "b", "d"]);
+          expect(loaded(window).sessions.first.pinOrder, 31);
+          unawaited(window.dispose());
+        });
+      });
+
+      test("a refused move puts the rows back", () {
+        inFakeTime((async) {
+          seed();
+          final window = create();
+          async.flushMicrotasks();
+          final answer = Completer<ApiResponse<MoveSessionPinResponse>>();
+          when(
+            () => sessionRepository.movePin(sessionId: "a", afterSessionId: "c"),
+          ).thenAnswer((_) => answer.future);
+          bool? moved;
+
+          unawaited(window.movePin(sessionId: "a", afterSessionId: "c").then((value) => moved = value));
+          async.flushMicrotasks();
+          expect(ids(window), ["b", "c", "a", "d"]);
+
+          answer.complete(ApiResponse.error(ApiError.generic()));
+          async.flushMicrotasks();
+          expect(moved, isFalse);
+          expect(ids(window), ["a", "b", "c", "d"]);
+          unawaited(window.dispose());
+        });
+      });
+    });
+
     test("a search lists pinned sessions by time, and asks the bridge to", () {
       inFakeTime((async) {
         bridge.sessions = [
           _session(id: "new", updatedAt: 3),
           _session(id: "mid", updatedAt: 2),
-          _session(id: "old", updatedAt: 1).copyWith(pinned: true),
+          _session(id: "old", updatedAt: 1).copyWith(pinOrder: 1),
         ];
         final window = create();
         async.flushMicrotasks();

@@ -55,7 +55,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 28;
+  int get schemaVersion => 29;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -389,6 +389,18 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // No bridge recorded running turns before v28, so both start empty.
         await m.createTable(schema.sessionRunningTurns);
         await m.createTable(schema.sessionInterruptions);
+      },
+      from28To29: (m, schema) async {
+        // A pin becomes a place in the pinned group. Each pin starts at its
+        // session's displayed time, so the group keeps the newest-first order
+        // it showed.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.pinOrder);
+        await customStatement(
+          "UPDATE sessions_table "
+          "SET pin_order = max(updated_at, coalesce(last_user_message_at, 0)) "
+          "WHERE pinned = 1",
+        );
+        await m.dropColumn(schema.sessionsTable, "pinned");
       },
     ),
     beforeOpen: (details) async {

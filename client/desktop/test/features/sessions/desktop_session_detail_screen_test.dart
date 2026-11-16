@@ -104,6 +104,7 @@ const _child = Session(
   time: SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
   promptDefaults: null,
   lastUserActivityAt: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,
@@ -125,6 +126,7 @@ const _session = Session(
   lastUserActivityAt: null,
   // Local state can still say unseen just after opening.
   unseen: true,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,

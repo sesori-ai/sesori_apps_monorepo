@@ -361,6 +361,14 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<MoveSessionPinResponse>> movePin({required String sessionId, required String? afterSessionId}) {
+    return _client.patch(
+      "/session/pin-position",
+      fromJson: MoveSessionPinResponse.fromJson,
+      body: MoveSessionPinRequest(sessionId: sessionId, afterSessionId: afterSessionId),
+    );
+  }
+
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,

@@ -77,6 +77,10 @@ class SessionRepository({
     };
   }
 
+  Future<ApiResponse<MoveSessionPinResponse>> movePin({required String sessionId, required String? afterSessionId}) {
+    return _api.movePin(sessionId: sessionId, afterSessionId: afterSessionId);
+  }
+
   Future<SendToSessionResult> sendToSession({required String sourceSessionId, required String targetSessionId}) async {
     final response = await _api.sendToSession(sourceSessionId: sourceSessionId, targetSessionId: targetSessionId);
     return switch (response) {

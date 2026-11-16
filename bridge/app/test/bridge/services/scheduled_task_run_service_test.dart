@@ -564,6 +564,7 @@ Session _session({required String id, required SessionApprovalMode? approvalOver
   time: null,
   promptDefaults: null,
   lastUserActivityAt: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
 );

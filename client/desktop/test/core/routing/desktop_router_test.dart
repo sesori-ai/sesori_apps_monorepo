@@ -472,6 +472,7 @@ const _session = Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   time: SessionTime(created: 1, updated: 2, archived: 3),
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,
