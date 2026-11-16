@@ -123,15 +123,19 @@ the `Session` wire.
   backend ids), `ChatHistoryService` (the anchor read) and `SessionMutationDispatcher`. The service captures the
   bridge run's start time at construction; a leftover row is one with `startedAt` before it.
 - Resolution, per leftover row: still busy → adopt (restamp `startedAt` to now; the OpenCode 2 shared-service case);
-  any other status, including a failed read → convert: write the interruption (unacknowledged, replacing an older one)
-  and delete the running row in one transaction, then emit `SessionInterruptionUpdated` (D4). A plugin that never
-  becomes ready keeps its rows for a later run.
-- Anchor: `afterMessageId` is the newest stored history message, read through `ChatHistoryService`'s per-session
-  queue; a session with no stored message gets no interruption. Re-import replaces stored ids with imported ones
-  (ACP fallback ids differ live and on replay), so `ChatHistoryService`, inside the same queued replacement that
-  computes the stored→imported mapping, re-anchors the session's interruption through the repository. Resolution and
-  the hydration import fire on the same readiness; both orders are correct because the anchor read and the
-  replacement are serialized in that queue.
+  idle → convert (below). A failed status read is no evidence the turn ended, so it keeps the plugin's rows; the next
+  readiness or bridge run retries. A plugin that never becomes ready keeps its rows for a later run.
+- Converting runs as one `ChatHistoryService` per-session queued operation (`ChatHistoryService.convertInterruptedTurn`)
+  that reads the newest stored history message and, in the same operation, has the repository write the
+  interruption (unacknowledged, anchored to that message, replacing an older one) and delete the running row in one
+  transaction. A session with no stored message only loses its running row. `InterruptedTurnService` then emits
+  `SessionInterruptionUpdated` (D4).
+- Re-import replaces stored ids with imported ones (ACP fallback ids differ live and on replay), so
+  `ChatHistoryService`, inside the queued replacement that computes the stored→imported mapping, re-anchors the
+  session's interruption through the repository. Resolution and the hydration import fire on the same readiness;
+  because the anchor read, the interruption write and the replacement share that queue, either order leaves the
+  anchor on an id the store holds. A test pauses a conversion between its anchor read and its write while a
+  replacement is queued.
 
 ### D4. Wire shape and publication
 
@@ -142,7 +146,8 @@ the `Session` wire.
 - `unacknowledged` is a stored flag, not a clock comparison, so a skewed host clock cannot stick or hide the label.
   `SessionUnseenService`, which owns the view-declaration and sent-prompt marker writes, calls
   `SessionInterruptionRepository.acknowledge(sessionId)` there; when a row flipped it emits
-  `SessionInterruptionUpdated`.
+  `SessionInterruptionUpdated`. The send acknowledgement happens when the bridge accepts the prompt, not when the
+  harness echoes it, so a lost echo cannot leave the label up.
 - `SessionInterruptionUpdated` is a new `SessionMutationDispatcher` local mutation, the one route for all three
   triggers (resolution, view, send), mapped to an enriched `session.updated` exactly as `continuationUpdated` is.
 
@@ -157,6 +162,11 @@ the `Session` wire.
   are suppressed (one line per turn: a turn holding the interruption draws no stopped row, since OpenCode records
   `MessageAbortedError` when a shutdown aborts the turn), and whether Continue is offered. Widgets only render it.
   The client consumes the shared `SessionInterruption` from `Session` directly; there is no client model.
+- The interruption closes its turn. A bridge death before any output leaves the prompt unanswered, and
+  `splitPromptTurns` would fold the Continue prompt into it, moving the line below the continued reply and offering
+  Continue again. `splitPromptTurns` therefore takes the message ids after which a turn has ended (required named
+  parameter; the bridge's prompt index passes none), and the calculator passes `afterMessageId`. The calculator tests
+  cover an interruption before the first output followed by Continue.
 - Motion: both lines enter through `TranscriptPresence`. The live Stopped row takes the place of the folding Working
   row in the same frame, so the rows above hold still. Nothing above the line moves when it appears or when the
   Continue button leaves.
@@ -166,14 +176,17 @@ the `Session` wire.
 The Interrupted line carries a `PregoButtonsSolid` link-hierarchy small "Continue" button, shown only while the
 interrupted turn is the latest turn, the session is idle and nothing is queued. It sends
 "Continue where you left off." through the composer's `sendMessage` with the composer's current selection, exactly
-like a typed prompt. `SessionDetailCubit.continueInterruptedTurn()` owns the prompt text and refuses (with the reason the
-calculator gives) when Continue is no longer allowed. Once the prompt bubble appears the turn is no longer the latest, so the button folds away with
+like a typed prompt. `SessionDetailCubit.continueInterruptedTurn()` owns the prompt text and refuses (with the reason
+the
+calculator gives) when Continue is no longer allowed. Once the prompt bubble appears the turn is no longer the latest,
+so the button folds away with
 `TranscriptPresence` while the line stays.
 
 ### D7. Session list
 
 `AllSessionsCubit` derives an `interrupted` flag on `AllSessionsRow` (`interruption.unacknowledged` and not
-running); `SessionTile._statusLabel` shows "Interrupted" for it, after Waiting and Retrying, in `textSecondary`. Opening the session (view declaration) or sending clears it through
+running); `SessionTile._statusLabel` shows "Interrupted" for it, after Waiting and Retrying, in `textSecondary`. Opening
+the session (view declaration) or sending clears it through
 the bridge's `session.updated` (D4), so every surface clears together.
 
 ### D8. Strings
@@ -195,7 +208,8 @@ decision yet.
 ## Complexity budget
 
 Persistent: `session_running_turns` (needed to know a turn was in flight across a process death) and
-`session_interruptions` (the user-visible fact; one row per session). In memory: the resolver listener's previously-ready
+`session_interruptions` (the user-visible fact; one row per session). In memory: the resolver listener's
+previously-ready
 plugin set (as in the hydration listener), the running-turn listener's pending writes and shutdown flag, and the
 bridge run's start time. One wire enum field, one nullable wire
 object.
@@ -239,7 +253,8 @@ This file and `TRACKER.md`. Docs-only fast path.
 
 Workspaces: `shared/sesori_shared`, `bridge/sesori_plugin_interface`, `bridge/app`, every plugin (existing error
 rows pass `failure`), `client/module_core`, `client/module_app_ui`. `MessageError.kind`, `PluginErrorKind` and the
-`PluginMessageMapper` mapping; chat-history/merge round-trip; `TurnEndLine` and `ErrorMessageCard` stopped rendering with the
+`PluginMessageMapper` mapping; chat-history/merge round-trip; `TurnEndLine` and `ErrorMessageCard` stopped rendering
+with the
 D5 motion; Pi `aborted` and OpenCode v1/v2 abort errors become stopped (verify the v2 abort `error.type` live).
 Tests: model JSON both directions with omission, mapper pass-through, Pi/OpenCode mappers, widget test for the line.
 The PR body states, for the release notes, that older apps show a red "Stopped" row for ACP, Claude and Codex stops.
@@ -248,7 +263,8 @@ with codegen. Architecture implementation review required (wire and plugin-inter
 
 ### Step 3: Stopped on ACP harnesses and omp
 
-Workspaces: `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_omp`, docs. ACP base: remember that `abortSession` cancelled the turn and emit one stopped row when `_runTurn` gets `cancelled`
+Workspaces: `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_omp`, docs. ACP base: remember that `abortSession`
+cancelled the turn and emit one stopped row when `_runTurn` gets `cancelled`
 (not for shutdown interrupts; not when the turn never started). omp: "Interrupted by user" classified as stopped
 with the same `errorName` the live row uses so a reload folds them; aborts stay `omp_aborted`. Update the #2627
 HARNESS_CAPABILITIES row. Tests in the ACP base and omp mapper, plus an omp reload-after-live-stop test asserting
@@ -256,9 +272,11 @@ exactly one stopped row. ~500 lines.
 
 ### Step 4: Stopped on Claude Code and Codex
 
-Workspaces: `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_codex`, docs. Claude: map the two interrupt records to stopped rows in the history mapper and the live stream; emit the live row
+Workspaces: `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_codex`, docs. Claude: map the two interrupt records to
+stopped rows in the history mapper and the live stream; emit the live row
 from the interrupted branch, folded with the replayed record. Codex: parse rollout `turn_aborted` (and its reason
-when present) into a stopped row on replay; emit it live for a turn `abortSession` interrupted, with the id derived from the turn id. Tests per mapper plus a
+when present) into a stopped row on replay; emit it live for a turn `abortSession` interrupted, with the id derived from
+the turn id. Tests per mapper plus a
 reload-after-live-stop test per harness asserting exactly one stopped row. ~600 lines.
 
 ### Step 5: bridge records interrupted turns
@@ -267,18 +285,21 @@ Workspaces: `shared/sesori_shared` (`SessionInterruption`, `Session.interruption
 `sesori.db` schema version with both tables and its migration snapshot; `SessionInterruptionDao`,
 `SessionInterruptionRepository` with record and mapper; `RunningTurnListener` with its signal-phase
 `beginShutdown`; `SessionRepository.getPluginSessionStatuses`; `InterruptedTurnService` and
-`InterruptedTurnListener`; re-anchoring in `ChatHistoryService`'s replacement; acknowledgement in
-`SessionUnseenService`; `SessionInterruptionUpdated` and the `enrichMany` projection. Tests: DAO and repository
-(convert-or-adopt transaction), service (leftover vs adopted vs failed read vs no stored message), idles after
-`beginShutdown` ignored, re-anchor after a replacement with changed ids, acknowledgement on view and on send emitting
-one update, migration. Docs: session-history-and-recovery. ~1,200 lines with Drift output; architecture
+`InterruptedTurnListener`; `ChatHistoryService.convertInterruptedTurn` and re-anchoring in its replacement;
+acknowledgement in `SessionUnseenService` (send at acceptance); `SessionInterruptionUpdated` and the `enrichMany`
+projection. Tests: DAO and repository (convert-or-adopt transaction), service (leftover vs adopted vs failed read
+keeping rows vs no stored message), idles after `beginShutdown` ignored, re-anchor after a replacement with changed
+ids, a conversion paused between anchor read and write while a replacement is queued, acknowledgement on view and on
+send emitting one update, migration. Docs: session-history-and-recovery. ~1,200 lines with Drift output; architecture
 implementation review required.
 
 ### Step 6: Interrupted line, Continue and list label
 
-Workspaces: `client/module_core`, `client/module_app_ui`, docs. `TurnEndCalculator` and its state on
-`SessionDetailLoaded`, `SessionDetailCubit.continueInterruptedTurn()`, the line with Continue (D6), supersession of
-stopped rows (D5), `SessionTile` label (D7). Calculator and cubit tests without Flutter. Simulator recording of the Continue flow and the list label for the PR. Docs:
+Workspaces: `shared/sesori_shared` (`splitPromptTurns` turn-end ids), `bridge/app` (its prompt-index caller),
+`client/module_core`, `client/module_app_ui`, docs. `TurnEndCalculator` and its state on `SessionDetailLoaded`,
+`SessionDetailCubit.continueInterruptedTurn()`, the line with Continue (D6), supersession of stopped rows (D5),
+`SessionTile` label (D7). Calculator and cubit tests without Flutter, including an interruption before the first output
+followed by Continue. Simulator recording of the Continue flow and the list label for the PR. Docs:
 projects-and-sessions and session-turns. ~700 lines.
 
 ### Step 7: reconcile regression docs and harness rows

@@ -2,7 +2,7 @@
 
 | Step | Status | PR |
 | --- | --- | --- |
-| 1 Raise the plan | In PR | |
+| 1 Raise the plan | In PR | #2635 |
 | 2 Stopped line: wire kind, client line, Pi and OpenCode | Not started | |
 | 3 Stopped on ACP harnesses and omp | Not started | |
 | 4 Stopped on Claude Code and Codex | Not started | |
