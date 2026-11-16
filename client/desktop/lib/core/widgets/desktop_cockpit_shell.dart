@@ -94,9 +94,6 @@ class const DesktopCockpitShell({
   /// Opens the Scheduled page over the current one.
   required final VoidCallback onOpenScheduled,
 
-  /// Opens the New task page.
-  required final VoidCallback onNewTask,
-
   /// Closes what the page has open, such as its Prompts screen, else leaves a
   /// pushed page; a page reached from the sidebar has nowhere to go.
   required final VoidCallback onGoBack,
@@ -202,18 +199,13 @@ class const DesktopCockpitShell({
                 shortcut: null,
                 run: () => switchComputer(bridgeId: computer.id, source: ComputerSwitchSource.commandPalette),
               ),
-          // The sidebar's Scheduled row, and the page's + for a new task.
+          // The sidebar's Scheduled row. New task stays on that page's +, which
+          // tells an older computer how to update first.
           DesktopCommand(
             label: loc.scheduledTasksTitle,
             icon: TablerRegular.calendar_time,
             shortcut: null,
             run: onOpenScheduled,
-          ),
-          DesktopCommand(
-            label: loc.scheduledTaskNew,
-            icon: TablerRegular.calendar_plus,
-            shortcut: null,
-            run: onNewTask,
           ),
         ];
         void openPalette() => unawaited(

@@ -96,7 +96,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
             onOpenArchived: () => _openPage(context: context, route: const AppRoute.archivedSessions()),
             onOpenScheduled: () => _openPage(context: context, route: const AppRoute.scheduledTasks()),
-            onNewTask: () => _pushRoute(context: context, route: const AppRoute.scheduledTaskEditor(taskId: null)),
             onGoBack: () => _goBack(context: context),
             child: Builder(
               builder: (context) => SessionDetailRouteVisibility(
