@@ -60,7 +60,13 @@ class SessionCreationService({
       } on Object catch (invalidationError, invalidationStackTrace) {
         Log.w("Failed to invalidate stale options after session creation", invalidationError, invalidationStackTrace);
       }
-      throw StaleSessionPromptOptionsException(cause: error, causeStackTrace: stackTrace);
+      throw StaleSessionPromptOptionsException(
+        cause: error,
+        causeStackTrace: stackTrace,
+        agent: request.agent,
+        model: request.model,
+        variant: request.variant,
+      );
     }
   }
 

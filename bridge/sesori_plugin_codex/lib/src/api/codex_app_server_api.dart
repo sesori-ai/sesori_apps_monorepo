@@ -291,6 +291,28 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     );
   }
 
+  /// Forks the stored thread through [lastTurnId], inclusive, into a new
+  /// persisted thread in the source's directory. The source is left as it is
+  /// and need not be loaded or idle. Codex sends `thread/started` for the fork.
+  Future<CodexThreadEnvelopeDto> forkThread({
+    required String threadId,
+    required String lastTurnId,
+    required String developerInstructions,
+  }) async {
+    final result = await _client.request(
+      method: "thread/fork",
+      params: {
+        "threadId": threadId,
+        "lastTurnId": lastTurnId,
+        "developerInstructions": developerInstructions,
+        // Codex deprecates returning a paginated thread's whole history here.
+        "excludeTurns": true,
+      },
+      timeout: codexRequestTimeout,
+    );
+    return _decodeResponse(result: result, operation: "thread/fork");
+  }
+
   /// The thread's newest turn, without its items, as a one-turn page.
   Future<CodexThreadTurnsPageDto> listLatestTurn({required String threadId}) async {
     final result = await _client.request(
@@ -328,6 +350,10 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
       throw StateError("expected a Codex sample from thread/sample, got ${result.runtimeType}");
     }
     return CodexThreadSampleDto.fromJson(result.cast<String, dynamic>());
+  }
+
+  Future<void> archiveThread({required String threadId}) async {
+    await _client.request(method: "thread/archive", params: {"threadId": threadId}, timeout: codexRequestTimeout);
   }
 
   Future<void> compactThread({required String threadId}) async {

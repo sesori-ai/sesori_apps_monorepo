@@ -1,6 +1,6 @@
 import "dart:convert";
 
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show SemanticVersion, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
     show decodedBase64Length, isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
@@ -12,6 +12,7 @@ import "../api/models/codex_turn_dto.dart";
 import "../api/models/codex_turn_input_dto.dart";
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
+import "../models/codex_fork_refusal.dart";
 import "../models/codex_rewind_refusal.dart";
 import "mappers/codex_side_answer_mapper.dart";
 import "models/codex_model_provider_exception.dart";
@@ -46,8 +47,17 @@ final class const _CodexPromptAttachmentException({required final String message
 }
 
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
-class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
+/// [codexVersion] is the connected app-server's, from `initialize`.
+class CodexThreadRepository({
+  required final CodexAppServerApi _appServerApi,
+  required SemanticVersion? codexVersion,
+}) {
   static const _sideAnswerMapper = CodexSideAnswerMapper();
+
+  /// `thread/fork {lastTurnId}` arrived in 0.143.0; older app-servers ignore
+  /// the field and fork the whole thread.
+  final bool _forksThroughTurn =
+      codexVersion != null && codexVersion.compareTo(SemanticVersion.parse(value: "0.143.0")) >= 0;
 
   static const _supportedImageMimes = {
     "image/bmp",
@@ -196,6 +206,41 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     return null;
   }
 
+  /// Forks [threadId] through its finished turn [lastTurnId] into a new
+  /// persisted thread in the same directory, leaving the source untouched.
+  /// The refusals Codex answers before creating the fork, and a runtime too
+  /// old to fork at a turn, become [PluginBranchPointUnavailableException].
+  Future<CodexThreadRecord> forkThread({
+    required String threadId,
+    required String lastTurnId,
+    required String developerInstructions,
+  }) async {
+    if (!_forksThroughTurn) throw CodexForkRefusal.runtimeTooOld.toException(cause: null);
+    const operation = "thread/fork";
+    try {
+      final dto = await _appServerApi.forkThread(
+        threadId: threadId,
+        lastTurnId: lastTurnId,
+        developerInstructions: developerInstructions,
+      );
+      return _mapRequired(dto: dto, operation: operation);
+    } on CodexRpcException catch (error, stackTrace) {
+      final refusal = _forkRefusal(error: error);
+      if (refusal != null) Error.throwWithStackTrace(refusal.toException(cause: error), stackTrace);
+      Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
+    }
+  }
+
+  /// The answers of the 0.167.2 thread store's fork preparation.
+  CodexForkRefusal? _forkRefusal({required CodexRpcException error}) {
+    final message = error.message;
+    if (error.code != -32600) return null;
+    if (message.contains("identifies an in-progress turn")) return CodexForkRefusal.turnRunning;
+    if (message.startsWith("turn not found")) return CodexForkRefusal.unknownMessage;
+    if (message.startsWith("no rollout found for thread id")) return CodexForkRefusal.missingSession;
+    return null;
+  }
+
   /// The id of the thread's newest turn, running or finished, or null when
   /// the thread has no turn yet.
   Future<String?> latestTurnId({required String threadId}) async {
@@ -232,6 +277,11 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       Error.throwWithStackTrace(_operationException(operation: operation, error: error), stackTrace);
     }
   }
+
+  Future<void> archiveThread({required String threadId}) => _request(
+    operation: "thread/archive",
+    request: () => _appServerApi.archiveThread(threadId: threadId),
+  );
 
   Future<void> compactThread({required String threadId}) => _request(
     operation: "thread/compact/start",

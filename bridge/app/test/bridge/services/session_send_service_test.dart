@@ -921,6 +921,9 @@ typedef _Send = ({
 StaleSessionPromptOptionsException _staleOptions() => StaleSessionPromptOptionsException(
   cause: const PluginStaleOptionsException(operation: "sendPrompt", message: "no longer offers the selected model"),
   causeStackTrace: StackTrace.current,
+  agent: null,
+  model: null,
+  variant: null,
 );
 
 final class _Prompts() implements SessionPromptService {
@@ -960,6 +963,13 @@ final class _Prompts() implements SessionPromptService {
     );
     onSummaryAccepted?.call(promptId);
   }
+
+  @override
+  Future<void> sendWithDefaults({
+    required String sessionId,
+    required SessionPromptDefaults? defaults,
+    required Future<void> Function(PromptSettings settings) send,
+  }) => send(SessionPromptService.settingsFrom(defaults: defaults));
 
   @override
   Future<void> sendPrompt({

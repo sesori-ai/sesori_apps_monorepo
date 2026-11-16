@@ -188,7 +188,7 @@ class CursorEventMapper({
   AcpHaltNotice? classifyHaltNotice({required String text}) {
     if (_isGateNotice(text)) {
       // AcpEventMapper preserves cursor-agent's exact wording as the shown message.
-      return const AcpHaltNotice(errorName: "cursor_gate");
+      return const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure);
     }
     return null;
   }
