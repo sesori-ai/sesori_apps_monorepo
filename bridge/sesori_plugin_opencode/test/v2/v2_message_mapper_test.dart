@@ -205,6 +205,140 @@ void main() {
     expect(synthetic.parts.single.text, "Fixture display summary");
   });
 
+  group("a background sub-agent report", () {
+    Map<String, dynamic> report({
+      required String text,
+      required Map<String, dynamic> metadata,
+    }) => <String, dynamic>{
+      "type": "synthetic",
+      "id": "report",
+      "time": <String, int>{"created": 7},
+      "text": text,
+      "description": "probe child",
+      "metadata": metadata,
+    };
+
+    Map<String, dynamic> metadata({required String state}) => <String, dynamic>{
+      "source": "subagent",
+      "childID": "ses_child",
+      "agent": "General",
+      "state": state,
+    };
+
+    String envelope({required String state, required String body}) =>
+        '<subagent sessionID="ses_child" state="$state" description="probe child">\n$body\n</subagent>';
+
+    PluginMessagePartSubtask subtask({required Map<String, dynamic> json}) =>
+        mapped(json: json).parts.single as PluginMessagePartSubtask;
+
+    test("is a finished sub-agent step that opens the child and keeps its answer", () {
+      final result = mapped(
+        json: report(
+          text: envelope(state: "completed", body: "CHILD-DONE"),
+          metadata: metadata(state: "completed"),
+        ),
+      );
+      final info = result.info as PluginMessageAssistant;
+      expect(info.sender, PluginMessageSender.system);
+      expect((info.time ?? fail("expected a message time")).completed, 7);
+      final part = result.parts.single as PluginMessagePartSubtask;
+      expect(part.id, "report:0");
+      expect(part.description, "probe child");
+      expect(part.agent, "General");
+      expect(part.childSessionID, "ses_child");
+      final state = part.taskState ?? fail("expected a task state");
+      expect(state.status, PluginToolStatus.completed);
+      expect(state.output, "CHILD-DONE");
+      expect(state.error, isNull);
+    });
+
+    test("names the agent by its display name when the report gives its ID", () {
+      final part = subtask(
+        json: report(
+          text: envelope(state: "completed", body: "Done"),
+          metadata: {
+            ...metadata(state: "completed"),
+            "agent": "explore",
+          },
+        ),
+      );
+      expect(part.agent, "Explore");
+    });
+
+    test("maps each state, keeping a failure's message as its error", () {
+      for (final (state, status) in const [
+        ("error", PluginToolStatus.error),
+        ("cancelled", PluginToolStatus.cancelled),
+        ("paused", PluginToolStatus.unknown),
+      ]) {
+        final taskState =
+            subtask(
+              json: report(
+                text: envelope(state: state, body: "Child body"),
+                metadata: metadata(state: state),
+              ),
+            ).taskState ??
+            fail("expected a task state");
+        expect(taskState.status, status);
+        expect(taskState.output, status == PluginToolStatus.error ? isNull : "Child body");
+        expect(taskState.error, status == PluginToolStatus.error ? "Child body" : isNull);
+      }
+    });
+
+    test("reads the body of an envelope with escaped attributes and a multi-line answer", () {
+      final part = subtask(
+        json: report(
+          text:
+              '<subagent sessionID="ses_child" state="completed" description="say &quot;hi&quot; &gt; 2">\n'
+              "Line one\n\nLine two\n</subagent>",
+          metadata: metadata(state: "completed"),
+        ),
+      );
+      expect((part.taskState ?? fail("expected a task state")).output, "Line one\n\nLine two");
+    });
+
+    test("reads the body when an unescaped description contains a closing quote and bracket", () {
+      final part = subtask(
+        json: report(
+          text: '<subagent sessionID="ses_child" state="completed" description="rename "a">b"">\nRenamed\n</subagent>',
+          metadata: metadata(state: "completed"),
+        ),
+      );
+      expect((part.taskState ?? fail("expected a task state")).output, "Renamed");
+    });
+
+    test("keeps the still-running list a report appends to its answer", () {
+      const body = "Answer\n\nBackground work still running:\n- shell (sh_1): sleep 5";
+      final part = subtask(
+        json: report(
+          text: envelope(state: "running", body: body),
+          metadata: metadata(state: "completed"),
+        ),
+      );
+      expect((part.taskState ?? fail("expected a task state")).output, body);
+    });
+
+    test("shows the whole text when the envelope does not parse", () {
+      final part = subtask(
+        json: report(
+          text: "Child answer without an envelope",
+          metadata: metadata(state: "completed"),
+        ),
+      );
+      expect((part.taskState ?? fail("expected a task state")).output, "Child answer without an envelope");
+    });
+
+    test("stays a plain message when it names no agent", () {
+      final result = mapped(
+        json: report(
+          text: envelope(state: "completed", body: "CHILD-DONE"),
+          metadata: {...metadata(state: "completed")}..remove("agent"),
+        ),
+      );
+      expect(result.parts.single.text, "probe child");
+    });
+  });
+
   test("maps each compaction status onto one quiet row that keeps its ID", () {
     PluginMessageWithParts compact({required String status, required String reason, required String summary}) => mapped(
       json: <String, dynamic>{

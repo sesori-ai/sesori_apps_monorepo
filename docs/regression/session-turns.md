@@ -612,6 +612,14 @@ defaults and queued client sends coherent.
   An unparseable envelope renders as Automation text. Live and replay produce
   the same message id, sender and parts. A prompt that merely quotes an
   envelope stays user input.
+- An OpenCode 2.3.0 background sub-agent's report (a synthetic parent
+  message with `metadata.source: subagent`) renders as an Automation row
+  holding one finished sub-agent step: agent and description, a link to the
+  child session, failed when the report's state is `error`, and the
+  `<subagent>` envelope's body carried as its output, or as its error detail
+  on failure. An envelope that does not parse keeps the whole text. A report
+  missing its agent or description keeps the plain Automation text row. Live
+  delivery and history reload produce the same message id and part.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. The bridge-synthesized
@@ -1270,6 +1278,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   transcript until the turn ends; a
   `<task-notification>` envelope renders as a user bubble, or a prompt that
   quotes the envelope disappears; sub-agent text appears in the root transcript.
+- An OpenCode sub-agent report shows only its description, as a user bubble,
+  or without its child link, or differs between live delivery and reload.
 - A Codex spawn is absent from the parent chat, appears twice as both a tool
   and a subtask, loses its child link after reload, or stops spinning just
   because the spawn call returned. Machine task paths appear unformatted, or

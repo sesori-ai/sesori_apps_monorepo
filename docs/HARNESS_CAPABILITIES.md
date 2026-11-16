@@ -25,7 +25,7 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 | Pi | Visible `custom` messages / `custom_message` entries | ✅ Automation attribution live and after history load. |
 | Claude Code | User-role frames, transcript records and `queued_command` attachments with `origin.kind: peer` | ✅ Automation attribution live and after history load, including `isMeta` peer records and peers queued mid-turn. |
 | Claude Code (task notifications) | User-role `<task-notification>` turns with `origin.kind: task-notification`, `queued_command` attachments in `task-notification` mode, or a whole envelope on CLIs without origin | ✅ A notification no known Agent/Bash task absorbs renders as an Automation step live and after history load, including one queued mid-turn. |
-| OpenCode (task notifications) | Unknown | Unverified: needs a probe of whether a background child's completion is injected as a user turn. |
+| OpenCode (task notifications) | 2.3.0: a synthetic parent message with `metadata.source: subagent`, delivered through the inbox, whose text wraps the child's answer in a `<subagent …>` envelope (probed live 2026-11-16) | ✅ Renders as an Automation row holding one finished sub-agent step live and after history load. |
 | Codex (task notifications) | None | Not applicable: no background-task completion arrives as a user turn. |
 
 Claude attribution uses host provenance, not plugin names or text matching. It
@@ -42,6 +42,15 @@ and the summary as error on failure; note, usage and output-file are dropped.
 An envelope that does not parse still renders as Automation text, never as a
 user bubble. Only a text block that is a whole envelope counts as one without
 provenance, so a prompt quoting the protocol stays user input.
+
+An OpenCode sub-agent report becomes one sub-agent step labelled by its agent
+and description that opens the child session (`metadata.childID`). Its status
+comes from `metadata.state` (`completed`, `error`, `cancelled`; anything else
+shows as finished and is logged at debug), and its output is the envelope's
+body, or the error on failure. An envelope that does not parse keeps the whole
+text as output. A report missing its agent or description, and any other
+synthetic message, stays a plain Automation text row showing its description
+when present, otherwise its full text.
 
 Verified on **2026-09-25** with native Claude Code **2.1.281**, an isolated MCP
 socket sender and a loopback model fixture: idle wake-up, live stdout provenance
@@ -489,7 +498,7 @@ sub-agents finish.
 |---|---|---|
 | Claude | ✅ The sub-agent step's message time. | ✅ For background `Agent` calls (`run_in_background`): the turn ends at launch, and a prompt is written to the CLI at once and starts a turn. A foreground `Agent` call keeps the turn running, so the row does not show; verified live 2026-09-26 on the Claude CLI (stream-json): a prompt sent 8 s into a foreground call was taken up only when the call returned 11 s later. |
 | Codex | ✅ The sub-agent step's message time. | ✅ `turn/start` at once. Verified live 2026-09-26 on codex-cli 0.156.1 (app-server): the parent's turn ended with its sub-agent still running `sleep 90`, and a new prompt started a parent turn answered in 2 s. |
-| OpenCode | ✅ The child session's `time.created`. | ✅ For background children the parent is idle and `prompt_async` starts a turn. On releases before 2.3.0 a foreground Task is the parent's own running step, so the row does not show. From 2.3.0 there are no foreground sub-agents: every `subagent` call returns at launch (2.3.0 source, not probed live). |
+| OpenCode | ✅ The child session's `time.created`. | ✅ For background children the parent is idle and `prompt_async` starts a turn. On releases before 2.3.0 a foreground Task is the parent's own running step, so the row does not show. From 2.3.0 there are no foreground sub-agents: every `subagent` call returns at launch (probed live on 2.3.0, 2026-11-16). |
 | DeepSeek | ✅ The sub-agent step's message time. | ✅ By code, not probed live (the adapter is not installed on the probe machine): the parent idles while a background child runs, and the shared ACP path sends `session/prompt` at once. A foreground child keeps the parent's turn running, so the row does not show. A prompt that meets DeepSeek's own follow-up turn after a child settles is unconfirmed. |
 | Grok | ✅ The child session's `time.created`: a saved child's `created_at`, else its `updated_at`, else the instant the bridge first stored the child. | ✅ `session/prompt` at once while the root is idle. A prompt sent during the wake turn that follows a finished sub-agent cancels that turn and is then answered. |
 | Cursor | Not applicable: the root turn stays open while any sub-agent runs, so the row never shows. | Not applicable: a follow-up prompt is stop-and-send, and the root cancel stops every sub-agent, background ones included. |
