@@ -131,6 +131,7 @@ Session _session({required String id}) => Session(
   time: null,
   promptDefaults: null,
   lastUserActivityAt: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
 );

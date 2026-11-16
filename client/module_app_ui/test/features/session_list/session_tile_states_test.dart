@@ -382,7 +382,7 @@ void main() {
         expect(pin, findsNothing);
         final unpinnedStart = titleStart();
 
-        await pump(tester, tile(session: session.copyWith(pinned: true)));
+        await pump(tester, tile(session: session.copyWith(pinOrder: 1)));
         await tester.pump(const Duration(milliseconds: 100));
         expect(titleStart(), allOf(greaterThan(unpinnedStart), lessThan(unpinnedStart + 18)), reason: "midway");
         await tester.pump(const Duration(milliseconds: 150));
@@ -400,7 +400,7 @@ void main() {
 
         tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
         addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-        await pump(tester, tile(session: session.copyWith(pinned: true)));
+        await pump(tester, tile(session: session.copyWith(pinOrder: 1)));
         expect(titleStart(), unpinnedStart + 18);
       });
 

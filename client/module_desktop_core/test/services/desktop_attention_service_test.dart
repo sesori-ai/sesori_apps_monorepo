@@ -34,6 +34,7 @@ const _session = Session(
   promptDefaults: null,
   branchName: null,
   lastUserActivityAt: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,

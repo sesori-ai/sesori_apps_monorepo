@@ -2370,7 +2370,7 @@ void main() {
                   id: "Session $renamed",
                   title: "Renamed",
                   updatedAt: rows[renamed].session.time?.updated,
-                ).copyWith(pinned: true)
+                ).copyWith(pinOrder: 1)
               : testSession(id: "Session $renamed", title: "Renamed", updatedAt: now.millisecondsSinceEpoch),
           project: project,
           isRunning: false,
@@ -2425,7 +2425,7 @@ void main() {
     AllSessionsRow pinnedRow({required String title, required DateTime updatedAt, required bool isRunning}) {
       final listed = row(title: title, updatedAt: updatedAt, archivedAt: null, isRunning: isRunning);
       return AllSessionsRow(
-        session: listed.session.copyWith(pinned: true),
+        session: listed.session.copyWith(pinOrder: 1),
         project: project,
         isRunning: isRunning,
         isUnseen: false,
@@ -2455,7 +2455,7 @@ void main() {
       launches: launches,
       updates: updates.stream,
       initial: listing([
-        // A running pinned row stays in Pinned, at its time.
+        // A running pinned row stays in its place in Pinned.
         pinnedRow(title: "Fix the parser", updatedAt: today, isRunning: true),
         pinnedRow(title: "Plan the release", updatedAt: yesterday, isRunning: false),
         ...unpinned,
