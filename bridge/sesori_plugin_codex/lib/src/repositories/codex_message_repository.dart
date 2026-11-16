@@ -1122,6 +1122,8 @@ class CodexMessageRepository({
     // written when the row finishes, so the line time conflicts with the start
     // the live row carries. Without a time, the store pairs the live row with
     // this replay by content and keeps the live time, instead of showing both.
+    // Every id-less row is left undated, including ones from older rollouts:
+    // one with no live capture shows no time.
     // Remove with the `m-N` fallback ids below.
     return null;
   }
