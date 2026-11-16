@@ -210,7 +210,7 @@ class FakeSessionDao() {
 }
 
 DeletedSessionSubtree _deletedSession(String sessionId) =>
-    (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId]);
+    (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId], projectId: "project-1", worktreePath: null);
 
 Session _deletedSessionInfo(String sessionId) => Session(
   approvalOverride: null,

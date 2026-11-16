@@ -221,8 +221,20 @@ void main() {
         expect(worktreeService.keptHeads, isEmpty);
       });
 
-      test("is released when the last session naming the worktree is deleted", () async {
-        await cleanup(purpose: SessionCleanupPurpose.deletion, deleteWorktree: false);
+      Future<void> releaseDeleted() => service.releaseDeletedWorktreeHead(
+        sessionId: "s-head",
+        projectId: "/repo",
+        worktreePath: "/worktrees/repo/blue-otter",
+      );
+
+      test("is not released by a deletion's cleanup, which runs before the row goes", () async {
+        await cleanup(purpose: SessionCleanupPurpose.deletion, deleteWorktree: true);
+
+        expect(worktreeService.releasedHeads, isEmpty);
+      });
+
+      test("is released once the last session naming the worktree is deleted", () async {
+        await releaseDeleted();
 
         expect(worktreeService.releasedHeads, ["/worktrees/repo/blue-otter"]);
       });
@@ -230,7 +242,7 @@ void main() {
       test("stays while another session, such as an archived fork, names the worktree", () async {
         sessionRepository.namedByOtherSessions = true;
 
-        await cleanup(purpose: SessionCleanupPurpose.deletion, deleteWorktree: true);
+        await releaseDeleted();
 
         expect(worktreeService.releasedHeads, isEmpty);
       });

@@ -119,7 +119,14 @@ typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 typedef ScheduledRunSessionLink = ({String taskId, SessionApprovalMode approvalOverride});
 
 /// The deleted root as clients see it, plus every session id removed with it.
-typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
+/// [projectId] and [worktreePath] are the deleted root's stored keys, for
+/// cleanup that must wait until its row is gone.
+typedef DeletedSessionSubtree = ({
+  Session session,
+  List<String> sessionIds,
+  String projectId,
+  String? worktreePath,
+});
 
 typedef SessionPage = ({List<Session> items, SessionPageCursor? nextCursor, SessionPageCounts counts});
 
@@ -1282,7 +1289,12 @@ class SessionRepository({
         return [for (final binding in subtree) binding.sessionId];
       },
     );
-    return (session: deletionSnapshot, sessionIds: sessionIds);
+    return (
+      session: deletionSnapshot,
+      sessionIds: sessionIds,
+      projectId: binding.projectId,
+      worktreePath: binding.worktreePath,
+    );
   }
 
   /// Tombstones the harness session of every row in [root]'s subtree, so

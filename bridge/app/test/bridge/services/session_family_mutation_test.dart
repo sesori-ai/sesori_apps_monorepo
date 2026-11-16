@@ -428,7 +428,7 @@ class _FamilyRepository() implements SessionRepository {
         if (record.rootId == sessionId || record.id == sessionId) record.id,
     ];
     _sessions.removeWhere((_, record) => record.rootId == sessionId || record.id == sessionId);
-    return (session: snapshot.session, sessionIds: removed);
+    return (session: snapshot.session, sessionIds: removed, projectId: snapshot.session.projectID, worktreePath: null);
   }
 
   @override

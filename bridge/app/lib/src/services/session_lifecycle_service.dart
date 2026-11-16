@@ -105,9 +105,6 @@ class SessionLifecycleService({
       }
     }
 
-    if (purpose == SessionCleanupPurpose.deletion) {
-      await _releaseWorktreeHead(storedSession: storedSession, worktreePath: worktreePath);
-    }
     return CleanupSuccess();
   }
 
@@ -134,18 +131,26 @@ class SessionLifecycleService({
     }
   }
 
-  /// Drops the kept HEAD once the last session naming the worktree goes. The
-  /// deletion goes on regardless; a failure leaves only a bridge-owned ref.
-  Future<void> _releaseWorktreeHead({required StoredSession storedSession, required String worktreePath}) async {
+  /// Drops the kept HEAD of deleted session [sessionId]'s worktree once no
+  /// session names it.
+  /// It runs only after the rows are gone, so a refused deletion keeps the
+  /// HEAD its archived session may still recreate. The deletion already
+  /// happened, so a failure is logged and leaves only a bridge-owned ref.
+  Future<void> releaseDeletedWorktreeHead({
+    required String sessionId,
+    required String projectId,
+    required String? worktreePath,
+  }) async {
+    if (worktreePath == null) return;
     try {
       if (await _sessionRepository.hasOtherSessionsNamingWorktree(
-        sessionId: storedSession.id,
-        projectId: storedSession.projectId,
+        sessionId: sessionId,
+        projectId: projectId,
         worktreePath: worktreePath,
       )) {
         return;
       }
-      await _worktreeService.releaseWorktreeHead(projectId: storedSession.projectId, worktreePath: worktreePath);
+      await _worktreeService.releaseWorktreeHead(projectId: projectId, worktreePath: worktreePath);
     } on Object catch (error, stackTrace) {
       Log.w("[delete] could not release the kept HEAD of worktree $worktreePath", error, stackTrace);
     }

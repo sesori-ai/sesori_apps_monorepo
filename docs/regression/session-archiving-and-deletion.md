@@ -81,7 +81,8 @@ entirely along with its transcript and its dedicated worktree.
   `refs/sesori/worktrees/<path hash>` so garbage collection keeps detached commits. Uncommitted changes are not kept.
   A failure to record is logged and the archive goes on. While the ref exists, a new session never takes that worktree
   path, so a later archive cannot overwrite what an archived session kept. Deleting the last session that names the worktree deletes
-  the ref; deleting one while another session, archived or not, still names it keeps the ref.
+  the ref once its row is gone, so a deletion the backend refuses keeps it; deleting one while another session, archived or
+  not, still names it keeps the ref.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
   that a dedicated worktree will be deleted and its branch kept, and, for a pinned session, that it is pinned.

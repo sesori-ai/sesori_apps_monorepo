@@ -36,6 +36,11 @@ class SessionDeletionService({
         force: force,
       ),
       onDeleted: (deleted) async {
+        await _sessionLifecycleService.releaseDeletedWorktreeHead(
+          sessionId: deleted.session.id,
+          projectId: deleted.projectId,
+          worktreePath: deleted.worktreePath,
+        );
         await _purgeHistory(deleted.sessionIds);
         // Not awaited: the family lock must not be held while large folders
         // are removed. The uploads and the transcripts sent into the family go
