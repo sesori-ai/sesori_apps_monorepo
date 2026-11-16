@@ -7763,14 +7763,18 @@ void main() {
 
       harness
         ..setInterruptedTurn(shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.promptPending))
-        ..sendDirectly(_textSubmission(promptId: "prm_continue", text: "Continue where you left off."));
+        ..sendDirectly(
+          _textSubmission(promptId: "prm_continue", text: SessionDetailCubit.continueInterruptedTurnPrompt),
+        );
       await tester.pump();
       for (var ms = 0; ms <= 1000; ms += 16) {
         if (ms == 160) harness.setBusy(true);
         if (ms == 320) harness.acceptSendingSubmission();
         await tester.pump(const Duration(milliseconds: 16));
         final top = tester.getTopLeft(interruptedLine).dy;
-        expect((top - lineTop).abs(), lessThan(12), reason: "the transcript glides at $ms ms");
+        // The three-line Continue prompt eases the transcript up about 100 px,
+        // so its fastest frames move about 14 px; a jump moves it all at once.
+        expect((top - lineTop).abs(), lessThan(16), reason: "the transcript glides at $ms ms");
         lineTop = top;
       }
       expect(find.byType(TranscriptWorkingRow), findsOneWidget);
