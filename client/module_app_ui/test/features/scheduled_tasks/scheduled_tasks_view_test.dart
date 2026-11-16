@@ -256,10 +256,9 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 10));
     });
 
-    testWidgets("a failed run explains itself without naming what the task names now", (tester) async {
+    testWidgets("a failed run names what it tried to use, not what the task names now", (tester) async {
       var edits = 0;
-      // The task may have been edited since the run, so its model now need
-      // not be the one that run couldn't use.
+      // The task was edited after the run, so it names another model now.
       final task = _recurring.copyWith(
         definition: _recurring.definition.copyWith(
           pluginId: Harness.claude.name,
@@ -273,7 +272,14 @@ void main() {
         runs: [
           _run(
             id: "failed",
-            outcome: const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.modelUnavailable),
+            outcome: const ScheduledTaskRunOutcome.failed(
+              reason: TaskRunFailureReason.modelUnavailable,
+              attempt: ScheduledTaskRunAttempt(
+                pluginId: "claude",
+                model: PromptModel(providerID: "anthropic", modelID: "claude-old"),
+                projectPath: "/code/sesori",
+              ),
+            ),
           ),
           _run(id: "skipped", outcome: const ScheduledTaskRunOutcome.skipped()),
         ],
@@ -284,14 +290,14 @@ void main() {
 
       await tester.tap(runRow(id: "failed"));
       await tester.pumpAndSettle();
-      expect(find.text("The harness didn’t offer this task’s model anymore."), findsOneWidget);
+      expect(find.text("Claude Code didn’t offer claude-old anymore."), findsOneWidget);
       expect(find.textContaining("claude-new"), findsNothing);
       expect(find.text("Pick another model in the task editor."), findsOneWidget);
 
       await tester.tap(find.byKey(const Key("scheduled-task-run-failure-edit")));
       await tester.pumpAndSettle();
       expect(edits, 1);
-      expect(find.text("The harness didn’t offer this task’s model anymore."), findsNothing);
+      expect(find.text("Claude Code didn’t offer claude-old anymore."), findsNothing);
     });
 
     testWidgets("a run that didn't start offers no editor", (tester) async {
@@ -301,7 +307,7 @@ void main() {
         runs: [
           _run(
             id: "failed",
-            outcome: const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.startFailed),
+            outcome: const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.startFailed, attempt: null),
           ),
         ],
       );

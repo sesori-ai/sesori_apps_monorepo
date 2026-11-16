@@ -4469,6 +4469,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get scheduledTaskRunFailureModel => 'The harness didn’t offer this task’s model anymore.';
 
   @override
+  String scheduledTaskRunFailureProjectAt(String path) {
+    return 'The folder $path wasn’t found on the computer.';
+  }
+
+  @override
+  String scheduledTaskRunFailureHarnessNamed(String harness) {
+    return '$harness wasn’t available on the computer.';
+  }
+
+  @override
+  String scheduledTaskRunFailureModelNamed(String harness, String model) {
+    return '$harness didn’t offer $model anymore.';
+  }
+
+  @override
   String get scheduledTaskRunFailureStart =>
       'The computer couldn’t start the session. Sesori Bridge’s log on that computer has the error.';
 

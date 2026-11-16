@@ -397,10 +397,10 @@ class const _History({
     ScheduledTaskRunStarted() => () => PregoPopupAlertPresenter.of(
       context,
     ).show(title: context.loc.scheduledTaskRunSessionDeleted, variant: PregoPopupAlertsNotificationsVariant.info),
-    ScheduledTaskRunFailed(:final reason) => () => unawaited(
+    ScheduledTaskRunFailed(:final reason, :final attempt) => () => unawaited(
       _showFailure(
         context: context,
-        details: labels.failureDetails(reason: reason),
+        details: labels.failureDetails(reason: reason, attempt: attempt),
         canEdit:
             editable &&
             switch (reason) {
