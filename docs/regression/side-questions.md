@@ -99,7 +99,9 @@ declaration into a `SideQuestionAvailability`: `available`,
   page's bottom (the composer, and any card or notice above it), so the
   composer's Send and Stop stay clickable. Its bottom edge follows the
   composer as a draft grows or folds, after a frame. Where that leaves it
-  shorter than 300 pt, it keeps 300 pt and runs over the composer's top. With
+  shorter than 300 pt, it keeps 300 pt and runs over the composer's top, by
+  design: a usable side chat wins over the top of a tall draft, and Send, at
+  the composer's bottom, stays clear down to the 560×480 minimum window. With
   no composer (read-only or archived) it runs to the page's bottom.
 
 ### Side chat
