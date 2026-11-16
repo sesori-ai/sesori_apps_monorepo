@@ -1,16 +1,20 @@
 import "dart:async";
 
-import "../services/scheduled_task_run_failure.dart";
+import "package:sesori_shared/sesori_shared.dart";
+
 import "push_dispatcher.dart";
 import "push_notification_content_builder.dart";
 
+/// A scheduled task run that could not start, as the push subsystem sees it.
+typedef ScheduledTaskFailurePush = ({String taskId, String taskName, TaskRunFailureReason reason});
+
 /// Pushes each scheduled task run that could not start, with the reason.
 class ScheduledTaskFailurePushListener({
-  required final Stream<ScheduledTaskRunFailure> _source,
+  required final Stream<ScheduledTaskFailurePush> _source,
   required final PushNotificationContentBuilder _contentBuilder,
   required final PushDispatcher _dispatcher,
 }) {
-  StreamSubscription<ScheduledTaskRunFailure>? _subscription;
+  StreamSubscription<ScheduledTaskFailurePush>? _subscription;
 
   void start() {
     _subscription ??= _source.listen((failure) {

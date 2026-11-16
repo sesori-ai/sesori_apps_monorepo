@@ -505,9 +505,8 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   it as `z.string()`. `taskId` is silently stripped: the plain `z.object` in
   `src/models/api.ts:294-301` drops unknown keys, and the flatten step in
   `src/services/notification-service.ts:150-163` copies only the four known
-  fields. The push still arrives without it. A separate auth-server change
-  adds `taskId`; step 8's push tap to a task page must not ship until that
-  change is deployed.
+  fields. Resolved by auth-server PR #116, live in production since
+  2026-11-16, which passes `taskId` through; step 8's push tap can rely on it.
 
 ### P9. Compaction on request (all harnesses)
 

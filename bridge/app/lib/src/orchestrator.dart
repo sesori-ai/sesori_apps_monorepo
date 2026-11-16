@@ -726,7 +726,9 @@ class Orchestrator({
     );
     final scheduledTaskTimer = ScheduledTaskTimerListener(service: scheduledTaskRunService);
     final scheduledTaskFailurePushListener = ScheduledTaskFailurePushListener(
-      source: scheduledTaskRunService.failures,
+      source: scheduledTaskRunService.failures.map(
+        (failure) => (taskId: failure.taskId, taskName: failure.taskName, reason: failure.reason),
+      ),
       contentBuilder: pushContentBuilder,
       dispatcher: pushDispatcher,
     );
