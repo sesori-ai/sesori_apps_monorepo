@@ -262,8 +262,7 @@ class _RenderRowsHeldInPlace({
   RenderBox? _heldRow;
   double? _heldOffset;
 
-  /// The topmost row in view, and how far into the scrolled content it was
-  /// laid out.
+  /// The topmost row in view, and how far into the list it was laid out.
   ({RenderBox row, double offset})? _readerRow;
 
   @override
@@ -297,12 +296,12 @@ class _RenderRowsHeldInPlace({
 
   /// How far the scroll offset must move for the reader's row to stay where it
   /// was: no further than the newest end, where the list may follow again. Only
-  /// layout moves a row within the content, so the reader's own scrolling
-  /// stands.
+  /// the rows' layout moves a row within the list, so the reader's own scrolling
+  /// and the padding's own correction for an inset change both stand.
   double _keepReaderRowStill() {
     final reader = _readerRow;
     if (reader == null || !detached()) return 0;
-    final offset = _contentOffsetOf(row: reader.row);
+    final offset = _listOffsetOf(row: reader.row);
     if (offset == null) return 0;
     final change = offset - reader.offset;
     if (change == 0) return 0;
@@ -317,9 +316,9 @@ class _RenderRowsHeldInPlace({
   ({RenderBox row, double offset})? _topmostRowInView() {
     ({RenderBox row, double offset})? topmost;
     for (var child = firstChild; child != null; child = childAfter(child)) {
-      final offset = _contentOffsetOf(row: child);
+      final offset = _listOffsetOf(row: child);
       if (offset == null) continue;
-      final position = offset - _scrolled();
+      final position = constraints.precedingScrollExtent + offset - _scrolled();
       if (position < constraints.viewportMainAxisExtent && position + paintExtentOf(child) > 0) {
         topmost = (row: child, offset: offset);
       }
@@ -327,14 +326,9 @@ class _RenderRowsHeldInPlace({
     return topmost;
   }
 
-  /// How far into the scrolled content [row] is laid out, or null once it is
-  /// not one of the rows.
-  double? _contentOffsetOf({required RenderBox row}) {
-    if (row.parent != this) return null;
-    final offset = childScrollOffset(row);
-    if (offset == null) return null;
-    return constraints.precedingScrollExtent + offset;
-  }
+  /// How far into the list [row] is laid out, or null once it is not one of
+  /// the rows.
+  double? _listOffsetOf({required RenderBox row}) => row.parent == this ? childScrollOffset(row) : null;
 
   double _scrolled() => switch (RenderAbstractViewport.maybeOf(this)) {
     final RenderViewportBase viewport => viewport.offset.pixels,
