@@ -34,6 +34,7 @@ class ScheduledTaskRefreshDispatcher({required final Future<bool> Function() _re
   bool _queued = false;
   int _retries = 0;
   Timer? _retry;
+  bool _disposed = false;
 
   /// Completes once the refresh this request asked for has run.
   Future<void> request() {
@@ -41,8 +42,12 @@ class ScheduledTaskRefreshDispatcher({required final Future<bool> Function() _re
     return _start();
   }
 
-  /// Stops a pending retry; call when the owner closes.
-  void dispose() => _retry?.cancel();
+  /// Stops a pending retry, and any a running refresh would schedule; call
+  /// when the owner closes.
+  void dispose() {
+    _disposed = true;
+    _retry?.cancel();
+  }
 
   Future<void> _start() {
     _retry?.cancel();
@@ -65,7 +70,7 @@ class ScheduledTaskRefreshDispatcher({required final Future<bool> Function() _re
     } finally {
       _active = null;
     }
-    if (!applied && _retries < maxRetries) {
+    if (!applied && !_disposed && _retries < maxRetries) {
       _retries++;
       _retry = Timer(retryDelay, () => unawaited(_start()));
     }
