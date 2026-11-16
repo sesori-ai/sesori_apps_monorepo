@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 
 import "package:clock/clock.dart";
+import "package:sesori_bridge/src/foundation/session_archived_read_only_exception.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_transcript_markdown_builder.dart";
 import "package:sesori_bridge/src/repositories/models/history_window.dart";
 import "package:sesori_bridge/src/repositories/models/normalized_bridge_event.dart";
@@ -735,6 +736,7 @@ void main() {
       expect(error.userFacingReason, "The target is read-only.");
       expect(error.cause, isA<SessionPromptRefusedException>());
     }
+    expect(transcripts.deleted, [transcripts.pathFor(transcripts.saved.single)]);
   });
 
   test("a target whose saved options its harness no longer offers says so", () async {
@@ -742,6 +744,26 @@ void main() {
     prompts.targetFailure = _staleOptions();
 
     expect(await refusalOf(send()), SendToSessionErrorCode.targetOptionsUnavailable);
+    expect(transcripts.deleted, [transcripts.pathFor(transcripts.saved.single)]);
+  });
+
+  test("a target archived while the summary was written is reported as archived", () async {
+    finishSummaryTurn();
+    prompts.targetFailure = SessionArchivedReadOnlyException(
+      rejection: const SessionArchivedRejection(sessionId: _target, reason: SessionArchivedReason.archivedReadOnly),
+    );
+
+    expect(await refusalOf(send()), SendToSessionErrorCode.targetArchived);
+    expect(transcripts.deleted, [transcripts.pathFor(transcripts.saved.single)]);
+  });
+
+  test("a target failure that may follow its acceptance keeps the transcript", () async {
+    finishSummaryTurn();
+    prompts.targetFailure = StateError("target down");
+
+    expect(await refusalOf(send()), SendToSessionErrorCode.targetRefused);
+    expect(transcripts.saved, hasLength(1));
+    expect(transcripts.deleted, isEmpty);
   });
 
   test("no prompt, summary or transcript text reaches the log", () async {
@@ -1139,6 +1161,7 @@ typedef _Saved = ({String sessionId, List<int> bytes, String filename});
 
 final class _Transcripts() implements PromptUploadRepository {
   final List<_Saved> saved = [];
+  final List<String> deleted = [];
   Object? failure;
 
   String pathFor(_Saved file) => "/fixture-home/.sesori/transcripts/${file.sessionId}/2026-11-15-abc/${file.filename}";
@@ -1150,6 +1173,9 @@ final class _Transcripts() implements PromptUploadRepository {
     saved.add(file);
     return pathFor(file);
   }
+
+  @override
+  Future<void> deleteSaved({required String path}) async => deleted.add(path);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
