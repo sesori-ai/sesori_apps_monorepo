@@ -4,7 +4,12 @@ import "package:theme_prego/module_prego.dart";
 
 const double _rowHeight = 80;
 
-Widget _harness(List<String> items, {bool disableAnimations = false, VoidCallback? onTap}) {
+Widget _harness(
+  List<String> items, {
+  bool disableAnimations = false,
+  VoidCallback? onTap,
+  bool Function(String item) slidesWhenMoved = _neverSlides,
+}) {
   return MaterialApp(
     home: Builder(
       builder: (context) => MediaQuery(
@@ -14,6 +19,7 @@ Widget _harness(List<String> items, {bool disableAnimations = false, VoidCallbac
             PregoAnimatedSliverList<String>(
               items: items,
               itemKey: ValueKey<String>.new,
+              slidesWhenMoved: slidesWhenMoved,
               itemBuilder: (context, index, item) => GestureDetector(
                 key: ValueKey("row-$item"),
                 behavior: HitTestBehavior.opaque,
@@ -31,7 +37,44 @@ Widget _harness(List<String> items, {bool disableAnimations = false, VoidCallbac
   );
 }
 
+bool _neverSlides(String item) => false;
+
 void main() {
+  testWidgets("rows that slide move from where they stood to their new places, keeping their rows", (tester) async {
+    bool slides(String item) => item != "D";
+    await tester.pumpWidget(_harness(["A", "B", "C", "D"], slidesWhenMoved: slides));
+    double topOf(String item) => tester.getTopLeft(find.byKey(ValueKey("row-$item"))).dy;
+
+    await tester.pumpWidget(_harness(["C", "A", "B", "D"], slidesWhenMoved: slides));
+    // Nothing closes or opens: each row is still painted where it stood.
+    expect(find.text("C"), findsOneWidget);
+    expect([topOf("A"), topOf("B"), topOf("C"), topOf("D")], [0, _rowHeight, 2 * _rowHeight, 3 * _rowHeight]);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(topOf("C"), inExclusiveRange(0, 2 * _rowHeight));
+    expect(topOf("A"), inExclusiveRange(0, _rowHeight));
+    expect(topOf("D"), 3 * _rowHeight);
+
+    await tester.pumpAndSettle();
+    expect([topOf("C"), topOf("A"), topOf("B"), topOf("D")], [0, _rowHeight, 2 * _rowHeight, 3 * _rowHeight]);
+  });
+
+  testWidgets("a slide interrupted by another reorder carries on from where the rows stand", (tester) async {
+    bool slides(String item) => true;
+    await tester.pumpWidget(_harness(["A", "B"], slidesWhenMoved: slides));
+    double topOf(String item) => tester.getTopLeft(find.byKey(ValueKey("row-$item"))).dy;
+
+    await tester.pumpWidget(_harness(["B", "A"], slidesWhenMoved: slides));
+    await tester.pump(const Duration(milliseconds: 60));
+    final standing = topOf("B");
+
+    // Put back: B turns round from where it stands instead of jumping.
+    await tester.pumpWidget(_harness(["A", "B"], slidesWhenMoved: slides));
+    expect(topOf("B"), moreOrLessEquals(standing));
+    await tester.pumpAndSettle();
+    expect([topOf("A"), topOf("B")], [0, _rowHeight]);
+  });
+
   testWidgets("removed row closes while the following row moves into place", (tester) async {
     await tester.pumpWidget(_harness(["A", "B"]));
     expect(tester.getTopLeft(find.byKey(const ValueKey("row-B"))).dy, _rowHeight);
@@ -58,6 +101,7 @@ void main() {
           PregoAnimatedSliverList<String>(
             items: items,
             itemKey: ValueKey<String>.new,
+            slidesWhenMoved: _neverSlides,
             itemBuilder: (context, index, item) => SizedBox(
               height: _rowHeight,
               child: _Instance(label: item),
@@ -124,6 +168,7 @@ void main() {
           PregoAnimatedSliverList<String>(
             items: items,
             itemKey: ValueKey<String>.new,
+            slidesWhenMoved: _neverSlides,
             itemBuilder: (context, index, item) => Focus(focusNode: focus, child: Text(item)),
           ),
         ],

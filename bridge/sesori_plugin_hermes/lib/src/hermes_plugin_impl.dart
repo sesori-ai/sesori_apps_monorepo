@@ -43,6 +43,15 @@ class HermesPlugin({
     fromNewSession: fromNewSession,
   );
 
+  @override
+  Future<void> validateTurnSelection({
+    required String operation,
+    required String sessionId,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) async => _hermesSessionOptionsService.validateTurnSelection(operation: operation, model: model);
+
   /// Hermes selects models through its `session/set_model` extension, so the
   /// standard config repository is unused; the write goes through the Hermes
   /// repository over the live client.
@@ -111,6 +120,11 @@ class HermesPlugin({
   /// Hermes advertises its compaction as `/compress` (verified v0.21.5).
   @override
   String get compactionCommandName => "compress";
+
+  /// Hermes' `cache_ttl` defaults to 5 minutes; Sesori does not read the
+  /// user's Hermes config, so a longer setting still reads as the default.
+  @override
+  Future<Duration?> getPromptCacheLife({required String sessionId}) async => const Duration(minutes: 5);
 
   @override
   Future<AcpSessionReplayCollector> createSessionReplayCollector({

@@ -3805,6 +3805,12 @@ abstract class AppLocalizations {
   /// **'Failed to unpin session'**
   String get sessionListUnpinFailed;
 
+  /// Error alert when the computer refused a dragged pinned session's new place, after the rows slid back.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the pinned order'**
+  String get sessionListPinMoveFailed;
+
   /// Session menu entry that opens the sheet for sending this session's work into another session.
   ///
   /// In en, this message translates to:

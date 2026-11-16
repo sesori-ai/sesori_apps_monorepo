@@ -76,6 +76,21 @@ class HermesSessionOptionsService({
     }
   }
 
+  /// Refuses a [model] the Hermes catalog no longer lists. Hermes applies no
+  /// variant or agent, so only the model is checked, and only once a catalog
+  /// with models has been reported.
+  void validateTurnSelection({
+    required String operation,
+    required ({String providerID, String modelID})? model,
+  }) {
+    final requested = model?.modelID;
+    final models = _catalog?.models ?? const <HermesCatalogModel>[];
+    if (requested == null || requested.isEmpty || models.isEmpty) return;
+    // ponytail: a bare model id matches too, since Hermes resolves it itself.
+    if (models.any((entry) => entry.value == requested || entry.modelId == requested)) return;
+    throw PluginStaleOptionsException(operation: operation, message: "Hermes no longer offers the selected model");
+  }
+
   Future<void> applyTurnSelection({
     required AcpStdioClient liveClient,
     required String sessionId,

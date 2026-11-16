@@ -286,6 +286,11 @@ variant, and worktree mode, and creating the session with its first input.
   validate a turn. A stale model, mode, or reasoning value fails before prompt
   acceptance, invalidates that selection, and refreshes without inventing an
   option Copilot did not advertise. A catalog with no mode remains usable.
+- A create with a command whose options the harness refuses as stale deletes
+  the session it just made, logging its id, before answering with the same
+  stale-options rejection. The deletion event removes the row from session
+  lists, so no empty session sits beside the corrected retry. This applies to a
+  scheduled run's first session too.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.

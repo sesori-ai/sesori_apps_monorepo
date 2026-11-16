@@ -130,6 +130,11 @@ sealed class BridgePluginApi() {
   /// for [sendCommand].
   Future<PluginCompactionResult> compactSession({required String sessionId, required String promptId});
 
+  /// How long the harness's prompt cache keeps [sessionId]'s context after
+  /// its last use, from what the plugin knows of the session's account,
+  /// provider or model. Null when the plugin cannot tell.
+  Future<Duration?> getPromptCacheLife({required String sessionId});
+
   /// Get all messages for a session.
   ///
   /// An empty list means a **genuinely empty thread** (including a backend

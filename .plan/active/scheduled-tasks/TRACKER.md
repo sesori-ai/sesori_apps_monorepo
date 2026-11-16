@@ -49,9 +49,11 @@ mirror PR state; live status is on GitHub:
 | 9.a | `scheduled-tasks/new-task-core` | 🚧 [scheduled-tasks] Add the task editor core, time fields and device time zone [step 9.a/18] | ≤ 1,300 authored, generated Freezed extra | 4.b, 7, 8.a.2 |
 | 9.b | `scheduled-tasks/new-task-screen` | 🚧 [scheduled-tasks] Add the New task screen [step 9.b/18] | ≤ 1,500 authored, generated l10n extra | 9.a |
 | 10 | `scheduled-tasks/compact-on-request` | ⚙️ [scheduled-tasks] Compact sessions on request in every harness that can [step 10/14] | ≤ 1,200 | 1 |
-| 11 | `scheduled-tasks/auto-compact` | 🚧 [scheduled-tasks] Auto-compact same-session tasks [step 11/18] | ≤ 800 | 5, 9.b, 10 |
-| 12 | `scheduled-tasks/regression-docs` | 🌱 [scheduled-tasks] Write the regression docs [step 12/18] | ≤ 500 | 2–11 |
-| 13 | `scheduled-tasks/retire` | 🌱 [scheduled-tasks] Run the L3 regression and retire the plan [step 13/18] | ≤ 250 | 12 |
+| 11.a | `scheduled-tasks/cache-life` | ⚙️ [scheduled-tasks] Ask each harness for its prompt-cache life [step 11.a/20] | ≤ 500 | 10 |
+| 11.b | `scheduled-tasks/auto-compact` | 🚧 [scheduled-tasks] Auto-compact same-session tasks on the bridge [step 11.b/20] | ≤ 900 | 5, 11.a |
+| 11.c | `scheduled-tasks/auto-compact-switch` | 🌿 [scheduled-tasks] Add the auto-compact switch to the task editor [step 11.c/20] | ≤ 400 | 9.b |
+| 12 | `scheduled-tasks/regression-docs` | 🌱 [scheduled-tasks] Write the regression docs [step 12/20] | ≤ 500 | 2–11.c |
+| 13 | `scheduled-tasks/retire` | 🌱 [scheduled-tasks] Run the L3 regression and retire the plan [step 13/20] | ≤ 250 | 12 |
 
 Step 2 and 3.a targets count authored lines; their Freezed and Drift output is
 reported separately in the PR body (AGENTS.md generated-churn rule).
@@ -59,3 +61,4 @@ Steps 1 and 2 merged before step 3 split, so their titles keep the old total
 of 13; 3.a, 7 and 10 merged before step 4 split and keep 14.
 3.b, 4.a and 4.b keep the /15 in their published titles; 5 and 8.a.1 merged
 at /17 before step 9 split, and keep it.
+6, 8.a.2, 8.b, 9.a and 9.b merged at /18 before step 11 split, and keep it.
