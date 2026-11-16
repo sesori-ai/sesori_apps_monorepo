@@ -228,6 +228,7 @@ class _TaskComposerState() extends State<_TaskComposer> {
           ],
           child: Builder(
             builder: (context) => NewSessionView(
+              title: widget.title,
               onProjectSelected: ({required projectId, required projectName}) =>
                   context.read<NewSessionCubit>().selectProject(
                     project: NewSessionProject(

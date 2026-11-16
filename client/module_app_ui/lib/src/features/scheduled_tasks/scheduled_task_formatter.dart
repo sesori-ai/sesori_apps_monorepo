@@ -11,6 +11,8 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
   late final DateFormat _date = DateFormat.MMMd(loc.localeName);
   late final DateFormat _dateWithYear = DateFormat.yMMMd(loc.localeName);
   late final DateFormat _weekday = DateFormat.E(loc.localeName);
+  late final DateFormat _weekdayNarrow = DateFormat.EEEEE(loc.localeName);
+  late final DateFormat _weekdayFull = DateFormat.EEEE(loc.localeName);
 
   /// The schedule in a line: "Every day at 9:00 AM", "Mon, Thu at 6:30 PM",
   /// naming the task's zone when it is not this device's.
@@ -126,6 +128,12 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
   /// [day]'s short name, such as "Mon".
   // 2024-01-01 was a Monday.
   String weekday({required TaskWeekday day}) => _weekday.format(DateTime.utc(2024, 1, day.isoWeekday));
+
+  /// [day]'s initial, for a row of all seven.
+  String weekdayInitial({required TaskWeekday day}) => _weekdayNarrow.format(DateTime.utc(2024, 1, day.isoWeekday));
+
+  /// [day]'s full name, read out for its initial.
+  String weekdayName({required TaskWeekday day}) => _weekdayFull.format(DateTime.utc(2024, 1, day.isoWeekday));
 
   /// Adds the task's zone to [text] when the zone's offset, read from the next
   /// or else the last run, differs from this device's. A paused task that

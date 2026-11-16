@@ -513,6 +513,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
       duration: _homeMotionDuration,
       child: switch (listed) {
         final listed? => NewSessionView(
+          title: context.loc.sessionListNewSession,
           key: const Key("desktop-home-composer"),
           onProjectSelected: select,
           // The home is where Back would lead; there is nothing to leave.

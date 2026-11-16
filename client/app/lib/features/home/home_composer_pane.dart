@@ -175,6 +175,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
       duration: _motionDuration,
       child: switch (listed) {
         true => NewSessionView(
+          title: context.loc.sessionListNewSession,
           key: const Key("home-composer-pane-composer"),
           onProjectSelected: select,
           onBack: null,

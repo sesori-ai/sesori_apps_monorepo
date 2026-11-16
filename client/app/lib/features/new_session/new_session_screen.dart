@@ -52,6 +52,7 @@ class const NewSessionScreen({
 
   Widget _build({required BuildContext context}) {
     return NewSessionView(
+      title: context.loc.sessionListNewSession,
       onProjectSelected: ({required projectId, required projectName}) => context.read<NewSessionCubit>().selectProject(
         project: NewSessionProject(
           id: projectId,

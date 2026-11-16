@@ -211,24 +211,28 @@ class const _HoursRow({required final int hours}) extends StatelessWidget {
   }
 }
 
-/// A weekly task's days, each a toggle.
+/// A weekly task's days, each a toggle, all seven on one row.
 class const _Weekdays({required final Set<TaskWeekday> days, required final ScheduledTaskFormatter labels})
     extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Wrap(
-    alignment: WrapAlignment.center,
+  Widget build(BuildContext context) => Row(
     spacing: PregoSpacing.xs,
-    runSpacing: PregoSpacing.xs,
     children: [
       for (final day in TaskWeekday.values)
-        Semantics(
-          selected: days.contains(day),
-          child: PregoButtonsSolid(
-            key: ValueKey("scheduled-task-day-${day.name}"),
-            label: labels.weekday(day: day),
-            hierarchy: days.contains(day) ? PregoButtonsSolidHierarchy.primary : PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: () => context.read<ScheduledTaskEditorCubit>().toggleWeekday(day: day),
+        Expanded(
+          child: Semantics(
+            label: labels.weekdayName(day: day),
+            selected: days.contains(day),
+            button: true,
+            excludeSemantics: true,
+            child: PregoButtonsSolid(
+              key: ValueKey("scheduled-task-day-${day.name}"),
+              label: labels.weekdayInitial(day: day),
+              hierarchy: days.contains(day) ? PregoButtonsSolidHierarchy.primary : PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.sm,
+              fullWidth: true,
+              onPressed: () => context.read<ScheduledTaskEditorCubit>().toggleWeekday(day: day),
+            ),
           ),
         ),
     ],
