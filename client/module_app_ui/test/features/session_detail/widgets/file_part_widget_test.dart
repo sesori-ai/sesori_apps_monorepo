@@ -78,6 +78,7 @@ class _FakeImageSharer() implements ImageSharer {
 Widget _presentationScope({required Widget child, required bool canShareImages}) {
   final dependencies = GetIt.instance;
   return SessionDetailPresentationScope(
+    returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
     openHarnessSettings: () {},
     openBridgeSettings: () {},
     openSideChat: null,

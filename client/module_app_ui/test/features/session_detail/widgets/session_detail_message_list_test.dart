@@ -42,6 +42,15 @@ class const _SessionDetailMessageListHarness({
   final DateTime? launchStartedAt,
   final List<LaunchFollowUp> launchFollowUps = const [],
   final PromptTurnShapes promptTurnShapes = const PromptTurnShapes(),
+  final SessionForkOrigin? forkedFrom,
+  final void Function({required String sessionId, required String? sessionTitle})? onOpenForkOrigin,
+  final void Function({
+    required MessageWithParts message,
+    required MessageEditRefusal? refusal,
+    required VoidCallback? onFork,
+  })?
+  onEditMessage,
+  final void Function({required ForkPoint point, required MessageWithParts? ownMessage})? onForkMessage,
 }) extends StatefulWidget {
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
@@ -293,8 +302,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SessionDetailMessageList(
-          onEditMessage: null,
-          onForkMessage: null,
+          onEditMessage: widget.onEditMessage,
+          onForkMessage: widget.onForkMessage,
+          forkedFrom: widget.forkedFrom,
+          onOpenForkOrigin: widget.onOpenForkOrigin ?? ({required sessionId, required sessionTitle}) {},
           editingMessageId: null,
           bridgeQueuedPrompts: _bridgeQueuedPrompts,
           bridgePromptAttachments: _bridgePromptAttachments,
@@ -600,6 +611,7 @@ Widget _presented({required Widget child}) => SessionDetailPresentationScope(
   canShareImages: false,
   openExternalLink: ({required url, required mode}) async => false,
   openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+  returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
   openHarnessSettings: () {},
   openBridgeSettings: () {},
   openSideChat: null,
@@ -7465,6 +7477,127 @@ void main() {
 
       expect(interruptedLine, findsOneWidget);
       expect(continueButton, findsNothing);
+    });
+  });
+
+  group("a fork's Forked from line", () {
+    const origin = SessionForkOrigin(sessionId: "origin", title: "Math Utilities Summary");
+    final forkedFromLine = find.byKey(const ValueKey("forked-from-row"));
+
+    testWidgets("shows above the oldest message only once no older page is left", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          forkedFrom: origin,
+          onLoadOlderMessages: () => Completer<void>().future,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(forkedFromLine, findsNothing);
+
+      key.harness.prependOlderMessages(older: _page(prefix: "oldest", count: 1), hasOlderMessages: false);
+      await tester.pumpAndSettle();
+
+      expect(find.text("Forked from Math Utilities Summary"), findsOneWidget);
+      expect(
+        tester.getBottomLeft(forkedFromLine).dy,
+        lessThanOrEqualTo(tester.getTopLeft(find.text("oldest message 0")).dy),
+      );
+    });
+
+    testWidgets("shows for a fork only", (tester) async {
+      await _pumpTurns(tester, messages: _page(prefix: "turn", count: 2));
+
+      expect(forkedFromLine, findsNothing);
+    });
+
+    testWidgets("a tap returns to the origin", (tester) async {
+      final opened = <(String, String?)>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: _page(prefix: "turn", count: 1),
+          initialStreamingText: const {},
+          forkedFrom: origin,
+          onOpenForkOrigin: ({required sessionId, required sessionTitle}) => opened.add((sessionId, sessionTitle)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(forkedFromLine);
+      await tester.pump();
+
+      expect(opened, [("origin", "Math Utilities Summary")]);
+    });
+
+    testWidgets("a deleted untitled origin leaves plain text", (tester) async {
+      final opened = <String>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: _page(prefix: "turn", count: 1),
+          initialStreamingText: const {},
+          forkedFrom: const SessionForkOrigin(sessionId: null, title: null),
+          onOpenForkOrigin: ({required sessionId, required sessionTitle}) => opened.add(sessionId),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("Forked from an untitled session"), findsOneWidget);
+      expect(tester.widget(forkedFromLine), isNot(isA<TextButton>()), reason: "Plain text, not a dimmed button.");
+      await tester.tap(forkedFromLine, warnIfMissed: false);
+      await tester.pump();
+      expect(opened, isEmpty);
+    });
+  });
+
+  group("Edit and resend on a follow-up sent mid-turn", () {
+    final messages = [
+      _message(messageId: "opener", role: "user", text: "Fix the build"),
+      _message(messageId: "follow-up", role: "user", text: "Also the tests"),
+    ];
+
+    Future<({MessageEditRefusal? refusal, VoidCallback? onFork})> editFollowUp(
+      WidgetTester tester, {
+      required void Function({required ForkPoint point, required MessageWithParts? ownMessage})? onForkMessage,
+    }) async {
+      final edits = <({MessageEditRefusal? refusal, VoidCallback? onFork})>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: messages,
+          initialStreamingText: const {},
+          onEditMessage: ({required message, required refusal, required onFork}) =>
+              edits.add((refusal: refusal, onFork: onFork)),
+          onForkMessage: onForkMessage,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.longPress(find.text("Also the tests"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Edit and resend"));
+      await tester.pumpAndSettle();
+      return edits.single;
+    }
+
+    testWidgets("hands its Fork from here to the explanation when the session forks", (tester) async {
+      final forks = <(ForkPoint, String?)>[];
+      final edit = await editFollowUp(
+        tester,
+        onForkMessage: ({required point, required ownMessage}) => forks.add((point, ownMessage?.info.id)),
+      );
+
+      expect(edit.refusal, MessageEditRefusal.sentMidTurn);
+      final onFork = edit.onFork ?? fail("The explanation got no Fork.");
+      onFork();
+      expect(forks, [(const ForkPoint.afterMessage(messageId: "follow-up"), "follow-up")]);
+    });
+
+    testWidgets("hands no Fork when the session does not fork", (tester) async {
+      final edit = await editFollowUp(tester, onForkMessage: null);
+
+      expect(edit.refusal, MessageEditRefusal.sentMidTurn);
+      expect(edit.onFork, isNull);
     });
   });
 }

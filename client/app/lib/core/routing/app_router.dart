@@ -692,6 +692,42 @@ void closeDeletedArchivedSessionRoute({required BuildContext context, required S
   Navigator.of(context).popUntil((route) => route.isFirst);
 }
 
+/// Goes back to the session a page came from, such as a fork's origin: back
+/// when its page, live or archived, is the one below, so going there and back
+/// never piles pages up; otherwise [route], that session's page, opens over
+/// this one.
+void returnToSessionRoute({
+  required BuildContext context,
+  required String projectId,
+  required String sessionId,
+  required AppRoute route,
+}) {
+  final locations = {
+    for (final candidate in [
+      AppRoute.sessionDetail(
+        projectId: projectId,
+        projectName: null,
+        sessionId: sessionId,
+        sessionTitle: null,
+        readOnly: false,
+        fromLaunch: false,
+      ),
+      AppRoute.archivedSessionDetail(projectId: projectId, projectName: null, sessionId: sessionId, sessionTitle: null),
+    ])
+      Uri.parse(candidate.buildPath()).path,
+  };
+  Iterable<RouteMatchBase> pages(List<RouteMatchBase> matches) =>
+      matches.expand((match) => match is ShellRouteMatch ? pages(match.matches) : [match]);
+  // ignore: no_slop_linter/avoid_raw_go_router, reads the page stack; navigation below uses the typed extension
+  final router = GoRouter.of(context);
+  final stack = pages(router.routerDelegate.currentConfiguration.matches).toList();
+  if (stack.length >= 2 && locations.contains(stack[stack.length - 2].matchedLocation)) {
+    router.pop();
+  } else {
+    unawaited(context.pushRoute<void>(route));
+  }
+}
+
 /// Opens the session a send went into, from an alert that can outlive the
 /// page that sent.
 void openSentSession({required String projectId, required String projectName, required Session session}) {

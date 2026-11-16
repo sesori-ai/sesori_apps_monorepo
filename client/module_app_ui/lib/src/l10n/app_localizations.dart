@@ -4075,10 +4075,10 @@ abstract class AppLocalizations {
   /// **'Its worktree will be deleted too. The branch is kept.'**
   String get sessionListDeleteWorktreeNotice;
 
-  /// Line in the delete confirmation, on both shells, stating that a session started without a project loses the folder it worked in, with the files the agent wrote there. Deletion never offers a choice about this.
+  /// Line in the delete confirmation, on both shells, stating that a session started without a project loses the folder it worked in, with the files the agent wrote there, except while a fork of the session still works in that folder, which the computer then keeps. Deletion never offers a choice about this.
   ///
   /// In en, this message translates to:
-  /// **'Its folder and every file in it will be deleted too.'**
+  /// **'Its folder and every file in it will be deleted too, unless a fork of it still uses the folder.'**
   String get sessionListDeleteFolderNotice;
 
   /// No description provided for @sessionListDeleted.
@@ -5628,6 +5628,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead.'**
   String get sessionDetailEditMidTurnBody;
+
+  /// Explains why a message sent mid-turn cannot be edited, in a session that can fork, where the explanation also offers Fork from here.
+  ///
+  /// In en, this message translates to:
+  /// **'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead, or fork from here to send it again in a new session.'**
+  String get sessionDetailEditMidTurnForkBody;
+
+  /// Quiet line above the oldest message of a session forked from another one; tapping it goes back to that session.
+  ///
+  /// In en, this message translates to:
+  /// **'Forked from {title}'**
+  String transcriptForkedFrom(String title);
+
+  /// Quiet line above the oldest message of a session forked from a session that had no title.
+  ///
+  /// In en, this message translates to:
+  /// **'Forked from an untitled session'**
+  String get transcriptForkedFromUntitled;
 
   /// Title of the explanation shown when Edit and resend is tapped on a command, skill or MCP prompt.
   ///

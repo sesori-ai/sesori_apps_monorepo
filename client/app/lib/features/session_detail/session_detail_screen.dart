@@ -114,6 +114,33 @@ class const _MobileSessionDetailBody({
   required final String? sessionTitle,
   required final bool readOnly,
 }) extends StatelessWidget {
+  /// The page for a session this one links to, such as a handoff's or a
+  /// fork's origin. A live session opens live, even from the archive.
+  AppRoute _linkedSessionRoute({
+    required String projectId,
+    required String sessionId,
+    required String? sessionTitle,
+    required bool readOnly,
+  }) {
+    // A handoff can name a session in another project, whose name this screen doesn't know.
+    final linkedProjectName = projectId == this.projectId ? projectName : null;
+    return auditView && readOnly
+        ? AppRoute.archivedSessionDetail(
+            projectId: projectId,
+            projectName: linkedProjectName,
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+          )
+        : AppRoute.sessionDetail(
+            projectId: projectId,
+            projectName: linkedProjectName,
+            sessionId: sessionId,
+            readOnly: readOnly,
+            sessionTitle: sessionTitle,
+            fromLaunch: false,
+          );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isPane = SessionSidebarShell.layoutOf(context) == SessionShellLayout.pane;
@@ -149,34 +176,27 @@ class const _MobileSessionDetailBody({
       openHarnessSettings: () => context.pushRoute(
         const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
       ),
-      openSession:
-          ({
-            required projectId,
-            required sessionId,
-            required sessionTitle,
-            required readOnly,
-          }) {
-            // A handoff can name a session in another project, whose name this screen doesn't know.
-            final linkedProjectName = projectId == this.projectId ? projectName : null;
-            // A live session a handoff names opens live, even from the archive.
-            context.pushRoute(
-              auditView && readOnly
-                  ? AppRoute.archivedSessionDetail(
-                      projectId: projectId,
-                      projectName: linkedProjectName,
-                      sessionId: sessionId,
-                      sessionTitle: sessionTitle,
-                    )
-                  : AppRoute.sessionDetail(
-                      projectId: projectId,
-                      projectName: linkedProjectName,
-                      sessionId: sessionId,
-                      readOnly: readOnly,
-                      sessionTitle: sessionTitle,
-                      fromLaunch: false,
-                    ),
-            );
-          },
+      openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+          context.pushRoute(
+            _linkedSessionRoute(
+              projectId: projectId,
+              sessionId: sessionId,
+              sessionTitle: sessionTitle,
+              readOnly: readOnly,
+            ),
+          ),
+      returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+          returnToSessionRoute(
+            context: context,
+            projectId: projectId,
+            sessionId: sessionId,
+            route: _linkedSessionRoute(
+              projectId: projectId,
+              sessionId: sessionId,
+              sessionTitle: sessionTitle,
+              readOnly: readOnly,
+            ),
+          ),
       child: SessionDetailBody(
         projectId: projectId,
         sessionId: sessionId,

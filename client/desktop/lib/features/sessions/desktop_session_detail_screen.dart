@@ -30,6 +30,9 @@ class const DesktopSessionDetailScreen({
   required final void Function({required String parentSessionId}) onOpenParentSession,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
+
+  /// Goes back to a session the reader came from, such as a fork's origin.
+  required final SessionDetailSessionReturner onReturnToSession,
   required final VoidCallback onOpenHarnessSettings,
   required final VoidCallback onOpenBridgeSettings,
   required final SessionListActionDispatcher sessionActions,
@@ -82,6 +85,7 @@ class const DesktopSessionDetailScreen({
               onOpenParentSession: onOpenParentSession,
               onShowDiffs: onShowDiffs,
               onOpenSession: onOpenSession,
+              onReturnToSession: onReturnToSession,
               onOpenHarnessSettings: onOpenHarnessSettings,
               onOpenBridgeSettings: onOpenBridgeSettings,
               sessionActions: sessionActions,
@@ -145,6 +149,9 @@ class const DesktopSessionDetailView({
   required final void Function({required String parentSessionId}) onOpenParentSession,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
+
+  /// Goes back to a session the reader came from, such as a fork's origin.
+  required final SessionDetailSessionReturner onReturnToSession,
   required final VoidCallback onOpenHarnessSettings,
   required final VoidCallback onOpenBridgeSettings,
   required final SessionListActionDispatcher sessionActions,
@@ -179,6 +186,7 @@ class const DesktopSessionDetailView({
         canShareImages: canShareImages,
         openExternalLink: openDesktopExternalLink,
         openSession: onOpenSession,
+        returnToSession: onReturnToSession,
         openHarnessSettings: onOpenHarnessSettings,
         openBridgeSettings: onOpenBridgeSettings,
         openSideChat: openSideChat,

@@ -15,6 +15,7 @@ import "../../../extensions/build_context_x.dart";
 import "assistant_message_card.dart";
 import "error_message_card.dart";
 import "follow_detach_scrollable.dart";
+import "forked_from_row.dart";
 import "handoff_card.dart";
 import "handoff_marker_row.dart";
 import "jump_to_edge_pill.dart";
@@ -139,14 +140,26 @@ class const SessionDetailMessageList({
   required final void Function({required Offset focalPoint}) onPinchIn,
 
   /// Edit and resend on a user message, with why it cannot be edited, or null
-  /// when it can. Null when the session offers no edit.
-  required final void Function({required MessageWithParts message, required MessageEditRefusal? refusal})?
+  /// when it can, and the message's Fork from here, or null where it offers
+  /// none. Null when the session offers no edit.
+  required final void Function({
+    required MessageWithParts message,
+    required MessageEditRefusal? refusal,
+    required VoidCallback? onFork,
+  })?
   onEditMessage,
 
   /// "Fork from here" at [point]. [ownMessage] is the user message it was
   /// asked from, whose text and attachments go to the fork's composer, or
   /// null for an agent reply. Null when the session offers no fork.
   required final void Function({required ForkPoint point, required MessageWithParts? ownMessage})? onForkMessage,
+
+  /// Where this session was forked from, shown above its oldest message once
+  /// that is loaded, or null when it is not a fork.
+  required final SessionForkOrigin? forkedFrom,
+
+  /// Goes back to the session [forkedFrom] names.
+  required final void Function({required String sessionId, required String? sessionTitle}) onOpenForkOrigin,
 
   /// The user message the composer is editing, which stands out, or null.
   required final String? editingMessageId,
@@ -249,6 +262,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// Synthetic id for the launch's first message, the oldest transient row. A
   /// session has at most one, so it is never matched against echoes.
   static const _kLaunchRowId = "session-detail-launch-row";
+
+  /// Synthetic id for a fork's "Forked from" line, the oldest row once the
+  /// start of the transcript is loaded.
+  static const _kForkedFromRowId = "session-detail-forked-from-row";
   static const _kPromptRowPrefix = "session-detail-prompt-";
 
   /// Distance from the oldest edge at which the next older page starts
@@ -1030,11 +1047,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<String> pendingPromptRowIds,
     required String? wakingPromptRowId,
     required bool hasLaunchRow,
+    required bool hasForkedFromRow,
   }) {
     // The prompt that woke the session is answered first, so its working row
     // follows it, as it will follow its message.
     final wakingEnd = wakingPromptRowId == null ? 0 : pendingPromptRowIds.indexOf(wakingPromptRowId) + 1;
     final entries = <String>[
+      if (hasForkedFromRow) _kForkedFromRowId,
       ...messageRows,
       // Where the first message's echo lands, above the working row.
       if (hasLaunchRow) _kLaunchRowId,
@@ -1242,6 +1261,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       pendingPromptRowIds: pendingPromptRowIds,
       wakingPromptRowId: wakingPromptRowId,
       hasLaunchRow: hasLaunchRow,
+      // Above the oldest message, so only once no older page is left.
+      hasForkedFromRow: widget.forkedFrom != null && widget.onLoadOlderMessages == null,
     );
     final previousRowIndexById = _rowIndexById;
     final previousRowIds = previousRowIndexById.keys.toList();
@@ -1517,6 +1538,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               RetryErrorMessageCard(key: const ValueKey("session-detail-retry-error"), message: retryErrorMessage),
           ],
         ),
+      );
+    }
+    if ((entryId, widget.forkedFrom) case (_kForkedFromRowId, final origin?)) {
+      return _revealable(
+        createdAtMs: null,
+        child: ForkedFromRow(origin: origin, onOpenOrigin: widget.onOpenForkOrigin),
       );
     }
     if (entryId == _kWorkingRowId) {
@@ -1879,37 +1906,41 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// A user message's bubble, registered where it is so its pin can stand in
   /// for it.
-  Widget _userMessage({required MessageWithParts message, required Duration? outlineFade}) => TranscriptPromptSlot(
-    openerId: message.info.id,
-    registry: _promptSlots,
-    child: UserMessageCard(
-      message: message,
-      shape: _messageShape(messageId: message.info.id),
-      outlineFade: outlineFade,
-      editing: widget.editingMessageId == message.info.id,
-      onEdit: switch (widget.onEditMessage) {
-        null => null,
-        // The running turn offers no edit until it finishes, and the message
-        // being edited none over the changes the composer holds.
-        _ when widget.editingMessageId == message.info.id => null,
-        _ when widget.isBusy && _turns.inNewestTurn(messageId: message.info.id) => null,
-        final onEdit => () => onEdit(
-          message: message,
-          refusal: _turns.editRefusal(
-            messageId: message.info.id,
-            shape: _messageShape(messageId: message.info.id),
+  Widget _userMessage({required MessageWithParts message, required Duration? outlineFade}) {
+    final onFork = switch ((
+      widget.onForkMessage,
+      _turns.userMessageForkPoint(messageId: message.info.id, working: widget.isBusy),
+    )) {
+      (final onFork?, final point?) => () => onFork(point: point, ownMessage: message),
+      _ => null,
+    };
+    return TranscriptPromptSlot(
+      openerId: message.info.id,
+      registry: _promptSlots,
+      child: UserMessageCard(
+        message: message,
+        shape: _messageShape(messageId: message.info.id),
+        outlineFade: outlineFade,
+        editing: widget.editingMessageId == message.info.id,
+        onEdit: switch (widget.onEditMessage) {
+          null => null,
+          // The running turn offers no edit until it finishes, and the message
+          // being edited none over the changes the composer holds.
+          _ when widget.editingMessageId == message.info.id => null,
+          _ when widget.isBusy && _turns.inNewestTurn(messageId: message.info.id) => null,
+          final onEdit => () => onEdit(
+            message: message,
+            refusal: _turns.editRefusal(
+              messageId: message.info.id,
+              shape: _messageShape(messageId: message.info.id),
+            ),
+            onFork: onFork,
           ),
-        ),
-      },
-      onFork: switch ((
-        widget.onForkMessage,
-        _turns.userMessageForkPoint(messageId: message.info.id, working: widget.isBusy),
-      )) {
-        (final onFork?, final point?) => () => onFork(point: point, ownMessage: message),
-        _ => null,
-      },
-    ),
-  );
+        },
+        onFork: onFork,
+      ),
+    );
+  }
 
   /// A handoff's marker or card in place of its prompt's bubble, or null for
   /// any other prompt. The card carries on from the queued card's row, so the

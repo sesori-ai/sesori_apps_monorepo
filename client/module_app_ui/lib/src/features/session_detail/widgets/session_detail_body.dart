@@ -48,7 +48,7 @@ typedef SessionDetailHeaderBuilder = Widget Function({
 
 /// The session's own actions for the glass bar's menu, built with the page so
 /// More can hide when there are none. [isBusy] is whether the session works
-/// right now; [canFork] whether its harness forks it.
+/// right now; [canFork] whether its menu offers Fork: a top-level session whose harness forks.
 typedef SessionDetailMenuEntriesBuilder = List<PregoMenuEntry> Function({
   required BuildContext context,
   required Session session,

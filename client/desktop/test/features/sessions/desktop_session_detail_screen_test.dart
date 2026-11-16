@@ -299,6 +299,12 @@ void main() {
               return _MockImageClipboard();
             },
             child: DesktopSessionDetailView(
+              onReturnToSession: ({
+                required projectId,
+                required sessionId,
+                required sessionTitle,
+                required readOnly,
+              }) {},
               onOpenHarnessSettings: () {},
               onOpenBridgeSettings: () {},
               projectId: "project-1",
@@ -428,6 +434,12 @@ void main() {
             home: _composerScope(
               imageClipboard: _MockImageClipboard.new,
               child: DesktopSessionDetailView(
+                onReturnToSession: ({
+                  required projectId,
+                  required sessionId,
+                  required sessionTitle,
+                  required readOnly,
+                }) {},
                 onOpenHarnessSettings: () {},
                 onOpenBridgeSettings: () {},
                 projectId: "project-1",
@@ -546,6 +558,7 @@ void main() {
         imageClipboard: _MockImageClipboard.new,
         child: DesktopSessionDetailView(
           key: key,
+          onReturnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
           onOpenHarnessSettings: () {},
           onOpenBridgeSettings: () {},
           projectId: "project-1",

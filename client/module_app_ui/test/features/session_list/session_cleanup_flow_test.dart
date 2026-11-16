@@ -388,7 +388,10 @@ void main() {
         await pumpDeleteButton(tester: tester, target: session, deleteConfirmation: confirmation);
 
         expect(find.text("Its worktree will be deleted too. The branch is kept."), findsNothing);
-        expect(find.text("Its folder and every file in it will be deleted too."), findsNothing);
+        expect(
+          find.text("Its folder and every file in it will be deleted too, unless a fork of it still uses the folder."),
+          findsNothing,
+        );
         await tester.tap(find.byKey(sessionDeleteConfirmKey));
         await tester.pumpAndSettle();
         verify(
@@ -399,7 +402,10 @@ void main() {
       testWidgets("the ${confirmation.name} says a No project session's folder goes, and deletes it", (tester) async {
         await pumpDeleteButton(tester: tester, target: session, deleteConfirmation: confirmation, noProject: true);
 
-        expect(find.text("Its folder and every file in it will be deleted too."), findsOneWidget);
+        expect(
+          find.text("Its folder and every file in it will be deleted too, unless a fork of it still uses the folder."),
+          findsOneWidget,
+        );
         await tester.tap(find.byKey(sessionDeleteConfirmKey));
         await tester.pumpAndSettle();
         verify(

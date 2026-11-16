@@ -107,6 +107,7 @@ Widget _buildApp({
         builder: (context, state) => BlocProvider<SessionDetailCubit>.value(
           value: cubit,
           child: SessionDetailPresentationScope(
+            returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
             openHarnessSettings: onOpenHarnessSettings ?? () {},
             openBridgeSettings: onOpenBridgeSettings ?? () {},
             openSideChat: openSideChat,

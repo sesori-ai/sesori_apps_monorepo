@@ -18,6 +18,7 @@ class _MockImageSharer() extends Mock implements ImageSharer;
 
 Widget _presentationScope({required BuildContext context, required Widget child}) {
   return SessionDetailPresentationScope(
+    returnToSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
     openHarnessSettings: () {},
     openBridgeSettings: () {},
     openSideChat: null,
