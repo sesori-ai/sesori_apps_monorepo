@@ -165,7 +165,7 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
   /// connection pill moves aside with it.
   void _coverPage() {
     if (_isCurrentPage) {
-      _cover.cover(by: this, width: (DesktopSideChatPanelHost.width + _inset) * _shown.value);
+      _cover.cover(by: this, width: DesktopSideChatPanelHost.width + _inset, shown: _shown.value);
     } else {
       _cover.release(by: this);
     }

@@ -1114,6 +1114,45 @@ void main() {
         expect(tester.getRect(pill), resting);
       });
 
+      testWidgets("in the narrowest window the pill heads for the middle, over the panel's top, to stay in view", (
+        tester,
+      ) async {
+        await pumpPage(
+          tester,
+          session: root,
+          initialState: sideChatState(),
+          connection: const ConnectionOverlayState.connectionLost(),
+        );
+        await tester.binding.setSurfaceSize(const Size(560, 800));
+        await tester.pump();
+        final pill = find.byKey(const Key("desktop-connection-pill"));
+        final resting = tester.getRect(pill);
+        expect(resting.right, 560 - PregoSpacing.xl);
+
+        await tester.tap(find.byKey(ComposerOptionsAccordion.sideQuestionButtonKey));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 80));
+        // On its way it moves with the panel rather than jumping.
+        final moving = tester.getRect(pill);
+        expect(moving.left, lessThan(resting.left));
+        expect(moving.center.dx, greaterThan(280));
+
+        await tester.pump(const Duration(milliseconds: 220));
+        final settled = tester.getRect(pill);
+        expect(settled.center.dx, moreOrLessEquals(280));
+        expect(settled.left, greaterThanOrEqualTo(0));
+        expect(settled.right, lessThanOrEqualTo(560));
+        await tester.tap(find.text("Reconnect"));
+        verify(overlay.reconnect).called(1);
+
+        // The panel's close button stays clear of it.
+        await tester.tap(find.descendant(of: panel, matching: find.byIcon(TablerRegular.x)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(panel, findsNothing);
+        expect(tester.getRect(pill), resting);
+      });
+
       testWidgets("a subtask pushed over the open panel takes the pill back, and returning hands it over again", (
         tester,
       ) async {

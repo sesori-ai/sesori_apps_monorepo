@@ -55,6 +55,8 @@ class const DesktopConnectionPill({super.key}) extends StatelessWidget {
       // Retained fade-out content must neither intercept clicks nor re-announce.
       layoutBuilder: (current, previous) => Stack(
         alignment: AlignmentDirectional.topEnd,
+        // Its shadow reaches past it.
+        clipBehavior: Clip.none,
         children: [
           for (final child in previous) IgnorePointer(child: ExcludeSemantics(child: child)),
           ?current,
@@ -66,29 +68,40 @@ class const DesktopConnectionPill({super.key}) extends StatelessWidget {
               key: ValueKey(state.runtimeType),
               container: true,
               liveRegion: true,
-              child: Material(
-                key: const Key("desktop-connection-pill"),
-                color: colors.bgSecondary,
-                shape: StadiumBorder(side: BorderSide(color: colors.borderSecondary)),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.sm),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        state is ConnectionOverlayBridgeOffline ? TablerRegular.broadcast_off : TablerRegular.cloud_off,
-                        size: PregoIconSize.md,
-                        color: foreground,
-                      ),
-                      const SizedBox(width: PregoSpacing.sm),
-                      Flexible(
-                        child: Text(title, style: context.prego.textTheme.textSm.medium.copyWith(color: foreground)),
-                      ),
-                      if (failed) ...[
+              // A layer floating over the page, so it reads on top of whatever
+              // it crosses, such as a side panel's header buttons. It fades
+              // and moves with the pill.
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  shape: const StadiumBorder(),
+                  shadows: colors.brightness == .dark ? _liftDark : _liftLight,
+                ),
+                child: Material(
+                  key: const Key("desktop-connection-pill"),
+                  color: colors.bgSecondary,
+                  shape: StadiumBorder(side: BorderSide(color: colors.borderSecondary)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.sm),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          state is ConnectionOverlayBridgeOffline
+                              ? TablerRegular.broadcast_off
+                              : TablerRegular.cloud_off,
+                          size: PregoIconSize.md,
+                          color: foreground,
+                        ),
                         const SizedBox(width: PregoSpacing.sm),
-                        TextButton(onPressed: overlay.reconnect, child: Text(context.loc.connectionLostReconnect)),
+                        Flexible(
+                          child: Text(title, style: context.prego.textTheme.textSm.medium.copyWith(color: foreground)),
+                        ),
+                        if (failed) ...[
+                          const SizedBox(width: PregoSpacing.sm),
+                          TextButton(onPressed: overlay.reconnect, child: Text(context.loc.connectionLostReconnect)),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -96,3 +109,9 @@ class const DesktopConnectionPill({super.key}) extends StatelessWidget {
     );
   }
 }
+
+/// Sized down from the side-chat panel's lift. The theme's own shadows are
+/// clear in dark mode, so dark lifts on black.
+const List<BoxShadow> _liftDark = [BoxShadow(color: Color(0x80000000), offset: Offset(0, 4), blurRadius: 12)];
+
+const List<BoxShadow> _liftLight = [BoxShadow(color: Color(0x29000000), offset: Offset(0, 4), blurRadius: 12)];
