@@ -107,6 +107,10 @@ final class ClaudeSessionProcessRepository({
   /// long for a quick answer, so the ask is cancelled sooner.
   static const Duration _sideQuestionTimeout = Duration(minutes: 3);
 
+  /// The CLI ends an interrupted turn within milliseconds of acknowledging the
+  /// interrupt (observed on 2.1.325); this only bounds a CLI that never does.
+  static const Duration _interruptSettleTimeout = Duration(seconds: 2);
+
   final Map<String, String> _environment = Map.unmodifiable(environment);
   final Map<String, _ResidentProcess> _resident = {};
   final Map<String, Future<void>> _connecting = {};
@@ -494,11 +498,30 @@ final class ClaudeSessionProcessRepository({
     }
   }
 
-  Future<void> interrupt({required String sessionId}) async {
+  /// Interrupts the session's work. With [awaitTurnEnd] it also waits, within
+  /// [_interruptSettleTimeout], for the running turn to end: the CLI
+  /// acknowledges the interrupt before it writes the turn's interrupt record
+  /// and result, so a teardown right after the acknowledgement would drop the
+  /// record a user Stop's stopped row comes from. A turn the CLI started on
+  /// its own (a wakeup, a task report) has no pending turn here, so the caller
+  /// passes its end as [selfStartedTurnEnd].
+  Future<void> interrupt({
+    required String sessionId,
+    required bool awaitTurnEnd,
+    required Future<void>? selfStartedTurnEnd,
+  }) async {
     final process = _resident[sessionId];
     if (process == null) return;
     process.interrupted = true;
     await process.client.sendControlRequest(subtype: "interrupt", params: const {"cancel_queued": true});
+    if (!awaitTurnEnd) return;
+    final running = [
+      for (final pending in process.pendingTurns)
+        if (pending.started && !pending.settled) pending.outcome.future,
+      ?selfStartedTurnEnd,
+    ];
+    if (running.isEmpty) return;
+    await Future.wait(running).timeout(_interruptSettleTimeout, onTimeout: () => const []);
   }
 
   Future<void> teardown({required String sessionId}) async {

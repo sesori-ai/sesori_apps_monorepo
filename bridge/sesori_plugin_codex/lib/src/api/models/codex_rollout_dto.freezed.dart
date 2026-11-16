@@ -1294,10 +1294,11 @@ $CodexRolloutErrorDtoCopyWith<$Res>? get error {
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutTurnAbortedEventDto implements CodexRolloutEventDto {
-  const CodexRolloutTurnAbortedEventDto({@JsonKey(name: "turn_id") required this.turnId,  String? $type}): $type = $type ?? 'turn_aborted';
+  const CodexRolloutTurnAbortedEventDto({@JsonKey(name: "turn_id") required this.turnId, @JsonKey(unknownEnumValue: CodexRolloutTurnAbortReason.unknown) required this.reason,  String? $type}): $type = $type ?? 'turn_aborted';
   factory CodexRolloutTurnAbortedEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnAbortedEventDtoFromJson(json);
 
 @JsonKey(name: "turn_id") final  String? turnId;
+@JsonKey(unknownEnumValue: CodexRolloutTurnAbortReason.unknown) final  CodexRolloutTurnAbortReason? reason;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1313,18 +1314,18 @@ $CodexRolloutTurnAbortedEventDtoCopyWith<CodexRolloutTurnAbortedEventDto> get co
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnAbortedEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnAbortedEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,turnId);
+    return Object.hash(runtimeType,turnId,reason);
 }
 
 @override
 String toString() {
-    return 'CodexRolloutEventDto.turnAborted(turnId: $turnId)';
+    return 'CodexRolloutEventDto.turnAborted(turnId: $turnId, reason: $reason)';
 }
 
 
@@ -1335,7 +1336,7 @@ abstract mixin class $CodexRolloutTurnAbortedEventDtoCopyWith<$Res> implements $
   factory $CodexRolloutTurnAbortedEventDtoCopyWith(CodexRolloutTurnAbortedEventDto value, $Res Function(CodexRolloutTurnAbortedEventDto) _then) = _$CodexRolloutTurnAbortedEventDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "turn_id") String? turnId
+@JsonKey(name: "turn_id") String? turnId,@JsonKey(unknownEnumValue: CodexRolloutTurnAbortReason.unknown) CodexRolloutTurnAbortReason? reason
 });
 
 
@@ -1352,10 +1353,11 @@ class _$CodexRolloutTurnAbortedEventDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutEventDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? turnId = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? turnId = freezed,Object? reason = freezed,}) {
   return _then(CodexRolloutTurnAbortedEventDto(
 turnId: freezed == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as CodexRolloutTurnAbortReason?,
   ));
 }
 

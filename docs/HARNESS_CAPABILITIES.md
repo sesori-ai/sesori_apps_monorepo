@@ -664,12 +664,21 @@ app ignores `kind` and shows the row's text in red.
 | OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
 | OMP | ✅ The shared ACP plugin's line, as below. | ⚠️ OMP's "Interrupted by user", which it records only for a stopped reply that produced nothing; it folds into the live line. A reply that streamed first keeps its line only until the history is re-read. |
 | Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ✅ The shared ACP plugin marks a turn the user's Stop cancelled, when the harness ends it with `stopReason: cancelled`. | ⚠️ They record no stop, so the line shows only until the history is re-read. |
-| Claude Code | ⬜ | ⬜ |
-| Codex | ⬜ | ⬜ |
+| Claude Code | ✅ The CLI's `[Request interrupted by user]` record (`… for tool use` when a tool was cut off), streamed before the turn's result. | ✅ The same record, by its uuid; the CLI's `<synthetic>` "No response requested." reply after it is hidden. |
+| Codex | ✅ `turn/completed` `interrupted` for a turn a Stop interrupted, keyed by the turn id. | ✅ Rollout `turn_aborted` with reason `interrupted`, keyed by its turn id. |
 
 Pi and OpenCode do not tell a user Stop from another abort of the turn, so any abort they record reads Stopped.
 OpenCode v2 (2.2.7 source) records the same `aborted` error when the user declines a permission, which ends the turn
 too.
+
+Codex (0.169.0) records the interrupt a bridge shutdown sends the same way as a user Stop, so such a turn reads Stopped
+after a reload although it showed no Stopped line live. Claude Code (2.1.325) does too when the CLI writes its interrupt
+record before the shutdown ends the process, which a shutdown does not wait for. A Claude Code Stop waits up to 2
+seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds,
+including for a turn the CLI started on its own, such as a wakeup.
+
+Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so that text
+shows live but is gone after a reload, leaving the Stopped line directly under the prompt. Claude Code keeps it.
 
 On the ACP harnesses a shutdown, a plugin restart or a follow-up that replaces the running turn cancels it without a
 Stopped line, and so does a Stop that lands before the prompt reached the agent. A turn that already showed a failed-turn

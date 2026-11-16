@@ -1026,8 +1026,9 @@ final class ClaudePlugin({
       // Between an acknowledged interrupt and the interrupted turn's result the
       // CLI can still stream that turn's output; a full stop tears the process
       // down, a main-agent-only stop keeps it, so assistant output is dropped
-      // here. User echoes still render (they are the prompt's transcript identity)
-      // and so do forwarded sub-agent frames, which belong to the kept work.
+      // here. User echoes still render (they are the prompt's transcript identity,
+      // and the CLI's interrupt record becomes the turn's stopped row) and so do
+      // forwarded sub-agent frames, which belong to the kept work.
       if (interrupted) {
         if (message
             case ClaudeAssistantMessage(parentToolUseId: null) || ClaudeStreamEventMessage(parentToolUseId: null)) {
