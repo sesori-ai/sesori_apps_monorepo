@@ -353,8 +353,10 @@ reconnect or restart.
   bridge's own `/compact` bubble, while distinct compactions, which never
   share a time, stay apart. A compaction row is no neighbour in any other
   row's context, so the live prompt and reply around a live-only compaction
-  row (DeepSeek, OMP, Hermes's `/compress` and session split) still pair with their replayed
-  rows and the row stays between them, without duplicating the turn. Grok's
+  row (DeepSeek, OMP, Hermes's `/compress`) still pair with their replayed
+  rows and the row stays between them, without duplicating the turn. Hermes's
+  live-only session-split row follows its turn's reply and stays after it the
+  same way. Grok's
   replay names its compaction rows as the live mapper does, so exact identity
   keeps one row across every re-import; Hermes's replayed summary row is named
   by its position in the replay.
