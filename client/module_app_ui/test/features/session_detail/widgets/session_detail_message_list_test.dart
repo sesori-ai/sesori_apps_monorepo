@@ -6459,22 +6459,22 @@ void main() {
       expect(_position(tester).pixels, 0);
     });
 
-    testWidgets("an accepted edit's prompt rises as its removals fold, so the rows above settle in one move", (
-      tester,
-    ) async {
+    /// Removes the edited rows and parks the accepted edit in one frame, as
+    /// they reach the client together, then marks the session busy on
+    /// [busyFrame] (-1 for together) and echoes the prompt on frame 3.
+    Future<void> editAndSettle(WidgetTester tester, {required int busyFrame}) async {
       final harness = await pump(tester);
       final text = _multilineText(label: "Edited", lines: 8);
       final tops = <double>[];
 
-      // The bridge removes the rows, starts the turn and accepts the edit
-      // together; the harness echoes the prompt some frames later.
       harness
         ..removeMessage("user-10")
         ..removeMessage("user-11")
-        ..setBusy(true)
         ..parkAccepted(_textSubmission(promptId: "prm_edit", text: text));
+      if (busyFrame < 0) harness.setBusy(true);
       await tester.pump();
       for (var frame = 0; frame < 20; frame++) {
+        if (frame == busyFrame) harness.setBusy(true);
         if (frame == 3) {
           harness.echoParked(
             promptId: "prm_edit",
@@ -6500,7 +6500,17 @@ void main() {
       expect(_messageKey("user-11"), findsNothing);
       expect(find.textContaining("Edited line 0"), findsOneWidget);
       expect(_position(tester).pixels, 0);
-    });
+    }
+
+    testWidgets(
+      "an accepted edit's prompt rises as its removals fold, so the rows above settle in one move",
+      (tester) => editAndSettle(tester, busyFrame: -1),
+    );
+
+    testWidgets(
+      "an accepted edit's working row rises with its prompt, so a busy status coming later moves nothing back",
+      (tester) => editAndSettle(tester, busyFrame: 2),
+    );
 
     testWidgets("comes back if its message does before it has folded", (tester) async {
       final harness = await pump(tester);

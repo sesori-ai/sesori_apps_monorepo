@@ -3689,7 +3689,7 @@ class SessionDetailCubit(
             agentModel: agentModel,
             fastMode: current.runsFastMode,
           ),
-          since: _clock(),
+          since: null,
           epoch: ++_parkEpoch,
         );
         _emitQueueUpdate();
