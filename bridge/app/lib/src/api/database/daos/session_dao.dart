@@ -480,6 +480,24 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
+  /// Marks [sessionId] as started by [scheduledTaskId]'s run, with the task's
+  /// approval mode as its override. A task deleted while its run was creating
+  /// the session leaves it an ordinary session, instead of failing the
+  /// binding of a session the harness already created.
+  Future<void> setScheduledRun({
+    required String sessionId,
+    required String scheduledTaskId,
+    required SessionApprovalMode approvalOverride,
+  }) {
+    return transaction(() async {
+      final tasks = attachedDatabase.scheduledTasksTable;
+      final task = await (select(tasks)..where((row) => row.id.equals(scheduledTaskId))).getSingleOrNull();
+      await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
+        SessionTableCompanion(scheduledTaskId: Value(task?.id), approvalOverride: Value(approvalOverride)),
+      );
+    });
+  }
+
   Future<void> setParentSessionId({required String sessionId, required String parentSessionId}) async {
     await (update(sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
       SessionTableCompanion(parentSessionId: Value(parentSessionId)),

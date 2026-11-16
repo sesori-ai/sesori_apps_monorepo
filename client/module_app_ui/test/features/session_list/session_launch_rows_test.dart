@@ -138,6 +138,8 @@ void main() {
                               onSessionArchived: null,
                               onSessionDeleted: null,
                               onSessionMarkedUnread: null,
+                              openSession: _openNothing,
+                              createSessionSearch: _searchNothing,
                             ),
                             createActions: ({required window}) => throw StateError("no row to act on"),
                             selectedSessionId: null,
@@ -259,3 +261,11 @@ void main() {
     }
   }
 }
+
+void _openNothing({required String projectId, required String projectName, required Session session}) {}
+
+SessionSearchCubit _searchNothing({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) => throw UnimplementedError("These tests do not send sessions");
