@@ -61,6 +61,21 @@ void main() {
       expect(pageSafeArea(), 34);
     });
 
+    testWidgets("with reduced motion, lands on the live keyboard without easing", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final closed = await holdWithKeyboard(tester);
+      closed.complete();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 450));
+      expect(pageKeyboard(), 300);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(pageKeyboard(), 0);
+    });
+
     testWidgets("follows a keyboard that comes back as the sheet closes", (tester) async {
       final closed = await holdWithKeyboard(tester);
       closed.complete();

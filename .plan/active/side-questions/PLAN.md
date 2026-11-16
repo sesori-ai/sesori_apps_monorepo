@@ -607,7 +607,9 @@ switches it into side-question mode.
   "Thinking…" until the whole answer arrives at once (no harness streams side
   answers; see Behaviour).
 - **The `/` picker.** On `available` sessions, the command picker also lists a
-  Sesori row, "btw: ask a side question", above the harness's commands.
+  Sesori row, "btw: ask a side question", above the harness's commands; once
+  a search is typed it follows the matching commands, so Enter keeps picking
+  the best command match.
   Picking it enters the same mode and keeps whatever the field already holds,
   so no typed words are lost. While a command or images are staged, neither
   way enters the mode and the row is hidden, because a side question takes

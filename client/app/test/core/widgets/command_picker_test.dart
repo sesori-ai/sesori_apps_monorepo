@@ -122,7 +122,9 @@ void main() {
     expect(tester.getTopLeft(find.text("/deploy")).dy, lessThan(tester.getTopLeft(find.text("/release")).dy));
   });
 
-  testWidgets("a session that asks side questions leads with Sesori's /btw row", (tester) async {
+  testWidgets("a session that asks side questions leads with Sesori's /btw row, after a search's matches", (
+    tester,
+  ) async {
     var asked = 0;
     await tester.pumpWidget(_buildApp(commands: _commands(), onSelected: (_) {}, onSideQuestion: () => asked++));
     await _openPicker(tester: tester);
@@ -135,6 +137,11 @@ void main() {
     await tester.enterText(find.byType(TextField), "release");
     await tester.pump();
     expect(find.text("/btw"), findsNothing);
+
+    // A search keeps the best command match on top, where Enter picks it.
+    await tester.enterText(find.byType(TextField), "s");
+    await tester.pump();
+    expect(tester.getTopLeft(find.text("/deploy")).dy, lessThan(tester.getTopLeft(find.text("/btw")).dy));
 
     await tester.enterText(find.byType(TextField), "BTW");
     await tester.pump();

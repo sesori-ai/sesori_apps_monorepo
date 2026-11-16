@@ -71,7 +71,13 @@ class const SideChatKeyboardHold({super.key, required final Widget child}) exten
 
 class _SideChatKeyboardHoldState() extends State<SideChatKeyboardHold> with SingleTickerProviderStateMixin {
   /// 1 while held, easing to 0 once the sheet closes.
-  late final AnimationController _hold = AnimationController(vsync: this, duration: _releaseDuration);
+  // Preserved under reduced motion, which would otherwise cut the hold short;
+  // the reduced-motion curve already lands without easing.
+  late final AnimationController _hold = AnimationController(
+    vsync: this,
+    duration: _releaseDuration,
+    animationBehavior: AnimationBehavior.preserve,
+  );
   double _held = 0;
 
   /// The first 480 ms outlast a returning keyboard's rise (about 450 ms on
@@ -80,12 +86,16 @@ class _SideChatKeyboardHoldState() extends State<SideChatKeyboardHold> with Sing
   static const _releaseDuration = Duration(milliseconds: 800);
   static const _releaseCurve = Interval(0.6, 1, curve: Curves.easeInOut);
 
+  /// With reduced motion the page lands on the live keyboard at once.
+  static const _reducedMotionReleaseCurve = Threshold(0.6);
+
   void _holdUntil({required Future<void> closed}) {
     _held = MediaQuery.viewInsetsOf(context).bottom;
     _hold.value = 1;
     unawaited(
       closed.whenComplete(() {
-        if (mounted) _hold.animateBack(0, curve: _releaseCurve);
+        if (!mounted) return;
+        _hold.animateBack(0, curve: prefersReducedMotion(context) ? _reducedMotionReleaseCurve : _releaseCurve);
       }),
     );
   }

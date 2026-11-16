@@ -115,8 +115,8 @@ class _DesktopSideChatPanelHostState() extends State<DesktopSideChatPanelHost> w
   }) {
     // Opened again while it shows or slides away, the panel keeps its chat,
     // unless a question from the composer asks for a new one.
-    if (_opening == null) _focusBeforeOpening = FocusManager.instance.primaryFocus;
     if (_opening == null || initialQuestion != null) {
+      _focusBeforeOpening = FocusManager.instance.primaryFocus;
       setState(
         () => _opening = (
           key: ValueKey(_openings++),

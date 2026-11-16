@@ -228,11 +228,12 @@ void main() {
       expect((cubit.state as SideChatReady).ask, const SideQuestionAsk.failed(question: "why?"));
     });
 
-    test("an initial question is asked in a new chat once the chats load", () async {
+    test("an initial question is asked in a new chat at once", () async {
       final exchange = _exchange(id: "e1", answeredAt: 300);
-      answerAsk(
-        () async => ApiResponse.success(AskSideQuestionResponse.answered(sideChatId: "chat-1", exchange: exchange)),
-      );
+      final answer = Completer<ApiResponse<AskSideQuestionResponse>>();
+      answerAsk(() => answer.future);
+      final chats = Completer<ApiResponse<SideChatListResponse>>();
+      when(() => repository.listSideChats(sessionId: any(named: "sessionId"))).thenAnswer((_) => chats.future);
 
       final cubit = createCubit(initialQuestion: "from btw");
       expect(
@@ -244,37 +245,33 @@ void main() {
         ),
         reason: "the sheet opens on the question, not a spinner",
       );
-      await cubit.stream.firstWhere(
-        (state) => state is SideChatReady && state.thread is SideChatExistingThread,
-      );
-
       verify(() => repository.askSideQuestion(sessionId: "session-1", sideChatId: null, question: "from btw"))
           .called(1);
-      expect((cubit.state as SideChatReady).earlierChats, [_newerChat, _olderChat]);
+
+      answer.complete(ApiResponse.success(AskSideQuestionResponse.answered(sideChatId: "chat-1", exchange: exchange)));
+      await cubit.stream.firstWhere((state) => state is SideChatReady && state.thread is SideChatExistingThread);
+      final answered = SideChat(id: "chat-1", exchanges: [exchange]);
+      chats.complete(ApiResponse.success(SideChatListResponse(sideChats: [answered, _newerChat, _olderChat])));
+      await cubit.stream.firstWhere((state) => state is SideChatReady && state.earlierChats.isNotEmpty);
+
+      final state = cubit.state as SideChatReady;
+      expect(state.thread, SideChatThread.existing(chat: answered));
+      expect(state.earlierChats, [_newerChat, _olderChat], reason: "the shown chat isn't also an earlier one");
     });
 
-    test("an initial question waits for a reload after a failed load", () async {
+    test("an initial question stays on screen when the chats fail to load", () async {
       when(
         () => repository.listSideChats(sessionId: any(named: "sessionId")),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-      answerAsk(() async => ApiResponse.error(ApiError.generic()));
+      final answer = Completer<ApiResponse<AskSideQuestionResponse>>();
+      answerAsk(() => answer.future);
       final cubit = createCubit(initialQuestion: "from btw");
-      await cubit.stream.firstWhere((state) => state is SideChatLoadFailed);
-      verifyNever(
-        () => repository.askSideQuestion(
-          sessionId: any(named: "sessionId"),
-          sideChatId: any(named: "sideChatId"),
-          question: any(named: "question"),
-        ),
-      );
+      await pumpEventQueue();
 
-      when(
-        () => repository.listSideChats(sessionId: any(named: "sessionId")),
-      ).thenAnswer((_) async => ApiResponse.success(const SideChatListResponse(sideChats: [])));
-      await cubit.reload();
-
-      verify(() => repository.askSideQuestion(sessionId: "session-1", sideChatId: null, question: "from btw"))
-          .called(1);
+      expect((cubit.state as SideChatReady).ask, const SideQuestionAsk.waiting(question: "from btw"));
+      answer.complete(ApiResponse.error(ApiError.generic()));
+      await pumpEventQueue();
+      expect((cubit.state as SideChatReady).ask, const SideQuestionAsk.failed(question: "from btw"));
     });
 
     test("closing while waiting still reports the result and emits nothing", () async {

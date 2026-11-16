@@ -52,6 +52,11 @@ class _CommandPickerState() extends State<CommandPicker> {
     super.didUpdateWidget(oldWidget);
     // The session refreshed its catalog under the open picker.
     if (!identical(oldWidget.commands, widget.commands)) unawaited(_loadEntries());
+    // The session stopped (or started) offering side questions under it.
+    if ((oldWidget.onSideQuestion == null) != (widget.onSideQuestion == null)) {
+      final entries = _entries;
+      if (entries != null) _rows = _rowsFor(entries: entries);
+    }
   }
 
   Future<void> _loadEntries() async {
@@ -79,21 +84,29 @@ class _CommandPickerState() extends State<CommandPicker> {
 
   /// A cheap `contains` pass over precomputed lowercase haystacks; the sorting
   /// and display strings were prepared in the background isolate.
-  List<PregoPickerSearchRow> _rowsFor({required List<CommandPickerEntry> entries}) => [
-    if (widget.onSideQuestion case final onSideQuestion? when _query.isEmpty || "btw side question".contains(_query))
-      PregoPickerSearchOption(
-        isSelected: false,
-        onPick: onSideQuestion,
-        child: const _SideQuestionLabel(key: CommandPicker.sideQuestionRowKey),
-      ),
-    for (final entry in entries)
-      if (_query.isEmpty || entry.searchText.contains(_query))
-        PregoPickerSearchOption(
-          isSelected: false,
-          onPick: () => widget.onCommandSelected(entry.command),
-          child: _CommandLabel(entry: entry),
-        ),
-  ];
+  ///
+  /// The /btw row leads the full list. Once a search is typed it follows the
+  /// matching commands, so Enter still picks the best command match.
+  List<PregoPickerSearchRow> _rowsFor({required List<CommandPickerEntry> entries}) {
+    final sideQuestion = widget.onSideQuestion != null && (_query.isEmpty || "btw side question".contains(_query))
+        ? PregoPickerSearchOption(
+            isSelected: false,
+            onPick: () => widget.onSideQuestion?.call(),
+            child: const _SideQuestionLabel(key: CommandPicker.sideQuestionRowKey),
+          )
+        : null;
+    return [
+      if (_query.isEmpty) ?sideQuestion,
+      for (final entry in entries)
+        if (_query.isEmpty || entry.searchText.contains(_query))
+          PregoPickerSearchOption(
+            isSelected: false,
+            onPick: () => widget.onCommandSelected(entry.command),
+            child: _CommandLabel(entry: entry),
+          ),
+      if (_query.isNotEmpty) ?sideQuestion,
+    ];
+  }
 
   void _setQuery(String query) => setState(() {
     _query = query;
