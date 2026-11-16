@@ -1,3 +1,6 @@
+import "dart:convert";
+import "dart:io";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:grok_plugin/src/api/models/grok_session_notification_dto.dart";
 import "package:grok_plugin/src/repositories/mappers/grok_session_replay_collector.dart";
@@ -246,4 +249,94 @@ void main() {
     expect(tile.taskState?.status, PluginToolStatus.error);
     expect(tile.taskState?.error, "Failure");
   });
+
+  group("compaction rows from recorded replay", () {
+    const root = "01a00000-0000-7000-8000-000000000001";
+
+    List<AcpNotification> frames(String name) => [
+      for (final frame in jsonDecode(File("test/fixtures/protocol/v1/$name").readAsStringSync()) as List)
+        AcpNotification(
+          method: (frame as Map)["method"] as String,
+          params: (frame["params"] as Map).cast<String, dynamic>(),
+        ),
+    ];
+
+    List<PluginMessageWithParts> replay(List<AcpNotification> notifications) {
+      final standardCollector = AcpReplayCollector(
+        sessionUpdateNormalizer: null,
+        shellCommandResolver: null,
+        toolNameResolver: null,
+        sessionId: root,
+        agentId: "grok",
+        initialUserMessage: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: null,
+        toolPartReplacement: null,
+        toolPartSuppression: GrokSessionProtocol.isSpawnSubagentUpdate,
+      );
+      final grokCollector = GrokSessionReplayCollector(
+        sessionId: root,
+        standardCollector: standardCollector,
+        context: GrokSessionReplayContext(childPrompts: const {}),
+      );
+      for (final notification in notifications) {
+        grokCollector.consumeNotification(notification: notification);
+      }
+      return grokCollector.buildWithAssistantSelection(modelId: null, providerId: null, variant: null);
+    }
+
+    PluginCompactionState? compactionOf(PluginMessageWithParts message) => switch (message.parts) {
+      [PluginMessagePartCompaction(:final compactionState)] => compactionState,
+      _ => null,
+    };
+
+    test("an automatic compaction sits between its prompt and reply under the live row's id and time", () {
+      final messages = replay(frames("replay_compaction_auto.json"));
+
+      expect(messages.map((message) => message.info), [
+        isA<PluginMessageUser>(),
+        isA<PluginMessageAssistant>(),
+        isA<PluginMessageAssistant>(),
+      ]);
+      final row = messages[1];
+      expect(row.info.id, GrokSessionProtocol.compactionMessageId(sessionId: root, key: "$root-13"));
+      expect(row.info.time?.created, 1790000000000);
+      expect(
+        compactionOf(row),
+        const PluginCompactionState.completed(summary: null, freedTokens: 21022 - 18671, trigger: .auto),
+      );
+      expect(compactionOf(messages.last), isNull);
+    });
+
+    test("a manual compaction follows its /compact under the live row's id", () {
+      final messages = replay(frames("replay_compaction_manual.json"));
+
+      expect(messages, hasLength(2));
+      expect(messages.first.info, isA<PluginMessageUser>());
+      final row = messages.last;
+      expect(
+        row.info.id,
+        GrokSessionProtocol.compactionMessageId(sessionId: root, key: "00000000-0000-4000-8000-0000000000c1"),
+      );
+      expect(
+        compactionOf(row),
+        const PluginCompactionState.completed(summary: null, freedTokens: 19992 - 19017, trigger: .manual),
+      );
+    });
+
+    test("a failed automatic compaction replays as its failure note", () {
+      final messages = replay([...frames("replay_compaction_auto.json").take(2), _failedFrame(root: root)]);
+
+      expect(compactionOf(messages.last), const PluginCompactionState.failed(reason: null));
+    });
+  });
 }
+
+AcpNotification _failedFrame({required String root}) => AcpNotification(
+  method: "_x.ai/session/update",
+  params: {
+    "sessionId": root,
+    "update": {"sessionUpdate": "auto_compact_failed", "error": "API error"},
+  },
+);

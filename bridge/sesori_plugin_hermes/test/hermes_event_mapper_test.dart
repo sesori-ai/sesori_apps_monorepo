@@ -17,6 +17,7 @@ void main() {
         configurationTracker: AcpSessionConfigurationTracker()
           ..setProcessDefaults(modelId: "custom:model", providerId: "custom"),
         childSessions: childSessions,
+        clock: const ServerClock(),
       );
       mapper.beginTurn(sessionId: "s1", messageId: null);
     });
@@ -239,6 +240,61 @@ void main() {
         ),
         isNull,
       );
+    });
+
+    group("/compress reply", () {
+      AcpNotification commandReply({required String text}) => AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": text},
+          },
+        },
+      );
+      PluginCompactionState? stateOf(List<BridgeSseEvent> events) =>
+          switch (events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).singleOrNull) {
+            PluginMessagePartCompaction(:final compactionState) => compactionState,
+            _ => null,
+          };
+
+      test("a compressed session shows a completed manual compaction row", () {
+        // Recorded from Hermes v0.21.5, whose estimate rose after compressing.
+        final events = mapper.map(
+          commandReply(text: "Context compressed: 6 -> 4 messages\n~14,116 -> ~18,896 tokens"),
+        );
+
+        expect(
+          events.whereType<BridgeSseMessageUpdated>().single.info,
+          isA<PluginMessageAssistant>().having((info) => info.time?.created, "created", isNotNull),
+        );
+        expect(
+          stateOf(events),
+          const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: .manual),
+        );
+        expect(
+          stateOf(mapper.map(commandReply(text: "Context compressed: 9 -> 4 messages\n~20,000 -> ~5,500 tokens"))),
+          const PluginCompactionState.completed(summary: null, freedTokens: 14500, trigger: .manual),
+        );
+      });
+
+      test("a session with nothing to compress shows the failed row", () {
+        for (final text in ["Nothing to compress yet.", "Nothing to compress — conversation is empty."]) {
+          expect(
+            stateOf(mapper.map(commandReply(text: text))),
+            const PluginCompactionState.failed(reason: .nothingToCompact),
+            reason: text,
+          );
+        }
+      });
+
+      test("a model reply with the same words stays assistant text", () {
+        final events = mapper.map(finalResponse(text: "Context compressed: 6 -> 4 messages\n~14,116 -> ~9,000 tokens"));
+
+        expect(stateOf(events), isNull);
+        expect(events.whereType<BridgeSseMessagePartDelta>(), isNotEmpty);
+      });
     });
   });
 }

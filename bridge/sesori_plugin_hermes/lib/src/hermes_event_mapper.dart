@@ -5,7 +5,8 @@ import "hermes_turn_failure_copy.dart";
 
 /// Hermes's event mapper: the standard ACP mapping from [AcpEventMapper], plus
 /// Hermes's notices for a failed turn, without its live-only queue
-/// acknowledgement (see [map]).
+/// acknowledgement and with its `/compress` reply as a compaction row (see
+/// [map]).
 ///
 /// Live, Hermes sends a failure's explanation as its ordinary final response,
 /// so on the wire the notice looks like a reply, and then fails
@@ -20,6 +21,7 @@ class HermesEventMapper({
   required super.pluginId,
   required super.configurationTracker,
   required super.childSessions,
+  required final ServerClock clock,
 }) extends AcpEventMapper {
   /// Drops the message id from a live failure-notice chunk.
   ///
@@ -66,23 +68,75 @@ class HermesEventMapper({
   ///
   /// Hermes sends command responses without a `messageId` and every model
   /// reply with one, so a reply with the same words stays.
+  ///
+  /// Shows Hermes's `/compress` reply as the compaction row
+  /// (`acp_adapter/commands.py::_cmd_compress`, verified v0.21.5). Hermes's
+  /// history keeps no record of a `/compress`, so the row is live only.
   @override
   List<BridgeSseEvent> map(AcpNotification notification) {
-    if (notification.params["update"]
+    if (notification.params
         case {
-              "sessionUpdate": "agent_message_chunk",
-              "content": {"type": "text", "text": final String text},
-            } &&
-            final Map<Object?, Object?> update
-        when notification.method == AcpMethods.sessionUpdate &&
-            !update.containsKey("messageId") &&
-            _queuedAcknowledgement.hasMatch(text)) {
-      return const [];
+          "sessionId": final String sessionId,
+          "update":
+              {
+                "sessionUpdate": "agent_message_chunk",
+                "content": {"type": "text", "text": final String text},
+              } &&
+              final Map<Object?, Object?> update,
+        }
+        when notification.method == AcpMethods.sessionUpdate && !update.containsKey("messageId")) {
+      if (_queuedAcknowledgement.hasMatch(text)) return const [];
+      if (_compressionState(text: text) case final PluginCompactionState state) {
+        return _compactionRow(sessionId: sessionId, state: state);
+      }
     }
     return super.map(notification);
   }
 
   static final RegExp _queuedAcknowledgement = RegExp(r"^Queued for the next turn\. \(\d+ queued\)$");
+  static final RegExp _compressed = RegExp(r"^Context compressed: \d+ -> \d+ messages\n~([\d,]+) -> ~([\d,]+) tokens$");
+
+  static PluginCompactionState? _compressionState({required String text}) {
+    if (text == "Nothing to compress yet." || text == "Nothing to compress — conversation is empty.") {
+      return const .failed(reason: .nothingToCompact);
+    }
+    final match = _compressed.firstMatch(text);
+    if (match?.groups([1, 2]) case [final String before, final String after]) {
+      int tokens(String digits) => int.parse(digits.replaceAll(",", ""));
+      final freed = tokens(before) - tokens(after);
+      // Hermes estimates both sizes, and its estimate can rise.
+      return .completed(summary: null, freedTokens: freed > 0 ? freed : null, trigger: .manual);
+    }
+    return null;
+  }
+
+  /// One agent message stamped when the reply arrived, holding one part.
+  List<BridgeSseEvent> _compactionRow({required String sessionId, required PluginCompactionState state}) {
+    final createdAtMs = clock.now().millisecondsSinceEpoch;
+    final messageId = "$sessionId-compaction-live-$createdAtMs";
+    return [
+      BridgeSseMessageUpdated(
+        info: PluginMessage.assistant(
+          id: messageId,
+          sessionID: sessionId,
+          agent: pluginId,
+          modelID: null,
+          providerID: null,
+          variant: null,
+          sender: PluginMessageSender.agent,
+          time: PluginMessageTime(created: createdAtMs, completed: null),
+        ),
+      ),
+      BridgeSseMessagePartUpdated(
+        part: PluginMessagePart.compaction(
+          id: "$messageId-part",
+          sessionID: sessionId,
+          messageID: messageId,
+          compactionState: state,
+        ),
+      ),
+    ];
+  }
 
   // The shared mapper keeps Hermes's exact wording as the shown message. The
   // error name is the notice's kind: the bridge keeps one notice per failed
