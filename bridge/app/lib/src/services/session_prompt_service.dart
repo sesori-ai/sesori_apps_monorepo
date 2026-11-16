@@ -171,13 +171,60 @@ class SessionPromptService({
       await send(settingsFrom(defaults: defaults));
     } on StaleSessionPromptOptionsException catch (error, stackTrace) {
       if (defaults == null) rethrow;
-      final catalog = await _rediscoveredCatalog(sessionId: sessionId);
-      if (catalog == null) rethrow;
-      final corrected = correctedDefaults(defaults: defaults, catalog: catalog);
-      if (corrected == null || corrected == defaults) Error.throwWithStackTrace(error, stackTrace);
-      Log.i("Resending a bridge prompt to session $sessionId with options corrected against the harness catalog");
+      final corrected = await _correctedAfterRefusal(
+        defaults: defaults,
+        target: "session $sessionId",
+        catalog: () => _rediscoveredCatalog(sessionId: sessionId),
+      );
+      if (corrected == null) Error.throwWithStackTrace(error, stackTrace);
       await send(settingsFrom(defaults: corrected));
     }
+  }
+
+  /// Sends a scheduled run's prompt through [send] with [settings], into an
+  /// existing session or a new one of [pluginId] in [projectId], recovering
+  /// from a stale refusal as [sendWithDefaults] does against that harness's
+  /// catalog. Returns what [send] returns.
+  Future<T> sendWithSettingsIn<T>({
+    required String pluginId,
+    required String projectId,
+    required PromptSettings settings,
+    required Future<T> Function(PromptSettings settings) send,
+  }) async {
+    try {
+      return await send(settings);
+    } on StaleSessionPromptOptionsException catch (error, stackTrace) {
+      final model = settings.model;
+      final corrected = await _correctedAfterRefusal(
+        defaults: SessionPromptDefaults(
+          agent: settings.agent,
+          model: model == null
+              ? null
+              : AgentModel(providerID: model.providerID, modelID: model.modelID, variant: settings.variant?.id),
+          fastMode: settings.fastMode,
+        ),
+        target: "a $pluginId session in project $projectId",
+        catalog: () => _refreshedCatalog(pluginId: pluginId, projectId: projectId),
+      );
+      if (corrected == null) Error.throwWithStackTrace(error, stackTrace);
+      return await send(settingsFrom(defaults: corrected));
+    }
+  }
+
+  /// [defaults] corrected against the [catalog] rediscovered after a stale
+  /// refusal, or null when the catalog can't be read, no longer offers the
+  /// model, or the correction changes nothing.
+  Future<SessionPromptDefaults?> _correctedAfterRefusal({
+    required SessionPromptDefaults defaults,
+    required String target,
+    required Future<SessionOptionsResponse?> Function() catalog,
+  }) async {
+    final rediscovered = await catalog();
+    if (rediscovered == null) return null;
+    final corrected = correctedDefaults(defaults: defaults, catalog: rediscovered);
+    if (corrected == null || corrected == defaults) return null;
+    Log.i("Resending a bridge prompt to $target with options corrected against the harness catalog");
+    return corrected;
   }
 
   /// Sends as [sendPrompt] does, for a caller that already holds the session's
@@ -595,16 +642,24 @@ class SessionPromptService({
     try {
       final scope = await _sessionRepository.findSessionOptionsScope(sessionId: sessionId);
       if (scope == null) return null;
-      final outcome = await _sessionOptionsService.refreshExplicit(
-        pluginId: scope.pluginId,
-        projectId: scope.projectId,
-      );
+      return await _refreshedCatalog(pluginId: scope.pluginId, projectId: scope.projectId);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not rediscover the session options of session $sessionId", error, stackTrace);
+      return null;
+    }
+  }
+
+  /// [pluginId]'s catalog for [projectId], discovered afresh, or null when it
+  /// can't be read.
+  Future<SessionOptionsResponse?> _refreshedCatalog({required String pluginId, required String projectId}) async {
+    try {
+      final outcome = await _sessionOptionsService.refreshExplicit(pluginId: pluginId, projectId: projectId);
       return switch (outcome) {
         SessionOptionsAvailable(:final response) => response,
         _ => null,
       };
     } on Object catch (error, stackTrace) {
-      Log.w("Could not rediscover the session options of session $sessionId", error, stackTrace);
+      Log.w("Could not rediscover the session options of $pluginId in project $projectId", error, stackTrace);
       return null;
     }
   }
