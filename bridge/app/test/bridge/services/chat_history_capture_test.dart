@@ -14,6 +14,9 @@ import "package:claude_plugin/claude_plugin.dart"
         ClaudeToolTracker,
         ClaudeTranscriptApi,
         ClaudeTranscriptCatalogRepository;
+import "package:omp_plugin/src/omp_event_mapper.dart";
+import "package:omp_plugin/src/omp_identity.dart";
+import "package:omp_plugin/src/trackers/omp_compaction_tracker.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/listeners/chat_history_listener.dart";
 import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
@@ -2567,6 +2570,77 @@ void main() {
 
         expect(await storedNotices(history: history), unorderedEquals(const [savedRow, liveReason]));
       });
+    });
+
+    // OMP sends nothing live for a stop, so the shared ACP plugin adds the
+    // stopped row; OMP replays the stop as its "Interrupted by user" reason.
+    test("an OMP stop seen live stays one stopped row after a reload", () async {
+      const sessionId = "ses_a";
+      final replayTranscript = <MessageWithParts>[];
+      final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: replayTranscript));
+      final mapper = OmpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: OmpPluginIdentity.id,
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
+        compactionTracker: OmpCompactionTracker(clock: const ServerClock()),
+        hasPendingTurn: ({required sessionId}) => false,
+      )..beginTurn(sessionId: sessionId, messageId: "live-user");
+      await _captureAcpEvents(
+        history: history,
+        sessionId: sessionId,
+        events: [
+          ...mapper.mapSentPrompt(
+            sessionId: sessionId,
+            messageId: "live-user",
+            promptId: "prompt-1",
+            parts: const [PluginPromptPart.text(text: "request")],
+            createdAtMs: 100,
+          ),
+          ...mapper.mapUserStop(sessionId: sessionId),
+        ],
+      );
+      final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
+        shellCommandResolver: null,
+        toolNameResolver: null,
+        sessionId: sessionId,
+        agentId: OmpPluginIdentity.id,
+        initialUserMessage: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: mapper.classifyHaltNotice,
+        toolPartReplacement: null,
+        toolPartSuppression: null,
+      );
+      for (final update in [
+        {
+          "sessionUpdate": "user_message_chunk",
+          "content": {"type": "text", "text": "request"},
+          "messageId": "user-1",
+        },
+        {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "Interrupted by user"},
+          "messageId": "assistant-1",
+        },
+      ]) {
+        collector.consume({"update": update});
+      }
+      replayTranscript.addAll(collector.build().toSharedMessageWithParts(sessionId: sessionId));
+
+      for (var reload = 0; reload < 2; reload++) {
+        await history.service.backfillSession(sessionId: sessionId);
+
+        final errors = [
+          for (final message in await _storedMessages(history: history, sessionId: sessionId))
+            if (message.info case final MessageError error) error,
+        ];
+        expect(
+          errors.map((error) => (error.kind, error.errorMessage)),
+          [(MessageErrorKind.stopped, "Stopped")],
+        );
+      }
     });
 
     // Editing a message in the backend's own client rolls the session back and

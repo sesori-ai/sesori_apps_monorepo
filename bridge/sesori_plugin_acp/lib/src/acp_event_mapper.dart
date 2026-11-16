@@ -43,6 +43,9 @@ class const AcpHaltNotice({
   /// Short stable label for the halt class (e.g. "cursor_gate"), carried in
   /// the error message's `errorName`.
   required final String errorName,
+
+  /// Whether the notice reports a failed turn or the user's stop.
+  required final PluginErrorKind kind,
 });
 
 /// Translates ACP `session/update` notifications into bridge-neutral
@@ -339,6 +342,21 @@ class AcpEventMapper({
   /// fails, so the prompt error needs no second one.
   bool showedHaltNotice({required String sessionId}) =>
       _startedParts[sessionId]?.contains(_haltNoticeId(sessionId: sessionId)) ?? false;
+
+  /// The `errorName` of the row [mapUserStop] emits. A backend whose replay
+  /// records the stop (see [classifyHaltNotice]) names its replayed notice the
+  /// same, so a reload keeps the live row's wording alone.
+  static const String stoppedErrorName = "acp_stopped";
+
+  /// Ends the current turn of [sessionId], which the user stopped, with one
+  /// stopped row. A turn that already showed a halt notice keeps that notice
+  /// as its one outcome.
+  List<BridgeSseEvent> mapUserStop({required String sessionId}) => _haltNoticeEvents(
+    sessionId: sessionId,
+    notice: const AcpHaltNotice(errorName: stoppedErrorName, kind: PluginErrorKind.stopped),
+    message: "Stopped",
+    time: null,
+  );
 
   /// Maps a rejected `session/prompt` into a durable inline error. A session
   /// error event carries no diagnostic text, so emitting only that event would
@@ -1102,7 +1120,7 @@ class AcpEventMapper({
           modelID: modelForSession(sessionId: sessionId),
           providerID: providerForSession(sessionId: sessionId),
           variant: variantForSession(sessionId: sessionId),
-          kind: PluginErrorKind.failure,
+          kind: notice.kind,
           errorName: notice.errorName,
           errorMessage: message,
           time: time,

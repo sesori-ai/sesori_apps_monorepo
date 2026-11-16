@@ -147,11 +147,13 @@ class HermesEventMapper({
   // that actions may already have run, which the live reason does not say.
   @override
   AcpHaltNotice? classifyHaltNotice({required String text}) {
-    if (isHermesPartialTurnRow(text: text)) return const AcpHaltNotice(errorName: "hermes_partial_turn");
+    if (isHermesPartialTurnRow(text: text)) {
+      return const AcpHaltNotice(errorName: "hermes_partial_turn", kind: PluginErrorKind.failure);
+    }
     if (isHermesFailedTurnRow(text: text) ||
         isHermesContentRefusedRow(text: text) ||
         isHermesTurnFailureNotice(text: text)) {
-      return const AcpHaltNotice(errorName: _failedTurnKind);
+      return const AcpHaltNotice(errorName: _failedTurnKind, kind: PluginErrorKind.failure);
     }
     return null;
   }

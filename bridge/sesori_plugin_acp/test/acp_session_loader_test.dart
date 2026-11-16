@@ -1245,8 +1245,9 @@ void main() {
             initialUserMessage: null,
             messageIdOverride: null,
             messageTimeResolver: null,
-            haltClassifier: ({required text}) =>
-                text.trim() == "Check your settings to continue" ? const AcpHaltNotice(errorName: "cursor_gate") : null,
+            haltClassifier: ({required text}) => text.trim() == "Check your settings to continue"
+                ? const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure)
+                : null,
             toolPartReplacement: null,
             toolPartSuppression: null,
           )..consume(
@@ -1279,7 +1280,8 @@ void main() {
             initialUserMessage: null,
             messageIdOverride: null,
             messageTimeResolver: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
+            haltClassifier: ({required text}) =>
+                const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure),
             toolPartReplacement: null,
             toolPartSuppression: null,
           )..consume(
@@ -1304,7 +1306,8 @@ void main() {
             initialUserMessage: null,
             messageIdOverride: null,
             messageTimeResolver: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
+            haltClassifier: ({required text}) =>
+                const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure),
             toolPartReplacement: null,
             toolPartSuppression: null,
           )..consume(
@@ -1342,7 +1345,8 @@ void main() {
             initialUserMessage: null,
             messageIdOverride: null,
             messageTimeResolver: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
+            haltClassifier: ({required text}) =>
+                const AcpHaltNotice(errorName: "cursor_gate", kind: PluginErrorKind.failure),
             toolPartReplacement: null,
             toolPartSuppression: null,
           )..consume(
