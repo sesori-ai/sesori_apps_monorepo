@@ -244,7 +244,8 @@ harness declares `fork`.
   `--resume`, which follows the edited branch.
 - The edited prompt is queued before the session reports busy, so the Working
   row counts from the edit at 0 s during the respawn, never from a message the
-  edit removes. A failed respawn takes it out of the queue again.
+  edit removes. A failed respawn, or a stop during the respawn, takes it out
+  of the queue again.
 - The session is held busy from the idle check until the edited prompt is
   sent: a second edit is refused as busy, and a send that arrives during the
   respawn runs after the edited prompt.
