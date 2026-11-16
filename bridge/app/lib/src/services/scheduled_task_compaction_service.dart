@@ -52,8 +52,8 @@ class ScheduledTaskCompactionService({
   /// so a run held across one follows its missed-run policy as usual.
   final Set<String> _heldTaskIds = {};
 
-  /// Compacts the session of each auto-compact task whose latest run has
-  /// been quiet for its window, unless the user has prompted in it since.
+  /// Compacts the target session of each auto-compact task whose run there
+  /// has been quiet for its window, unless the user has prompted in it since.
   Future<void> compactQuietRuns() async {
     for (final task in await _repository.listUncompleted()) {
       if (!task.enabled) continue;
@@ -139,7 +139,9 @@ class ScheduledTaskCompactionService({
     sessionId: run.sessionId,
     operation: SessionOperation.compactSession,
     body: () async {
-      final current = await _repository.latestStartedRun(taskId: task.id);
+      // An edit can clear the target while this waits for the lane.
+      final fresh = await _repository.get(taskId: task.id);
+      final current = fresh == null ? null : await _targetRun(task: fresh);
       if (current == null || current.runId != run.runId || current.compactRequestedAt != null) return null;
       if (afterRun && current.userPromptedAt != null) return null;
       if (await _sessions.getSessionQuietness(sessionId: run.sessionId) != SessionQuietness.quiet) return null;

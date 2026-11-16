@@ -543,6 +543,23 @@ void main() {
       expect((await repository.get(taskId: task.id))?.targetSessionId, "ses_2");
     });
 
+    test("an edit that clears the target while the compaction waits for the lane leaves the session alone", () async {
+      sessions.compactionResult = SessionCompactionResult.accepted;
+      final task = await firstRun();
+      operations.whileQueued = () => repository.updateDefinition(
+        taskId: task.id,
+        definition: autoCompact.copyWith(dedicatedWorktree: true),
+        nextDueAt: DateTime.utc(2026, 11, 16, 9),
+        clearTarget: true,
+        now: now,
+      );
+
+      await runDueAt(const Duration(hours: 1));
+
+      expect(operations.calls.last, ("ses_1", SessionOperation.compactSession));
+      expect(sessions.compacted, isEmpty);
+    });
+
     test("a harness that can't compact fires the due run straight away", () async {
       final task = await firstRun();
 
@@ -964,6 +981,9 @@ class _FakePrompts() implements SessionPromptService {
 class _FakeOperations() implements SessionOperationDispatcher {
   final List<(String, SessionOperation)> calls = [];
 
+  /// Runs while the operation waits for its lane, before its body.
+  Future<void> Function()? whileQueued;
+
   @override
   Future<T> dispatch<T>({
     required String sessionId,
@@ -971,7 +991,9 @@ class _FakeOperations() implements SessionOperationDispatcher {
     required Future<T> Function() body,
   }) {
     calls.add((sessionId, operation));
-    return body();
+    final whileQueued = this.whileQueued;
+    if (whileQueued == null) return body();
+    return whileQueued().then((_) => body());
   }
 
   @override
