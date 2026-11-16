@@ -128,6 +128,9 @@ class FeedbackPromptService({
       _childSessions.add(info.id);
     } else if (data case SesoriSessionStatus(:final sessionID, :final status)) {
       _onSessionStatus(sessionId: sessionID, status: status);
+    } else if (data case SesoriMessageUpdated(info: MessageError(kind: MessageErrorKind.stopped, :final sessionID))) {
+      // A Stop from another surface ends the turn as this surface's own does.
+      recordUserStop(sessionId: sessionID);
     } else if (data case SesoriSessionError() || SesoriMessageUpdated(info: MessageError())) {
       // A session error without a session belongs to none of the counted
       // turns, so it drops nothing.

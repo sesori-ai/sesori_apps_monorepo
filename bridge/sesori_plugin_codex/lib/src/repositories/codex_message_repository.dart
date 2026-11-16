@@ -653,6 +653,7 @@ class CodexMessageRepository({
               modelID: currentModel ?? config.model,
               providerID: sessionProvider ?? config.effectiveModelProvider,
               variant: currentVariant,
+              kind: PluginErrorKind.failure,
               errorName: "CodexError",
               errorMessage: error.message,
               time: _messageTimeFrom(raw: lineTimestamp),

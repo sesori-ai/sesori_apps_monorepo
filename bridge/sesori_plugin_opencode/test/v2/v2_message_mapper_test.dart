@@ -181,6 +181,17 @@ void main() {
             as PluginMessageError;
     expect(failed.errorMessage, "Exact provider failure");
     expect(failed.agent, "Build");
+    expect(failed.kind, PluginErrorKind.failure);
+    final stopped =
+        mapped(
+              json: <String, dynamic>{
+                ...assistant(content: const []),
+                "error": <String, dynamic>{"type": "aborted", "message": "Step interrupted"},
+              },
+            ).info
+            as PluginMessageError;
+    expect(stopped.kind, PluginErrorKind.stopped);
+    expect(stopped.errorMessage, "Step interrupted");
     final synthetic = mapped(
       json: const <String, dynamic>{
         "type": "synthetic",

@@ -39,6 +39,9 @@ import "../models/v2_tool_presentation_fields.dart";
 /// Stateless transcript projection. These same part identities and tool-state
 /// conversions are reusable by the live-event mapper; no transcript cache exists.
 class const V2MessageMapper() {
+  // OpenCode 2 ends an interrupted assistant turn, as a user Stop does, with
+  // this error type (SessionRunner `STEP_INTERRUPTED`).
+  static const _abortedErrorType = "aborted";
   static const _rasterMimeTypes = {"image/bmp", "image/gif", "image/jpeg", "image/png", "image/webp"};
 
   // Preserve the native sortable prefix. Its generated body has no underscores,
@@ -120,6 +123,7 @@ class const V2MessageMapper() {
                 providerID: message.model.providerID,
                 variant: message.model.variant,
                 time: time,
+                kind: error.type == _abortedErrorType ? PluginErrorKind.stopped : PluginErrorKind.failure,
                 errorName: error.type,
                 errorMessage: error.message,
               );

@@ -631,6 +631,26 @@ archive would refuse is refused before the stop, leaving the session running.
 | DeepSeek | ✅ Native subtree stop. |
 | Pi, and Antigravity, Copilot, Hermes, OMP (no sub-agents exposed) | ✅ The turn. |
 
+## Stopped turns
+
+A user Stop ends the turn with a quiet grey "Stopped" line instead of a red error row. The plugin that sees the
+harness's own stop record marks its error row `kind: stopped`; the line never shows the harness's wording. An older
+app ignores `kind` and shows the row's text in red.
+
+| Harness | Live | After reload |
+|---|---|---|
+| Pi | ✅ `stopReason: aborted`. | ✅ The same record. |
+| OpenCode v1 | ✅ `MessageAbortedError`. | ✅ The same record. |
+| OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
+| omp | ⬜ | ⬜ |
+| Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ⬜ | ⬜ |
+| Claude Code | ⬜ | ⬜ |
+| Codex | ⬜ | ⬜ |
+
+Pi and OpenCode do not tell a user Stop from another abort of the turn, so any abort they record reads Stopped.
+OpenCode v2 (2.2.7 source) records the same `aborted` error when the user declines a permission, which ends the turn
+too.
+
 ## Pre-start catalog import
 
 | Capability | OpenCode |
