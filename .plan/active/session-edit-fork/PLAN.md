@@ -995,9 +995,10 @@ saved-file note builder moves from `PromptPartDeliveryService` to `sesori_shared
 
 ## Risks
 
-- **Claude's flag is undocumented** (see the Claude section): a removal would turn Claude edit and fork into
-  branch-point refusals until the fallback or a replacement lands. The plugin's tests pin the flags' presence at the
-  target version so a runtime refresh notices.
+- **Claude's flag is undocumented** (see the Claude section): a removal would turn Claude edit into branch-point
+  refusals until the fallback or a replacement lands. The plugin's tests pin the flag's presence at the target version
+  so a runtime refresh notices. Fork does not depend on it: the plugin writes the fork transcript itself and resumes it
+  with a plain `--resume` (step 13).
 - **Codex rollout format drift**: step 5 depends on unstable on-disk details; its live fixtures guard runtime refreshes.
 - **Feel of removal**: removing rows below a detached reader in a reversed list is the riskiest motion; step 10 needs a
   recording before it is called done.
