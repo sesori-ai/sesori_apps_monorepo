@@ -3468,7 +3468,9 @@ class SessionDetailCubit(
   };
 
   /// What Continue sends to pick up a turn a bridge stop cut off.
-  static const String continueInterruptedTurnPrompt = "Continue where you left off.";
+  static const String continueInterruptedTurnPrompt =
+      "Your previous turn was interrupted because Sesori's bridge stopped. Any sub-agents, background tasks or "
+      "processes you had running were stopped too, so restart any you still need. Then continue where you left off.";
 
   /// Picks up the turn a bridge stop cut off: sends
   /// [continueInterruptedTurnPrompt] like a typed prompt, with the composer's
