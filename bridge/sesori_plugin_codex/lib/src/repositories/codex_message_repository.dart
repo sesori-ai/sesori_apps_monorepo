@@ -4,6 +4,7 @@ import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../api/models/codex_sub_agent_item_dto.dart";
 import "../codex_config_reader.dart";
+import "../models/codex_fork_refusal.dart";
 import "../models/codex_replay_tool_disposition.dart";
 import "../models/codex_rewind_refusal.dart";
 import "codex_sub_agent_tracker.dart";
@@ -121,6 +122,92 @@ class CodexMessageRepository({
     throw (turnsWithUserItem.isEmpty ? CodexRewindRefusal.legacySession : CodexRewindRefusal.unknownMessage)
         .toException(cause: null);
   }
+
+  /// The native turn a fork through [messageId], inclusive, keeps last.
+  ///
+  /// [messageId] is any message replay shows: a user or agent item, a tool
+  /// call, or a turn's error, each recorded inside its turn. Codex forks
+  /// whole turns, so the turn must end with the message's prompt turn: a
+  /// later user item in the same native turn (a message steered in after an
+  /// answer) would come into the fork too, and is refused. Throws
+  /// [PluginBranchPointUnavailableException] for a message no turn holds.
+  String forkTurnId({required CodexPreparedMessageRead read, required String messageId}) {
+    String? activeTurnId;
+    String? forkTurnId;
+    for (final line in read._lines) {
+      final (:turnId, :ids) = _turnAndMessageIds(line: line, activeTurnId: activeTurnId);
+      if (line case CodexRolloutEventMessageLineDto(payload: CodexRolloutTaskStartedEventDto())) {
+        // The next native turn starts: the fork turn has ended.
+        if (forkTurnId != null) break;
+        activeTurnId = turnId;
+        continue;
+      }
+      if (forkTurnId == null) {
+        if (turnId != null && ids.contains(messageId)) forkTurnId = turnId;
+        continue;
+      }
+      if (line
+          case CodexRolloutEventMessageLineDto(
+            payload: CodexRolloutItemCompletedEventDto(
+              :final turnId,
+              item: CodexRolloutCompletedUserMessageDto(:final id),
+            ),
+          )
+          when turnId == forkTurnId && id != messageId) {
+        throw CodexForkRefusal.midTurn.toException(cause: null);
+      }
+    }
+    if (forkTurnId == null) throw CodexForkRefusal.unknownMessage.toException(cause: null);
+    return forkTurnId;
+  }
+
+  /// The native turn [line] belongs to and the ids of the messages replay
+  /// keys from it. Response items carry no turn id; they belong to the turn
+  /// [activeTurnId] last started.
+  static ({String? turnId, List<String> ids}) _turnAndMessageIds({
+    required CodexRolloutLineDto line,
+    required String? activeTurnId,
+  }) => switch (line) {
+    CodexRolloutEventMessageLineDto(:final payload) => switch (payload) {
+      CodexRolloutTaskStartedEventDto(:final turnId) => (turnId: turnId, ids: const []),
+      // A failed turn's error row is keyed by the turn id.
+      CodexRolloutTaskCompleteEventDto(:final turnId) => (turnId: turnId, ids: [turnId]),
+      CodexRolloutItemCompletedEventDto(:final turnId, :final item) => (
+        turnId: turnId,
+        ids: switch (item) {
+          CodexRolloutCompletedUserMessageDto(:final id) ||
+          CodexRolloutCompletedContextCompactionDto(:final id) ||
+          CodexRolloutCompletedSubAgentActivityDto(:final id) ||
+          CodexRolloutCompletedCollabAgentToolCallDto(:final id) => [id],
+          CodexRolloutUnknownCompletedItemDto() => const [],
+        },
+      ),
+      CodexRolloutImageGenerationEndEventDto(:final callId) => (turnId: activeTurnId, ids: [callId]),
+      CodexRolloutUserMessageEventDto() ||
+      CodexRolloutTurnAbortedEventDto() ||
+      CodexRolloutThreadRolledBackEventDto() ||
+      CodexRolloutUnknownEventDto() => (turnId: activeTurnId, ids: const []),
+    },
+    CodexRolloutResponseItemLineDto(:final payload) => (
+      turnId: activeTurnId,
+      ids: switch (payload) {
+        CodexRolloutMessageDto(:final id) ||
+        CodexRolloutReasoningDto(:final id) ||
+        CodexRolloutWebSearchCallDto(:final id) ||
+        CodexRolloutImageGenerationDto(:final id) => [?id],
+        CodexRolloutFunctionCallDto(:final callId) || CodexRolloutCustomToolCallDto(:final callId) => [callId],
+        CodexRolloutAgentMessageDto() ||
+        CodexRolloutFunctionCallOutputDto() ||
+        CodexRolloutCustomToolCallOutputDto() ||
+        CodexRolloutUnknownResponseItemDto() => const [],
+      },
+    ),
+    CodexRolloutSessionMetadataLineDto() ||
+    CodexRolloutTurnContextLineDto() ||
+    CodexRolloutInterAgentCommunicationMetadataLineDto() ||
+    CodexRolloutCompactedLineDto() ||
+    CodexRolloutUnknownLineDto() => (turnId: activeTurnId, ids: const []),
+  };
 
   /// Only a rollout's leading `session_meta` describes its own base; any
   /// later one belongs to inherited history.

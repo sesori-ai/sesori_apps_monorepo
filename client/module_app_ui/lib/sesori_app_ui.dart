@@ -99,6 +99,7 @@ export "src/features/side_chat/side_chat_view.dart" show SideChatView;
 export "src/l10n/app_localizations.dart";
 export "src/l10n/app_localizations_en.dart";
 export "src/platform/external_link_opener.dart";
+export "src/platform/flutter_device_time_zone_source.dart";
 export "src/platform/flutter_image_clipboard.dart" show createFlutterImageClipboard;
 export "src/platform/flutter_image_sharer.dart" show createFlutterImageSharer;
 export "src/platform/go_router_route_dispatcher.dart";

@@ -572,6 +572,7 @@ void main() {
                 isBusy: false,
                 hasMessages: false,
                 canSend: true,
+                lockedNote: null,
                 submitAction: null,
                 onSend: ({required draft, required command, required attachments}) {
                   submittedDraft = draft;

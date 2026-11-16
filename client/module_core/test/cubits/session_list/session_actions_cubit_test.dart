@@ -1,6 +1,7 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/services/session_action_service.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -12,10 +13,22 @@ class _MockActionService() extends Mock implements SessionActionService;
 
 class _MockAbortService() extends Mock implements SessionAbortService;
 
+class _MemoryPersister() extends Fake implements PersisterRepository {
+  final Map<BoolPersistenceKey, bool> values = {};
+
+  @override
+  Future<bool> readBoolOrDefault({required BoolPersistenceKey key, required bool defaultValue}) async =>
+      values[key] ?? defaultValue;
+
+  @override
+  Future<void> writeBool({required BoolPersistenceKey key, required bool value}) async => values[key] = value;
+}
+
 void main() {
   late _MockActionService actionService;
   late _MockAbortService abortService;
   late FakeFeedbackPromptService feedback;
+  late _MemoryPersister persister;
   late SessionActionsCubit cubit;
 
   setUpAll(registerAllFallbackValues);
@@ -24,11 +37,13 @@ void main() {
     actionService = _MockActionService();
     abortService = _MockAbortService();
     feedback = FakeFeedbackPromptService();
+    persister = _MemoryPersister();
     cubit = SessionActionsCubit(
       window: _MockWindow(),
       actionService: actionService,
       abortService: abortService,
       feedbackPromptService: feedback,
+      archiveAfterSendStorage: ArchiveAfterSendPreferenceStorage(persister: persister),
     );
   });
 
@@ -45,12 +60,34 @@ void main() {
     for (final outcome in outcomes) {
       test("returns ${outcome.runtimeType.toString()}", () async {
         when(
-          () => actionService.sendToSession(sourceSessionId: "source", targetSessionId: "target"),
+          () => actionService.sendToSession(
+            sourceSessionId: "source",
+            sourcePluginId: "codex",
+            targetSessionId: "target",
+          ),
         ).thenAnswer((_) async => outcome);
 
-        expect(await cubit.sendToSession(sourceSessionId: "source", targetSessionId: "target"), same(outcome));
+        expect(
+          await cubit.sendToSession(sourceSessionId: "source", sourcePluginId: "codex", targetSessionId: "target"),
+          same(outcome),
+        );
       });
     }
+  });
+
+  group("archiveAfterSend", () {
+    test("is on until the user turns it off", () async {
+      expect(await cubit.archiveAfterSend(), isTrue);
+    });
+
+    test("remembers the last choice on this device", () async {
+      await cubit.setArchiveAfterSend(value: false);
+      expect(await cubit.archiveAfterSend(), isFalse);
+      expect(persister.values, {BoolPreferenceKey.archiveAfterSend: false});
+
+      await cubit.setArchiveAfterSend(value: true);
+      expect(await cubit.archiveAfterSend(), isTrue);
+    });
   });
 
   group("stopSession", () {

@@ -124,6 +124,7 @@ export "src/protocol/framing.dart";
 export "src/protocol/messages.dart";
 export "src/reporting/failure_reporter.dart";
 export "src/search/title_matcher.dart";
+export "src/session_options/session_options_catalog_calculator.dart";
 export "src/transcript/prompt_search.dart";
 export "src/transcript/prompt_turns.dart";
 export "src/transcript/saved_file_notes.dart";

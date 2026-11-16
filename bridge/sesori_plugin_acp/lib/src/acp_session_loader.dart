@@ -404,7 +404,7 @@ class AcpReplayCollector({
             modelID: selection.modelId,
             providerID: selection.providerId,
             variant: selection.variant,
-            kind: PluginErrorKind.failure,
+            kind: halt.kind,
             errorName: halt.errorName,
             errorMessage: assistantText,
             time: draft.time,

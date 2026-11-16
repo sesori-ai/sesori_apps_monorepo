@@ -28,6 +28,7 @@ const _$SessionBranchErrorCodeEnumMap = {
   SessionBranchErrorCode.branchPointUnavailable: 'branchPointUnavailable',
   SessionBranchErrorCode.nothingToFork: 'nothingToFork',
   SessionBranchErrorCode.staleSessionOptions: 'staleSessionOptions',
+  SessionBranchErrorCode.worktreeBranchMissing: 'worktreeBranchMissing',
   SessionBranchErrorCode.refused: 'refused',
   SessionBranchErrorCode.unknown: 'unknown',
 };

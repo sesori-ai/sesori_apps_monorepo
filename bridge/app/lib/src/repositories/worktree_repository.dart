@@ -59,6 +59,78 @@ class WorktreeRepository({
   bool worktreePathExists({required String worktreePath}) =>
       _filesystemApi.entityType(path: worktreePath) != FileSystemEntityType.notFound;
 
+  /// Whether a worktree of the repository at [projectPath] is checked out at
+  /// [worktreePath], rather than nothing, some other folder, or a checkout of
+  /// another repository.
+  Future<bool> worktreeExists({required String projectPath, required String worktreePath}) async {
+    if (_filesystemApi.entityType(path: worktreePath) != FileSystemEntityType.directory) return false;
+    if (!await _gitApi.isWorkTreeRoot(path: worktreePath)) return false;
+    final commonDir = await _gitApi.readGitCommonDir(path: worktreePath);
+    return commonDir != null && commonDir == await _gitApi.readGitCommonDir(path: projectPath);
+  }
+
+  /// Keeps where the worktree at [worktreePath] stands before it is removed:
+  /// pins its HEAD commit under a bridge-owned ref, so garbage collection
+  /// keeps detached work, and returns the branch it is on, or null for a
+  /// detached HEAD. Uncommitted changes are not kept.
+  Future<String?> keepWorktreeHead({required String projectPath, required String worktreePath}) async {
+    final commit = await _gitApi.resolveCommit(projectPath: worktreePath, ref: "HEAD");
+    if (commit == null) {
+      throw StateError("worktree $worktreePath has no HEAD commit");
+    }
+    await _gitApi.updateRef(
+      projectPath: projectPath,
+      ref: _headRef(worktreePath: worktreePath),
+      commit: commit,
+    );
+    return await _gitApi.readHeadBranch(worktreePath: worktreePath);
+  }
+
+  /// The HEAD commit [keepWorktreeHead] holds for [worktreePath], or null.
+  Future<String?> keptWorktreeHead({required String projectPath, required String worktreePath}) =>
+      _gitApi.resolveCommit(
+        projectPath: projectPath,
+        ref: _headRef(worktreePath: worktreePath),
+      );
+
+  /// Drops what [keepWorktreeHead] kept, once no session names the worktree.
+  Future<void> releaseWorktreeHead({required String projectPath, required String worktreePath}) {
+    return _gitApi.deleteRef(
+      projectPath: projectPath,
+      ref: _headRef(worktreePath: worktreePath),
+    );
+  }
+
+  /// Clears git's registrations of worktrees whose folders are gone, which
+  /// it would otherwise refuse to add again at that path or on that branch.
+  Future<void> pruneWorktrees({required String projectPath}) => _gitApi.pruneWorktrees(projectPath: projectPath);
+
+  Future<bool> branchExists({required String projectPath, required String branchName}) =>
+      _gitApi.branchExists(projectPath: projectPath, branchName: branchName);
+
+  Future<bool> addWorktreeOnBranch({
+    required String projectPath,
+    required String worktreePath,
+    required String branchName,
+  }) => _gitApi.addWorktreeOnBranch(projectPath: projectPath, worktreePath: worktreePath, branchName: branchName);
+
+  Future<bool> addWorktreeOnNewBranch({
+    required String projectPath,
+    required String worktreePath,
+    required String branchName,
+    required String startPoint,
+  }) => _gitApi.addWorktreeOnNewBranch(
+    projectPath: projectPath,
+    worktreePath: worktreePath,
+    branchName: branchName,
+    startPoint: startPoint,
+  );
+
+  /// The bridge-owned ref that pins a removed worktree's HEAD. Keyed by path,
+  /// so every session that shares the worktree finds it.
+  static String _headRef({required String worktreePath}) =>
+      "refs/sesori/worktrees/${sha256.convert(utf8.encode(worktreePath)).toString().substring(0, 16)}";
+
   /// The live directory for [projectId] — where git operations for the
   /// project must run. Unknown ids are rejected: an id is not a directory.
   Future<String> resolveProjectPath({required String projectId}) async {

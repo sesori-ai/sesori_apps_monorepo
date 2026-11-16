@@ -185,7 +185,7 @@ abstract class const RequestHandlerBase({
     } on SessionArchivedReadOnlyException catch (error) {
       return buildArchivedRejectionResponse(request: request, rejection: error.rejection);
     } on StaleSessionPromptOptionsException catch (error) {
-      Log.w("${request.method} ${request.path}: stale session options", error.cause, error.causeStackTrace);
+      Log.w("${request.method} ${request.path}: stale session options", error, error.causeStackTrace);
       return buildStaleOptionsRejectionResponse(request: request, message: error.message);
     } on SessionPromptRefusedException catch (error) {
       Log.w("${request.method} ${request.path}: prompt refused", error.cause, error.causeStackTrace);

@@ -86,7 +86,9 @@ final class DeferredProductAnalyticsCandidates {
     FounderCallLinkOpenedEvent() ||
     FounderCallDeclinedEvent() ||
     SideQuestionAskedEvent() ||
-    SessionMessageEditedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
+    ScheduledTaskSavedEvent() ||
+    SessionMessageEditedEvent() ||
+    SessionSentToSessionEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
   };
 
   DeferredProductAnalyticsDrain drainNext() {

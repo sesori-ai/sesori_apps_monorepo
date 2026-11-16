@@ -82,7 +82,9 @@ class CodexEventMapper({
 
   /// The text streamed so far into each agent message still in flight. Codex
   /// sends an interrupted message no final snapshot and records none in its
-  /// rollout, so a Stop snapshots this text for the chat history to keep.
+  /// rollout, so a Stop snapshots this text for the chat history to keep. It
+  /// outlives a transport drop: the app-server keeps the turn running and the
+  /// plugin reconnects to it, so the text the user saw before the drop stays.
   final Map<({String threadId, String itemId}), StringBuffer> _streamedReplies = {};
 
   /// Records the model codex resolved for [threadId] so subsequent
@@ -176,10 +178,7 @@ class CodexEventMapper({
     _forgetItemTimes(threadId: threadId);
   }
 
-  void resetLiveItems() {
-    _itemTimes.clear();
-    _streamedReplies.clear();
-  }
+  void resetLiveItemTimes() => _itemTimes.clear();
 
   /// The project id a live session event should carry for [threadId]: the
   /// plugin-fed directory, else the notification's own [cwd], else the launch

@@ -51,6 +51,7 @@ void main() {
     );
     final threadRepository = CodexThreadRepository(
       appServerApi: appServerApi,
+      codexVersion: null,
     );
 
     List<BridgeSseEvent> mapThreadStarted(
@@ -2014,6 +2015,8 @@ void main() {
         ),
       );
       delta(thread: threadId, itemId: "i-partial", text: "1. Apples ");
+      // A transport drop: the app-server keeps the turn and the plugin reconnects.
+      mapper.resetLiveItemTimes();
       delta(thread: threadId, itemId: "i-partial", text: "are crisp.");
       delta(thread: "t-other", itemId: "i-other", text: "elsewhere");
       const completed = {

@@ -10,6 +10,10 @@ final class const PendingArchiveIdle() extends PendingArchiveWindow;
 final class const PendingArchiveOpen({
   required final Session session,
   required final bool deleteWorktree,
+
+  /// The caller shows its own alert with Undo, so the shared "Archived" alert
+  /// stays away.
+  required final bool callerOffersUndo,
 }) extends PendingArchiveWindow;
 
 class const PendingSessionArchiveState({
