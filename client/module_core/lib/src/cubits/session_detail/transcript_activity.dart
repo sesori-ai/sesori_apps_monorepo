@@ -95,6 +95,9 @@ class const TranscriptActivityBuilder() {
     };
     final pending = pendingPrompts.where((prompt) => !deliveredPromptIds.contains(prompt.promptId)).lastOrNull;
     if (pending != null) return TranscriptActivityWorking(sinceMs: pending.acceptedAt);
+    // A stopped or failed turn has ended with its error row, which takes the
+    // working row's place, even while the session's idle is still on its way.
+    if (messages.lastOrNull?.info is MessageError) return const TranscriptActivityIdle();
     // While busy, the last turn is the running one, and it runs to the newest
     // message. So whatever the turn's shape, its latest user message is the
     // newest shown one: a message sent mid-turn, else the opener. One the

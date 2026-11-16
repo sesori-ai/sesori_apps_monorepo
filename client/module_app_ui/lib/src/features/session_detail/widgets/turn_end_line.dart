@@ -7,13 +7,16 @@ import "transcript_live_row.dart";
 /// as one the user stopped. It is not an error: it looks like a settled step
 /// row, as the compaction row does, with the reply's inset around it.
 ///
-/// It stands exactly as tall as [TranscriptWorkingRow] does as the first row,
-/// so when it arrives as the working row folds away the transcript holds
-/// still.
+/// It stands exactly as tall as the [TranscriptWorkingRow] it replaces: under
+/// a shown reply it joins the reply's inset, as the working row does there, so
+/// when it grows in as the working row folds away the transcript holds still.
 class const TurnEndLine({
   super.key,
   required final IconData icon,
   required final String label,
+
+  /// Whether a reply shows above it, whose inset it then shares.
+  required final bool followsReply,
 }) extends StatelessWidget {
   /// The reply card's inset, which the working row takes as the first row.
   static const EdgeInsets _replyPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 4);
@@ -22,7 +25,9 @@ class const TurnEndLine({
   Widget build(BuildContext context) {
     final color = context.prego.colors.textSecondary;
     return Padding(
-      padding: _replyPadding + const EdgeInsets.symmetric(vertical: TranscriptStepRow.stepGap),
+      padding:
+          (followsReply ? _replyPadding.copyWith(top: 0, bottom: 0) : _replyPadding) +
+          const EdgeInsets.symmetric(vertical: TranscriptStepRow.stepGap),
       child: TranscriptStepRow(
         leading: Icon(icon, size: PregoIconSize.sm, color: color),
         label: label,

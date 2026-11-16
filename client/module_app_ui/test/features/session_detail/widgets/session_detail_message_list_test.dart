@@ -6750,6 +6750,95 @@ void main() {
       expect(find.byKey(_jumpToLatestKey), findsNothing);
     });
   });
+
+  group("a turn that ends early", () {
+    final prompt = _message(messageId: "prompt", role: "user", text: "Write a story", createdAtMs: 100);
+    final reply = _message(messageId: "reply", role: "assistant", text: "Half a story", createdAtMs: 200);
+    MessageWithParts ended({required MessageErrorKind kind}) => MessageWithParts(
+      info: Message.error(
+        id: reply.info.id,
+        sessionID: "session-1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        errorName: "aborted",
+        errorMessage: "Step interrupted",
+        kind: kind,
+        time: reply.info.time,
+      ),
+      parts: reply.parts,
+    );
+
+    Future<_SessionDetailMessageListHarnessState> pumpWorking(WidgetTester tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setBusy(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(TranscriptWorkingRow), findsOneWidget);
+      return harness;
+    }
+
+    Future<void> expectStill(WidgetTester tester, {required double top}) async {
+      for (var ms = 0; ms <= 300; ms += 20) {
+        expect(
+          tester.getTopLeft(find.text("Half a story")).dy,
+          moreOrLessEquals(top, epsilon: 0.01),
+          reason: "At $ms ms",
+        );
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+    }
+
+    testWidgets("a stop keeps the streamed reply and grows Stopped in under it as Working folds away", (tester) async {
+      final harness = await pumpWorking(tester);
+      final top = tester.getTopLeft(find.text("Half a story")).dy;
+
+      harness
+        ..replaceMessages([prompt, ended(kind: MessageErrorKind.stopped)])
+        ..setBusy(false);
+      await tester.pump();
+      await expectStill(tester, top: top);
+
+      expect(find.byType(TranscriptWorkingRow), findsNothing);
+      expect(find.text("Stopped", findRichText: true), findsOneWidget);
+      expect(find.text("Step interrupted"), findsNothing);
+      expect(
+        tester.getTopLeft(find.text("Stopped", findRichText: true)).dy,
+        greaterThan(tester.getBottomLeft(find.text("Half a story")).dy),
+      );
+    });
+
+    testWidgets("a stop whose idle lands after its stopped row still holds the reply in place", (tester) async {
+      final harness = await pumpWorking(tester);
+      final top = tester.getTopLeft(find.text("Half a story")).dy;
+
+      harness.replaceMessages([prompt, ended(kind: MessageErrorKind.stopped)]);
+      await tester.pump();
+      await expectStill(tester, top: top);
+      harness.setBusy(false);
+      await tester.pump();
+      await expectStill(tester, top: top);
+
+      expect(find.byType(TranscriptWorkingRow), findsNothing);
+      expect(find.text("Stopped", findRichText: true), findsOneWidget);
+    });
+
+    testWidgets("a failed turn keeps its streamed reply above the error", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: [
+          prompt,
+          ended(kind: MessageErrorKind.failure),
+        ],
+      );
+
+      expect(find.text("Half a story"), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text("Step interrupted")).dy,
+        greaterThan(tester.getBottomLeft(find.text("Half a story")).dy),
+      );
+    });
+  });
 }
 
 QueuedSessionSubmission _textSubmission({required String promptId, required String text}) =>

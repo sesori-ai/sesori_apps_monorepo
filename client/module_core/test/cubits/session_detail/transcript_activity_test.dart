@@ -190,6 +190,46 @@ void main() {
       expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 5000));
     });
 
+    test("an ended turn's error row takes the working row's place before the idle lands", () {
+      const stopped = MessageWithParts(
+        info: Message.error(
+          id: "e1",
+          sessionID: "s",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          errorName: "aborted",
+          errorMessage: "Step interrupted",
+          kind: MessageErrorKind.stopped,
+          time: null,
+        ),
+        parts: [],
+      );
+
+      expect(
+        _activity(
+          messages: [
+            _prompt(id: "u1", at: 1000),
+            stopped,
+          ],
+          isBusy: true,
+        ),
+        isA<TranscriptActivityIdle>(),
+      );
+      // A prompt sent after it works again.
+      expect(
+        _activity(
+          messages: [
+            _prompt(id: "u1", at: 1000),
+            stopped,
+          ],
+          isBusy: true,
+          pendingPrompts: [(promptId: "p2", acceptedAt: 9000)],
+        ),
+        isA<TranscriptActivityWorking>(),
+      );
+    });
+
     test("works since the latest message sent mid-turn", () {
       final activity = _activity(
         messages: [

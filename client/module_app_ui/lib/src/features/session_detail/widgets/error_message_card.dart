@@ -14,12 +14,19 @@ import "turn_end_line.dart";
 class const ErrorMessageCard({
   super.key,
   required final MessageError message,
+
+  /// Whether the turn's streamed reply shows above it.
+  required final bool followsReply,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (message.kind) {
       // A cancelled tool's icon, since a Stop cancels the turn.
-      MessageErrorKind.stopped => TurnEndLine(icon: TablerSolid.circle_x, label: context.loc.sessionDetailTurnStopped),
+      MessageErrorKind.stopped => TurnEndLine(
+        icon: TablerSolid.circle_x,
+        label: context.loc.sessionDetailTurnStopped,
+        followsReply: followsReply,
+      ),
       MessageErrorKind.failure => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Align(

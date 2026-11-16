@@ -40,6 +40,7 @@ const _terminalError = ErrorMessageCard(
     errorMessage: _errorText,
     time: null,
   ),
+  followsReply: false,
 );
 
 const _abortText = "Pi response aborted";
@@ -55,6 +56,7 @@ const _stoppedError = ErrorMessageCard(
     kind: MessageErrorKind.stopped,
     time: null,
   ),
+  followsReply: false,
 );
 
 void main() {
