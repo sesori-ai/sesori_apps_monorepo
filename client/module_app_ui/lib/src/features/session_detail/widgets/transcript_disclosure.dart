@@ -1,12 +1,11 @@
-import "dart:math";
 import "dart:ui" show lerpDouble;
 
-import "package:flutter/rendering.dart" show RenderSliverPadding;
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "transcript_motion.dart";
+import "transcript_row_hold.dart";
 
 /// A transcript row that eases a panel open below it when tapped.
 ///
@@ -139,12 +138,8 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
     return panel is RenderBox && panel.hasSize ? panel.size.height : null;
   }
 
-  /// Runs on every disclosure and resize tick, before layout. A reversed
-  /// transcript grows a row upward, which would push the tapped header away
-  /// (and behind the floating navigation). Scrolling by the same amount in the
-  /// same frame keeps the header still and grows the panel downward, as long
-  /// as there is room below the row; past that, the row grows upward like new
-  /// content.
+  /// Runs on every disclosure and resize tick, before layout, so the tapped
+  /// header stays still while the panel grows into the room below it.
   void _keepHeaderInPlace() {
     if (!mounted) return;
     final panelHeight = _panelHeight();
@@ -153,38 +148,7 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
     final shown = panelHeight * _panelSize.value;
     final growth = shown - _shownHeight;
     _shownHeight = shown;
-    final scrollable = Scrollable.maybeOf(context);
-    final row = context.findRenderObject();
-    final viewport = scrollable?.context.findRenderObject();
-    if (scrollable == null ||
-        scrollable.axisDirection != AxisDirection.up ||
-        row is! RenderBox ||
-        viewport is! RenderBox ||
-        growth == 0) {
-      return;
-    }
-    final position = scrollable.position;
-    // A transcript shorter than its viewport cannot scroll; the row grows into
-    // the empty space above it instead of bouncing against the range. A drag
-    // or fling already moves the content, and a jump would stop it under the
-    // reader's finger.
-    if (position.maxScrollExtent <= position.minScrollExtent || position.isScrollingNotifier.value) return;
-    final double shift;
-    if (growth > 0) {
-      final rowBottom = row.localToGlobal(Offset(0, row.size.height)).dy;
-      // The list's bottom paddings (its own gap and the floating controls'
-      // height) keep the newest row clear of the composer, so that strip is
-      // no room.
-      var covered = 0.0;
-      for (var node = row.parent; node != null && node != viewport; node = node.parent) {
-        if (node is RenderSliverPadding) covered += node.resolvedPadding?.bottom ?? 0;
-      }
-      final viewportBottom = viewport.localToGlobal(Offset(0, viewport.size.height)).dy - covered;
-      shift = min(growth, max(0, viewportBottom - rowBottom));
-    } else {
-      shift = max(growth, position.minScrollExtent - position.pixels);
-    }
-    if (shift != 0) position.jumpTo(position.pixels + shift);
+    holdTranscriptRowTop(context: context, growth: growth, roomBelowOnly: true);
   }
 
   @override

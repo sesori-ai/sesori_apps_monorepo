@@ -295,6 +295,9 @@ class SessionPromptService({
       // the client retry it.
       Log.w("Failed to record accepted prompt $promptId for session $sessionId", error, stackTrace);
     }
+    // The user moved on from an interrupted turn once the bridge accepted
+    // something for it, whether or not the harness echoes the prompt.
+    await _mutations.acknowledgeInterruption(sessionId: sessionId);
     await _updatePromptDefaults(
       sessionId: sessionId,
       variant: variant,

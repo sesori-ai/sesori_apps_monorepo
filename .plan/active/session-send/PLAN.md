@@ -158,7 +158,14 @@ The bridge sends the source session a summarise prompt through the existing prom
   - `sourceAwaitingInput` covers a pending question or permission.
   - A plugin listed in `unavailablePluginIds` whose backend is not running has no turn, so it counts as idle. A
     running backend listed there failed its status read, so readiness is unknown and the send is refused as
-    `sourceUnavailable`. Any failure of the summarise send itself, including a refusal, is also `sourceUnavailable`.
+    `sourceUnavailable`. Any other failure of the summarise send itself, including a refusal, is also
+    `sourceUnavailable`.
+- A stale-options rejection of a bridge send is its own code: `sourceOptionsUnavailable` for the summarise send (step 3)
+  and `targetOptionsUnavailable` for the handoff to the target (step 3). It means the harness no longer offers that
+  session's saved model, agent or variant. The session keeps its own model and the bridge never swaps it silently,
+  because a typed prompt fails the same way and lets the user pick a replacement. The user sends that session a
+  message, which the app corrects for a stale agent or variant and which needs another model for a stale one, then
+  sends again.
 - Readiness comes from sources that every plugin supplies:
   - `SessionRepository.getSessionStatuses()` decides idle, busy or retrying;
   - `PermissionRepository.getPendingPermissions` and `QuestionRepository.getPendingQuestions` decide awaiting input.
@@ -413,9 +420,9 @@ New wire contracts, all additive:
   `@JsonKey(unknownEnumValue: SendToSessionErrorCode.unknown)`. The codes are:
   - `sameSession`
   - `sourceArchived`, `targetArchived`, `sourceNotRoot`
-  - `sourceBusy`, `sourceAwaitingInput`, `sourceUnavailable`, `sourceEmpty`
+  - `sourceBusy`, `sourceAwaitingInput`, `sourceUnavailable`, `sourceOptionsUnavailable`, `sourceEmpty`
   - `summaryStopped`, `summaryFailed`, `summaryTimedOut`, `summaryMissing`
-  - `transcriptUnavailable`, `targetRefused`
+  - `transcriptUnavailable`, `targetRefused`, `targetOptionsUnavailable`
   - `unknown`
 
 How each pairing behaves:
@@ -624,7 +631,7 @@ Dart rules:
 - No prompt, summary or transcript text in logs.
 
 ```
-1 ── 2 ── 3 ─┬─ 4 ──────────────────── 8 ─┐
+1 ── 2 ── 3 ─┬─ 4 ────────────── 8 ── 8.a ┐
      │       ├─ 5                         ├─ 11 ── 12
      │       └──────── 7 ─┬─ 7.a ── 9 ────┤
      └─ 6 ─────────────┘  └─ 10 ──────────┘
@@ -633,6 +640,7 @@ Dart rules:
 - Step 5 needs only step 2's folder helper, but it ships after step 3 so the rule never lands without its feature.
 - Step 6 is independent of the send flow and can start right after step 1.
 - Step 7 needs 3 and 6. Step 8 needs 4, and is built against fixture messages, so it runs in parallel with 7.
+- Step 8.a needs 8. It came out of step 8's live run.
 - Step 7.a needs 7. Step 9 needs 7.a, whose send flow it extends with the archive. Step 10 needs only 7.
 - Steps 1 and 12 follow the docs-only PR rule. Step 11 also carries live checks, so it waits for its normal review.
 
@@ -817,9 +825,9 @@ including l10n output.
 
 - **Complexity:** moderate. Turn folding in the transcript builder, two new transcript items and an in-place expansion.
 - **What:**
-  - the `module_core` transcript builder folds a turn whose opener carries `handoff.sent` or `handoff.notSent` into
-    a marker item ("Couldn't send to <target>" for `notSent`, D12), and
-    turns a `handoff.received` user message into a card item (D12);
+  - a new `module_core` `TranscriptHandoffBuilder`, layered on the shared turn builder's turns, folds a turn whose
+    request carries `handoff.sent` or `handoff.notSent` into a marker item ("Couldn't send to <target>" for
+    `notSent`, D12), and turns a `handoff.received` user message into a card item (D12);
   - adds the marker row, its summary sheet and the card with "Show all" in `module_app_ui`;
   - adds the strings.
 - **Tests:** builder tests for folding (running and ended, with steered follow-ups inside the turn) and for the card;
@@ -829,6 +837,31 @@ including l10n output.
 - **Risk and test focus:** medium. Watch for jumps when the summary turn ends, when the card expands near the bottom
   of the list, and when older pages load above a marker.
 - **Expected result:** handoffs read as a marker in the source and a card in the target. No database change.
+- **As built:**
+  - The folding lives in a separate `TranscriptHandoffBuilder`, layered on the turns the turn builder already
+    splits. The shared turn builder, the prompt list and their exhaustive switches stay untouched.
+  - The handoff stamp carries the other session's id and title, not its project. The marker and the card show the
+    stamped title. A tap on Open or on the card's header reads the session first, to find its project and whether it
+    is archived. A session that can't be read answers the tap with an alert.
+  - When the card's top is scrolled off screen, "Show less" moves the card's top down as the card shrinks, so the
+    toggle stays under the finger. Holding the top off screen would throw the whole card off the screen. Otherwise
+    the top stays put, as planned.
+  - Once a send has stopped, only the reply up to the next user message folds, so a prompt the turn rule joins to an
+    unanswered request keeps its own rows. A handoff from another session never folds; it keeps its card.
+  - A transcript shorter than the screen can't scroll, so before the card grows the list keeps the empty space above its
+    oldest row, plus the growth to come, as top padding (`TranscriptTopReserve`), and the card starts growing once that
+    has laid out. Every hold then stays in range (a hold past the end starts a spring back, whose end notification lands
+    mid-layout). The room ahead goes back once the card has grown, the rest once it has collapsed.
+
+### Step 8.a: queued handoff prompts stay hidden, and a failed send updates live
+
+`⚙️ [session-send] Keep queued handoff prompts hidden and show a failed send live [step 8.a/13]`.
+
+- **What:** stamp the handoff on the queued-prompt wire model (`QueuedSessionPrompt`) and have the bridge stamp it,
+  so the source's request and the target's handoff prompt never show as a raw bubble before their echo. Push a
+  message update after the bridge marks a request not sent, so an open chat turns "Summary sent" into "Couldn't
+  send". Decide whether the stamp also carries the other session's project id.
+- **Why:** step 8's live run showed both gaps; each needs a bridge or wire change.
 
 ### Step 9: archive the source after sending
 

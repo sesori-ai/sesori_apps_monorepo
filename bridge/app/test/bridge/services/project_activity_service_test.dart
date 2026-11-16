@@ -319,6 +319,7 @@ void main() {
           promptDefaults: null,
           lastUserActivityAt: null,
           scheduledTask: null,
+          interruption: null,
           forkedFrom: null,
         ),
       ),

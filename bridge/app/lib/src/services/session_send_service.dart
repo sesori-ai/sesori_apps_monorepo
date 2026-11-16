@@ -23,6 +23,7 @@ import "session_prompt_refused_exception.dart";
 import "session_prompt_service.dart";
 import "session_send_rejected_exception.dart";
 import "session_view_service.dart";
+import "stale_session_prompt_options_exception.dart";
 
 /// Sends one session into another: the source's agent writes a handoff
 /// summary in a normal turn, the source's transcript is saved for the target,
@@ -197,7 +198,9 @@ class SessionSendService({
         );
       } on Object catch (error, stackTrace) {
         throw SessionSendRejectedException(
-          code: SendToSessionErrorCode.sourceUnavailable,
+          code: error is StaleSessionPromptOptionsException
+              ? SendToSessionErrorCode.sourceOptionsUnavailable
+              : SendToSessionErrorCode.sourceUnavailable,
           userFacingReason: null,
           cause: error,
           causeStackTrace: stackTrace,
@@ -455,7 +458,9 @@ class SessionSendService({
       );
     } on Object catch (error, stackTrace) {
       throw SessionSendRejectedException(
-        code: SendToSessionErrorCode.targetRefused,
+        code: error is StaleSessionPromptOptionsException
+            ? SendToSessionErrorCode.targetOptionsUnavailable
+            : SendToSessionErrorCode.targetRefused,
         userFacingReason: error is SessionPromptRefusedException ? error.userFacingReason : null,
         cause: error,
         causeStackTrace: stackTrace,

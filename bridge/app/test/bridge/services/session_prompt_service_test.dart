@@ -23,6 +23,7 @@ import "package:test/test.dart";
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_continuation_test_support.dart";
+import "../../helpers/session_interruption_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
@@ -427,6 +428,43 @@ void main() {
 
       await sendCommand();
       await sendHello();
+    });
+
+    test("an accepted send acknowledges the session's interruption; a rejected one does not", () async {
+      final mutations = RecordingInterruptionMutations();
+      final acknowledging = SessionPromptService(
+        continuations: RecordingSessionContinuations(),
+        mutations: mutations,
+        views: const PassThroughSessionViews(),
+        sessionRepository: sessionRepository,
+        acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: db)),
+        dispatcher: dispatcher,
+        archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
+        sessionOptionsService: optionsService,
+        promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        chatHistory: createTestChatHistory().service,
+      );
+      addTearDown(acknowledging.dispose);
+      Future<void> sendHello() => acknowledging.sendPrompt(
+        commandSource: null,
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "Hello")],
+        variant: null,
+        agent: null,
+        model: null,
+        command: null,
+        handoff: null,
+      );
+
+      plugin.sendPromptError = StateError("backend unavailable");
+      await expectLater(sendHello(), throwsA(isA<StateError>()));
+      expect(mutations.acknowledged, isEmpty);
+
+      plugin.sendPromptError = null;
+      await sendHello();
+      expect(mutations.acknowledged, ["s1"]);
     });
 
     test("a send the plugin rejects stays retryable with the same prompt id", () async {
