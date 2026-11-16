@@ -485,6 +485,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // its rows go at once.
     final removedMessages = refreshEnded ? const <Message>[] : _removedMessages(oldWidget: oldWidget);
     _removedRowIds = {for (final info in removedMessages) _entryIdForMessage(info: info)};
+    // An edit's removals leave an older message newest, which did not arrive:
+    // the session stays quiet, so the edit's prompt wakes it above the
+    // working row, where its echo lands.
+    final newestMessageId = widget.messages.lastOrNull?.info.id;
+    if (removedMessages.isNotEmpty && oldWidget.messages.any((message) => message.info.id == newestMessageId)) {
+      _newestMessageId = newestMessageId;
+    }
     if (refreshEnded || oldestChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;

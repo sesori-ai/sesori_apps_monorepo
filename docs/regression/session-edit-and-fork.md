@@ -179,6 +179,12 @@ harness declares `fork`.
 - A new prompt that arrives with the removals, such as the edit's echo, even
   one that arrives before them, shows below the rows folding away and eases in
   as any arrival does.
+- On the device that sent the edit, its prompt shows as soon as the bridge
+  accepts it, above the Working row, rising while the removed rows fold; a
+  later echo takes that row in place. Following the latest edge, the rows above
+  settle in one move down instead of springing back up when the echo lands,
+  however late it comes (Codex echoes 10 to 100+ ms after the removals). Other devices still show the
+  prompt only once its echo arrives.
 - Under reduced motion removed rows go at once.
 - A refresh that replaces the transcript never folds rows away: a live row
   swapped for its history twin stays in place, and history the refresh drops

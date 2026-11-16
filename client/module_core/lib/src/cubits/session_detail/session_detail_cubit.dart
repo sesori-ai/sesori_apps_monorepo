@@ -3675,6 +3675,25 @@ class SessionDetailCubit(
     final latest = _edit;
     if (isClosed || latest == null || latest.promptId != attempt.promptId) return;
     if (result is SessionRewindAccepted) {
+      // Parked like any accepted send, so the prompt rises while the edit's
+      // removals fold and its echo takes the row in place, instead of
+      // arriving as a second motion once the fold has pulled the list down.
+      if (!_accountedUserMessages.any((message) => message.promptId == attempt.promptId)) {
+        _promptQueue.adoptAccepted(
+          submission: QueuedSessionSubmission.text(
+            promptId: attempt.promptId,
+            text: text,
+            inputMode: ComposerInputMode.typed,
+            attachments: attachments,
+            agent: current.selectedAgent,
+            agentModel: agentModel,
+            fastMode: current.runsFastMode,
+          ),
+          since: _clock(),
+          epoch: ++_parkEpoch,
+        );
+        _emitQueueUpdate();
+      }
       _endEdit(edit: latest);
       return;
     }
