@@ -8,19 +8,21 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
 
 /// Makes the cubit of one opening of a session's side-chat panel.
-typedef DesktopSideChatCubitFactory =
-    SideChatCubit Function({
-      required String sessionId,
-      required String pluginId,
-      required SideQuestionAvailability availability,
-      required bool isArchived,
-    });
+typedef DesktopSideChatCubitFactory = SideChatCubit Function({
+  required String sessionId,
+  required String pluginId,
+  required SideQuestionAvailability availability,
+  required bool isArchived,
+});
 
 /// Builds the session page around its side chats: [openSideChat] shows them,
 /// and [panel] goes last in the page's full-size [Stack], so it floats over the
 /// page under the session page's own scopes.
-typedef DesktopSideChatPageBuilder =
-    Widget Function(BuildContext context, {required SideChatOpener openSideChat, required Widget panel});
+typedef DesktopSideChatPageBuilder = Widget Function(
+  BuildContext context, {
+  required SideChatOpener openSideChat,
+  required Widget panel,
+});
 
 /// A session page's side chats, in a panel that floats over the page's trailing
 /// edge, full height under the toolbar.
