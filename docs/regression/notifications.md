@@ -80,7 +80,7 @@ external.
   notification it renders.
 - A scheduled task's can't-start push names no session, only its task. Tapping it on mobile, in the foreground or from
   the system tray, opens that task's page over the Scheduled page on the push's computer, so Back returns to the list;
-  a tap while that task's page is already on top leaves it alone.
+  a tap while that task's page is already on top leaves it alone, except right after a computer switch.
 - Desktop attention listens directly to relay SSE without registering a push token. A permission-asked or
   question-asked event uses `displaySessionId` when present, resolves that session's title/project, and shows only while
   the desktop window is hidden or unfocused and the desktop-owned Settings → Notifications switch is enabled.

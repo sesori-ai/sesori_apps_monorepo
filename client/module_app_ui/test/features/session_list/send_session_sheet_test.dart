@@ -10,6 +10,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:theme_prego/module_prego.dart";
 
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
+
 class _MockSearchCubit() extends MockCubit<SessionSearchState> implements SessionSearchCubit;
 
 class _MockWindow() extends Mock implements SessionWindowService;
@@ -27,10 +29,13 @@ void main() {
 
   late List<String?> excludedIds;
   late List<SendSessionChoice?> choices;
+  late _MockSessionActionsCubit actions;
 
   setUp(() {
     excludedIds = [];
     choices = [];
+    actions = _MockSessionActionsCubit();
+    when(() => actions.archiveAfterSend()).thenAnswer((_) async => true);
   });
 
   Future<_MockSearchCubit> pumpSheet(WidgetTester tester, {List<SessionSearchMatch>? shown}) async {
@@ -66,6 +71,8 @@ void main() {
                         await showSendSessionSheet(
                           context: context,
                           source: source,
+                          actions: actions,
+                          confirmPinnedArchive: ({required context}) async => true,
                           createSearch: ({required window, required projectInventory, required excludedSessionId}) {
                             excludedIds.add(excludedSessionId);
                             return search;

@@ -225,6 +225,15 @@ void main() {
     expect(request.accountId, "user-1");
   });
 
+  test("opens the task a task-only payload names", () {
+    final request = client.notificationOpenFromPayloadForTesting(
+      payload: jsonEncode(<String, dynamic>{"taskId": "stk_1", "accountId": "user-1"}),
+    );
+
+    expect(request?.target, const NotificationOpenTarget.task(taskId: "stk_1"));
+    expect(request?.accountId, "user-1");
+  });
+
   test("rejects malformed and incomplete notification payloads", () {
     expect(client.notificationOpenFromPayloadForTesting(payload: "not-json"), isNull);
     expect(
