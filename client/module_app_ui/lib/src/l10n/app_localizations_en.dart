@@ -3188,7 +3188,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailContinueEditOpen => 'Finish or cancel your edit first.';
 
   @override
-  String get sessionDetailContinueEditSending => 'Sending your edit. Continue in a moment.';
+  String get sessionDetailContinueEditSending => 'Your edit is on its way. Continue in a moment.';
 
   @override
   String get sessionDetailContinueSessionWorking => 'The agent is already working.';
@@ -3286,7 +3286,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailEditRefusedBody => 'The session didn\'t accept the edit. Nothing changed.';
 
   @override
-  String get sessionDetailEditSendingLock => 'Sending your edit. You can type again in a moment.';
+  String get sessionDetailEditSendingLock => 'Your edit is on its way. You can type again in a moment.';
 
   @override
   String get sessionDetailEditOptionsChanged =>
