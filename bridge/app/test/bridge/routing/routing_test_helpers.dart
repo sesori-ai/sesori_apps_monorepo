@@ -16,6 +16,7 @@ import "package:sesori_bridge/src/repositories/models/session_abort_result.dart"
 import "package:sesori_bridge/src/repositories/models/session_compaction_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/session_page_cursor.dart";
+import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
 import "package:sesori_bridge/src/repositories/models/session_readiness.dart";
 import "package:sesori_bridge/src/repositories/models/side_question_ask_result.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
@@ -457,6 +458,13 @@ class FakeSessionRepository({
   @override
   Future<bool> isSessionRunning({required String sessionId}) async => false;
 
+  /// Quietness by session id; a session absent here reads as quiet.
+  final Map<String, SessionQuietness> quietness = {};
+
+  @override
+  Future<SessionQuietness> getSessionQuietness({required String sessionId}) async =>
+      quietness[sessionId] ?? SessionQuietness.quiet;
+
   @override
   Future<Session> createSession({
     required String reservedSessionId,
@@ -476,6 +484,7 @@ class FakeSessionRepository({
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required ScheduledRunSessionLink? scheduledRun,
   }) async => const Session(
     approvalOverride: null,
     autoContinuation: null,

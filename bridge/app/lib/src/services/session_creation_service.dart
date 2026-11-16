@@ -33,9 +33,24 @@ class SessionCreationService({
   bool _acceptingLateMetadata = true;
   Future<void>? _drainFuture;
 
-  Future<Session> createSession({required CreateSessionRequest request}) async {
+  Future<Session> createSession({required CreateSessionRequest request}) =>
+      _createRejectingStaleOptions(request: request, scheduledRun: null);
+
+  /// Starts a scheduled task's run as a new session. It goes through every
+  /// check and step of [createSession] except remembering the picks as the
+  /// user's new-session defaults, and the session row carries
+  /// [ScheduledRunSessionLink.taskId] and the task's approval mode.
+  Future<Session> createScheduledRunSession({
+    required CreateSessionRequest request,
+    required ScheduledRunSessionLink scheduledRun,
+  }) => _createRejectingStaleOptions(request: request, scheduledRun: scheduledRun);
+
+  Future<Session> _createRejectingStaleOptions({
+    required CreateSessionRequest request,
+    required ScheduledRunSessionLink? scheduledRun,
+  }) async {
     try {
-      return await _createSession(request: request);
+      return await _createSession(request: request, scheduledRun: scheduledRun);
     } on PluginStaleOptionsException catch (error, stackTrace) {
       try {
         await _sessionOptionsService.invalidateRejectedSelection(
@@ -49,7 +64,10 @@ class SessionCreationService({
     }
   }
 
-  Future<Session> _createSession({required CreateSessionRequest request}) async {
+  Future<Session> _createSession({
+    required CreateSessionRequest request,
+    required ScheduledRunSessionLink? scheduledRun,
+  }) async {
     // Validate the opaque project handle before any plugin/git side effect.
     // The stored path is authoritative; unknown ids are not directories.
     final projectDirectory = await _sessionRepository.resolveProjectDirectory(projectId: request.projectId);
@@ -127,6 +145,7 @@ class SessionCreationService({
       baseCommit: worktreeState.baseCommit,
       lastAgent: promptDefaults.agent,
       lastAgentModel: promptDefaults.model,
+      scheduledRun: scheduledRun,
     );
     await _maybeSendCommand(
       session: created,
@@ -142,13 +161,16 @@ class SessionCreationService({
       model: request.model,
       commandSource: request.commandSource,
     );
-    unawaited(
-      _recordNewSessionDefaults(
-        sessionId: created.id,
-        pluginId: request.pluginId,
-        defaults: promptDefaults,
-      ),
-    );
+    // A scheduled run must not change the user's remembered picks.
+    if (scheduledRun == null) {
+      unawaited(
+        _recordNewSessionDefaults(
+          sessionId: created.id,
+          pluginId: request.pluginId,
+          defaults: promptDefaults,
+        ),
+      );
+    }
     _startLateMetadata(session: created, firstText: firstText);
     return created;
   }

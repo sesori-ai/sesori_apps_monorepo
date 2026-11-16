@@ -1,5 +1,6 @@
 import "package:sesori_bridge/src/api/database/daos/scheduled_task_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/models/scheduled_task_record.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -159,5 +160,33 @@ void main() {
     }
 
     expect(await repository.listRuns(taskId: second.id), hasLength(1));
+  });
+
+  test("a fire reserves its run only against the task as it was read", () async {
+    final dueAt = DateTime.utc(2026, 11, 16, 7, 30);
+    final read = await repository.create(definition: definition, nextDueAt: dueAt, now: now);
+    await repository.setEnabled(
+      taskId: read.id,
+      enabled: false,
+      nextDueAt: null,
+      now: now.add(const Duration(seconds: 1)),
+    );
+
+    Future<ScheduledTaskRun?> reserve({required ScheduledTaskRecord task}) => repository.reserveRun(
+      task: task,
+      nextDueAt: dueAt.add(const Duration(days: 3)),
+      completedAt: null,
+      scheduledFor: ScheduledTaskInstant(at: dueAt.millisecondsSinceEpoch, offsetMinutes: 120),
+      outcome: const ScheduledTaskRunOutcome.started(sessionId: null, late: false),
+      firedAt: dueAt,
+    );
+
+    expect(await reserve(task: read), isNull);
+    expect(await repository.listRuns(taskId: read.id), isEmpty);
+    expect((await repository.get(taskId: read.id))?.nextDueAt, isNull);
+
+    final current = await repository.get(taskId: read.id);
+    expect(await reserve(task: current ?? fail("task is gone")), isNotNull);
+    expect((await repository.get(taskId: read.id))?.nextDueAt, dueAt.add(const Duration(days: 3)));
   });
 }

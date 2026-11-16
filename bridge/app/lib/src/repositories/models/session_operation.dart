@@ -41,4 +41,5 @@ enum SessionOperation() {
   continueAfterQuota,
   getSessionReadiness,
   compactSession,
+  getSessionQuietness,
 }
