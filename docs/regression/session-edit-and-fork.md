@@ -247,8 +247,12 @@ harness declares `fork`.
   permission mode, then sends the edited prompt with the same prompt id. The
   transcript changes only when that prompt is written; later respawns use plain
   `--resume`, which follows the edited branch.
+- The edited prompt is queued before the session reports busy, so the Working
+  row counts from the edit at 0 s during the respawn, never from a message the
+  edit removes. A failed respawn, or a stop during the respawn, takes it out
+  of the queue again.
 - The session is held busy from the idle check until the edited prompt is
-  queued: a second edit is refused as busy, and a send that arrives during the
+  sent: a second edit is refused as busy, and a send that arrives during the
   respawn runs after the edited prompt.
 - Refused with a plain reason before the process is stopped: a prompt not on
   the active branch (or a session with no transcript), a prompt with no parent
