@@ -338,7 +338,8 @@ enum PluginErrorKind() {
 /// Three variants:
 /// - [PluginMessageUser]: a message sent by the user
 /// - [PluginMessageAssistant]: a non-user message with explicit sender attribution
-/// - [PluginMessageError]: an assistant message that failed with an error
+/// - [PluginMessageError]: a turn that failed with an error or that the user
+///   stopped
 ///
 /// The JSON serialization uses `"role"` as the union key.
 @Freezed(unionKey: "role")

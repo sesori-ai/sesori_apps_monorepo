@@ -82,6 +82,9 @@ class FeedbackPromptService({
   /// goes out, because its error event can arrive before the response does.
   void recordUserStop({required String sessionId}) {
     if (!_isStarted) return;
+    // A stopped row can land just after the turn's idle, while its point
+    // still waits out the grace.
+    _pendingTurns.remove(sessionId)?.cancel();
     _stoppedSessions.add(sessionId);
   }
 

@@ -439,6 +439,20 @@ void main() {
         expect(await stored(), counting(points: {"ses-a": 1}, lastShownAt: isNull));
       });
 
+      test("a stopped row from another surface after the idle keeps the turn from earning", () async {
+        service.finishedTurnGrace = const Duration(milliseconds: 50);
+        await startTurn(sessionId: "ses-a");
+        await endTurn(sessionId: "ses-a");
+        await emitEvent(
+          SesoriSseEvent.messageUpdated(
+            info: _errorMessage(sessionId: "ses-a", kind: MessageErrorKind.stopped),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+
+        expect(await stored(), isNull);
+      });
+
       test("other sessions' AI errors still drop their points", () async {
         await finishTurns(sessionId: "ses-b");
         service.recordUserStop(sessionId: "ses-a");

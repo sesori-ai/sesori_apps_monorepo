@@ -2738,6 +2738,19 @@ void main() {
     process.emit(frame: {"type": "agent_start"});
     final abort = service.abort(sessionId: "session");
     final abortCommand = await waitForCommand(process: process, type: "abort");
+    final eventsBeforeStop = events.length;
+    // The prompt's own end can land after the stop; its prompt is settled by
+    // then, so forwarding it would add a user message without its prompt id.
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": <String, Object?>{
+          "role": "user",
+          "content": "write",
+          "timestamp": DateTime.utc(2026, 11, 15).millisecondsSinceEpoch,
+        },
+      },
+    );
     process.emit(
       frame: {
         "type": "message_end",
@@ -2759,6 +2772,10 @@ void main() {
         .map((event) => event.info)
         .whereType<PluginMessageError>();
     expect(stopped.single.kind, PluginErrorKind.stopped);
+    expect(
+      events.skip(eventsBeforeStop).whereType<BridgeSseMessageUpdated>().map((event) => event.info),
+      isNot(contains(isA<PluginMessageUser>())),
+    );
   });
 
   test("a stopping session reads running in the list and the chat until the stop lands", () async {

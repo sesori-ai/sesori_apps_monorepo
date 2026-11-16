@@ -48,11 +48,7 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   /// Non-null while a stop aborts and tears down the resident process. The
   /// session stays busy until it lands, and turns sent meanwhile wait here
   /// before establishing fresh residency.
-  Completer<void>? aborting;
-
-  /// The process generation a stop is aborting. Its turn has ended, but Pi
-  /// still closes the stopped response with an aborted message end.
-  int? abortingGeneration;
+  _PiAbort? aborting;
   PluginSessionStatus status = const PluginSessionStatus.idle();
 
   /// The current resident whose frames may outlive a bridge-admitted prompt.
@@ -520,7 +516,7 @@ final class PiSessionService({
   }) async {
     try {
       final aborting = state.aborting;
-      if (aborting != null) await aborting.future;
+      if (aborting != null) await aborting.done.future;
       final idleReap = state.idleReap;
       if (idleReap != null) await idleReap;
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) {
@@ -743,10 +739,12 @@ final class PiSessionService({
   void _handleFrame(PiSessionProcessFrame processFrame) {
     final state = _sessions[processFrame.sessionId];
     if (state == null) return;
-    if (processFrame.generation == state.abortingGeneration) {
+    if (processFrame.generation == state.aborting?.generation) {
       // Only the stopped response's end still matters: it turns that response
       // into the turn's stopped row.
-      if (processFrame.frame case PiEventFrame(:final PiMessageEndEvent event)) {
+      if (processFrame.frame case PiEventFrame(
+        event: PiMessageEndEvent(message: PiAssistantMessageDto()) && final event,
+      )) {
         _dispatcher.map(sessionId: processFrame.sessionId, event: event, now: _clock.now()).forEach(_emit);
       }
       return;
@@ -1163,9 +1161,11 @@ final class PiSessionService({
     state.generation++;
     state.idleGeneration++;
     state.quotaCandidate = null;
-    final aborting = Completer<void>();
-    state.aborting = aborting;
     final cancelled = state.turns.toList(growable: false);
+    final connection = cancelled.firstOrNull?.connection;
+    // A repeated stop has no connection left and keeps the first stop's.
+    final aborting = _PiAbort(done: Completer(), generation: connection?.generation ?? state.aborting?.generation);
+    state.aborting = aborting;
     final hadQueuedPresentations = cancelled.any(
       (turn) => turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible,
     );
@@ -1187,9 +1187,6 @@ final class PiSessionService({
     _clearCompaction(sessionId: sessionId);
     if (hadQueuedPresentations) _emitQueueUpdate(sessionId: sessionId, state: state);
     _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
-    final connection = cancelled.firstOrNull?.connection;
-    // A repeated stop has no connection left and keeps the first stop's.
-    if (connection != null) state.abortingGeneration = connection.generation;
     var forceTeardown = false;
     try {
       final idleReap = state.idleReap;
@@ -1225,12 +1222,8 @@ final class PiSessionService({
           await _processes.teardown(sessionId: sessionId);
         }
       } finally {
-        if (identical(state.aborting, aborting)) {
-          state
-            ..aborting = null
-            ..abortingGeneration = null;
-        }
-        aborting.complete();
+        if (identical(state.aborting, aborting)) state.aborting = null;
+        aborting.done.complete();
         // A prompt sent during the stop keeps the session busy.
         _settleStatus(sessionId: sessionId, state: state);
       }
@@ -1423,3 +1416,14 @@ final class PiSessionService({
     await _workState.close();
   }
 }
+
+/// A stop in progress.
+final class _PiAbort({
+  /// Completes once the stop has landed.
+  required final Completer<void> done,
+
+  /// The process generation being aborted, or null when no process ran. Its
+  /// turn has ended, but Pi still closes the stopped response with an aborted
+  /// message end.
+  required final int? generation,
+});

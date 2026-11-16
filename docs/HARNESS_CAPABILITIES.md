@@ -642,7 +642,7 @@ app ignores `kind` and shows the row's text in red.
 | Pi | ✅ `stopReason: aborted`. | ✅ The same record. |
 | OpenCode v1 | ✅ `MessageAbortedError`. | ✅ The same record. |
 | OpenCode v2 | ✅ Error type `aborted`. | ✅ The same record. |
-| omp | ⬜ | ⬜ |
+| OMP | ⬜ | ⬜ |
 | Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity | ⬜ | ⬜ |
 | Claude Code | ⬜ | ⬜ |
 | Codex | ⬜ | ⬜ |
