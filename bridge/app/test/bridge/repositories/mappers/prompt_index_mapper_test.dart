@@ -51,8 +51,13 @@ SequencedMessage _runningTool({required int seq}) => (
   ),
 );
 
-String? _preview({required String text}) =>
-    const PromptIndexMapper().indexOf(messages: [_user(seq: 1, text: text)]).single.preview;
+String? _preview({required String text}) => const PromptIndexMapper()
+    .indexOf(
+      messages: [_user(seq: 1, text: text)],
+      turnEndMessageIds: const {},
+    )
+    .single
+    .preview;
 
 void main() {
   group("PromptIndexMapper.indexOf", () {
@@ -65,9 +70,24 @@ void main() {
           _invokedUser(seq: 3, text: "Again", invocation: review),
           _user(seq: 4, text: "Plain"),
         ],
+        turnEndMessageIds: const {},
       );
 
       expect([for (final entry in entries) entry.invocation], [review, review, null]);
+    });
+
+    test("a prompt after a turn a bridge stop cut off opens a new turn", () {
+      final messages = [_user(seq: 1, text: "Build it"), _runningTool(seq: 2), _user(seq: 3, text: "Continue")];
+
+      expect(
+        const PromptIndexMapper().indexOf(messages: messages, turnEndMessageIds: const {}).last,
+        isA<SessionPromptIndexFollowUp>(),
+        reason: "the running tool makes it a follow-up without the stop",
+      );
+      expect(
+        const PromptIndexMapper().indexOf(messages: messages, turnEndMessageIds: const {"a2"}).last,
+        isA<SessionPromptIndexOpener>(),
+      );
     });
 
     test("lists a prompt in the leading segment as an opener", () {
@@ -77,6 +97,7 @@ void main() {
           _user(seq: 2, text: "Go on"),
           _user(seq: 3, text: "Faster"),
         ],
+        turnEndMessageIds: const {},
       );
 
       expect(entries, const [

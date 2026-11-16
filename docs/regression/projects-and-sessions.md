@@ -648,6 +648,16 @@ state.
   list by time. A
   bridge without the route keeps Pin offered and answers a tap with "Update
   this computer to pin sessions"; a failed pin or unpin says so.
+  In the desktop sidebar a mouse drag reorders the pinned rows, under the All
+  chip with no search typed, also within a project filter, where the row lands
+  below the pinned row it was dropped under. A press that moves lifts the row
+  (slight scale and shadow) and it follows the pointer vertically, held within
+  Pinned, while the other pinned rows slide to open its gap and show no hover
+  or tooltip beneath it. On release it glides into the gap and nothing moves
+  when the bridge confirms. A refused move slides the rows back and says
+  "Couldn't save the pinned order". A click still opens the row and a right
+  click its menu; touch still scrolls. Only pinned rows on screen are drop
+  targets, and the list does not scroll while a row is dragged.
 - Above the active session list, on the phone and the sidebar alike, chips
   read All, Running and Unread with the bridge's counts under the project
   filter and the search, whatever chip is chosen. A chip narrows the loaded

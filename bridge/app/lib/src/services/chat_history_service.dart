@@ -494,7 +494,7 @@ class ChatHistoryService({
   );
 
   /// Every prompt in the session's history, oldest first, kinded by the
-  /// shared prompt-turn rule.
+  /// shared prompt-turn rule with the transcript's turn ends.
   ///
   /// Read like [_storedOnlyPage]: from the store or the audit file alone,
   /// outside the session queue and without a backfill. The app asks after a
@@ -503,12 +503,18 @@ class ChatHistoryService({
   Future<List<SessionPromptIndexEntry>> getPromptIndex({required String sessionId}) => _readStoredHistory(
     sessionId: sessionId,
     noStoredSession: const <SessionPromptIndexEntry>[],
-    readArchive: (_) => _chatHistoryRepository.getArchivedPromptIndex(sessionId: sessionId),
-    readStore: (_) => _chatHistoryRepository.getPromptIndex(sessionId: sessionId),
+    readArchive: (_) async => await _chatHistoryRepository.getArchivedPromptIndex(
+      sessionId: sessionId,
+      turnEndMessageIds: await _turnEndMessageIds(sessionId: sessionId),
+    ),
+    readStore: (_) async => await _chatHistoryRepository.getPromptIndex(
+      sessionId: sessionId,
+      turnEndMessageIds: await _turnEndMessageIds(sessionId: sessionId),
+    ),
   );
 
   /// The messages after which [sessionId]'s turns ended without a reply, so
-  /// edits and forks split turns as the app shows them: the message a bridge
+  /// edits, forks and the prompt index split turns as the app shows them: the message a bridge
   /// stop cut the turn off after, when one did.
   Future<Set<String>> _turnEndMessageIds({required String sessionId}) async => {
     if ((await _interruptions.readMany(sessionIds: {sessionId}))[sessionId] case final interruption?)

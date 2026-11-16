@@ -1,12 +1,14 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_list/pinned_row_drag.dart";
 import "package:sesori_app_ui/src/features/session_list/session_list_headings.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
@@ -18,6 +20,8 @@ class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements All
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
 class _MockSessionWindowService() extends Mock implements SessionWindowService;
+
+class _MockSessionActionsCubit() extends MockCubit<void> implements SessionActionsCubit;
 
 void main() {
   const project = ProjectSummary(id: "p1", name: "Project One", path: "/p1", time: null);
@@ -87,6 +91,7 @@ void main() {
     PregoInteractionMode interaction = PregoInteractionMode.touch,
     // The launches the list's launching rows come from.
     SessionLaunchRepository? launches,
+    SessionActionsCubit? actions,
   }) async {
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, updates, initialState: initial);
@@ -156,7 +161,7 @@ void main() {
                         openSession: _openNothing,
                         createSessionSearch: _searchNothing,
                       ),
-                      createActions: ({required window}) => throw StateError("no row to act on"),
+                      createActions: ({required window}) => actions ?? (throw StateError("no row to act on")),
                       selectedSessionId: null,
                       showsLoadFailure: true,
                       showsSearchField: true,
@@ -2503,6 +2508,168 @@ void main() {
     }
     expect(headings(), ["Today", "Yesterday"]);
     expect(find.byIcon(TablerRegular.pinned), findsNothing);
+  });
+
+  group("dragging a pinned row", () {
+    final today = DateTime.now();
+    AllSessionsRow pinnedRow({required String title, required int pinOrder}) {
+      final listed = row(title: title, updatedAt: today, archivedAt: null, isRunning: false);
+      return AllSessionsRow(
+        session: listed.session.copyWith(pinOrder: pinOrder),
+        project: project,
+        isRunning: false,
+        isUnseen: false,
+        isAwaitingInput: false,
+        isRetrying: false,
+        isInterrupted: false,
+        backgroundTaskCount: 0,
+      );
+    }
+
+    AllSessionsState listing(List<AllSessionsRow> rows) => state(
+      query: "",
+      failure: null,
+      rows: rows,
+      scratchProjectId: null,
+      counts: SessionListChipCounts(all: rows.length, running: 0, unread: 0),
+    );
+    final first = pinnedRow(title: "First", pinOrder: 30);
+    final second = pinnedRow(title: "Second", pinOrder: 20);
+    final third = pinnedRow(title: "Third", pinOrder: 10);
+    final unpinned = row(title: "Unpinned", updatedAt: today, archivedAt: null, isRunning: false);
+
+    /// The tops of the rows' rooms in the list, which stay empty while lifted.
+    List<double> roomTops(WidgetTester tester) => [
+      for (final title in ["First", "Second", "Third"])
+        tester.getTopLeft(find.ancestor(of: find.text(title).first, matching: find.byType(PinnedRowDrag))).dy,
+    ];
+
+    Future<void> settle(WidgetTester tester) async {
+      for (var elapsed = 0; elapsed < 400; elapsed += 50) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    Future<(SessionActionsCubit, StreamController<AllSessionsState>, Completer<bool>)> pumpPinned(
+      WidgetTester tester,
+    ) async {
+      final actions = _MockSessionActionsCubit();
+      final answer = Completer<bool>();
+      when(
+        () => actions.movePin(
+          sessionId: any(named: "sessionId"),
+          afterSessionId: any(named: "afterSessionId"),
+        ),
+      ).thenAnswer((_) => answer.future);
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        mode: AllSessionsMode.active,
+        interaction: PregoInteractionMode.pointer,
+        actions: actions,
+        updates: updates.stream,
+        initial: listing([first, second, third, unpinned]),
+      );
+      await settle(tester);
+      return (actions, updates, answer);
+    }
+
+    testWidgets("with a mouse, the row lifts, the others slide out of its way, and it stays where it is dropped", (
+      tester,
+    ) async {
+      final (actions, updates, answer) = await pumpPinned(tester);
+      final rest = roomTops(tester);
+      final rowHeight = rest[1] - rest[0];
+
+      final drag = await tester.startGesture(tester.getCenter(find.text("Third")), kind: PointerDeviceKind.mouse);
+      await drag.moveBy(const Offset(0, -6));
+      await tester.pump();
+      // A lifted copy floats over the list while the row's room stays.
+      expect(find.text("Third"), findsNWidgets(2));
+      await drag.moveBy(Offset(0, -2 * rowHeight));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      // Mid-slide, First and Second move down, neither jumping.
+      final sliding = roomTops(tester);
+      expect(sliding[0], inExclusiveRange(rest[0], rest[1]));
+      await settle(tester);
+      expect(roomTops(tester), [rest[1], rest[2], rest[0]]);
+
+      await drag.up();
+      await tester.pump();
+      verify(() => actions.movePin(sessionId: "Third", afterSessionId: null)).called(1);
+      await settle(tester);
+      expect(find.text("Third"), findsOneWidget);
+      expect(roomTops(tester), [rest[1], rest[2], rest[0]]);
+
+      // The window's order catches up, then the bridge agrees: nothing moves.
+      updates.add(listing([third.copyWith(session: third.session.copyWith(pinOrder: 31)), first, second, unpinned]));
+      await tester.pump();
+      answer.complete(true);
+      await settle(tester);
+      expect(roomTops(tester), [rest[1], rest[2], rest[0]]);
+    });
+
+    testWidgets("a refused move slides the rows back and says so", (tester) async {
+      final (_, _, answer) = await pumpPinned(tester);
+      final rest = roomTops(tester);
+      final rowHeight = rest[1] - rest[0];
+
+      final drag = await tester.startGesture(tester.getCenter(find.text("First")), kind: PointerDeviceKind.mouse);
+      await drag.moveBy(const Offset(0, 6));
+      await drag.moveBy(Offset(0, rowHeight));
+      await tester.pump();
+      await drag.up();
+      await settle(tester);
+      expect(roomTops(tester), [rest[1], rest[0], rest[2]]);
+
+      answer.complete(false);
+      // The refusal reaches the list a frame after the bridge answers.
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(roomTops(tester)[0], inExclusiveRange(rest[0], rest[1]));
+      await settle(tester);
+      expect(roomTops(tester), rest);
+      expect(find.text("Couldn't save the pinned order"), findsOneWidget);
+    });
+
+    testWidgets("a cancelled drag puts the row back and moves nothing", (tester) async {
+      final (actions, _, _) = await pumpPinned(tester);
+      final rest = roomTops(tester);
+
+      final drag = await tester.startGesture(tester.getCenter(find.text("Third")), kind: PointerDeviceKind.mouse);
+      await drag.moveBy(const Offset(0, -6));
+      await drag.moveBy(Offset(0, -2 * (rest[1] - rest[0])));
+      await tester.pump();
+      await settle(tester);
+      expect(roomTops(tester), isNot(rest));
+      await drag.cancel();
+      await settle(tester);
+      expect(roomTops(tester), rest);
+      expect(find.text("Third"), findsOneWidget);
+      verifyNever(
+        () => actions.movePin(
+          sessionId: any(named: "sessionId"),
+          afterSessionId: any(named: "afterSessionId"),
+        ),
+      );
+    });
+
+    testWidgets("a click still opens the row instead of lifting it", (tester) async {
+      final (actions, _, _) = await pumpPinned(tester);
+
+      await tester.tap(find.text("Second"), kind: PointerDeviceKind.mouse);
+      await settle(tester);
+      expect(find.text("Second"), findsOneWidget);
+      verifyNever(
+        () => actions.movePin(
+          sessionId: any(named: "sessionId"),
+          afterSessionId: any(named: "afterSessionId"),
+        ),
+      );
+    });
   });
 }
 

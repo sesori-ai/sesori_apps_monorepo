@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
+import "package:sesori_bridge/src/services/session_deletion_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_view_service.dart";
@@ -114,6 +115,7 @@ void main() {
           pathContext: p.context,
         ),
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        sessionDeletionService: _UnusedSessionDeletionService(),
       );
       handler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -539,6 +541,7 @@ void main() {
           pathContext: p.context,
         ),
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        sessionDeletionService: _UnusedSessionDeletionService(),
       );
       final localHandler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -1071,6 +1074,7 @@ void main() {
           pathContext: p.context,
         ),
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        sessionDeletionService: _UnusedSessionDeletionService(),
       );
       final localHandler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -1270,6 +1274,7 @@ void main() {
           pathContext: p.context,
         ),
         promptPartDelivery: testPromptPartDeliveryService(uploadsRoot: "/uploads"),
+        sessionDeletionService: _UnusedSessionDeletionService(),
       );
       final localHandler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -1423,6 +1428,11 @@ final class const _FailingSessionViews() implements SessionViewService {
   @override
   Future<Session> enrich({required Session session}) async => throw StateError("continuation projection failed");
 
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedSessionDeletionService() implements SessionDeletionService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

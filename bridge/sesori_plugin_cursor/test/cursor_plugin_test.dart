@@ -764,6 +764,55 @@ void main() {
       await client.dispose();
     });
 
+    group("validateTurnSelection", () {
+      Future<void> validate({
+        ({String providerID, String modelID})? model,
+        String? variant,
+        String? agent,
+      }) => plugin.validateTurnSelection(
+        operation: "sendPrompt",
+        sessionId: "s1",
+        model: model,
+        variant: variant == null ? null : PluginSessionVariant(id: variant),
+        agent: agent,
+      );
+
+      test("refuses a model Cursor no longer lists before the prompt is accepted", () async {
+        capture(catalogResult(), fromNewSession: true);
+        await expectLater(
+          validate(model: (providerID: "cursor", modelID: "retired-model")),
+          throwsA(isA<PluginStaleOptionsException>()),
+        );
+      });
+
+      test("refuses a mode Cursor no longer lists", () async {
+        capture(catalogResult(), fromNewSession: true);
+        await expectLater(validate(agent: "retired-mode"), throwsA(isA<PluginStaleOptionsException>()));
+      });
+
+      test("refuses a reasoning level the selected model no longer lists", () async {
+        capture(catalogResult(), fromNewSession: true);
+        await expectLater(
+          validate(model: (providerID: "cursor", modelID: "gpt-5.4"), variant: "max"),
+          throwsA(isA<PluginStaleOptionsException>()),
+        );
+      });
+
+      test("refuses a reasoning level outside the provisional set for a model without its own", () async {
+        capture(catalogResult(), fromNewSession: true);
+        await expectLater(
+          validate(model: (providerID: "cursor", modelID: "sonnet-4.6"), variant: "max"),
+          throwsA(isA<PluginStaleOptionsException>()),
+        );
+      });
+
+      test("accepts listed options and skips checks before the catalog is known", () async {
+        await validate(model: (providerID: "cursor", modelID: "anything"), variant: "max", agent: "whatever");
+        capture(catalogResult(), fromNewSession: true);
+        await validate(model: (providerID: "cursor", modelID: "sonnet-4.6"), variant: "high", agent: "Plan");
+      });
+    });
+
     test("applyTurnSelection resolves mode from display name agent", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
@@ -1233,7 +1282,7 @@ void main() {
       await client.dispose();
     });
 
-    test("a rejected model switch stamps the model actually in effect", () async {
+    test("a rejected model switch fails the turn and keeps the model actually in effect", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
@@ -1254,12 +1303,14 @@ void main() {
         "id": modelFrame["id"],
         "error": {"code": -32000, "message": "rejected"},
       });
-      await pump();
-      await respond("session/set_config_option", const {}); // mode
-      await respond("session/set_config_option", const {}); // effort
-      await applying;
+      await expectLater(applying, throwsA(isA<PluginStaleOptionsException>()));
 
       expect(plugin.eventMapper.modelForSession(sessionId: "s1"), "gpt-5.4");
+      expect(
+        fake.written.where((f) => f["method"] == "session/set_config_option"),
+        hasLength(1),
+        reason: "mode and effort are not applied after the model was rejected",
+      );
 
       await client.dispose();
     });
@@ -1300,8 +1351,7 @@ void main() {
         "id": modelFrame["id"],
         "error": {"code": -32000, "message": "rejected"},
       });
-      await pump();
-      await b;
+      await expectLater(b, throwsA(isA<PluginStaleOptionsException>()));
 
       expect(plugin.eventMapper.modelForSession(sessionId: "sB"), "gpt-5.4");
 
