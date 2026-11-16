@@ -59,6 +59,19 @@ void main() {
     await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
   });
 
+  testWidgets("Enter in a focused composer that locks shows the note instead of sending", (tester) async {
+    await _pumpComposer(tester: tester, initialAttachments: const [], onAttachmentsChanged: null, lockedNote: null);
+    await tester.showKeyboard(find.byType(TextField));
+    await _pumpComposer(tester: tester, initialAttachments: const [], onAttachmentsChanged: null, lockedNote: _note);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(find.text(_note), findsOneWidget);
+    expect(find.text("the edit"), findsOneWidget);
+    await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
+  });
+
   testWidgets("a locked composer keeps its attachments", (tester) async {
     final reported = <List<ComposerAttachment>>[];
     await _pumpComposer(

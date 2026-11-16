@@ -662,7 +662,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// Enter and the send button. While a pointer shell listens, Enter finishes
   /// the dictation.
   void _handleSend() {
-    if (_isAwaitingDictatedWords) return;
+    if (_isAwaitingDictatedWords || _refuseWhileLocked()) return;
     // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: variant
     if (_isListening && ComposerPresentationScope.read(context).presentation == ComposerPresentation.pointer) {
       unawaited(_endRecording(finish: _VoiceFinish.send));
