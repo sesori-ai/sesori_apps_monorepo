@@ -186,6 +186,7 @@ void main() {
       bridgeSettingsService: bridgeSettingsService ?? stubbedBridgeSettingsService(),
       sseEventTracker: sseEventTracker ?? MockSseEventTracker(),
       fileReferenceOpenService: fileReferenceOpenService ?? MockFileReferenceOpenService(),
+      composerRestore: MockMessageComposerRestoreService(),
       window: window ?? idleSessionWindow(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       clock: clock,
@@ -2908,6 +2909,7 @@ void main() {
         bridgeSettingsService: stubbedBridgeSettingsService(),
         sseEventTracker: MockSseEventTracker(),
         fileReferenceOpenService: MockFileReferenceOpenService(),
+        composerRestore: MockMessageComposerRestoreService(),
         window: idleSessionWindow(),
         sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       );

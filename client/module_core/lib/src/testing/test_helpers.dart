@@ -46,6 +46,7 @@ import "../services/catalog_rescan_service.dart";
 import "../services/feedback_prompt_service.dart";
 import "../services/file_reference_open_service.dart";
 import "../services/founder_call_service.dart";
+import "../services/message_composer_restore_service.dart";
 import "../services/models/catalog_rescan_state.dart";
 import "../services/models/session_activity_info.dart";
 import "../services/models/session_list_item_state.dart";
@@ -253,6 +254,8 @@ class MockLifecycleSource() extends Mock implements LifecycleSource {
 class MockFilesystemApi() extends Mock implements FilesystemApi;
 
 class MockFileReferenceOpenService() extends Mock implements FileReferenceOpenService;
+
+class MockMessageComposerRestoreService() extends Mock implements MessageComposerRestoreService;
 
 class MockProjectRepository() extends Mock implements ProjectRepository;
 

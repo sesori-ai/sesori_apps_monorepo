@@ -15,6 +15,7 @@ import "../../session_prompts/session_prompts_view.dart";
 import "../session_auto_continuation_menu.dart";
 import "../session_detail_presentation_scope.dart";
 import "agent_model_buttons.dart";
+import "edit_message_dialogs.dart";
 import "external_action_modal.dart";
 import "pending_form_modal.dart";
 import "permission_modal.dart";
@@ -464,7 +465,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
 
   void _showNotice(SessionDetailNotice notice) {
     if (!_isCurrentPage) return;
-    final (title, message, variant, duration) = switch (notice) {
+    final alert = switch (notice) {
+      // Not an alert: the edit waits on the user's answer.
+      SessionDetailEditBusy() => null,
       SessionDetailQueueCancellationFailed() => (
         context.loc.sessionDetailQueueCancellationFailed,
         null,
@@ -519,13 +522,47 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         PregoPopupAlertsNotificationsVariant.warning,
         const Duration(seconds: 5),
       ),
+      SessionDetailEditRefused(:final reason) => (
+        context.loc.sessionDetailEditRefused,
+        reason ?? context.loc.sessionDetailEditRefusedBody,
+        PregoPopupAlertsNotificationsVariant.error,
+        const Duration(seconds: 6),
+      ),
+      SessionDetailEditOptionsChanged() => (
+        context.loc.sessionDetailEditOptionsChanged,
+        null,
+        PregoPopupAlertsNotificationsVariant.warning,
+        const Duration(seconds: 5),
+      ),
+      SessionDetailEditStopFailed() => (
+        context.loc.sessionDetailEditStopFailed,
+        null,
+        PregoPopupAlertsNotificationsVariant.error,
+        const Duration(seconds: 5),
+      ),
+      SessionDetailEditFailed() => (
+        context.loc.sessionDetailEditFailed,
+        null,
+        PregoPopupAlertsNotificationsVariant.error,
+        const Duration(seconds: 6),
+      ),
     };
+    if (alert == null) {
+      unawaited(_offerStopAndResend());
+      return;
+    }
+    final (title, message, variant, duration) = alert;
     PregoPopupAlertPresenter.of(context).show(
       title: title,
       content: PregoPopupAlertContent(message: message),
       variant: variant,
       duration: duration,
     );
+  }
+
+  Future<void> _offerStopAndResend() async {
+    final cubit = context.read<SessionDetailCubit>();
+    if (await showEditBusyDialog(context: context) ?? false) await cubit.stopAndResendEdit();
   }
 
   @override

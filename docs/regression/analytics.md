@@ -19,7 +19,7 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   command names, paths, repository, project, session, branch or worktree names, raw error text, OAuth identity, email,
   or raw or hashed project, session, bridge, or device identifiers. The account-less authentication catalog's pinned
   provider/method enum is the explicit provider-name exception, and the pinned `harness` on the two message outcomes and
-  on `side_question_asked` is the explicit harness-name exception.
+  on `side_question_asked` and `session_message_edited` is the explicit harness-name exception.
 - Account-linked events require an enabled runtime capability (release build, supported platform, sink present),
   authentication, and a server preference resolved to enabled for that generation; anything else suppresses them.
   They carry the validated server-derived key, never a raw account ID, and never set Firebase's global SDK identity.
@@ -73,6 +73,13 @@ Desktop does not use Singular; the bridge is excluded, and the warehouse is exte
   while another waits) reports nothing. The desktop does not send it to the warehouse yet, because the auth server's
   product-event route doesn't accept it. Reporting reads it from the raw export: no curated view consumes it, so
   adoption is read as asks per harness and the share of each outcome.
+- Edit and resend reports `session_message_edited` once per Resend the bridge answers, with the session's pinned
+  `harness` and an `outcome`: `succeeded` when the bridge accepted the edit, `busy` when the session ran when it
+  arrived, `refused` for a missing branch point, stale options or another refusal, and `failed` for a failed or lost
+  request. It never carries the prompt, the message, the session, or a count. A Resend the app never sends (a busy
+  session caught locally, which offers Stop and resend instead, or a cancelled edit) reports nothing. The desktop does
+  not send it to the warehouse yet, because the auth server's product-event route doesn't accept it. Reporting reads it
+  from the raw export: adoption is read as edits per harness and the share of each outcome.
 - The CEO call invitation reports `founder_call_shown` and `founder_call_declined` with `surface`
   `computer_connected_sheet`, and `founder_call_link_opened` with `computer_connected_sheet` or `settings`; see
   [founder call](founder-call.md).
@@ -179,6 +186,7 @@ account against a real property.
   `no_project`.
 - `side_question_asked` fires more than once for one ask, fires for an ask the app never sent, or carries anything
   beyond `harness` and `outcome`.
+- `session_message_edited` fires for an edit the app never sent, or carries anything beyond `harness` and `outcome`.
 - `prompt_files_sent` fires for a failed, locally queued or image-only prompt, fires twice for one accepted prompt, or
   carries anything beyond its two pinned parameters.
 - A delayed Remote Config response holds the native splash or first product frame; automatic screen reporting is

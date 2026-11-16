@@ -227,6 +227,23 @@ enum AnalyticsFileSource({required final String wireValue}) {
   mixed(wireValue: "mixed"),
 }
 
+/// How the bridge answered one edit and resend of an earlier message.
+enum AnalyticsMessageEditOutcome({required final String wireValue}) {
+  /// The bridge removed the message and what followed it, and sent the edit.
+  succeeded(wireValue: "succeeded"),
+
+  /// The session was running a turn.
+  busy(wireValue: "busy"),
+
+  /// The bridge refused the edit: the message cannot be a branch point, the
+  /// selected options changed, the harness refused it, or a reason this app
+  /// doesn't know.
+  refused(wireValue: "refused"),
+
+  /// The request failed or timed out, so the edit may or may not have run.
+  failed(wireValue: "failed"),
+}
+
 /// How one side question ended.
 enum AnalyticsSideQuestionOutcome({required final String wireValue}) {
   /// The bridge stored an answer.
@@ -333,6 +350,10 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsHarness harness,
     required AnalyticsSideQuestionOutcome outcome,
   }) = SideQuestionAskedEvent;
+  const factory sessionMessageEdited({
+    required AnalyticsHarness harness,
+    required AnalyticsMessageEditOutcome outcome,
+  }) = SessionMessageEditedEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -727,6 +748,19 @@ final class const SideQuestionAskedEvent({
 }) extends ProductAnalyticsEvent {
   @override
   String get wireName => "side_question_asked";
+
+  @override
+  Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};
+}
+
+/// The bridge answered an edit and resend of an earlier message. The text,
+/// the attachments, the session and the message stay off the wire.
+final class const SessionMessageEditedEvent({
+  required final AnalyticsHarness harness,
+  required final AnalyticsMessageEditOutcome outcome,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "session_message_edited";
 
   @override
   Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};

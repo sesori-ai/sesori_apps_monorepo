@@ -1,6 +1,7 @@
 import "package:meta/meta.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "prompt_turn_shape.dart";
 import "transcript_builder.dart";
 
 /// One exchange of the rendered transcript: what a prompt set off, with the
@@ -33,7 +34,31 @@ final class const TranscriptTurns({
 
   /// Where in [turns] each rendered message's turn sits.
   required final Map<String, int> turnIndexByMessageId,
-});
+}) {
+  /// Why the user message [messageId], rendered as [shape], cannot be
+  /// edited and resent, or null when it can.
+  MessageEditRefusal? editRefusal({required String messageId, required PromptTurnShape shape}) {
+    if (shape is InvocationPromptTurnShape) return MessageEditRefusal.command;
+    final opensTurn = switch (turnIndexByMessageId[messageId]) {
+      final index? => switch (turns[index]) {
+        TranscriptPromptTurn(:final opener) => opener.info.id == messageId,
+        TranscriptPartialTurn() || TranscriptPreamble() => false,
+      },
+      null => false,
+    };
+    return opensTurn ? null : MessageEditRefusal.sentMidTurn;
+  }
+}
+
+/// Why a user message cannot be edited and resent.
+enum MessageEditRefusal() {
+  /// It was sent while a turn ran and joined that turn, so no edit can start
+  /// from it.
+  sentMidTurn,
+
+  /// It ran a command, skill or MCP prompt, which an edit cannot carry.
+  command,
+}
 
 /// Splits the rendered transcript into turns.
 ///

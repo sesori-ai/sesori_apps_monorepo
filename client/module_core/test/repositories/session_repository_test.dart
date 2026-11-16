@@ -13,6 +13,7 @@ import "package:sesori_dart_core/src/repositories/models/session_page_result.dar
 import "package:sesori_dart_core/src/repositories/models/session_pin_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_search_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_rewind_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -235,6 +236,74 @@ void main() {
       ),
     ).called(1);
     verify(() => api.rejectQuestion(requestId: "question-1", sessionId: "session-1")).called(1);
+  });
+
+  group("rewindSession", () {
+    Future<SessionRewindResult> rewindAnswering(ApiResponse<void> response) {
+      final api = MockSessionApi();
+      when(
+        () => api.rewindSession(
+          sessionId: any(named: "sessionId"),
+          messageId: any(named: "messageId"),
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+        ),
+      ).thenAnswer((_) async => response);
+      return SessionRepository(api: api).rewindSession(
+        sessionId: "session-1",
+        messageId: "message-1",
+        promptId: "prompt-1",
+        text: "edited",
+        attachments: const [],
+        agent: null,
+        model: null,
+        variant: null,
+        fastMode: false,
+      );
+    }
+
+    ApiResponse<void> refusal({required SessionBranchErrorCode code, required String? message}) => ErrorResponse(
+      NonSuccessCodeError(
+        errorCode: 409,
+        rawErrorString: jsonEncode(SessionBranchErrorResponse(code: code, message: message).toJson()),
+      ),
+    );
+
+    test("maps each refusal the bridge explains", () async {
+      expect(await rewindAnswering(SuccessResponse(null)), isA<SessionRewindAccepted>());
+      expect(
+        await rewindAnswering(refusal(code: SessionBranchErrorCode.sessionBusy, message: null)),
+        isA<SessionRewindBusy>(),
+      );
+      expect(
+        await rewindAnswering(refusal(code: SessionBranchErrorCode.branchPointUnavailable, message: "no checkpoint")),
+        isA<SessionRewindUnavailable>().having((result) => result.reason, "reason", "no checkpoint"),
+      );
+      expect(
+        await rewindAnswering(refusal(code: SessionBranchErrorCode.staleSessionOptions, message: null)),
+        isA<SessionRewindOptionsChanged>(),
+      );
+      expect(
+        await rewindAnswering(refusal(code: SessionBranchErrorCode.refused, message: "too long")),
+        isA<SessionRewindRejected>().having((result) => result.reason, "reason", "too long"),
+      );
+    });
+
+    test("a plain 4xx proves nothing ran, while a 5xx might have", () async {
+      expect(
+        await rewindAnswering(ErrorResponse(NonSuccessCodeError(errorCode: 400, rawErrorString: "empty parts"))),
+        isA<SessionRewindRejected>().having((result) => result.reason, "reason", isNull),
+      );
+      expect(
+        await rewindAnswering(ErrorResponse(NonSuccessCodeError(errorCode: 502, rawErrorString: null))),
+        isA<SessionRewindFailed>(),
+      );
+    });
   });
 
   test("abort translates typed not-accepted failure and retains API cause", () async {

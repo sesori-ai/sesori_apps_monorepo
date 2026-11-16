@@ -201,6 +201,35 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// Removes [messageId] and every later message, then sends the edit as the
+  /// session's next prompt. Refusals answer `SessionBranchErrorResponse`.
+  Future<ApiResponse<void>> rewindSession({
+    required String sessionId,
+    required String messageId,
+    required String promptId,
+    required String text,
+    required List<ComposerAttachment> attachments,
+    required String? agent,
+    required PromptModel? model,
+    required SessionVariant? variant,
+    required bool fastMode,
+  }) {
+    return _client.post(
+      "/session/rewind",
+      fromJson: SuccessEmptyResponse.fromJson,
+      body: RewindSessionRequest(
+        sessionId: sessionId,
+        messageId: messageId,
+        promptId: promptId,
+        parts: _buildParts(text: text, attachments: attachments),
+        agent: agent,
+        model: model,
+        variant: variant,
+        fastMode: fastMode,
+      ),
+    );
+  }
+
   /// The bridge-owned queued prompts for a session. Old bridges without the
   /// route answer an error, which callers degrade to an empty list.
   Future<ApiResponse<QueuedPromptResponse>> getQueuedPrompts({required String sessionId}) {

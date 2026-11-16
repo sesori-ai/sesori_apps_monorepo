@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "edit_message_dialogs.dart";
 import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
@@ -325,6 +326,16 @@ class SessionDetailLoadedView extends StatelessWidget {
       currentPromptId: currentPromptId,
       jumpNotifier: jumpNotifier,
       onPinchIn: onPinchIn,
+      onEditMessage: readOnly || !state.interaction.canInteract || !state.editsMessages
+          ? null
+          : ({required message, required refusal}) => unawaited(switch (refusal) {
+              null => context.read<SessionDetailCubit>().editMessage(message: message),
+              final refusal => showEditUnavailableDialog(context: context, refusal: refusal),
+            }),
+      editingMessageId: switch (state.composerMode) {
+        SessionComposerEditing(:final messageId) => messageId,
+        SessionComposerNormal() => null,
+      },
       streamingText: state.streamingText,
       children: state.children,
       childStatuses: state.childStatuses,

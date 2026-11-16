@@ -259,6 +259,7 @@ class SessionDetailLoadService({
           supportsFileUploads: pluginCapabilities.supportsFileUploads,
           offersSessionMcp: pluginCapabilities.offersSessionMcp,
           namesCommandInvocations: pluginCapabilities.namesCommandInvocations,
+          supportsRewind: pluginCapabilities.supportsRewind,
           sideQuestions: pluginCapabilities.sideQuestions,
           messages: messagesPage.messages,
           olderMessagesCursor: messagesPage.nextCursor,
@@ -414,6 +415,7 @@ class SessionDetailLoadService({
     supportsFileUploads: null,
     offersSessionMcp: true,
     namesCommandInvocations: false,
+    supportsRewind: false,
     sideQuestions: SideQuestionAvailability.unresolved,
   );
 
@@ -439,6 +441,9 @@ class SessionDetailLoadService({
               null => true,
             },
             namesCommandInvocations: plugin?.namesCommandInvocations ?? false,
+            // An older bridge declares no branching, so it offers no edit.
+            supportsRewind:
+                !isArchived && (plugin?.sessionBranching.contains(SessionBranchingOperation.rewind) ?? false),
             sideQuestions: switch (plugin) {
               // An older bridge has no side-question routes, whatever its
               // harnesses could answer.
@@ -482,6 +487,11 @@ class const SessionDetailSnapshot({
   /// user turn ran, so a command not confirmed yet can show its card. False
   /// when plugin metadata could not be resolved.
   required final bool namesCommandInvocations,
+
+  /// Whether the bridge can edit and resend the session's earlier messages.
+  /// False when the session is archived or plugin metadata could not be
+  /// resolved.
+  required final bool supportsRewind,
 
   /// Whether the session can ask side questions, and if not, why.
   required final SideQuestionAvailability sideQuestions,
@@ -537,6 +547,7 @@ typedef _PluginCapabilities = ({
   bool? supportsFileUploads,
   bool offersSessionMcp,
   bool namesCommandInvocations,
+  bool supportsRewind,
   SideQuestionAvailability sideQuestions,
 });
 

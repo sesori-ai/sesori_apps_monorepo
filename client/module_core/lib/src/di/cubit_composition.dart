@@ -16,6 +16,7 @@ import "../repositories/session_repository.dart";
 import "../services/bridge_settings_service.dart";
 import "../services/feedback_prompt_service.dart";
 import "../services/file_reference_open_service.dart";
+import "../services/message_composer_restore_service.dart";
 import "../services/new_session_options_service.dart";
 import "../services/new_session_plugin_service.dart";
 import "../services/new_session_selection_tracker.dart";
@@ -68,6 +69,7 @@ SessionDetailCubit createSessionDetailCubit({
     sseEventTracker: locator<SseEventTracker>(),
     sessionLaunchService: locator<SessionLaunchService>(),
     fileReferenceOpenService: locator<FileReferenceOpenService>(),
+    composerRestore: locator<MessageComposerRestoreService>(),
     window: window,
   );
 }
