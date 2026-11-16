@@ -3372,6 +3372,9 @@ void main() {
 
     // The oldest message stays, so only the shorter layout can ask for the page.
     key.harness.replaceMessages(messages.take(2).toList());
+    // The removed turn keeps its room a moment for what might replace it.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(requested, 1);
   });
@@ -6346,8 +6349,12 @@ void main() {
 
       harness.removeMessage("user-11");
       await tester.pump();
-      expect(_leavingRows(tester), contains("user-11"));
       expect(_topOf(tester, "user-10"), before);
+      // With nothing joining, it keeps its room a moment for a replacement.
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(_topOf(tester, "user-10"), before);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(_leavingRows(tester), contains("user-11"));
       await tester.pump(const Duration(milliseconds: 100));
       final partway = _topOf(tester, "user-10");
       await tester.pumpAndSettle();
@@ -6441,6 +6448,44 @@ void main() {
       expect(_messageKey("user-11"), findsNothing);
       expect(_topOf(tester, "edited"), greaterThan(_topOf(tester, "user-8")));
       expect(_topOf(tester, "user-8"), greaterThan(above));
+      expect(_position(tester).pixels, 0);
+    });
+
+    testWidgets("an edit watched from another surface moves the rows above one way only", (tester) async {
+      final harness = await pump(tester);
+      final tops = <double>[];
+
+      // A watching surface hears of the edit's removals first, and of the
+      // turn starting and the edited prompt's echo some frames later.
+      harness
+        ..removeMessage("user-10")
+        ..removeMessage("user-11");
+      await tester.pump();
+      for (var frame = 0; frame < 30; frame++) {
+        if (frame == 3) {
+          harness
+            ..setBusy(true)
+            ..appendNewestMessage(
+              _message(
+                messageId: "edited",
+                role: "user",
+                text: _multilineText(label: "Edited", lines: 8),
+              ),
+            );
+        }
+        tops.add(_topOf(tester, "user-9"));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      // The Working row runs on, so the list never settles.
+      await tester.pump(const Duration(milliseconds: 500));
+      tops.add(_topOf(tester, "user-9"));
+
+      final steps = [for (var i = 1; i < tops.length; i++) tops[i] - tops[i - 1]];
+      // Two prompts leave and one comes back with the Working row, so the
+      // rows above settle lower, without first overshooting.
+      expect(steps.where((step) => step < -0.5), isEmpty, reason: "The rows above came back up: $tops");
+      expect(tops.last, greaterThan(tops.first));
+      expect(_messageKey("user-11"), findsNothing);
       expect(_position(tester).pixels, 0);
     });
 

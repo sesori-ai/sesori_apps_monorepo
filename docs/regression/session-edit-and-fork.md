@@ -172,6 +172,12 @@ harness declares `fork`.
   that was never built goes at once.
 - Following the latest edge, the rows above ease down as the rows below fold,
   and the list stays at that edge.
+- Following, rows removed while nothing is joining keep their room for up to
+  300 ms, until the edit's prompt or the Working row starts to grow, and then
+  fold as those grow. A device watching another's edit hears the removals some
+  frames before the turn starts, and the rows above must move one way only,
+  never down and then back up. With nothing to replace them they fold after
+  the wait.
 - Reading history, the removals still reach the frozen transcript, and the
   rows being read stay exactly where they are on screen while rows below or
   among them fold; only when the fold reaches the newest edge does the list

@@ -344,6 +344,22 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The rows of the messages the last update removed, for the next build.
   Set<String> _removedRowIds = const {};
 
+  /// How long removed rows keep their room for what replaces them. Another
+  /// surface's edit reaches this one as its removals first and its prompt's
+  /// echo and the Working row some frames later.
+  static const _kFoldWait = Duration(milliseconds: 300);
+
+  /// Leaving rows that keep their room, still shown, until rows join to take
+  /// it or [_kFoldWait] ends. Folding as those rows grow, they move the rows
+  /// above in one direction, where folding first would carry them down and
+  /// the joining rows back up.
+  final Set<String> _waitingRowIds = {};
+  Timer? _foldWait;
+
+  /// When a row last joined the list or the live row started showing.
+  DateTime? _joinedAt;
+  bool _liveRowShown = false;
+
   /// The row that replaced the launch bubble. It keeps the launch row's key, so
   /// the swap eases in place like a queued prompt turning into its message.
   String? _launchSlotRowId;
@@ -464,6 +480,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _revealController.dispose();
     _stickyOpenerIds.dispose();
     _pinLoadSpinner?.cancel();
+    _foldWait?.cancel();
     super.dispose();
   }
 
@@ -641,6 +658,38 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   void _onRowLeft({required String rowId}) {
     if (mounted && _leavingRows.containsKey(rowId)) setState(() => _leavingRows.remove(rowId));
+  }
+
+  /// Holds rows that start leaving while following with nothing joining, see
+  /// [_waitingRowIds], and lets every held row fold once rows join. Rows that
+  /// joined in the last [transcriptMotionDuration] still grow, so rows leaving
+  /// then fold at once.
+  void _waitForReplacements({
+    required Set<String> newlyLeaving,
+    required bool rowsJoined,
+    required bool following,
+  }) {
+    final now = clock.now();
+    if (rowsJoined) _joinedAt = now;
+    final joinedLately = switch (_joinedAt) {
+      final joinedAt? => now.difference(joinedAt) < transcriptMotionDuration,
+      null => false,
+    };
+    if (joinedLately) {
+      _waitingRowIds.clear();
+    } else if (following && newlyLeaving.isNotEmpty) {
+      _waitingRowIds.addAll(newlyLeaving);
+    }
+    _waitingRowIds.retainAll(_leavingRows.keys);
+    if (_waitingRowIds.isEmpty) {
+      _foldWait?.cancel();
+      _foldWait = null;
+    } else {
+      _foldWait ??= Timer(_kFoldWait, () {
+        _foldWait = null;
+        if (mounted) setState(_waitingRowIds.clear);
+      });
+    }
   }
 
   /// Where row [rowId] sits in the list's box, or null while it is not built.
@@ -1273,13 +1322,25 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // message comes back stays.
     final liveRowIdSet = liveRowIds.toSet();
     _leavingRows.removeWhere((rowId, _) => liveRowIdSet.contains(rowId) || !previousRowIndexById.containsKey(rowId));
+    final newlyLeaving = <String>{};
     if (!context.isReducedMotion) {
       for (final rowId in _removedRowIds) {
-        if (_builtRows[rowId] case final row? when !liveRowIdSet.contains(rowId)) _leavingRows[rowId] = row;
+        if (_builtRows[rowId] case final row? when !liveRowIdSet.contains(rowId)) {
+          _leavingRows[rowId] = row;
+          newlyLeaving.add(rowId);
+        }
       }
     }
     _removedRowIds = const {};
     final rowIds = _withLeavingRows(live: liveRowIds, previous: previousRowIds, leaving: _leavingRows.keys.toSet());
+    _waitForReplacements(
+      newlyLeaving: newlyLeaving,
+      rowsJoined:
+          (activity is! TranscriptActivityIdle && !_liveRowShown) ||
+          rowIds.any((rowId) => !previousRowIndexById.containsKey(rowId)),
+      following: snap == null,
+    );
+    _liveRowShown = activity is! TranscriptActivityIdle;
     final knownRowIds = _knownRowIds;
     if (knownRowIds != null && knownRowIds.contains(_kLaunchRowId) && !rowIds.contains(_kLaunchRowId)) {
       _launchSlotRowId = rowIds
@@ -1438,7 +1499,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                               arriving: !previousRowIndexById.containsKey(entryId),
                               child: TranscriptPresence(
                                 entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
-                                exiting: leavingRow != null,
+                                exiting: leavingRow != null && !_waitingRowIds.contains(entryId),
                                 onEntered: () => _easedInRowIds.add(entryId),
                                 onExited: () => _onRowLeft(rowId: entryId),
                                 child: row,
