@@ -106,6 +106,35 @@ void main() {
       );
     });
 
+    // Hermes replays each row stripped; only a reply's start loses whitespace.
+    test("a reply keeps its paragraph breaks but not the whitespace it starts with", () {
+      AcpNotification chunk({required String messageId, required String text}) => AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": "s1",
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": text},
+            "messageId": messageId,
+          },
+        },
+      );
+      final events = [
+        for (final (messageId, text) in [
+          ("m1", "\n"),
+          ("m1", "\n\nFirst."),
+          ("m1", "\n\nSecond."),
+          ("m2", "\n\nNext."),
+        ])
+          ...mapper.map(chunk(messageId: messageId, text: text)),
+      ];
+
+      expect(
+        [for (final delta in events.whereType<BridgeSseMessagePartDelta>()) (delta.messageID, delta.delta)],
+        [("s1-mm1-assistant", "First."), ("s1-mm1-assistant", "\n\nSecond."), ("s1-mm2-assistant", "Next.")],
+      );
+    });
+
     test("Hermes's partial-turn and interrupted-automation rows are notices of their own kind", () {
       for (final row in [partialFailedTurnBoundary, automationInterruptedBoundary]) {
         expect(mapper.classifyHaltNotice(text: row)?.errorName, "hermes_partial_turn", reason: row);

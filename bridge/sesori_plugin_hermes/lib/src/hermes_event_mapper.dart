@@ -81,6 +81,9 @@ class HermesEventMapper({
   /// report covers every compaction of the turn, so it shows one completed
   /// row. The replay keeps the turns from before the move and no summary, so
   /// the row is live only.
+  ///
+  /// Drops the leading whitespace of each reply, as Hermes's replay does (see
+  /// [_replyStart]).
   @override
   List<BridgeSseEvent> map(AcpNotification notification) {
     if (_splitCompactionSessionId(notification: notification) case final String sessionId) {
@@ -108,7 +111,67 @@ class HermesEventMapper({
         return _compactionRow(sessionId: sessionId, state: state);
       }
     }
+    if (notification.params
+        case {
+          "sessionId": final String sessionId,
+          "update":
+              {
+                "sessionUpdate": "agent_message_chunk",
+                "messageId": final String messageId,
+                "content": {"type": "text", "text": final String text} && final Map<Object?, Object?> content,
+              } &&
+              final Map<Object?, Object?> update,
+        }
+        when notification.method == AcpMethods.sessionUpdate && _startedReplies[sessionId] != messageId) {
+      return _replyStart(
+        notification: notification,
+        sessionId: sessionId,
+        messageId: messageId,
+        update: update,
+        content: content,
+        text: text,
+      );
+    }
     return super.map(notification);
+  }
+
+  /// The message id of each session's reply whose text has begun.
+  final Map<String, String> _startedReplies = {};
+
+  /// Maps a reply's first text without its leading whitespace.
+  ///
+  /// Before the first text after a tool round, Hermes adds a paragraph break
+  /// that it does not save (`agent/stream_delivery.py::_fire_stream_delta`),
+  /// and it replays every row stripped
+  /// (`acp_adapter/server.py::_flatten_history_text`, verified v0.21.5). The
+  /// bridge pairs a live reply with its replayed copy by content, so with the
+  /// break the reply showed twice after a reload. Each reply opens a new
+  /// message id, so only a reply's first text can carry the break.
+  List<BridgeSseEvent> _replyStart({
+    required AcpNotification notification,
+    required String sessionId,
+    required String messageId,
+    required Map<Object?, Object?> update,
+    required Map<Object?, Object?> content,
+    required String text,
+  }) {
+    final reply = text.trimLeft();
+    // Whitespace alone leaves the reply unstarted.
+    if (reply.isEmpty) return const [];
+    _startedReplies[sessionId] = messageId;
+    if (reply == text) return super.map(notification);
+    return super.map(
+      AcpNotification(
+        method: notification.method,
+        params: {
+          ...notification.params,
+          "update": {
+            ...update.cast<String, dynamic>(),
+            "content": {...content.cast<String, dynamic>(), "text": reply},
+          },
+        },
+      ),
+    );
   }
 
   static String? _splitCompactionSessionId({required AcpNotification notification}) {

@@ -376,7 +376,10 @@ reconnect or restart.
   same way. Grok's
   replay names its compaction rows as the live mapper does, so exact identity
   keeps one row across every re-import; Hermes's replayed summary row is named
-  by its position in the replay.
+  by its position in the replay. Hermes streams a reply that follows a tool
+  round after a paragraph break it neither saves nor replays, so the live reply
+  drops its leading whitespace; that reply and the tool cards before it show
+  once after a reload, never twice with a copy that starts with a blank line.
   The content fingerprint ignores identity, time, agent/model attribution, and
   internal parts hidden from transcripts; alignment still uses available
   creation times as above, normalizes spilled attachments, and keeps replay
