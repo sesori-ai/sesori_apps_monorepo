@@ -453,6 +453,17 @@ void main() {
         expect(await stored(), isNull);
       });
 
+      test("a stop tapped during the grace that the bridge refuses still lets the turn earn", () async {
+        service.finishedTurnGrace = const Duration(milliseconds: 50);
+        await startTurn(sessionId: "ses-a");
+        await endTurn(sessionId: "ses-a");
+        service.recordUserStop(sessionId: "ses-a");
+        service.recordUserStopRefused(sessionId: "ses-a");
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+
+        expect(await stored(), counting(points: {"ses-a": 1}, lastShownAt: isNull));
+      });
+
       test("other sessions' AI errors still drop their points", () async {
         await finishTurns(sessionId: "ses-b");
         service.recordUserStop(sessionId: "ses-a");

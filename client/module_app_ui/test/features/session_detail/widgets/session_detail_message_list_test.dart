@@ -6824,6 +6824,35 @@ void main() {
       expect(find.text("Stopped", findRichText: true), findsOneWidget);
     });
 
+    testWidgets("a stop mid-stream grows Stopped in over frames, never in one jump", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness
+        ..setBusy(true)
+        ..updateStreamingText(partId: "reply-part", text: "Half a story");
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(TranscriptWorkingRow), findsNothing, reason: "streaming text already shows progress");
+      final start = tester.getTopLeft(find.text("Half a story")).dy;
+
+      harness
+        ..replaceMessages([prompt, ended(kind: MessageErrorKind.stopped)])
+        ..clearStreamingText()
+        ..setBusy(false);
+      await tester.pump();
+      final rises = <double>[];
+      for (var ms = 0; ms <= 300; ms += 16) {
+        rises.add(start - tester.getTopLeft(find.text("Half a story")).dy);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final lineHeight = tester.getSize(find.byType(ErrorMessageCard)).height;
+      expect(rises.last, moreOrLessEquals(lineHeight, epsilon: 0.01), reason: "the line lands under the reply");
+      for (var i = 1; i < rises.length; i++) {
+        expect(rises[i], greaterThanOrEqualTo(rises[i - 1]), reason: "the reply only rises");
+        expect(rises[i] - rises[i - 1], lessThan(lineHeight / 3), reason: "frame $i moves a fraction of the line");
+      }
+    });
+
     testWidgets("a failed turn keeps its streamed reply above the error", (tester) async {
       await _pumpTurns(
         tester,

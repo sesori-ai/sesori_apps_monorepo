@@ -122,7 +122,8 @@ defaults and queued client sends coherent.
   stay, with the line under them where the reply ended; a failed turn likewise keeps them above its red error. The
   Working row leaves as the stopped row arrives, before the session's idle lands, and the line grows in as it folds
   away and stands exactly as tall, so the rows above hold still. Stopped mid-stream, with no Working row showing, the
-  line eases in under the reply like any new row. Failures keep their verbatim red text. An older bridge sends no
+  line grows and fades in under the reply over the transcript's motion, like any new row, and a reader scrolled up
+  into the reply sees nothing they read move. Failures keep their verbatim red text. An older bridge sends no
   kind, so its rows stay failures; an older app ignores the kind and keeps a red row.
 - A sent prompt stays on screen from send to delivered message. Scrolling while
   it is delivered, or a refresh whose fetch began before a queue event, must not

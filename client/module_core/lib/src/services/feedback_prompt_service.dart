@@ -82,9 +82,6 @@ class FeedbackPromptService({
   /// goes out, because its error event can arrive before the response does.
   void recordUserStop({required String sessionId}) {
     if (!_isStarted) return;
-    // A stopped row can land just after the turn's idle, while its point
-    // still waits out the grace.
-    _pendingTurns.remove(sessionId)?.cancel();
     _stoppedSessions.add(sessionId);
   }
 
@@ -133,6 +130,10 @@ class FeedbackPromptService({
       _onSessionStatus(sessionId: sessionID, status: status);
     } else if (data case SesoriMessageUpdated(info: MessageError(kind: MessageErrorKind.stopped, :final sessionID))) {
       // A Stop from another surface ends the turn as this surface's own does.
+      // The row can land just after the turn's idle, while its point still
+      // waits out the grace; only a confirmed stop drops that point, so a
+      // refused local stop still lets the turn earn.
+      _pendingTurns.remove(sessionID)?.cancel();
       recordUserStop(sessionId: sessionID);
     } else if (data case SesoriSessionError() || SesoriMessageUpdated(info: MessageError())) {
       // A session error without a session belongs to none of the counted
