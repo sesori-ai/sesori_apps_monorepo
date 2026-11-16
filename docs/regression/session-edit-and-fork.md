@@ -42,15 +42,18 @@ offer no Fork yet.
   message itself went while the menu was open (a queued prompt delivered).
 - The pinned prompt's cut-out matches its bubble or card.
 - While some of the message's text is selected, the copy item reads "Copy
-  selected text" and copies only the selection. Opening the menu, closing it
+  selected text" and copies only the selection, all of it when it runs on
+  into other messages; a message outside the selection still offers Copy. Opening the menu, closing it
   and copying all leave that selection highlighted exactly as it was: a
   shift-click afterwards extends it, and a click elsewhere still clears it. With nothing selected the item reads "Copy" and
   copies the message's Markdown: a user prompt's text or a
   command's arguments, or the reply's text parts joined by blank lines, with
   streamed text as shown. A "Copied to clipboard" alert confirms it. A reply
   with no text has no Copy.
-- Select text closes the menu and selects all of the message's text, with the
-  selection's handles and toolbar. Tapping elsewhere clears that selection.
+- Select text closes the menu and selects all of the message's text and
+  nothing beyond it, with the selection's handles and toolbar, which can then
+  extend it into the messages around it. Tapping elsewhere clears that
+  selection.
 - A long-press or right-click on the pinned prompt opens that prompt's menu,
   never the menu of the message under the pin. It has only Copy, which copies
   the whole prompt, not the pin's cut copy; a tap on the pin still jumps to
