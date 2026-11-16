@@ -168,6 +168,7 @@ void main() {
       });
 
       testWidgets("a session being sent swaps the sparkle and meta line for the send, in place", (tester) async {
+        final semantics = tester.ensureSemantics();
         final session = testSession(title: "My Session", updatedAt: now);
         await pump(tester, tile(session: session, isRunning: true, projectLabel: "Project"));
         final rowSize = tester.getSize(find.byType(SessionTile));
@@ -182,6 +183,10 @@ void main() {
             sending: const SessionSending(targetTitle: "Target"),
           ),
         );
+        // Mid cross-fade, only the incoming state speaks.
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.bySemanticsLabel(RegExp("Running")), findsNothing);
+        expect(find.bySemanticsLabel(RegExp("Sending to “Target”…")), findsOneWidget);
         await tester.pump(const Duration(seconds: 1));
 
         expect(find.byType(PregoAiLoader), findsNothing);
@@ -197,6 +202,7 @@ void main() {
         expect(find.byIcon(TablerRegular.send), findsNothing);
         expect(find.text("Project"), findsOneWidget);
         expect(sparkleTwinkles(tester), isTrue);
+        semantics.dispose();
       });
 
       testWidgets("an unread session carries its mark and weights its title", (tester) async {

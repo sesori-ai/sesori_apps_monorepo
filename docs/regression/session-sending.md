@@ -185,7 +185,7 @@ The bridge answers a send that did not happen with 409 and a
 - While a send is in flight from this device, including while the app reads
   back an answer it lost, the source's row in the session list shows a send
   glyph in place of the running sparkle, drifting forward and fading on a
-  1.2 s loop (still under reduce motion). Its meta line cross-fades to
+  1.2 s loop. Under reduce motion the glyph stands still, with no loop. Its meta line cross-fades to
   "Sending to “<target>”…" ("Session" for an untitled target, as in the alerts) and back
   when the send ends. Waiting for input still wins over sending.
 - The row keeps its height and the title its place; only the mark and the

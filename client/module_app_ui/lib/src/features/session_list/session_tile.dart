@@ -672,8 +672,25 @@ class const SessionTile({
         duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
         switchInCurve: transcriptMotionCurve,
         switchOutCurve: transcriptMotionCurve.flipped,
+        layoutBuilder: (current, previous) =>
+            _currentSemanticsOnly(current: current, previous: previous, alignment: Alignment.center),
         child: Semantics(key: ValueKey(_shownSending != null), label: label, child: mark),
       );
+
+  /// A cross-fade's layout in which only the incoming child speaks, so a
+  /// screen reader never reads the outgoing state beside the new one. Each
+  /// wrapper takes its child's key, so a child keeps its state as it leaves.
+  static Widget _currentSemanticsOnly({
+    required Widget? current,
+    required List<Widget> previous,
+    required AlignmentGeometry alignment,
+  }) => Stack(
+    alignment: alignment,
+    children: [
+      for (final child in previous) ExcludeSemantics(key: child.key, child: child),
+      if (current != null) ExcludeSemantics(key: current.key, excluding: false, child: current),
+    ],
+  );
 
   /// The meta line's words, which cross-fade to "Sending to …" while this app
   /// sends the session and back when the send ends, in the line's own room so
@@ -689,10 +706,8 @@ class const SessionTile({
       duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
       switchInCurve: transcriptMotionCurve,
       switchOutCurve: transcriptMotionCurve.flipped,
-      layoutBuilder: (current, previous) => Stack(
-        alignment: AlignmentDirectional.centerStart,
-        children: [...previous, ?current],
-      ),
+      layoutBuilder: (current, previous) =>
+          _currentSemanticsOnly(current: current, previous: previous, alignment: AlignmentDirectional.centerStart),
       child: switch (sending) {
         null => KeyedSubtree(key: const ValueKey("details"), child: details),
         final sending => ExcludeSemantics(
