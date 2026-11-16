@@ -118,6 +118,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     required bool? isRootSession,
     required bool isArchived,
 
+    /// How many side chats an archived session's notice offers to read. It is
+    /// counted after the load, so it stays 0 until then, for a session that
+    /// isn't archived, on a bridge without side chats, or when the count fails.
+    @Default(0) int archivedSideChatCount,
+
     /// The harness's explanation of why this session can no longer be
     /// continued, shown above the transcript; null when nothing restricts it.
     required String? cannotContinueMessage,

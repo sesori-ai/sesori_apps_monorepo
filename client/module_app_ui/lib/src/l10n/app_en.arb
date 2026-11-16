@@ -2805,5 +2805,57 @@
   "mcpAuthUnavailable": "This sign-in action is unavailable. Check native state before trying again.",
   "mcpAuthBrowserOpening": "Opening the sign-in browser…",
   "mcpAuthBrowserWaiting": "Waiting for the browser return and native confirmation…",
-  "mcpCancel": "Cancel"
+  "mcpCancel": "Cancel",
+  "sideQuestionAsk": "Ask a side question",
+  "@sideQuestionAsk": {"description": "Label of the composer's side-question button, and the hint of the side chat's question field. A side question is answered from what the session knows, without interrupting it."},
+  "sideQuestionBridgeUpdateRequired": "Update Sesori on this computer to ask side questions.",
+  "@sideQuestionBridgeUpdateRequired": {"description": "Shown when the side-question button is tapped on a session whose bridge is too old for side questions."},
+  "sideQuestionHarnessUnsupported": "{harness} can't answer side questions in Sesori yet.",
+  "@sideQuestionHarnessUnsupported": {
+    "description": "Shown when the side-question button is tapped, or a side question is refused, because the session's harness can't answer side questions.",
+    "placeholders": {"harness": {"type": "String", "example": "OpenCode"}}
+  },
+  "sideChatTitle": "Side question",
+  "@sideChatTitle": {"description": "Title of the side-chat sheet while it shows a new side chat."},
+  "sideChatEarlier": "Earlier side chats",
+  "@sideChatEarlier": {"description": "Title of the side-chat sheet's list of the session's earlier side chats, and the label of the header button that opens it (followed by their count)."},
+  "sideChatNew": "New side chat",
+  "@sideChatNew": {"description": "Label of the side-chat sheet's header button that starts a new side chat."},
+  "sideChatWaitForAnswer": "Wait for the answer to arrive first.",
+  "@sideChatWaitForAnswer": {"description": "Shown when the user taps Send, New or Earlier in the side chat while a side question is still being answered."},
+  "sideChatQuestionCount": "{count, plural, =1{1 question} other{{count} questions}}",
+  "@sideChatQuestionCount": {
+    "description": "Under an earlier side chat's first question in the list of earlier side chats: how many questions it holds.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "sideChatFootnote": "Answers from what this session already knows. No tools, and nothing is added to the chat.",
+  "@sideChatFootnote": {"description": "Quiet caption at the top of a side chat explaining what side questions do."},
+  "sideChatArchived": "This session is archived. Its side chats are read-only.",
+  "@sideChatArchived": {"description": "Shown in place of the side chat's question field when the session is archived."},
+  "sideChatLoadFailed": "Couldn't load the side chats.",
+  "@sideChatLoadFailed": {"description": "Shown in the side-chat sheet when the session's side chats could not be loaded, above a Retry button."},
+  "sideChatRetry": "Retry",
+  "@sideChatRetry": {"description": "Button that tries a failed side-chat load or a side question again."},
+  "sideChatCopyAnswer": "Copy answer",
+  "@sideChatCopyAnswer": {"description": "Tooltip of the copy button under a side question's answer."},
+  "sideChatRefusedHarnessUpdateRequired": "Update {harness} on this computer to ask side questions.",
+  "@sideChatRefusedHarnessUpdateRequired": {
+    "description": "Shown in place of an answer when the installed harness is too old to answer side questions.",
+    "placeholders": {"harness": {"type": "String", "example": "Claude Code"}}
+  },
+  "sideChatRefusedNoTurnYet": "Send this session a message first. Side questions answer from what it already knows.",
+  "@sideChatRefusedNoTurnYet": {"description": "Shown in place of an answer when the session has no turn yet to answer from."},
+  "sideChatRefusedTooLong": "This side chat is too long to continue. Start a new one.",
+  "@sideChatRefusedTooLong": {"description": "Shown in place of an answer when the side chat's history is too long for the harness."},
+  "sideChatRefusedNoAnswer": "No answer came back.",
+  "@sideChatRefusedNoAnswer": {"description": "Shown in place of an answer when the model gave no usable answer."},
+  "sideChatRefusedUnknown": "This side question couldn't be answered.",
+  "@sideChatRefusedUnknown": {"description": "Shown in place of an answer when the bridge refused for a reason this app doesn't know."},
+  "sideChatAskFailed": "Couldn't reach your computer to ask.",
+  "@sideChatAskFailed": {"description": "Shown in place of an answer when the side question could not be sent to the bridge."},
+  "sessionDetailArchivedSideChats": "Side chats ({count})",
+  "@sessionDetailArchivedSideChats": {
+    "description": "Link on an archived session's notice that opens its side chats read-only, with how many there are.",
+    "placeholders": {"count": {"type": "int"}}
+  }
 }

@@ -7098,6 +7098,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get mcpCancel;
+
+  /// Label of the composer's side-question button, and the hint of the side chat's question field. A side question is answered from what the session knows, without interrupting it.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a side question'**
+  String get sideQuestionAsk;
+
+  /// Shown when the side-question button is tapped on a session whose bridge is too old for side questions.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori on this computer to ask side questions.'**
+  String get sideQuestionBridgeUpdateRequired;
+
+  /// Shown when the side-question button is tapped, or a side question is refused, because the session's harness can't answer side questions.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} can\'t answer side questions in Sesori yet.'**
+  String sideQuestionHarnessUnsupported(String harness);
+
+  /// Title of the side-chat sheet while it shows a new side chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Side question'**
+  String get sideChatTitle;
+
+  /// Title of the side-chat sheet's list of the session's earlier side chats, and the label of the header button that opens it (followed by their count).
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier side chats'**
+  String get sideChatEarlier;
+
+  /// Label of the side-chat sheet's header button that starts a new side chat.
+  ///
+  /// In en, this message translates to:
+  /// **'New side chat'**
+  String get sideChatNew;
+
+  /// Shown when the user taps Send, New or Earlier in the side chat while a side question is still being answered.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for the answer to arrive first.'**
+  String get sideChatWaitForAnswer;
+
+  /// Under an earlier side chat's first question in the list of earlier side chats: how many questions it holds.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 question} other{{count} questions}}'**
+  String sideChatQuestionCount(int count);
+
+  /// Quiet caption at the top of a side chat explaining what side questions do.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers from what this session already knows. No tools, and nothing is added to the chat.'**
+  String get sideChatFootnote;
+
+  /// Shown in place of the side chat's question field when the session is archived.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is archived. Its side chats are read-only.'**
+  String get sideChatArchived;
+
+  /// Shown in the side-chat sheet when the session's side chats could not be loaded, above a Retry button.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the side chats.'**
+  String get sideChatLoadFailed;
+
+  /// Button that tries a failed side-chat load or a side question again.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sideChatRetry;
+
+  /// Tooltip of the copy button under a side question's answer.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy answer'**
+  String get sideChatCopyAnswer;
+
+  /// Shown in place of an answer when the installed harness is too old to answer side questions.
+  ///
+  /// In en, this message translates to:
+  /// **'Update {harness} on this computer to ask side questions.'**
+  String sideChatRefusedHarnessUpdateRequired(String harness);
+
+  /// Shown in place of an answer when the session has no turn yet to answer from.
+  ///
+  /// In en, this message translates to:
+  /// **'Send this session a message first. Side questions answer from what it already knows.'**
+  String get sideChatRefusedNoTurnYet;
+
+  /// Shown in place of an answer when the side chat's history is too long for the harness.
+  ///
+  /// In en, this message translates to:
+  /// **'This side chat is too long to continue. Start a new one.'**
+  String get sideChatRefusedTooLong;
+
+  /// Shown in place of an answer when the model gave no usable answer.
+  ///
+  /// In en, this message translates to:
+  /// **'No answer came back.'**
+  String get sideChatRefusedNoAnswer;
+
+  /// Shown in place of an answer when the bridge refused for a reason this app doesn't know.
+  ///
+  /// In en, this message translates to:
+  /// **'This side question couldn\'t be answered.'**
+  String get sideChatRefusedUnknown;
+
+  /// Shown in place of an answer when the side question could not be sent to the bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach your computer to ask.'**
+  String get sideChatAskFailed;
+
+  /// Link on an archived session's notice that opens its side chats read-only, with how many there are.
+  ///
+  /// In en, this message translates to:
+  /// **'Side chats ({count})'**
+  String sessionDetailArchivedSideChats(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

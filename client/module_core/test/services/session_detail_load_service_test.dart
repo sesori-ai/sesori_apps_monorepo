@@ -52,6 +52,7 @@ void main() {
       service = SessionDetailLoadService(
         repository: repository,
         pluginRepository: pluginRepository,
+        sideChatRepository: MockSideChatRepository(),
         connectionService: connectionService,
       );
 
@@ -260,6 +261,7 @@ void main() {
               ),
             ],
           ),
+          sideChatRepository: MockSideChatRepository(),
           connectionService: connectionService,
         );
 
@@ -275,6 +277,7 @@ void main() {
       service = SessionDetailLoadService(
         repository: repository,
         pluginRepository: stubbedPluginRepository(plugins: const []),
+        sideChatRepository: MockSideChatRepository(),
         connectionService: connectionService,
       );
 
@@ -304,6 +307,7 @@ void main() {
       service = SessionDetailLoadService(
         repository: repository,
         pluginRepository: pluginRepository,
+        sideChatRepository: MockSideChatRepository(),
         connectionService: connectionService,
       );
 
@@ -355,6 +359,7 @@ void main() {
         service = SessionDetailLoadService(
           repository: repository,
           pluginRepository: stubbedPluginRepository(plugins: plugins, supportsSideQuestions: bridgeSupports),
+          sideChatRepository: MockSideChatRepository(),
           connectionService: connectionService,
         );
 
@@ -446,6 +451,7 @@ void main() {
           ],
           supportsFileUploads: true,
         ),
+        sideChatRepository: MockSideChatRepository(),
         connectionService: connectionService,
       );
 
@@ -716,6 +722,44 @@ void main() {
           storedOnly: any(named: "storedOnly"),
         ),
       );
+    });
+  });
+
+  group("countSideChats", () {
+    late MockSideChatRepository sideChatRepository;
+    late SessionDetailLoadService service;
+
+    setUp(() {
+      sideChatRepository = MockSideChatRepository();
+      service = SessionDetailLoadService(
+        repository: MockSessionRepository(),
+        pluginRepository: stubbedPluginRepository(),
+        sideChatRepository: sideChatRepository,
+        connectionService: MockConnectionService(),
+      );
+    });
+
+    test("counts the session's side chats", () async {
+      when(() => sideChatRepository.listSideChats(sessionId: "session-1")).thenAnswer(
+        (_) async => ApiResponse.success(
+          const SideChatListResponse(
+            sideChats: [
+              SideChat(id: "chat-1", exchanges: []),
+              SideChat(id: "chat-2", exchanges: []),
+            ],
+          ),
+        ),
+      );
+
+      expect(await service.countSideChats(sessionId: "session-1"), 2);
+    });
+
+    test("counts none when the listing fails", () async {
+      when(
+        () => sideChatRepository.listSideChats(sessionId: "session-1"),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      expect(await service.countSideChats(sessionId: "session-1"), 0);
     });
   });
 }

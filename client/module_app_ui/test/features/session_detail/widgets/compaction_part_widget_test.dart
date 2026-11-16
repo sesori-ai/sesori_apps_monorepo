@@ -50,6 +50,7 @@ Widget _app({
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
         openHarnessSettings: () {},
         openBridgeSettings: () {},
+        openSideChat: null,
         child: Scaffold(
           body: Column(
             children: [CompactionPartWidget(state: state, sinceMs: sinceMs, streamingText: streamingText)],

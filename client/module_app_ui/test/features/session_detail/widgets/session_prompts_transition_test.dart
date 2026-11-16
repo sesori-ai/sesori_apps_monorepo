@@ -57,6 +57,7 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
           child: SessionDetailPresentationScope(
             openHarnessSettings: () {},
             openBridgeSettings: () {},
+            openSideChat: null,
             messageImageRepository: _MockMessageImageRepository.new,
             imageSaver: _MockImageSaver.new,
             imageClipboard: _MockImageClipboard.new,
