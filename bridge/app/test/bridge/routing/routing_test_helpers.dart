@@ -212,7 +212,7 @@ class FakeSessionDao() {
 }
 
 DeletedSessionSubtree _deletedSession(String sessionId) =>
-    (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId]);
+    (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId], projectId: "project-1", worktreePath: null);
 
 Session _deletedSessionInfo(String sessionId) => Session(
   approvalOverride: null,
@@ -634,6 +634,20 @@ class FakeSessionRepository({
     required String projectId,
     required String worktreePath,
   }) async => false;
+
+  @override
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) async => false;
+
+  @override
+  Future<void> recordWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) async {}
 
   @override
   Future<String?> getProjectPath({required String projectId}) async => projectPathResult;

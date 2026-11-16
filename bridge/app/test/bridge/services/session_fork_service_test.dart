@@ -1,11 +1,14 @@
 import "dart:convert";
+import "dart:io" show FileSystemEntityType;
 
 import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
 import "package:sesori_bridge/src/repositories/models/history_window.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/routing/fork_session_handler.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/services/session_branch_refused_exception.dart";
@@ -13,12 +16,15 @@ import "package:sesori_bridge/src/services/session_fork_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/session_view_service.dart";
+import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show buildWorktreeSystemContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fake_session_options_service.dart";
+import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
@@ -42,6 +48,9 @@ void main() {
   late SessionRepository sessionRepository;
   late SessionOperationDispatcher dispatcher;
   late TestChatHistory history;
+  late _FakeWorktreeGit git;
+  late _FakeWorktreeDisk disk;
+  late WorktreeService worktrees;
   late SessionForkService service;
 
   setUp(() async {
@@ -55,9 +64,21 @@ void main() {
     );
     dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
     history = createTestChatHistory(sessionRepository: sessionRepository);
+    git = _FakeWorktreeGit()..worktrees.add(_worktree);
+    disk = _FakeWorktreeDisk(git: git);
+    worktrees = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        worktreesDirectory: "/worktrees",
+        projectsDao: db.projectsDao,
+        filesystemApi: disk,
+        gitApi: git,
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+      ),
+    );
     service = SessionForkService(
       sessionRepository: sessionRepository,
       chatHistory: history.service,
+      worktrees: worktrees,
       views: _CatalogViews(sessions: sessionRepository),
       dispatcher: dispatcher,
     );
@@ -88,7 +109,11 @@ void main() {
     await db.close();
   });
 
-  Future<Session> fork(ForkPoint point) => service.forkSession(sessionId: "s1", point: point);
+  Future<Session> fork(ForkPoint point) => service.forkSession(sessionId: "s1", point: point, recreateFromBase: false);
+
+  /// The retry after a `worktreeBranchMissing` refusal.
+  Future<Session> forkFromBase(ForkPoint point) =>
+      service.forkSession(sessionId: "s1", point: point, recreateFromBase: true);
 
   Matcher refusedWith(SessionBranchErrorCode code) =>
       throwsA(isA<SessionBranchRefusedException>().having((error) => error.code, "code", code));
@@ -344,6 +369,7 @@ void main() {
       final localService = SessionForkService(
         sessionRepository: repository,
         chatHistory: createTestChatHistory(sessionRepository: repository).service,
+        worktrees: worktrees,
         views: _CatalogViews(sessions: repository),
         dispatcher: localDispatcher,
       );
@@ -352,6 +378,7 @@ void main() {
         localService.forkSession(
           sessionId: "s1",
           point: const ForkPoint.afterMessage(messageId: "a1"),
+          recreateFromBase: false,
         ),
         refusedWith(SessionBranchErrorCode.branchPointUnavailable),
       );
@@ -394,14 +421,14 @@ void main() {
       plugin.messagesByBackendId["backend-child"] = _transcript;
 
       await expectLater(
-        service.forkSession(sessionId: "child", point: const ForkPoint.latest()),
+        service.forkSession(sessionId: "child", point: const ForkPoint.latest(), recreateFromBase: false),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 409)),
       );
       expect(plugin.forks, isEmpty);
     });
   });
 
-  test("an archived origin forks from its audit record and keeps its worktree", () async {
+  Future<void> archiveOrigin() async {
     await history.service.backfillSession(sessionId: "s1");
     await history.service.exportSessionHistory(
       session: await sessionRepository.getStoredSession(sessionId: "s1") ?? fail("missing origin"),
@@ -413,6 +440,10 @@ void main() {
     await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 3, updatedAt: 3, projectionUpdatedAt: 3);
     // The harness now reports nothing: only the audit record has the turns.
     plugin.messagesByBackendId["backend-s1"] = const [];
+  }
+
+  test("an archived origin forks from its audit record and keeps its worktree", () async {
+    await archiveOrigin();
 
     final forked = await fork(const ForkPoint.latest());
 
@@ -421,6 +452,100 @@ void main() {
     expect(forked.hasWorktree, isTrue);
     final origin = await db.sessionDao.getSession(sessionId: "s1") ?? fail("missing origin");
     expect(origin.archivedAt, 3, reason: "a fork only reads its origin");
+  });
+
+  group("an archived origin whose worktree was removed", () {
+    setUp(() async {
+      await archiveOrigin();
+      git.worktrees.clear();
+    });
+
+    test("gets it back at the same path on its kept branch before the harness forks", () async {
+      git.branches.add("feature");
+
+      final forked = await fork(const ForkPoint.latest());
+
+      expect(git.added, ["$_worktree on feature"]);
+      expect(plugin.forks, [(sessionId: "backend-s1", throughMessageId: "a2")]);
+      final row = await db.sessionDao.getSession(sessionId: forked.id) ?? fail("missing fork");
+      expect(row.worktreePath, _worktree);
+      expect(
+        await db.sessionDao.getOtherActiveSessionsSharing(
+          sessionId: forked.id,
+          projectId: "/repo",
+          worktreePath: _worktree,
+        ),
+        isEmpty,
+        reason: "the archived origin is no sharer, so the fork's archive or deletion removes the worktree",
+      );
+    });
+
+    test("whose branch is gone gets it back at the HEAD archiving kept", () async {
+      git.keptHead = "work123";
+
+      await fork(const ForkPoint.latest());
+
+      expect(git.added, ["$_worktree on new feature from work123"]);
+      expect(plugin.forks, hasLength(1));
+    });
+
+    test("that kept nothing answers worktreeBranchMissing and creates nothing", () async {
+      await expectLater(
+        fork(const ForkPoint.latest()),
+        refusedWith(SessionBranchErrorCode.worktreeBranchMissing),
+      );
+
+      expect(git.added, isEmpty);
+      expect(plugin.forks, isEmpty);
+    });
+
+    test("that kept nothing gets the branch again from its base commit on the retry", () async {
+      await forkFromBase(const ForkPoint.latest());
+
+      expect(git.added, ["$_worktree on new feature from abc123"]);
+      expect(plugin.forks, hasLength(1));
+    });
+
+    test("is refused when something else now holds the path", () async {
+      disk.otherEntries.add(_worktree);
+
+      await expectLater(
+        forkFromBase(const ForkPoint.latest()),
+        refusedWith(SessionBranchErrorCode.refused),
+      );
+
+      expect(git.added, isEmpty);
+      expect(plugin.forks, isEmpty);
+    });
+
+    test("is refused when a checkout of another repository now holds the path", () async {
+      git
+        ..worktrees.add(_worktree)
+        ..foreign.add(_worktree);
+
+      await expectLater(fork(const ForkPoint.latest()), refusedWith(SessionBranchErrorCode.refused));
+
+      expect(git.added, isEmpty);
+      expect(plugin.forks, isEmpty);
+    });
+
+    test("is refused when git cannot add the worktree", () async {
+      git
+        ..branches.add("feature")
+        ..addSucceeds = false;
+
+      await expectLater(fork(const ForkPoint.latest()), refusedWith(SessionBranchErrorCode.refused));
+
+      expect(plugin.forks, isEmpty);
+    });
+  });
+
+  test("a live origin's worktree is never recreated", () async {
+    git.worktrees.clear();
+
+    await fork(const ForkPoint.latest());
+
+    expect(git.added, isEmpty);
   });
 
   test("an empty fork's first prompt carries the worktree context, later prompts do not", () async {
@@ -488,7 +613,7 @@ void main() {
     RelayRequest request(ForkPoint point) => makeRequest(
       "POST",
       "/session/fork",
-      body: jsonEncode(ForkSessionRequest(sessionId: "s1", point: point).toJson()),
+      body: jsonEncode(ForkSessionRequest(sessionId: "s1", point: point, recreateFromBase: false).toJson()),
     );
 
     final created = await handler.routeForTest(request(const ForkPoint.afterMessage(messageId: "a1")));
@@ -592,6 +717,82 @@ final class const _CatalogViews({required final SessionRepository sessions}) imp
 
   @override
   Future<Session> enrich({required Session session}) async => session;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Git's worktrees and branches, without running git.
+class _FakeWorktreeGit() extends FakeGitCliApi {
+  final worktrees = <String>{};
+  final branches = <String>{};
+  final added = <String>[];
+  bool addSucceeds = true;
+
+  /// The HEAD that archiving kept for a removed worktree.
+  String? keptHead;
+
+  @override
+  Future<String?> resolveCommit({required String projectPath, required String ref}) async =>
+      ref.startsWith("refs/sesori/") ? keptHead : null;
+
+  /// Checkouts of another repository, among [worktrees].
+  final foreign = <String>{};
+
+  @override
+  Future<bool> isWorkTreeRoot({required String path}) async => worktrees.contains(path);
+
+  @override
+  Future<String?> readGitCommonDir({required String path}) async =>
+      foreign.contains(path) ? "/elsewhere/.git" : "/repo/.git";
+
+  @override
+  Future<void> pruneWorktrees({required String projectPath}) async {}
+
+  @override
+  Future<bool> branchExists({required String projectPath, required String branchName}) async =>
+      branches.contains(branchName);
+
+  @override
+  Future<bool> addWorktreeOnBranch({
+    required String projectPath,
+    required String worktreePath,
+    required String branchName,
+  }) async => _add(worktreePath: worktreePath, description: "$worktreePath on $branchName");
+
+  @override
+  Future<bool> addWorktreeOnNewBranch({
+    required String projectPath,
+    required String worktreePath,
+    required String branchName,
+    required String startPoint,
+  }) async => _add(worktreePath: worktreePath, description: "$worktreePath on new $branchName from $startPoint");
+
+  @override
+  Future<bool> createWorktree({
+    required String projectPath,
+    required String worktreePath,
+    required String startPoint,
+  }) async => _add(worktreePath: worktreePath, description: "$worktreePath detached at $startPoint");
+
+  bool _add({required String worktreePath, required String description}) {
+    if (!addSucceeds) return false;
+    added.add(description);
+    worktrees.add(worktreePath);
+    return true;
+  }
+}
+
+/// A disk holding [_git]'s worktrees and [otherEntries], folders that are no
+/// worktree.
+class _FakeWorktreeDisk({required final _FakeWorktreeGit _git}) implements FilesystemApi {
+  final otherEntries = <String>{};
+
+  @override
+  FileSystemEntityType entityType({required String path}) =>
+      _git.worktrees.contains(path) || otherEntries.contains(path)
+      ? FileSystemEntityType.directory
+      : FileSystemEntityType.notFound;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
