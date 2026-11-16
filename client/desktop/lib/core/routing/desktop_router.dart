@@ -276,6 +276,22 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 _goRoute(context: context, route: parent);
               }
             },
+            // A fork opened over its origin goes back there; one reached any other way selects its origin.
+            onReturnToSession: ({required projectId, required sessionId, required sessionTitle}) {
+              final origin = AppRoute.sessionDetail(
+                projectId: projectId,
+                projectName: projectId == route.projectId ? route.projectName : null,
+                sessionId: sessionId,
+                sessionTitle: sessionTitle,
+                readOnly: false,
+                fromLaunch: false,
+              );
+              if (_pageBelowIs(context: context, route: origin)) {
+                context.pop();
+              } else {
+                _goRoute(context: context, route: origin);
+              }
+            },
             onShowDiffs: () => _pushRoute(
               context: context,
               route: AppRoute.sessionDiffs(

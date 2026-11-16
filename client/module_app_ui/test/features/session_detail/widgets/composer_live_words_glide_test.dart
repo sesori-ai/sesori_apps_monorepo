@@ -1156,6 +1156,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
             canShareImages: false,
             openExternalLink: ({required url, required mode}) async => true,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+            returnToSession: ({required projectId, required sessionId, required sessionTitle}) {},
             openHarnessSettings: () {},
             openBridgeSettings: () {},
             openSideChat: null,

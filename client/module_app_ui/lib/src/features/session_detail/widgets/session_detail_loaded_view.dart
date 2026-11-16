@@ -344,9 +344,9 @@ class SessionDetailLoadedView extends StatelessWidget {
       onPinchIn: onPinchIn,
       onEditMessage: readOnly || !state.interaction.canInteract || !state.editsMessages
           ? null
-          : ({required message, required refusal}) => unawaited(switch (refusal) {
+          : ({required message, required refusal, required onFork}) => unawaited(switch (refusal) {
               null => context.read<SessionDetailCubit>().editMessage(message: message),
-              final refusal => showEditUnavailableDialog(context: context, refusal: refusal),
+              final refusal => showEditUnavailableDialog(context: context, refusal: refusal, onFork: onFork),
             }),
       // Archived sessions fork too.
       onForkMessage: state.forksMessages
@@ -370,6 +370,14 @@ class SessionDetailLoadedView extends StatelessWidget {
               );
             }
           : null,
+      forkedFrom: state.session.forkedFrom,
+      // A fork shares its origin's project.
+      onOpenForkOrigin: ({required sessionId, required sessionTitle}) =>
+          SessionDetailPresentationScope.read(context).returnToSession(
+            projectId: state.session.projectID,
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+          ),
       editingMessageId: switch (state.composerMode) {
         SessionComposerEditing(:final messageId) => messageId,
         SessionComposerNormal() || SessionComposerSideQuestion() => null,

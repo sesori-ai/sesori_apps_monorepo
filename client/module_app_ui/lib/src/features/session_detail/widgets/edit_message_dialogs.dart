@@ -6,15 +6,22 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 
 /// Explains why Edit and resend cannot start from a message, so the tap is
-/// answered rather than ignored.
+/// answered rather than ignored. A message sent mid-turn also offers Fork from
+/// here when [onFork] is given, which runs once the explanation has closed.
 Future<void> showEditUnavailableDialog({
   required BuildContext context,
   required MessageEditRefusal refusal,
+  required VoidCallback? onFork,
 }) {
   final loc = context.loc;
-  final (title, body) = switch (refusal) {
-    MessageEditRefusal.sentMidTurn => (loc.sessionDetailEditMidTurnTitle, loc.sessionDetailEditMidTurnBody),
-    MessageEditRefusal.command => (loc.sessionDetailEditCommandTitle, loc.sessionDetailEditCommandBody),
+  final (title, body, fork) = switch (refusal) {
+    MessageEditRefusal.sentMidTurn when onFork != null => (
+      loc.sessionDetailEditMidTurnTitle,
+      loc.sessionDetailEditMidTurnForkBody,
+      onFork,
+    ),
+    MessageEditRefusal.sentMidTurn => (loc.sessionDetailEditMidTurnTitle, loc.sessionDetailEditMidTurnBody, null),
+    MessageEditRefusal.command => (loc.sessionDetailEditCommandTitle, loc.sessionDetailEditCommandBody, null),
   };
   return showPregoModal<void>(
     context: context,
@@ -22,10 +29,24 @@ Future<void> showEditUnavailableDialog({
     builder: (sheetContext) => _DialogBody(
       body: body,
       buttons: [
+        if (fork != null) ...[
+          PregoButtonsSolid(
+            key: const Key("edit_unavailable_fork"),
+            label: loc.sessionDetailForkFromHere,
+            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+            size: PregoButtonsSolidSize.xl,
+            fullWidth: true,
+            onPressed: () {
+              Navigator.of(sheetContext).pop();
+              fork();
+            },
+          ),
+          const SizedBox(height: PregoSpacing.md),
+        ],
         PregoButtonsSolid(
           key: const Key("edit_unavailable_ok"),
           label: loc.sessionDetailEditUnavailableOk,
-          hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+          hierarchy: fork == null ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.tertiary,
           size: PregoButtonsSolidSize.xl,
           fullWidth: true,
           onPressed: () => Navigator.of(sheetContext).pop(),

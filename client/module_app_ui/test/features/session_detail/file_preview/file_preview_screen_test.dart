@@ -136,6 +136,7 @@ Widget _app({
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   home: SessionDetailPresentationScope(
+    returnToSession: ({required projectId, required sessionId, required sessionTitle}) {},
     openHarnessSettings: () {},
     openBridgeSettings: () {},
     openSideChat: null,

@@ -3353,6 +3353,7 @@ void main() {
           return BlocProvider<SessionDetailCubit>.value(
             value: detailCubit ??= detailCubitFor(sessionId: sessionId),
             child: SessionDetailPresentationScope(
+              returnToSession: ({required projectId, required sessionId, required sessionTitle}) {},
               openHarnessSettings: () {},
               openBridgeSettings: () {},
               openSideChat: null,

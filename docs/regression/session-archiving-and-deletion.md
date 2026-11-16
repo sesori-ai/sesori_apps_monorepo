@@ -92,8 +92,9 @@ entirely along with its transcript and its dedicated worktree.
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
   that a dedicated worktree will be deleted and its branch kept, and, for a pinned session, that it is pinned.
 - Deleting a "No project" session, from any entry point, adds to that confirmation that its folder and every file
-  in it are deleted too, and only then sends `deleteSessionFolder: true` (also on a forced retry). Deleting any
-  other session sends `false` and adds no such sentence.
+  in it are deleted too, unless a fork of it still uses the folder (the bridge then keeps it, so the app needs no
+  fork lookup), and only then sends `deleteSessionFolder: true` (also on a forced retry). Deleting any other session
+  sends `false` and adds no such sentence.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup

@@ -2348,7 +2348,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListDeleteWorktreeNotice => 'Its worktree will be deleted too. The branch is kept.';
 
   @override
-  String get sessionListDeleteFolderNotice => 'Its folder and every file in it will be deleted too.';
+  String get sessionListDeleteFolderNotice =>
+      'Its folder and every file in it will be deleted too, unless a fork of it still uses the folder.';
 
   @override
   String get sessionListDeleted => 'Session deleted';
@@ -3243,6 +3244,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionDetailEditMidTurnBody =>
       'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead.';
+
+  @override
+  String get sessionDetailEditMidTurnForkBody =>
+      'It was sent while the agent was working, so it joined that turn. Edit the message that started the turn instead, or fork from here to send it again in a new session.';
+
+  @override
+  String transcriptForkedFrom(String title) {
+    return 'Forked from $title';
+  }
+
+  @override
+  String get transcriptForkedFromUntitled => 'Forked from an untitled session';
 
   @override
   String get sessionDetailEditCommandTitle => 'Commands can\'t be edited';
