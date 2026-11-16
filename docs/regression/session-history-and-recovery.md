@@ -127,12 +127,13 @@ reconnect or restart.
   turn and does not separate the replayed turns around it. Failure signals
   after a reload or forced re-import: a live prompt shown twice, or all
   replayed prompts first and the live turns repeated below them.
-- A tool call the harness replays inside the stamped assistant message before
-  it (Oh My Pi and DeepSeek stamp their reasoning and text chunks with a
-  message id) is replayed as its own message, the shape the live stream
-  captured, so a re-import or the first read after a bridge restart matches
-  the live tool row by id. Failure signal: after a forced re-import or a restart mid-turn, a tool
-  turn shows its reasoning or tool call twice.
+- Every ACP harness replays each tool call as its own message, the shape the
+  live stream captured, also after reasoning or text chunks stamped with a
+  message id (Oh My Pi and DeepSeek stamp them). Text the stamped message
+  continues after the tool follows as its own segment. A re-import or the first
+  read after a bridge restart therefore matches the live tool row by id.
+  Failure signal: after a forced re-import or a restart mid-turn, a tool turn
+  shows its reasoning or tool call twice.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
@@ -338,9 +339,10 @@ reconnect or restart.
   replay, a notice shows Hermes's inline code without backticks
   (``run `hermes setup` `` reads "run hermes setup").
 - An OMP reply that was aborted before it produced anything replays as one
-  error notice with OMP's abort reason ("Interrupted by user" after a stop,
-  "Request was aborted" otherwise), never as a reply bubble. A reply that only
-  mentions those words stays a reply.
+  row, never as a reply bubble: "Interrupted by user" after a stop as the grey
+  Stopped line, folded into the live stop's line, and "Request was aborted"
+  otherwise as an error notice with that text. A reply that only mentions those
+  words stays a reply.
 - For any harness, a live error notice and the replayed error notice in the
   same place of the transcript are one notice even when they are worded
   differently. The error name is the notice's kind. A replayed notice of the
@@ -600,9 +602,15 @@ reconnect or restart.
   readiness or run. Conversion and adoption act only while the row still holds
   the time they read, so a turn this run started meanwhile is left alone. A
   re-import that replaces the anchor message moves the interruption onto its
-  replacement. Opening the session, or the bridge accepting a prompt for it,
-  acknowledges the interruption with one session update; an acknowledged one
-  stays stored. Sessions from a bridge without this report no interruption.
+  replacement. The row a cut-off turn ends on lacks the next row its replay
+  holds, so while it is still the store's newest row a re-import matches it by
+  its previous row and its content, which the replay may complete when the stop
+  landed mid-stream (an empty Oh My Pi reasoning row, for example), provided
+  their known times agree and exactly one replayed row qualifies. The first
+  read after a restart, before the plugin resolves the running row, matches it
+  the same way, so it shows once. Opening the session, or the bridge accepting
+  a prompt for it, acknowledges the interruption with one session update; an
+  acknowledged one stays stored. Sessions from a bridge without this report no interruption.
 
 ## Regression Levels
 
@@ -681,7 +689,7 @@ rules where supported.
   reason, repeats the generic saved row after the live reason, merges the
   failed prompt into the next one, or hides a reply.
 - A reloaded OMP session shows "Request was aborted" or "Interrupted by user"
-  as a normal assistant reply.
+  as a normal assistant reply, or a stop as a red row or two Stopped lines.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
   a nested tile to the root instead of its direct parent, changes live child
   activity, loses latest terminal metadata across pages, or collapses/reorders
@@ -772,9 +780,10 @@ rules where supported.
 - A bridge stop mid-turn reports no interruption after restart (by `kill -9` or
   by signal), a running turn the plugin still reports busy is reported
   interrupted, a failed status read drops the rows, a turn started after the
-  restart is converted, the anchor names a message the store no longer holds, or
-  opening or sending to the session leaves it unacknowledged or announces it
-  more than once.
+  restart is converted, the anchor names a message the store no longer holds,
+  the row the cut-off turn ended on shows next to its replayed copy, or opening
+  or sending to the session leaves it unacknowledged or announces it more than
+  once.
 
 ## Known Limitations
 
@@ -806,10 +815,6 @@ rules where supported.
   reads its prefix through `history_base`, so the fork then shows only its own
   turns. That step keeps every rollout another thread's `history_base` still
   references, so deleting an origin leaves its fork intact.
-- When a bridge stop cuts a turn off after a live row but before the bridge
-  stored the row after it, the first read after the restart shows that last
-  live row (for example an Oh My Pi reasoning row) next to its replayed copy,
-  because the replay has a following row the store lacks.
 - A Codex revert made outside Sesori is picked up at the next catalog scan;
   until then the catalog reads the thread's previous rollout.
 - A session already open on screen picks up an outside turn on the next app

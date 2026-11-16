@@ -1259,12 +1259,14 @@ class ChatHistoryService({
     );
   }
 
-  /// Fills the store from the backend's own transcript.
+  /// Fills the store from the backend's transcript as it stands after this
+  /// call. Failures propagate so a cache miss never looks like an empty thread.
   ///
-  /// Concurrent callers for the same session await one fetch. Failures
-  /// propagate so a cache miss never looks like an empty thread.
+  /// Unlike a read, this never joins a backfill already running: that one may
+  /// have fetched before the change the caller waited for reached the backend,
+  /// such as a send's summary finishing mid-fetch. The fetch queues behind it.
   Future<void> backfillSession({required String sessionId}) async {
-    await _backfillSessionForRead(sessionId: sessionId);
+    await _backfillSession(sessionId: sessionId);
   }
 
   /// Stamps the user message [messageId] with [notSent] in place of its
@@ -1330,6 +1332,12 @@ class ChatHistoryService({
             observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
         final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+        // The row the session's last turn ends on when a bridge stop cut it
+        // off. Its running row stays until the plugin is ready to turn it into
+        // the interruption, which can come after the first read imports.
+        final interruptedAfterMessageId = await _interruptions.hasRunningTurn(sessionId: sessionId)
+            ? await _chatHistoryRepository.getNewestMessageId(sessionId: sessionId)
+            : (await _interruptions.readMany(sessionIds: {sessionId}))[sessionId]?.afterMessageId;
         final replacementIds = await _chatHistoryRepository.replaceSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
@@ -1338,6 +1346,7 @@ class ChatHistoryService({
           watermark: backendActivityAt,
           backendActivityAt: backendActivityAt,
           syncedAt: DateTime.now().millisecondsSinceEpoch,
+          interruptedAfterMessageId: interruptedAfterMessageId,
         );
         await _reanchorInterruption(sessionId: sessionId, replacementIds: replacementIds);
         final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;

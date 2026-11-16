@@ -14,6 +14,7 @@ sealed class LocalNotificationPayload with _$LocalNotificationPayload {
     required String? sessionId,
     required String? projectId,
     required String? sessionTitle,
+    required String? taskId,
     required String? accountId,
     required String? bridgeId,
   }) = _LocalNotificationPayload;

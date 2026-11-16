@@ -84,6 +84,7 @@ void main() {
       AppRouteDef.archivedSessions,
       AppRouteDef.scheduledTasks,
       AppRouteDef.scheduledTaskDetail,
+      AppRouteDef.scheduledTaskEditor,
       AppRouteDef.newSession,
       AppRouteDef.sessionDetail,
       AppRouteDef.sessionDiffs,

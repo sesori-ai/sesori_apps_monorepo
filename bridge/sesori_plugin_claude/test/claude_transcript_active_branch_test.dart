@@ -254,7 +254,137 @@ void main() {
       expect(await transcript(sessionId: _terminalRewind), [_alpha, "assistant: alpha", _beta, "assistant: beta"]);
     });
   });
+
+  group("fork", () {
+    const fork = "88888888-8888-4888-8888-888888888888";
+
+    List<Map<String, Object?>> forkRecords() => [
+      for (final line in File(p.join(temp.path, "projects", "-work-fixture-project", "$fork.jsonl")).readAsLinesSync())
+        jsonDecode(line) as Map<String, Object?>,
+    ];
+
+    Future<ClaudeForkResult> forkThrough({required String sessionId, required String messageId}) =>
+        transcripts.forkTranscript(sessionId: sessionId, throughMessageId: messageId, forkSessionId: fork);
+
+    test("copies the kept turn, its end record included, under the fork's id and leaves the origin alone", () async {
+      final origin = install(fixture: "linear", sessionId: _linear);
+      final before = origin.readAsStringSync();
+
+      expect(await forkThrough(sessionId: _linear, messageId: "1794774680780"), isA<ClaudeForkWritten>());
+
+      final records = forkRecords();
+      expect(records.last["uuid"], "394d3466-c6ea-4f94-850c-a82bb34068df");
+      expect(records.map((record) => record["sessionId"]), everyElement(fork));
+      expect(records.map((record) => record["type"]), isNot(contains("last-prompt")));
+      expect(origin.readAsStringSync(), before);
+      expect(await transcript(sessionId: fork), ["user: Reply with just the word: one", "assistant: one"]);
+    });
+
+    test("keeps only the branch the conversation continued on", () async {
+      install(fixture: "terminal_rewind", sessionId: _terminalRewind);
+
+      expect(await forkThrough(sessionId: _terminalRewind, messageId: "1794775038258"), isA<ClaudeForkWritten>());
+
+      expect(await transcript(sessionId: fork), [_alpha, "assistant: alpha", _gamma, "assistant: alpha gamma"]);
+      expect(forkRecords().last["uuid"], startsWith("746f521e"));
+    });
+
+    test("through an earlier turn stops before the next prompt", () async {
+      install(fixture: "terminal_rewind", sessionId: _terminalRewind);
+
+      expect(await forkThrough(sessionId: _terminalRewind, messageId: "1794774954690"), isA<ClaudeForkWritten>());
+
+      expect(await transcript(sessionId: fork), [_alpha, "assistant: alpha"]);
+      expect(forkRecords().last["uuid"], "718a570d-aa15-40f0-9465-602372ad5fbe");
+    });
+
+    test("keeps parallel tool results that hang off sibling records", () async {
+      install(fixture: "parallel_tool_calls", sessionId: _parallelTools);
+
+      expect(await forkThrough(sessionId: _parallelTools, messageId: "1794775890337"), isA<ClaudeForkWritten>());
+
+      final messages = await transcript(sessionId: fork);
+      expect(messages[1], "assistant: tool Bash completed, tool Bash completed");
+      expect(messages.last, "assistant: done");
+    });
+
+    test("refuses a message before the latest compaction and allows one after it", () async {
+      install(fixture: "compacted", sessionId: _compacted);
+
+      expect(await forkThrough(sessionId: _compacted, messageId: "1794776073924"), _forkRefused(.beforeCompaction));
+      expect(File(p.join(temp.path, "projects", "-work-fixture-project", "$fork.jsonl")).existsSync(), isFalse);
+
+      expect(await forkThrough(sessionId: _compacted, messageId: "1794776107383"), isA<ClaudeForkWritten>());
+      expect((await transcript(sessionId: fork)).last, "assistant: blue");
+    });
+
+    test("refuses a message off the active branch and a missing session", () async {
+      install(fixture: "terminal_rewind", sessionId: _terminalRewind);
+
+      expect(
+        await forkThrough(sessionId: _terminalRewind, messageId: "1794774978480"),
+        _forkRefused(.notOnActiveBranch),
+      );
+      expect(await forkThrough(sessionId: _terminalRewind, messageId: "unknown"), _forkRefused(.notOnActiveBranch));
+      expect(await forkThrough(sessionId: _linear, messageId: "1794774680780"), _forkRefused(.transcriptMissing));
+    });
+
+    test("leaves out a later turn the origin is still writing", () async {
+      final origin = install(fixture: "linear", sessionId: _linear);
+      origin.writeAsStringSync(
+        '${jsonEncode({
+          "type": "user",
+          "uuid": "running-prompt",
+          "parentUuid": "d97a6211-bb77-42a4-882b-57b47f7a964a",
+          "sessionId": _linear,
+          "cwd": "/work/fixture-project",
+          "timestamp": "2026-09-01T10:00:00Z",
+          "message": {"role": "user", "content": "Reply with just the word: three"},
+        })}\n{"type":"assistant","uuid":',
+        mode: FileMode.append,
+      );
+
+      expect(await forkThrough(sessionId: _linear, messageId: "1794774685645"), isA<ClaudeForkWritten>());
+
+      expect(await transcript(sessionId: fork), [
+        "user: Reply with just the word: one",
+        "assistant: one",
+        "user: Reply with just the word: two",
+        "assistant: two",
+      ]);
+    });
+
+    test("is listed once, keeps the origin's sub-agents with the origin, and deletes only itself", () async {
+      final origin = install(fixture: "linear", sessionId: _linear);
+      final subagent = File(p.join(p.dirname(origin.path), _linear, "subagents", "agent-a1.jsonl"))
+        ..createSync(recursive: true)
+        ..writeAsStringSync(
+          "${jsonEncode({
+            "type": "user",
+            "isSidechain": true,
+            "agentId": "a1",
+            "sessionId": _linear,
+            "uuid": "child-user",
+            "cwd": "/work/fixture-project",
+            "timestamp": "2026-09-01T10:00:01Z",
+            "message": {"role": "user", "content": "Reply with hi"},
+          })}\n",
+        );
+
+      await forkThrough(sessionId: _linear, messageId: "1794774680780");
+
+      final ids = [for (final session in await transcripts.listAllSessions(knownDirectories: const {})) session.id];
+      expect(ids.where((id) => id == fork), hasLength(1));
+      expect(ids.where((id) => id == "agent-a1"), hasLength(1));
+      expect(await transcripts.deleteSession(sessionId: fork), isTrue);
+      expect(origin.existsSync(), isTrue);
+      expect(subagent.existsSync(), isTrue);
+    });
+  });
 }
+
+Matcher _forkRefused(ClaudeForkRefusal reason) =>
+    isA<ClaudeForkUnavailable>().having((result) => result.reason, "reason", reason);
 
 Matcher _refused(ClaudeRewindRefusal reason) =>
     isA<ClaudeRewindUnavailable>().having((point) => point.reason, "reason", reason);

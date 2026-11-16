@@ -115,7 +115,10 @@ final class const ClaudePluginDescriptor({
   bool get supportsSideQuestions => true;
 
   @override
-  Set<PluginSessionBranching> get sessionBranching => const {PluginSessionBranching.rewind};
+  Set<PluginSessionBranching> get sessionBranching => const {
+    PluginSessionBranching.rewind,
+    PluginSessionBranching.fork,
+  };
 
   @override
   Set<PluginMcpCapability> get mcpCapabilities => const {

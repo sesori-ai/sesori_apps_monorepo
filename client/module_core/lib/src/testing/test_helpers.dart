@@ -27,6 +27,7 @@ import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
 import "../platform/route_source.dart";
 import "../platform/url_launcher.dart";
+import "../repositories/archive_after_send_preference_storage.dart";
 import "../repositories/bridge_repository.dart";
 import "../repositories/composer_draft_repository.dart";
 import "../repositories/dedicated_worktree_preference_store.dart";
@@ -1048,6 +1049,16 @@ class FakeCatalogRescanService() implements CatalogRescanService {
 }
 
 class FakeDedicatedWorktreePreferenceStore() implements DedicatedWorktreePreferenceStore {
+  final List<bool> writes = [];
+
+  @override
+  Future<bool> read() async => writes.lastOrNull ?? true;
+
+  @override
+  Future<void> write({required bool value}) async => writes.add(value);
+}
+
+class FakeArchiveAfterSendPreferenceStorage() implements ArchiveAfterSendPreferenceStorage {
   final List<bool> writes = [];
 
   @override

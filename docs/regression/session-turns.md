@@ -116,10 +116,18 @@ defaults and queued client sends coherent.
   operations queued behind a send (abort, permission and question replies)
   are never blocked for the duration of a turn.
 - A user Stop ends the turn with a small grey "Stopped" line in the compaction row's quiet style, never a red row
-  or the harness's own abort wording. Pi and OpenCode (v1 and v2) mark their native abort record stopped, so the line
-  shows live and after a reload; the other harnesses are listed under "Stopped turns" in
+  or the harness's own abort wording. Pi, OpenCode (v1 and v2), Claude Code and Codex mark their native stop record
+  stopped (Claude Code's interrupt record by its uuid, with the CLI's "No response requested." filler hidden; Codex's
+  interrupted turn by its turn id), so the line shows live and after a reload as one row, with no interrupt bubble. On
+  the ACP harnesses (Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity and OMP) the bridge adds one stopped row when
+  the agent ends a turn the user's Stop cancelled; they record no stop, so the line lasts until the history is re-read.
+  The exception is an OMP stop before the reply produced anything: OMP records it as "Interrupted by user", which
+  replays as the same one line, so that line also shows after a reload. A shutdown, a plugin restart, a follow-up that
+  replaces the running turn, or a Stop before the prompt reached the agent adds no line on the ACP harnesses. The other
+  harnesses are listed under "Stopped turns" in
   [HARNESS_CAPABILITIES](../HARNESS_CAPABILITIES.md#stopped-turns). The text and steps the turn already streamed
-  stay, with the line under them where the reply ended; a failed turn likewise keeps them above its red error. The
+  stay, with the line under them where the reply ended (after a reload Codex keeps only the steps, because its rollout
+  records none of the reply text it was streaming); a failed turn likewise keeps them above its red error. The
   Working row leaves as the stopped row arrives, before the session's idle lands, and the line grows in as it folds
   away and stands exactly as tall, so the rows above hold still. Stopped mid-stream, with no Working row showing, the
   line grows and fades in under the reply over the transcript's motion, like any new row, and a reader scrolled up
@@ -132,10 +140,12 @@ defaults and queued client sends coherent.
   The line replaces every Stopped line in that turn, so Claude Code and Codex, which record a bridge shutdown like a user Stop, show only the Interrupted line, never both. While
   the turn is the latest, the session is idle and no prompt is on its way, a "Continue" link button sits under the
   line and sends "Continue where you left off."; it folds away under the line once a later turn appears, so nothing
-  above moves. While an edit is open or sending, Continue stays but dims like the locked composer, and a tap sends
-  nothing and says why in a popup alert. Every refused tap answers with an alert saying why, including one on a
-  Continue folding away; a tap on a detached reader's frozen view also returns to the newest rows. An open session view that receives a new unacknowledged interruption declares its view again, so the list's
-  label clears while the user is looking. An older bridge sends no interruption and an older app ignores it.
+  above moves. While the session is idle and an edit is open or sending, Continue stays but dims like the locked
+  composer, and a tap sends nothing and says why in a popup alert; while the session works, as during an edit's
+  Stop and resend, Continue folds away as it does for any working session. Every refused tap answers with an alert
+  saying why, including one on a Continue folding away; a tap on a detached reader's frozen view also returns to the
+  newest rows. An open session view that receives a new unacknowledged interruption declares its view again, so the
+  list's label clears while the user is looking. An older bridge sends no interruption and an older app ignores it.
 - A sent prompt stays on screen from send to delivered message. Scrolling while
   it is delivered, or a refresh whose fetch began before a queue event, must not
   blank its row. A wheel or trackpad touch that moves nothing at the newest edge
@@ -1083,7 +1093,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 ## Failure Signals
 
 - A user Stop on Pi or OpenCode shows a red row or the harness's abort text ("Pi response aborted", an OpenCode
-  abort message) instead of the grey "Stopped" line, live or after a reload; a real failure reads "Stopped"; a
+  abort message) instead of the grey "Stopped" line, live or after a reload; a Stop on an ACP harness or OMP shows no
+  line or two lines live, a reloaded OMP stop of a reply that produced nothing shows no line, two lines or a red
+  "Interrupted by user", or a shutdown reads
+  "Stopped"; a real failure reads "Stopped"; a
   stopped or failed turn loses the text or steps it streamed; or the rows above the line move when it replaces the
   Working row.
 - A turn a bridge stop cut off shows no Interrupted line, shows it beside a Stopped line, or offers Continue while

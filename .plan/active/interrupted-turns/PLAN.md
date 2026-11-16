@@ -70,7 +70,7 @@ the per-harness persistence is exactly the decided one:
 | Pi | `stopReason: aborted` → stopped | Same |
 | OpenCode v1 / v2 | `MessageAbortedError` / v2 abort error type → stopped | Same |
 | Codex | `turn/completed` `interrupted` for a turn Sesori interrupted → stopped | rollout `turn_aborted` → stopped |
-| Claude Code | interrupted branch of the result handler → stopped | the two `[Request interrupted by user…]` records → stopped instead of a user bubble |
+| Claude Code | the echoed `[Request interrupted by user…]` record → stopped | the two `[Request interrupted by user…]` records → stopped instead of a user bubble |
 
 Synthesized rows use `errorMessage: "Stopped"`; native rows keep their text. Only a stop requested through
 `abortSession` (Stop, Stop on archive) produces a live stopped row. Shutdown's `interruptActiveWork` does not, except
@@ -85,8 +85,8 @@ pairing key with its replay:
   "until re-read" behaviour).
 - omp: the live row and the replayed "Interrupted by user" notice are both id-less halt-notice rows; they pair the way
   Hermes and Cursor halt notices pair today (content-free error in the same visible context). Step 3 proves it.
-- Claude Code: the live row carries the id of the CLI's interrupt record when the stream reports it, otherwise the
-  replay pairs by the record's timestamp. Step 4 chooses after checking what stream-json echoes.
+- Claude Code: stream-json echoes the CLI's interrupt record with its transcript uuid, so the live row is that record
+  and pairs with its replay by id.
 - Codex: the live row's id derives from the interrupted turn id, which the rollout `turn_aborted` carries, so live and
   replay share the id.
 
@@ -281,8 +281,11 @@ exactly one stopped row. ~500 lines.
 ### Step 4: Stopped on Claude Code and Codex
 
 Workspaces: `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_codex`, docs. Claude: map the two interrupt records to
-stopped rows in the history mapper and the live stream; emit the live row
-from the interrupted branch, folded with the replayed record. Codex: parse rollout `turn_aborted` (and its reason
+stopped rows in the history mapper and the live stream. Verified (claude 2.1.325): stream-json echoes the
+interrupt record with its transcript uuid before the `error_during_execution` result, so the live row is that record
+itself and pairs by id; a user Stop waits (bounded) for it before teardown. The CLI's synthetic assistant reply
+"No response requested." (model `<synthetic>`, one text block) is written to the transcript only on resume, never to
+stdout, so the history mapper drops it. Codex: parse rollout `turn_aborted` (and its reason
 when present) into a stopped row on replay; emit it live for a turn `abortSession` interrupted, with the id derived from
 the turn id. Tests per mapper plus a
 reload-after-live-stop test per harness asserting exactly one stopped row. ~600 lines.

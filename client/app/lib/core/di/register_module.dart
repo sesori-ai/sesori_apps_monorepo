@@ -8,6 +8,7 @@ import "package:image_picker/image_picker.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart"
     show
+        FlutterDeviceTimeZoneSource,
         GoRouterRouteDispatcher,
         NoOpFeedbackPromptConfigSource,
         PathProviderTemporaryDirectoryProvider,
@@ -57,6 +58,9 @@ abstract class RegisterModule() {
 
   @lazySingleton
   TemporaryDirectoryProvider get temporaryDirectoryProvider => PathProviderTemporaryDirectoryProvider();
+
+  @lazySingleton
+  DeviceTimeZoneSource get deviceTimeZoneSource => FlutterDeviceTimeZoneSource();
 
   @lazySingleton
   ImageClipboard get imageClipboard => createFlutterImageClipboard();

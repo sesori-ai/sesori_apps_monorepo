@@ -10,6 +10,7 @@ import "package:sesori_shared/sesori_shared.dart"
         maxTranscriptImageCollectionBytes;
 
 import "../../api/models/claude_content_block_dto.dart";
+import "../../models/claude_agent_selection.dart";
 import "../../models/claude_compact_metadata.dart";
 import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_task_notification.dart";
@@ -131,6 +132,54 @@ final class const ClaudeContentMapper() {
     required bool isHarnessGenerated,
     required ClaudeMessageOriginKind originKind,
   }) => isHarnessGenerated && originKind != ClaudeMessageOriginKind.peer;
+
+  /// The user records the CLI writes when a user interrupt ends a turn, the
+  /// second when the stop cut a tool off (observed on 2.1.325).
+  static const Set<String> _userInterruptTexts = {
+    "[Request interrupted by user]",
+    "[Request interrupted by user for tool use]",
+  };
+
+  /// The stopped row for the CLI's user-interrupt record, or null for any other
+  /// user turn. The live stream echoes the record, under the uuid the
+  /// transcript keeps, just before the interrupted turn's result, so the live
+  /// row and its replay share one id and a reload folds them.
+  PluginMessageWithParts? userInterruptMessage({
+    required String sessionId,
+    required String messageId,
+    required String? modelId,
+    required PluginMessageTime? time,
+    required List<ClaudeMappedContentBlock> blocks,
+  }) {
+    if (blocks case [ClaudeMappedTextContentBlock(:final text)] when _userInterruptTexts.contains(text)) {
+      return PluginMessageWithParts(
+        info: PluginMessage.error(
+          id: messageId,
+          sessionID: sessionId,
+          agent: ClaudeAgentSelection.messageAgent,
+          modelID: modelId,
+          providerID: ClaudeBackendCatalogRepository.providerId,
+          variant: null,
+          kind: PluginErrorKind.stopped,
+          errorName: "ClaudeUserInterrupt",
+          errorMessage: text,
+          time: time,
+        ),
+        parts: const [],
+      );
+    }
+    return null;
+  }
+
+  /// Whether an assistant record is the stand-in reply the CLI writes, under
+  /// its `<synthetic>` model, when a session resumes after an interrupt. The
+  /// stopped row already ends that turn, so the reply is no answer to show.
+  bool isNoResponseFiller({required String? model, required List<ClaudeMappedContentBlock> blocks}) =>
+      model == "<synthetic>" &&
+      switch (blocks) {
+        [ClaudeMappedTextContentBlock(text: "No response requested.")] => true,
+        _ => false,
+      };
 
   /// Projects visible user-role content consistently for live and stored rows.
   /// Explicit peer provenance identifies automation regardless of prompt hints;

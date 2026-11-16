@@ -7,6 +7,7 @@ import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart"
     show
+        FlutterDeviceTimeZoneSource,
         NoOpFeedbackPromptConfigSource,
         PathProviderTemporaryDirectoryProvider,
         createFlutterImageClipboard,
@@ -53,6 +54,9 @@ abstract class RegisterModule() {
 
   @lazySingleton
   TemporaryDirectoryProvider get temporaryDirectoryProvider => PathProviderTemporaryDirectoryProvider();
+
+  @lazySingleton
+  DeviceTimeZoneSource get deviceTimeZoneSource => FlutterDeviceTimeZoneSource();
 
   @lazySingleton
   ImageClipboard get imageClipboard => createFlutterImageClipboard();

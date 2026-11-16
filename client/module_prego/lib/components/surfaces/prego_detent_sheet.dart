@@ -26,7 +26,8 @@ typedef PregoDetentSheetBuilder = Widget Function(BuildContext context, ScrollCo
 /// sheet. The page behind stays mounted and keeps updating.
 ///
 /// The keyboard lifts the sheet, so a text field at the bottom of the content
-/// stays above it, and the sheet never grows over the status bar. With reduced
+/// stays above it, and the sheet never grows over the status bar. A keyboard
+/// already closing as the sheet opens slides away beneath it. With reduced
 /// motion the sheet opens, closes and changes height without animating.
 ///
 /// The sheet draws the grabber; the content brings its own header (for
@@ -96,7 +97,48 @@ class _PregoDetentSheetRoute<T>({
 
   @override
   Widget buildPage(BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
-    return capturedThemes.wrap(_PregoDetentSheet(route: this, animation: animation));
+    return capturedThemes.wrap(
+      _OpeningKeyboardFilter(
+        child: _PregoDetentSheet(route: this, animation: animation),
+      ),
+    );
+  }
+}
+
+/// Hides a keyboard that is up as the sheet opens. The field that raised it
+/// lost focus to the sheet, so that keyboard is on its way down: the sheet
+/// rises straight to its resting height while the keyboard slides away beneath
+/// it, instead of first riding above the keyboard and then sinking with it.
+/// Once that keyboard is gone, or rises again for a field in the sheet, the
+/// sheet follows the keyboard.
+class const _OpeningKeyboardFilter({required final Widget child}) extends StatefulWidget {
+  @override
+  State<_OpeningKeyboardFilter> createState() => _OpeningKeyboardFilterState();
+}
+
+class _OpeningKeyboardFilterState() extends State<_OpeningKeyboardFilter> {
+  var _measured = false;
+
+  /// The closing keyboard's last height, or null once the sheet follows the
+  /// keyboard.
+  double? _closing;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final last = _measured ? _closing : keyboard;
+    _measured = true;
+    _closing = last != null && keyboard > 0 && keyboard <= last ? keyboard : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    return MediaQuery(
+      data: _closing == null ? mediaQuery : mediaQuery.removeViewInsets(removeBottom: true),
+      child: widget.child,
+    );
   }
 }
 

@@ -59,6 +59,9 @@ class const NewSessionView({
   /// [NewSessionCubit.selectProject].
   required final NewSessionProjectSelected? onProjectSelected,
 
+  /// The glass bar's title; a page chrome's top bar carries its own.
+  required final String title,
+
   /// Null where nothing lies behind the page, such as the home's content pane.
   required final VoidCallback? onBack,
   required final VoidCallback onOpenHarnessSettings,
@@ -654,7 +657,6 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   Widget build(BuildContext context) {
     final cubit = context.watch<NewSessionCubit>();
     final state = cubit.state;
-    final loc = context.loc;
     final sendingPhase = switch (state.phase) {
       final NewSessionPhaseSending phase => phase,
       NewSessionPhaseIdle() ||
@@ -821,7 +823,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
 
     return listening(
       child: PregoGlassScaffold(
-        title: loc.sessionListNewSession,
+        title: widget.title,
         // Toolbar navigation is explicit: unlike Android system back, it must
         // not be vetoed by the composer's keyboard-dismissal PopScope.
         onBack: widget.onBack == null ? null : _dismissScreen,

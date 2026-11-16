@@ -223,6 +223,7 @@ class AdaptiveSessionRouterTestHarness() {
     final getIt = GetIt.instance;
     getIt.registerSingleton<ProjectRepository>(projectRepository);
     getIt.registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
+    getIt.registerSingleton<ArchiveAfterSendPreferenceStorage>(FakeArchiveAfterSendPreferenceStorage());
     getIt.registerSingleton<PluginRepository>(pluginRepository);
     final pluginPreferenceRepository = MockPluginPreferenceRepository();
     when(

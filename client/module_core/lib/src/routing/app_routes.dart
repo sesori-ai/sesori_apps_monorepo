@@ -53,6 +53,7 @@ enum AppRouteDef(final String path) {
   archivedSessionDetail("/archived-sessions/:$projectIdPathParam/:$sessionIdPathParam"),
   scheduledTasks("/scheduled-tasks"),
   scheduledTaskDetail("/scheduled-tasks/:$taskIdPathParam"),
+  scheduledTaskEditor("/scheduled-task-editor"),
   newSession("/sessions/new"),
   sessionDetail("/sessions/:$projectIdPathParam/:$sessionIdPathParam"),
   sessionDiffs("/sessions/:$projectIdPathParam/:$sessionIdPathParam/diffs"),
@@ -107,6 +108,7 @@ sealed class const AppRoute() {
   }) = AppRouteArchivedSessionDetail;
   const factory scheduledTasks() = AppRouteScheduledTasks;
   const factory scheduledTaskDetail({required String taskId}) = AppRouteScheduledTaskDetail;
+  const factory scheduledTaskEditor({required String? taskId}) = AppRouteScheduledTaskEditor;
   const factory newSession({
     required String? projectId,
     required String? projectName,
@@ -157,6 +159,7 @@ sealed class const AppRoute() {
       ),
       AppRouteDef.scheduledTasks => const AppRoute.scheduledTasks(),
       AppRouteDef.scheduledTaskDetail => AppRouteScheduledTaskDetail.fromParams(pathParams: pathParams),
+      AppRouteDef.scheduledTaskEditor => AppRouteScheduledTaskEditor.fromParams(queryParams: queryParams),
       AppRouteDef.newSession => AppRouteNewSession.fromParams(queryParams: queryParams),
       AppRouteDef.sessionDetail => AppRouteSessionDetail.fromParams(
         pathParams: pathParams,
@@ -526,4 +529,17 @@ class const AppRouteScheduledTaskDetail({required final String taskId}) extends 
 
   @override
   String buildPath() => "/scheduled-tasks/${Uri.encodeComponent(taskId)}";
+}
+
+/// The New task screen, or the same screen editing [taskId].
+class const AppRouteScheduledTaskEditor({required final String? taskId}) extends AppRoute {
+  /// Decodes from query parameters (inverse of [buildPath]).
+  factory fromParams({required Map<String, String> queryParams}) =>
+      AppRouteScheduledTaskEditor(taskId: queryParams[taskIdPathParam]);
+
+  @override
+  AppRouteDef get def => AppRouteDef.scheduledTaskEditor;
+
+  @override
+  String buildPath() => _appendQuery(path: def.path, queryParameters: {taskIdPathParam: ?taskId});
 }

@@ -181,8 +181,16 @@ void main() {
   });
 
   group("an aborted reply OMP sends as its abort reason", () {
-    for (final reason in ["Request was aborted", "Interrupted by user"]) {
-      test("'$reason' becomes an error row, not a reply bubble", () {
+    // A stop's reason is named like the row the shared plugin sends for a live
+    // stop, so a reload folds the two into one row.
+    const reasons = [
+      (reason: "Interrupted by user", errorName: AcpEventMapper.stoppedErrorName, kind: PluginErrorKind.stopped),
+      (reason: "Request was aborted", errorName: "omp_aborted", kind: PluginErrorKind.failure),
+      (reason: "Request was aborted.", errorName: "omp_aborted", kind: PluginErrorKind.failure),
+    ];
+
+    for (final (:reason, :errorName, :kind) in reasons) {
+      test("'$reason' becomes a ${kind.name} row, not a reply bubble", () {
         mapper.beginTurn(sessionId: "session-1", messageId: null);
         final events = mapper.map(
           AcpNotification(
@@ -203,56 +211,59 @@ void main() {
         expect(
           message,
           isA<PluginMessageError>()
-              .having((error) => error.errorName, "errorName", "omp_aborted")
+              .having((error) => error.errorName, "errorName", errorName)
+              .having((error) => error.kind, "kind", kind)
               .having((error) => error.errorMessage, "errorMessage", reason),
         );
         expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
       });
     }
 
-    test("replays as the user's prompt and one error row", () {
-      final collector = AcpReplayCollector(
-        sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
-        shellCommandResolver: null,
-        toolNameResolver: null,
-        sessionId: "session-1",
-        agentId: OmpPluginIdentity.id,
-        initialUserMessage: null,
-        messageIdOverride: null,
-        messageTimeResolver: null,
-        haltClassifier: mapper.classifyHaltNotice,
-        toolPartReplacement: null,
-        toolPartSuppression: null,
-        separatesToolMessages: false,
-      );
-      for (final update in [
-        {
-          "sessionUpdate": "user_message_chunk",
-          "content": {"type": "text", "text": "Hello"},
-          "messageId": "user-1",
-        },
-        {
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "Request was aborted"},
-          "messageId": "assistant-1",
-        },
-      ]) {
-        collector.consumeNotification(
-          notification: AcpNotification(
-            method: "session/update",
-            params: {"sessionId": "session-1", "update": update},
-          ),
+    for (final (:reason, :errorName, :kind) in reasons) {
+      test("'$reason' replays as the user's prompt and one ${kind.name} row", () {
+        final collector = AcpReplayCollector(
+          sessionUpdateNormalizer: mapper.normalizeSessionUpdate,
+          shellCommandResolver: null,
+          toolNameResolver: null,
+          sessionId: "session-1",
+          agentId: OmpPluginIdentity.id,
+          initialUserMessage: null,
+          messageIdOverride: null,
+          messageTimeResolver: null,
+          haltClassifier: mapper.classifyHaltNotice,
+          toolPartReplacement: null,
+          toolPartSuppression: null,
         );
-      }
+        for (final update in [
+          {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "Hello"},
+            "messageId": "user-1",
+          },
+          {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": reason},
+            "messageId": "assistant-1",
+          },
+        ]) {
+          collector.consumeNotification(
+            notification: AcpNotification(
+              method: "session/update",
+              params: {"sessionId": "session-1", "update": update},
+            ),
+          );
+        }
 
-      final messages = collector.buildWithAssistantSelection(modelId: null, providerId: null, variant: null);
-      expect(messages.map((message) => message.info), [
-        isA<PluginMessageUser>(),
-        isA<PluginMessageError>()
-            .having((error) => error.errorName, "errorName", "omp_aborted")
-            .having((error) => error.errorMessage, "errorMessage", "Request was aborted"),
-      ]);
-    });
+        final messages = collector.buildWithAssistantSelection(modelId: null, providerId: null, variant: null);
+        expect(messages.map((message) => message.info), [
+          isA<PluginMessageUser>(),
+          isA<PluginMessageError>()
+              .having((error) => error.errorName, "errorName", errorName)
+              .having((error) => error.kind, "kind", kind)
+              .having((error) => error.errorMessage, "errorMessage", reason),
+        ]);
+      });
+    }
 
     test("a reply that only mentions the reason stays prose", () {
       expect(mapper.classifyHaltNotice(text: "The request was aborted because the build failed."), isNull);

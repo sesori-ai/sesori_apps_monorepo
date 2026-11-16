@@ -2250,6 +2250,92 @@ void main() {
       expect(params["turnId"], equals("u-active"));
     });
 
+    test("a Stop ends the turn with one stopped row, live and after a reload", () async {
+      const sessionId = "019a0000-1111-2222-3333-eeeeeeeeeeee";
+      final rollout = File(
+        p.join(codexHome.path, "sessions/2026/11/15/rollout-2026-11-15T08-00-00-$sessionId.jsonl"),
+      )..createSync(recursive: true);
+      void append(Map<String, Object?> line) =>
+          rollout.writeAsStringSync("${jsonEncode(line)}\n", mode: FileMode.append);
+      append({
+        "timestamp": "2026-11-15T08:00:00Z",
+        "type": "session_meta",
+        "payload": {
+          "id": sessionId,
+          "timestamp": "2026-11-15T08:00:00Z",
+          "cwd": "/work/sample",
+          "model_provider": "openai",
+          "cli_version": "0.169.0",
+        },
+      });
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": sessionId, "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-stopped"},
+          },
+        ),
+        const _Response(result: null),
+      ]);
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "write an essay")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": sessionId,
+        "turn": {"id": "u-stopped"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      final emittedEvents = <BridgeSseEvent>[];
+      final eventSubscription = plugin.events.listen(emittedEvents.add);
+      final idle = plugin.events.firstWhere((event) => event is BridgeSseSessionIdle);
+
+      await plugin.abortSession(
+        sessionId: sessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
+      append({
+        "timestamp": "2026-11-15T08:00:09Z",
+        "type": "event_msg",
+        "payload": {"type": "turn_aborted", "turn_id": "u-stopped", "reason": "interrupted"},
+      });
+      fake.pushNotification("turn/completed", {
+        "threadId": sessionId,
+        "turn": {"id": "u-stopped", "status": "interrupted", "startedAt": 1794729600, "completedAt": 1794729609},
+      });
+      await idle;
+
+      final live = emittedEvents
+          .whereType<BridgeSseMessageUpdated>()
+          .map((event) => event.info)
+          .whereType<PluginMessageError>()
+          .single;
+      expect(live.id, "u-stopped");
+      expect(live.kind, PluginErrorKind.stopped);
+      final stoppedIndex = emittedEvents.indexWhere((event) => event is BridgeSseMessageUpdated);
+      expect(emittedEvents.indexWhere((event) => event is BridgeSseSessionIdle), greaterThan(stoppedIndex));
+
+      final replayed = (await plugin.getSessionMessages(sessionId))
+          .map((message) => message.info)
+          .whereType<PluginMessageError>()
+          .single;
+      expect(replayed.id, live.id);
+      expect(replayed.kind, PluginErrorKind.stopped);
+      await eventSubscription.cancel();
+    });
+
     test("forced interruption includes an accepted turn before turn/started arrives", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
@@ -2275,6 +2361,8 @@ void main() {
         model: null,
       );
       var interruptionCompleted = false;
+      final emittedEvents = <BridgeSseEvent>[];
+      final eventSubscription = plugin.events.listen(emittedEvents.add);
 
       final interruption = plugin
           .interruptActiveWork(budget: const Duration(seconds: 2))
@@ -2287,11 +2375,17 @@ void main() {
 
       fake.pushNotification("turn/completed", {
         "threadId": "t-force",
-        "turn": {"id": "u-force"},
+        "turn": {"id": "u-force", "status": "interrupted"},
       });
 
       expect(await interruption, {"t-force"});
       expect(plugin.currentWorkState, PluginWorkState.idle);
+      // A shutdown's interrupt is no user Stop, so it never says Stopped.
+      expect(
+        emittedEvents.whereType<BridgeSseMessageUpdated>().map((event) => event.info),
+        isNot(contains(isA<PluginMessageError>())),
+      );
+      await eventSubscription.cancel();
     });
 
     test("delayed prior terminal notifications preserve a newer accepted turn", () async {
@@ -2641,6 +2735,11 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
       expect(plugin.getActiveSessionsSummary(), isEmpty);
       expect(emittedEvents.whereType<BridgeSseSessionUpdated>(), hasLength(1));
+      // The turn had ended on its own before the Stop, so nothing was stopped.
+      expect(
+        emittedEvents.whereType<BridgeSseMessageUpdated>().map((event) => event.info),
+        isNot(contains(isA<PluginMessageError>())),
+      );
       await eventSubscription.cancel();
     });
 

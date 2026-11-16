@@ -269,12 +269,6 @@ abstract class AcpPlugin({
   /// with the turn's.
   bool get replaysResidentHistoryOnLiveProcess => false;
 
-  /// Whether a replay gives every tool call its own message, the shape the
-  /// live mapper streams. A harness that stamps its reasoning and text chunks
-  /// with a message id opts in; otherwise a replayed tool call joins the
-  /// stamped message before it and a re-import shows it twice.
-  bool get replaysToolCallsAsOwnMessages => false;
-
   /// A concrete plugin delegates to its injected composition factory. The client
   /// remains the pre-log interception and failure-cleanup owner.
   AcpOutputInterceptors createOutputInterceptors() => (stdout: null, stderr: null);
@@ -1815,6 +1809,9 @@ abstract class AcpPlugin({
         final Map<dynamic, dynamic> map => map.cast<String, dynamic>(),
         final raw => throw FormatException("session/prompt result is not an object: ${raw.runtimeType}"),
       });
+      if (result.stopReason == AcpStopReason.cancelled && state.userStopGeneration == expectedGeneration) {
+        eventMapper.mapUserStop(sessionId: sessionId).forEach(_eventBuffer.add);
+      }
       _finishTurn(
         sessionId: sessionId,
         state: state,
@@ -2084,13 +2081,30 @@ abstract class AcpPlugin({
     required PluginAbortSubAgentPolicy subAgents,
     required bool useAtomicStop,
     required Set<String> knownSubAgentSessionIds,
+  }) => _abortSessionScope(
+    sessionId: sessionId,
+    subAgents: subAgents,
+    useAtomicStop: useAtomicStop,
+    knownSubAgentSessionIds: knownSubAgentSessionIds,
+    userStop: true,
+  );
+
+  /// Stops [sessionId]'s scope. A [userStop] makes the turn it cancels end
+  /// with a stopped row; a shutdown interrupt is not one.
+  Future<PluginAbortResult> _abortSessionScope({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
+    required bool userStop,
   }) async {
     if (scopedStopCapability == AcpScopedStopCapability.unsupported) {
+      if (userStop) _markUserStop(sessionId: sessionId);
       await _abortSession(sessionId: sessionId, sendSessionCancel: true);
       return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
     }
     if (scopedStopCapability == AcpScopedStopCapability.rootSessionCancel) {
-      return await _abortRootSessionOnly(sessionId: sessionId, subAgents: subAgents);
+      return await _abortRootSessionOnly(sessionId: sessionId, subAgents: subAgents, userStop: userStop);
     }
 
     final allDescendantSessionIds = {
@@ -2146,6 +2160,7 @@ abstract class AcpPlugin({
     if (subAgents == PluginAbortSubAgentPolicy.keep && hasRetainedSubAgentWork && !mainRunning) {
       return const PluginAbortAccepted(workKept: true, subAgentsHandled: true);
     }
+    if (userStop) _markUserStop(sessionId: sessionId);
 
     if (useAtomicStop && subAgents != PluginAbortSubAgentPolicy.keep) {
       if (scopedStopCapability == AcpScopedStopCapability.completeNativeAtomic) {
@@ -2236,6 +2251,7 @@ abstract class AcpPlugin({
   Future<PluginAbortResult> _abortRootSessionOnly({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required bool userStop,
   }) async {
     // Must remain first: this refusal promises that no local or native
     // cancellation side effect occurred. Only the root accepts a native
@@ -2255,6 +2271,7 @@ abstract class AcpPlugin({
     }
 
     final activeSettlement = state?.activeSettlement?.future;
+    if (userStop) _markUserStop(sessionId: sessionId);
     _prepareSessionAbort(sessionId: sessionId, cancelBufferedInputs: true);
     final client = _client;
     client?.notify(method: AcpMethods.sessionCancel, params: {"sessionId": sessionId});
@@ -2326,6 +2343,13 @@ abstract class AcpPlugin({
     }
   }
 
+  /// Records that the user stopped [sessionId]'s current turn. Runs before the
+  /// stop bumps the generation that turn captured.
+  void _markUserStop({required String sessionId}) {
+    final state = _turnStates[sessionId];
+    if (state != null) state.userStopGeneration = state.generation;
+  }
+
   void _prepareSessionAbort({required String sessionId, required bool cancelBufferedInputs}) {
     // Discard only work accepted before this stop. A later prompt captures the
     // incremented generation and is never cleaned up from the stop response.
@@ -2391,11 +2415,12 @@ abstract class AcpPlugin({
         };
         await Future.wait([
           for (final sessionId in roots)
-            abortSession(
+            _abortSessionScope(
               sessionId: sessionId,
               subAgents: PluginAbortSubAgentPolicy.stop,
               useAtomicStop: true,
               knownSubAgentSessionIds: childSessionTracker.childSessionIds(sessionId: sessionId).toSet(),
+              userStop: false,
             ),
         ]);
       } else {
@@ -2562,7 +2587,6 @@ abstract class AcpPlugin({
           haltClassifier: eventMapper.classifyHaltNotice,
           toolPartReplacement: null,
           toolPartSuppression: toolPartSuppression,
-          separatesToolMessages: replaysToolCallsAsOwnMessages,
         );
     if (replaysResidentHistoryOnLiveProcess && _residentSessions.contains(sessionId)) {
       return await _replayResidentHistory(sessionId: sessionId, collectorFactory: collectorFactory);
@@ -2952,6 +2976,11 @@ class _SessionTurnState() {
   /// Bumped by abort/delete; a queued turn dispatches only if the generation
   /// it captured at enqueue time is still current.
   int generation = 0;
+
+  /// The [generation] a user stop ended, so the turn it cancelled ends with a
+  /// stopped row; null until the user first stops the session. A shutdown
+  /// interrupt leaves it alone.
+  int? userStopGeneration;
 }
 
 sealed class const _AcpTurn({

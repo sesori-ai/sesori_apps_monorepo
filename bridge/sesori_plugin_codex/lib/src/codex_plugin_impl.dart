@@ -33,6 +33,7 @@ import "repositories/codex_tool_lifecycle_tracker.dart";
 import "repositories/codex_tool_outcome_repository.dart";
 import "repositories/mappers/codex_mcp_mapper.dart";
 import "repositories/mappers/codex_question_mapper.dart";
+import "repositories/mappers/codex_user_agent_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_resumed_thread.dart";
 import "repositories/models/codex_thread_record.dart";
@@ -95,6 +96,7 @@ class CodexPlugin._({
     McpAuthenticationPluginApi,
     FormInteractionPluginApi,
     SessionExternalActionsPluginApi,
+    SessionForkPluginApi,
     SessionRewindPluginApi,
     SideQuestionPluginApi {
   @override
@@ -142,6 +144,11 @@ class CodexPlugin._({
   /// Stop requests received after an active status but before Codex exposes the
   /// turn id. The matching `turn/started` is interrupted as soon as it arrives.
   final Set<String> _interruptOnTurnStartThreadIds = {};
+
+  /// Threads whose running turn a user Stop interrupted, until that turn's
+  /// `turn/completed` arrives; only those turns end with a live stopped row,
+  /// so a shutdown's interrupts never say Stopped.
+  final Set<String> _userStoppedThreadIds = {};
 
   /// In-flight turn requests authorize the next authoritative `turn/started`
   /// to replace a stale active id left behind by a missing terminal event.
@@ -305,9 +312,10 @@ class CodexPlugin._({
         await _sessionService.hydratePersistedChildAncestry();
         final initialized = await client.connect();
         final appServerApi = CodexAppServerApi(client: client);
+        final codexVersion = const CodexUserAgentMapper().codexVersion(userAgent: initialized.userAgent);
         final inventory = CodexMcpRepository(
           appServerApi: appServerApi,
-          mapper: CodexMcpMapper(userAgent: initialized.userAgent),
+          mapper: CodexMcpMapper(codexVersion: codexVersion),
         );
         _mcpRepository = inventory;
         _mcpAuthentication = CodexMcpAuthenticationService(
@@ -319,7 +327,7 @@ class CodexPlugin._({
           ),
         );
         _sessionService.attachAppServerRepositories(
-          threadRepository: CodexThreadRepository(appServerApi: appServerApi),
+          threadRepository: CodexThreadRepository(appServerApi: appServerApi, codexVersion: codexVersion),
           modelRepository: CodexModelRepository(appServerApi: appServerApi),
           skillRepository: CodexSkillRepository(appServerApi: appServerApi),
         );
@@ -554,6 +562,10 @@ class CodexPlugin._({
     // final tool updates. Forced runtime teardown waits for this transition
     // before disconnecting the generation's event stream.
     final subAgentTerminalEvents = _subAgentTerminalEvents(notification: notification);
+    final stoppedRow =
+        notification.method == "turn/completed" && threadId != null && _userStoppedThreadIds.remove(threadId)
+        ? _eventMapper.mapStoppedTurn(threadId: threadId, params: notification.params)
+        : null;
     final activityChanged = _maintainBookkeeping(notification: notification);
     final projectedTool = correlatableItem == null
         ? _toolLifecycleTracker.observeUncorrelatedAppServerItem(
@@ -591,7 +603,7 @@ class CodexPlugin._({
           sessionIsIdle: mappedThreadId != null && _sessionStatuses[mappedThreadId] is PluginSessionStatusIdle,
           activityChanged: activityChanged,
           sessionClosed: notification.method == "thread/closed",
-          events: [...subAgentTerminalEvents, ...mappedEvents],
+          events: [...subAgentTerminalEvents, ?stoppedRow, ...mappedEvents],
         )
         .forEach(_eventBuffer.add);
     if (notification.method == "turn/started" && threadId != null) {
@@ -1133,6 +1145,23 @@ class CodexPlugin._({
     );
   }
 
+  /// `thread/fork` through the native turn [throughMessageId] ends. Codex
+  /// announces the fork with `thread/started`, which emits its
+  /// session.created.
+  @override
+  Future<PluginSession> forkSession({required String sessionId, required String throughMessageId}) async {
+    await _connectedClient();
+    final thread = await _sessionService.forkThread(threadId: sessionId, throughMessageId: throughMessageId);
+    final threadId = thread.id;
+    _eventMapper.setThreadTime(record: thread);
+    _recordAuthoritativeThreadCreation(threadId: threadId);
+    _eventMapper.setThreadModel(threadId: threadId, model: thread.model);
+    _eventMapper.setThreadEffort(threadId: threadId, effort: thread.reasoningEffort);
+    final directory = thread.directory ?? _directoryForSession(sessionId: sessionId);
+    _recordThreadDirectory(threadId: threadId, directory: directory);
+    return _sessionService.toPluginSession(thread: thread, fallbackDirectory: directory, parentSessionId: null);
+  }
+
   @override
   Future<PluginSideAnswer> askSideQuestion({
     required String sessionId,
@@ -1283,7 +1312,7 @@ class CodexPlugin._({
 
     if (subAgents == PluginAbortSubAgentPolicy.keep && activeDescendantSessionIds.isNotEmpty) {
       if (mainAgentRunning) {
-        await _abortSessions(sessionIds: {sessionId});
+        await _abortSessions(sessionIds: {sessionId}, userStop: true);
       }
       return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
     }
@@ -1292,7 +1321,7 @@ class CodexPlugin._({
     if (subAgents != PluginAbortSubAgentPolicy.keep) {
       sessionIdsToStop.addAll(activeDescendantSessionIds);
     }
-    await _abortSessions(sessionIds: sessionIdsToStop);
+    await _abortSessions(sessionIds: sessionIdsToStop, userStop: true);
     return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   }
 
@@ -1303,14 +1332,16 @@ class CodexPlugin._({
       _isActiveStatus(status: _sessionStatuses[sessionId]) ||
       _sessionService.isActiveTrackedChild(sessionId: sessionId);
 
-  Future<void> _abortSessions({required Set<String> sessionIds}) => Future.wait([
+  /// [userStop] marks a Stop's interrupts, whose turns end with a stopped row.
+  Future<void> _abortSessions({required Set<String> sessionIds, required bool userStop}) => Future.wait([
     // Construct every future before awaiting, so one exact-thread failure
     // cannot prevent another target in the immutable snapshot from starting.
-    for (final sessionId in sessionIds) _abortSession(sessionId: sessionId),
+    for (final sessionId in sessionIds) _abortSession(sessionId: sessionId, userStop: userStop),
   ]);
 
-  Future<void> _abortSession({required String sessionId}) async {
+  Future<void> _abortSession({required String sessionId, required bool userStop}) async {
     final hasTurnOrAdmissionEvidence = _hasTurnOrAdmissionEvidence(sessionId: sessionId);
+    if (userStop && hasTurnOrAdmissionEvidence) _userStoppedThreadIds.add(sessionId);
     final pendingNativeTurnId = _approvalRegistry?.pendingNativeTurnIdForSession(sessionId: sessionId);
     _approvalRegistry?.cancelForSession(sessionId: sessionId);
     final turnId = _activeTurnByThread[sessionId] ?? pendingNativeTurnId;
@@ -1340,6 +1371,8 @@ class CodexPlugin._({
       final noActiveTurn = error.code == -32600 && error.message == "no active turn to interrupt";
       if (error.code != -32602 && !noActiveTurn) rethrow;
       backendAlreadyIdle = true;
+      // The turn had already ended on its own, so nothing was stopped.
+      _userStoppedThreadIds.remove(sessionId);
       await _queueAlreadyIdleTurnReconciliation(
         sessionId: sessionId,
         turnId: turnId,
@@ -1355,7 +1388,8 @@ class CodexPlugin._({
   void _interruptPendingStartIfReady({required String threadId}) {
     if (!_interruptOnTurnStartThreadIds.remove(threadId)) return;
     unawaited(
-      _abortSession(sessionId: threadId).catchError((Object error, StackTrace stackTrace) {
+      // The Stop that deferred this interrupt has already marked the thread.
+      _abortSession(sessionId: threadId, userStop: false).catchError((Object error, StackTrace stackTrace) {
         Log.e(
           "[codex] failed to interrupt pending-start session $threadId",
           error,
@@ -1459,7 +1493,7 @@ class CodexPlugin._({
       };
       if (activeSessionIds.isEmpty) return const <String>{};
 
-      await _abortSessions(sessionIds: activeSessionIds);
+      await _abortSessions(sessionIds: activeSessionIds, userStop: false);
       await _notificationWork;
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
@@ -1814,7 +1848,7 @@ class CodexPlugin._({
     for (final deletedId in sessionIds) {
       if (!_activeTurnByThread.containsKey(deletedId)) continue;
       try {
-        await _abortSession(sessionId: deletedId);
+        await _abortSession(sessionId: deletedId, userStop: false);
       } on Object catch (error, stackTrace) {
         Log.w("[codex] failed to abort session $deletedId before deletion; continuing", error, stackTrace);
       }

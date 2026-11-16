@@ -153,6 +153,80 @@ class SessionPromptService({
     );
   }
 
+  /// Sends a prompt the bridge starts itself (session sending, quota
+  /// continuation) through [send], with the settings [sessionId]'s remembered
+  /// [defaults] give.
+  ///
+  /// When the harness refuses those settings as stale, it recovers the way
+  /// the app does: it rediscovers the catalog, corrects the agent, variant and
+  /// fast mode with [correctedDefaults], and sends once more when that changed
+  /// anything. The model is never replaced. A refusal the correction can't
+  /// answer, such as a model the catalog no longer offers, is rethrown.
+  Future<void> sendWithDefaults({
+    required String sessionId,
+    required SessionPromptDefaults? defaults,
+    required Future<void> Function(PromptSettings settings) send,
+  }) async {
+    try {
+      await send(settingsFrom(defaults: defaults));
+    } on StaleSessionPromptOptionsException catch (error, stackTrace) {
+      if (defaults == null) rethrow;
+      final corrected = await _correctedAfterRefusal(
+        defaults: defaults,
+        target: "session $sessionId",
+        catalog: () => _rediscoveredCatalog(sessionId: sessionId),
+      );
+      if (corrected == null) Error.throwWithStackTrace(error, stackTrace);
+      await send(settingsFrom(defaults: corrected));
+    }
+  }
+
+  /// Sends a scheduled run's prompt through [send] with [settings], into an
+  /// existing session or a new one of [pluginId] in [projectId], recovering
+  /// from a stale refusal as [sendWithDefaults] does against that harness's
+  /// catalog. Returns what [send] returns.
+  Future<T> sendWithSettingsIn<T>({
+    required String pluginId,
+    required String projectId,
+    required PromptSettings settings,
+    required Future<T> Function(PromptSettings settings) send,
+  }) async {
+    try {
+      return await send(settings);
+    } on StaleSessionPromptOptionsException catch (error, stackTrace) {
+      final model = settings.model;
+      final corrected = await _correctedAfterRefusal(
+        defaults: SessionPromptDefaults(
+          agent: settings.agent,
+          model: model == null
+              ? null
+              : AgentModel(providerID: model.providerID, modelID: model.modelID, variant: settings.variant?.id),
+          fastMode: settings.fastMode,
+        ),
+        target: "a $pluginId session in project $projectId",
+        catalog: () => _refreshedCatalog(pluginId: pluginId, projectId: projectId),
+      );
+      if (corrected == null) Error.throwWithStackTrace(error, stackTrace);
+      return await send(settingsFrom(defaults: corrected));
+    }
+  }
+
+  /// [defaults] corrected against the [catalog] rediscovered after a stale
+  /// refusal, or null when the catalog can't be read, no longer offers the
+  /// model, or the correction changes nothing.
+  Future<SessionPromptDefaults?> _correctedAfterRefusal({
+    required SessionPromptDefaults defaults,
+    required String target,
+    required Future<SessionOptionsResponse?> Function() catalog,
+  }) async {
+    final rediscovered = await catalog();
+    if (rediscovered == null) return null;
+    final corrected = correctedDefaults(defaults: defaults, catalog: rediscovered);
+    if (corrected == null || corrected == defaults) return null;
+    Log.i("Resending a bridge prompt to $target with options corrected against the harness catalog");
+    return corrected;
+  }
+
   /// Sends as [sendPrompt] does, for a caller that already holds the session's
   /// lane. It is the bridge's own send (a scheduled run, a quota continuation,
   /// a send-to-session summary request), never a person's prompt.
@@ -268,7 +342,13 @@ class SessionPromptService({
         Log.w("Could not publish quota cancellation before prompt for session $sessionId", error, stackTrace);
       }
     }
-    await _sendMappingRejections(sessionId: sessionId, send: sendToPlugin);
+    await _sendMappingRejections(
+      sessionId: sessionId,
+      agent: agent,
+      model: model,
+      variant: variant,
+      send: sendToPlugin,
+    );
     try {
       await _acceptedPromptsRepository.recordAccepted(sessionId: sessionId, promptId: promptId);
     } catch (error, stackTrace) {
@@ -302,13 +382,22 @@ class SessionPromptService({
   /// and triggers forced discovery.
   Future<void> _sendMappingRejections({
     required String sessionId,
+    required String? agent,
+    required PromptModel? model,
+    required SessionVariant? variant,
     required Future<void> Function() send,
   }) async {
     try {
       await send();
     } on PluginStaleOptionsException catch (error, stackTrace) {
       await _invalidateStaleOptionsCache(sessionId: sessionId);
-      throw StaleSessionPromptOptionsException(cause: error, causeStackTrace: stackTrace);
+      throw StaleSessionPromptOptionsException(
+        cause: error,
+        causeStackTrace: stackTrace,
+        agent: agent,
+        model: model,
+        variant: variant,
+      );
     } on PluginRefusalException catch (error, stackTrace) {
       throw SessionPromptRefusedException(cause: error, causeStackTrace: stackTrace);
     }
@@ -547,6 +636,34 @@ class SessionPromptService({
     }
   }
 
+  /// The catalog of [sessionId]'s harness, discovered afresh, or null when it
+  /// can't be read.
+  Future<SessionOptionsResponse?> _rediscoveredCatalog({required String sessionId}) async {
+    try {
+      final scope = await _sessionRepository.findSessionOptionsScope(sessionId: sessionId);
+      if (scope == null) return null;
+      return await _refreshedCatalog(pluginId: scope.pluginId, projectId: scope.projectId);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not rediscover the session options of session $sessionId", error, stackTrace);
+      return null;
+    }
+  }
+
+  /// [pluginId]'s catalog for [projectId], discovered afresh, or null when it
+  /// can't be read.
+  Future<SessionOptionsResponse?> _refreshedCatalog({required String pluginId, required String projectId}) async {
+    try {
+      final outcome = await _sessionOptionsService.refreshExplicit(pluginId: pluginId, projectId: projectId);
+      return switch (outcome) {
+        SessionOptionsAvailable(:final response) => response,
+        _ => null,
+      };
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not rediscover the session options of $pluginId in project $projectId", error, stackTrace);
+      return null;
+    }
+  }
+
   /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
   ///
   /// Runs on the same serialized family lane as sends, so a cancel cannot
@@ -652,6 +769,32 @@ class SessionPromptService({
       fastMode: defaults?.fastMode ?? false,
       agent: defaults?.agent,
       model: model == null ? null : PromptModel(providerID: model.providerID, modelID: model.modelID),
+    );
+  }
+
+  /// [defaults] corrected against [catalog] by the rules the app applies to a
+  /// stale selection: an agent the catalog no longer offers becomes its first
+  /// selectable one, a variant the model no longer offers becomes the model's
+  /// default, and fast mode stays on only while the model offers it. An unset
+  /// agent stays unset, so the harness keeps choosing it.
+  ///
+  /// Null when the catalog no longer offers the model. The session keeps its
+  /// own model, so the user picks another one instead.
+  static SessionPromptDefaults? correctedDefaults({
+    required SessionPromptDefaults defaults,
+    required SessionOptionsResponse catalog,
+  }) {
+    const catalogCalculator = SessionOptionsCatalogCalculator();
+    final providers = catalog.providers.items;
+    final model = defaults.model;
+    if (model != null && !catalogCalculator.isModelAvailable(providers: providers, model: model)) return null;
+    final agent = defaults.agent;
+    return SessionPromptDefaults(
+      agent: agent == null
+          ? null
+          : catalogCalculator.validatedAgentName(agents: catalog.agents.agents, candidates: [agent]),
+      model: catalogCalculator.withResolvedVariant(providers: providers, model: model),
+      fastMode: catalogCalculator.resolvedFastMode(providers: providers, model: model, requested: defaults.fastMode),
     );
   }
 }

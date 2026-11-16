@@ -211,6 +211,7 @@ void _registerDependencies({
   getIt.registerSingleton<FileReferenceOpenService>(MockFileReferenceOpenService());
   getIt.registerSingleton<MessageComposerRestoreService>(MockMessageComposerRestoreService());
   getIt.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
+  getIt.registerSingleton<ArchiveAfterSendPreferenceStorage>(FakeArchiveAfterSendPreferenceStorage());
   // The page's own action service runs its menu actions.
   getIt.registerSingleton<SessionActionService>(
     SessionActionService(
