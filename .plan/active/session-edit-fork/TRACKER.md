@@ -18,7 +18,8 @@
 | 11.b Recreate an archived origin's worktree for a fork | Merged | #2636 |
 | 12 Codex native fork | Merged | #2649 |
 | 13 Claude native fork | Merged | #2638, #2688 |
-| 14 Client fork flow | In progress | |
+| 14.a Fork from a message or the session menu | In review | #2698 |
+| 14.b Forked-from link, mid-turn popup Fork, No-project wording | In progress | |
 | 15 Reconcile docs, verify and retire | In progress (local, lands after 14) | |
 
 Steps 2, 5, 7 and 9 depend on nothing in this plan and can run in parallel. Step 4 needs 3. Step 6 needs 3 and 5;
@@ -28,6 +29,12 @@ harness to offer it). Step 11 needs 3; step 11.b needs 11; step 12 needs 11, 11.
 #2688 lifted Claude's refusal to fork from before a compaction: the fork keeps the prefix and leaves the
 compaction and everything after it behind. Claude's fork uses no launch flag; it resumes the written transcript with
 a plain `--resume`.
+
+Step 14 split into 14.a (`[step 17a/18]`) and 14.b (`[step 17b/18]`). Deviations from PLAN: a fork slower than
+300 ms answers with the existing loading alert ("Forking…"), not an inline indicator on the pressed message; the
+session-list menus read `sessionBranching` from a small plugin-listing cache in `SessionActionService`, because the
+plugin management snapshots don't carry it; and the missing-worktree prompt names no base branch, because `Session`
+carries none.
 
 ## Open questions
 

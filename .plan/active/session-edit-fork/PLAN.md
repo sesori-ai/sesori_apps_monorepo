@@ -574,9 +574,8 @@ differences go through `module_prego` interaction wrappers, never inline mode re
   `ComposerDraftRepository.handOverForSession({sessionId, restored})` / `takeHandoverForSession({sessionId})`:
   the fork's `SessionDetailCubit` takes it at construction, as it takes a launch handoff today, saving the text as its
   draft and feeding the attachments through the existing restored-attachments path. Attachment bytes are never
-  persisted. If the answer takes longer than about 300 ms, the pressed message (or the ⋯ menu's
-  anchor) shows a small inline progress indicator so the tap is visibly answered; a failure shows the ordinary alert
-  with the bridge's reason.
+  persisted. If the answer takes longer than about 300 ms, a "Forking…" loading alert (the send-to-session
+  pattern) answers the tap; a failure shows the ordinary alert with the bridge's reason.
 - **"No project" delete warning.** Deleting a "No project" session warns that its folder is deleted too, but the bridge
   keeps the folder while a fork still uses it (`ScratchRepository.deleteSessionDirectoryIfUnused`). The warning names
   that exception in its sentence ("…unless a fork of it still uses the folder"), so the client needs no fork lookup.
