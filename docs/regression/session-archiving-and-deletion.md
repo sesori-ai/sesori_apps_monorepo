@@ -18,6 +18,10 @@ entirely along with its transcript and its dedicated worktree.
   question on it gets the archived read-only rejection. A side question
   already in flight when the session is archived still stores its answer.
   Deleting the session deletes its side chats through the session foreign key.
+- The bridge archives a new-session scheduled task's finished run sessions beyond the newest 5 through this
+  same unforced archive with worktree removal. Pinned, working, waiting and unknown-state sessions stay, and a
+  refused cleanup (uncommitted work) keeps the session and is only logged. Archiving a same-session task's
+  session makes its next run start a fresh one. See [Scheduled tasks](scheduled-tasks.md).
 
 - Archiving is final. An archived session can never be unarchived, prompted,
   renamed, replied to, or otherwise mutated in place; those attempts receive the

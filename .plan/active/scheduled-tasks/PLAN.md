@@ -553,9 +553,9 @@ There is **no compaction timer**. The window's activity clock is a
 `ScheduledTaskActivityTracker` (bridge `Tracker`), not `sessions.lastActivityAt`:
 `SessionUnseenService.recordActivity` deliberately coalesces repeated assistant
 activity once a session is unseen and unviewed, which is exactly an unattended
-run, so that column stops moving. The Orchestrator feeds the tracker every
-plugin event for a session (and its children) that has `scheduledTaskId`; it
-holds one "last activity" instant per such session in memory. After a bridge
+run, so that column stops moving. The Orchestrator feeds the tracker the
+status, message and part events of every session (its own events only, not its
+children's); it holds one "last activity" instant per session in memory. After a bridge
 restart the tracker starts every session at the bridge's start time, so the
 window restarts and can only compact later, never early; the pre-run fallback
 (case 2) still covers the next run. `ScheduledTaskRunService.runDue()`
@@ -768,7 +768,7 @@ including the `userPromptedAt` and `compactRequestedAt` run columns, one
 `sessions.scheduledTaskId` column, one nullable `Session` wire field, one
 `PluginMetadata` flag, one notification event type and `taskId` payload
 field, one SSE event. In-memory: one 30 s timer, one scheduler lock, one
-per-session activity instant for task-run sessions only
+activity instant per session with activity since the bridge started
 (`ScheduledTaskActivityTracker`, needed because `lastActivityAt` coalesces
 unattended activity), and two
 change/failure streams consumed by the Orchestrator (one feeding the new
@@ -831,7 +831,8 @@ consecutive-failure auto-pause, a new push category.
   - Client end to end on a headless iOS simulator (`xcrun simctl boot`, the
     device the local-testing skill assigns): Scheduled page with both
     headings, New task screen with both sheets, save and edit, Run now, marks
-    on rows, older-bridge update sheet against a v1.14.0 bridge.
+    on rows, older-bridge update sheet against a v1.13.1 bridge (the latest
+    public release; 1.14.0 is the unreleased version that ships tasks).
   - Packaged or external: push receipt on a device is not part of L3 (no
     iOS-simulator FCM delivery); the headless dispatch check covers L3.
 

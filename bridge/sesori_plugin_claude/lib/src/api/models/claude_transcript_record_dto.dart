@@ -45,6 +45,13 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
 
     /// The conversation's newest record, on a `last-prompt` record.
     @JsonKey(fromJson: _stringOrNull) required String? leafUuid,
+
+    /// The uuid of the stdin message a record answers to. The CLI stamps it on
+    /// a turn the host submitted, never on a record it writes on its own.
+    @JsonKey(fromJson: _stringOrNull) required String? turnAttributionKey,
+
+    /// How the writing CLI ran: `sdk-cli` in SDK mode, `cli` in the terminal UI.
+    @JsonKey(fromJson: _stringOrNull) required String? entrypoint,
     @JsonKey(fromJson: _boolOrNull) required bool? isMeta,
     @JsonKey(fromJson: _boolOrNull) required bool? isVisibleInTranscriptOnly,
 

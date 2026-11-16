@@ -170,6 +170,7 @@ class _NewSessionProjectPromptState() extends State<NewSessionProjectPrompt> {
           sliver: SliverToBoxAdapter(child: prompt),
         ),
       ],
+      titleKeptSuffix: null,
     );
   }
 }

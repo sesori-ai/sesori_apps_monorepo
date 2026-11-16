@@ -35,7 +35,7 @@ void main() {
               // A null height lets the block adopt its own intrinsic height; a
               // fixed [slotHeight] reproduces the bar's constrained middle slot.
               height: slotHeight,
-              child: PregoNavTitle(title: title, subtitle: subtitle),
+              child: PregoNavTitle(title: title, subtitle: subtitle, titleKeptSuffix: null),
             ),
           ),
         ),

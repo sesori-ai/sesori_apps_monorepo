@@ -465,4 +465,36 @@ void main() {
     expect(envelope.occurredAtUtc.isUtc, isTrue);
     expect(envelope.occurredAtUtc.microsecondsSinceEpoch, local.microsecondsSinceEpoch);
   });
+  test("a one-off task's saved event leaves out the missed-run policy it ignores", () {
+    const definition = ScheduledTaskDefinition(
+      name: "Release check",
+      prompt: ScheduledTaskPrompt.text(text: "Check the release"),
+      projectId: "fixture-project",
+      pluginId: "fixture",
+      agent: null,
+      model: null,
+      variant: null,
+      fastMode: false,
+      dedicatedWorktree: false,
+      schedule: TaskSchedule.once(at: TaskLocalDateTime(year: 2026, month: 11, day: 17, hour: 9, minute: 0)),
+      timeZone: "UTC",
+      missedRunPolicy: TaskMissedRunPolicy.waitForNext,
+      runMode: TaskRunMode.newSession(),
+      approvalMode: TaskApprovalMode.ask,
+    );
+
+    final once = ScheduledTaskSavedEvent.of(action: AnalyticsScheduledTaskAction.created, definition: definition);
+    final daily = ScheduledTaskSavedEvent.of(
+      action: AnalyticsScheduledTaskAction.created,
+      definition: definition.copyWith(schedule: const TaskSchedule.daily(time: TaskTimeOfDay(hour: 9, minute: 0))),
+    );
+
+    expect(once?.parameters, {
+      "action": "created",
+      "repeat_kind": "once",
+      "run_mode": "new_session",
+      "approval_mode": "ask",
+    });
+    expect(daily?.parameters["missed_run_policy"], "wait_for_next");
+  });
 }

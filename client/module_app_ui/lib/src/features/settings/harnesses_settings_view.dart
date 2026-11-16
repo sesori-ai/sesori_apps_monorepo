@@ -74,6 +74,7 @@ class const HarnessesSettingsView({
       ],
       onRefresh: cubit.refresh,
       slivers: slivers,
+      titleKeptSuffix: null,
     );
   }
 }

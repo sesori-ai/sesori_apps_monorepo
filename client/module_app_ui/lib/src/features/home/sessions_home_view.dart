@@ -237,6 +237,7 @@ class const SessionsHomeView({
         endClearance:
             _newSessionButtonSize.diameter + kFloatingActionButtonMargin + catalogScanRowClearance(context: context),
       ),
+      titleKeptSuffix: null,
     );
   }
 

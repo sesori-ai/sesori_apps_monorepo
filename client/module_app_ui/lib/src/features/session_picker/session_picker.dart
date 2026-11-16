@@ -3,7 +3,7 @@ import "dart:async";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart" show ProjectSummary;
+import "package:sesori_shared/sesori_shared.dart" show ProjectSummary, sessionForkTitleSuffix;
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
@@ -137,10 +137,9 @@ class const _SessionPickerRow({required final SessionSearchMatch match, required
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          match.session.title ?? loc.sessionListUntitled,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        PregoKeptSuffixText(
+          text: match.session.title ?? loc.sessionListUntitled,
+          keptSuffix: sessionForkTitleSuffix,
           style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
         ),
         Text(

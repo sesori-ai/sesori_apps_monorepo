@@ -946,12 +946,15 @@ those installs is worse than the stale ready state this capability replaces.
 
 Hermes reads its model and provider from `hermes status`. A self-updating
 Hermes checkout with an unfinished source update rebuilds its TUI, web and
-desktop products in front of every command except `--version`/`--help`, which
-takes 50 s or more and outlived the 10 s probe timeout, so each probe killed
-and restarted the update. The status probe now sets Hermes' documented
+desktop products in front of every command except `--version`/`--help`. That
+rebuild takes 50 s or more and outlived the 10 s probe timeout, so each probe
+killed and restarted the update. The status probe now sets Hermes' documented
 install-probe policy `HERMES_DISABLE_LAZY_INSTALLS=1`, which skips that
 launch-time completion; `hermes acp` does not, so the agent launch still
 finishes the update (verified against the Hermes canary source, 2026-11-15).
+The agent launch answers ACP `initialize` only after the rebuild, so Hermes
+raises its handshake deadline from the stock 60 s to 10 minutes; a shorter
+deadline killed the agent mid-update and the next launch started over.
 
 The marks above cover setup inspection only. A plugin that raises
 `PluginAuthenticationRequiredException` while running blocks further starts and
@@ -1180,6 +1183,12 @@ answer unsupported otherwise, so an Antigravity version that adds `/compact`
 works without a bridge change. A freshly started agent process has advertised
 no commands yet, so the plugin first loads the quiet session, as its next turn
 would, and then reads them.
+
+The task editor's Auto-compact switch follows the descriptor flag: it is off
+and inert for Antigravity, and a tap says the harness can't compact on request.
+OpenCode declares the flag for v1 too, so a v1 task saves auto-compact on and
+its runs' requests answer unsupported. See
+[Scheduled tasks](regression/scheduled-tasks.md) for the policy's coverage.
 
 ### Prompt-cache life
 

@@ -591,6 +591,9 @@ class _NoPromptUploadRepository() implements PromptUploadRepository {
       throw UnimplementedError();
 
   @override
+  Future<void> deleteSaved({required String path}) => throw UnimplementedError();
+
+  @override
   Future<void> deleteSessions({required List<String> sessionIds}) async {}
 
   @override

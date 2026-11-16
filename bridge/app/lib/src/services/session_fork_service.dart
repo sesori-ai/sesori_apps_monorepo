@@ -20,10 +20,6 @@ class SessionForkService({
   required final SessionViewService _views,
   required final SessionOperationDispatcher _dispatcher,
 }) {
-  /// Suffix of a fork's title, after its origin's displayed title. Written by
-  /// the bridge like any stored title, so it is not localised.
-  static const forkTitleSuffix = " (fork)";
-
   /// Forks [sessionId] at [point] and returns the new session. Refusals are
   /// [SessionBranchRefusedException]s. [recreateFromBase] lets an archived
   /// origin whose worktree and branch are gone get a new worktree from its
@@ -84,7 +80,7 @@ class SessionForkService({
         originSessionId: sessionId,
         throughMessageId: throughMessageId,
         // An untitled origin's fork stays untitled unless its harness names it.
-        title: originTitle == null ? null : "$originTitle$forkTitleSuffix",
+        title: originTitle == null ? null : "$originTitle$sessionForkTitleSuffix",
         forkedFromTitle: originTitle,
       );
     } on PluginBranchPointUnavailableException catch (error, stackTrace) {
