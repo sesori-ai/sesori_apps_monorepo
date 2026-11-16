@@ -52,7 +52,13 @@ class GrokSessionReplayCollector({
           output: output,
           error: error,
         );
-      case GrokSubagentProgress() || GrokTurnCompleted() || GrokSubagentUpdateUnknown():
+      // Compaction rows are live only.
+      case GrokSubagentProgress() ||
+          GrokTurnCompleted() ||
+          GrokAutoCompactStarted() ||
+          GrokAutoCompactCompleted() ||
+          GrokAutoCompactFailed() ||
+          GrokSubagentUpdateUnknown():
         break;
     }
   }

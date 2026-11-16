@@ -10,6 +10,14 @@ part "grok_session_notification_dto.g.dart";
 abstract final class GrokSessionProtocol() {
   static const String notificationMethod = "_x.ai/session_notification";
   static const String updateMethod = "_x.ai/session/update";
+  static const String queueChangedMethod = "_x.ai/queue/changed";
+  static const String _compactCommand = "/compact";
+
+  /// Whether a running prompt's [text] is Grok's built-in `/compact`, with or
+  /// without its optional instructions. A skill named `compact` is invoked
+  /// under another name, so the bare command is always the built-in one.
+  static bool isCompactCommand({required String? text}) =>
+      text != null && (text == _compactCommand || text.startsWith("$_compactCommand "));
   static const String spawnSubagentToolName = "spawn_subagent";
   static const String defaultSubagentType = "general-purpose";
   static const String autonomousTurnPromptPrefix = "subagent-completed-";
@@ -30,8 +38,9 @@ abstract final class GrokSessionProtocol() {
 
 /// Params shared by Grok Build's live `_x.ai/session_notification` and
 /// replay/autonomous `_x.ai/session/update` forms: the owning session and an
-/// internally tagged update. Only lifecycle and autonomous-settlement variants
-/// are modeled; every other `sessionUpdate` is [GrokSubagentUpdateUnknown].
+/// internally tagged update. Only sub-agent lifecycle, autonomous-settlement
+/// and compaction variants are modeled; every other `sessionUpdate` is
+/// [GrokSubagentUpdateUnknown].
 @Freezed(fromJson: true, toJson: false)
 sealed class GrokSessionNotificationDto with _$GrokSessionNotificationDto {
   const factory({
@@ -81,9 +90,38 @@ sealed class GrokSubagentUpdate with _$GrokSubagentUpdate {
     @JsonKey(name: "prompt_id") required String? promptId,
   }) = GrokTurnCompleted;
 
+  /// An automatic compaction started (verified 1.0.30). Grok also sends
+  /// `tokens_used`, `context_window`, `percentage` and `reason`, which no
+  /// Sesori state depends on. A manual `/compact` sends no start.
+  const factory autoCompactStarted() = GrokAutoCompactStarted;
+
+  /// A compaction finished, automatic or manual despite the name (verified
+  /// 1.0.30). `summary_preview` was null in every probe, so it is not read.
+  const factory autoCompactCompleted({
+    @JsonKey(name: "tokens_before") required int? tokensBefore,
+    @JsonKey(name: "tokens_after") required int? tokensAfter,
+  }) = GrokAutoCompactCompleted;
+
+  /// An automatic compaction failed (verified 1.0.30). A request retry
+  /// starts a new one; a failed manual `/compact` fails its prompt instead.
+  const factory autoCompactFailed({required String? error}) = GrokAutoCompactFailed;
+
   const factory unknown() = GrokSubagentUpdateUnknown;
 
   factory fromJson(Map<String, dynamic> json) => _$GrokSubagentUpdateFromJson(json);
+}
+
+/// `_x.ai/queue/changed` params: Grok's prompt queue for one session, with
+/// the prompt now running. A manual `/compact` reports no start of its own,
+/// so its running entry is where it starts (verified 1.0.30).
+@Freezed(fromJson: true, toJson: false)
+sealed class GrokQueueChangedDto with _$GrokQueueChangedDto {
+  const factory({
+    required String sessionId,
+    required String? runningText,
+  }) = _GrokQueueChangedDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokQueueChangedDtoFromJson(json);
 }
 
 /// Grok's `_meta` on a standard `tool_call`: the tool identity behind the

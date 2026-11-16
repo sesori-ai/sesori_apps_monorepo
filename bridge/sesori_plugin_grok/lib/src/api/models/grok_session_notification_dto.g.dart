@@ -57,8 +57,30 @@ GrokTurnCompleted _$GrokTurnCompletedFromJson(Map json) => GrokTurnCompleted(
   $type: json['sessionUpdate'] as String?,
 );
 
+GrokAutoCompactStarted _$GrokAutoCompactStartedFromJson(Map json) =>
+    GrokAutoCompactStarted($type: json['sessionUpdate'] as String?);
+
+GrokAutoCompactCompleted _$GrokAutoCompactCompletedFromJson(Map json) =>
+    GrokAutoCompactCompleted(
+      tokensBefore: (json['tokens_before'] as num?)?.toInt(),
+      tokensAfter: (json['tokens_after'] as num?)?.toInt(),
+      $type: json['sessionUpdate'] as String?,
+    );
+
+GrokAutoCompactFailed _$GrokAutoCompactFailedFromJson(Map json) =>
+    GrokAutoCompactFailed(
+      error: json['error'] as String?,
+      $type: json['sessionUpdate'] as String?,
+    );
+
 GrokSubagentUpdateUnknown _$GrokSubagentUpdateUnknownFromJson(Map json) =>
     GrokSubagentUpdateUnknown($type: json['sessionUpdate'] as String?);
+
+_GrokQueueChangedDto _$GrokQueueChangedDtoFromJson(Map json) =>
+    _GrokQueueChangedDto(
+      sessionId: json['sessionId'] as String,
+      runningText: json['runningText'] as String?,
+    );
 
 _GrokToolCallMetaDto _$GrokToolCallMetaDtoFromJson(Map json) =>
     _GrokToolCallMetaDto(

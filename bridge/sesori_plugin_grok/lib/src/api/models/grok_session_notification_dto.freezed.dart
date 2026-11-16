@@ -189,6 +189,18 @@ GrokSubagentUpdate _$GrokSubagentUpdateFromJson(
           return GrokTurnCompleted.fromJson(
             json
           );
+                case 'auto_compact_started':
+          return GrokAutoCompactStarted.fromJson(
+            json
+          );
+                case 'auto_compact_completed':
+          return GrokAutoCompactCompleted.fromJson(
+            json
+          );
+                case 'auto_compact_failed':
+          return GrokAutoCompactFailed.fromJson(
+            json
+          );
         
           default:
             return GrokSubagentUpdateUnknown.fromJson(
@@ -539,6 +551,188 @@ as String?,
 /// @nodoc
 @JsonSerializable(createToJson: false)
 
+class GrokAutoCompactStarted implements GrokSubagentUpdate {
+  const GrokAutoCompactStarted({ String? $type}): $type = $type ?? 'auto_compact_started';
+  factory GrokAutoCompactStarted.fromJson(Map<String, dynamic> json) => _$GrokAutoCompactStartedFromJson(json);
+
+
+
+@JsonKey(name: 'sessionUpdate')
+final String $type;
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokAutoCompactStarted);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'GrokSubagentUpdate.autoCompactStarted()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class GrokAutoCompactCompleted implements GrokSubagentUpdate {
+  const GrokAutoCompactCompleted({@JsonKey(name: "tokens_before") required this.tokensBefore, @JsonKey(name: "tokens_after") required this.tokensAfter,  String? $type}): $type = $type ?? 'auto_compact_completed';
+  factory GrokAutoCompactCompleted.fromJson(Map<String, dynamic> json) => _$GrokAutoCompactCompletedFromJson(json);
+
+@JsonKey(name: "tokens_before") final  int? tokensBefore;
+@JsonKey(name: "tokens_after") final  int? tokensAfter;
+
+@JsonKey(name: 'sessionUpdate')
+final String $type;
+
+
+/// Create a copy of GrokSubagentUpdate
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokAutoCompactCompletedCopyWith<GrokAutoCompactCompleted> get copyWith => _$GrokAutoCompactCompletedCopyWithImpl<GrokAutoCompactCompleted>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokAutoCompactCompleted&&(identical(other.tokensBefore, tokensBefore) || other.tokensBefore == tokensBefore)&&(identical(other.tokensAfter, tokensAfter) || other.tokensAfter == tokensAfter));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,tokensBefore,tokensAfter);
+}
+
+@override
+String toString() {
+    return 'GrokSubagentUpdate.autoCompactCompleted(tokensBefore: $tokensBefore, tokensAfter: $tokensAfter)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokAutoCompactCompletedCopyWith<$Res> implements $GrokSubagentUpdateCopyWith<$Res> {
+  factory $GrokAutoCompactCompletedCopyWith(GrokAutoCompactCompleted value, $Res Function(GrokAutoCompactCompleted) _then) = _$GrokAutoCompactCompletedCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "tokens_before") int? tokensBefore,@JsonKey(name: "tokens_after") int? tokensAfter
+});
+
+
+
+
+}
+/// @nodoc
+class _$GrokAutoCompactCompletedCopyWithImpl<$Res>
+    implements $GrokAutoCompactCompletedCopyWith<$Res> {
+  _$GrokAutoCompactCompletedCopyWithImpl(this._self, this._then);
+
+  final GrokAutoCompactCompleted _self;
+  final $Res Function(GrokAutoCompactCompleted) _then;
+
+/// Create a copy of GrokSubagentUpdate
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? tokensBefore = freezed,Object? tokensAfter = freezed,}) {
+  return _then(GrokAutoCompactCompleted(
+tokensBefore: freezed == tokensBefore ? _self.tokensBefore : tokensBefore // ignore: cast_nullable_to_non_nullable
+as int?,tokensAfter: freezed == tokensAfter ? _self.tokensAfter : tokensAfter // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class GrokAutoCompactFailed implements GrokSubagentUpdate {
+  const GrokAutoCompactFailed({required this.error,  String? $type}): $type = $type ?? 'auto_compact_failed';
+  factory GrokAutoCompactFailed.fromJson(Map<String, dynamic> json) => _$GrokAutoCompactFailedFromJson(json);
+
+ final  String? error;
+
+@JsonKey(name: 'sessionUpdate')
+final String $type;
+
+
+/// Create a copy of GrokSubagentUpdate
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokAutoCompactFailedCopyWith<GrokAutoCompactFailed> get copyWith => _$GrokAutoCompactFailedCopyWithImpl<GrokAutoCompactFailed>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokAutoCompactFailed&&(identical(other.error, error) || other.error == error));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
+
+@override
+String toString() {
+    return 'GrokSubagentUpdate.autoCompactFailed(error: $error)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokAutoCompactFailedCopyWith<$Res> implements $GrokSubagentUpdateCopyWith<$Res> {
+  factory $GrokAutoCompactFailedCopyWith(GrokAutoCompactFailed value, $Res Function(GrokAutoCompactFailed) _then) = _$GrokAutoCompactFailedCopyWithImpl;
+@useResult
+$Res call({
+ String? error
+});
+
+
+
+
+}
+/// @nodoc
+class _$GrokAutoCompactFailedCopyWithImpl<$Res>
+    implements $GrokAutoCompactFailedCopyWith<$Res> {
+  _$GrokAutoCompactFailedCopyWithImpl(this._self, this._then);
+
+  final GrokAutoCompactFailed _self;
+  final $Res Function(GrokAutoCompactFailed) _then;
+
+/// Create a copy of GrokSubagentUpdate
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? error = freezed,}) {
+  return _then(GrokAutoCompactFailed(
+error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
 class GrokSubagentUpdateUnknown implements GrokSubagentUpdate {
   const GrokSubagentUpdateUnknown({ String? $type}): $type = $type ?? 'unknown';
   factory GrokSubagentUpdateUnknown.fromJson(Map<String, dynamic> json) => _$GrokSubagentUpdateUnknownFromJson(json);
@@ -571,6 +765,145 @@ String toString() {
 
 
 
+
+
+/// @nodoc
+mixin _$GrokQueueChangedDto {
+
+ String get sessionId; String? get runningText;
+/// Create a copy of GrokQueueChangedDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokQueueChangedDtoCopyWith<GrokQueueChangedDto> get copyWith => _$GrokQueueChangedDtoCopyWithImpl<GrokQueueChangedDto>(this as GrokQueueChangedDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as GrokQueueChangedDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokQueueChangedDto&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.runningText, _this.runningText) || other.runningText == _this.runningText));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as GrokQueueChangedDto;
+  return Object.hash(runtimeType,_this.sessionId,_this.runningText);
+}
+
+@override
+String toString() {
+  final _this = this as GrokQueueChangedDto;
+  return 'GrokQueueChangedDto(sessionId: ${_this.sessionId}, runningText: ${_this.runningText})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokQueueChangedDtoCopyWith<$Res>  {
+  factory $GrokQueueChangedDtoCopyWith(GrokQueueChangedDto value, $Res Function(GrokQueueChangedDto) _then) = _$GrokQueueChangedDtoCopyWithImpl;
+@useResult
+$Res call({
+ String sessionId, String? runningText
+});
+
+
+
+
+}
+/// @nodoc
+class _$GrokQueueChangedDtoCopyWithImpl<$Res>
+    implements $GrokQueueChangedDtoCopyWith<$Res> {
+  _$GrokQueueChangedDtoCopyWithImpl(this._self, this._then);
+
+  final GrokQueueChangedDto _self;
+  final $Res Function(GrokQueueChangedDto) _then;
+
+/// Create a copy of GrokQueueChangedDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? runningText = freezed,}) {
+  return _then(GrokQueueChangedDto(
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,runningText: freezed == runningText ? _self.runningText : runningText // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GrokQueueChangedDto implements GrokQueueChangedDto {
+  const _GrokQueueChangedDto({required this.sessionId, required this.runningText});
+  factory _GrokQueueChangedDto.fromJson(Map<String, dynamic> json) => _$GrokQueueChangedDtoFromJson(json);
+
+@override final  String sessionId;
+@override final  String? runningText;
+
+/// Create a copy of GrokQueueChangedDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GrokQueueChangedDtoCopyWith<_GrokQueueChangedDto> get copyWith => __$GrokQueueChangedDtoCopyWithImpl<_GrokQueueChangedDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokQueueChangedDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.runningText, runningText) || other.runningText == runningText));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,runningText);
+}
+
+@override
+String toString() {
+    return 'GrokQueueChangedDto(sessionId: $sessionId, runningText: $runningText)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GrokQueueChangedDtoCopyWith<$Res> implements $GrokQueueChangedDtoCopyWith<$Res> {
+  factory _$GrokQueueChangedDtoCopyWith(_GrokQueueChangedDto value, $Res Function(_GrokQueueChangedDto) _then) = __$GrokQueueChangedDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String sessionId, String? runningText
+});
+
+
+
+
+}
+/// @nodoc
+class __$GrokQueueChangedDtoCopyWithImpl<$Res>
+    implements _$GrokQueueChangedDtoCopyWith<$Res> {
+  __$GrokQueueChangedDtoCopyWithImpl(this._self, this._then);
+
+  final _GrokQueueChangedDto _self;
+  final $Res Function(_GrokQueueChangedDto) _then;
+
+/// Create a copy of GrokQueueChangedDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? runningText = freezed,}) {
+  return _then(_GrokQueueChangedDto(
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,runningText: freezed == runningText ? _self.runningText : runningText // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
 
 
 /// @nodoc
