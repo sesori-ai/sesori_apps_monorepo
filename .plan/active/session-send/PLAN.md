@@ -329,7 +329,8 @@ the summary, the transcript or prompt text.
 - **Owner: the target session.** The path is part of the target's prompt, and the target agent may read the file again
   later. So the file is deleted with the target session: `SessionDeletionService.onDeleted` removes the family's
   transcript folders as best effort, next to `_deletePromptUploads`. Deleting the source leaves the target's copy.
-  Archiving keeps the file, because an archived session can be unarchived.
+  Archiving keeps the file, because the archived session stays readable and its card still names the file (archiving
+  is final; there is no unarchive).
 - **Approval prompts.**
   - Claude Code asks today, so step 5 adds two read-only rules at every launch (S4 = B):
     `--allowedTools "Read(/<transcripts root>/**)" "Read(/<uploads root>/**)"`. With each root's leading `/`, that is

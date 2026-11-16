@@ -1253,6 +1253,61 @@ session set to Ask: one prompt attached a `.txt` and named a file under
 was raised. A read of a file outside both folders in the same session did raise
 one.
 
+## Sending a session into another
+
+The bridge core builds session sending the same way on every harness (see
+`docs/regression/session-sending.md`). The source's agent writes the summary in
+a normal turn, and the bridge stamps the handoff marker on the live echo, so no
+harness needs native merge support. What differs is how the target's agent
+treats the transcript file outside its working directory, and what the handoff
+prompt does to a target that is running, from each plugin's
+`busyPromptHandling`:
+
+| Harness | Summary turn | Handoff marker | Reads the transcript file | Asks first | Running target |
+|---|---|---|---|---|---|
+| Claude Code 2.1.325 | ✅ | ✅ | ✅ Read it when asked, with Read. | No: step 5's read-only `Read(//<folder>/**)` rule for `~/.sesori/transcripts` (#2613), verified 2026-11-15 and rechecked 2026-11-16. | Steers into the running turn. |
+| Codex 0.169.0 | ✅ | ✅ | ✅ Read it when asked, through the shell. | No. | Steers into the running turn. |
+| OpenCode 2.3.0 | ✅ | ✅ | ✅ Read it when asked, with read. | No, on the user's config and on a stock config. | Steers into the running turn. |
+| Pi 1.5.2 | ✅ | ✅ | ✅ Read it when asked, with read. | No. | Steers into the running turn. |
+| OMP 18.20.2 (ACP) | ✅ | ✅ | ✅ Read it when asked, but kept working on its own todo instead of answering. | No. | Steers into the running turn.¹ |
+| Grok Build 1.0.30 | ✅ | ✅ | ✅ Read it when asked, with read. | No, with `permission_mode` both `always-approve` and `ask`. | Stops the running turn. |
+| Hermes 0.21.5 (ACP) | ✅ | ✅ | ✅ Read it when asked.² | No. | Stops the running turn. |
+| DeepSeek runtime 0.2.2 (ACP) | ✅ | ✅ | Unverified: the runtime needs a DeepSeek account, and live checks run only on the test proxy. | Unverified. | Stops the running turn. |
+| Cursor (ACP) | ✅ | ✅ | Unverified: the installed CLI (2026.07.23) is older than the 2026.09.23 Sesori requires. | Unverified. | Stops the running turn. |
+| Copilot (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
+| Antigravity (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
+
+¹ OMP's `busyPromptHandling` is static. The bundled OMP 18.19.0 advertises
+`_session/steering`. An older OMP on PATH without it stops the running turn,
+and the picker still shows the plain "Running" label instead of the warning. A
+steer that OMP admits as `promptRequired` runs as the next turn, without
+cancelling the current one.
+
+² Hermes ignored the first question after an aborted turn, answering "Stopped
+waiting for another Hermes process on this session. Your message was not
+processed."; the same question sent again was read and answered.
+
+Checked live on 2026-11-16 (UTC) against a source-run bridge on its local debug
+server, with one Pi session as the source and a fresh session of each installed
+harness as the target. Each target was set to Ask by its per-session approval
+override, and harnesses that need a model endpoint used the local test proxy.
+Every target received the handoff with its stamp. None read the file on
+arrival: each began on the summary's next steps, and Codex and OMP raised
+permission requests for that work, not for the read. Asked for a timestamp
+that only the transcript file held, every target read the file and quoted it,
+with no permission request for the read. On a headless iOS simulator, the Pi
+source showed "Summary sent to … · Open" and "Couldn't send to …" markers and
+the "Handoff summary" sheet. The Codex target showed the "From …" card, which
+Show all expanded.
+
+On the ACP plugin, a target whose saved agent or mode the harness rejects when
+the turn starts accepts the handoff and then drops the turn
+(`applyTurnSelection … failed; dropping turn` in the bridge log). The app
+reports Sent while the target receives nothing. This was seen on an OMP session
+whose saved agent OMP did not offer, and it applies to every ACP harness,
+because the plugin fails closed after accepting the prompt rather than refusing
+it as stale.
+
 ## Sub-agents
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
