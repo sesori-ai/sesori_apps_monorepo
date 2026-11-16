@@ -104,6 +104,31 @@ void main() {
       expect(repository.fetchCount, 1);
     });
 
+    // A send reads the source's summary this way once the summary turn ends.
+    test("a backfill asked for while a read's backfill runs fetches again after it", () async {
+      final fetchGate = Completer<void>();
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..fetchGate = fetchGate.future;
+      final history = createTestChatHistory(sessionRepository: repository);
+
+      final read = history.service.getSessionMessages(sessionId: "ses_a");
+      while (repository.fetchCount == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      // The turn ends while the read's fetch is out, and its caller asks for
+      // history that holds the reply.
+      repository
+        ..transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "reply")]
+        ..fetchGate = null;
+      final backfill = history.service.backfillSession(sessionId: "ses_a");
+      fetchGate.complete();
+      await Future.wait([read, backfill]);
+
+      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
+      expect(served.map((message) => message.info.id), ["m1", "reply"]);
+      expect(repository.fetchCount, 2);
+    });
+
     test("observed backend activity forces one re-read, then settles", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);
@@ -490,12 +515,14 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, va
   @override
   Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {
     fetchCount++;
+    // The backend's transcript as the fetch starts; a held fetch stays stale.
+    final snapshot = transcript;
     onFetch?.call();
     await fetchGate;
     await Future<void>.delayed(Duration.zero);
     final failure = error;
     if (failure != null) throw failure;
-    return (messages: transcript, promptDefaults: replayedPromptDefaults);
+    return (messages: snapshot, promptDefaults: replayedPromptDefaults);
   }
 
   @override

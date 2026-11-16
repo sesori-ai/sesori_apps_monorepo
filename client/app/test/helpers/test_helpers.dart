@@ -278,6 +278,7 @@ Widget sessionRowApp({
       isAwaitingInput: false,
       isRetrying: false,
       backgroundTaskCount: 0,
+      isInterrupted: false,
     ),
   ];
   whenListen(

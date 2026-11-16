@@ -588,6 +588,12 @@ void main() {
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
       process.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
+      await pump();
+
+      // The Stop waits for the interrupted turn to end, so its interrupt
+      // record reaches the bridge before the process goes.
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      process.emit(_result());
       await abort;
       await harness.waitForIdle();
 
@@ -1313,6 +1319,7 @@ void main() {
         final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
         final interrupt = await _waitForControlSubtype(first, "interrupt");
         first.emitControlResponse(requestId: interrupt.field<String>("request_id"), payload: const {});
+        first.emit({..._result(), "subtype": "error_during_execution", "is_error": true});
         await _waitForStdinClose(first);
 
         final answer = harness.ask();

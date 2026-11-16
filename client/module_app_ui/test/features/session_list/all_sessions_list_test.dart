@@ -65,6 +65,7 @@ void main() {
     isAwaitingInput: false,
     isRetrying: false,
     backgroundTaskCount: 0,
+    isInterrupted: false,
   );
 
   late _MockProjectListCubit projects;
@@ -447,6 +448,7 @@ void main() {
             isAwaitingInput: true,
             isRetrying: false,
             backgroundTaskCount: 0,
+            isInterrupted: false,
           ),
           row(title: "Rename the module", updatedAt: yesterday, archivedAt: null, isRunning: false),
         ],
@@ -501,6 +503,7 @@ void main() {
       isAwaitingInput: false,
       isRetrying: false,
       backgroundTaskCount: 0,
+      isInterrupted: false,
     );
     const projectList = ProjectListState.loaded(
       projects: [project, scratch],
@@ -2367,7 +2370,7 @@ void main() {
                   id: "Session $renamed",
                   title: "Renamed",
                   updatedAt: rows[renamed].session.time?.updated,
-                ).copyWith(pinned: true)
+                ).copyWith(pinOrder: 1)
               : testSession(id: "Session $renamed", title: "Renamed", updatedAt: now.millisecondsSinceEpoch),
           project: project,
           isRunning: false,
@@ -2375,6 +2378,7 @@ void main() {
           isAwaitingInput: false,
           isRetrying: false,
           backgroundTaskCount: 0,
+          isInterrupted: false,
         );
         final finders = [for (final index in onScreen) find.text("Session $index")];
         List<double?> readTops() => [for (final finder in finders) topOf(tester, finder)];
@@ -2421,13 +2425,14 @@ void main() {
     AllSessionsRow pinnedRow({required String title, required DateTime updatedAt, required bool isRunning}) {
       final listed = row(title: title, updatedAt: updatedAt, archivedAt: null, isRunning: isRunning);
       return AllSessionsRow(
-        session: listed.session.copyWith(pinned: true),
+        session: listed.session.copyWith(pinOrder: 1),
         project: project,
         isRunning: isRunning,
         isUnseen: false,
         isAwaitingInput: false,
         isRetrying: false,
         backgroundTaskCount: 0,
+        isInterrupted: false,
       );
     }
 
@@ -2450,7 +2455,7 @@ void main() {
       launches: launches,
       updates: updates.stream,
       initial: listing([
-        // A running pinned row stays in Pinned, at its time.
+        // A running pinned row stays in its place in Pinned.
         pinnedRow(title: "Fix the parser", updatedAt: today, isRunning: true),
         pinnedRow(title: "Plan the release", updatedAt: yesterday, isRunning: false),
         ...unpinned,

@@ -74,7 +74,11 @@ ToolState _state({required ToolStatus status}) =>
     ToolState(status: status, title: null, shellCommand: null, output: null, error: null);
 
 TranscriptTurns _turns({required List<MessageWithParts> messages, bool hasOlderMessages = false}) =>
-    const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: hasOlderMessages);
+    const TranscriptTurnBuilder().build(
+      messages: messages,
+      hasOlderMessages: hasOlderMessages,
+      turnEndMessageIds: const {},
+    );
 
 String _kind({required TranscriptTurn turn}) => switch (turn) {
   TranscriptPromptTurn() => "prompt",

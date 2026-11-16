@@ -674,6 +674,7 @@ const Session testConstSession = Session(
   promptDefaults: null,
   lastUserActivityAt: null,
   unseen: false,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,
@@ -691,9 +692,11 @@ Session testSession({
   int? lastUserActivityAt = _noInt,
   String pluginId = "plugin-1",
   String? branchName = _noString,
+  int? pinOrder,
 }) {
   return Session(
     approvalOverride: null,
+    pinOrder: pinOrder,
     autoContinuation: null,
     branchName: branchName,
     id: id ?? "session-1",

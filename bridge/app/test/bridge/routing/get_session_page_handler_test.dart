@@ -46,13 +46,13 @@ void main() {
   });
 
   test("passes the request on, enriches the items and encodes the next cursor", () async {
-    const next = SessionPageCursor(pinned: true, sortAt: 42, sessionId: "ses_b");
+    const next = SessionPageCursor(pinOrder: 7, sortAt: 42, sessionId: "ses_b");
     sessionRepository.sessionPage = (
       items: [_session(id: "ses_a")],
       nextCursor: next,
       counts: const SessionPageCounts(all: 3, running: 1, unread: 2),
     );
-    const previous = SessionPageCursor(pinned: false, sortAt: 50, sessionId: "ses:z");
+    const previous = SessionPageCursor(pinOrder: null, sortAt: 50, sessionId: "ses:z");
 
     final response = await post(
       body: request(projectId: "/work/app", query: "fix it", cursor: previous.encode(), pinnedFirst: true),
@@ -65,7 +65,7 @@ void main() {
     expect(args?.projectId, "/work/app");
     expect(args?.query, "fix it");
     expect(args?.filter, SessionPageFilter.running);
-    expect(args?.cursor?.pinned, isFalse);
+    expect(args?.cursor?.pinOrder, isNull);
     expect(args?.cursor?.sortAt, 50);
     expect(args?.cursor?.sessionId, "ses:z");
     expect(args?.limit, 200);
@@ -73,7 +73,7 @@ void main() {
     expect(page.items.single.title, "enriched");
     expect(page.counts, const SessionPageCounts(all: 3, running: 1, unread: 2));
     final parsed = SessionPageCursor.tryParse(encoded: page.nextCursor ?? "");
-    expect((parsed?.pinned, parsed?.sortAt, parsed?.sessionId), (true, 42, "ses_b"));
+    expect((parsed?.pinOrder, parsed?.sortAt, parsed?.sessionId), (7, 42, "ses_b"));
   });
 
   test("keeps today's time order for an app that omits pinnedFirst", () async {
@@ -113,8 +113,9 @@ void main() {
     ("a limit above 1000", {"limit": 1001}),
     ("a fractional limit", {"limit": 0.5}),
     ("an invalid cursor", {"cursor": "not a cursor"}),
-    ("a cursor without an id", {"cursor": base64Url.encode(utf8.encode("0:12:"))}),
+    ("a cursor without an id", {"cursor": base64Url.encode(utf8.encode("-:12:"))}),
     ("a cursor in the form before pinning", {"cursor": base64Url.encode(utf8.encode("12:ses_a"))}),
+    ("a cursor in the form before pin orders", {"cursor": base64Url.encode(utf8.encode("1:12:ses_a"))}),
     ("a blank query", {"query": "  "}),
     ("an empty project id", {"projectId": ""}),
     ("an unknown filter", {"filter": "pinned"}),
@@ -140,6 +141,7 @@ Session _session({required String id}) => Session(
   lastUserActivityAt: null,
   autoContinuation: null,
   approvalOverride: null,
+  pinOrder: null,
   scheduledTask: null,
   interruption: null,
   forkedFrom: null,

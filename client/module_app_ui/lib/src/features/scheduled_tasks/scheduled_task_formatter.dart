@@ -11,26 +11,33 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
   late final DateFormat _date = DateFormat.MMMd(loc.localeName);
   late final DateFormat _dateWithYear = DateFormat.yMMMd(loc.localeName);
   late final DateFormat _weekday = DateFormat.E(loc.localeName);
+  late final DateFormat _weekdayNarrow = DateFormat.EEEEE(loc.localeName);
+  late final DateFormat _weekdayFull = DateFormat.EEEE(loc.localeName);
 
   /// The schedule in a line: "Every day at 9:00 AM", "Mon, Thu at 6:30 PM",
   /// naming the task's zone when it is not this device's.
-  String schedule({required ScheduledTask task}) {
-    String at(TaskTimeOfDay time) => _inZone(
-      task: task,
-      text: _timeOfDay(time: time),
-    );
-    return switch (task.definition.schedule) {
-      // A paused one-off task has no instant; its own date and time stand in.
-      TaskScheduleOnce(:final at) => switch (task.nextRunAt) {
-        final next? => instant(task: task, instant: next),
-        null => _inZone(
-          task: task,
-          text: _localDateTime(at: at),
-        ),
-      },
-      TaskScheduleDaily(:final time) => loc.scheduledTaskDaily(at(time)),
-      TaskScheduleWeekdays(:final time) => loc.scheduledTaskWeekdays(at(time)),
-      TaskScheduleWeekly(:final days, :final time) => loc.scheduledTaskWeekly(_weekdays(days: days), at(time)),
+  String schedule({required ScheduledTask task}) => switch ((task.definition.schedule, task.nextRunAt)) {
+    // A one-off task reads its instant; a paused one, its own date and time.
+    (TaskScheduleOnce(), final next?) => instant(task: task, instant: next),
+    (final schedule, _) => draftSchedule(schedule: schedule, editing: task),
+  };
+
+  /// The task editor's When line for [schedule], naming the zone of the task
+  /// being edited when it is not this device's. A new task is in this
+  /// device's zone.
+  String draftSchedule({required TaskSchedule schedule, required ScheduledTask? editing}) {
+    String inZone(String text) => switch (editing) {
+      final task? => _inZone(task: task, text: text),
+      null => text,
+    };
+    return switch (schedule) {
+      TaskScheduleOnce(:final at) => inZone(localDateTime(at: at)),
+      TaskScheduleDaily(:final time) => loc.scheduledTaskDaily(inZone(timeOfDay(time: time))),
+      TaskScheduleWeekdays(:final time) => loc.scheduledTaskWeekdays(inZone(timeOfDay(time: time))),
+      TaskScheduleWeekly(:final days, :final time) => loc.scheduledTaskWeekly(
+        _weekdays(days: days),
+        inZone(timeOfDay(time: time)),
+      ),
       TaskScheduleEveryHours(:final hours) => loc.scheduledTaskEveryHours(hours),
       TaskScheduleUnknown() => loc.scheduledTaskNewerApp,
     };
@@ -102,7 +109,7 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
 
   /// A wall-clock date and time with no known offset, so its date is written
   /// out rather than judged against today.
-  String _localDateTime({required TaskLocalDateTime at}) {
+  String localDateTime({required TaskLocalDateTime at}) {
     final wall = DateTime.utc(at.year, at.month, at.day, at.hour, at.minute);
     return loc.scheduledTaskDayAndTime(
       (wall.year == now().year ? _date : _dateWithYear).format(wall),
@@ -110,14 +117,23 @@ class ScheduledTaskFormatter({required final AppLocalizations loc, required fina
     );
   }
 
-  String _timeOfDay({required TaskTimeOfDay time}) => _time.format(DateTime.utc(2000, 1, 1, time.hour, time.minute));
+  String timeOfDay({required TaskTimeOfDay time}) => _time.format(DateTime.utc(2000, 1, 1, time.hour, time.minute));
 
   /// Short weekday names in week order, whatever order the set holds.
   String _weekdays({required Set<TaskWeekday> days}) => [
     for (final day in TaskWeekday.values)
-      // 2024-01-01 was a Monday.
-      if (days.contains(day)) _weekday.format(DateTime.utc(2024, 1, day.isoWeekday)),
+      if (days.contains(day)) weekday(day: day),
   ].join(", ");
+
+  /// [day]'s short name, such as "Mon".
+  // 2024-01-01 was a Monday.
+  String weekday({required TaskWeekday day}) => _weekday.format(DateTime.utc(2024, 1, day.isoWeekday));
+
+  /// [day]'s initial, for a row of all seven.
+  String weekdayInitial({required TaskWeekday day}) => _weekdayNarrow.format(DateTime.utc(2024, 1, day.isoWeekday));
+
+  /// [day]'s full name, read out for its initial.
+  String weekdayName({required TaskWeekday day}) => _weekdayFull.format(DateTime.utc(2024, 1, day.isoWeekday));
 
   /// Adds the task's zone to [text] when the zone's offset, read from the next
   /// or else the last run, differs from this device's. A paused task that

@@ -16,6 +16,11 @@ sealed class SessionComposerMode with _$SessionComposerMode {
     required SessionEditPhase phase,
     required int leftOutCount,
   }) = SessionComposerEditing;
+
+  /// Send asks the composer's text as a side question in a new side chat,
+  /// and adds nothing to the session; see
+  /// `SessionDetailCubit.submitSideQuestion`.
+  const factory sideQuestion() = SessionComposerSideQuestion;
 }
 
 enum SessionEditPhase() {

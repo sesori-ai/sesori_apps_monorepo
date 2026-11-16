@@ -45,6 +45,7 @@ void main() {
     onArchive: () {},
     onDelete: () {},
     onToggleUnread: () {},
+    isInterrupted: false,
   );
 
   testWidgets("sidebar rows and headings hold their text at 130% under a pointer", (tester) async {

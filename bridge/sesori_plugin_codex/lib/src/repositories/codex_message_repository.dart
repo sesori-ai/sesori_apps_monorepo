@@ -11,6 +11,7 @@ import "codex_sub_agent_tracker.dart";
 import "codex_tool_lifecycle_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
 import "mappers/codex_session_mapper.dart";
+import "mappers/codex_stopped_turn_mapper.dart";
 import "mappers/codex_tool_part_mapper.dart";
 import "mappers/codex_user_content_mapper.dart";
 import "models/codex_projected_tool.dart";
@@ -743,6 +744,25 @@ class CodexMessageRepository({
               kind: PluginErrorKind.failure,
               errorName: "CodexError",
               errorMessage: error.message,
+              time: _messageTimeFrom(raw: lineTimestamp),
+            ),
+            parts: const [],
+          ),
+        );
+      }
+      // An interrupt is how a user Stop ends a turn; a replaced or reviewed
+      // turn was not stopped.
+      if (line case CodexRolloutEventMessageLineDto(
+        payload: CodexRolloutTurnAbortedEventDto(:final turnId?, reason: CodexRolloutTurnAbortReason.interrupted),
+      )) {
+        messages.add(
+          PluginMessageWithParts(
+            info: codexStoppedTurnMessage(
+              id: turnId,
+              sessionId: sessionId,
+              modelId: currentModel ?? config.model,
+              providerId: sessionProvider ?? config.effectiveModelProvider,
+              variant: currentVariant,
               time: _messageTimeFrom(raw: lineTimestamp),
             ),
             parts: const [],

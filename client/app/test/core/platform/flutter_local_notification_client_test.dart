@@ -167,6 +167,7 @@ void main() {
         sessionId: sessionId,
         projectId: null,
         sessionTitle: null,
+        taskId: null,
         accountId: null,
         bridgeId: null,
       );
@@ -192,6 +193,7 @@ void main() {
         sessionId: null,
         projectId: null,
         sessionTitle: null,
+        taskId: null,
         accountId: null,
         bridgeId: null,
       );
@@ -203,6 +205,7 @@ void main() {
         sessionId: null,
         projectId: null,
         sessionTitle: null,
+        taskId: null,
         accountId: null,
         bridgeId: null,
       );
@@ -231,6 +234,7 @@ void main() {
         sessionId: "s1",
         projectId: "p1",
         sessionTitle: "Session Title",
+        taskId: null,
         accountId: null,
         bridgeId: "br_workstation",
       );
@@ -253,6 +257,39 @@ void main() {
       expect(decoded["sessionTitle"], equals("Session Title"));
       expect(decoded["bridgeId"], equals("br_workstation"));
     });
+
+    test("opens the task a shown task notification names", () async {
+      stubPluginShow();
+
+      await client.show(
+        title: "Nightly cleanup",
+        body: "Body",
+        category: NotificationCategory.sessionMessage,
+        sessionId: null,
+        projectId: null,
+        sessionTitle: null,
+        taskId: "stk_1",
+        accountId: null,
+        bridgeId: "br_workstation",
+      );
+      final payload =
+          verify(
+                () => mockPlugin.show(
+                  id: any(named: "id"),
+                  title: any(named: "title"),
+                  body: any(named: "body"),
+                  notificationDetails: any(named: "notificationDetails"),
+                  payload: captureAny(named: "payload"),
+                ),
+              ).captured.single
+              as String;
+
+      final request = client.notificationOpenFromPayloadForTesting(payload: payload);
+
+      if (request == null) fail("payload did not open a task");
+      expect(request.target, const NotificationOpenTarget.task(taskId: "stk_1"));
+      expect(request.bridgeId, equals("br_workstation"));
+    });
   });
 
   group("LocalNotificationPayload serialization", () {
@@ -261,6 +298,7 @@ void main() {
         sessionId: "ses_1",
         projectId: "proj_1",
         sessionTitle: "Title",
+        taskId: null,
         accountId: null,
         bridgeId: null,
       );
@@ -299,9 +337,10 @@ void main() {
       );
 
       if (request == null) fail("payload did not open a session");
-      expect(request.sessionId, equals("ses_123"));
-      expect(request.projectId, equals("proj_456"));
-      expect(request.sessionTitle, equals("Warm title"));
+      expect(
+        request.target,
+        const NotificationOpenTarget.session(projectId: "proj_456", sessionId: "ses_123", sessionTitle: "Warm title"),
+      );
       expect(request.bridgeId, equals("br_workstation"));
     });
 
@@ -314,9 +353,10 @@ void main() {
       );
 
       if (request == null) fail("legacy payload did not open a session");
-      expect(request.sessionId, equals("ses_legacy"));
-      expect(request.projectId, equals("proj_legacy"));
-      expect(request.sessionTitle, isNull);
+      expect(
+        request.target,
+        const NotificationOpenTarget.session(projectId: "proj_legacy", sessionId: "ses_legacy", sessionTitle: null),
+      );
     });
 
     test("returns null for malformed payloads", () {

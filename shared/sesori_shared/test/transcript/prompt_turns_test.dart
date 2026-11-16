@@ -35,8 +35,8 @@ MessagePart _tool({required ToolStatus status}) => MessagePart.tool(
 );
 
 /// `prompt:u1(u1,a1)` or `leading(a1)` per segment, oldest first.
-List<String> _shape({required List<MessageWithParts> messages}) => [
-  for (final segment in splitPromptTurns(messages: messages))
+List<String> _shape({required List<MessageWithParts> messages, required Set<String> turnEndMessageIds}) => [
+  for (final segment in splitPromptTurns(messages: messages, turnEndMessageIds: turnEndMessageIds))
     "${switch (segment) {
       PromptSegment(:final opener) => "prompt:${opener.info.id}",
       LeadingPromptSegment() => "leading",
@@ -46,7 +46,7 @@ List<String> _shape({required List<MessageWithParts> messages}) => [
 void main() {
   group("splitPromptTurns", () {
     test("returns no segments for no messages", () {
-      expect(splitPromptTurns(messages: const []), isEmpty);
+      expect(splitPromptTurns(messages: const [], turnEndMessageIds: const {}), isEmpty);
     });
 
     test("opens a turn at each prompt after an answer", () {
@@ -58,6 +58,7 @@ void main() {
             _prompt(id: "u2"),
             _agent(id: "a2", parts: [_text()]),
           ],
+          turnEndMessageIds: const {},
         ),
         ["prompt:u1(u1,a1)", "prompt:u2(u2,a2)"],
       );
@@ -75,6 +76,7 @@ void main() {
             ),
             _prompt(id: "u3"),
           ],
+          turnEndMessageIds: const {},
         ),
         ["prompt:u1(u1,u2,a1,u3)"],
       );
@@ -91,6 +93,7 @@ void main() {
             ),
             _prompt(id: "u2"),
           ],
+          turnEndMessageIds: const {},
         ),
         ["prompt:u1(u1,a1)", "prompt:u2(u2)"],
       );
@@ -108,6 +111,7 @@ void main() {
             _agent(id: "a1", parts: [_text()]),
             _prompt(id: "u2"),
           ],
+          turnEndMessageIds: const {},
         ),
         ["leading(a0,u1,a1)", "prompt:u2(u2)"],
       );
@@ -122,8 +126,36 @@ void main() {
             _agent(id: "a1", parts: [_text()]),
             _hiddenUser(id: "h2"),
           ],
+          turnEndMessageIds: const {},
         ),
         ["prompt:u1(u1,a1)"],
+      );
+    });
+
+    test("ends a turn after a turn-end message, so the next prompt opens one", () {
+      final messages = [
+        _prompt(id: "u1"),
+        _prompt(id: "u2"),
+        _agent(id: "a2", parts: [_text()]),
+      ];
+      expect(_shape(messages: messages, turnEndMessageIds: const {}), ["prompt:u1(u1,u2,a2)"]);
+      expect(_shape(messages: messages, turnEndMessageIds: const {"u1"}), ["prompt:u1(u1)", "prompt:u2(u2,a2)"]);
+    });
+
+    test("ends a turn after a turn-end message mid-step", () {
+      expect(
+        _shape(
+          messages: [
+            _prompt(id: "u1"),
+            _agent(
+              id: "a1",
+              parts: [_tool(status: ToolStatus.running)],
+            ),
+            _prompt(id: "u2"),
+          ],
+          turnEndMessageIds: const {"a1"},
+        ),
+        ["prompt:u1(u1,a1)", "prompt:u2(u2)"],
       );
     });
   });

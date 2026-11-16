@@ -82,9 +82,11 @@ class SessionTable() extends Table {
   /// bridge-wide YOLO setting. Null follows that setting.
   TextColumn get approvalOverride => textEnum<SessionApprovalMode>().nullable()();
 
-  /// Whether the user pinned this root session above the time-ordered list.
-  /// Only an unarchived root is pinned; archiving drops the pin.
-  BoolColumn get pinned => boolean().withDefault(const Constant(false))();
+  /// Where the user placed this pinned root session in the pinned group,
+  /// which lists above the time-ordered rest, highest first; null when it is
+  /// not pinned. A new pin takes a value above every other. Only an
+  /// unarchived root is pinned; archiving drops the pin.
+  IntColumn get pinOrder => integer().nullable()();
 
   /// The session this root session was forked from. Deleting the origin
   /// nulls it, and [forkedFromTitle] keeps naming the origin.
@@ -134,7 +136,7 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required String? title,
     required String? catalogTitle,
     required SessionApprovalMode? approvalOverride,
-    required bool pinned,
+    required int? pinOrder,
     required String? forkedFromSessionId,
     required String? forkedFromTitle,
     required String? scheduledTaskId,

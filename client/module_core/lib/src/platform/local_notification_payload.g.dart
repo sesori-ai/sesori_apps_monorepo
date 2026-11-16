@@ -11,6 +11,7 @@ _LocalNotificationPayload _$LocalNotificationPayloadFromJson(Map json) =>
       sessionId: json['sessionId'] as String?,
       projectId: json['projectId'] as String?,
       sessionTitle: json['sessionTitle'] as String?,
+      taskId: json['taskId'] as String?,
       accountId: json['accountId'] as String?,
       bridgeId: json['bridgeId'] as String?,
     );
@@ -21,6 +22,7 @@ Map<String, dynamic> _$LocalNotificationPayloadToJson(
   'sessionId': ?instance.sessionId,
   'projectId': ?instance.projectId,
   'sessionTitle': ?instance.sessionTitle,
+  'taskId': ?instance.taskId,
   'accountId': ?instance.accountId,
   'bridgeId': ?instance.bridgeId,
 };

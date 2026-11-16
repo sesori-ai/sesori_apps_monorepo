@@ -841,7 +841,7 @@ void main() {
     }
 
     test("passes the pinned session through", () async {
-      final session = testSession(id: "s1").copyWith(pinned: true);
+      final session = testSession(id: "s1", pinOrder: 1);
 
       final result = await pinFor(response: ApiResponse.success(session));
 

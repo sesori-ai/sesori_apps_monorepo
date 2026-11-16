@@ -111,4 +111,8 @@ typedef SideChatOpener = void Function({
   required String pluginId,
   required SideQuestionAvailability availability,
   required bool isArchived,
+
+  /// Asked in a new side chat as it opens, as Send in `/btw` mode does; null
+  /// to open the side chats for the user to type or read.
+  required String? initialQuestion,
 });

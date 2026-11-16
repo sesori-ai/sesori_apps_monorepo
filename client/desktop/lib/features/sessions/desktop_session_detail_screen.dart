@@ -109,16 +109,21 @@ class const DesktopSessionDetailScreen({
                 reference: reference,
               ),
               createSideChatCubit:
-                  ({required sessionId, required pluginId, required availability, required isArchived}) =>
-                      SideChatCubit(
-                        repository: getIt<SideChatRepository>(),
-                        productAnalyticsService: getIt<ProductAnalyticsService>(),
-                        sessionId: sessionId,
-                        pluginId: pluginId,
-                        availability: availability,
-                        isArchived: isArchived,
-                        initialQuestion: null,
-                      ),
+                  ({
+                    required sessionId,
+                    required pluginId,
+                    required availability,
+                    required isArchived,
+                    required initialQuestion,
+                  }) => SideChatCubit(
+                    repository: getIt<SideChatRepository>(),
+                    productAnalyticsService: getIt<ProductAnalyticsService>(),
+                    sessionId: sessionId,
+                    pluginId: pluginId,
+                    availability: availability,
+                    isArchived: isArchived,
+                    initialQuestion: initialQuestion,
+                  ),
               canShareImages: defaultTargetPlatform != TargetPlatform.linux,
             ),
           ),

@@ -151,6 +151,7 @@ import "routing/get_side_chats_handler.dart";
 import "routing/health_check_handler.dart";
 import "routing/hide_project_handler.dart";
 import "routing/mark_session_seen_handler.dart";
+import "routing/move_session_pin_handler.dart";
 import "routing/open_project_handler.dart";
 import "routing/patch_bridge_settings_handler.dart";
 import "routing/patch_plugin_idle_timeout_handler.dart";
@@ -843,6 +844,7 @@ class Orchestrator({
         SetSessionAutoContinuationHandler(service: sessionContinuationService),
         SetSessionApprovalOverrideHandler(yoloSettingsService: yoloSettingsService, sessionViews: sessionViews),
         SetSessionPinnedHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
+        MoveSessionPinHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
         MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
         UpdateSessionArchiveStatusHandler(
           sessionViews: sessionViews,

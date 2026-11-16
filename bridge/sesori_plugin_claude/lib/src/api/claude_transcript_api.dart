@@ -14,6 +14,9 @@ import "models/claude_transcript_record_dto.dart";
 /// changed.
 typedef ClaudeFileStat = ({int size, DateTime modified});
 
+/// One transcript line: its raw JSON and its decoded record.
+typedef ClaudeTranscriptEntry = ({Map<String, dynamic> json, ClaudeTranscriptRecordDto record});
+
 /// Layer-1 filesystem boundary for Claude Code's on-disk transcripts.
 ///
 /// The environment map is injected so tests can pin the root without touching
@@ -169,10 +172,41 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   }
 
   /// Decodes every record in a transcript.
-  List<ClaudeTranscriptRecordDto> readTranscript({required String transcriptPath}) {
-    final file = File(transcriptPath);
-    final decoded = const Utf8Decoder(allowMalformed: true).convert(file.readAsBytesSync());
-    return _decodeRecords(const LineSplitter().convert(decoded), ignoreMalformedLastLine: true);
+  List<ClaudeTranscriptRecordDto> readTranscript({required String transcriptPath}) =>
+      _decodeRecords(_readLines(transcriptPath: transcriptPath), ignoreMalformedLastLine: true);
+
+  /// Decodes every record in a transcript together with its raw JSON, which
+  /// keeps the fields the DTO does not model, for copying records verbatim.
+  List<ClaudeTranscriptEntry> readTranscriptEntries({required String transcriptPath}) => _decode(
+    _readLines(transcriptPath: transcriptPath),
+    ignoreMalformedLastLine: true,
+    keep: (json, record) => (json: json, record: record),
+  );
+
+  List<String> _readLines({required String transcriptPath}) => const LineSplitter().convert(
+    const Utf8Decoder(allowMalformed: true).convert(File(transcriptPath).readAsBytesSync()),
+  );
+
+  /// Writes a new transcript holding [records], one compact JSON line each.
+  ///
+  /// The lines go to a sibling file the catalog does not list, which is then
+  /// renamed into place, so a scan never sees a partial transcript.
+  void writeTranscript({required String transcriptPath, required List<Map<String, dynamic>> records}) {
+    final partial = File("$transcriptPath.partial");
+    try {
+      final sink = partial.openSync(mode: FileMode.write);
+      try {
+        for (final record in records) {
+          sink.writeStringSync("${jsonEncode(record)}\n");
+        }
+        sink.flushSync();
+      } finally {
+        sink.closeSync();
+      }
+      partial.renameSync(transcriptPath);
+    } finally {
+      if (partial.existsSync()) partial.deleteSync();
+    }
   }
 
   /// Size and last-modified time, which for an append-only transcript is the
@@ -238,15 +272,23 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   List<ClaudeTranscriptRecordDto> _decodeRecords(
     List<String> lines, {
     required bool ignoreMalformedLastLine,
+  }) => _decode(lines, ignoreMalformedLastLine: ignoreMalformedLastLine, keep: (json, record) => record);
+
+  /// Decodes each line and keeps what [keep] returns, so a caller that needs
+  /// only the records does not hold every raw map until the list is built.
+  List<T> _decode<T>(
+    List<String> lines, {
+    required bool ignoreMalformedLastLine,
+    required T Function(Map<String, dynamic> json, ClaudeTranscriptRecordDto record) keep,
   }) {
-    final records = <ClaudeTranscriptRecordDto>[];
+    final entries = <T>[];
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
       if (line.trim().isEmpty) continue;
       Map<String, dynamic>? json;
       try {
         json = jsonDecodeMap(line);
-        records.add(ClaudeTranscriptRecordDto.fromJson(json));
+        entries.add(keep(json, ClaudeTranscriptRecordDto.fromJson(json)));
       } on Object catch (error) {
         // The CLI appends to a live transcript, so a half-written final line is
         // expected rather than a fault, and is not warned about.
@@ -257,7 +299,7 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
         );
       }
     }
-    return records;
+    return entries;
   }
 }
 
