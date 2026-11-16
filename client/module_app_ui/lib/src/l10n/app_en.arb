@@ -1843,6 +1843,10 @@
   "@sessionListWaiting": {
     "description": "Amber word leading a session row's meta line while the session waits for the user's answer or permission"
   },
+  "sessionListInterrupted": "Interrupted",
+  "@sessionListInterrupted": {
+    "description": "Grey word leading a session row's meta line when the Sesori bridge stopped during the session's last turn, until the user opens the session or sends something"
+  },
   "sessionListRecurringTaskRun": "Run of recurring task {name}",
   "@sessionListRecurringTaskRun": {
     "description": "Screen-reader label for the session-list mark on a session a recurring scheduled task started",
@@ -2268,6 +2272,22 @@
   "@sessionDetailCompactionCancelled": {"description": "Reason after 'Compaction failed' when the user or the coding agent stopped the compaction, e.g. 'Compaction failed · stopped'. Lowercase because it follows a separator."},
   "sessionDetailTurnStopped": "Stopped",
   "@sessionDetailTurnStopped": {"description": "Quiet line that ends an agent turn the user stopped with the Stop button. Not an error."},
+  "sessionDetailTurnInterrupted": "Interrupted",
+  "@sessionDetailTurnInterrupted": {"description": "Quiet line that ends an agent turn cut off because the Sesori bridge stopped (crashed or was restarted) during it. Not an error. Its reason follows after ' · ', e.g. 'Interrupted · Sesori's bridge stopped during this turn'."},
+  "sessionDetailTurnInterruptedReason": "Sesori's bridge stopped during this turn",
+  "@sessionDetailTurnInterruptedReason": {"description": "Reason after 'Interrupted' on the line that ends a turn the Sesori bridge stopped during, e.g. 'Interrupted · Sesori's bridge stopped during this turn'."},
+  "sessionDetailContinueInterruptedTurn": "Continue",
+  "@sessionDetailContinueInterruptedTurn": {"description": "Button under the 'Interrupted' line of a turn the Sesori bridge cut off. Sends the agent a prompt asking it to continue where it left off."},
+  "sessionDetailContinueEditOpen": "Finish or cancel your edit first.",
+  "@sessionDetailContinueEditOpen": {"description": "Alert shown when the user taps Continue under an interrupted turn while a message edit is open."},
+  "sessionDetailContinueEditSending": "Sending your edit. Continue in a moment.",
+  "@sessionDetailContinueEditSending": {"description": "Alert shown when the user taps Continue under an interrupted turn while an edited message is stopping the session or being sent."},
+  "sessionDetailContinueSessionWorking": "The agent is already working.",
+  "@sessionDetailContinueSessionWorking": {"description": "Alert shown when the user taps Continue under an interrupted turn just as the session started working."},
+  "sessionDetailContinuePromptPending": "Your message is already on its way.",
+  "@sessionDetailContinuePromptPending": {"description": "Alert shown when the user taps Continue under an interrupted turn while a message is already being sent, such as after a second tap on Continue."},
+  "sessionDetailContinueAlreadyContinued": "This turn already continued.",
+  "@sessionDetailContinueAlreadyContinued": {"description": "Alert shown when the user taps Continue under an interrupted turn that a later turn has already followed."},
   "sessionDetailCompactionTurnEnded": "the turn ended first",
   "@sessionDetailCompactionTurnEnded": {"description": "Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator."},
   "sessionDetailCompactionFreedTokens": "freed {tokens} tokens",

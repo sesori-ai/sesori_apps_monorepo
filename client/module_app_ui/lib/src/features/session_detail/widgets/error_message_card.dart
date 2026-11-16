@@ -25,6 +25,7 @@ class const ErrorMessageCard({
       MessageErrorKind.stopped => TurnEndLine(
         icon: TablerSolid.circle_x,
         label: context.loc.sessionDetailTurnStopped,
+        detail: null,
         followsReply: followsReply,
       ),
       MessageErrorKind.failure => Padding(

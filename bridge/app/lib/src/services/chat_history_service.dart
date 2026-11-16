@@ -507,6 +507,14 @@ class ChatHistoryService({
     readStore: (_) => _chatHistoryRepository.getPromptIndex(sessionId: sessionId),
   );
 
+  /// The messages after which [sessionId]'s turns ended without a reply, so
+  /// edits and forks split turns as the app shows them: the message a bridge
+  /// stop cut the turn off after, when one did.
+  Future<Set<String>> _turnEndMessageIds({required String sessionId}) async => {
+    if ((await _interruptions.readMany(sessionIds: {sessionId}))[sessionId] case final interruption?)
+      interruption.afterMessageId,
+  };
+
   /// What editing [messageId] removes from [sessionId]'s history.
   ///
   /// Reads the whole history the way a client open does, so a store that is
@@ -524,7 +532,10 @@ class ChatHistoryService({
       backgroundRefresh: false,
     );
     final openers = [
-      for (final segment in splitPromptTurns(messages: page.messages))
+      for (final segment in splitPromptTurns(
+        messages: page.messages,
+        turnEndMessageIds: await _turnEndMessageIds(sessionId: sessionId),
+      ))
         if (segment case PromptSegment(:final opener)) opener.info.id,
     ];
     final turnIndex = openers.indexOf(messageId);
@@ -577,7 +588,10 @@ class ChatHistoryService({
       backgroundRefresh: false,
     );
     // Messages before the first prompt belong to no turn, so no fork keeps them.
-    final turns = splitPromptTurns(messages: page.messages).whereType<PromptSegment>().toList();
+    final turns = splitPromptTurns(
+      messages: page.messages,
+      turnEndMessageIds: await _turnEndMessageIds(sessionId: sessionId),
+    ).whereType<PromptSegment>().toList();
     final finishedTurns = running && turns.isNotEmpty ? turns.length - 1 : turns.length;
     ForkBoundary throughTurn(int index) => ForkBoundaryThroughMessage(messageId: turns[index].messages.last.info.id);
     switch (point) {

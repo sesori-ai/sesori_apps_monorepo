@@ -32,6 +32,7 @@ void main() {
     bool selected = false,
     bool awaitingInput = false,
     bool isRetrying = false,
+    bool isInterrupted = false,
     int backgroundTaskCount = 0,
     VoidCallback? onArchive,
     VoidCallback? onToggleUnread,
@@ -51,6 +52,7 @@ void main() {
       onArchive: onArchive ?? () {},
       onDelete: () {},
       onToggleUnread: onToggleUnread ?? () {},
+      isInterrupted: isInterrupted,
     );
   }
 
@@ -230,6 +232,26 @@ void main() {
         );
 
         expect(find.byType(PregoAiLoader), findsNothing);
+        expect(find.text("Waiting"), findsOneWidget);
+      });
+
+      testWidgets("a session a bridge stop cut off says Interrupted in grey, after Waiting and Retrying", (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        await pump(tester, tile(session: testSession(title: "My Session"), isInterrupted: true));
+
+        expect(
+          tester.widget<Text>(find.text("Interrupted")).style?.color,
+          (pointer ? PregoDesignSystem.desktopLight : PregoDesignSystem.light).colors.textSecondary,
+        );
+        expect(find.bySemanticsLabel(RegExp("Interrupted")), findsOneWidget);
+        semantics.dispose();
+
+        await pump(tester, tile(session: testSession(title: "My Session"), isRetrying: true, isInterrupted: true));
+        expect(find.text("Interrupted"), findsNothing);
+        await pump(tester, tile(session: testSession(title: "My Session"), awaitingInput: true, isInterrupted: true));
+        expect(find.text("Interrupted"), findsNothing);
         expect(find.text("Waiting"), findsOneWidget);
       });
 

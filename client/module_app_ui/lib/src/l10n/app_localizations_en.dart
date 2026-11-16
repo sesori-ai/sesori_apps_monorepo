@@ -2547,6 +2547,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListWaiting => 'Waiting';
 
   @override
+  String get sessionListInterrupted => 'Interrupted';
+
+  @override
   String sessionListRecurringTaskRun(String name) {
     return 'Run of recurring task $name';
   }
@@ -3162,6 +3165,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailTurnStopped => 'Stopped';
+
+  @override
+  String get sessionDetailTurnInterrupted => 'Interrupted';
+
+  @override
+  String get sessionDetailTurnInterruptedReason => 'Sesori\'s bridge stopped during this turn';
+
+  @override
+  String get sessionDetailContinueInterruptedTurn => 'Continue';
+
+  @override
+  String get sessionDetailContinueEditOpen => 'Finish or cancel your edit first.';
+
+  @override
+  String get sessionDetailContinueEditSending => 'Sending your edit. Continue in a moment.';
+
+  @override
+  String get sessionDetailContinueSessionWorking => 'The agent is already working.';
+
+  @override
+  String get sessionDetailContinuePromptPending => 'Your message is already on its way.';
+
+  @override
+  String get sessionDetailContinueAlreadyContinued => 'This turn already continued.';
 
   @override
   String get sessionDetailCompactionTurnEnded => 'the turn ended first';

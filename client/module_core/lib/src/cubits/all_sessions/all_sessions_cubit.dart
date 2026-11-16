@@ -155,6 +155,9 @@ class AllSessionsCubit({
               isUnseen: unseen[project.id]?[session.id]?.unseen ?? session.unseen,
               isAwaitingInput: activity[project.id]?[session.id]?.awaitingInput ?? false,
               isRetrying: activity[project.id]?[session.id]?.isRetrying ?? false,
+              isInterrupted:
+                  (session.interruption?.unacknowledged ?? false) &&
+                  !(activity[project.id]?[session.id]?.isRunning ?? false),
               backgroundTaskCount: activity[project.id]?[session.id]?.backgroundTaskCount ?? 0,
             ),
     ];

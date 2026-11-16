@@ -6,6 +6,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/interrupted_turn.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_composer_mode.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
@@ -254,6 +255,40 @@ void main() {
     ).captured;
     expect(promptIds.toSet(), hasLength(2), reason: "the bridge would answer the first id without the change");
     expect(loaded().composerMode, const SessionComposerMode.normal());
+  });
+
+  test("an open edit locks Continue on a cut-off turn and sends nothing", () async {
+    await openSession(status: const SessionStatus.idle());
+    sessionEvents.add(
+      SesoriSessionUpdated(
+        info: testSession(id: _sessionId).copyWith(
+          interruption: const SessionInterruption(afterMessageId: "m1", unacknowledged: false),
+        ),
+      ),
+    );
+    await awaitState(
+      cubit: cubit,
+      predicate: (state) => state is SessionDetailLoaded && state.interruptedTurn is InterruptedTurnShown,
+      description: "interrupted line shown",
+    );
+
+    await cubit.editMessage(message: edited);
+
+    expect(await cubit.continueInterruptedTurn(), InterruptedTurnContinueRefusal.editOpen);
+    verifyNever(
+      () => sessionRepository.sendMessage(
+        promptId: any(named: "promptId"),
+        sessionId: any(named: "sessionId"),
+        text: any(named: "text"),
+        attachments: any(named: "attachments"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: any(named: "command"),
+        commandSource: any(named: "commandSource"),
+      ),
+    );
   });
 
   test("Resend during a turn offers to stop first, and Stop and resend sends once the session is idle", () async {

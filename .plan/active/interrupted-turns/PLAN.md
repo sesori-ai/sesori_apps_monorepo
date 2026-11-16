@@ -73,8 +73,9 @@ the per-harness persistence is exactly the decided one:
 | Claude Code | the echoed `[Request interrupted by user…]` record → stopped | the two `[Request interrupted by user…]` records → stopped instead of a user bubble |
 
 Synthesized rows use `errorMessage: "Stopped"`; native rows keep their text. Only a stop requested through
-`abortSession` (Stop, Stop on archive) produces a live stopped row; shutdown's `interruptActiveWork` does not, so a
-bridge shutdown never says Stopped live.
+`abortSession` (Stop, Stop on archive) produces a live stopped row. Shutdown's `interruptActiveWork` does not, except
+in Claude Code, whose shutdown runs the same `abort` as Stop and can record a live stopped row; Step 6's supersession
+rule hides it behind the Interrupted line.
 
 A reload must never show two Stopped lines for one stop. `errorName` and `errorMessage` take no part in
 `replaceSessionMessages` pairing (they only choose which wording survives), so each synthesized live row needs a real
@@ -311,6 +312,14 @@ Workspaces: `shared/sesori_shared` (`splitPromptTurns` turn-end ids), `bridge/ap
 `SessionTile` label (D7). Calculator and cubit tests without Flutter, including an interruption before the first output
 followed by Continue. Simulator recording of the Continue flow and the list label for the PR. Docs:
 projects-and-sessions and session-turns. ~700 lines.
+
+- Claude Code and Codex record a bridge shutdown like a user Stop, so a reload shows a stopped row in the cut-off turn,
+  sometimes after the interrupted message. Every stopped row in that turn is superseded: only the Interrupted line shows,
+  never both. A calculator test covers it.
+- #2651 thread 8: a phone left open on the session can reconnect while resolution starts the plugin, so its view
+  declaration arrives before the conversion and the list keeps "Interrupted" although the user is looking. The open
+  `SessionDetailCubit` re-sends its view declaration (the existing acknowledgement route) when a session update brings a
+  new unacknowledged interruption. A cubit test covers it.
 
 ### Step 7: reconcile regression docs and harness rows
 

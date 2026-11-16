@@ -4447,6 +4447,12 @@ abstract class AppLocalizations {
   /// **'Waiting'**
   String get sessionListWaiting;
 
+  /// Grey word leading a session row's meta line when the Sesori bridge stopped during the session's last turn, until the user opens the session or sends something
+  ///
+  /// In en, this message translates to:
+  /// **'Interrupted'**
+  String get sessionListInterrupted;
+
   /// Screen-reader label for the session-list mark on a session a recurring scheduled task started
   ///
   /// In en, this message translates to:
@@ -5472,6 +5478,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stopped'**
   String get sessionDetailTurnStopped;
+
+  /// Quiet line that ends an agent turn cut off because the Sesori bridge stopped (crashed or was restarted) during it. Not an error. Its reason follows after ' · ', e.g. 'Interrupted · Sesori's bridge stopped during this turn'.
+  ///
+  /// In en, this message translates to:
+  /// **'Interrupted'**
+  String get sessionDetailTurnInterrupted;
+
+  /// Reason after 'Interrupted' on the line that ends a turn the Sesori bridge stopped during, e.g. 'Interrupted · Sesori's bridge stopped during this turn'.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori\'s bridge stopped during this turn'**
+  String get sessionDetailTurnInterruptedReason;
+
+  /// Button under the 'Interrupted' line of a turn the Sesori bridge cut off. Sends the agent a prompt asking it to continue where it left off.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get sessionDetailContinueInterruptedTurn;
+
+  /// Alert shown when the user taps Continue under an interrupted turn while a message edit is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish or cancel your edit first.'**
+  String get sessionDetailContinueEditOpen;
+
+  /// Alert shown when the user taps Continue under an interrupted turn while an edited message is stopping the session or being sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending your edit. Continue in a moment.'**
+  String get sessionDetailContinueEditSending;
+
+  /// Alert shown when the user taps Continue under an interrupted turn just as the session started working.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent is already working.'**
+  String get sessionDetailContinueSessionWorking;
+
+  /// Alert shown when the user taps Continue under an interrupted turn while a message is already being sent, such as after a second tap on Continue.
+  ///
+  /// In en, this message translates to:
+  /// **'Your message is already on its way.'**
+  String get sessionDetailContinuePromptPending;
+
+  /// Alert shown when the user taps Continue under an interrupted turn that a later turn has already followed.
+  ///
+  /// In en, this message translates to:
+  /// **'This turn already continued.'**
+  String get sessionDetailContinueAlreadyContinued;
 
   /// Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator.
   ///
