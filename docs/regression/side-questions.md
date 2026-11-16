@@ -130,6 +130,11 @@ Close and reopen the sheet repeatedly while an answer is pending. Type "/btw"
 without the space, "/BTW " and "/btw " in the middle of text. Send from the
 mode with the keyboard up, and drag the sheet while the keyboard is open.
 
+Setup: two bridges signed in to the same account share a bridge id, so the
+second replaces the first (close code 4007). To check the update reason
+against an older bridge, give it its own dev account or stop the current
+bridge first.
+
 ## Failure Signals
 
 - The main turn is interrupted, delayed or queued by an ask.
@@ -151,6 +156,11 @@ mode with the keyboard up, and drag the sheet while the keyboard is open.
 - Only Claude Code and Codex answer side questions. Other harnesses answer the
   button tap with the reason; a fork-based fallback is a later phase.
 - Answers never stream: every harness returns the whole answer at once.
+- On Claude Code, a mid-turn ask sends the model the running turn's prompt
+  as well. A non-Claude model behind a proxy sometimes answers that prompt
+  instead of the question (see HARNESS_CAPABILITIES.md). Run the mid-turn
+  Claude Code check with a real Claude model before reading such an answer
+  as a Sesori failure.
 - The side chat input takes no voice, attachments or commands.
 
 ## Sources
