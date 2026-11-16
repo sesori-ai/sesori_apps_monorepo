@@ -356,6 +356,81 @@ void main() {
       expect(processRepository.signalRequests, equals(<String>['graceful:211', 'force:211']));
     });
 
+    test('signals reach the descendants of a running POSIX child that ends with the bridge', () async {
+      final process = _FakeProcess(pidValue: 7001);
+      starter.process = process;
+      processRepository.descendants[7001] = <int>[7002, 7003];
+      processRepository.gracefulResult = _signalResult(pid: 7001, signal: ShutdownSignal.graceful);
+      processRepository.forceResult = _signalResult(pid: 7001, signal: ShutdownSignal.force);
+      final host = service();
+      await host.spawn(
+        includeParentEnvironment: true,
+        executable: '/usr/local/bin/agent',
+        arguments: const ['acp'],
+        environment: null,
+        workingDirectory: null,
+        runInShell: false,
+        lifetime: ProcessLifetime.endsWithBridge,
+      );
+
+      final graceful = await host.signalGraceful(pid: 7001);
+      await host.signalForce(pid: 7001);
+
+      expect(graceful.pid, 7001);
+      expect(
+        processRepository.signalRequests,
+        equals(<String>['graceful:7001', 'graceful:7002', 'graceful:7003', 'force:7001', 'force:7002', 'force:7003']),
+      );
+
+      // Once the child exits its pid may be reused, so only that pid is signalled.
+      process.exitCodeCompleter.complete(0);
+      await process.exitCode;
+      await Future<void>.delayed(Duration.zero);
+      processRepository.signalRequests.clear();
+      await host.signalForce(pid: 7001);
+      expect(processRepository.signalRequests, equals(<String>['force:7001']));
+    });
+
+    test('signals leave the descendants of a child that may outlive the bridge running', () async {
+      starter.process = _FakeProcess(pidValue: 7001);
+      processRepository.descendants[7001] = <int>[7002];
+      processRepository.forceResult = _signalResult(pid: 7001, signal: ShutdownSignal.force);
+      final host = service();
+      await host.spawn(
+        includeParentEnvironment: true,
+        executable: '/usr/local/bin/opencode',
+        arguments: const ['service', 'start'],
+        environment: null,
+        workingDirectory: null,
+        runInShell: false,
+        lifetime: ProcessLifetime.mayOutliveBridge,
+      );
+
+      await host.signalForce(pid: 7001);
+
+      expect(processRepository.signalRequests, equals(<String>['force:7001']));
+    });
+
+    test('a failed descendant listing still signals the child itself', () async {
+      starter.process = _FakeProcess(pidValue: 7001);
+      processRepository.descendantsError = const ProcessException('ps', <String>[], 'boom', 1);
+      processRepository.gracefulResult = _signalResult(pid: 7001, signal: ShutdownSignal.graceful);
+      final host = service();
+      await host.spawn(
+        includeParentEnvironment: true,
+        executable: '/usr/local/bin/agent',
+        arguments: const ['acp'],
+        environment: null,
+        workingDirectory: null,
+        runInShell: false,
+        lifetime: ProcessLifetime.endsWithBridge,
+      );
+
+      await host.signalGraceful(pid: 7001);
+
+      expect(processRepository.signalRequests, equals(<String>['graceful:7001']));
+    });
+
     group('against a real child process', () {
       // This is a deliberate integration test over the real `Process.start`
       // seam: it proves the stdio surface, exitCode, and pid that the fakes
@@ -412,6 +487,43 @@ void main() {
         expect(spawned.pid, greaterThan(0));
         expect(spawned.identity.pid, spawned.pid);
       });
+
+      test('signalGraceful also stops a command the child left running in the background', () async {
+        if (Platform.isWindows) {
+          return;
+        }
+
+        final realService = BridgeHostProcessService(
+          processStarter: Process.start,
+          processRepository: ProcessRepository(
+            api: SystemProcessApi(processRunner: ProcessRunner(), clock: const ServerClock(), isWindows: false),
+            windowsJobObjectApi: WindowsJobObjectApi(),
+            currentUser: null,
+          ),
+          clock: const ServerClock(),
+          currentUser: null,
+          isWindows: false,
+        );
+        // Like a harness running a tool command: the shell dies on SIGTERM
+        // and would leave its `sleep` behind, reparented to init.
+        final spawned = await realService.spawn(
+          includeParentEnvironment: true,
+          executable: '/bin/sh',
+          arguments: const ['-c', r'sleep 60 & echo $!; wait'],
+          environment: null,
+          workingDirectory: null,
+          runInShell: false,
+          lifetime: ProcessLifetime.endsWithBridge,
+        );
+        unawaited(spawned.stderr.drain<void>());
+        final grandchildPid = int.parse((await spawned.stdout.transform(utf8.decoder).first).trim());
+        addTearDown(() => Process.killPid(grandchildPid, ProcessSignal.sigkill));
+
+        await realService.signalGraceful(pid: spawned.pid);
+        await spawned.exitCode.timeout(const Duration(seconds: 5));
+
+        expect(await _waitUntilGone(pid: grandchildPid), isTrue, reason: 'sleep $grandchildPid survived its parent');
+      });
     });
   });
 }
@@ -430,6 +542,17 @@ ProcessIdentity _identity({
     ownerUser: ProcessUser.fromRawUser('alex'),
     capturedAt: DateTime.utc(2026, 5, 15, 12),
   );
+}
+
+Future<bool> _waitUntilGone({required int pid}) async {
+  for (var attempt = 0; attempt < 50; attempt++) {
+    final result = await Process.run('ps', <String>['-p', '$pid', '-o', 'stat=']);
+    final state = result.stdout.toString().trim();
+    // An exited orphan can linger briefly as a zombie until init reaps it.
+    if (result.exitCode != 0 || state.isEmpty || state.startsWith('Z')) return true;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+  return false;
 }
 
 SignalResult _signalResult({required int pid, required ShutdownSignal signal}) {
@@ -515,6 +638,8 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
   SignalResult? gracefulResult;
   SignalResult? forceResult;
   final List<String> signalRequests = <String>[];
+  final Map<int, List<int>> descendants = <int, List<int>>{};
+  Object? descendantsError;
   final List<int> boundPids = <int>[];
   final List<
     ({
@@ -568,6 +693,15 @@ class _FakeProcessRepository() extends StrictFakeProcessRepository {
       return null;
     }
     return queue.removeAt(0);
+  }
+
+  @override
+  Future<List<int>> listPosixDescendants({required int pid}) async {
+    final error = descendantsError;
+    if (error != null) {
+      throw error;
+    }
+    return descendants[pid] ?? const <int>[];
   }
 
   @override

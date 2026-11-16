@@ -117,6 +117,11 @@ class _FakeSystemProcessApi() implements SystemProcessApi {
   }
 
   @override
+  Future<List<int>> listPosixDescendants({required int pid}) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add("force:$pid");
     return forceResult ?? fail("no force signal result configured");

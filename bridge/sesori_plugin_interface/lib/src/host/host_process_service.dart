@@ -18,7 +18,9 @@ enum ProcessLifetime() {
   /// starts the process normally and binds it right after; anything the
   /// process started before the bind, and the process itself when the bind
   /// fails too, stays outside the job. Other hosts bind nothing and keep their
-  /// existing stop and stale cleanup, without crash-time binding.
+  /// existing stop and stale cleanup, without crash-time binding, but
+  /// signalling a running process spawned this way also signals the
+  /// descendants it has at that moment, including detached ones.
   endsWithBridge,
 
   /// The process, or something it starts, may keep running after the bridge
@@ -60,10 +62,14 @@ abstract class HostProcessService() {
 
   /// Sends the platform's graceful-stop signal to [pid] (SIGTERM on POSIX;
   /// Windows has no graceful signal and delivers a kill instead — the
-  /// returned [SignalResult] records what was actually sent).
+  /// returned [SignalResult] records what was actually sent). Windows signals
+  /// the whole tree; POSIX signals the tree of a running child spawned with
+  /// [ProcessLifetime.endsWithBridge] and only [pid] otherwise. The result
+  /// describes [pid].
   Future<SignalResult> signalGraceful({required int pid});
 
-  /// Forcibly kills [pid] (SIGKILL or platform equivalent).
+  /// Forcibly kills [pid] (SIGKILL or platform equivalent), reaching the same
+  /// descendants as [signalGraceful].
   Future<SignalResult> signalForce({required int pid});
 }
 
