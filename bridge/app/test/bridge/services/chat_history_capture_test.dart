@@ -2065,6 +2065,56 @@ void main() {
       });
     });
 
+    // Codex records none of the reply it was streaming when a Stop landed,
+    // only the stopped turn.
+    group("a stopped turn's streamed reply", () {
+      List<MessageWithParts> replay({required bool holdsStoppedTurn}) => [
+        _messageWithText(id: "h1-user", text: "Write a list", createdAt: 100, promptId: null),
+        if (holdsStoppedTurn) _stoppedMessage(id: "turn-stopped", createdAt: 300),
+      ];
+      final live = [
+        _messageWithText(id: "h1-user", text: "Write a list", createdAt: 100, promptId: "p1"),
+        _assistantMessageWithText(id: "live-partial", text: "1. Apples", reasoning: null, createdAt: 200),
+        _stoppedMessage(id: "turn-stopped", createdAt: 300),
+      ];
+
+      test("stays across later imports while the replay holds the stopped turn", () async {
+        final transcript = replay(holdsStoppedTurn: true);
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(history: history, messages: live);
+
+        for (final generation in ["first", "second"]) {
+          await Future<void>.delayed(const Duration(milliseconds: 2));
+          await history.service.backfillSession(sessionId: "ses_a");
+
+          expect(
+            (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+            ["h1-user", "live-partial", "turn-stopped"],
+            reason: "$generation import",
+          );
+        }
+      });
+
+      test("leaves with the stopped turn when the harness rolls the turn back", () async {
+        final transcript = replay(holdsStoppedTurn: true);
+        final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: transcript));
+        await _captureMessages(history: history, messages: live);
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        transcript
+          ..clear()
+          ..addAll(replay(holdsStoppedTurn: false));
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        expect(
+          (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+          ["h1-user"],
+        );
+      });
+    });
+
     group("handoff stamps", () {
       const sent = MessageHandoff.sent(targetSessionId: "target", targetTitle: "Target");
       MessageWithParts stamped({required String id, required MessageHandoff? handoff}) {
@@ -2985,6 +3035,21 @@ MessageWithParts _errorMessage({
     errorName: errorName,
     errorMessage: text,
     time: createdAt == null ? null : MessageTime(created: createdAt, completed: createdAt),
+  ),
+  parts: const [],
+);
+
+MessageWithParts _stoppedMessage({required String id, required int createdAt}) => MessageWithParts(
+  info: Message.error(
+    id: id,
+    sessionID: "ses_a",
+    agent: "codex",
+    modelID: null,
+    providerID: null,
+    kind: MessageErrorKind.stopped,
+    errorName: "CodexTurnAborted",
+    errorMessage: "Stopped",
+    time: MessageTime(created: createdAt, completed: createdAt),
   ),
   parts: const [],
 );

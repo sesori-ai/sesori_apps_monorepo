@@ -80,6 +80,11 @@ class CodexEventMapper({
   /// not replace a timestamped message envelope with an undated one.
   final Map<({String threadId, String itemId}), PluginMessageTime> _itemTimes = {};
 
+  /// The text streamed so far into each agent message still in flight. Codex
+  /// sends an interrupted message no final snapshot and records none in its
+  /// rollout, so a Stop snapshots this text for the chat history to keep.
+  final Map<({String threadId, String itemId}), StringBuffer> _streamedReplies = {};
+
   /// Records the model codex resolved for [threadId] so subsequent
   /// live-streamed assistant messages are stamped with the model actually in
   /// use. Passing a null/empty [model] clears the override (falls back to the
@@ -171,7 +176,10 @@ class CodexEventMapper({
     _forgetItemTimes(threadId: threadId);
   }
 
-  void resetLiveItemTimes() => _itemTimes.clear();
+  void resetLiveItems() {
+    _itemTimes.clear();
+    _streamedReplies.clear();
+  }
 
   /// The project id a live session event should carry for [threadId]: the
   /// plugin-fed directory, else the notification's own [cwd], else the launch
@@ -244,6 +252,7 @@ class CodexEventMapper({
         final threadId = _optionalString(map: params, key: "threadId");
         if (threadId == null) return const [];
         final turn = _asMap(value: params["turn"]);
+        _forgetStreamedReplies(threadId: threadId);
         return [
           _sessionActivityUpdated(
             threadId: threadId,
@@ -277,10 +286,17 @@ class CodexEventMapper({
         );
         if (method == "item/completed" && itemId != null) {
           _itemTimes.remove((threadId: threadId, itemId: itemId));
+          _streamedReplies.remove((threadId: threadId, itemId: itemId));
         }
         return events;
 
       case "item/agentMessage/delta":
+        final threadId = _optionalString(map: params, key: "threadId");
+        final itemId = _optionalString(map: params, key: "itemId");
+        final delta = _optionalString(map: params, key: "delta");
+        if (threadId != null && itemId != null && delta != null) {
+          _streamedReplies.putIfAbsent((threadId: threadId, itemId: itemId), StringBuffer.new).write(delta);
+        }
         return _deltaEvent(params: params, partSuffix: "text");
 
       case "item/reasoning/textDelta":
@@ -352,20 +368,35 @@ class CodexEventMapper({
   /// interrupted, or null when the turn ended any other way. It takes the turn
   /// id, which the rollout's `turn_aborted` record carries too, so a reload
   /// folds this row with its replay.
-  BridgeSseMessageUpdated? mapStoppedTurn({required String threadId, required Map<String, dynamic> params}) {
+  /// The stopped row for a turn a user Stop interrupted, after a final
+  /// snapshot of each reply it was streaming, so the chat history stores the
+  /// text the user saw.
+  List<BridgeSseEvent> mapStoppedTurn({required String threadId, required Map<String, dynamic> params}) {
     final turn = _asMap(value: params["turn"]);
     final turnId = _optionalString(map: turn, key: "id");
-    if (turnId == null || _optionalString(map: turn, key: "status") != "interrupted") return null;
-    return BridgeSseMessageUpdated(
-      info: codexStoppedTurnMessage(
-        id: turnId,
-        sessionId: threadId,
-        modelId: _threadModel[threadId] ?? config.model,
-        providerId: _threadProvider[threadId] ?? config.effectiveModelProvider,
-        variant: _threadEffort[threadId],
-        time: _turnMessageTime(turn: turn),
+    if (turnId == null || _optionalString(map: turn, key: "status") != "interrupted") return const [];
+    return [
+      for (final MapEntry(:key, value: text) in _streamedReplies.entries)
+        if (key.threadId == threadId)
+          BridgeSseMessagePartUpdated(
+            part: PluginMessagePart.text(
+              id: "${key.itemId}-text",
+              sessionID: threadId,
+              messageID: key.itemId,
+              text: text.toString(),
+            ),
+          ),
+      BridgeSseMessageUpdated(
+        info: codexStoppedTurnMessage(
+          id: turnId,
+          sessionId: threadId,
+          modelId: _threadModel[threadId] ?? config.model,
+          providerId: _threadProvider[threadId] ?? config.effectiveModelProvider,
+          variant: _threadEffort[threadId],
+          time: _turnMessageTime(turn: turn),
+        ),
       ),
-    );
+    ];
   }
 
   BridgeSseMessageUpdated mapRolloutTerminalError({
@@ -798,7 +829,13 @@ class CodexEventMapper({
   int? _secondsToMilliseconds({required Object? value}) =>
       value is num ? (value * Duration.millisecondsPerSecond).round() : null;
 
-  void _forgetItemTimes({required String threadId}) => _itemTimes.removeWhere((key, _) => key.threadId == threadId);
+  void _forgetItemTimes({required String threadId}) {
+    _itemTimes.removeWhere((key, _) => key.threadId == threadId);
+    _forgetStreamedReplies(threadId: threadId);
+  }
+
+  void _forgetStreamedReplies({required String threadId}) =>
+      _streamedReplies.removeWhere((key, _) => key.threadId == threadId);
 
   /// Emits the message envelope and its (single) content part. The part id
   /// matches the `$itemId-$partSuffix` convention used by [_deltaEvent] so

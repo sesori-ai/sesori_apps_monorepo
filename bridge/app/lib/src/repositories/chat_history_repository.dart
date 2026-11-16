@@ -437,6 +437,13 @@ class ChatHistoryRepository({
   bool _isUserRow({required HistoryMessagesTableData row}) =>
       Message.fromJson(jsonDecodeMap(row.infoJson)) is MessageUser;
 
+  bool _isStoppedRow({required HistoryMessagesTableData row}) => switch (Message.fromJson(
+    jsonDecodeMap(row.infoJson),
+  )) {
+    MessageError(kind: MessageErrorKind.stopped) => true,
+    _ => false,
+  };
+
   bool _isInvocationRow({required HistoryMessagesTableData row}) => switch (Message.fromJson(
     jsonDecodeMap(row.infoJson),
   )) {
@@ -1125,6 +1132,19 @@ class ChatHistoryRepository({
         } else {
           inUnreplayedRun = false;
         }
+      }
+    }
+    // A reply the replay doesn't hold stays while the stopped row that ended
+    // its turn does: Codex records none of the text it was streaming when a
+    // Stop landed. A rollback that removes the turn removes the reply too.
+    var endsInReplayedStop = false;
+    for (final row in storedRows.reversed) {
+      if (importedIds.contains(row.messageId)) {
+        endsInReplayedStop = _isStoppedRow(row: row);
+      } else if (endsInReplayedStop && !_isUserRow(row: row)) {
+        keptStaleIds.add(row.messageId);
+      } else {
+        endsInReplayedStop = false;
       }
     }
 

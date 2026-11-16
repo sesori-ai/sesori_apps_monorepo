@@ -2295,6 +2295,11 @@ void main() {
         "threadId": sessionId,
         "turn": {"id": "u-stopped"},
       });
+      fake.pushNotification("item/agentMessage/delta", {
+        "threadId": sessionId,
+        "itemId": "i-partial",
+        "delta": "The first paragraph",
+      });
       await Future<void>.delayed(Duration.zero);
       final emittedEvents = <BridgeSseEvent>[];
       final eventSubscription = plugin.events.listen(emittedEvents.add);
@@ -2326,6 +2331,18 @@ void main() {
       expect(live.kind, PluginErrorKind.stopped);
       final stoppedIndex = emittedEvents.indexWhere((event) => event is BridgeSseMessageUpdated);
       expect(emittedEvents.indexWhere((event) => event is BridgeSseSessionIdle), greaterThan(stoppedIndex));
+      // The streamed reply gets its final snapshot before the stopped row.
+      final snapshotIndex = emittedEvents.indexWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part is PluginMessagePartText &&
+            event.part.messageID == "i-partial",
+      );
+      expect(snapshotIndex, inInclusiveRange(0, stoppedIndex - 1));
+      expect(
+        (emittedEvents[snapshotIndex] as BridgeSseMessagePartUpdated).part,
+        isA<PluginMessagePartText>().having((part) => part.text, "text", "The first paragraph"),
+      );
 
       final replayed = (await plugin.getSessionMessages(sessionId))
           .map((message) => message.info)
