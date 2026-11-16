@@ -38,10 +38,33 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
   required PregoDesignSystem prego,
   TextStyle? paragraphStyle,
 }) {
+  // Every surface sets its headings: on iOS and macOS the SDK's fallback is
+  // Cupertino's, in the system font and far larger than the prose. They keep
+  // the phone's sizes on desktop too, as the transcript prose does, so none
+  // reads smaller than its paragraph. The weight stays the scale's.
+  final headings = PregoTextTheme.light;
+  TextStyle heading(FontVariation size) => size.bold.copyWith(
+    color: paragraphStyle?.color ?? prego.colors.textPrimary,
+    fontWeight: prego.textTheme.textSm.bold.fontWeight,
+  );
+  // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
+  final headingPadding = prego.isDesktopScale ? const EdgeInsets.only(top: PregoSpacing.lg) : null;
   return _withTablesAndRules(
     prego: prego,
     sheet: MarkdownStyleSheet(
       p: paragraphStyle ?? prego.textTheme.textSm.regular,
+      h1: heading(headings.textXl),
+      h2: heading(headings.textLg),
+      h3: heading(headings.textMd),
+      h4: heading(headings.textSm),
+      h5: heading(headings.textSm),
+      h6: heading(headings.textSm),
+      h1Padding: headingPadding,
+      h2Padding: headingPadding,
+      h3Padding: headingPadding,
+      h4Padding: headingPadding,
+      h5Padding: headingPadding,
+      h6Padding: headingPadding,
       // The renderer wraps every code block, a [CodeBlock] included, in this box,
       // so it is the only one.
       codeblockDecoration: _codeBlockDecoration(prego: prego),
@@ -99,13 +122,8 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
 
   // ignore: no_slop_linter/avoid_interaction_mode_reads, pending: metrics
   final desktop = prego.isDesktopScale;
-  // Headings keep the phone's sizes on desktop too, as the prose under them
-  // does, so none reads smaller than its paragraph. The weight stays the scale's.
-  final headings = PregoTextTheme.light;
-  TextStyle heading(FontVariation size) =>
-      size.bold.copyWith(color: foreground, fontWeight: prego.textTheme.chat.bold.fontWeight);
   // Tight list items carry no paragraph, so they take only the block gap.
-  final sheet = base.copyWith(
+  return base.copyWith(
     blockSpacing: desktop ? PregoSpacing.xs : null,
     pPadding: desktop ? const EdgeInsets.symmetric(vertical: PregoSpacing.xxs) : null,
     // [ChatLinkMarkdownBuilder] keeps the surrounding text's size and weight
@@ -117,12 +135,6 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
     // highlight before its glyphs, so an opaque run background covers the
     // highlight and a selection crossing inline code looks like it skipped it.
     code: base.code?.copyWith(color: foreground, backgroundColor: prego.colors.alphaBlack10),
-    h1: heading(headings.textXl),
-    h2: heading(headings.textLg),
-    h3: heading(headings.textMd),
-    h4: heading(headings.textSm),
-    h5: heading(headings.textSm),
-    h6: heading(headings.textSm),
     em: body.copyWith(fontStyle: FontStyle.italic),
     strong: body.copyWith(fontWeight: prego.textTheme.chat.bold.fontWeight),
     del: body.copyWith(decoration: TextDecoration.lineThrough),
@@ -131,15 +143,6 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
     listBullet: body,
     tableHead: body.copyWith(fontWeight: prego.textTheme.chat.bold.fontWeight),
     tableBody: body,
-  );
-  if (!desktop) return sheet;
-  return sheet.copyWith(
-    h1Padding: const EdgeInsets.only(top: PregoSpacing.lg),
-    h2Padding: const EdgeInsets.only(top: PregoSpacing.lg),
-    h3Padding: const EdgeInsets.only(top: PregoSpacing.lg),
-    h4Padding: const EdgeInsets.only(top: PregoSpacing.lg),
-    h5Padding: const EdgeInsets.only(top: PregoSpacing.lg),
-    h6Padding: const EdgeInsets.only(top: PregoSpacing.lg),
   );
 }
 
