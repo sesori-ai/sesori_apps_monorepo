@@ -1,5 +1,7 @@
 # Runtime refresh, 2026-11-16
 
+Status: completed 2026-11-16. Every step is merged; the remaining verification is listed under final follow-ups.
+
 Raise every registered harness to its current stable upstream release, following
 `.agents/skills/update-backend-runtimes/SKILL.md`. Floors (`minPathVersion` /
 `minVersion`) stay unchanged unless the owner approves a raise.
@@ -31,17 +33,17 @@ All 11 `knownPlugins` entries in `bridge/app/lib/src/runtime/plugin_registry.dar
 5. DeepSeek adapter: move to dsh 0.2.2-rc.3 and release `v0.2.3` (sesori-deepseek-acp#25, merged and tagged
    `v0.2.3`). Also fixes the Windows arm64 packaging step, whose `Expand-Archive` broke on the current
    `windows-11-arm` runner image.
-6. Pin the DeepSeek consumer to adapter 0.2.3 from the published assets (#2748, in review).
+6. Pin the DeepSeek consumer to adapter 0.2.3 from the published assets (#2748, merged).
 7. Live follow-up probes against the local test endpoint, the fixes they show are needed, doc reconciliation,
    skill corrections, then retire this plan. Fixes that need code get their own PRs inside this step:
-   - 7.a Claude "Always" shown with nothing to save.
-   - 7.b OpenCode 2.3.0 background sub-agent report rows in the parent session.
+   - 7.a Claude "Always" shown with nothing to save (#2743, merged).
+   - 7.b OpenCode 2.3.0 background sub-agent report rows in the parent session (#2745, merged).
    - 7.c OMP 18.21.0 busy-window docs and comments, plus the skill corrections below (#2744, merged).
    - 7.d Claude "Always" on a file edit switches the session to `acceptEdits` (#2747, merged).
    - 7.e A finished background sub-agent's Automation card shows its single step ("General · task ›") in place
-     of "1 step"; cards with several steps keep the count. App-only, every harness.
+     of "1 step"; cards with several steps keep the count. App-only, every harness (#2755, merged).
    - 7.f An "Accepting edits · Turn off" line above the composer while a session auto-accepts edits, with a
-     backend-neutral session fact and turn-off request (bridge, wire and app).
+     backend-neutral session fact and turn-off request (bridge, wire and app) (#2756, merged).
 
 ## Findings from step 7
 
@@ -78,6 +80,7 @@ Track only: OpenCode first-token timing, Copilot `--resume` marking sessions in 
 
 - Authenticated lifecycles for Copilot, Cursor, OMP, Antigravity (signed-in model list), Grok and DeepSeek.
 - Native checks on hosts other than macOS arm64.
+- A live OpenCode 2.3.0 turn with provider credentials.
 
 ## Skill corrections
 
