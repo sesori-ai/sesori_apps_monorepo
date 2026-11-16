@@ -1050,6 +1050,8 @@ void main() {
         await tester.pump(const Duration(milliseconds: 80));
         expect(tester.getRect(panel).right, greaterThan(1400 - PregoSpacing.lg));
         expect(createdSideChats.single.isClosed, isFalse);
+        final leaving = find.ancestor(of: panel, matching: find.byType(IgnorePointer)).first;
+        expect(tester.widget<IgnorePointer>(leaving).ignoring, isTrue, reason: "a leaving panel takes no clicks");
 
         await tester.pump(const Duration(milliseconds: 200));
         expect(panel, findsNothing);
