@@ -667,6 +667,9 @@ Claude Code (2.1.325) and Codex (0.169.0) record the interrupt a bridge shutdown
 such a turn reads Stopped after a reload although it showed no Stopped line live. A Claude Code Stop waits up to 2
 seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds.
 
+Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so that text
+shows live but is gone after a reload, leaving the Stopped line directly under the prompt. Claude Code keeps it.
+
 ## Pre-start catalog import
 
 | Capability | OpenCode |
