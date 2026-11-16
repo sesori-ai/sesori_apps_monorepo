@@ -664,6 +664,15 @@ state.
   edge, and the scroll eases to a stop once Pinned's end shows; the row stays
   under the pointer and the gap follows it through any scroll, including a
   wheel scroll mid-drag, and through rows built on the way.
+  On the phone, under the same conditions and with at least two pinned rows,
+  the Pinned heading ends with Edit. Edit turns into Done and fades a ≡ handle
+  in over each pinned row's time, moving nothing. Touching a handle lifts the
+  row at once with a light haptic, with the same lift, slide, glide, refusal
+  and edge scroll as the sidebar; the edge zones start below the glass bar
+  and above the home indicator. While editing, pinned rows neither open, swipe
+  nor show their long-press menu, and a finger on a row still scrolls the
+  list; other rows are untouched. Done, a search, a chip, too few pinned rows
+  or leaving the screen ends editing.
 - Above the active session list, on the phone and the sidebar alike, chips
   read All, Running and Unread with the bridge's counts under the project
   filter and the search, whatever chip is chosen. A chip narrows the loaded

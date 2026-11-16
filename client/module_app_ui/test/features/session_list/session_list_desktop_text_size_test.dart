@@ -65,12 +65,12 @@ void main() {
             mode: PregoInteractionMode.pointer,
             child: Column(
               children: [
-                const SessionListHeading(heading: "Today", isFirst: true),
+                const SessionListHeading(heading: "Today", isFirst: true, action: null),
                 tile(title: "Refactor the bridge supervisor", isRunning: true, projectLabel: "sesori"),
                 tile(title: "Answer the migration question", awaitingInput: true, projectLabel: "sesori"),
                 tile(title: "Unread reply", unseen: true),
                 tile(title: "Flaky upload", isRetrying: true, backgroundTaskCount: 2, projectLabel: "relay"),
-                const SessionListHeading(heading: "Yesterday", isFirst: false),
+                const SessionListHeading(heading: "Yesterday", isFirst: false, action: null),
                 tile(title: "Quiet session"),
               ],
             ),
@@ -204,9 +204,9 @@ void main() {
             spacingOverrides: spacingOverrides,
             child: Column(
               children: [
-                const SessionListHeading(heading: "Today", isFirst: true),
+                const SessionListHeading(heading: "Today", isFirst: true, action: null),
                 const SessionListHeadingSkeleton(isFirst: true, width: 40),
-                const SessionListHeading(heading: "Yesterday", isFirst: false),
+                const SessionListHeading(heading: "Yesterday", isFirst: false, action: null),
                 const SessionListHeadingSkeleton(isFirst: false, width: 64),
                 tile(title: "With a project", projectLabel: "sesori"),
                 tile(title: "Without one"),
