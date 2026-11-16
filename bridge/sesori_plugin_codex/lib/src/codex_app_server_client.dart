@@ -7,22 +7,17 @@ import "package:web_socket_channel/web_socket_channel.dart";
 
 /// Result of a successful `initialize` handshake against codex app-server.
 ///
-/// Fields mirror codex's `InitializeResponse` shape (see codex's
+/// Parsed from codex's `InitializeResponse` (see codex's
 /// `app-server generate-json-schema` output for the source of truth).
 class const CodexInitializeResult({
-  required final String? userAgent,
-
-  /// The Codex version [userAgent] names, such as 0.169.0 in
+  /// The Codex version `userAgent` names, such as 0.169.0 in
   /// `codex-cli/0.169.0 (Mac OS 15.0; arm64)`; null when it names none.
   required final SemanticVersion? codexVersion,
 }) {
   factory fromJson(Map<String, dynamic> json) {
-    final userAgent = json["userAgent"] is String ? json["userAgent"] as String : null;
-    final version = userAgent == null ? null : RegExp(r"^[^/]+/([^\s]+)").firstMatch(userAgent)?.group(1);
-    return CodexInitializeResult(
-      userAgent: userAgent,
-      codexVersion: version == null ? null : SemanticVersion.tryParse(value: version),
-    );
+    final userAgent = json["userAgent"];
+    final version = userAgent is String ? RegExp(r"^[^/]+/([^\s]+)").firstMatch(userAgent)?.group(1) : null;
+    return CodexInitializeResult(codexVersion: version == null ? null : SemanticVersion.tryParse(value: version));
   }
 }
 

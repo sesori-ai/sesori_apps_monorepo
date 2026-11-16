@@ -16,6 +16,7 @@ import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
 import "../api/models/codex_rollout_file_name.dart";
 import "mappers/codex_sub_agent_name_mapper.dart";
+import "models/codex_session_deletion.dart";
 import "models/codex_session_record.dart";
 
 /// Layer-2 aggregation, mapping, selection, and deletion for the rollout catalog.
@@ -280,18 +281,18 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
   }
 
   /// Deletes [sessionId]'s rollouts and its session index lines, rescanning
-  /// once when the last scan does not know the session. Returns false when
-  /// the rollouts' absence cannot be confirmed or a write fails.
+  /// once when the last scan does not know the session.
   ///
   /// Keeps every rollout another thread's history still builds on, such as a
-  /// fork's base. Codex's own delete refuses then; here the bridge's
-  /// tombstone hides the thread such a kept rollout leaves listed.
-  Future<bool> deleteSession({required String sessionId}) async {
-    if (!_pathsById.containsKey(sessionId) && !await _rescan()) return false;
+  /// fork's base, where Codex's own delete would refuse.
+  Future<CodexSessionDeletion> deleteSession({required String sessionId}) async {
+    if (!_pathsById.containsKey(sessionId) && !await _rescan()) return CodexSessionDeletion.failed;
     final rolloutPath = _pathsById[sessionId];
+    var outcome = CodexSessionDeletion.deleted;
     if (rolloutPath != null) {
       final owned = [...?_supersededPathsById[sessionId], rolloutPath];
       final kept = _pathsOtherThreadsBuildOn(sessionId: sessionId, owned: owned);
+      if (kept.isNotEmpty) outcome = CodexSessionDeletion.keptForForks;
       // The current rollout goes last: a failure part-way leaves the
       // session listed, so the delete can be retried.
       final paths = [
@@ -304,7 +305,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
         }
       } on Object catch (error, stackTrace) {
         Log.w("[codex] failed to delete rollout for $sessionId", error, stackTrace);
-        return false;
+        return CodexSessionDeletion.failed;
       }
       if (!kept.contains(rolloutPath)) {
         _rollouts.remove(rolloutPath);
@@ -318,13 +319,13 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       indexLines = _rolloutApi.readSessionIndexLines();
     } on Object catch (error, stackTrace) {
       Log.w("[codex] failed to read the session index", error, stackTrace);
-      return false;
+      return CodexSessionDeletion.failed;
     }
     final filtered = [
       for (final line in indexLines)
         if (line.entry?.id != sessionId) line.raw,
     ];
-    if (filtered.length == indexLines.length) return true;
+    if (filtered.length == indexLines.length) return outcome;
     try {
       _rolloutApi.writeSessionIndex(lines: filtered);
     } on Object catch (error, stackTrace) {
@@ -333,9 +334,9 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
         error,
         stackTrace,
       );
-      return false;
+      return CodexSessionDeletion.failed;
     }
-    return true;
+    return outcome;
   }
 
   /// Those of [sessionId]'s [owned] rollouts another thread's history base

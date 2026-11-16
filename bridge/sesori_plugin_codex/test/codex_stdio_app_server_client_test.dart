@@ -70,7 +70,7 @@ void main() {
       completeInitialize(process);
       final result = await connect;
       await process.waitForFrames(2);
-      expect(result.userAgent, "codex_cli_rs/0.146.0");
+      expect(result.codexVersion?.toString(), "0.146.0");
       expect(process.frames.last, {"method": "initialized"});
 
       await appServerClient.dispose();

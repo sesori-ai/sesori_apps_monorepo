@@ -352,6 +352,10 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     return CodexThreadSampleDto.fromJson(result.cast<String, dynamic>());
   }
 
+  Future<void> archiveThread({required String threadId}) async {
+    await _client.request(method: "thread/archive", params: {"threadId": threadId}, timeout: codexRequestTimeout);
+  }
+
   Future<void> compactThread({required String threadId}) async {
     await _client.request(
       method: "thread/compact/start",

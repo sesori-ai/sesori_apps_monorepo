@@ -7,6 +7,7 @@ import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
+import "package:codex_plugin/src/repositories/models/codex_session_deletion.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -203,7 +204,7 @@ void main() {
   // An origin delete and a first-message swap's delete of the replaced
   // session both land here.
   test("deleting a forked thread keeps the rollout its fork builds on", () async {
-    expect(await catalogRepository.deleteSession(sessionId: _sourceId), isTrue);
+    expect(await catalogRepository.deleteSession(sessionId: _sourceId), CodexSessionDeletion.keptForForks);
 
     expect(rolloutFiles(), [_originalRollout, _forkRollout]);
     expect(texts(messages: await readMessages(sessionId: _forkId)), hasLength(4));
@@ -213,10 +214,10 @@ void main() {
   });
 
   test("a thread no fork builds on deletes every rollout it owns", () async {
-    expect(await catalogRepository.deleteSession(sessionId: _forkId), isTrue);
+    expect(await catalogRepository.deleteSession(sessionId: _forkId), CodexSessionDeletion.deleted);
     expect(rolloutFiles(), [_originalRollout, _revertRollout]);
 
-    expect(await catalogRepository.deleteSession(sessionId: _sourceId), isTrue);
+    expect(await catalogRepository.deleteSession(sessionId: _sourceId), CodexSessionDeletion.deleted);
     expect(rolloutFiles(), isEmpty);
     expect(await catalogRepository.listSessionRecords(), isEmpty);
   });
@@ -225,7 +226,7 @@ void main() {
     await catalogRepository.deleteSession(sessionId: _sourceId);
     await catalogRepository.deleteSession(sessionId: _forkId);
 
-    expect(await catalogRepository.deleteSession(sessionId: _sourceId), isTrue);
+    expect(await catalogRepository.deleteSession(sessionId: _sourceId), CodexSessionDeletion.deleted);
     expect(rolloutFiles(), isEmpty);
   });
 }

@@ -16,6 +16,7 @@ import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_map
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_session_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
+import "package:codex_plugin/src/repositories/models/codex_session_deletion.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
@@ -886,9 +887,9 @@ class _StubCatalogRepository({required final List<CodexSessionRecord> records}) 
   Future<List<CodexSessionRecord>> listSessionRecords() async => records;
 
   @override
-  Future<bool> deleteSession({required String sessionId}) async {
+  Future<CodexSessionDeletion> deleteSession({required String sessionId}) async {
     deletedSessionIds.add(sessionId);
-    return true;
+    return CodexSessionDeletion.deleted;
   }
 }
 

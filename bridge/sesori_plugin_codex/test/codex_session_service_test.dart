@@ -22,6 +22,7 @@ import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.
 import "package:codex_plugin/src/repositories/mappers/codex_session_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_resumed_thread.dart";
+import "package:codex_plugin/src/repositories/models/codex_session_deletion.dart";
 import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -629,7 +630,7 @@ class _DeleteFailingCatalogRepository() extends CodexCatalogRepository {
   this : super(rolloutApi: CodexRolloutApi(environment: const {}));
 
   @override
-  Future<bool> deleteSession({required String sessionId}) async => false;
+  Future<CodexSessionDeletion> deleteSession({required String sessionId}) async => CodexSessionDeletion.failed;
 }
 
 class _DelayedToolOutcomeRepository() extends CodexToolOutcomeRepository {

@@ -278,6 +278,11 @@ class CodexThreadRepository({
     }
   }
 
+  Future<void> archiveThread({required String threadId}) => _request(
+    operation: "thread/archive",
+    request: () => _appServerApi.archiveThread(threadId: threadId),
+  );
+
   Future<void> compactThread({required String threadId}) => _request(
     operation: "thread/compact/start",
     request: () => _appServerApi.compactThread(threadId: threadId),

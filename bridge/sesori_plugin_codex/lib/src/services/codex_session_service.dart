@@ -18,6 +18,7 @@ import "../repositories/codex_thread_repository.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/mappers/codex_session_mapper.dart";
 import "../repositories/models/codex_resumed_thread.dart";
+import "../repositories/models/codex_session_deletion.dart";
 import "../repositories/models/codex_session_record.dart";
 import "../repositories/models/codex_sub_agent_rollout_fact.dart";
 import "../repositories/models/codex_thread_record.dart";
@@ -942,8 +943,9 @@ class CodexSessionService({
   }
 
   Future<void> _deleteSession({required String sessionId}) async {
-    final deleted = await _catalogRepository.deleteSession(sessionId: sessionId);
-    if (deleted) {
+    final deletion = await _catalogRepository.deleteSession(sessionId: sessionId);
+    if (deletion == CodexSessionDeletion.keptForForks) await _archiveKeptThread(threadId: sessionId);
+    if (deletion != CodexSessionDeletion.failed) {
       try {
         await _toolOutcomeRepository.deleteSession(sessionId: sessionId);
       } on Object catch (error, stackTrace) {
@@ -956,6 +958,21 @@ class CodexSessionService({
     }
     _loadedThreads.remove(sessionId);
     _threadModels.remove(sessionId);
+  }
+
+  /// Moves the rollouts a fork still builds on out of Codex's own thread
+  /// list; forks read their history from the archive as well.
+  Future<void> _archiveKeptThread({required String threadId}) async {
+    final repository = _threadRepository;
+    if (repository == null) {
+      Log.w("[codex] kept rollouts of deleted $threadId stay listed in Codex: app-server not connected");
+      return;
+    }
+    try {
+      await repository.archiveThread(threadId: threadId);
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to archive the kept rollouts of deleted $threadId", error, stackTrace);
+    }
   }
 
   Future<CodexSessionMessageRead?> prepareSessionMessageRead({

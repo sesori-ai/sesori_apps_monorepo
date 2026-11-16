@@ -152,6 +152,25 @@ void main() {
       expect(listed.where((session) => session.id == _forkId), hasLength(1));
     });
 
+    test("deleting the source archives the rollouts its forks keep, which still read", () async {
+      final server = await _AppServer.start(revertError: null);
+      await server.plugin.forkSession(sessionId: _sourceId, throughMessageId: _replyOne);
+
+      await server.plugin.deleteSession(_sourceId);
+
+      expect(server.paramsOf("thread/archive"), {"threadId": _sourceId});
+      expect(await server.texts(sessionId: _forkId), ["Reply with exactly the word: one", "one"]);
+    });
+
+    test("deleting a thread no fork builds on archives nothing", () async {
+      final server = await _AppServer.start(revertError: null);
+
+      // The recorded fork of the fixture source.
+      await server.plugin.deleteSession("01a1e0e9-9887-72f3-a66b-5dc982bcbbd9");
+
+      expect(server.methods, isNot(contains("thread/archive")));
+    });
+
     test("a user message maps to its own turn", () async {
       final server = await _AppServer.start(revertError: null);
 
