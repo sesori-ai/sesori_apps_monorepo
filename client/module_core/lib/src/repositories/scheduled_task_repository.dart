@@ -17,8 +17,10 @@ class ScheduledTaskRepository({required final ScheduledTaskApi _api}) {
     value: (data) => data.items,
   );
 
-  Future<ScheduledTaskResult<ScheduledTask>> create({required ScheduledTaskDefinition definition}) async =>
-      _resultOf(response: await _api.create(definition: definition), value: (data) => data.task);
+  Future<ScheduledTaskResult<ScheduledTask>> create({required ScheduledTaskDefinition definition}) async => _resultOf(
+    response: await _api.create(definition: definition),
+    value: (data) => data.task,
+  );
 
   /// Replaces the task's definition; for renaming, the same definition under
   /// a new name.
