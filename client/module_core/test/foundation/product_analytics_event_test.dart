@@ -314,6 +314,43 @@ void main() {
           "side_question_asked",
           {"harness": "claude_code", "outcome": wireValue},
         ),
+      (
+        const ProductAnalyticsEvent.scheduledTaskSaved(
+          action: AnalyticsScheduledTaskAction.created,
+          repeat: AnalyticsScheduledTaskRepeat.everyHours,
+          runMode: AnalyticsScheduledTaskRunMode.newSession,
+          approvalMode: AnalyticsScheduledTaskApprovalMode.ask,
+          missedRunPolicy: AnalyticsScheduledTaskMissedRunPolicy.waitForNext,
+          autoCompact: null,
+        ),
+        "scheduled_task_saved",
+        {
+          "action": "created",
+          "repeat_kind": "every_hours",
+          "run_mode": "new_session",
+          "approval_mode": "ask",
+          "missed_run_policy": "wait_for_next",
+        },
+      ),
+      (
+        const ProductAnalyticsEvent.scheduledTaskSaved(
+          action: AnalyticsScheduledTaskAction.edited,
+          repeat: AnalyticsScheduledTaskRepeat.weekdays,
+          runMode: AnalyticsScheduledTaskRunMode.sameSession,
+          approvalMode: AnalyticsScheduledTaskApprovalMode.approveAll,
+          missedRunPolicy: AnalyticsScheduledTaskMissedRunPolicy.runWhenBack,
+          autoCompact: true,
+        ),
+        "scheduled_task_saved",
+        {
+          "action": "edited",
+          "repeat_kind": "weekdays",
+          "run_mode": "same_session",
+          "approval_mode": "approve_all",
+          "missed_run_policy": "run_when_back",
+          "auto_compact": "true",
+        },
+      ),
     ];
 
     for (final (event, expectedName, expectedParameters) in cases) {
