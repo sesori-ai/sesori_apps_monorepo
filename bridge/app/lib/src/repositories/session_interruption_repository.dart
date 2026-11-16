@@ -13,6 +13,11 @@ class const SessionInterruptionRepository({required final SessionInterruptionDao
 
   Future<void> clearRunning({required String sessionId}) => _dao.deleteRunning(sessionId: sessionId);
 
+  /// Whether the session has a running row: a turn in flight, or one an
+  /// earlier bridge run left that its plugin hasn't resolved yet.
+  Future<bool> hasRunningTurn({required String sessionId}) async =>
+      await _dao.readRunning(sessionId: sessionId) != null;
+
   /// The running rows of [pluginId]'s sessions written before
   /// [startedBefore], the start of this bridge run.
   Future<List<SessionRunningTurnRecord>> readLeftovers({

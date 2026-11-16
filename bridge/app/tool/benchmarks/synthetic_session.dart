@@ -40,6 +40,7 @@ Future<SyntheticSession> openSyntheticSession() async {
     watermark: 1,
     backendActivityAt: 1,
     syncedAt: 1,
+    interruptedAfterMessageId: null,
   );
   final jsonBytes = messages.fold(0, (sum, message) => sum + utf8.encode(jsonEncode(message.toJson())).length);
   stdout.writeln("Synthetic session: $messageCount messages, ${(jsonBytes / 1e6).toStringAsFixed(1)} MB of JSON.");
