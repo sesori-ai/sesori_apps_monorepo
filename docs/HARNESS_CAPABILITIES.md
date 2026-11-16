@@ -663,9 +663,11 @@ Pi and OpenCode do not tell a user Stop from another abort of the turn, so any a
 OpenCode v2 (2.2.7 source) records the same `aborted` error when the user declines a permission, which ends the turn
 too.
 
-Claude Code (2.1.325) and Codex (0.169.0) record the interrupt a bridge shutdown sends the same way as a user Stop, so
-such a turn reads Stopped after a reload although it showed no Stopped line live. A Claude Code Stop waits up to 2
-seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds.
+Codex (0.169.0) records the interrupt a bridge shutdown sends the same way as a user Stop, so such a turn reads Stopped
+after a reload although it showed no Stopped line live. Claude Code (2.1.325) does too when the CLI writes its interrupt
+record before the shutdown ends the process, which a shutdown does not wait for. A Claude Code Stop waits up to 2
+seconds after the CLI acknowledges the interrupt for the turn's record and result, which arrive within milliseconds,
+including for a turn the CLI started on its own, such as a wakeup.
 
 Codex (0.169.0) writes no rollout item for the reply text it was streaming when a Stop interrupted it, so the bridge
 snapshots that text live.

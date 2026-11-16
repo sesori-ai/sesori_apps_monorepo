@@ -364,13 +364,12 @@ class CodexEventMapper({
     );
   }
 
-  /// The stopped row for a `turn/completed` whose turn a user Stop
-  /// interrupted, or null when the turn ended any other way. It takes the turn
-  /// id, which the rollout's `turn_aborted` record carries too, so a reload
-  /// folds this row with its replay.
-  /// The stopped row for a turn a user Stop interrupted, after a final
-  /// snapshot of each reply it was streaming, so the chat history stores the
-  /// text the user saw.
+  /// The stopped row for a `turn/completed` whose turn ended `interrupted`,
+  /// after a final snapshot of each reply it was streaming, so the chat history
+  /// stores the text the user saw; empty for any other status. The plugin calls
+  /// it only for a turn a user Stop interrupted, so shutdown and delete
+  /// interrupts never reach it. The row takes the turn id, which the rollout's
+  /// `turn_aborted` record carries too, so a reload folds it with its replay.
   List<BridgeSseEvent> mapStoppedTurn({required String threadId, required Map<String, dynamic> params}) {
     final turn = _asMap(value: params["turn"]);
     final turnId = _optionalString(map: turn, key: "id");

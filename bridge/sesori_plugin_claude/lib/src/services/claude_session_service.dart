@@ -780,7 +780,11 @@ final class ClaudeSessionService({
       // not rearm it, so a pending wakeup cannot survive an abort.
       state.wakeupAt = null;
       try {
-        await _processes.interrupt(sessionId: sessionId, awaitTurnEnd: userStop);
+        await _processes.interrupt(
+          sessionId: sessionId,
+          awaitTurnEnd: userStop,
+          selfStartedTurnEnd: state.selfStartedTurn?.future,
+        );
       } on Object catch (error, stack) {
         Log.w("[claude] interrupt failed for $sessionId", error, stack);
       } finally {
