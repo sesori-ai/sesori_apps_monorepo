@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
+// Source: anomalyco/opencode@v2.3.0 (a6b15d33daf6ab7d35569f6d711fdb630b9f04e7)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -149,6 +149,7 @@ class SessionMessageAssistant implements SessionMessageInfo {
 class SessionMessageAssistantTime {
   const SessionMessageAssistantTime({
     required this.created,
+    required this.firstToken,
     required this.streamed,
     required this.completed,
   });
@@ -156,6 +157,7 @@ class SessionMessageAssistantTime {
   factory SessionMessageAssistantTime.fromJson(Map<String, dynamic> json) {
     return SessionMessageAssistantTime(
       created: (json["created"] as num).toDouble(),
+      firstToken: (json["firstToken"] as num?)?.toDouble(),
       streamed: (json["streamed"] as num?)?.toDouble(),
       completed: (json["completed"] as num?)?.toDouble(),
     );
@@ -164,6 +166,7 @@ class SessionMessageAssistantTime {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "created": created,
+      "firstToken": ?firstToken,
       "streamed": ?streamed,
       "completed": ?completed,
     };
@@ -173,11 +176,13 @@ class SessionMessageAssistantTime {
   /// Nullable fields cannot be set to null through this helper; null means keep.
   SessionMessageAssistantTime copyWith({
     double? created,
+    double? firstToken,
     double? streamed,
     double? completed,
   }) {
     return SessionMessageAssistantTime(
       created: created ?? this.created,
+      firstToken: firstToken ?? this.firstToken,
       streamed: streamed ?? this.streamed,
       completed: completed ?? this.completed,
     );
@@ -188,13 +193,15 @@ class SessionMessageAssistantTime {
       identical(this, other) ||
       (other is SessionMessageAssistantTime &&
           other.created == created &&
+          other.firstToken == firstToken &&
           other.streamed == streamed &&
           other.completed == completed);
 
   @override
-  int get hashCode => Object.hash(created, streamed, completed);
+  int get hashCode => Object.hash(created, firstToken, streamed, completed);
 
   final double created;
+  final double? firstToken;
   final double? streamed;
   final double? completed;
 }

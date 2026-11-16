@@ -29,12 +29,12 @@ Independent minimums are unchanged; Antigravity retains its exact-pair policy ra
 independent floor. On 2026-11-12 the production managed install (digest sentinel) passed on macOS
 arm64 for all eight managed harnesses; it had network and normal file reads. The native probes
 below ran with network denied, home reads denied and no credentials. Codex was raised again on
-2026-11-15 in a single-harness follow-up; its row records that run's own evidence and probe
-conditions.
+2026-11-15 in a single-harness follow-up, and OpenCode on 2026-11-16; each of those rows records
+its own run's evidence and probe conditions.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
-| OpenCode | `2.2.7` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes (npm integrity agrees) and layouts verified; v2 models regenerated against `v2.2.7` and the event manifest re-checked (no event change). The managed binary reports `opencode v2.2.7`; `serve` answers authenticated `/api/info` (`2.2.7`) and rejects unauthenticated reads, also when started without a password. Provider list, SSE startup and teardown, provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
+| OpenCode | `2.3.0` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes (npm integrity agrees) and layouts verified; v2 models regenerated against `v2.3.0` and the event manifest re-checked (no change to a consumed event). On macOS arm64 the production managed install passed (digest sentinel) with a filtered, non-inherited spawn environment, and the binary reports `opencode v2.3.0`. With network denied, home reads denied and no credentials, `serve` answers authenticated `/api/info` (`2.3.0`), rejects unauthenticated and wrong-password reads, opens `/api/event` with `server.connected`, and its agent, model, provider, command and skill lists decode through the generated models. The plugin's own SSE lifecycle, provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
 | Antigravity | package/server `1.4.5` | Exact package/server/ACP 1 | Six archive hashes/layouts independently verified and matching the registry's published hashes; the production managed install passed, including its initialize-only ACP validation, and the installed server reports `Build label: 1.4.5`. Other native targets and authenticated behavior remain unverified. |
 | Codex | `0.169.0` | `0.139.0` | Six package hashes downloaded and matched against `codex-package_SHA256SUMS` and the GitHub digests; on 2026-11-15 the production managed install on macOS arm64 wrote the digest sentinel and the package reports `codex-cli 0.169.0`. With an isolated HOME and `CODEX_HOME` and a filtered environment (no OS sandbox), stdio and WebSocket app-server initialize and `thread/list` passed, and turns against a local OpenAI-compatible test provider completed. `thread/sample` with `allowInProgressTurn` answered mid-turn, was refused ("sample source must be idle") without the flag, and left the thread's turns and rollout unchanged. On 0.167.x a no-account probe confirmed that a thread started with a non-configured `modelProvider` rejects its first turn (`modelProviderMismatch`), which is why Sesori sends none. Turns with a real OpenAI account remain unverified. |
 | GitHub Copilot | `1.0.109` | `1.0.78` | Six archive hashes match `SHA256SUMS.txt` and the GitHub digests; the managed binary reports `GitHub Copilot CLI 1.0.109.` and answered ACP initialize (agent `1.0.109`, protocol 1). The configured lifecycle remains unverified. |
@@ -219,7 +219,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   v2 adapter at 2.0.11 or newer; v1 retains its existing adapter. Below-minimum v2
   fails with an upgrade hint, never a downgrade recommendation. An owned runtime
   is stopped before refusal; an attached server is never stopped. Cancellation
-  during the probe wins over refusal. Managed downloads target `2.2.7` via npm;
+  during the probe wins over refusal. Managed downloads target `2.3.0` via npm;
   first v2 launch migrates the native database one-way, while PATH v1 stays supported.
   Attach mode without a server retains degraded v1 recovery; a later-started v2
   server requires a bridge restart to select its adapter.
