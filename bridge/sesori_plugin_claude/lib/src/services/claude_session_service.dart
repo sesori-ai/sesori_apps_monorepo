@@ -470,8 +470,6 @@ final class ClaudeSessionService({
         userFacingReason: switch (reason) {
           ClaudeForkRefusal.transcriptMissing => ClaudeSessionService.forkTranscriptMissingReason,
           ClaudeForkRefusal.notOnActiveBranch => "This message is no longer in the Claude Code conversation.",
-          ClaudeForkRefusal.beforeCompaction =>
-            "Claude Code compacted the conversation after this message, so it can't be forked from here.",
         },
         cause: null,
       );
