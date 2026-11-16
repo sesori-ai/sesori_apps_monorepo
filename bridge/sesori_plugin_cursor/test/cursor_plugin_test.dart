@@ -791,6 +791,14 @@ void main() {
         );
       });
 
+      test("refuses a reasoning level outside the provisional set for a model without its own", () async {
+        capture(catalogResult(), fromNewSession: true);
+        await expectLater(
+          validate(model: (providerID: "cursor", modelID: "sonnet-4.6"), variant: "max"),
+          throwsA(isA<PluginStaleOptionsException>()),
+        );
+      });
+
       test("accepts listed options and skips checks before the catalog is known", () async {
         await validate(model: (providerID: "cursor", modelID: "anything"), variant: "max", agent: "whatever");
         capture(catalogResult(), fromNewSession: true);
