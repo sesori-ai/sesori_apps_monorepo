@@ -45,6 +45,7 @@ import 'package:sesori_dart_core/src/api/product_analytics_event_api.dart'
 import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i734;
+import 'package:sesori_dart_core/src/api/scheduled_task_api.dart' as _i655;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/side_chat_api.dart' as _i617;
 import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
@@ -183,6 +184,8 @@ import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
 import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
     as _i217;
+import 'package:sesori_dart_core/src/repositories/scheduled_task_repository.dart'
+    as _i63;
 import 'package:sesori_dart_core/src/repositories/session_launch_repository.dart'
     as _i818;
 import 'package:sesori_dart_core/src/repositories/session_repository.dart'
@@ -693,6 +696,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i734.ProjectApi>(
       () => _i734.ProjectApi(client: gh<_i857.RelayHttpApiClient>()),
     );
+    gh.lazySingleton<_i655.ScheduledTaskApi>(
+      () => _i655.ScheduledTaskApi(client: gh<_i857.RelayHttpApiClient>()),
+    );
     gh.lazySingleton<_i603.SessionApi>(
       () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
@@ -732,6 +738,9 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i274.AnalyticsRepository>(),
         attributionRepository: gh<_i993.AttributionRepository>(),
       ),
+    );
+    gh.lazySingleton<_i63.ScheduledTaskRepository>(
+      () => _i63.ScheduledTaskRepository(api: gh<_i655.ScheduledTaskApi>()),
     );
     gh.lazySingleton<_i492.AttributionService>(
       () => _i492.AttributionService(
