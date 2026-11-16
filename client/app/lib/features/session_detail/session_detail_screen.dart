@@ -74,6 +74,8 @@ const _sessionActions = SessionListActionDispatcher(
   onSessionArchived: closeDeletedSessionRoute,
   onSessionDeleted: closeDeletedSessionRoute,
   onSessionMarkedUnread: _leaveMarkedUnreadSession,
+  openSession: openSentSession,
+  createSessionSearch: createSendSessionSearch,
 );
 
 void _leaveMarkedUnreadSession({required BuildContext context, required Session session}) =>
