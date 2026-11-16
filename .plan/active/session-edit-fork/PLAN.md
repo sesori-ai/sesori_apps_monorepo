@@ -901,8 +901,8 @@ mutation pipeline).
   `ComposerDraftRepository.handOverForSession` before navigating; the view navigates through `SessionDetailPresentationScope.openSession` and the new
   `returnToSession` callback each shell implements; the "Forked from" row at the oldest edge with its back-or-open
   behaviour; the mid-turn follow-up popup's Fork action; the "Create a new worktree from <base branch>" prompt for
-  `worktreeBranchMissing` (step 11.b), which retries with `recreateFromBase`. It shows only for sessions archived
-  before the archive-time HEAD pin whose branch is gone, so the copy says the session's earlier work can't be
+  `worktreeBranchMissing` (step 11.b), which retries with `recreateFromBase`. It shows only when neither the branch
+  nor a pinned HEAD remains (archived before the archive-time pin, or the pin failed), so the copy says the session's earlier work can't be
   restored and the new worktree starts where the session started (its base commit), without claiming a branch was
   deleted; the "No project" delete warning wording.
 - **Risk and test focus:** navigation stack on phone (origin → fork → origin must not pile up); desktop selection; the

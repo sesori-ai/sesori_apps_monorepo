@@ -184,10 +184,11 @@ offer no Fork yet.
   there (see session-archiving-and-deletion.md for what archiving keeps). It
   checks out the branch the worktree was on when it still exists; otherwise
   it starts at the HEAD archiving pinned, on a new branch of that name or
-  detached. A worktree that kept nothing (removed by a bridge from before the
-  pin, with its branch gone) answers `worktreeBranchMissing`; the retry with
-  `recreateFromBase` adds it at the session's base commit (base branch for
-  rows without one). A path that something other than a worktree now holds,
+  detached. A worktree that kept nothing (no branch and no pinned HEAD:
+  removed by a bridge from before the pin, or its pin failed) answers
+  `worktreeBranchMissing`; the retry with `recreateFromBase` adds it at the
+  session's base commit (base branch for rows without one). A row with
+  neither base field cannot be recreated and is refused with `refused`. A path that something other than a worktree now holds,
   or a worktree git cannot add, is refused with `refused` and a plain reason.
   Refusals here create nothing. The archived origin is no sharer, so the
   fork's own archive or deletion that removes its worktree removes the
@@ -255,8 +256,9 @@ not loaded yet.
   succeeds.
 - Uncommitted changes in a worktree that archiving removed (forced) are not
   kept, so the recreated worktree lacks them.
-- A worktree removed before archiving pinned HEADs, whose branch is gone,
-  can only be recreated from the base: it starts where the session started.
+- A worktree removed before archiving pinned HEADs (or whose pin failed),
+  whose branch is gone, can only be recreated from the base: it starts where
+  the session started. A row with no base at all cannot be recreated.
 - A worktree recreated for a fork the harness then refuses stays on disk until
   the archived origin is deleted with its worktree.
 - A fork of an untitled origin that was later deleted reads as an ordinary
