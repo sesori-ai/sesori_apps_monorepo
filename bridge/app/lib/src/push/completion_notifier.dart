@@ -122,6 +122,7 @@ class CompletionNotifier({
           SesoriPluginManagementChanged() ||
           SesoriMcpInventoryChanged() ||
           SesoriMcpAuthenticationChanged() ||
+          SesoriScheduledTasksChanged() ||
           SesoriPluginInstallProgress() ||
           SesoriPluginAuthenticationProgress() ||
           SesoriSessionOptionsUpdated() ||
