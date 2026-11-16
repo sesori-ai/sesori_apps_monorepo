@@ -1799,7 +1799,7 @@ class ChatHistoryRepository({
         );
         canonicalParts.add(canonicalPart);
         final partContent = await _jsonFingerprint(value: canonicalPart);
-        if (part case MessagePartText(:final text)) {
+        if (part case MessagePartText(:final text) || MessagePartReasoning(:final text)) {
           partFingerprints.add((
             content: partContent,
             contentWithoutText: await _jsonFingerprint(
@@ -1850,7 +1850,7 @@ class ChatHistoryRepository({
   /// turn off right after it. The stop landed before the bridge stored the
   /// row the replay has next, so the stored row has no next neighbor and its
   /// full context can't match. It pairs with the one unpaired replayed row of
-  /// the same content and previous neighbor.
+  /// the same previous neighbor whose content equals or completes its own.
   ({int importedIndex, int storedIndex})? _interruptedTailPair({
     required String? interruptedAfterMessageId,
     required List<MessageWithParts> messages,
@@ -1867,19 +1867,29 @@ class ChatHistoryRepository({
     if (storedIndex == -1 || pairedStoredIds.contains(interruptedAfterMessageId)) return null;
     final storedContext = storedContexts[storedIndex];
     if (storedContext == null) return null;
-    if (jsonDecode(storedContext) case [final previous, final content, null]) {
-      final storedCreatedAt = storedFingerprints[storedIndex]?.createdAt;
+    final storedFingerprint = storedFingerprints[storedIndex];
+    if ((storedFingerprint, jsonDecode(storedContext)) case (
+      final storedFingerprint?,
+      [final previous, final content, null],
+    )) {
       bool continuesStoredRow(int index) {
         if (pairedImportedIndexes.contains(index) || storedIds.contains(messages[index].info.id)) return false;
-        final createdAt = importedFingerprints[index]?.createdAt;
-        if (createdAt != null && storedCreatedAt != null && createdAt != storedCreatedAt) return false;
+        final importedFingerprint = importedFingerprints[index];
         final context = importedContexts[index];
-        return context != null &&
-            switch (jsonDecode(context)) {
-              [final importedPrevious, final importedContent, _] =>
-                importedPrevious == previous && importedContent == content,
-              _ => false,
-            };
+        if (importedFingerprint == null ||
+            context == null ||
+            !_knownTimesAgree(imported: importedFingerprint, stored: storedFingerprint)) {
+          return false;
+        }
+        // The stop can land mid-stream, so the stored row may hold only the
+        // start of the text the replay completes.
+        return switch (jsonDecode(context)) {
+          [final importedPrevious, final importedContent, _] =>
+            importedPrevious == previous &&
+                (importedContent == content ||
+                    _isStrictImportedTextExtension(imported: importedFingerprint, stored: storedFingerprint)),
+          _ => false,
+        };
       }
 
       final candidates = [
