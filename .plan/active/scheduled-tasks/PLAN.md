@@ -399,7 +399,11 @@ Engineering calls made from code evidence. P-numbers are referenced by steps.
   would otherwise block the task for good. Exception: busy because of this
   task's own pending compaction (P10). Step 4.b tests that many skipped
   occurrences in a row (more than the 20-row trim) still leave the earlier
-  started run counted as active, so the next run is skipped too.
+  started run counted as active, so the next run is skipped too. A run whose
+  prompt went out less than 30 seconds ago (in a new or continued session)
+  counts as going whatever its session reads, since OpenCode, for one,
+  reports a new turn's busy status only after the prompt call returns. This wins over the compaction exception,
+  which cannot apply then: compaction waits for a quiet window (P10).
 - At most once: the run row and the advanced `nextDueAt` are written in one
   transaction before the create or send is attempted, like the quota
   `consumed` marker. A crash between write and send loses that run; it never
@@ -794,7 +798,7 @@ consecutive-failure auto-pause, a new push category.
 ## Delivery Rules
 
 - PR titles are fixed in [TRACKER.md](TRACKER.md). Use
-  `<emoji> [scheduled-tasks] <description> [step x/15]`.
+  `<emoji> [scheduled-tasks] <description> [step x/17]`.
 - Soft cap ~1,500 changed lines; lower for lifecycle steps (4.b, 5, 11). Drift
   and Freezed output can push steps 2 and 3.a over; report generated versus
   authored lines. Clean splits (for example 8.a/8.b, 9.a/9.b) need no
@@ -847,19 +851,25 @@ parallel with the bridge chain.
 7. ⚙️ **Let the new-session composer serve a task editor.** Client refactor
    with no visible change (P13): sealed `NewSessionPurpose`, own draft slot,
    submitted-selection state, header slot, submit label. [1]
-8. ⚙️ **Scheduled page and task page.** `module_core` API, repository and
-   cubits; routes in both shells; the list with Recurring/Once headings and
-   switches, refreshed by `scheduledTasks.changed`; the task page with history,
-   Run now, Pause/Resume, Rename and Delete; the older-bridge state;
-   repeat/clock marks with the task name in the row meta line; the push tap to
-   a task page through `NotificationOpenDispatcher`; screen analytics mapping.
-   Entry points stay unwired. [2, 3, 4.b, 6]
+8. Split in two: the marks and the push tap need step 6, the pages do not.
+   - 8.a Split again because the pages ran over the soft cap.
+     - 8.a.1 ⚙️ **Scheduled-task client core.** `module_core` API,
+       repository and the list and task cubits, refreshed by
+       `scheduledTasks.changed`, with the older-bridge result. [3.b, 4.b]
+     - 8.a.2 ⚙️ **Scheduled page and task page.** Routes in both shells; the
+       list with Recurring/Once headings and switches; the task page with
+       history, Run now, Pause/Resume, Rename and Delete; the older-bridge
+       state; screen analytics mapping. Entry points stay unwired. [8.a.1]
+   - 8.b 🌿 **Run marks and task pushes.** Repeat/clock marks with the task
+     name in the row meta line, rendered from the merged `Session.scheduledTask`
+     field; the push tap to a task page through `NotificationOpenDispatcher`,
+     which needs step 6's `taskId` payload. [6, 8.a.2]
 9. 🚧 **New task screen.** `ScheduledTaskEditorCubit`; When and Each run
    lines and sheets (P13 defaults; missed-run line hidden for Once); the
    `module_prego` time and date fields; the `DeviceTimeZoneSource` port and its
    one `flutter_timezone` adapter in `module_app_ui`; save and edit; the `+`
    on the Scheduled page; entry points next to Archived (phone Settings,
-   desktop sidebar and palette); `scheduled_task_saved`. [4.b, 7, 8]
+   desktop sidebar and palette); `scheduled_task_saved`. [4.b, 7, 8.a.2]
 10. ⚙️ **Compaction on request in every harness that can.**
     `compactSession`, `PluginCompactionResult` and
     `supportsCompactionOnRequest` (P9) across all plugins,

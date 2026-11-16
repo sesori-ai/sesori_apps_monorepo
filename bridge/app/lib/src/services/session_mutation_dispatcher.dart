@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, 
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
+import "../repositories/session_interruption_repository.dart";
 import "../repositories/session_repository.dart";
 import "session_cleanup_result.dart";
 import "session_operation_dispatcher.dart";
@@ -19,6 +20,9 @@ final class const SessionTitleUpdated({required super.session}) extends LocalSes
 final class const SessionDeleted({required super.session}) extends LocalSessionMutation;
 
 final class const SessionContinuationUpdated({required super.session}) extends LocalSessionMutation;
+
+/// The session's interruption was recorded, acknowledged or re-anchored.
+final class const SessionInterruptionUpdated({required super.session}) extends LocalSessionMutation;
 
 final class const SessionApprovalOverrideUpdated({required super.session}) extends LocalSessionMutation;
 
@@ -40,6 +44,7 @@ final class const SessionMessagesRewound({
 class SessionMutationDispatcher({
   required final SessionRepository _sessionRepository,
   required final SessionOperationDispatcher _sessionOperationDispatcher,
+  required final SessionInterruptionRepository _interruptions,
 }) {
   final StreamController<LocalSessionMutation> _mutationsController = StreamController<LocalSessionMutation>.broadcast(
     sync: true,
@@ -52,6 +57,28 @@ class SessionMutationDispatcher({
 
   void continuationUpdated({required Session session}) =>
       _mutationsController.add(SessionContinuationUpdated(session: session));
+
+  /// Announces the session's changed interruption record. A session that is
+  /// gone, or a bridge already shutting down, has no client to tell; the
+  /// record itself is stored.
+  Future<void> interruptionUpdated({required String sessionId}) async {
+    final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+    if (session == null || _mutationsController.isClosed) return;
+    _mutationsController.add(SessionInterruptionUpdated(session: session));
+  }
+
+  /// Acknowledges the session's interruption, because the user opened the
+  /// session or the bridge accepted a prompt for it, and announces it when it
+  /// flipped. Best effort: the trigger already succeeded, so a failure is only
+  /// logged.
+  Future<void> acknowledgeInterruption({required String sessionId}) async {
+    try {
+      if (!await _interruptions.acknowledge(sessionId: sessionId)) return;
+      await interruptionUpdated(sessionId: sessionId);
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not acknowledge the interruption of session $sessionId", error, stackTrace);
+    }
+  }
 
   void sessionArchived({required Session session}) => _mutationsController.add(SessionArchived(session: session));
 

@@ -556,6 +556,7 @@ class AcpEventMapper({
         promptDefaults: null,
         lastUserActivityAt: null,
         scheduledTask: null,
+        interruption: null,
         forkedFrom: null,
       ).toJson(),
     );
@@ -1457,6 +1458,7 @@ class AcpEventMapper({
       promptDefaults: null,
       lastUserActivityAt: null,
       scheduledTask: null,
+      interruption: null,
       forkedFrom: null,
     );
   }
