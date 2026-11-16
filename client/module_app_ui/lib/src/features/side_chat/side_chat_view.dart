@@ -126,6 +126,9 @@ class _SideChatViewState() extends State<SideChatView> {
     final text = _questionController.text;
     if (text.trim().isEmpty) return;
     _questionController.clear();
+    // A question sent over the earlier chats goes to the shown chat, so the
+    // thread comes back to show it.
+    if (_showingEarlier) setState(() => _showingEarlier = false);
     unawaited(context.read<SideChatCubit>().ask(text: text));
   }
 
@@ -360,9 +363,17 @@ class _SideChatViewState() extends State<SideChatView> {
   }
 
   void _retry() {
-    // The question is asked again from Retry, so it leaves the field.
-    _questionController.clear();
-    unawaited(context.read<SideChatCubit>().retry());
+    final cubit = context.read<SideChatCubit>();
+    // The question is asked again from Retry, so it leaves the field, but a
+    // different draft typed meanwhile stays.
+    if (cubit.state
+        case SideChatReady(
+          ask: SideQuestionRefused(:final question) || SideQuestionFailed(:final question),
+        )
+        when _questionController.text == question) {
+      _questionController.clear();
+    }
+    unawaited(cubit.retry());
   }
 
   String _refusalMessage({required SideQuestionRefusal reason}) {
@@ -392,20 +403,26 @@ class const _HeaderButton({
   @override
   Widget build(BuildContext context) {
     final count = this.count;
-    return PregoButtonsIconGlass(
-      icon: icon,
-      size: PregoButtonsIconGlassSize.md,
-      semanticLabel: count == null ? label : "$label, $count",
-      iconColor: waiting ? context.prego.colors.textDisabled : null,
-      trailing: count == null
-          ? null
-          : Text(
-              "$count",
-              style: context.prego.textTheme.textSm.medium.copyWith(
-                color: waiting ? context.prego.colors.textDisabled : context.prego.colors.textPrimary,
+    // Fades in when it appears, as the chat loads or its first answer lands.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _fadeDuration,
+      builder: (context, opacity, child) => Opacity(opacity: opacity, child: child),
+      child: PregoButtonsIconGlass(
+        icon: icon,
+        size: PregoButtonsIconGlassSize.md,
+        semanticLabel: count == null ? label : "$label, $count",
+        iconColor: waiting ? context.prego.colors.textDisabled : null,
+        trailing: count == null
+            ? null
+            : Text(
+                "$count",
+                style: context.prego.textTheme.textSm.medium.copyWith(
+                  color: waiting ? context.prego.colors.textDisabled : context.prego.colors.textPrimary,
+                ),
               ),
-            ),
-      onPressed: waiting ? onPressedWhileWaiting : onPressed,
+        onPressed: waiting ? onPressedWhileWaiting : onPressed,
+      ),
     );
   }
 }

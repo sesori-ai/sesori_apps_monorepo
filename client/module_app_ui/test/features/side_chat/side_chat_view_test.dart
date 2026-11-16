@@ -174,6 +174,26 @@ void main() {
     expect(find.text("No answer came back."), findsOneWidget);
     expect(find.text("Retry"), findsOneWidget);
     expect(tester.widget<EditableText>(find.byType(EditableText)).controller.text, "Where is the cache?");
+
+    // Retry asks the failed question again; a different draft stays put.
+    await tester.enterText(find.byKey(SideChatView.questionFieldKey), "And the queue?");
+    await tester.tap(find.text("Retry"));
+    await settle(tester);
+    expect(tester.widget<EditableText>(find.byType(EditableText)).controller.text, "And the queue?");
+  });
+
+  testWidgets("a question sent over the earlier chats brings the thread back", (tester) async {
+    await pumpView(tester);
+    await tester.tap(find.byKey(SideChatView.earlierButtonKey));
+    await settle(tester);
+    expect(find.text("Earlier side chats"), findsOneWidget);
+
+    await ask(tester, "Where is the cache?");
+
+    expect(find.text("Earlier side chats"), findsNothing);
+    expect(find.text("Where is the cache?"), findsOneWidget);
+    answer.complete(ApiResponse.success(const AskSideQuestionResponse.refused(reason: SideQuestionRefusal.noAnswer)));
+    await settle(tester);
   });
 
   testWidgets("a chat too long to continue offers no Retry", (tester) async {
