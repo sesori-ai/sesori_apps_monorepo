@@ -1,11 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.2.7 (fedc6f208aa2bd54c1019227214568083f6380ad)
+// Source: anomalyco/opencode@v2.3.0 (a6b15d33daf6ab7d35569f6d711fdb630b9f04e7)
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'provider_cache.g.dart';
 import 'provider_compaction.g.dart';
 import 'provider_encoding.g.dart';
+import 'provider_tls.g.dart';
 import 'provider_transport.g.dart';
 
 @immutable
@@ -18,6 +19,7 @@ class ProviderSettings {
     required this.cache,
     required this.transport,
     required this.encoding,
+    required this.tls,
   });
 
   factory ProviderSettings.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class ProviderSettings {
       cache: json["cache"] == null ? null : ProviderCache.fromJson(json["cache"] as Map<String, dynamic>),
       transport: json["transport"] == null ? null : ProviderTransport.fromJson(json["transport"] as String),
       encoding: json["encoding"] == null ? null : ProviderEncoding.fromJson(json["encoding"] as String),
+      tls: json["tls"] == null ? null : ProviderTls.fromJson(json["tls"] as Map<String, dynamic>),
     );
   }
 
@@ -41,6 +44,7 @@ class ProviderSettings {
       "cache": ?cache?.toJson(),
       "transport": ?transport?.toJson(),
       "encoding": ?encoding?.toJson(),
+      "tls": ?tls?.toJson(),
     };
   }
 
@@ -54,6 +58,7 @@ class ProviderSettings {
     ProviderCache? cache,
     ProviderTransport? transport,
     ProviderEncoding? encoding,
+    ProviderTls? tls,
   }) {
     return ProviderSettings(
       timeout: timeout ?? this.timeout,
@@ -63,6 +68,7 @@ class ProviderSettings {
       cache: cache ?? this.cache,
       transport: transport ?? this.transport,
       encoding: encoding ?? this.encoding,
+      tls: tls ?? this.tls,
     );
   }
 
@@ -76,10 +82,11 @@ class ProviderSettings {
           other.compaction == compaction &&
           other.cache == cache &&
           other.transport == transport &&
-          other.encoding == encoding);
+          other.encoding == encoding &&
+          other.tls == tls);
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(timeout), const DeepCollectionEquality().hash(headerTimeout), const DeepCollectionEquality().hash(chunkTimeout), compaction, cache, transport, encoding);
+  int get hashCode => Object.hash(const DeepCollectionEquality().hash(timeout), const DeepCollectionEquality().hash(headerTimeout), const DeepCollectionEquality().hash(chunkTimeout), compaction, cache, transport, encoding, tls);
 
   final Object? timeout;
   final Object? headerTimeout;
@@ -88,4 +95,5 @@ class ProviderSettings {
   final ProviderCache? cache;
   final ProviderTransport? transport;
   final ProviderEncoding? encoding;
+  final ProviderTls? tls;
 }
