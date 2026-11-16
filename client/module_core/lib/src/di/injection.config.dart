@@ -901,6 +901,7 @@ extension GetItInjectableX on _i174.GetIt {
         sessionCleanupService: gh<_i692.SessionCleanupService>(),
         sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
         failureReporter: gh<_i553.FailureReporter>(),
+        selectedComputerService: gh<_i370.SelectedComputerService>(),
       ),
     );
     gh.lazySingleton<_i888.AnalyticsRouteListener>(

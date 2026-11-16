@@ -6,11 +6,13 @@ import "../cubits/new_session/new_session_cubit.dart";
 import "../cubits/new_session/new_session_purpose.dart";
 import "../cubits/session_detail/session_detail_cubit.dart";
 import "../cubits/session_list/session_actions_cubit.dart";
+import "../cubits/session_search/session_search_cubit.dart";
 import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
 import "../repositories/composer_draft_repository.dart";
 import "../repositories/dedicated_worktree_preference_store.dart";
 import "../repositories/permission_repository.dart";
+import "../repositories/plugin_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/bridge_settings_service.dart";
@@ -22,6 +24,7 @@ import "../services/new_session_plugin_service.dart";
 import "../services/new_session_selection_tracker.dart";
 import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
+import "../services/project_inventory_service.dart";
 import "../services/session_abort_service.dart";
 import "../services/session_action_service.dart";
 import "../services/session_approval_service.dart";
@@ -77,7 +80,29 @@ SessionDetailCubit createSessionDetailCubit({
 /// The session actions over [window], the window of the scope they start
 /// from.
 SessionActionsCubit createSessionActionsCubit({required GetIt locator, required SessionWindowService window}) {
-  return SessionActionsCubit(window: window, actionService: locator<SessionActionService>());
+  return SessionActionsCubit(
+    window: window,
+    actionService: locator<SessionActionService>(),
+    abortService: locator<SessionAbortService>(),
+    feedbackPromptService: locator<FeedbackPromptService>(),
+  );
+}
+
+/// A search over [window], the scope's active window, and the
+/// [projectInventory] its rows open in. [excludedSessionId] never shows.
+SessionSearchCubit createSessionSearchCubit({
+  required GetIt locator,
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) {
+  return SessionSearchCubit(
+    window: window,
+    projectInventory: projectInventory,
+    sseEventTracker: locator<SseEventTracker>(),
+    pluginRepository: locator<PluginRepository>(),
+    excludedSessionId: excludedSessionId,
+  );
 }
 
 NewSessionCubit createNewSessionCubit({required GetIt locator, required NewSessionPurpose purpose}) {

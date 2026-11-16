@@ -35,6 +35,8 @@ void main() {
           onSessionArchived: null,
           onSessionDeleted: null,
           onSessionMarkedUnread: null,
+          openSession: _openNothing,
+          createSessionSearch: _searchNothing,
         ),
         session: session,
       ),
@@ -59,6 +61,7 @@ void main() {
     // Every action lands in the flat anchored panel's InkWell rows…
     expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
     expect(find.widgetWithText(InkWell, "Mark as unread"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "Send to another session…"), findsOneWidget);
     expect(find.widgetWithText(InkWell, "Archive"), findsOneWidget);
     expect(find.widgetWithText(InkWell, "Delete"), findsOneWidget);
     expect(find.byType(PregoBottomSheet), findsNothing);
@@ -130,7 +133,18 @@ void main() {
     expect(find.widgetWithText(InkWell, "Rename"), findsNothing);
     expect(find.widgetWithText(InkWell, "Unarchive"), findsNothing);
     expect(find.widgetWithText(InkWell, "Archive"), findsNothing);
+    expect(find.widgetWithText(InkWell, "Send to another session…"), findsNothing);
     expect(find.widgetWithText(InkWell, "Delete"), findsOneWidget);
+  });
+
+  testWidgets("a sub-agent's session cannot be sent on its own", (tester) async {
+    final session = testSession(title: "Sub-agent", parentID: "parent");
+
+    await pumpRow(tester, session: session);
+    await longPressTile(tester, title: "Sub-agent");
+
+    expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "Send to another session…"), findsNothing);
   });
 
   testWidgets("archiving hides the row at once, and Undo brings it back", (tester) async {
@@ -170,3 +184,11 @@ void main() {
     );
   });
 }
+
+void _openNothing({required String projectId, required String projectName, required Session session}) {}
+
+SessionSearchCubit _searchNothing({
+  required SessionWindowService window,
+  required ProjectInventoryService projectInventory,
+  required String? excludedSessionId,
+}) => throw UnimplementedError("These tests do not send sessions");

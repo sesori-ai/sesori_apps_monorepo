@@ -1,6 +1,7 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:antigravity_plugin/antigravity_plugin.dart";
 import "package:grok_plugin/src/grok_event_mapper.dart";
+import "package:grok_plugin/src/trackers/grok_compaction_tracker.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_to_shared_mapping.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -19,6 +20,7 @@ AcpEventMapper _mapper({required String harness}) => switch (harness) {
     pluginId: harness,
     configurationTracker: AcpSessionConfigurationTracker(),
     childSessions: AcpChildSessionTracker(),
+    compactionTracker: GrokCompactionTracker(clock: const ServerClock()),
   ),
   _ => AcpEventMapper(
     launchDirectory: "/synthetic",

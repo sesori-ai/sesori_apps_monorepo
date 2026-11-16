@@ -332,6 +332,25 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// The bridge waits up to 15 minutes for the source's summary, so the
+  /// request outlives that wait.
+  static const Duration _sendToSessionTimeout = Duration(minutes: 16);
+
+  /// Sends [sourceSessionId] into [targetSessionId]. The bridge answers once
+  /// the target has accepted the handoff, after the source has written its
+  /// summary, or with a 409 [SendToSessionErrorResponse].
+  Future<ApiResponse<SuccessEmptyResponse>> sendToSession({
+    required String sourceSessionId,
+    required String targetSessionId,
+  }) {
+    return _client.post(
+      "/session/send-to-session",
+      fromJson: SuccessEmptyResponse.fromJson,
+      body: SendToSessionRequest(sourceSessionId: sourceSessionId, targetSessionId: targetSessionId),
+      timeout: _sendToSessionTimeout,
+    );
+  }
+
   Future<ApiResponse<Session>> setPinned({required String sessionId, required bool pinned}) {
     return _client.patch(
       "/session/pinned",
