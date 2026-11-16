@@ -540,15 +540,6 @@ class Orchestrator({
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       promptPartDelivery: promptPartDeliveryService,
     );
-    final scheduledTaskRunService = ScheduledTaskRunService(
-      repository: scheduledTaskRepository,
-      sessionCreation: sessionCreationService,
-      sessions: sessionRepository,
-      sessionOptions: sessionOptionsService,
-      calculator: scheduledTaskOccurrenceCalculator,
-      clock: clock,
-    );
-    final scheduledTaskTimer = ScheduledTaskTimerListener(service: scheduledTaskRunService);
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,
       filesystemRepository: filesystemRepository,
@@ -726,6 +717,18 @@ class Orchestrator({
       permissionAutoApprovalService: permissionAutoApprovalService,
       sessionMutationDispatcher: sessionMutationDispatcher,
     );
+    final scheduledTaskRunService = ScheduledTaskRunService(
+      repository: scheduledTaskRepository,
+      sessionCreation: sessionCreationService,
+      prompts: sessionPromptService,
+      operations: sessionOperationDispatcher,
+      yoloSettings: yoloSettingsService,
+      sessions: sessionRepository,
+      sessionOptions: sessionOptionsService,
+      calculator: scheduledTaskOccurrenceCalculator,
+      clock: clock,
+    );
+    final scheduledTaskTimer = ScheduledTaskTimerListener(service: scheduledTaskRunService);
     final pluginEventListener = PluginEventListener(
       source: _pluginRuntime.backendEvents,
       dispatcher: sessionEventDispatcher,

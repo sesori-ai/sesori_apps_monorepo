@@ -627,7 +627,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
             onAbort: _dismissScreen,
             surfaceStyleController: surfaceStyleController,
-            header: _AnimatedBanner(banner: _buildErrorBanner(state)),
+            header: AnimatedBanner(banner: _buildErrorBanner(state)),
             sideQuestion: null,
             composerHeader: _buildComposerHeader(
               cubit: cubit,
@@ -954,7 +954,7 @@ class _ComposerSurfaceStyleOwnerState() extends State<_ComposerSurfaceStyleOwner
 /// rather than jumps as a project's answer adds or removes them. Options that
 /// replace others open above them as they fold, so the two heights trade
 /// evenly instead of the taller holding the room. A first build shows them as
-/// they are. Reduced motion keeps only the fades, in a [_RoomAtOnce].
+/// they are. Reduced motion keeps only the fades, in a [RoomAtOnce].
 class const _AnimatedOptions({super.key, required final double gap, required final Widget? options})
     extends StatelessWidget {
   @override
@@ -977,63 +977,10 @@ class const _AnimatedOptions({super.key, required final double gap, required fin
           ),
         );
         return reducedMotion
-            ? _RoomAtOnce(animation: animation, child: fade)
+            ? RoomAtOnce(animation: animation, child: fade)
             : SizeTransition(sizeFactor: animation, alignment: Alignment.topCenter, child: fade);
       },
       child: options,
-    );
-  }
-}
-
-/// Reduced motion's place for what a switcher fades: the page changes once, with
-/// the state, so what arrives has its room at once and what leaves gives its room
-/// up at once and fades where it stood.
-class const _RoomAtOnce({required final Animation<double> animation, required final Widget child})
-    extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, child) => Align(
-        alignment: Alignment.topCenter,
-        heightFactor: animation.status.isForwardOrCompleted ? 1 : 0,
-        child: child,
-      ),
-      child: child,
-    );
-  }
-}
-
-/// The error banner over the composer, in the motion of [_AnimatedOptions]:
-/// its room opens as it fades in and folds away as it fades out, so the pills
-/// and a centred page glide rather than jump as an error comes or clears.
-/// Another error while one shows takes its place without fading, its room
-/// easing to the new text's height. Reduced motion keeps only the fade, in a
-/// [_RoomAtOnce].
-class const _AnimatedBanner({required final Widget? banner}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final reducedMotion = context.isReducedMotion;
-    return AnimatedSwitcher(
-      duration: transcriptMotionDuration,
-      switchInCurve: transcriptMotionCurve,
-      switchOutCurve: transcriptMotionReverseCurve,
-      transitionBuilder: (child, animation) {
-        final fade = FadeTransition(opacity: animation, child: child);
-        return reducedMotion
-            ? _RoomAtOnce(animation: animation, child: fade)
-            : SizeTransition(sizeFactor: animation, alignment: Alignment.topCenter, child: fade);
-      },
-      child: switch (banner) {
-        null => null,
-        final banner when reducedMotion => banner,
-        final banner => AnimatedSize(
-          duration: transcriptMotionDuration,
-          curve: transcriptMotionCurve,
-          alignment: Alignment.topCenter,
-          child: banner,
-        ),
-      },
     );
   }
 }

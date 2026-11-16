@@ -2489,7 +2489,7 @@ void main() {
     for (var index = 1; index < tops.length; index++) {
       expect(tops[index], greaterThan(tops[index - 1]), reason: "${order[index]} below ${order[index - 1]}");
     }
-    // Each pinned row carries the pin after its title.
+    // Each pinned row carries the pin before its title.
     expect(find.byIcon(TablerRegular.pinned), findsNWidgets(2));
 
     updates.add(listing(unpinned));

@@ -255,6 +255,7 @@ final class _EarlyBoundaryStoreApi() extends GrokSessionStoreApi {
             description: "Child task",
             model: null,
           ),
+          meta: null,
         ),
       );
       return;

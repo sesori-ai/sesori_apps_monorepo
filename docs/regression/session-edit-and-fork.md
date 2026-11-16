@@ -5,16 +5,17 @@
 Every user prompt with text, command card with arguments and agent reply in a
 transcript has a message menu, on phone and desktop alike, and so do queued
 prompts and the pinned prompt. It holds what can be done with that message:
-today Copy and Select text. The menu is client-only; it sends nothing to the
-bridge.
+Edit and resend on a user prompt or command card, then Copy and Select text. Copy and Select
+text are client-only; they send nothing to the bridge.
 
 The bridge can edit a prompt that opens a turn: `POST /session/rewind` removes
 that prompt and every later message from the session's conversation and sends
 the edited prompt in its place. Conversation only: files are never restored.
 Each harness declares the branching operations it implements in
 `PluginMetadata.sessionBranching`; today Claude Code and Codex declare `rewind`.
-Clients offer no Edit yet. A first-message edit needs no plugin rewind, so the
-route accepts it on every harness.
+A first-message edit needs no plugin rewind, so the route accepts it on every
+harness. Clients offer Edit and resend only where the session's harness
+declares `rewind`, so a bridge that does not declare it shows no Edit.
 
 The bridge can also fork: `POST /session/fork` creates a new root session whose
 conversation is the origin's up to a turn boundary, in the same directory or
@@ -54,8 +55,9 @@ offer no Fork yet.
   never the menu of the message under the pin. It has only Copy, which copies
   the whole prompt, not the pin's cut copy; a tap on the pin still jumps to
   the prompt.
-- A prompt with only attachments, or a command with no arguments, has no menu:
-  there is nothing to copy or select.
+- A prompt with only attachments, or a command with no arguments, has a menu
+  only when it offers Edit and resend; otherwise there is nothing to copy or
+  select. The pinned prompt's menu has no Edit.
 - A long-press no longer selects a word. A held primary mouse button on a
   message still drag-selects, and a secondary click wins over the selection
   area's own right-click toolbar.
@@ -68,6 +70,41 @@ offer no Fork yet.
   nothing, with no menu and no highlight, since rows are not selectable text.
 - A screen reader offers the pinned prompt's menu as a long-press around the
   pin, which it can still activate to jump.
+
+### Client edit and resend
+
+- Edit and resend shows on every user prompt and command card of a live,
+  continuable session whose harness declares `rewind`, outside the turn that
+  is running, and not in read-only, archived or blocked sessions. The first
+  prompt edits like any other.
+- A prompt sent while a turn ran, or a command, skill or MCP prompt invocation,
+  still shows Edit; tapping it opens a popup explaining why it cannot be edited, with OK
+  only.
+- Edit sets aside what the composer held (text, attachments, staged command),
+  brings the prompt's text and attachments back into the composer and focuses
+  it. The prompt's bubble takes an outline, and a banner over the composer
+  says Resend replaces this message and everything after it, with Cancel.
+  Attachments the computer can no longer provide are counted in the banner.
+  The banner grows in and folds out with the composer's motion; under reduced
+  motion it appears at once.
+- Cancel, or Escape on a keyboard, gives the composer back exactly what it held.
+  Nothing typed during an edit is saved as the session's draft. The menu of
+  the message being edited offers no Edit.
+- Send reads Resend. On an idle session it sends the edit; on acceptance the
+  composer gets back what it held and the edit's echo arrives as the new
+  prompt, while the removed messages fold out of the transcript.
+- While a turn runs, Resend opens a popup offering Stop and resend or Cancel.
+  Stop and resend stops the session, sub-agents included, waits until it is
+  idle (up to 15 s), then sends; the banner reads Stopping, then Sending. A
+  stop that fails or does not finish keeps the edit and says so.
+- A refusal (no branch point, another device's edit, refused by the harness)
+  keeps the edit open with its text and shows the bridge's reason. Stale
+  options reload the composer's options and keep the edit. A lost answer keeps
+  the edit, and a retry reuses the same prompt id, so the bridge never applies
+  one edit twice.
+- `session_message_edited` records each answered Resend with the harness and a
+  closed outcome: succeeded, refused_busy, branch_point_unavailable, refused
+  or failed.
 
 ### Removed messages fold away
 
@@ -226,7 +263,7 @@ offer no Fork yet.
 | L1 Smoke | Not included. |
 | L2 Routine | Message menu, automated widget tests: under touch, a long-press opens the spotlit menu with a light haptic and no word selection, while a tap and a drag open nothing; under a pointer, a secondary click opens the menu at the click with no spotlight, sees the drag selection made before it, keeps the selection toolbar shut, opens only the top item's menu where two overlap, and a held primary button opens nothing; Copy copies the Markdown or the selection and shows its alert; Select text selects the whole message; under a pointer, a selection survives the menu opening and closing, a shift-click afterwards extends it, and the item reads Copy selected text and copies only it; the reply's Markdown joins its text parts; a long-press on the pinned prompt copies that whole prompt, not the reply under it, and a screen reader reaches that menu; an open menu holds a streaming reply still and the list follows again once it closes, even when the item went meanwhile. Removal motion, automated widget tests: a removed row folds away while following with the rows above easing down; under reduced motion it goes at once; while detached a visible row and a built row out of view fold and an unbuilt row goes at once, all without moving the row being read by a pixel, and the reader's own drag during the fold moves the transcript by exactly the drag; an edit's echo and three removals in a row fold together with the echo below them; a row whose message comes back mid-fold stays; a refresh's history twins replace live rows with no fold. Bridge edit route, automated bridge tests with a fake rewind plugin: a later-turn edit removes exactly the read messages and keeps the echo captured during the call; a repeated prompt id succeeds without a second rewind; busy, non-opener, no-rewind harness, plugin branch-point, stale-options and archived refusals reach the right code before any change; a partial store backfills before validation; the route answers a refusal with a 409 `SessionBranchErrorResponse`; a failed resend after the harness rewound removes exactly the dropped messages, and a failure that changed nothing removes none. A first-turn edit binds the new harness session (with the worktree context in a dedicated worktree), tombstones and deletes the old one and its sub-agent rows and history, survives a failed old delete, replaces a stray imported row, and leaves the binding, rows and transcript untouched when the new session cannot be created; the event service releases the new session's held events under the old id and ignores the old session's late events. Codex plugin tests against a fake app-server: resume, revert and `turn/start` order with the prompt id; history follows the reverted rollout; steered, unknown-id, attachment and revert-error refusals happen before any revert. Claude Code plugin tests against a fake CLI: the respawn's arguments and carried-over selection, then the prompt on the respawned process; a later plain `--resume`; an armed idle reap superseded; a second edit refused and a mid-respawn send ordered after the edit; no-entry, busy and unknown-option refusals before acceptance; the rewind point against recorded transcripts and a compaction. |
 | L2 Routine (fork) | Automated bridge tests with a fake fork plugin: each fork point keeps the right turn, a follow-up keeps its whole turn, `latest` skips a running turn, and busy, non-point, nothing-to-fork, no-fork harness, plugin reason and sub-agent refusals happen before anything is created; the fork row copies the origin's worktree and options, the origin's deletion clears the link and keeps the title, an imported binding is reused, an archived origin forks from its archive record, and an empty fork's first prompt alone carries the worktree context; an archived origin's removed worktree is recreated on its kept branch or at its pinned HEAD before the harness forks, a worktree that kept nothing answers `worktreeBranchMissing` and creates nothing until the `recreateFromBase` retry, and a taken path or failed add is refused; real-git repository tests recreate on a kept branch, after a hand-deleted folder (pruned), at a pinned detached HEAD after `gc --prune=now`, on a deleted branch from its pinned HEAD, from the base on a new branch and detached, and fail for a branch checked out elsewhere; a new session's worktree skips a path whose HEAD an archived session kept; a migration test covers the fork columns and their `ON DELETE SET NULL`. |
-| L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. The edit and fork routes are not included until clients offer Edit and Fork. |
+| L3 Release | On a headless iOS simulator and on macOS: long-press and right-click a prompt and a reply, Copy each, and use Select text, while text streams and while reading history; the transcript must not move. On macOS, drag-select part of a reply, right-click it, and check the highlight stays through the menu; hold the mouse down on a session row and check nothing happens. On a headless iOS simulator against Codex and against Claude Code: edit the first and a later prompt of an idle session and check the bubble outline, banner and composer arrive without the transcript moving and the removed messages fold out; Cancel restores a half-typed draft; Resend during a running turn offers Stop and resend and completes. The fork route is not included until clients offer Fork. |
 | L4 Extended | Long-press a message near the screen's edges and at the largest text size; open the menu during a pinch, a peek and a code-block scroll. |
 | L5 Full | No additional coverage. |
 
@@ -267,6 +304,10 @@ not loaded yet.
 - A Claude Code edit continues from the old branch, or a later prompt lands on
   a rewound branch the edit never used.
 - An edit reaches the plugin while the session runs or after it was archived.
+- Edit shows for a harness without `rewind`, or a tap on Edit does nothing.
+- Cancel or a finished edit loses the draft the composer held before the edit,
+  or the edit's text is saved as the session's draft.
+- A refused edit loses the edited text.
 - A fork changes its origin, includes part of a running turn, or loses the
   worktree its origin uses.
 - A fork of an archived origin whose worktree was removed points at a missing
@@ -314,6 +355,11 @@ not loaded yet.
 - `client/module_app_ui/lib/src/features/session_detail/widgets/queued_message_bubble.dart`
 - `client/module_app_ui/lib/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart`
 - `client/module_app_ui/lib/src/features/session_list/session_tile.dart`
+- `client/module_app_ui/lib/src/features/session_detail/widgets/edit_message_banner.dart`
+- `client/module_app_ui/lib/src/features/session_detail/widgets/edit_message_dialogs.dart`
+- `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`
+- `client/module_core/lib/src/cubits/session_detail/transcript_turns.dart`
+- `client/module_core/lib/src/repositories/session_repository.dart`
 - `bridge/sesori_plugin_interface/lib/src/session_rewind_plugin_api.dart`
 - `bridge/app/lib/src/routing/rewind_session_handler.dart`
 - `bridge/sesori_plugin_interface/lib/src/session_fork_plugin_api.dart`
