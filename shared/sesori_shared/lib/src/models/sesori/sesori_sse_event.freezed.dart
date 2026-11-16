@@ -48,6 +48,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriMcpAuthenticationChanged.fromJson(
             json
           );
+                case 'scheduledTasks.changed':
+          return SesoriScheduledTasksChanged.fromJson(
+            json
+          );
                 case 'plugin.install.progress':
           return SesoriPluginInstallProgress.fromJson(
             json
@@ -679,6 +683,45 @@ int get hashCode => runtimeType.hashCode;
 @override
 String toString() {
     return 'SesoriSseEvent.mcpAuthenticationChanged()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriScheduledTasksChanged implements SesoriSseEvent {
+  const SesoriScheduledTasksChanged({ String? $type}): $type = $type ?? 'scheduledTasks.changed';
+  factory SesoriScheduledTasksChanged.fromJson(Map<String, dynamic> json) => _$SesoriScheduledTasksChangedFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriScheduledTasksChangedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriScheduledTasksChanged);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'SesoriSseEvent.scheduledTasksChanged()';
 }
 
 
