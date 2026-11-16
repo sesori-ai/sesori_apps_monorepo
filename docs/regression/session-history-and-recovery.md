@@ -118,6 +118,12 @@ reconnect or restart.
   re-import: the card and the expanded text both shown, a reply shown twice,
   the next prompt shown both above and below the card, the card below the
   last reply, or the card or its reply gone.
+- A tool call the harness replays inside the stamped assistant message before
+  it (Oh My Pi groups a turn's thinking and tool calls under one message id)
+  is replayed as its own message, the shape the live stream captured, so a
+  re-import or the first read after a bridge restart matches the live tool row
+  by id. Failure signal: after a forced re-import or a restart mid-turn, a tool
+  turn shows its reasoning or tool call twice.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness

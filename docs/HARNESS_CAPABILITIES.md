@@ -1145,6 +1145,21 @@ The explicit event is additive across the client/bridge wire boundary. Older
 clients ignore it and converge on refresh; newer clients retain snapshot
 reconciliation when connected to an older bridge.
 
+## Tool calls in replayed history
+
+The live stream gives every ACP tool call its own message. A replay that
+groups a tool call with the stamped assistant message before it no longer
+matches the live rows on a re-import, so the turn shows twice when the replay
+ids change on every load.
+
+| Harness | Status |
+|---|---|
+| Oh My Pi | ✅ Replays each tool call as its own message. Verified live on 18.20.2 (2026-11-16): a tool turn with reasoning before the tool shows once after a forced re-import and after a bridge kill mid-tool. |
+| Hermes | ✅ Not affected: the plugin strips Hermes's chunk message ids, so replay and live use the same unstamped shape. |
+| DeepSeek | ⚠️ Not verified live. Its history read groups a tool call with the stamped assistant message before it, as the shared replay does. |
+| Cursor, Grok | ⚠️ Not verified live: they need a real account, which the test proxy can't serve. |
+| Copilot, Antigravity | ⚠️ Not verified live: runtime not installed on the test machine. |
+
 ## Failed-turn notices sent as text
 
 Some ACP harnesses end a turn that did no work with `stopReason: end_turn` and
