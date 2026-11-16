@@ -499,7 +499,9 @@ void main() {
       await runDueAt(const Duration(hours: 12));
       sessions.quietness.remove("ses_1");
       now = DateTime.utc(2026, 11, 16, 8, 52);
-      activity.recordEvent(event: const SesoriSseEvent.sessionStatus(sessionID: "ses_1", status: SessionStatus.idle()));
+      activity.recordEvent(
+        event: const SesoriSseEvent.sessionStatus(sessionID: "ses_1", status: SessionStatus.idle()),
+      );
       await runDueAt(const Duration(hours: 23, minutes: 54));
       expect(sessions.compacted, ["ses_1"]);
 
