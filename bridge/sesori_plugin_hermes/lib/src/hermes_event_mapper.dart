@@ -138,6 +138,12 @@ class HermesEventMapper({
   /// The message id of each session's reply whose text has begun.
   final Map<String, String> _startedReplies = {};
 
+  @override
+  void forgetSession(String sessionId) {
+    _startedReplies.remove(sessionId);
+    super.forgetSession(sessionId);
+  }
+
   /// Maps a reply's first text without its leading whitespace.
   ///
   /// Before the first text after a tool round, Hermes adds a paragraph break
