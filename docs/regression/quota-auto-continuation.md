@@ -53,6 +53,12 @@ lists the rows that stayed unexecuted.
   and updates carry the durable preference and outcome. Enabling an unavailable
   harness returns 501; disabling remains possible. Repeating the same setting
   succeeds without another mutation.
+- A `Continue.` the harness refuses because it no longer offers the session's
+  remembered agent, variant or fast mode is resent once with them corrected
+  against the rediscovered catalog, by the rules the app applies to a stale
+  selection. A model the harness no longer offers is never replaced; that
+  continuation fails, as does one whose catalog can't be read or whose
+  correction changes nothing.
 - History-derived model/agent/variant defaults preserve the stored fast-mode
   preference; missing history selection falls back to stored defaults.
 - Pi's history can record the native thinking level `off` for a model without

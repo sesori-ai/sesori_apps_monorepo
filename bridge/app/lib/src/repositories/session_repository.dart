@@ -120,7 +120,14 @@ typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 typedef ScheduledRunSessionLink = ({String taskId, SessionApprovalMode approvalOverride});
 
 /// The deleted root as clients see it, plus every session id removed with it.
-typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
+/// [projectId] and [worktreePath] are the deleted root's stored keys, for
+/// cleanup that must wait until its row is gone.
+typedef DeletedSessionSubtree = ({
+  Session session,
+  List<String> sessionIds,
+  String projectId,
+  String? worktreePath,
+});
 
 typedef SessionPage = ({List<Session> items, SessionPageCursor? nextCursor, SessionPageCounts counts});
 
@@ -1013,6 +1020,11 @@ class SessionRepository({
             },
       );
 
+  /// The sessions [taskId]'s runs started that are neither archived nor
+  /// pinned, newest first: the candidates for archiving old runs.
+  Future<List<String>> listArchivableScheduledRunSessionIds({required String taskId}) =>
+      _sessionDao.listUnarchivedUnpinnedScheduledRunSessionIds(scheduledTaskId: taskId);
+
   /// Whether [sessionId] is between turns with nothing waiting on the user.
   /// The one owner of that question for scheduled runs.
   ///
@@ -1283,7 +1295,12 @@ class SessionRepository({
         return [for (final binding in subtree) binding.sessionId];
       },
     );
-    return (session: deletionSnapshot, sessionIds: sessionIds);
+    return (
+      session: deletionSnapshot,
+      sessionIds: sessionIds,
+      projectId: binding.projectId,
+      worktreePath: binding.worktreePath,
+    );
   }
 
   /// Tombstones the harness session of every row in [root]'s subtree, so
@@ -1956,6 +1973,30 @@ class SessionRepository({
       worktreePath: worktreePath,
     );
     return sessions.isNotEmpty;
+  }
+
+  /// Whether a session other than [sessionId], archived or not, still names
+  /// [worktreePath].
+  Future<bool> hasOtherSessionsNamingWorktree({
+    required String sessionId,
+    required String projectId,
+    required String worktreePath,
+  }) {
+    return _sessionDao.hasOtherSessionsNamingWorktree(
+      sessionId: sessionId,
+      projectId: projectId,
+      worktreePath: worktreePath,
+    );
+  }
+
+  /// Records the branch a removed worktree was on, or null for a detached
+  /// HEAD, on every session that names it, so a fork can check it out again.
+  Future<void> recordWorktreeBranch({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+  }) {
+    return _sessionDao.setWorktreeBranch(projectId: projectId, worktreePath: worktreePath, branchName: branchName);
   }
 
   /// The project's recorded live directory, suitable as a git/CLI working

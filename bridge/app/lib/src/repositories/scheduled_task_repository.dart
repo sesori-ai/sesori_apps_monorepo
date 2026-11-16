@@ -191,6 +191,35 @@ class ScheduledTaskRepository({required final ScheduledTaskDao _dao}) {
   Future<bool> setRunSession({required String runId, required String sessionId}) async =>
       await _dao.setRunSession(runId: runId, sessionId: sessionId) > 0;
 
+  /// The run mark of each of [sessionIds] that a task started.
+  Future<Map<String, SessionScheduledTaskMark>> marksOfSessions({required Set<String> sessionIds}) async => {
+    for (final (:sessionId, :task) in await _dao.listTasksOfSessions(sessionIds: sessionIds))
+      sessionId: SessionScheduledTaskMark(
+        taskId: task.id,
+        name: task.name,
+        kind: switch (_mapper.recordFromDto(row: task).definition.schedule) {
+          TaskScheduleOnce() => ScheduledTaskKind.once,
+          TaskScheduleDaily() ||
+          TaskScheduleWeekdays() ||
+          TaskScheduleWeekly() ||
+          TaskScheduleEveryHours() => ScheduledTaskKind.recurring,
+          TaskScheduleUnknown() => ScheduledTaskKind.unknown,
+        },
+      ),
+  };
+
+  /// Whether [sessionId]'s newest run has gone without a prompt of the
+  /// user's own since it started. False for a session no run went to.
+  Future<bool> isUnattendedRun({required String sessionId}) async {
+    final run = await _dao.getLatestRunOfSession(sessionId: sessionId);
+    return run != null && run.userPromptedAt == null;
+  }
+
+  /// Records that the user sent their own prompt into [sessionId], on its
+  /// newest run, unless that run already has one.
+  Future<void> recordUserPrompted({required String sessionId, required DateTime at}) =>
+      _dao.setLatestRunUserPromptedAt(sessionId: sessionId, userPromptedAt: at.millisecondsSinceEpoch);
+
   /// False when the run is gone with its deleted task.
   Future<bool> markRunFailed({required String runId, required TaskRunFailureReason reason}) async =>
       await _dao.markRunFailed(runId: runId, reason: reason) > 0;

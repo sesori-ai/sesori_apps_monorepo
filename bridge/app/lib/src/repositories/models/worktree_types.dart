@@ -19,3 +19,16 @@ class WorktreeSuccess({
 }) extends WorktreeResult;
 
 class WorktreeFallback({required final String originalPath, required final String reason}) extends WorktreeResult;
+
+/// What recreating a removed worktree at its old path did.
+enum WorktreeRecreation() {
+  recreated,
+
+  /// Nothing kept where the worktree stood: no branch and no pinned HEAD
+  /// (it was removed before the bridge pinned removed worktrees, or its pin
+  /// was released), and recreating from the base was not asked for.
+  branchMissing,
+
+  /// Git could not add the worktree, or there is no base to start it from.
+  failed,
+}

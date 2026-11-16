@@ -16,6 +16,7 @@ import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_map
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_session_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
+import "package:codex_plugin/src/repositories/models/codex_session_deletion.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
 import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
@@ -121,7 +122,7 @@ void main() {
     final api = CodexAppServerApi(
       client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
     );
-    final repository = CodexThreadRepository(appServerApi: api);
+    final repository = CodexThreadRepository(appServerApi: api, codexVersion: null);
 
     final fork = repository.decodeStartedNotificationParams(
       params: const {
@@ -840,6 +841,7 @@ class _ReadingThreadRepository({required final CodexThreadRecord? read, required
         appServerApi: CodexAppServerApi(
           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
         ),
+        codexVersion: null,
       );
 
   final List<String> readThreadIds = [];
@@ -861,6 +863,7 @@ class _GatedThreadRepository() extends CodexThreadRepository {
         appServerApi: CodexAppServerApi(
           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0", channelFactory: null, onDisconnected: null),
         ),
+        codexVersion: null,
       );
 
   final Completer<void> readStarted = Completer<void>();
@@ -884,9 +887,9 @@ class _StubCatalogRepository({required final List<CodexSessionRecord> records}) 
   Future<List<CodexSessionRecord>> listSessionRecords() async => records;
 
   @override
-  Future<bool> deleteSession({required String sessionId}) async {
+  Future<CodexSessionDeletion> deleteSession({required String sessionId}) async {
     deletedSessionIds.add(sessionId);
-    return true;
+    return CodexSessionDeletion.deleted;
   }
 }
 

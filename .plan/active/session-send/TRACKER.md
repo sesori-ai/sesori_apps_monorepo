@@ -10,10 +10,10 @@
 | 6 Busy-prompt declaration | Done | #2589 |
 | 7 Client send and stop pipeline | Done | #2622 |
 | 7.a Send from the session menu | Done | #2623 |
-| 8 Handoff marker and card in the chats | In PR | #2629 |
-| 8.a Queued handoff prompts stay hidden; a failed send updates live | In PR | #2654 |
-| 9 Archive the source after sending | Not started | |
-| 10 Analytics | Not started | |
+| 8 Handoff marker and card in the chats | Done | #2629 |
+| 8.a Queued handoff prompts stay hidden; a failed send updates live | Done | #2654 |
+| 9 Archive the source after sending | In PR | #2669 |
+| 10 Analytics | Done | #2661 |
 | 11 Reconcile docs and harness rows | Not started | |
 | 12 Verify and retire | Not started | |
 

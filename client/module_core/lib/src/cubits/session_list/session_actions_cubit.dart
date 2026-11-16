@@ -2,6 +2,7 @@ import "package:bloc/bloc.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../logging/logging.dart";
+import "../../repositories/archive_after_send_preference_storage.dart";
 import "../../repositories/models/send_to_session_result.dart";
 import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
@@ -23,6 +24,7 @@ class SessionActionsCubit({
   required final SessionActionService _actionService,
   required final SessionAbortService _abortService,
   required final FeedbackPromptService _feedbackPromptService,
+  required final ArchiveAfterSendPreferenceStorage _archiveAfterSendStorage,
 }) extends Cubit<void> {
   this : super(null);
 
@@ -52,8 +54,21 @@ class SessionActionsCubit({
       _actionService.markSessionSeen(projectId: projectId, sessionId: sessionId, read: read);
 
   /// Completes once the bridge answers, which waits for the source's summary.
-  Future<SendToSessionResult> sendToSession({required String sourceSessionId, required String targetSessionId}) =>
-      _actionService.sendToSession(sourceSessionId: sourceSessionId, targetSessionId: targetSessionId);
+  Future<SendToSessionResult> sendToSession({
+    required String sourceSessionId,
+    required String sourcePluginId,
+    required String targetSessionId,
+  }) => _actionService.sendToSession(
+    sourceSessionId: sourceSessionId,
+    sourcePluginId: sourcePluginId,
+    targetSessionId: targetSessionId,
+  );
+
+  /// The send sheet's last "Archive this session after sending" choice; on
+  /// until the user turns it off.
+  Future<bool> archiveAfterSend() => _archiveAfterSendStorage.read();
+
+  Future<void> setArchiveAfterSend({required bool value}) => _archiveAfterSendStorage.write(value: value);
 
   /// Stops [sessionId] and its sub-agents, so a busy source can be sent.
   /// False when the bridge did not stop it.

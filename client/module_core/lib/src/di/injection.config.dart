@@ -135,6 +135,8 @@ import 'package:sesori_dart_core/src/repositories/analytics_repository.dart'
     as _i274;
 import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
     as _i209;
+import 'package:sesori_dart_core/src/repositories/archive_after_send_preference_storage.dart'
+    as _i95;
 import 'package:sesori_dart_core/src/repositories/attribution_repository.dart'
     as _i993;
 import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
@@ -474,6 +476,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i209.AppearanceStore>(
       () => _i209.AppearanceStore(persister: gh<_i903.PersisterRepository>()),
+    );
+    gh.lazySingleton<_i95.ArchiveAfterSendPreferenceStorage>(
+      () => _i95.ArchiveAfterSendPreferenceStorage(
+        persister: gh<_i903.PersisterRepository>(),
+      ),
     );
     gh.lazySingleton<_i901.ChatInputModeStore>(
       () =>
@@ -905,15 +912,6 @@ extension GetItInjectableX on _i174.GetIt {
         routeDispatcher: gh<_i951.RouteDispatcher>(),
       ),
     );
-    gh.lazySingleton<_i119.SessionActionService>(
-      () => _i119.SessionActionService(
-        sessionRepository: gh<_i7.SessionRepository>(),
-        sessionCleanupService: gh<_i692.SessionCleanupService>(),
-        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
-        failureReporter: gh<_i553.FailureReporter>(),
-        selectedComputerService: gh<_i370.SelectedComputerService>(),
-      ),
-    );
     gh.lazySingleton<_i888.AnalyticsRouteListener>(
       () => _i888.AnalyticsRouteListener(
         routeSource: gh<_i366.RouteSource>(),
@@ -1010,6 +1008,16 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i119.SessionActionService>(
+      () => _i119.SessionActionService(
+        sessionRepository: gh<_i7.SessionRepository>(),
+        sessionCleanupService: gh<_i692.SessionCleanupService>(),
+        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
+        failureReporter: gh<_i553.FailureReporter>(),
+        selectedComputerService: gh<_i370.SelectedComputerService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+      ),
     );
     return this;
   }

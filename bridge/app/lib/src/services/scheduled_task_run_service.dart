@@ -15,6 +15,7 @@ import "scheduled_task_occurrence_calculator.dart";
 import "scheduled_task_request_exception.dart";
 import "scheduled_task_run_failure.dart";
 import "session_creation_service.dart";
+import "session_lifecycle_service.dart";
 import "session_operation_dispatcher.dart";
 import "session_options_service.dart";
 import "session_prompt_service.dart";
@@ -29,6 +30,10 @@ import "yolo_settings_service.dart";
 /// run continues in the task's target session, creating and targeting one
 /// when there is none. Every history row written is announced on [changes],
 /// and every run that could not start on [failures].
+///
+/// After a new-session run starts, the task's finished run sessions beyond
+/// the newest [keptFinishedRuns] are archived, apart from the fire and one
+/// task at a time.
 class ScheduledTaskRunService({
   required final ScheduledTaskRepository _repository,
   required final SessionCreationService _sessionCreation,
@@ -36,6 +41,7 @@ class ScheduledTaskRunService({
   required final SessionOperationDispatcher _operations,
   required final YoloSettingsService _yoloSettings,
   required final SessionRepository _sessions,
+  required final SessionLifecycleService _lifecycle,
   required final SessionOptionsService _sessionOptions,
   required final ScheduledTaskOccurrenceCalculator _calculator,
   required final Clock _clock,
@@ -46,6 +52,10 @@ class ScheduledTaskRunService({
 
   /// Serializes every pass and Run now, so no two fire the same task.
   final ParallelLock _lock = ParallelLock(maxParallelOperations: 1);
+
+  /// Archive passes run one after another, outside [_lock], so archiving
+  /// never holds up a fire.
+  Future<void> _archiving = Future<void>.value();
 
   /// When each task's latest run's prompt went out.
   final Map<String, DateTime> _promptSentAt = {};
@@ -64,8 +74,12 @@ class ScheduledTaskRunService({
   Future<ScheduledTaskRun> runNow({required String taskId}) =>
       _lock.use(operation: () => _runNowLocked(taskId: taskId));
 
+  /// Finished run sessions of a new-session task left unarchived.
+  static const int keptFinishedRuns = 5;
+
   Future<void> dispose() async {
     await _lock.idle;
+    await _archiving;
     await Future.wait([_changes.close(), _failures.close()]);
   }
 
@@ -252,6 +266,10 @@ class ScheduledTaskRunService({
     } else {
       Log.i("Scheduled task ${task.id} was deleted while its run went to session $sessionId");
     }
+    // A same-session task has one session, which it keeps.
+    if (definition.runMode is TaskRunModeNewSession) {
+      _archiving = _archiving.then((_) => _archiveOldRuns(taskId: task.id));
+    }
     return run.copyWith(
       outcome: ScheduledTaskRunOutcome.started(sessionId: sessionId, late: late),
     );
@@ -337,6 +355,38 @@ class ScheduledTaskRunService({
         handoff: null,
       ),
     );
+  }
+
+  /// Archives [taskId]'s finished run sessions beyond the newest
+  /// [keptFinishedRuns] (D10). Pinned sessions are never candidates, and a
+  /// session still working or waiting on the user stays. A worktree with work
+  /// the usual cleanup checks refuse to remove keeps its session too.
+  Future<void> _archiveOldRuns({required String taskId}) async {
+    try {
+      var finished = 0;
+      for (final sessionId in await _sessions.listArchivableScheduledRunSessionIds(taskId: taskId)) {
+        if (await _sessions.getSessionQuietness(sessionId: sessionId) != SessionQuietness.quiet) continue;
+        finished += 1;
+        if (finished <= keptFinishedRuns) continue;
+        await _archiveOldRun(taskId: taskId, sessionId: sessionId);
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w("Scheduled task $taskId could not archive its old runs", error, stackTrace);
+    }
+  }
+
+  Future<void> _archiveOldRun({required String taskId, required String sessionId}) async {
+    try {
+      await _lifecycle.updateArchiveStatus(sessionId: sessionId, archived: true, deleteWorktree: true, force: false);
+      Log.i("Scheduled task $taskId archived its old run session $sessionId");
+    } on SessionArchiveConflictException catch (error) {
+      Log.i(
+        "Scheduled task $taskId keeps its old run session $sessionId: "
+        "its worktree cleanup was refused (${error.rejection.issues})",
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Scheduled task $taskId could not archive its old run session $sessionId", error, stackTrace);
+    }
   }
 
   ScheduledTaskInstant _instant({required DateTime at, required String timeZone}) => ScheduledTaskInstant(

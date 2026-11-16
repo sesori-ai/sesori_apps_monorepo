@@ -118,8 +118,13 @@ defaults and queued client sends coherent.
 - A user Stop ends the turn with a small grey "Stopped" line in the compaction row's quiet style, never a red row
   or the harness's own abort wording. Pi, OpenCode (v1 and v2), Claude Code and Codex mark their native stop record
   stopped (Claude Code's interrupt record by its uuid, with the CLI's "No response requested." filler hidden; Codex's
-  interrupted turn by its turn id), so the line shows live and after a reload as one row, with no interrupt bubble;
-  the other harnesses are listed under "Stopped turns" in
+  interrupted turn by its turn id), so the line shows live and after a reload as one row, with no interrupt bubble. On
+  the ACP harnesses (Hermes, Cursor, DeepSeek, Grok, Copilot, Antigravity and OMP) the bridge adds one stopped row when
+  the agent ends a turn the user's Stop cancelled; they record no stop, so the line lasts until the history is re-read.
+  The exception is an OMP stop before the reply produced anything: OMP records it as "Interrupted by user", which
+  replays as the same one line, so that line also shows after a reload. A shutdown, a plugin restart, a follow-up that
+  replaces the running turn, or a Stop before the prompt reached the agent adds no line on the ACP harnesses. The other
+  harnesses are listed under "Stopped turns" in
   [HARNESS_CAPABILITIES](../HARNESS_CAPABILITIES.md#stopped-turns). The text and steps the turn already streamed
   stay, with the line under them where the reply ended (after a reload Codex keeps only the steps, because its rollout
   records none of the reply text it was streaming); a failed turn likewise keeps them above its red error. The
@@ -972,6 +977,12 @@ defaults and queued client sends coherent.
 - A selection crossing inline code stays visibly continuous in user bubbles and
   assistant responses alike: the highlight covers the code run instead of
   leaving an unhighlighted gap in the middle of the sentence.
+- The transcript shares one text selection: a mouse drag, or a touch
+  selection's handle, runs from one message on into the next, reaching past
+  the visible edge auto-scrolls, and copying takes every selected message's
+  text in order, one line break between messages. Only message text joins it:
+  timestamps, status lines and other row chrome stay unselectable. The pinned
+  prompt selects on its own.
 - Selecting across user, assistant, or reasoning text copies the rendered
   content with readable structure: each transition between vertically stacked
   Markdown blocks contributes exactly one line break regardless of their visual
@@ -1069,7 +1080,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 ## Failure Signals
 
 - A user Stop on Pi or OpenCode shows a red row or the harness's abort text ("Pi response aborted", an OpenCode
-  abort message) instead of the grey "Stopped" line, live or after a reload; a real failure reads "Stopped"; a
+  abort message) instead of the grey "Stopped" line, live or after a reload; a Stop on an ACP harness or OMP shows no
+  line or two lines live, a reloaded OMP stop of a reply that produced nothing shows no line, two lines or a red
+  "Interrupted by user", or a shutdown reads
+  "Stopped"; a real failure reads "Stopped"; a
   stopped or failed turn loses the text or steps it streamed; or the rows above the line move when it replaces the
   Working row.
 - A Claude compaction shows two rows, a row that stays running after its

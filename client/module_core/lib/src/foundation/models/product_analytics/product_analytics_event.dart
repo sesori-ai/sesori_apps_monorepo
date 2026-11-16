@@ -249,6 +249,31 @@ enum AnalyticsMessageEditOutcome({required final String wireValue}) {
   failed(wireValue: "failed"),
 }
 
+/// How the bridge answered one send of a session into another.
+enum AnalyticsSessionSendOutcome({required final String wireValue}) {
+  /// The target accepted the handoff with the source's summary.
+  sent(wireValue: "sent"),
+
+  /// The source was running, or waiting for the user's answer, so nothing
+  /// was sent.
+  refusedBusy(wireValue: "refused_busy"),
+
+  /// The bridge did not send for another reason: the summary or transcript
+  /// failed, a harness no longer offers the session's options, the target
+  /// refused, or a reason this app doesn't know.
+  refusedOther(wireValue: "refused_other"),
+
+  /// The request failed before the bridge could send, or with an answer that
+  /// is not a refusal.
+  failed(wireValue: "failed"),
+
+  /// The bridge predates sending sessions.
+  unsupported(wireValue: "unsupported"),
+
+  /// The answer never arrived, so the send may or may not have finished.
+  unconfirmed(wireValue: "unconfirmed"),
+}
+
 /// How one side question ended.
 enum AnalyticsSideQuestionOutcome({required final String wireValue}) {
   /// The bridge stored an answer.
@@ -265,6 +290,36 @@ enum AnalyticsSideQuestionOutcome({required final String wireValue}) {
   /// The request failed or timed out, or the bridge sent a response this app
   /// doesn't know.
   failed(wireValue: "failed"),
+}
+
+/// Whether a saved scheduled task was new or an edit.
+enum AnalyticsScheduledTaskAction({required final String wireValue}) {
+  created(wireValue: "created"),
+  edited(wireValue: "edited"),
+}
+
+/// A scheduled task's repeat preset.
+enum AnalyticsScheduledTaskRepeat({required final String wireValue}) {
+  once(wireValue: "once"),
+  daily(wireValue: "daily"),
+  weekdays(wireValue: "weekdays"),
+  weekly(wireValue: "weekly"),
+  everyHours(wireValue: "every_hours"),
+}
+
+enum AnalyticsScheduledTaskRunMode({required final String wireValue}) {
+  newSession(wireValue: "new_session"),
+  sameSession(wireValue: "same_session"),
+}
+
+enum AnalyticsScheduledTaskApprovalMode({required final String wireValue}) {
+  ask(wireValue: "ask"),
+  approveAll(wireValue: "approve_all"),
+}
+
+enum AnalyticsScheduledTaskMissedRunPolicy({required final String wireValue}) {
+  runWhenBack(wireValue: "run_when_back"),
+  waitForNext(wireValue: "wait_for_next"),
 }
 
 @immutable
@@ -355,10 +410,22 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsHarness harness,
     required AnalyticsSideQuestionOutcome outcome,
   }) = SideQuestionAskedEvent;
+  const factory scheduledTaskSaved({
+    required AnalyticsScheduledTaskAction action,
+    required AnalyticsScheduledTaskRepeat repeat,
+    required AnalyticsScheduledTaskRunMode runMode,
+    required AnalyticsScheduledTaskApprovalMode approvalMode,
+    required AnalyticsScheduledTaskMissedRunPolicy missedRunPolicy,
+    required bool? autoCompact,
+  }) = ScheduledTaskSavedEvent;
   const factory sessionMessageEdited({
     required AnalyticsHarness harness,
     required AnalyticsMessageEditOutcome outcome,
   }) = SessionMessageEditedEvent;
+  const factory sessionSentToSession({
+    required AnalyticsHarness harness,
+    required AnalyticsSessionSendOutcome outcome,
+  }) = SessionSentToSessionEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -758,6 +825,72 @@ final class const SideQuestionAskedEvent({
   Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};
 }
 
+/// The bridge accepted a new or edited scheduled task. The prompt, name,
+/// project, harness and times stay off the wire.
+final class const ScheduledTaskSavedEvent({
+  required final AnalyticsScheduledTaskAction action,
+  required final AnalyticsScheduledTaskRepeat repeat,
+  required final AnalyticsScheduledTaskRunMode runMode,
+  required final AnalyticsScheduledTaskApprovalMode approvalMode,
+  required final AnalyticsScheduledTaskMissedRunPolicy missedRunPolicy,
+
+  /// Null for a new-session task, which has nothing to compact.
+  required final bool? autoCompact,
+}) extends ProductAnalyticsEvent {
+  /// The event for [definition], or null when it holds a part from a newer
+  /// peer, which this app never saves.
+  static ScheduledTaskSavedEvent? of({
+    required AnalyticsScheduledTaskAction action,
+    required ScheduledTaskDefinition definition,
+  }) {
+    final repeat = switch (definition.schedule) {
+      TaskScheduleOnce() => AnalyticsScheduledTaskRepeat.once,
+      TaskScheduleDaily() => AnalyticsScheduledTaskRepeat.daily,
+      TaskScheduleWeekdays() => AnalyticsScheduledTaskRepeat.weekdays,
+      TaskScheduleWeekly() => AnalyticsScheduledTaskRepeat.weekly,
+      TaskScheduleEveryHours() => AnalyticsScheduledTaskRepeat.everyHours,
+      TaskScheduleUnknown() => null,
+    };
+    final approvalMode = switch (definition.approvalMode) {
+      TaskApprovalMode.ask => AnalyticsScheduledTaskApprovalMode.ask,
+      TaskApprovalMode.approveAll => AnalyticsScheduledTaskApprovalMode.approveAll,
+      TaskApprovalMode.unknown => null,
+    };
+    final missedRunPolicy = switch (definition.missedRunPolicy) {
+      TaskMissedRunPolicy.runWhenBack => AnalyticsScheduledTaskMissedRunPolicy.runWhenBack,
+      TaskMissedRunPolicy.waitForNext => AnalyticsScheduledTaskMissedRunPolicy.waitForNext,
+      TaskMissedRunPolicy.unknown => null,
+    };
+    final (runMode, autoCompact) = switch (definition.runMode) {
+      TaskRunModeNewSession() => (AnalyticsScheduledTaskRunMode.newSession, null),
+      TaskRunModeSameSession(:final autoCompact) => (AnalyticsScheduledTaskRunMode.sameSession, autoCompact),
+      TaskRunModeUnknown() => (null, null),
+    };
+    if (repeat == null || approvalMode == null || missedRunPolicy == null || runMode == null) return null;
+    return ScheduledTaskSavedEvent(
+      action: action,
+      repeat: repeat,
+      runMode: runMode,
+      approvalMode: approvalMode,
+      missedRunPolicy: missedRunPolicy,
+      autoCompact: autoCompact,
+    );
+  }
+
+  @override
+  String get wireName => "scheduled_task_saved";
+
+  @override
+  Map<String, String> get parameters => {
+    "action": action.wireValue,
+    "repeat_kind": repeat.wireValue,
+    "run_mode": runMode.wireValue,
+    "approval_mode": approvalMode.wireValue,
+    "missed_run_policy": missedRunPolicy.wireValue,
+    if (autoCompact case final autoCompact?) "auto_compact": autoCompact.toString(),
+  };
+}
+
 /// The bridge answered an edit and resend of an earlier message. The text,
 /// the attachments, the session and the message stay off the wire.
 final class const SessionMessageEditedEvent({
@@ -766,6 +899,19 @@ final class const SessionMessageEditedEvent({
 }) extends ProductAnalyticsEvent {
   @override
   String get wireName => "session_message_edited";
+
+  @override
+  Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};
+}
+
+/// The bridge answered a send of one session into another. [harness] is the
+/// source's. The sessions, their titles and the summary stay off the wire.
+final class const SessionSentToSessionEvent({
+  required final AnalyticsHarness harness,
+  required final AnalyticsSessionSendOutcome outcome,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "session_sent_to_session";
 
   @override
   Map<String, String> get parameters => {"harness": harness.wireValue, "outcome": outcome.wireValue};

@@ -68,13 +68,21 @@ class OmpEventMapper({
   /// holding its abort reason: on history replay (`acp-agent.ts`
   /// `#replayAssistantMessage`) and, for a failed request that never streamed,
   /// live (`#flushUnreportedTurnError`). "Interrupted by user" is the reason of
-  /// a stop, "Request was aborted" that of a bare abort. Shown as an error row,
-  /// as Pi shows its aborted replies, instead of a reply bubble.
+  /// a stop, "Request was aborted" that of a bare abort. Shown as an error row
+  /// instead of a reply bubble: a stop as a stopped row named like the live
+  /// stop's row, so a reload keeps one row, and a bare abort as a failure.
   @override
-  AcpHaltNotice? classifyHaltNotice({required String text}) =>
-      _abortReasons.contains(text.trim()) ? const AcpHaltNotice(errorName: "omp_aborted") : null;
-
-  static const Set<String> _abortReasons = {"Interrupted by user", "Request was aborted", "Request was aborted."};
+  AcpHaltNotice? classifyHaltNotice({required String text}) => switch (text.trim()) {
+    "Interrupted by user" => const AcpHaltNotice(
+      errorName: AcpEventMapper.stoppedErrorName,
+      kind: PluginErrorKind.stopped,
+    ),
+    "Request was aborted" || "Request was aborted." => const AcpHaltNotice(
+      errorName: "omp_aborted",
+      kind: PluginErrorKind.failure,
+    ),
+    _ => null,
+  };
 
   /// Drops the message id from an abort-reason chunk (see
   /// [classifyHaltNotice]). The shared mapper reads only id-less chunks as

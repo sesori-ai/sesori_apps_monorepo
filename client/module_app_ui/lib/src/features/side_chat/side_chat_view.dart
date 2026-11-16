@@ -280,29 +280,43 @@ class _SideChatViewState() extends State<SideChatView> {
       showGrabber: false,
       onBack: showingEarlier ? () => setState(() => _showingEarlier = false) : null,
       onClose: widget.onClose,
+      // One action holding both buttons: the header spaces its actions at
+      // once, so a button coming or going there would shift its neighbour in
+      // a single frame. Here each one eases its own slot open and shut.
       actions: ready == null || showingEarlier
           ? null
           : [
-              if (ready.earlierChats.isNotEmpty)
-                _HeaderButton(
-                  key: SideChatView.earlierButtonKey,
-                  icon: TablerRegular.history,
-                  label: loc.sideChatEarlier,
-                  count: ready.earlierChats.length,
-                  waiting: waiting,
-                  onPressed: () => setState(() => _showingEarlier = true),
-                  onPressedWhileWaiting: _sayWaitForAnswer,
-                ),
-              if (canAsk && ready.thread is SideChatExistingThread)
-                _HeaderButton(
-                  key: SideChatView.newChatButtonKey,
-                  icon: TablerRegular.message_plus,
-                  label: loc.sideChatNew,
-                  count: null,
-                  waiting: waiting,
-                  onPressed: _startNewChat,
-                  onPressedWhileWaiting: _sayWaitForAnswer,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _HeaderSlot(
+                    visible: ready.earlierChats.isNotEmpty,
+                    gap: 0,
+                    child: _HeaderButton(
+                      key: SideChatView.earlierButtonKey,
+                      icon: TablerRegular.history,
+                      label: loc.sideChatEarlier,
+                      count: ready.earlierChats.length,
+                      waiting: waiting,
+                      onPressed: () => setState(() => _showingEarlier = true),
+                      onPressedWhileWaiting: _sayWaitForAnswer,
+                    ),
+                  ),
+                  _HeaderSlot(
+                    visible: canAsk && ready.thread is SideChatExistingThread,
+                    gap: PregoSpacing.md,
+                    child: _HeaderButton(
+                      key: SideChatView.newChatButtonKey,
+                      icon: TablerRegular.message_plus,
+                      label: loc.sideChatNew,
+                      count: null,
+                      waiting: waiting,
+                      onPressed: _startNewChat,
+                      onPressedWhileWaiting: _sayWaitForAnswer,
+                    ),
+                  ),
+                ],
+              ),
             ],
     );
   }
@@ -389,6 +403,45 @@ class _SideChatViewState() extends State<SideChatView> {
   }
 }
 
+/// A header button's slot, with [gap] before the button. While [visible]
+/// changes, as the chat loads or an answer lands, the slot eases open or shut
+/// so the button beside it slides over, and the button fades and grows in its
+/// place, or shrinks and fades out. Reduced motion applies each change at once.
+class const _HeaderSlot({required final bool visible, required final double gap, required final Widget child})
+    extends StatelessWidget {
+  static const _hiddenScale = 0.9;
+
+  /// The button starts to show once its neighbour has mostly slid off its
+  /// place, so the two hardly overlap while it fades.
+  static const _fadeInterval = Interval(0.4, 1);
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: visible ? 1 : 0),
+      duration: context.isReducedMotion ? Duration.zero : _fadeDuration,
+      curve: Curves.easeOut,
+      // A leaving button takes no more taps.
+      child: IgnorePointer(ignoring: !visible, child: child),
+      builder: (context, shown, child) {
+        if (shown == 0 && !visible) return const SizedBox.shrink();
+        return Align(
+          // The button stays put at the slot's end while the slot opens.
+          alignment: AlignmentDirectional.centerEnd,
+          widthFactor: shown,
+          child: Padding(
+            padding: EdgeInsetsDirectional.only(start: gap),
+            child: Opacity(
+              opacity: _fadeInterval.transform(shown),
+              child: Transform.scale(scale: _hiddenScale + (1 - _hiddenScale) * shown, child: child),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// A glass header button that looks disabled while a question waits, and then
 /// says why instead of acting.
 class const _HeaderButton({
@@ -403,26 +456,20 @@ class const _HeaderButton({
   @override
   Widget build(BuildContext context) {
     final count = this.count;
-    // Fades in when it appears, as the chat loads or its first answer lands.
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: _fadeDuration,
-      builder: (context, opacity, child) => Opacity(opacity: opacity, child: child),
-      child: PregoButtonsIconGlass(
-        icon: icon,
-        size: PregoButtonsIconGlassSize.md,
-        semanticLabel: count == null ? label : "$label, $count",
-        iconColor: waiting ? context.prego.colors.textDisabled : null,
-        trailing: count == null
-            ? null
-            : Text(
-                "$count",
-                style: context.prego.textTheme.textSm.medium.copyWith(
-                  color: waiting ? context.prego.colors.textDisabled : context.prego.colors.textPrimary,
-                ),
+    return PregoButtonsIconGlass(
+      icon: icon,
+      size: PregoButtonsIconGlassSize.md,
+      semanticLabel: count == null ? label : "$label, $count",
+      iconColor: waiting ? context.prego.colors.textDisabled : null,
+      trailing: count == null
+          ? null
+          : Text(
+              "$count",
+              style: context.prego.textTheme.textSm.medium.copyWith(
+                color: waiting ? context.prego.colors.textDisabled : context.prego.colors.textPrimary,
               ),
-        onPressed: waiting ? onPressedWhileWaiting : onPressed,
-      ),
+            ),
+      onPressed: waiting ? onPressedWhileWaiting : onPressed,
     );
   }
 }
