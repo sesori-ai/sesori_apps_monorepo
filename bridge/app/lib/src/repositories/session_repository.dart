@@ -22,6 +22,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginSessionActivityAvailable,
         PluginSessionActivityUnavailable,
         PluginSessionReadiness,
+        PluginSessionStatus,
         PluginSessionVariant,
         PluginSideExchange,
         SessionRewindPluginApi,
@@ -1633,11 +1634,17 @@ class SessionRepository({
   }
 
   /// [pluginId]'s session statuses keyed by bridge session id, as its plugin
-  /// reports them. Throws when the plugin is not active or the read fails.
+  /// reports them. A plugin that is not running yet is started for a
+  /// short-lived generation, since only it can say whether a turn is still
+  /// running. Throws when the plugin cannot start or the read fails.
   Future<Map<String, SessionStatus>> getPluginSessionStatuses({required String pluginId}) async {
-    final statuses = await _readPluginSessionStatuses(pluginId: pluginId);
-    if (statuses == null) throw StateError("Plugin $pluginId is not active");
-    return statuses;
+    final (:value, generation: _) = await _runtime.useWithGeneration(
+      pluginId: pluginId,
+      operation: SessionOperation.getSessionStatuses,
+      residency: PluginGenerationResidency.transient,
+      body: (plugin) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
+    );
+    return await _toBridgeStatuses(pluginId: pluginId, pluginStatuses: value);
   }
 
   /// Null when [pluginId] is not active.
@@ -1648,6 +1655,13 @@ class SessionRepository({
       body: (plugin, _) => plugin.getSessionStatuses().timeout(_aggregateSourceDeadline),
     );
     if (pluginStatuses == null) return null;
+    return await _toBridgeStatuses(pluginId: pluginId, pluginStatuses: pluginStatuses);
+  }
+
+  Future<Map<String, SessionStatus>> _toBridgeStatuses({
+    required String pluginId,
+    required Map<String, PluginSessionStatus> pluginStatuses,
+  }) async {
     final bindings = await _sessionDao.getSessionsByBackendIds(
       pluginId: pluginId,
       backendSessionIds: pluginStatuses.keys.toList(growable: false),
