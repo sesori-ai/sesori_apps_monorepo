@@ -86,6 +86,7 @@ import "repositories/project_repository.dart";
 import "repositories/prompt_upload_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/question_repository.dart";
+import "repositories/scheduled_task_repository.dart";
 import "repositories/scratch_repository.dart";
 import "repositories/session_continuation_repository.dart";
 import "repositories/session_diff_repository.dart";
@@ -103,8 +104,10 @@ import "routing/cancel_catalog_import_handler.dart";
 import "routing/cancel_queued_prompt_handler.dart";
 import "routing/create_directory_handler.dart";
 import "routing/create_project_handler.dart";
+import "routing/create_scheduled_task_handler.dart";
 import "routing/create_session_handler.dart";
 import "routing/decline_form_handler.dart";
+import "routing/delete_scheduled_task_handler.dart";
 import "routing/delete_session_handler.dart";
 import "routing/filesystem_suggestions_handler.dart";
 import "routing/get_base_branch_handler.dart";
@@ -120,6 +123,8 @@ import "routing/get_projects_handler.dart";
 import "routing/get_providers_handler.dart";
 import "routing/get_pull_request_refresh_settings_handler.dart";
 import "routing/get_queued_prompts_handler.dart";
+import "routing/get_scheduled_task_runs_handler.dart";
+import "routing/get_scheduled_tasks_handler.dart";
 import "routing/get_session_attachment_handler.dart";
 import "routing/get_session_diff_summary_handler.dart";
 import "routing/get_session_diffs_handler.dart";
@@ -167,10 +172,12 @@ import "routing/search_session_prompts_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/send_to_session_handler.dart";
 import "routing/set_base_branch_handler.dart";
+import "routing/set_scheduled_task_enabled_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
 import "routing/set_session_auto_continuation_handler.dart";
 import "routing/set_session_pinned_handler.dart";
 import "routing/start_catalog_import_handler.dart";
+import "routing/update_scheduled_task_handler.dart";
 import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
 import "services/archived_session_validator.dart";
@@ -195,6 +202,8 @@ import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
 import "services/prompt_part_delivery_service.dart";
 import "services/pull_request_refresh_settings_service.dart";
+import "services/scheduled_task_occurrence_calculator.dart";
+import "services/scheduled_task_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_continuation_service.dart";
 import "services/session_creation_service.dart";
@@ -387,6 +396,12 @@ class Orchestrator({
     );
     final archivedSessionValidator = ArchivedSessionValidator(sessionRepository: sessionRepository);
     final sideChatRepository = SideChatRepository(dao: SideChatDao(database: _database));
+    final scheduledTaskService = ScheduledTaskService(
+      repository: ScheduledTaskRepository(dao: ScheduledTaskDao(database: _database)),
+      sessionRepository: sessionRepository,
+      calculator: const ScheduledTaskOccurrenceCalculator(),
+      clock: clock,
+    );
     final sideQuestionService = SideQuestionService(
       archivedSessionValidator: archivedSessionValidator,
       sessionRepository: sessionRepository,
@@ -775,6 +790,12 @@ class Orchestrator({
         AbortSessionHandler(sessionAbortService: sessionAbortService),
         GetSideChatsHandler(sideChatRepository: sideChatRepository),
         AskSideQuestionHandler(sideQuestionService: sideQuestionService),
+        GetScheduledTasksHandler(scheduledTaskService: scheduledTaskService),
+        CreateScheduledTaskHandler(scheduledTaskService: scheduledTaskService),
+        UpdateScheduledTaskHandler(scheduledTaskService: scheduledTaskService),
+        SetScheduledTaskEnabledHandler(scheduledTaskService: scheduledTaskService),
+        DeleteScheduledTaskHandler(scheduledTaskService: scheduledTaskService),
+        GetScheduledTaskRunsHandler(scheduledTaskService: scheduledTaskService),
         GetProvidersHandler(repository: providerRepository),
         PostAgentsHandler(repository: agentRepository),
         GetSessionQuestionsHandler(questionRepository: questionRepository),
@@ -846,6 +867,7 @@ class Orchestrator({
       pluginAuthenticationProgress: _pluginLifecycleService.authenticationProgress,
       mcpService: mcpService,
       mcpAuthenticationService: mcpAuthenticationService,
+      scheduledTaskService: scheduledTaskService,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -971,6 +993,7 @@ class OrchestratorSession._({
   required final SessionContinuationTimerListener _sessionContinuationTimer,
   required final McpService _mcpService,
   required final McpAuthenticationService _mcpAuthenticationService,
+  required final ScheduledTaskService _scheduledTaskService,
   required Stream<CatalogImportProgress> catalogImportProgress,
   required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
   required Stream<String> pluginManagementSnapshotTokens,
@@ -1029,6 +1052,9 @@ class OrchestratorSession._({
         .addTo(_subscriptions);
     _mcpAuthenticationService.changes
         .listen((_) => _enqueueWireEvent(const SesoriSseEvent.mcpAuthenticationChanged()))
+        .addTo(_subscriptions);
+    _scheduledTaskService.changes
+        .listen((_) => _enqueueWireEvent(const SesoriSseEvent.scheduledTasksChanged()))
         .addTo(_subscriptions);
     _mcpAuthenticationService.inventoryChanges
         .listen(
@@ -1337,6 +1363,7 @@ class OrchestratorSession._({
     await Future.wait([
       attempt(_mcpService.dispose),
       attempt(_projectGlossaryPopulationService.dispose),
+      attempt(_scheduledTaskService.dispose),
     ]);
     Log.v(
       "[shutdown] routed requests and relay completions drained "
@@ -1946,6 +1973,7 @@ class OrchestratorSession._({
       SesoriPluginManagementChanged() ||
       SesoriMcpInventoryChanged() ||
       SesoriMcpAuthenticationChanged() ||
+      SesoriScheduledTasksChanged() ||
       SesoriPluginInstallProgress() ||
       SesoriPluginAuthenticationProgress() ||
       SesoriSessionOptionsUpdated() ||
@@ -2196,6 +2224,7 @@ class OrchestratorSession._({
           SesoriPluginManagementChanged() ||
           SesoriMcpInventoryChanged() ||
           SesoriMcpAuthenticationChanged() ||
+          SesoriScheduledTasksChanged() ||
           SesoriPluginInstallProgress() ||
           SesoriPluginAuthenticationProgress() ||
           SesoriSessionOptionsUpdated() ||

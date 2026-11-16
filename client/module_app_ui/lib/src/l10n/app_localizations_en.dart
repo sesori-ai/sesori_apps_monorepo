@@ -2173,6 +2173,143 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListUnpinFailed => 'Failed to unpin session';
 
   @override
+  String get sessionListSendToSession => 'Send to another session…';
+
+  @override
+  String get sendSessionTitle => 'Send to another session';
+
+  @override
+  String get sendSessionTo => 'To';
+
+  @override
+  String get sendSessionChooseTarget => 'Choose a session';
+
+  @override
+  String get sendSessionArchiveAfter => 'Archive this session after sending';
+
+  @override
+  String get sendSessionSend => 'Send';
+
+  @override
+  String get sessionPickerTitle => 'Choose a session';
+
+  @override
+  String get sessionPickerSearchHint => 'Search sessions';
+
+  @override
+  String get sessionPickerNoMatches => 'No sessions match';
+
+  @override
+  String get sessionPickerRunning => 'Running';
+
+  @override
+  String get sessionPickerRunningStopsTurn => 'Running: sending stops its current turn';
+
+  @override
+  String sendSessionSourceBusy(String source) {
+    return '“$source” is still working. Send it when it finishes.';
+  }
+
+  @override
+  String get sendSessionStop => 'Stop';
+
+  @override
+  String sendSessionStopFailed(String source) {
+    return 'Couldn\'t stop “$source”';
+  }
+
+  @override
+  String sendSessionSending(String source, String target) {
+    return 'Sending to “$target”. “$source” is writing a summary first.';
+  }
+
+  @override
+  String sendSessionSent(String target) {
+    return 'Sent to “$target”';
+  }
+
+  @override
+  String get sendSessionOpen => 'Open';
+
+  @override
+  String get sendSessionUnsupported => 'Update Sesori on this computer to send sessions.';
+
+  @override
+  String sendSessionUnconfirmed(String target) {
+    return 'Couldn\'t confirm the send. Check “$target”.';
+  }
+
+  @override
+  String sendSessionFailed(String source) {
+    return 'Couldn\'t send “$source”';
+  }
+
+  @override
+  String get sendSessionFailedSameSession => 'Couldn\'t send: a session can\'t be sent into itself.';
+
+  @override
+  String sendSessionFailedSourceArchived(String source) {
+    return 'Couldn\'t send: “$source” is archived.';
+  }
+
+  @override
+  String sendSessionFailedTargetArchived(String target) {
+    return 'Couldn\'t send: “$target” is archived.';
+  }
+
+  @override
+  String sendSessionFailedSourceNotRoot(String source) {
+    return 'Couldn\'t send: “$source” is a sub-agent\'s session.';
+  }
+
+  @override
+  String sendSessionFailedSourceBusy(String source) {
+    return 'Couldn\'t send: “$source” is still working.';
+  }
+
+  @override
+  String sendSessionFailedSourceAwaitingInput(String source) {
+    return 'Couldn\'t send: “$source” is waiting for your answer.';
+  }
+
+  @override
+  String sendSessionFailedSourceUnavailable(String source) {
+    return 'Couldn\'t send: “$source” didn\'t respond.';
+  }
+
+  @override
+  String sendSessionFailedSourceEmpty(String source) {
+    return 'Couldn\'t send: “$source” has nothing to send yet.';
+  }
+
+  @override
+  String get sendSessionFailedSummaryStopped => 'Couldn\'t send: the summary was stopped.';
+
+  @override
+  String get sendSessionFailedSummaryFailed => 'Couldn\'t send: the summary failed.';
+
+  @override
+  String get sendSessionFailedSummaryTimedOut => 'Couldn\'t send: the summary took too long.';
+
+  @override
+  String get sendSessionFailedSummaryMissing => 'Couldn\'t send: the summary came back empty.';
+
+  @override
+  String sendSessionFailedTranscriptUnavailable(String source) {
+    return 'Couldn\'t send: “$source”\'s conversation couldn\'t be read.';
+  }
+
+  @override
+  String sendSessionFailedTargetRefused(String target) {
+    return 'Couldn\'t send: “$target” didn\'t accept it.';
+  }
+
+  @override
+  String sendSessionFailedTargetRefusedReason(String reason) {
+    return 'Couldn\'t send: $reason';
+  }
+
+  @override
   String get sessionListDeletePinnedNotice => 'It is pinned.';
 
   @override
@@ -3006,6 +3143,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailCopy => 'Copy';
+
+  @override
+  String get sessionDetailCopySelectedText => 'Copy selected text';
+
+  @override
+  String get sessionDetailSelectText => 'Select text';
+
+  @override
+  String get sessionDetailMessageCopied => 'Copied to clipboard';
 
   @override
   String get sessionSidebarCollapse => 'Collapse sidebar';

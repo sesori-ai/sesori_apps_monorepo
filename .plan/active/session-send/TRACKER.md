@@ -9,7 +9,7 @@
 | 5 Claude read rules (transcripts and uploads) | Done | #2613 |
 | 6 Busy-prompt declaration | Done | #2589 |
 | 7 Client send and stop pipeline | Done | #2622 |
-| 7.a Send from the session menu | In PR | #2623 |
+| 7.a Send from the session menu | Done | #2623 |
 | 8 Handoff marker and card in the chats | In PR | #2629 |
 | 8.a Queued handoff prompts stay hidden; a failed send updates live | Not started | |
 | 9 Archive the source after sending | Not started | |

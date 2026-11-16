@@ -1,0 +1,14 @@
+{
+  "method": "_x.ai/session_notification",
+  "params": {
+    "sessionId": "01a00000-0000-7000-8000-000000000001",
+    "update": {
+      "sessionUpdate": "auto_compact_failed",
+      "error": "it'll retry on the next turn, or start a new session using /new.\nAPI error (status 500 Internal Server Error): probe forced failure"
+    },
+    "_meta": {
+      "eventId": "01a00000-0000-7000-8000-000000000001-14",
+      "agentTimestampMs": 1790000000000
+    }
+  }
+}

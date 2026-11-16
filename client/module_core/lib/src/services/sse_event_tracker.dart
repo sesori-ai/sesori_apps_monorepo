@@ -115,6 +115,7 @@ class SseEventTracker(
             SesoriCatalogImportProgress() ||
             SesoriMcpInventoryChanged() ||
             SesoriMcpAuthenticationChanged() ||
+            SesoriScheduledTasksChanged() ||
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||
