@@ -264,7 +264,7 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
   }) async {
     final worktreePath = _worktreeRepository.worktreePathFor(projectPath: projectPath, slug: slug);
     if (_worktreeRepository.worktreePathExists(worktreePath: worktreePath) ||
-        await _worktreeRepository.hasKeptWorktreeHead(projectPath: projectPath, worktreePath: worktreePath)) {
+        await _worktreeRepository.keptWorktreeHead(projectPath: projectPath, worktreePath: worktreePath) != null) {
       return const _WorktreeCandidateTaken();
     }
     final created = await _worktreeRepository.createWorktree(
@@ -306,6 +306,64 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
       worktreePath: worktreePath,
     );
+  }
+
+  bool worktreePathExists({required String worktreePath}) =>
+      _worktreeRepository.worktreePathExists(worktreePath: worktreePath);
+
+  /// See [WorktreeRepository.worktreeExists].
+  Future<bool> worktreeExists({required String worktreePath}) =>
+      _worktreeRepository.worktreeExists(worktreePath: worktreePath);
+
+  /// Adds a worktree again at [worktreePath], where a removed one was, so a
+  /// harness session that remembers that folder still finds it, with the work
+  /// committed there. In order, it checks out [branchName] when the branch
+  /// still exists, or starts at the HEAD [keepWorktreeHead] kept (on a new
+  /// [branchName], or detached when null). Without either, and only when
+  /// [fromBase], it starts at [baseCommit], or at [baseBranch] for rows that
+  /// never stored the commit.
+  Future<WorktreeRecreation> recreateWorktree({
+    required String projectId,
+    required String worktreePath,
+    required String? branchName,
+    required String? baseBranch,
+    required String? baseCommit,
+    required bool fromBase,
+  }) async {
+    final projectPath = await _worktreeRepository.resolveProjectPath(projectId: projectId);
+    await _worktreeRepository.pruneWorktrees(projectPath: projectPath);
+    if (branchName != null &&
+        await _worktreeRepository.branchExists(projectPath: projectPath, branchName: branchName)) {
+      final added = await _worktreeRepository.addWorktreeOnBranch(
+        projectPath: projectPath,
+        worktreePath: worktreePath,
+        branchName: branchName,
+      );
+      return added ? WorktreeRecreation.recreated : WorktreeRecreation.failed;
+    }
+    final keptHead = await _worktreeRepository.keptWorktreeHead(projectPath: projectPath, worktreePath: worktreePath);
+    final String startPoint;
+    if (keptHead != null) {
+      startPoint = keptHead;
+    } else {
+      final base = baseCommit ?? baseBranch;
+      if (base == null) return WorktreeRecreation.failed;
+      if (!fromBase) return WorktreeRecreation.branchMissing;
+      startPoint = base;
+    }
+    final added = branchName == null
+        ? await _worktreeRepository.createWorktree(
+            projectPath: projectPath,
+            worktreePath: worktreePath,
+            startPoint: startPoint,
+          )
+        : await _worktreeRepository.addWorktreeOnNewBranch(
+            projectPath: projectPath,
+            worktreePath: worktreePath,
+            branchName: branchName,
+            startPoint: startPoint,
+          );
+    return added ? WorktreeRecreation.recreated : WorktreeRecreation.failed;
   }
 
   /// See [WorktreeRepository.releaseWorktreeHead].

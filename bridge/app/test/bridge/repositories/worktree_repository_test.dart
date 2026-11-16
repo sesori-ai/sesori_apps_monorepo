@@ -4,8 +4,8 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
-import "package:sesori_bridge/src/repositories/models/worktree_types.dart";
 import "package:sesori_bridge/src/repositories/worktree_repository.dart";
+import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -234,7 +234,7 @@ void main() {
     });
   });
 
-  group("WorktreeRepository recreating a removed worktree, in a real repository", () {
+  group("WorktreeService recreating a removed worktree, in a real repository", () {
     late AppDatabase db;
     late Directory root;
     late String repoPath;
@@ -265,14 +265,15 @@ void main() {
       return result.exitCode == 0 ? result.stdout.toString().trim() : null;
     }
 
-    Future<WorktreeRecreation> recreate({required String? branchName, required bool fromBase}) => repo.recreateWorktree(
-      projectPath: repoPath,
-      worktreePath: worktreePath,
-      branchName: branchName,
-      baseBranch: baseBranch,
-      baseCommit: baseCommit,
-      fromBase: fromBase,
-    );
+    Future<WorktreeRecreation> recreate({required String? branchName, required bool fromBase}) =>
+        WorktreeService(worktreeRepository: repo).recreateWorktree(
+          projectId: repoPath,
+          worktreePath: worktreePath,
+          branchName: branchName,
+          baseBranch: baseBranch,
+          baseCommit: baseCommit,
+          fromBase: fromBase,
+        );
 
     setUp(() async {
       db = createTestDatabase();
@@ -285,6 +286,7 @@ void main() {
       await git(cwd: repoPath, args: ["commit", "--quiet", "--allow-empty", "-m", "base"]);
       baseBranch = await git(cwd: repoPath, args: ["rev-parse", "--abbrev-ref", "HEAD"]);
       baseCommit = await git(cwd: repoPath, args: ["rev-parse", "HEAD"]);
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [repoPath]);
       repo = singlePluginWorktreeRepository(
         worktreesDirectory: "${root.path}/worktrees",
         projectsDao: db.projectsDao,
@@ -389,11 +391,11 @@ void main() {
       await repo.keepWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
       await git(cwd: repoPath, args: ["worktree", "remove", worktreePath]);
 
-      expect(await repo.hasKeptWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), isTrue);
+      expect(await repo.keptWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), baseCommit);
       await repo.releaseWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
       await repo.releaseWorktreeHead(projectPath: repoPath, worktreePath: worktreePath);
 
-      expect(await repo.hasKeptWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), isFalse);
+      expect(await repo.keptWorktreeHead(projectPath: repoPath, worktreePath: worktreePath), isNull);
       expect(await git(cwd: repoPath, args: ["for-each-ref", "refs/sesori"]), isEmpty);
       expect(await recreate(branchName: null, fromBase: false), WorktreeRecreation.branchMissing);
     });

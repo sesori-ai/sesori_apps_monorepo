@@ -379,7 +379,6 @@ class _FakeSessionCreation({required final AppDatabase _database}) implements Se
       promptDefaults: null,
       lastUserActivityAt: null,
       scheduledTask: null,
-      forkedFrom: null,
     );
   }
 

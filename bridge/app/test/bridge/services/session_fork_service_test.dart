@@ -16,6 +16,7 @@ import "package:sesori_bridge/src/services/session_fork_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/session_view_service.dart";
+import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show buildWorktreeSystemContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -49,7 +50,7 @@ void main() {
   late TestChatHistory history;
   late _FakeWorktreeGit git;
   late _FakeWorktreeDisk disk;
-  late WorktreeRepository worktrees;
+  late WorktreeService worktrees;
   late SessionForkService service;
 
   setUp(() async {
@@ -65,12 +66,14 @@ void main() {
     history = createTestChatHistory(sessionRepository: sessionRepository);
     git = _FakeWorktreeGit()..worktrees.add(_worktree);
     disk = _FakeWorktreeDisk(git: git);
-    worktrees = WorktreeRepository(
-      worktreesDirectory: "/worktrees",
-      projectsDao: db.projectsDao,
-      filesystemApi: disk,
-      gitApi: git,
-      runtime: createTestPluginRuntime(plugins: [plugin]),
+    worktrees = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        worktreesDirectory: "/worktrees",
+        projectsDao: db.projectsDao,
+        filesystemApi: disk,
+        gitApi: git,
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+      ),
     );
     service = SessionForkService(
       sessionRepository: sessionRepository,

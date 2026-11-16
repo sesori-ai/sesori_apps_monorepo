@@ -83,15 +83,12 @@ class WorktreeRepository({
     return await _gitApi.readHeadBranch(worktreePath: worktreePath);
   }
 
-  /// Whether [keepWorktreeHead] holds a HEAD for [worktreePath], so an
-  /// archived session may still recreate the worktree there.
-  Future<bool> hasKeptWorktreeHead({required String projectPath, required String worktreePath}) async {
-    final kept = await _gitApi.resolveCommit(
-      projectPath: projectPath,
-      ref: _headRef(worktreePath: worktreePath),
-    );
-    return kept != null;
-  }
+  /// The HEAD commit [keepWorktreeHead] holds for [worktreePath], or null.
+  Future<String?> keptWorktreeHead({required String projectPath, required String worktreePath}) =>
+      _gitApi.resolveCommit(
+        projectPath: projectPath,
+        ref: _headRef(worktreePath: worktreePath),
+      );
 
   /// Drops what [keepWorktreeHead] kept, once no session names the worktree.
   Future<void> releaseWorktreeHead({required String projectPath, required String worktreePath}) {
@@ -101,55 +98,30 @@ class WorktreeRepository({
     );
   }
 
-  /// Adds a worktree again at [worktreePath], where a removed one was, so a
-  /// harness session that remembers that folder still finds it, with the work
-  /// committed there. In order, it checks out [branchName] when the branch
-  /// still exists, or starts at the HEAD [keepWorktreeHead] kept (on a new
-  /// [branchName], or detached when null). Without either, and only when
-  /// [fromBase], it starts at [baseCommit], or at [baseBranch] for rows that
-  /// never stored the commit.
-  Future<WorktreeRecreation> recreateWorktree({
+  /// Clears git's registrations of worktrees whose folders are gone, which
+  /// it would otherwise refuse to add again at that path or on that branch.
+  Future<void> pruneWorktrees({required String projectPath}) => _gitApi.pruneWorktrees(projectPath: projectPath);
+
+  Future<bool> branchExists({required String projectPath, required String branchName}) =>
+      _gitApi.branchExists(projectPath: projectPath, branchName: branchName);
+
+  Future<bool> addWorktreeOnBranch({
     required String projectPath,
     required String worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-    required bool fromBase,
-  }) async {
-    // Git still registers a worktree whose folder was deleted without it, and
-    // then refuses both its path and its branch.
-    await _gitApi.pruneWorktrees(projectPath: projectPath);
-    if (branchName != null && await _gitApi.branchExists(projectPath: projectPath, branchName: branchName)) {
-      final added = await _gitApi.addWorktreeOnBranch(
-        projectPath: projectPath,
-        worktreePath: worktreePath,
-        branchName: branchName,
-      );
-      return added ? WorktreeRecreation.recreated : WorktreeRecreation.failed;
-    }
-    final keptHead = await _gitApi.resolveCommit(
-      projectPath: projectPath,
-      ref: _headRef(worktreePath: worktreePath),
-    );
-    final String startPoint;
-    if (keptHead != null) {
-      startPoint = keptHead;
-    } else {
-      final base = baseCommit ?? baseBranch;
-      if (base == null) return WorktreeRecreation.failed;
-      if (!fromBase) return WorktreeRecreation.branchMissing;
-      startPoint = base;
-    }
-    final added = branchName == null
-        ? await _gitApi.createWorktree(projectPath: projectPath, worktreePath: worktreePath, startPoint: startPoint)
-        : await _gitApi.addWorktreeOnNewBranch(
-            projectPath: projectPath,
-            worktreePath: worktreePath,
-            branchName: branchName,
-            startPoint: startPoint,
-          );
-    return added ? WorktreeRecreation.recreated : WorktreeRecreation.failed;
-  }
+    required String branchName,
+  }) => _gitApi.addWorktreeOnBranch(projectPath: projectPath, worktreePath: worktreePath, branchName: branchName);
+
+  Future<bool> addWorktreeOnNewBranch({
+    required String projectPath,
+    required String worktreePath,
+    required String branchName,
+    required String startPoint,
+  }) => _gitApi.addWorktreeOnNewBranch(
+    projectPath: projectPath,
+    worktreePath: worktreePath,
+    branchName: branchName,
+    startPoint: startPoint,
+  );
 
   /// The bridge-owned ref that pins a removed worktree's HEAD. Keyed by path,
   /// so every session that shares the worktree finds it.

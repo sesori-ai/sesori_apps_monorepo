@@ -3,13 +3,12 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
 import "../repositories/models/stored_session.dart";
-import "../repositories/models/worktree_types.dart";
 import "../repositories/session_repository.dart";
-import "../repositories/worktree_repository.dart";
 import "chat_history_service.dart";
 import "session_branch_refused_exception.dart";
 import "session_operation_dispatcher.dart";
 import "session_view_service.dart";
+import "worktree_service.dart";
 
 /// Forks a root session at a turn boundary into a new root session in the
 /// same directory or worktree. The origin is only read, so an archived one
@@ -17,7 +16,7 @@ import "session_view_service.dart";
 class SessionForkService({
   required final SessionRepository _sessionRepository,
   required final ChatHistoryService _chatHistory,
-  required final WorktreeRepository _worktrees,
+  required final WorktreeService _worktrees,
   required final SessionViewService _views,
   required final SessionOperationDispatcher _dispatcher,
 }) {
@@ -119,7 +118,7 @@ class SessionForkService({
         );
       }
       final recreation = await _worktrees.recreateWorktree(
-        projectPath: await _worktrees.resolveProjectPath(projectId: origin.projectId),
+        projectId: origin.projectId,
         worktreePath: worktreePath,
         branchName: origin.branchName,
         baseBranch: origin.baseBranch,

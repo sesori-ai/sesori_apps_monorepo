@@ -319,6 +319,7 @@ not loaded yet.
 - `bridge/sesori_plugin_interface/lib/src/session_fork_plugin_api.dart`
 - `bridge/app/lib/src/routing/fork_session_handler.dart`
 - `bridge/app/lib/src/services/session_fork_service.dart`
+- `bridge/app/lib/src/services/worktree_service.dart`
 - `bridge/app/lib/src/repositories/worktree_repository.dart`
 - `shared/sesori_shared/lib/src/models/sesori/fork_session_request.dart`
 - `bridge/app/lib/src/services/session_prompt_service.dart`
