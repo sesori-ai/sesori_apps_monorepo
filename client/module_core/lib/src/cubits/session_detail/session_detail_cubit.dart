@@ -3675,6 +3675,25 @@ class SessionDetailCubit(
     final latest = _edit;
     if (isClosed || latest == null || latest.promptId != attempt.promptId) return;
     if (result is SessionRewindAccepted) {
+      // Parked like any accepted send, so the prompt rises while the edit's
+      // removals fold and its echo takes the row in place, instead of
+      // arriving as a second motion once the fold has pulled the list down.
+      if (!_accountedUserMessages.any((message) => message.promptId == attempt.promptId)) {
+        _promptQueue.adoptAccepted(
+          submission: QueuedSessionSubmission.text(
+            promptId: attempt.promptId,
+            text: text,
+            inputMode: ComposerInputMode.typed,
+            attachments: attachments,
+            agent: current.selectedAgent,
+            agentModel: agentModel,
+            fastMode: current.runsFastMode,
+          ),
+          since: null,
+          epoch: ++_parkEpoch,
+        );
+        _emitQueueUpdate();
+      }
       _endEdit(edit: latest);
       return;
     }
@@ -4396,6 +4415,8 @@ class SessionDetailCubit(
   /// and those still staged. A dispatched prompt counts
   /// too: until the harness echoes it, as Claude steering the stop interrupts
   /// before the CLI reads it, nothing says it will ever reach the transcript.
+  /// A prompt the bridge sent to send one session into another is the
+  /// bridge's own, never the user's draft, so it is left out.
   List<ReturnedPrompt> _unsentQueuedPrompts() {
     final bridgePrompts = switch (state) {
       SessionDetailLoaded(:final bridgeQueuedPrompts) => bridgeQueuedPrompts,
@@ -4406,11 +4427,12 @@ class SessionDetailCubit(
     final bridgeAttachments = _promptQueue.bridgePromptAttachments;
     return [
       for (final prompt in bridgePrompts)
-        (
-          promptId: prompt.id,
-          draft: _draftCalculator.bridgePromptDraft(prompt: prompt),
-          attachments: bridgeAttachments[prompt.id] ?? const <ComposerAttachment>[],
-        ),
+        if (prompt.handoff == null)
+          (
+            promptId: prompt.id,
+            draft: _draftCalculator.bridgePromptDraft(prompt: prompt),
+            attachments: bridgeAttachments[prompt.id] ?? const <ComposerAttachment>[],
+          ),
       for (final submission in [
         for (final entry in _promptQueue.awaitingBridge) entry.submission,
         // Typed before the session existed, so ahead of all sent from here.

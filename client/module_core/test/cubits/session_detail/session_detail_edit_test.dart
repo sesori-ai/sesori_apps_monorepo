@@ -212,6 +212,88 @@ void main() {
     ).called(1);
   });
 
+  group("an accepted edit's prompt", () {
+    void echo({required String promptId}) {
+      sessionEvents
+        ..add(
+          SesoriMessageUpdated(
+            info: Message.user(
+              invocation: null,
+              handoff: null,
+              id: "echo-1",
+              sessionID: _sessionId,
+              agent: null,
+              time: const MessageTime(created: 200, completed: null),
+              promptId: promptId,
+            ),
+          ),
+        )
+        ..add(
+          const SesoriMessagePartUpdated(
+            part: MessagePart.text(
+              id: "echo-1-text",
+              sessionID: _sessionId,
+              messageID: "echo-1",
+              text: "first prompt, edited",
+            ),
+          ),
+        );
+    }
+
+    List<String> awaiting() => [
+      for (final (:submission, since: _) in loaded().awaitingBridgeSubmissions) submission.promptId,
+    ];
+
+    test("shows as a send on its way until its echo lands", () async {
+      await openSession(status: const SessionStatus.idle());
+      answerRewind(const SessionRewindAccepted());
+      await cubit.editMessage(message: edited);
+
+      await cubit.resendEdit(text: "first prompt, edited", attachments: const []);
+
+      final promptId = rewoundPromptIds().single;
+      expect(awaiting(), [promptId], reason: "the prompt rises while the edit's removals fold");
+      expect(loaded().awaitingBridgeSubmissions.single.submission.displayText, "first prompt, edited");
+
+      echo(promptId: promptId);
+      await pumpEventQueue();
+
+      expect(awaiting(), isEmpty);
+    });
+
+    test("is not held when its echo landed first", () async {
+      await openSession(status: const SessionStatus.idle());
+      final answer = Completer<SessionRewindResult>();
+      final promptIds = <String>[];
+      when(
+        () => sessionRepository.rewindSession(
+          sessionId: any(named: "sessionId"),
+          messageId: any(named: "messageId"),
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+        ),
+      ).thenAnswer((invocation) {
+        if (invocation.namedArguments[#promptId] case final String promptId) promptIds.add(promptId);
+        return answer.future;
+      });
+      await cubit.editMessage(message: edited);
+
+      final resent = cubit.resendEdit(text: "first prompt, edited", attachments: const []);
+      await pumpEventQueue();
+      echo(promptId: promptIds.single);
+      await pumpEventQueue();
+      answer.complete(const SessionRewindAccepted());
+      await resent;
+
+      expect(awaiting(), isEmpty);
+    });
+  });
+
   test("a refusal keeps the edit and says why; a retry after a lost answer reuses its prompt id", () async {
     await openSession(status: const SessionStatus.idle());
     await cubit.editMessage(message: edited);

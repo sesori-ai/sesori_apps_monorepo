@@ -49,6 +49,9 @@ sealed class ScheduledTaskEditorState with _$ScheduledTaskEditorState {
     /// The IANA zone the times are in: this device's for a new task, the
     /// task's own for an edit.
     required String timeZone,
+
+    /// This device's IANA zone; null when the platform cannot report it.
+    required String? deviceTimeZone,
     required ScheduledTaskEditorSave save,
   }) = ScheduledTaskEditorReady;
 }

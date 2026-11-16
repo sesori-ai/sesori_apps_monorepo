@@ -277,24 +277,33 @@ class ChatHistoryRepository({
   /// its live echo. It is an update at [updatedAt], so a later replay still
   /// pairs the row with its replayed turn. Any other stored stamp is left as it is.
   ///
-  /// Returns whether the message was marked.
-  Future<bool> markHandoffNotSent({
+  /// Returns the marked message with its text, which a request stored without
+  /// its echo has not shown yet, or null when nothing was marked. A summary
+  /// request is text only.
+  Future<MessageWithParts?> markHandoffNotSent({
     required String sessionId,
     required String messageId,
     required MessageHandoffNotSent notSent,
     required int updatedAt,
   }) async {
     final existing = await _chatHistoryDao.getMessage(sessionId: sessionId, messageId: messageId);
-    if (existing == null) return false;
+    if (existing == null) return null;
     final stored = Message.fromJson(jsonDecodeMap(existing.infoJson));
     if (stored case MessageUser(handoff: MessageHandoffSent() || null)) {
       final marked = stored.copyWith(handoff: notSent);
       await _chatHistoryDao.upsertMessage(
         row: existing.copyWith(infoJson: jsonEncode(marked.toJson()), updatedAt: updatedAt),
       );
-      return true;
+      final partRows = await _chatHistoryDao.getParts(sessionId: sessionId, messageIds: [messageId]);
+      return MessageWithParts(
+        info: marked,
+        parts: [
+          for (final row in partRows)
+            if (MessagePart.fromJson(jsonDecodeMap(row.partJson)) case final MessagePartText text) text,
+        ],
+      );
     }
-    return false;
+    return null;
   }
 
   /// [update] with the command invocation and handoff [stored] already
@@ -1044,10 +1053,12 @@ class ChatHistoryRepository({
       if ((imported, stored) case (MessageUser(invocation: null), MessageUser(invocation: _?))) {
         storedNamedTurns[index] = storedIndex;
       }
-      final notice = _reconciledNotice(imported: imported, stored: stored, sameIdentity: exactStoredIndex != null);
-      // The stored row's stamps survive the import that replaces it, unless
-      // the import carries its own.
-      final reconciled = notice ?? _withStoredStamps(update: imported, stored: stored);
+      // The stored row's stamps and time survive the import that replaces it,
+      // unless the import carries its own: a replay that can't date a row
+      // keeps the time it was captured live with.
+      final dated = imported.time == null && stored.time != null ? imported.copyWith(time: stored.time) : imported;
+      final notice = _reconciledNotice(imported: dated, stored: stored, sameIdentity: exactStoredIndex != null);
+      final reconciled = notice ?? _withStoredStamps(update: dated, stored: stored);
       if (!identical(reconciled, imported)) {
         importedMessageRows[index] = importedMessageRows[index].copyWith(infoJson: jsonEncode(reconciled.toJson()));
       }

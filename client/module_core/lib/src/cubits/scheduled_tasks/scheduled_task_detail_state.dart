@@ -13,6 +13,9 @@ final class const ScheduledTaskDetailLoaded({
   /// Whether this app can send the task's definition back, which renaming
   /// needs. False for a task with parts from a newer peer.
   required final bool editable,
+
+  /// This device's IANA zone; null when the platform cannot report it.
+  required final String? deviceTimeZone,
 }) extends ScheduledTaskDetailState;
 
 /// The task left the computer's list: it was deleted, or a one-off task ran.

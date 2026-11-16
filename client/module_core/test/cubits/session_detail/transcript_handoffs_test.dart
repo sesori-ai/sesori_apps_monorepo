@@ -345,6 +345,33 @@ void main() {
       expect(handoffs.markers, isEmpty);
     });
 
+    test("an earlier request stays sent while a newer queued one is written", () {
+      final handoffs = _build(
+        messages: [
+          _user(id: "earlier", handoff: _sent, promptId: "earlier-prompt"),
+          _agent(
+            id: "earlier-reply",
+            parts: [_text(text: "Goal: fix")],
+          ),
+        ],
+        isBusy: true,
+        queuedPrompts: [_queued(id: "request", handoff: _sent)],
+      );
+
+      expect(handoffs.markers["earlier"]?.status, TranscriptHandoffMarkerStatus.sent);
+      expect(handoffs.queuedMarkers["request"]?.status, TranscriptHandoffMarkerStatus.writing);
+    });
+
+    test("a request keeps writing while the bridge still lists it as queued", () {
+      final handoffs = _build(
+        messages: [_user(id: "request-message", handoff: _sent, promptId: "request")],
+        isBusy: true,
+        queuedPrompts: [_queued(id: "request", handoff: _sent)],
+      );
+
+      expect(handoffs.markers["request-message"]?.status, TranscriptHandoffMarkerStatus.writing);
+    });
+
     test("a queued request the bridge marked not sent shows as not sent", () {
       final handoffs = _build(
         messages: const [],
@@ -354,6 +381,31 @@ void main() {
 
       expect(handoffs.queuedMarkers["request"]?.status, TranscriptHandoffMarkerStatus.notSent);
       expect(handoffs.writing, isFalse);
+    });
+
+    test("a stopped send's marker stands for the turn while the source still ends it", () {
+      List<MessageWithParts> stopped({required bool nextPrompt}) => [
+        _user(id: "request", handoff: _notSent),
+        _agent(
+          id: "reply",
+          parts: [_text(text: "Partial")],
+        ),
+        if (nextPrompt) _user(id: "next"),
+      ];
+
+      expect(_build(messages: stopped(nextPrompt: false), isBusy: true).showsWork, isTrue);
+      expect(_build(messages: stopped(nextPrompt: false), isBusy: false).showsWork, isFalse);
+      // Held as queued before its marked message renders.
+      expect(
+        _build(
+          messages: const [],
+          isBusy: true,
+          queuedPrompts: [_queued(id: "request", handoff: _notSent)],
+        ).showsWork,
+        isTrue,
+      );
+      // The user's next prompt works as any other.
+      expect(_build(messages: stopped(nextPrompt: true), isBusy: true).showsWork, isFalse);
     });
 
     test("a queued handoff prompt shows as its card before its message arrives", () {

@@ -64,14 +64,22 @@ final class const TranscriptHandoffs({
 
   /// Cards by the id of a handoff prompt the bridge still lists as queued.
   required final Map<String, TranscriptHandoffCard> queuedCards,
+
+  /// Whether the source is still ending the newest turn after its send did not
+  /// complete, which the "Couldn't send" marker already shows.
+  required final bool stopping,
 }) {
   /// Whether the newest turn is a summary still being written, or a request
-  /// on its way to being answered, which its marker already shows, so no
-  /// working row joins it. Only the newest turn is ever writing.
+  /// on its way to being answered, which its marker already shows. Only the
+  /// newest turn is ever writing.
   bool get writing => [
     ...markers.values,
     ...queuedMarkers.values,
   ].any((marker) => marker.status == TranscriptHandoffMarkerStatus.writing);
+
+  /// Whether the newest turn's marker shows what the source is doing, so no
+  /// working row joins it.
+  bool get showsWork => writing || stopping;
 }
 
 /// Folds handoff turns into markers and turns handoff prompts into cards.
@@ -96,6 +104,11 @@ class const TranscriptHandoffBuilder() {
     final byId = {for (final message in messages) message.info.id: message};
     final markers = <String, TranscriptHandoffMarker>{};
     final folded = <String>{};
+    var stopping = false;
+    final queuedRequestIds = {
+      for (final prompt in queuedPrompts)
+        if (prompt.handoff is MessageHandoffSent) prompt.id,
+    };
     for (final (turnIndex, turn) in turns.turns.indexed) {
       final turnMessages = [
         for (final id in turn.messageIds) ?byId[id],
@@ -125,7 +138,19 @@ class const TranscriptHandoffBuilder() {
           folded.add(message.info.id);
         }
         final reply = rest.takeWhile((message) => message.info is! MessageUser).toList();
-        final writing = last && isBusy && turnIndex == turns.turns.length - 1;
+        final promptId = switch (request.info) {
+          MessageUser(:final promptId) => promptId,
+          MessageAssistant() || MessageError() => null,
+        };
+        // A send needs an idle source, so a newer request still queued means
+        // this one's turn has ended, even when busy arrives before its echo.
+        final newest = last && isBusy && turnIndex == turns.turns.length - 1;
+        final writing = newest && !queuedRequestIds.any((id) => id != promptId);
+        // The user's next prompt, joined to a stopped request's turn, works as
+        // any other.
+        if (request.info case MessageUser(handoff: MessageHandoffNotSent()) when newest) {
+          stopping = !rest.any((message) => message.info is MessageUser);
+        }
         final marker = switch (request.info) {
           MessageUser(handoff: MessageHandoffSent(:final targetSessionId, :final targetTitle)) =>
             TranscriptHandoffMarker(
@@ -166,6 +191,8 @@ class const TranscriptHandoffBuilder() {
             summary: null,
           );
         case MessageHandoffNotSent(:final targetSessionId, :final targetTitle):
+          // Held until its marked message renders, while the source stops.
+          stopping = stopping || isBusy;
           queuedMarkers[prompt.id] = TranscriptHandoffMarker(
             targetSessionId: targetSessionId,
             targetTitle: targetTitle,
@@ -184,6 +211,7 @@ class const TranscriptHandoffBuilder() {
       cards: Map.unmodifiable(cards),
       queuedMarkers: Map.unmodifiable(queuedMarkers),
       queuedCards: Map.unmodifiable(queuedCards),
+      stopping: stopping,
     );
   }
 

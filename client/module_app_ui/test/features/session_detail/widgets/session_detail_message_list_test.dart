@@ -254,6 +254,21 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     }
   }
 
+  /// Mirrors the cubit parking a send the bridge accepted, as an edit's is.
+  void parkAccepted(QueuedSessionSubmission submission) {
+    setState(() => _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, (submission: submission, since: null)]);
+  }
+
+  /// Mirrors the cubit settling a parked send once its echo lands.
+  void echoParked({required String promptId, required MessageWithParts message}) {
+    setState(() {
+      _messages = [..._messages, message];
+      _awaitingBridgeSubmissions = [
+        ..._awaitingBridgeSubmissions.where((item) => item.submission.promptId != promptId),
+      ];
+    });
+  }
+
   void updateBridgeQueue({
     required List<QueuedSessionPrompt> prompts,
     required Map<String, List<ComposerAttachment>> attachments,
@@ -3372,6 +3387,9 @@ void main() {
 
     // The oldest message stays, so only the shorter layout can ask for the page.
     key.harness.replaceMessages(messages.take(2).toList());
+    // The removed turn keeps its room a moment for what might replace it.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(requested, 1);
   });
@@ -6346,8 +6364,12 @@ void main() {
 
       harness.removeMessage("user-11");
       await tester.pump();
-      expect(_leavingRows(tester), contains("user-11"));
       expect(_topOf(tester, "user-10"), before);
+      // With nothing joining, it keeps its room a moment for a replacement.
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(_topOf(tester, "user-10"), before);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(_leavingRows(tester), contains("user-11"));
       await tester.pump(const Duration(milliseconds: 100));
       final partway = _topOf(tester, "user-10");
       await tester.pumpAndSettle();
@@ -6444,6 +6466,59 @@ void main() {
       expect(_position(tester).pixels, 0);
     });
 
+    /// Removes the edited rows and parks the accepted edit in one frame, as
+    /// they reach the client together, then marks the session busy on
+    /// [busyFrame] (-1 for together) and echoes the prompt on frame 3.
+    Future<void> editAndSettle(WidgetTester tester, {required int busyFrame}) async {
+      final harness = await pump(tester);
+      final text = _multilineText(label: "Edited", lines: 8);
+      final tops = <double>[];
+
+      harness
+        ..removeMessage("user-10")
+        ..removeMessage("user-11")
+        ..parkAccepted(_textSubmission(promptId: "prm_edit", text: text));
+      if (busyFrame < 0) harness.setBusy(true);
+      await tester.pump();
+      for (var frame = 0; frame < 20; frame++) {
+        if (frame == busyFrame) harness.setBusy(true);
+        if (frame == 3) {
+          harness.echoParked(
+            promptId: "prm_edit",
+            message: _message(messageId: "edited", role: "user", text: text, promptId: "prm_edit"),
+          );
+        }
+        tops.add(_topOf(tester, "user-9"));
+        if (frame > 0) {
+          expect(
+            _topOf(tester, "session-detail-prompt-prm_edit"),
+            lessThan(_topOf(tester, "session-detail-working-row")),
+            reason: "The prompt woke the session, so it stays above the working row on frame $frame",
+          );
+        }
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      // The working row animates for as long as the turn runs.
+      await tester.pump(const Duration(milliseconds: 500));
+      tops.add(_topOf(tester, "user-9"));
+
+      final steps = [for (var i = 1; i < tops.length; i++) tops[i] - tops[i - 1]];
+      expect(steps.where((step) => step < -0.5), isEmpty, reason: "user-9 turned back up: $tops");
+      expect(_messageKey("user-11"), findsNothing);
+      expect(find.textContaining("Edited line 0"), findsOneWidget);
+      expect(_position(tester).pixels, 0);
+    }
+
+    testWidgets(
+      "an accepted edit's prompt rises as its removals fold, so the rows above settle in one move",
+      (tester) => editAndSettle(tester, busyFrame: -1),
+    );
+
+    testWidgets(
+      "an accepted edit's working row rises with its prompt, so a busy status coming later moves nothing back",
+      (tester) => editAndSettle(tester, busyFrame: 2),
+    );
+
     testWidgets("comes back if its message does before it has folded", (tester) async {
       final harness = await pump(tester);
       final removed = _userMessages(count: 12).last;
@@ -6456,6 +6531,44 @@ void main() {
 
       expect(_messageKey("user-11"), findsOneWidget);
       expect(_leavingRows(tester), isEmpty);
+    });
+
+    testWidgets("an edit watched from another surface moves the rows above one way only", (tester) async {
+      final harness = await pump(tester);
+      final tops = <double>[];
+
+      // A watching surface hears of the edit's removals first, and of the
+      // turn starting and the edited prompt's echo some frames later.
+      harness
+        ..removeMessage("user-10")
+        ..removeMessage("user-11");
+      await tester.pump();
+      for (var frame = 0; frame < 30; frame++) {
+        if (frame == 3) {
+          harness
+            ..setBusy(true)
+            ..appendNewestMessage(
+              _message(
+                messageId: "edited",
+                role: "user",
+                text: _multilineText(label: "Edited", lines: 8),
+              ),
+            );
+        }
+        tops.add(_topOf(tester, "user-9"));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      // The Working row runs on, so the list never settles.
+      await tester.pump(const Duration(milliseconds: 500));
+      tops.add(_topOf(tester, "user-9"));
+
+      final steps = [for (var i = 1; i < tops.length; i++) tops[i] - tops[i - 1]];
+      // Two prompts leave and one comes back with the Working row, so the
+      // rows above settle lower, without first overshooting.
+      expect(steps.where((step) => step < -0.5), isEmpty, reason: "The rows above came back up: $tops");
+      expect(tops.last, greaterThan(tops.first));
+      expect(_messageKey("user-11"), findsNothing);
+      expect(_position(tester).pixels, 0);
     });
   });
 
@@ -7600,6 +7713,55 @@ void main() {
       expect(edit.onFork, isNull);
     });
   });
+
+  testWidgets(
+    "a right-click offers Edit and resend and Fork from here on a prompt, and Fork from here on a reply",
+    (tester) async {
+      final edits = <String>[];
+      final forks = <(ForkPoint, String?)>[];
+      await tester.pumpWidget(
+        PregoInteractionScope(
+          mode: PregoInteractionMode.pointer,
+          child: _presented(
+            child: _SessionDetailMessageListHarness(
+              initialMessages: [
+                _message(messageId: "prompt", role: "user", text: "Fix the build"),
+                _message(messageId: "reply", role: "assistant", text: "Fixed it"),
+              ],
+              initialStreamingText: const {},
+              onEditMessage: ({required message, required refusal, required onFork}) => edits.add(message.info.id),
+              onForkMessage: ({required point, required ownMessage}) => forks.add((point, ownMessage?.info.id)),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Future<void> rightClick(String text) async {
+        await tester.tapAt(tester.getCenter(find.text(text)), buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
+        await tester.pumpAndSettle();
+      }
+
+      await rightClick("Fix the build");
+      expect(find.text("Fork from here"), findsOneWidget);
+      await tester.tap(find.text("Edit and resend"));
+      await tester.pumpAndSettle();
+      expect(edits, ["prompt"]);
+
+      await rightClick("Fix the build");
+      await tester.tap(find.text("Fork from here"));
+      await tester.pumpAndSettle();
+      await rightClick("Fixed it");
+      expect(find.text("Edit and resend"), findsNothing);
+      await tester.tap(find.text("Fork from here"));
+      await tester.pumpAndSettle();
+
+      expect(forks, [
+        (const ForkPoint.beforeMessage(messageId: "prompt"), "prompt"),
+        (const ForkPoint.afterMessage(messageId: "reply"), null),
+      ]);
+    },
+    variant: const TargetPlatformVariant({TargetPlatform.macOS}),
+  );
 }
 
 QueuedSessionSubmission _textSubmission({required String promptId, required String text}) =>

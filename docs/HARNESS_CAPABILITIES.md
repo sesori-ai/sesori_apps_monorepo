@@ -220,9 +220,13 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
 
 - Claude recognizes tagged `rate_limit` assistant errors beginning “You've
   hit your session limit” or “You've hit your weekly limit”. The observed time/zone format yields a UTC reset
-  only when it identifies one future time on the original local date. Unrecognized
-  dates, past times, unknown zones, and ambiguous/nonexistent DST times remain
-  unknown. Root errors report only after an unsuccessful, non-aborted result;
+  only when it identifies one future time: a bare time (`6pm`) falls on the
+  original local date; a dated time (`Nov 19 at 6pm`, `Jan 2, 2027 at 6pm`) uses
+  its own date, and an omitted year is the observed local year, or the next year
+  when that date has already passed. Formats verified against Claude Code
+  2.1.322's formatter on 2026-11-15. Invalid dates, past times, unknown zones,
+  and ambiguous/nonexistent DST times remain unknown. Root errors report only
+  after an unsuccessful, non-aborted result;
   forwarded subagent traffic cannot arm or replace the root candidate.
   Process-wide SDK rate-limit frames remain ignored because their rejected
   window has no verified message attribution.
@@ -339,7 +343,7 @@ refused with a reason (⬜ for Claude Code, which can cut at a single message;
 | Harness | Edit and resend (rewind in place) | Fork from a message |
 |---|---|---|
 | Claude Code | ✅ Respawn with `--resume=<id> --resume-session-at=<parent of the edited prompt>`, then the ordinary send. Verified live on 2026-11-15 with Claude Code 2.1.221 and 2.1.322. Idle sessions only. A prompt before the latest compaction (🚫: the CLI resumes only from the latest compaction on) and a CLI without `--resume-session-at` are refused with a reason before the transcript changes | ✅ Sesori writes the kept active branch, through the kept turn's last record, to `<new id>.jsonl` under the fork's id; the first prompt then runs `--resume=<new id>`. Verified live on 2026-11-15 with Claude Code 2.1.322. The origin is only read, so it may be running. A point before a compaction forks from the full turns before it, leaving the compaction behind; a message off the active branch and an origin without a transcript are refused with a reason. Sub-agent transcripts stay with the origin |
-| Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ✅ `thread/fork {lastTurnId}` into a new persisted thread in the same directory; the source is not loaded, so it can run a later turn or be archived. Verified live on 2026-11-15 with Codex 0.169.0. Runtimes before 0.143.0 predate `lastTurnId`; by their source they ignore the unknown field and would copy the whole thread (not run live), so they are refused with a reason before anything is created, as are an unknown message, a missing rollout and a turn still running. A reply that a steered follow-up continued in the same native turn is 🚫: Codex forks only whole turns. Deleting a source keeps the rollouts a fork builds on and `thread/archive`s them, which Codex allows and forks keep reading |
+| Codex | ✅ `thread/revert {beforeTurnId}` then `turn/start`. Verified live on 2026-11-15 with Codex 0.167.2. Older PATH runtimes without `thread/revert` (0.139.0 answers "unknown variant"), legacy non-paginated threads and ephemeral threads are refused with a reason before anything changes. A session 0.139.0 wrote has no `UserMessage` items, so its edit is refused as `legacySession` before the runtime is asked. A follow-up steered into a turn is 🚫: Codex reverts only whole turns | ✅ `thread/fork {lastTurnId}` into a new persisted thread in the same directory; the source is not loaded, so it can run a later turn or be archived. Verified live on 2026-11-15 with Codex 0.169.0. Runtimes before 0.143.0 predate `lastTurnId`; by their source they ignore the unknown field and would copy the whole thread (not run live), so they are refused with that reason first, even for a message their rollout can't place, before anything is created, as are an unknown message, a missing rollout and a turn still running. A reply that a steered follow-up continued in the same native turn is 🚫: Codex forks only whole turns. Deleting a source keeps the rollouts a fork builds on and `thread/archive`s them, which Codex allows and forks keep reading |
 | Every other harness | ⬜ Not implemented yet for in-place rewinds; the bridge accepts a first-message swap, but the app shows no Edit because the harness does not declare `rewind` | ⬜ Not implemented yet |
 
 Claude Code (live probes against 2.1.221 and 2.1.322 in a scratch config
@@ -1410,7 +1414,7 @@ prompt does to a target that is running, from each plugin's
 | OMP 18.20.2 (ACP) | ✅ | ✅ | ✅ Read it when asked, but kept working on its own todo instead of answering. | No. | Steers into the running turn.¹ |
 | Grok Build 1.0.30 | ✅ | ✅ | ✅ Read it when asked, with read. | No, with `permission_mode` both `always-approve` and `ask`. | Stops the running turn. |
 | Hermes 0.21.5 (ACP) | ✅ | ✅ | ✅ Read it when asked.² | No. | Stops the running turn. |
-| DeepSeek runtime 0.2.2 (ACP) | ✅ | ✅ | Unverified: the runtime needs a DeepSeek account, and live checks run only on the test proxy. | Unverified. | Stops the running turn. |
+| DeepSeek runtime 0.2.2 (ACP) | ✅ | ✅ | Unverified: the runtime offers a fixed DeepSeek model list, so it can't be pointed at the test proxy that live checks use. | Unverified. | Stops the running turn. |
 | Cursor (ACP) | ✅ | ✅ | Unverified: the installed CLI (2026.07.23) is older than the 2026.09.23 Sesori requires. | Unverified. | Stops the running turn. |
 | Copilot (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
 | Antigravity (ACP) | ✅ | ✅ | Unverified: runtime not installed. | Unverified. | Stops the running turn. |
@@ -1438,6 +1442,13 @@ with no permission request for the read. On a headless iOS simulator, the Pi
 source showed "Summary sent to … · Open" and "Couldn't send to …" markers and
 the "Handoff summary" sheet. The Codex target showed the "From …" card, which
 Show all expanded.
+Later the same day, on a headless iOS simulator with Claude and Codex as
+source and target in both directions, the send from the session menu and a
+list row, the "Writing a summary…" marker, the archive switch with Undo, the
+pinned-source confirmation, a busy source with Stop, and the update alert from
+a bridge older than session sending all passed. An OMP target whose saved agent
+OMP no longer offers is now refused before acceptance and corrected, instead of
+dropping the handoff.
 
 Stale saved options on the target, a model, mode or reasoning level the harness
 no longer lists:

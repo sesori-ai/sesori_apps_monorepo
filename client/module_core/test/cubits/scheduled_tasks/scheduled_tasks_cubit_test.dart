@@ -31,6 +31,11 @@ final _pausedOnce = scheduledTaskFixture(
   enabled: false,
 );
 
+class _FixedTimeZoneSource() implements DeviceTimeZoneSource {
+  @override
+  Future<String> currentZoneName() async => "Europe/Bucharest";
+}
+
 void main() {
   late MockScheduledTaskRepository repository;
   late MockConnectionService connection;
@@ -51,7 +56,11 @@ void main() {
       when(() => repository.listTasks()).thenAnswer((_) async => result);
 
   ScheduledTasksCubit create() {
-    final cubit = ScheduledTasksCubit(repository: repository, connectionService: connection);
+    final cubit = ScheduledTasksCubit(
+      repository: repository,
+      connectionService: connection,
+      timeZoneSource: _FixedTimeZoneSource(),
+    );
     addTearDown(cubit.close);
     return cubit;
   }

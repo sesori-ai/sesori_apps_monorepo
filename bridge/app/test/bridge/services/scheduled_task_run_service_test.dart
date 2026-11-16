@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/repositories/models/session_quietness.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/scheduled_task_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/scheduled_task_activity_tracker.dart";
 import "package:sesori_bridge/src/services/scheduled_task_compaction_service.dart";
 import "package:sesori_bridge/src/services/scheduled_task_occurrence_calculator.dart";
@@ -22,11 +23,14 @@ import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginStaleOptionsException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show PluginStaleOptionsException, PluginWorkingDirectoryMissingException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
 
+import "../../helpers/fake_filesystem_api.dart";
+import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
@@ -68,12 +72,21 @@ void main() {
   late ScheduledTaskRunService service;
   late List<ScheduledTaskRunFailure> failures;
   late DateTime now;
+  late Set<String> missingFolders;
 
-  setUp(() {
+  setUp(() async {
     db = createTestDatabase();
     addTearDown(db.close);
     now = DateTime.utc(2026, 11, 15, 9, 1);
     repository = ScheduledTaskRepository(dao: ScheduledTaskDao(database: db));
+    await db.projectsDao.recordOpenedProject(
+      projectId: "/repo",
+      path: "/repo",
+      displayName: null,
+      createdAt: 0,
+      updatedAt: 0,
+    );
+    missingFolders = {};
     sessions = _Sessions(database: db)..projectPathResult = "/repo";
     options = FakeSessionOptionsService();
     creation = _FakeSessionCreation(database: db);
@@ -97,6 +110,13 @@ void main() {
       operations: operations,
       yoloSettings: yolo,
       sessions: sessions,
+      projects: singlePluginProjectRepository(
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(missingPaths: missingFolders),
+        gitCliApi: FakeGitCliApi(),
+      ),
       lifecycle: lifecycle,
       sessionOptions: options,
       calculator: const ScheduledTaskOccurrenceCalculator(),
@@ -661,8 +681,10 @@ void main() {
     });
 
     test("a missing project fails the run without creating a session", () async {
-      sessions.projectPathResult = null;
-      final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9));
+      final task = await createTask(
+        definition: _daily.copyWith(projectId: "/forgotten"),
+        nextDueAt: DateTime.utc(2026, 11, 15, 9),
+      );
 
       await service.runDue();
 
@@ -672,6 +694,35 @@ void main() {
       expect(creation.calls, isEmpty);
       expect(failures.single.reason, TaskRunFailureReason.projectMissing);
       expect(failures.single.taskName, "Morning summary");
+    });
+
+    test("a project whose folder was deleted fails the run as projectMissing without creating a session", () async {
+      missingFolders.add("/repo");
+      final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9));
+
+      await service.runDue();
+
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.projectMissing),
+      ]);
+      expect(creation.calls, isEmpty);
+      expect(failures.single.reason, TaskRunFailureReason.projectMissing);
+    });
+
+    test("a harness reporting the working folder missing at start fails the run as projectMissing", () async {
+      creation.error = const PluginWorkingDirectoryMissingException(
+        operation: "spawn Claude",
+        path: "/repo",
+        cause: null,
+      );
+      final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9));
+
+      await service.runDue();
+
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.projectMissing),
+      ]);
+      expect(failures.single.reason, TaskRunFailureReason.projectMissing);
     });
 
     test("a harness that is not running fails the run", () async {
@@ -735,9 +786,9 @@ void main() {
   group("Run now", () {
     test("a run that can't start answers the tap and sends no push", () async {
       final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 16, 9));
-      sessions.projectPathResult = null;
+      missingFolders.add("/repo");
       final blocked = await service.runNow(taskId: task.id);
-      sessions.projectPathResult = "/repo";
+      missingFolders.remove("/repo");
       creation.error = StateError("backend down");
       final refused = await service.runNow(taskId: task.id);
 

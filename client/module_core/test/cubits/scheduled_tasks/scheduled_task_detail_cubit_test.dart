@@ -18,6 +18,11 @@ const _run = ScheduledTaskRun(
   outcome: ScheduledTaskRunOutcome.started(sessionId: "session-1", late: false),
 );
 
+class _FixedTimeZoneSource() implements DeviceTimeZoneSource {
+  @override
+  Future<String> currentZoneName() async => "Europe/Bucharest";
+}
+
 void main() {
   setUpAll(() => registerFallbackValue(scheduledTaskFixture(id: "fallback").definition));
   late MockScheduledTaskRepository repository;
@@ -40,7 +45,12 @@ void main() {
       when(() => repository.listTasks()).thenAnswer((_) async => ScheduledTaskSuccess(value: tasks));
 
   ScheduledTaskDetailCubit create() {
-    final cubit = ScheduledTaskDetailCubit(repository: repository, connectionService: connection, taskId: "task");
+    final cubit = ScheduledTaskDetailCubit(
+      repository: repository,
+      connectionService: connection,
+      timeZoneSource: _FixedTimeZoneSource(),
+      taskId: "task",
+    );
     addTearDown(cubit.close);
     return cubit;
   }

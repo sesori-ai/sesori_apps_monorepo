@@ -36,6 +36,7 @@ ScheduledTaskEditorReady _ready({required ScheduledTaskEditorSave save}) => Sche
   runMode: const TaskRunMode.newSession(),
   approvalMode: TaskApprovalMode.ask,
   timeZone: "UTC",
+  deviceTimeZone: "UTC",
   save: save,
 );
 

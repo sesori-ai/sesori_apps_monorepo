@@ -382,6 +382,7 @@ void main() {
 
       final turn = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "hello")],
         promptId: null,
       );
@@ -402,11 +403,13 @@ void main() {
       final process = harness.processes.single;
       final first = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "first")],
         promptId: "prompt-first",
       );
       final second = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "second")],
         promptId: "prompt-second",
       );
@@ -439,11 +442,13 @@ void main() {
           });
       final first = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "first")],
         promptId: "prompt-first",
       );
       final second = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "second")],
         promptId: "prompt-second",
       );
@@ -472,6 +477,7 @@ void main() {
           .listen((event) => promptIds.add(event.promptId));
       final turn = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [
           PluginPromptPart.text(text: "inspect this"),
           PluginPromptPart.fileData(mime: "image/png", base64: "iVBORw0KGgo=", filename: "image.png"),
@@ -501,6 +507,7 @@ void main() {
       const text = "/Users/dev/Downloads/clip.mov convert this to mp4";
       final turn = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: text)],
         promptId: "prompt-path",
       );
@@ -529,6 +536,7 @@ void main() {
           .listen((event) => promptIds.add(event.promptId));
       final turn = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "ordinary text")],
         promptId: "prompt-text",
       );
@@ -548,6 +556,7 @@ void main() {
       final process = harness.processes.single;
       final first = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "first")],
         promptId: "prompt-first",
       );
@@ -558,6 +567,7 @@ void main() {
       process.emit(_replayOf(firstFrame, uuid: "late-first"));
       final second = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "second")],
         promptId: "prompt-second",
       );
@@ -574,6 +584,7 @@ void main() {
       expect(
         () => repository.sendTurn(
           sessionId: testSessionId,
+          echoAtOnce: false,
           parts: const [PluginPromptPart.text(text: "fails")],
           promptId: "prompt-fails",
         ),
@@ -581,6 +592,7 @@ void main() {
       );
       final next = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "next")],
         promptId: "prompt-next",
       );
@@ -607,6 +619,7 @@ void main() {
       await _ensure(repository, createNew: true);
       final turn = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "hello")],
         promptId: null,
       );
@@ -631,6 +644,7 @@ void main() {
 
       final turn = repository.sendTurn(
         sessionId: testSessionId,
+        echoAtOnce: false,
         parts: const [PluginPromptPart.text(text: "hello")],
         promptId: null,
       );
@@ -650,6 +664,7 @@ void main() {
       expect(
         () => repository.sendTurn(
           sessionId: testSessionId,
+          echoAtOnce: false,
           parts: const [PluginPromptPart.fileData(mime: "application/pdf", base64: "secret", filename: "a.pdf")],
           promptId: null,
         ),

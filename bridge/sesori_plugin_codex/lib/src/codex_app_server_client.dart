@@ -149,6 +149,11 @@ class CodexAppServerClient({
     );
 
     try {
+      // A refused or failed connect errors `ready` as well as the stream. The
+      // stream copy goes through the drop handlers; awaiting `ready` here turns
+      // its copy into this connect's failure instead of an uncaught async error
+      // that would take the whole bridge down.
+      await channel.ready.timeout(codexRequestTimeout);
       final raw = await request(
         method: "initialize",
         params: {

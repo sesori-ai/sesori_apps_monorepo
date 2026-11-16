@@ -62,6 +62,10 @@ class const NewSessionView({
   /// The glass bar's title; a page chrome's top bar carries its own.
   required final String title,
 
+  /// Where the glass bar's title sits while composing; the sending
+  /// transcript centres it.
+  required final PregoTopNavigationTitleMode composingTitleMode,
+
   /// Null where nothing lies behind the page, such as the home's content pane.
   required final VoidCallback? onBack,
   required final VoidCallback onOpenHarnessSettings,
@@ -829,7 +833,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
         onBack: widget.onBack == null ? null : _dismissScreen,
         // The header's project selector names the project, so the bar carries
         // no subtitle.
-        titleMode: isSending ? PregoTopNavigationTitleMode.inline : PregoTopNavigationTitleMode.backLeading,
+        titleMode: isSending ? PregoTopNavigationTitleMode.inline : widget.composingTitleMode,
         subtitle: null,
         reserveBarSpace: false,
         scrollable: false,

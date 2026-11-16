@@ -772,6 +772,31 @@ void main() {
       expect(received.params["threadId"], equals("t-1"));
       await client.dispose();
     });
+
+    test("a refused connection fails connect instead of escaping as an uncaught error", () async {
+      // Reserve a loopback port and release it, so nothing listens there.
+      final reserved = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      final port = reserved.port;
+      await reserved.close();
+      var disconnects = 0;
+      final client = CodexAppServerClient(
+        serverUrl: "ws://127.0.0.1:$port",
+        channelFactory: null,
+        onDisconnected: () => disconnects++,
+      );
+
+      await expectLater(
+        client.connect(),
+        throwsA(
+          isA<WebSocketChannelException>().having((e) => e.inner, "inner", isA<Object>()),
+        ),
+      );
+      // Let the channel's own error delivery run; on the old code its `ready`
+      // copy surfaced here as an uncaught error and failed the test.
+      await pumpEventQueue();
+      expect(disconnects, 1);
+      await client.dispose();
+    });
   });
 }
 

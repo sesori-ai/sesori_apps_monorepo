@@ -22,10 +22,13 @@ lists the rows that stayed unexecuted.
   replace root observations. Process-wide rate-limit frames alone do not report.
   Trailing stream frames preserve a complete error; a new root message clears it.
 - Claude's recognized clock-time/IANA-zone format is accepted only when it
-  denotes one future instant on the original local date. Stale times, unresolved
-  day boundaries, malformed times, unknown zones and DST gaps/ambiguity remain unknown.
-  Weekly limits use the same rule; date-bearing or otherwise unrecognized weekly
-  reset text reports an unknown reset rather than leaving the preference idle.
+  denotes one future instant. A date-less time (`6pm`) must fall on the original
+  local date; a dated time (`Nov 19 at 6pm`, `Jan 2, 2027 at 6pm`) uses that date,
+  inferring the next year when an undated day already passed (Dec→Jan). Stale
+  times, unresolved day boundaries, invalid dates, malformed times, unknown zones
+  and DST gaps/ambiguity remain unknown. Session and weekly limits share the rule;
+  unrecognized reset text reports an unknown reset rather than leaving the
+  preference idle.
 - Pi reports only recognized `openai-codex` assistant errors after native
   `agent_settled`. Intermediate `agent_end`, retry status and a subsequently
   successful response never report a terminal quota interruption.

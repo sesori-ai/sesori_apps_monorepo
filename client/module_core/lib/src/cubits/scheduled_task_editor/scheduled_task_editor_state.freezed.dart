@@ -147,7 +147,7 @@ as ScheduledTaskEditorUnavailableReason,
 
 
 class ScheduledTaskEditorReady implements ScheduledTaskEditorState {
-  const ScheduledTaskEditorReady({required this.editing, required this.schedule, required this.missedRunPolicy, required this.runMode, required this.approvalMode, required this.timeZone, required this.save});
+  const ScheduledTaskEditorReady({required this.editing, required this.schedule, required this.missedRunPolicy, required this.runMode, required this.approvalMode, required this.timeZone, required this.deviceTimeZone, required this.save});
   
 
 /// The task being edited; null while setting up a new one.
@@ -161,6 +161,8 @@ class ScheduledTaskEditorReady implements ScheduledTaskEditorState {
 /// The IANA zone the times are in: this device's for a new task, the
 /// task's own for an edit.
  final  String timeZone;
+/// This device's IANA zone; null when the platform cannot report it.
+ final  String? deviceTimeZone;
  final  ScheduledTaskEditorSave save;
 
 /// Create a copy of ScheduledTaskEditorState
@@ -173,18 +175,18 @@ $ScheduledTaskEditorReadyCopyWith<ScheduledTaskEditorReady> get copyWith => _$Sc
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTaskEditorReady&&(identical(other.editing, editing) || other.editing == editing)&&(identical(other.schedule, schedule) || other.schedule == schedule)&&(identical(other.missedRunPolicy, missedRunPolicy) || other.missedRunPolicy == missedRunPolicy)&&(identical(other.runMode, runMode) || other.runMode == runMode)&&(identical(other.approvalMode, approvalMode) || other.approvalMode == approvalMode)&&(identical(other.timeZone, timeZone) || other.timeZone == timeZone)&&(identical(other.save, save) || other.save == save));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ScheduledTaskEditorReady&&(identical(other.editing, editing) || other.editing == editing)&&(identical(other.schedule, schedule) || other.schedule == schedule)&&(identical(other.missedRunPolicy, missedRunPolicy) || other.missedRunPolicy == missedRunPolicy)&&(identical(other.runMode, runMode) || other.runMode == runMode)&&(identical(other.approvalMode, approvalMode) || other.approvalMode == approvalMode)&&(identical(other.timeZone, timeZone) || other.timeZone == timeZone)&&(identical(other.deviceTimeZone, deviceTimeZone) || other.deviceTimeZone == deviceTimeZone)&&(identical(other.save, save) || other.save == save));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,editing,schedule,missedRunPolicy,runMode,approvalMode,timeZone,save);
+    return Object.hash(runtimeType,editing,schedule,missedRunPolicy,runMode,approvalMode,timeZone,deviceTimeZone,save);
 }
 
 @override
 String toString() {
-    return 'ScheduledTaskEditorState.ready(editing: $editing, schedule: $schedule, missedRunPolicy: $missedRunPolicy, runMode: $runMode, approvalMode: $approvalMode, timeZone: $timeZone, save: $save)';
+    return 'ScheduledTaskEditorState.ready(editing: $editing, schedule: $schedule, missedRunPolicy: $missedRunPolicy, runMode: $runMode, approvalMode: $approvalMode, timeZone: $timeZone, deviceTimeZone: $deviceTimeZone, save: $save)';
 }
 
 
@@ -195,7 +197,7 @@ abstract mixin class $ScheduledTaskEditorReadyCopyWith<$Res> implements $Schedul
   factory $ScheduledTaskEditorReadyCopyWith(ScheduledTaskEditorReady value, $Res Function(ScheduledTaskEditorReady) _then) = _$ScheduledTaskEditorReadyCopyWithImpl;
 @useResult
 $Res call({
- ScheduledTask? editing, TaskSchedule schedule, TaskMissedRunPolicy missedRunPolicy, TaskRunMode runMode, TaskApprovalMode approvalMode, String timeZone, ScheduledTaskEditorSave save
+ ScheduledTask? editing, TaskSchedule schedule, TaskMissedRunPolicy missedRunPolicy, TaskRunMode runMode, TaskApprovalMode approvalMode, String timeZone, String? deviceTimeZone, ScheduledTaskEditorSave save
 });
 
 
@@ -212,7 +214,7 @@ class _$ScheduledTaskEditorReadyCopyWithImpl<$Res>
 
 /// Create a copy of ScheduledTaskEditorState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? editing = freezed,Object? schedule = null,Object? missedRunPolicy = null,Object? runMode = null,Object? approvalMode = null,Object? timeZone = null,Object? save = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? editing = freezed,Object? schedule = null,Object? missedRunPolicy = null,Object? runMode = null,Object? approvalMode = null,Object? timeZone = null,Object? deviceTimeZone = freezed,Object? save = null,}) {
   return _then(ScheduledTaskEditorReady(
 editing: freezed == editing ? _self.editing : editing // ignore: cast_nullable_to_non_nullable
 as ScheduledTask?,schedule: null == schedule ? _self.schedule : schedule // ignore: cast_nullable_to_non_nullable
@@ -220,7 +222,8 @@ as TaskSchedule,missedRunPolicy: null == missedRunPolicy ? _self.missedRunPolicy
 as TaskMissedRunPolicy,runMode: null == runMode ? _self.runMode : runMode // ignore: cast_nullable_to_non_nullable
 as TaskRunMode,approvalMode: null == approvalMode ? _self.approvalMode : approvalMode // ignore: cast_nullable_to_non_nullable
 as TaskApprovalMode,timeZone: null == timeZone ? _self.timeZone : timeZone // ignore: cast_nullable_to_non_nullable
-as String,save: null == save ? _self.save : save // ignore: cast_nullable_to_non_nullable
+as String,deviceTimeZone: freezed == deviceTimeZone ? _self.deviceTimeZone : deviceTimeZone // ignore: cast_nullable_to_non_nullable
+as String?,save: null == save ? _self.save : save // ignore: cast_nullable_to_non_nullable
 as ScheduledTaskEditorSave,
   ));
 }

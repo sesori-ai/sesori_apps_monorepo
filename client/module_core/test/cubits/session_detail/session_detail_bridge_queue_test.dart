@@ -2610,6 +2610,30 @@ void main() {
       expect(state.bridgeQueuedPrompts, isEmpty);
     });
 
+    test("an accepted stop leaves a send's summary request out of the composer and keeps its marker", () async {
+      const summaryRequest = QueuedSessionPrompt(
+        commandSource: null,
+        handoff: MessageHandoff.sent(targetSessionId: "target", targetTitle: "Fixture target"),
+        id: "prm_summary",
+        dispatchState: QueuedPromptDispatchState.dispatched,
+        text: "Fixture summary request",
+        command: null,
+        createdAt: 101,
+      );
+      when(
+        () => mockSessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
+      ).thenAnswer((_) async => ApiResponse.success(true));
+      final cubit = await createLoadedCubit(snapshotQueue: const [summaryRequest]);
+
+      expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop), isA<SessionAbortAccepted>());
+
+      expect(cubit.composerDraft.text, isEmpty);
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.composerRestorations, 0);
+      // The bridge owns the request, so its marker stays until the bridge drops it.
+      expect(state.bridgeQueuedPrompts, [summaryRequest]);
+    });
+
     test("a stop returns a message staged while it runs, with its images and the composer's", () async {
       final abortCompleter = Completer<ApiResponse<bool>>();
       when(
