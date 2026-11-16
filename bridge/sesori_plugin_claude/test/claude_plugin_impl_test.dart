@@ -6,7 +6,6 @@ import "package:claude_plugin/claude_plugin.dart";
 import "package:claude_plugin/src/repositories/mappers/claude_quota_interruption_mapper.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 import "support/claude_stream_client_test_factory.dart";
@@ -873,6 +872,78 @@ void main() {
       expect(harness.processes, isEmpty);
     });
 
+    test("a fork writes its own transcript, announces itself untitled, and resumes from it", () async {
+      // The id the linear fixture records for itself.
+      const origin = "11111111-1111-4111-8111-111111111111";
+      File("test/fixtures/transcripts/linear.jsonl").copySync(
+        (File("${harness.temporary.path}/projects/project/$origin.jsonl")..createSync(recursive: true)).path,
+      );
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      final fork = await harness.plugin.forkSession(sessionId: origin, throughMessageId: "1794774680780");
+      await pump();
+
+      expect(fork.id, testSessionId);
+      expect(fork.directory, "/work/fixture-project");
+      final created = events.whereType<BridgeSseSessionCreated>().single.info;
+      expect(created["id"], testSessionId);
+      expect(created["title"], isNull);
+      expect(harness.processes, isEmpty);
+      expect(File("${harness.temporary.path}/projects/project/$testSessionId.jsonl").existsSync(), isTrue);
+
+      await harness.plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "next")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(
+        harness.specs.last.launch,
+        isA<ClaudeResumedSession>().having((launch) => launch.sessionId, "sessionId", testSessionId),
+      );
+      await subscription.cancel();
+    });
+
+    test("a fork of a session without a transcript is refused before anything is created", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await expectLater(
+        harness.plugin.forkSession(sessionId: otherTestSessionId, throughMessageId: "message"),
+        throwsA(isA<PluginBranchPointUnavailableException>()),
+      );
+      await pump();
+
+      expect(events.whereType<BridgeSseSessionCreated>(), isEmpty);
+      expect(Directory("${harness.temporary.path}/projects").existsSync(), isFalse);
+      await subscription.cancel();
+    });
+
+    test("a primed session without a transcript is taken as unstarted after a restart", () async {
+      harness.plugin.primeSessionDirectory(sessionId: otherTestSessionId, directory: "/tmp/project");
+
+      expect(await harness.plugin.getSessionMessages(otherTestSessionId), isEmpty);
+      await harness.plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: otherTestSessionId,
+        parts: const [PluginPromptPart.text(text: "first")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(
+        harness.specs.last.launch,
+        isA<ClaudeNewSession>().having((launch) => launch.sessionId, "sessionId", otherTestSessionId),
+      );
+      expect(harness.specs.last.workingDirectory, "/tmp/project");
+    });
+
     test("delete fences the turn, reaps the process, and forgets the session", () async {
       final session = await harness.createSession();
       final process = harness.processes.single;
@@ -1429,27 +1500,105 @@ void main() {
       final process = harness.processes.single;
       await waitForFrame(process, "user");
 
-      await harness.plugin.abortSession(
+      final abort = harness.plugin.abortSession(
         sessionId: testSessionId,
         subAgents: PluginAbortSubAgentPolicy.stop,
         useAtomicStop: false,
         knownSubAgentSessionIds: const {},
       );
-      process.emit({
-        "type": "result",
-        "subtype": "error_during_execution",
-        "session_id": testSessionId,
-        "uuid": "interrupted-result",
-        "is_error": true,
-        "terminal_reason": "other",
-      });
+      await _waitForControl(process, "interrupt");
+      await pump();
+      process.emit(_interruptedResult());
+      await abort;
       await pump();
 
       final errors = events
           .whereType<BridgeSseMessageUpdated>()
           .map((event) => event.info)
-          .whereType<shared.MessageError>();
+          .whereType<PluginMessageError>();
       expect(errors, isEmpty);
+      await subscription.cancel();
+    });
+
+    test("a Stop shows one stopped row live and after a reload, with no interrupt bubble or filler", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+
+      final abort = harness.plugin.abortSession(
+        sessionId: testSessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
+      await _waitForControl(process, "interrupt");
+      await pump();
+      // The CLI acknowledges the interrupt first, then writes its record and
+      // the turn's result; the Stop waits for them before tearing down.
+      process.emit(_interruptRecord());
+      process.emit(_interruptedResult());
+      await abort;
+      await pump();
+
+      final live = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+      final liveStopped = live.whereType<PluginMessageError>().single;
+      expect(liveStopped.id, "interrupt-record");
+      expect(liveStopped.kind, PluginErrorKind.stopped);
+      expect(live.where((info) => info.id == "interrupt-record"), hasLength(1));
+
+      // Resuming after an interrupt makes the CLI write its filler reply.
+      final transcript = File("${harness.temporary.path}/projects/project/$testSessionId.jsonl");
+      transcript.parent.createSync(recursive: true);
+      Map<String, Object?> record({
+        required String type,
+        required String uuid,
+        required String? parentUuid,
+        required Map<String, Object?> message,
+      }) => {
+        "type": type,
+        "sessionId": testSessionId,
+        "cwd": "/tmp/project",
+        "uuid": uuid,
+        "parentUuid": parentUuid,
+        "timestamp": "2026-08-09T10:00:00Z",
+        "message": message,
+      };
+      transcript.writeAsStringSync(
+        [
+          record(
+            type: "user",
+            uuid: "initial-$testSessionId",
+            parentUuid: null,
+            message: {"role": "user", "content": "hello"},
+          ),
+          record(
+            type: "user",
+            uuid: "interrupt-record",
+            parentUuid: "initial-$testSessionId",
+            message: _interruptMessage,
+          ),
+          record(
+            type: "assistant",
+            uuid: "filler",
+            parentUuid: "interrupt-record",
+            message: {
+              "id": "filler-message",
+              "model": "<synthetic>",
+              "content": [
+                {"type": "text", "text": "No response requested."},
+              ],
+            },
+          ),
+        ].map(jsonEncode).join("\n"),
+      );
+
+      final replayed = await harness.plugin.getSessionMessages(testSessionId);
+      final stopped = replayed.map((message) => message.info).whereType<PluginMessageError>().single;
+      expect(stopped.id, liveStopped.id);
+      expect(stopped.kind, PluginErrorKind.stopped);
+      expect(replayed.map((message) => message.info.id), ["initial-$testSessionId", "interrupt-record"]);
       await subscription.cancel();
     });
 
@@ -1918,6 +2067,33 @@ Future<void> _answerControls(FakeClaudeProcess process, {required bool failIniti
     await pump();
   }
 }
+
+const Map<String, Object?> _interruptMessage = {
+  "role": "user",
+  "content": [
+    {"type": "text", "text": "[Request interrupted by user]"},
+  ],
+};
+
+/// The record the CLI streams, and keeps in its transcript, when a user
+/// interrupt ends a turn.
+Map<String, Object?> _interruptRecord() => {
+  "type": "user",
+  "session_id": testSessionId,
+  "parent_tool_use_id": null,
+  "uuid": "interrupt-record",
+  "timestamp": "2026-08-09T10:00:00Z",
+  "message": _interruptMessage,
+};
+
+Map<String, Object?> _interruptedResult() => {
+  "type": "result",
+  "subtype": "error_during_execution",
+  "session_id": testSessionId,
+  "uuid": "interrupted-result",
+  "is_error": true,
+  "terminal_reason": "other",
+};
 
 Future<Map<String, Object?>> _waitForControl(FakeClaudeProcess process, String subtype) async {
   for (var attempt = 0; attempt < 50; attempt++) {

@@ -14,6 +14,7 @@ import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/model_orbits_calculator.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
+import "interrupted_turn.dart";
 import "local_send_phase.dart";
 import "prompt_turn_shape.dart";
 import "seeded_composer.dart";
@@ -192,6 +193,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// Whether each user turn this state renders is a card or a bubble, as
     /// the cubit resolved it.
     @Default(PromptTurnShapes()) PromptTurnShapes promptTurnShapes,
+
+    /// How the transcript ends the turn a bridge stop cut off, as the cubit
+    /// resolved it from [session]'s interruption.
+    @Default(InterruptedTurnView.absent()) InterruptedTurnView interruptedTurn,
   }) = SessionDetailLoaded;
 
   /// The harness is blocked *and* the bridge's store holds nothing for this

@@ -12,9 +12,9 @@
 | 7.a Send from the session menu | Done | #2623 |
 | 8 Handoff marker and card in the chats | Done | #2629 |
 | 8.a Queued handoff prompts stay hidden; a failed send updates live | Done | #2654 |
-| 9 Archive the source after sending | In PR | #2669 |
+| 9 Archive the source after sending | Done | #2669 |
 | 10 Analytics | Done | #2661 |
-| 11 Reconcile docs and harness rows | Not started | |
+| 11 Reconcile docs and harness rows | In PR | #2682 |
 | 12 Verify and retire | Not started | |
 
 Dependencies: 2←1; 3←2; 4←3; 5←2 (ships after 3); 6←1; 7←3,6; 7.a←7; 8←4; 8.a←8;
@@ -28,6 +28,15 @@ All answered (rounds 1–3, 2026-11-14 and 2026-11-15).
 
 | Cell | Result | Date (UTC) |
 | --- | --- | --- |
+| Source marker: "Summary sent to … · Open", "Couldn't send to …", summary sheet | Pass on a headless iOS simulator, Pi source ("Writing…" state not captured) | 2026-11-16 |
+| Target card: "From <source>" link, path, "Show all" expands | Pass on a headless iOS simulator, Codex target | 2026-11-16 |
+| Claude reads a transcript without an approval card | Pass in Ask mode (the upload half was checked in step 5) | 2026-11-16 |
+| Target reads the transcript file, and whether it asks: Claude Code 2.1.325, Codex 0.169.0, OpenCode 2.3.0 (user and stock config), Pi 1.5.2, Grok 1.0.30 (`always-approve` and `ask`) | Pass: read when asked, no request for the read, in Ask mode | 2026-11-16 |
+| Same: OMP 18.20.2 | Pass with a note: read the file, then kept working on its todo instead of answering | 2026-11-16 |
+| Same: Hermes 0.21.5 | Pass with a note: the first question after an abort was not processed; the retry read and answered | 2026-11-16 |
+| Same: DeepSeek 0.2.2, Cursor, Copilot, Antigravity | Blocked: DeepSeek needs a real account; Cursor CLI 2026.07.23 is below the required 2026.09.23; Copilot and Antigravity not installed | 2026-11-16 |
+| Finding: OMP target whose saved agent OMP does not offer | Fail: the ACP plugin drops the handoff after accepting it, so the app shows Sent and the target gets nothing. Reported to the parent | 2026-11-16 |
+| Finding: OpenCode target with a stale saved variant | Refused `targetOptionsUnavailable` before #2664 merged; #2664's correction covers it, not rechecked | 2026-11-16 |
 
 ## Decisions log
 

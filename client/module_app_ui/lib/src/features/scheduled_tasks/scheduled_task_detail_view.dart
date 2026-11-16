@@ -14,9 +14,9 @@ import "../session_list/session_list_headings.dart";
 import "scheduled_task_formatter.dart";
 import "scheduled_tasks_view.dart";
 
-/// A scheduled task's own page: when it runs, Run now, Pause/Resume, Rename
-/// and Delete, and its run history. A task with parts from a newer app can
-/// still be run, paused and deleted, but not renamed. The product shell owns
+/// A scheduled task's own page: when it runs, Run now, Pause/Resume, Edit,
+/// Rename and Delete, and its run history. A task with parts from a newer app
+/// can still be run, paused and deleted, but not edited or renamed. The product shell owns
 /// the cubit's dependencies and the routes.
 class const ScheduledTaskDetailView({
   super.key,
@@ -25,6 +25,9 @@ class const ScheduledTaskDetailView({
 
   /// Leaves the page after the task was deleted.
   required final VoidCallback onDeleted,
+
+  /// Opens the task in the editor.
+  required final VoidCallback onEdit,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BlocProvider(
@@ -83,7 +86,7 @@ class const ScheduledTaskDetailView({
                         child: _SecondaryText(text: context.loc.scheduledTaskReadOnly),
                       ),
                     _Summary(task: task),
-                    _Actions(task: task, editable: editable, onDeleted: onDeleted),
+                    _Actions(task: task, editable: editable, onDeleted: onDeleted, onEdit: onEdit),
                     SessionListHeading(heading: context.loc.scheduledTaskRunsHeading, isFirst: false),
                     _History(task: task, runs: runs),
                   ],
@@ -126,6 +129,7 @@ class const _Actions({
   required final ScheduledTask task,
   required final bool editable,
   required final VoidCallback onDeleted,
+  required final VoidCallback onEdit,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -146,6 +150,14 @@ class const _Actions({
             title: Text(task.enabled ? loc.scheduledTaskPause : loc.scheduledTaskResume),
             onTap: () => unawaited(_setEnabled(context: context, enabled: !task.enabled)),
           ),
+          if (editable)
+            PregoGroupedRow(
+              key: const Key("scheduled-task-edit"),
+              icon: TablerRegular.adjustments_horizontal,
+              title: Text(loc.scheduledTaskEdit),
+              trailing: const Icon(TablerRegular.chevron_right),
+              onTap: onEdit,
+            ),
           if (editable)
             PregoGroupedRow(
               key: const Key("scheduled-task-rename"),

@@ -7176,14 +7176,18 @@ void main() {
   });
 
   group("side questions", () {
-    final opened = <({String pluginId, SideQuestionAvailability availability, bool isArchived})>[];
+    final opened =
+        <({String pluginId, SideQuestionAvailability availability, bool isArchived, String? initialQuestion})>[];
     void openSideChat({
       required BuildContext context,
       required String sessionId,
       required String pluginId,
       required SideQuestionAvailability availability,
       required bool isArchived,
-    }) => opened.add((pluginId: pluginId, availability: availability, isArchived: isArchived));
+      required String? initialQuestion,
+    }) => opened.add(
+      (pluginId: pluginId, availability: availability, isArchived: isArchived, initialQuestion: initialQuestion),
+    );
 
     setUp(opened.clear);
 
@@ -7211,7 +7215,14 @@ void main() {
       await tester.tap(sideQuestionButton);
       await tester.pumpAndSettle();
 
-      expect(opened, [(pluginId: "opencode", availability: SideQuestionAvailability.available, isArchived: false)]);
+      expect(opened, [
+        (
+          pluginId: "opencode",
+          availability: SideQuestionAvailability.available,
+          isArchived: false,
+          initialQuestion: null,
+        ),
+      ]);
     });
 
     testWidgets("an old bridge answers the tap with why", (tester) async {
@@ -7254,6 +7265,166 @@ void main() {
       expect(sideQuestionButton, findsNothing);
     });
 
+    group("typed with /btw", () {
+      final strip = find.widgetWithText(GlassChip, "Side question");
+      double borderOpacity(WidgetTester tester) => tester
+          .widget<AnimatedOpacity>(
+            // The nearest fade is the border's own.
+            find
+                .ancestor(of: find.byKey(PromptInput.sideQuestionBorderKey), matching: find.byType(AnimatedOpacity))
+                .first,
+          )
+          .opacity;
+
+      SessionDetailLoaded asking() => withSideQuestions(
+        SideQuestionAvailability.available,
+      ).copyWith(composerMode: const SessionComposerMode.sideQuestion());
+
+      testWidgets("the composer shows the side-question strip and border, and the strip's x leaves", (tester) async {
+        when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: "why so slow?"));
+        when(() => cubit.state).thenReturn(asking());
+        await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+        await tester.pumpAndSettle();
+
+        expect(strip, findsOneWidget);
+        expect(borderOpacity(tester), 1);
+
+        await tester.tap(find.descendant(of: strip, matching: find.byIcon(TablerRegular.x)));
+        verify(cubit.leaveSideQuestion).called(1);
+      });
+
+      for (final (name, state) in [
+        ("side question", asking),
+        (
+          "staged command",
+          () => withSideQuestions(SideQuestionAvailability.available).copyWith(stagedCommand: testCommandInfo()),
+        ),
+      ]) {
+        testWidgets("the $name chip's x keeps the keyboard up", (tester) async {
+          when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: "why so slow?"));
+          when(() => cubit.state).thenReturn(state());
+          await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byType(EditableText));
+          await tester.pump();
+          expect(composerFocus(tester).hasFocus, isTrue);
+
+          await tester.tap(find.descendant(of: find.byType(GlassChip), matching: find.byIcon(TablerRegular.x)));
+          await tester.pump();
+
+          expect(composerFocus(tester).hasFocus, isTrue);
+        });
+      }
+
+      testWidgets("a normal composer has neither", (tester) async {
+        when(() => cubit.state).thenReturn(withSideQuestions(SideQuestionAvailability.available));
+        await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+        await tester.pumpAndSettle();
+        await enterTypingMode(tester);
+
+        expect(strip, findsNothing);
+        expect(borderOpacity(tester), 0);
+      });
+
+      testWidgets("send asks the question in a new side chat instead of the session", (tester) async {
+        when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: "why so slow?"));
+        when(cubit.submitSideQuestion).thenReturn("why so slow?");
+        when(() => cubit.state).thenReturn(asking());
+        await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
+        await tester.pumpAndSettle();
+
+        expect(opened, [
+          (
+            pluginId: "opencode",
+            availability: SideQuestionAvailability.available,
+            isArchived: false,
+            initialQuestion: "why so slow?",
+          ),
+        ]);
+        verifyNever(
+          () => cubit.sendMessage(
+            text: any(named: "text"),
+            command: any(named: "command"),
+            inputMode: any(named: "inputMode"),
+            attachments: any(named: "attachments"),
+          ),
+        );
+      });
+
+      testWidgets("the composer keeps its height as the side chat takes the question", (tester) async {
+        final states = StreamController<SessionDetailState>();
+        addTearDown(states.close);
+        whenListen(cubit, states.stream, initialState: asking());
+        when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: "why so slow?"));
+        when(cubit.submitSideQuestion).thenReturn("why so slow?");
+        when(() => cubit.state).thenReturn(asking());
+        await tester.pumpWidget(_buildApp(cubit: cubit, openSideChat: openSideChat));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(EditableText));
+        await tester.pumpAndSettle();
+        final height = tester.getSize(find.byType(PromptInput)).height;
+
+        await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
+        final normal = withSideQuestions(SideQuestionAvailability.available);
+        when(() => cubit.state).thenReturn(normal);
+        states.add(normal);
+        await tester.pump();
+        // The sheet's field takes the focus.
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pumpAndSettle();
+
+        expect(tester.getSize(find.byType(PromptInput)).height, height);
+      });
+
+      Future<CommandPicker> openPicker(WidgetTester tester, {required SideQuestionAvailability availability}) async {
+        await pumpComposer(tester, state: withSideQuestions(availability));
+        await tester.tap(find.byIcon(TablerRegular.slash));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        return tester.widget<CommandPicker>(find.byType(CommandPicker));
+      }
+
+      testWidgets("the / picker offers /btw on a session that asks side questions", (tester) async {
+        final picker = await openPicker(tester, availability: SideQuestionAvailability.available);
+
+        switch (picker.onSideQuestion) {
+          case final onSideQuestion?:
+            onSideQuestion();
+          case null:
+            fail("the picker offers no /btw row");
+        }
+        await tester.pumpAndSettle();
+        verify(cubit.startSideQuestion).called(1);
+      });
+
+      testWidgets("the / picker offers no /btw where side questions can't be asked", (tester) async {
+        final picker = await openPicker(tester, availability: SideQuestionAvailability.harnessUnsupported);
+
+        expect(picker.onSideQuestion, isNull);
+      });
+
+      testWidgets("the / picker offers no /btw while editing a message", (tester) async {
+        await pumpComposer(
+          tester,
+          state: withSideQuestions(SideQuestionAvailability.available).copyWith(
+            composerMode: const SessionComposerMode.editing(
+              messageId: "m1",
+              phase: SessionEditPhase.composing,
+              leftOutCount: 0,
+            ),
+          ),
+        );
+        await tester.tap(find.byIcon(TablerRegular.slash));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+
+        expect(tester.widget<CommandPicker>(find.byType(CommandPicker)).onSideQuestion, isNull);
+      });
+    });
+
     group("archived", () {
       final link = find.byKey(SessionDetailArchivedNotice.sideChatsLinkKey);
 
@@ -7270,7 +7441,14 @@ void main() {
         await tester.tap(find.text("Side chats (2)"));
         await tester.pumpAndSettle();
 
-        expect(opened, [(pluginId: "opencode", availability: SideQuestionAvailability.available, isArchived: true)]);
+        expect(opened, [
+          (
+            pluginId: "opencode",
+            availability: SideQuestionAvailability.available,
+            isArchived: true,
+            initialQuestion: null,
+          ),
+        ]);
       });
 
       testWidgets("shows no link without side chats", (tester) async {

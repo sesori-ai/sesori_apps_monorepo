@@ -18,7 +18,8 @@ class _Harness() {
   Future<String?>? result;
 }
 
-Future<_Harness> _open(WidgetTester tester, {int items = 60}) async {
+/// Opens the sheet, with a [keyboard] of that height up when it opens.
+Future<_Harness> _open(WidgetTester tester, {int items = 60, double keyboard = 0}) async {
   tester.view
     ..devicePixelRatio = 1
     ..physicalSize = _screen
@@ -60,6 +61,8 @@ Future<_Harness> _open(WidgetTester tester, {int items = 60}) async {
       ),
     ),
   );
+  tester.view.viewInsets = FakeViewPadding(bottom: keyboard);
+  await tester.pump();
   await tester.tap(find.text(_openLabel));
   await tester.pumpAndSettle();
   return harness;
@@ -256,6 +259,22 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getBottomLeft(find.byKey(_inputKey)).dy, _screen.height - 500);
       expect(_sheetTop(tester), _fullTop);
+    });
+
+    testWidgets("a keyboard closing as the sheet opens slides away beneath it", (tester) async {
+      await _open(tester, keyboard: 300);
+      expect(_sheetTop(tester), _halfTop);
+
+      for (final keyboard in [200.0, 100.0, 0.0]) {
+        tester.view.viewInsets = FakeViewPadding(bottom: keyboard);
+        await tester.pump();
+        expect(_sheetTop(tester), _halfTop);
+      }
+
+      // A keyboard raised afterwards, for a field in the sheet, lifts it.
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      await tester.pumpAndSettle();
+      expect(_sheetTop(tester), _screen.height - 300 - _halfTop);
     });
 
     testWidgets("reduced motion changes height without the spring", (tester) async {

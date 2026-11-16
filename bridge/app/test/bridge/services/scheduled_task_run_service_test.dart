@@ -17,7 +17,9 @@ import "package:sesori_bridge/src/services/session_lifecycle_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_options_service.dart";
 import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:timezone/data/latest_all.dart" as tz_data;
@@ -433,6 +435,48 @@ void main() {
   });
 
   group("failures", () {
+    test("a new-session run refused for a stale variant starts with it corrected", () async {
+      creation.onCreate = () async {
+        if (creation.calls.isEmpty) creation.error = _staleOptions();
+        if (creation.calls.length == 1) creation.error = null;
+      };
+      prompts.correctedSettings = (
+        variant: const SessionVariant(id: "high"),
+        fastMode: false,
+        agent: null,
+        model: _model,
+      );
+      final task = await createTask(
+        definition: _daily.copyWith(
+          model: _model,
+          variant: const SessionVariant(id: "removed"),
+        ),
+        nextDueAt: DateTime.utc(2026, 11, 15, 9),
+      );
+
+      await service.runDue();
+
+      expect(await outcomes(task.id), [const ScheduledTaskRunOutcome.started(sessionId: "ses_2", late: false)]);
+      expect(creation.calls.map((call) => call.$1.variant?.id), ["removed", "high"]);
+      expect(prompts.correctionScopes, [("fake", "/repo")]);
+      expect(failures, isEmpty);
+    });
+
+    test("a run the correction can't answer, such as a stale model, still fails as modelUnavailable", () async {
+      creation.error = _staleOptions();
+      final task = await createTask(
+        definition: _daily.copyWith(model: _model),
+        nextDueAt: DateTime.utc(2026, 11, 15, 9),
+      );
+
+      await service.runDue();
+
+      expect(await outcomes(task.id), [
+        const ScheduledTaskRunOutcome.failed(reason: TaskRunFailureReason.modelUnavailable),
+      ]);
+      expect(failures.single.reason, TaskRunFailureReason.modelUnavailable);
+    });
+
     test("a missing project fails the run without creating a session", () async {
       sessions.projectPathResult = null;
       final task = await createTask(nextDueAt: DateTime.utc(2026, 11, 15, 9));
@@ -684,7 +728,29 @@ typedef _Send = ({
 
 class _FakePrompts() implements SessionPromptService {
   final List<_Send> sends = [];
+  final List<(String, String)> correctionScopes = [];
   Object? error;
+
+  /// What the stale-refusal recovery resends with; null rethrows, as for a
+  /// model the catalog no longer offers.
+  PromptSettings? correctedSettings;
+
+  @override
+  Future<T> sendWithSettingsIn<T>({
+    required String pluginId,
+    required String projectId,
+    required PromptSettings settings,
+    required Future<T> Function(PromptSettings settings) send,
+  }) async {
+    correctionScopes.add((pluginId, projectId));
+    try {
+      return await send(settings);
+    } on StaleSessionPromptOptionsException {
+      final corrected = correctedSettings;
+      if (corrected == null) rethrow;
+      return await send(corrected);
+    }
+  }
 
   @override
   Future<void> sendPromptAlreadyReserved({
@@ -748,3 +814,14 @@ class _FakeYoloSettings() implements YoloSettingsService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+StaleSessionPromptOptionsException _staleOptions() => StaleSessionPromptOptionsException(
+  cause: const PluginStaleOptionsException(
+    operation: "createSession",
+    message: "no longer offers the selected variant",
+  ),
+  causeStackTrace: StackTrace.current,
+  agent: null,
+  model: _model,
+  variant: null,
+);

@@ -38,6 +38,8 @@ Widget _buildApp({
   required ValueChanged<CommandInfo> onSelected,
   // ignore: no_slop_linter/prefer_required_named_parameters, most cases run on the phone
   PregoInteractionMode mode = PregoInteractionMode.touch,
+  // ignore: no_slop_linter/prefer_required_named_parameters, most cases have no side questions
+  VoidCallback? onSideQuestion,
 }) {
   return PregoInteractionScope(
     mode: mode,
@@ -58,6 +60,13 @@ Widget _buildApp({
               onCommandSelected: (command) {
                 close();
                 onSelected(command);
+              },
+              onSideQuestion: switch (onSideQuestion) {
+                final onSideQuestion? => () {
+                  close();
+                  onSideQuestion();
+                },
+                null => null,
               },
               onClose: close,
             ),
@@ -111,6 +120,35 @@ void main() {
     expect(tester.widget<TextField>(find.byType(TextField)).decoration?.hintText, "Search commands");
     expect(find.byType(PregoTag), findsNWidgets(2));
     expect(tester.getTopLeft(find.text("/deploy")).dy, lessThan(tester.getTopLeft(find.text("/release")).dy));
+  });
+
+  testWidgets("a session that asks side questions leads with Sesori's /btw row, after a search's matches", (
+    tester,
+  ) async {
+    var asked = 0;
+    await tester.pumpWidget(_buildApp(commands: _commands(), onSelected: (_) {}, onSideQuestion: () => asked++));
+    await _openPicker(tester: tester);
+    await _waitForEntries(tester: tester, until: find.text("/deploy"));
+
+    expect(find.byKey(CommandPicker.sideQuestionRowKey), findsOneWidget);
+    expect(find.text("Ask a side question"), findsOneWidget);
+    expect(tester.getTopLeft(find.text("/btw")).dy, lessThan(tester.getTopLeft(find.text("/deploy")).dy));
+
+    await tester.enterText(find.byType(TextField), "release");
+    await tester.pump();
+    expect(find.text("/btw"), findsNothing);
+
+    // A search keeps the best command match on top, where Enter picks it.
+    await tester.enterText(find.byType(TextField), "s");
+    await tester.pump();
+    expect(tester.getTopLeft(find.text("/deploy")).dy, lessThan(tester.getTopLeft(find.text("/btw")).dy));
+
+    await tester.enterText(find.byType(TextField), "BTW");
+    await tester.pump();
+    expect(find.text("/deploy"), findsNothing);
+    await tester.tap(find.text("/btw"));
+    await tester.pump();
+    expect(asked, 1);
   });
 
   testWidgets("an open picker loads a catalog the session refreshes", (tester) async {

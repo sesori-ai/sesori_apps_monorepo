@@ -170,7 +170,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
       onTap: !widget.actionsEnabled
           ? null
           : switch (sideQuestion) {
-              ComposerSideQuestionOpen(:final onOpen) => () {
+              ComposerSideQuestionOpen(:final onOpen) || ComposerSideQuestionAsking(:final onOpen) => () {
                 _collapse();
                 onOpen();
               },
@@ -283,7 +283,21 @@ class const _AccordionIconButton({
 sealed class const ComposerSideQuestion();
 
 /// Opens the session's side chats.
-final class const ComposerSideQuestionOpen({required final VoidCallback onOpen}) extends ComposerSideQuestion;
+final class const ComposerSideQuestionOpen({
+  required final VoidCallback onOpen,
+
+  /// Switches the composer to a side question, as the command picker's /btw
+  /// row does; null while the composer edits a message.
+  required final VoidCallback? onAskInComposer,
+}) extends ComposerSideQuestion;
+
+/// The composer holds a side question: Send asks it in a new side chat.
+final class const ComposerSideQuestionAsking({
+  required final VoidCallback onOpen,
+
+  /// Returns the composer to sending prompts, keeping its text.
+  required final VoidCallback onLeave,
+}) extends ComposerSideQuestion;
 
 /// The session can't take side questions; a tap says [reason].
 final class const ComposerSideQuestionBlocked({required final String reason}) extends ComposerSideQuestion;

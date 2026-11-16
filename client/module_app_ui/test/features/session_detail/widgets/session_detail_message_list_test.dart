@@ -22,6 +22,7 @@ import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sti
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 class const _SessionDetailMessageListHarness({
@@ -68,8 +69,12 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   int? lastCancelledQueuedMessageIndex;
 
   late PromptTurnShapes _promptTurnShapes = widget.promptTurnShapes;
+  InterruptedTurnView _interruptedTurn = const InterruptedTurnView.absent();
+  int continueTaps = 0;
 
   void setPromptTurnShapes(PromptTurnShapes shapes) => setState(() => _promptTurnShapes = shapes);
+
+  void setInterruptedTurn(InterruptedTurnView turn) => setState(() => _interruptedTurn = turn);
 
   void setPromptIndex(List<SessionPromptIndexEntry>? index) {
     setState(() => _promptIndex = index);
@@ -333,6 +338,15 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           childStatuses: _childStatuses,
           isBusy: _isBusy,
           mainAgentRunning: _mainAgentRunning,
+          interruptedTurn: _interruptedTurn,
+          onContinueInterruptedTurn: () async {
+            continueTaps++;
+            // Answers as the cubit does: the shown line's refusal, if any.
+            return switch (_interruptedTurn) {
+              InterruptedTurnShown(:final continueRefusal) => continueRefusal,
+              InterruptedTurnAbsent() => InterruptedTurnContinueRefusal.noInterruptedTurn,
+            };
+          },
           retryErrorMessage: _retryErrorMessage,
           onCancelQueuedMessage: cancelQueuedMessage,
           promptTurnShapes: _promptTurnShapes,
@@ -7277,6 +7291,179 @@ void main() {
         tester.getTopLeft(find.text("Step interrupted")).dy,
         greaterThan(tester.getBottomLeft(find.text("Half a story")).dy),
       );
+    });
+  });
+
+  group("a turn a bridge stop cut off", () {
+    final prompt = _message(messageId: "prompt", role: "user", text: "Write a story", createdAtMs: 100);
+    final reply = _message(messageId: "reply", role: "assistant", text: "Half a story", createdAtMs: 200);
+    final interruptedLine = find.textContaining(
+      "Interrupted · Sesori's bridge stopped during this turn",
+      findRichText: true,
+    );
+    final continueButton = find.widgetWithText(PregoButtonsSolid, "Continue");
+    InterruptedTurnView shownAfter({required String messageId, required InterruptedTurnContinueRefusal? refusal}) =>
+        InterruptedTurnView.shown(
+          afterMessageId: messageId,
+          lineAfterMessageId: messageId,
+          supersededStoppedIds: const {},
+          continueRefusal: refusal,
+        );
+
+    testWidgets("ends the turn under its reply, and Continue sends", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: null));
+      await tester.pumpAndSettle();
+
+      expect(interruptedLine, findsOneWidget);
+      expect(
+        tester.getTopLeft(interruptedLine).dy,
+        greaterThan(tester.getBottomLeft(find.text("Half a story")).dy),
+      );
+      await tester.tap(continueButton);
+      await tester.pump();
+      expect(harness.continueTaps, 1);
+    });
+
+    testWidgets("ends a turn cut off before any reply under its prompt", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt]);
+      harness.setInterruptedTurn(shownAfter(messageId: "prompt", refusal: null));
+      await tester.pumpAndSettle();
+
+      expect(interruptedLine, findsOneWidget);
+      expect(continueButton, findsOneWidget);
+      expect(
+        tester.getTopLeft(interruptedLine).dy,
+        greaterThan(tester.getBottomLeft(find.text("Write a story")).dy),
+      );
+    });
+
+    testWidgets("draws no Stopped line for a stopped row the Interrupted line replaces", (tester) async {
+      final stopped = MessageWithParts(
+        info: Message.error(
+          id: reply.info.id,
+          sessionID: "session-1",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          errorName: "aborted",
+          errorMessage: "Step interrupted",
+          kind: MessageErrorKind.stopped,
+          time: reply.info.time,
+        ),
+        parts: reply.parts,
+      );
+      final harness = await _pumpTurns(tester, messages: [prompt, stopped]);
+      harness.setInterruptedTurn(
+        const InterruptedTurnView.shown(
+          afterMessageId: "reply",
+          lineAfterMessageId: "reply",
+          supersededStoppedIds: {"reply"},
+          continueRefusal: null,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("Half a story"), findsOneWidget);
+      expect(find.text("Stopped", findRichText: true), findsNothing);
+      expect(interruptedLine, findsOneWidget);
+    });
+
+    testWidgets("folds Continue away over frames while the line and the reply stay", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: null));
+      await tester.pumpAndSettle();
+      final lineTop = tester.getTopLeft(interruptedLine).dy;
+      final replyTop = tester.getTopLeft(find.text("Half a story")).dy;
+      final buttonHeight = tester.getSize(continueButton).height;
+
+      harness.setInterruptedTurn(
+        shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.promptPending),
+      );
+      await tester.pump();
+      final drops = <double>[];
+      for (var ms = 0; ms <= 300; ms += 16) {
+        drops.add(tester.getTopLeft(interruptedLine).dy - lineTop);
+        expect(
+          tester.getTopLeft(find.text("Half a story")).dy - replyTop,
+          moreOrLessEquals(drops.last, epsilon: 0.01),
+          reason: "the reply moves with the line",
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      expect(continueButton, findsNothing);
+      expect(interruptedLine, findsOneWidget);
+      for (var i = 1; i < drops.length; i++) {
+        expect(drops[i] - drops[i - 1], lessThan(buttonHeight / 3), reason: "frame $i moves a fraction of the button");
+      }
+    });
+
+    testWidgets("an open edit dims Continue, and each tap says why it waits", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.editOpen));
+      await tester.pumpAndSettle();
+
+      final opacity = tester.widget<AnimatedOpacity>(
+        find.ancestor(of: continueButton, matching: find.byType(AnimatedOpacity)).first,
+      );
+      expect(opacity.opacity, 0.6);
+      for (var tap = 1; tap <= 2; tap++) {
+        await tester.tap(continueButton);
+        await tester.pump();
+        expect(harness.continueTaps, tap);
+        expect(find.text("Finish or cancel your edit first."), findsOneWidget, reason: "tap $tap");
+        await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
+      }
+    });
+
+    testWidgets("a tap on Continue while it folds away says why", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: null));
+      await tester.pumpAndSettle();
+
+      harness.setInterruptedTurn(
+        shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.promptPending),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(continueButton, warnIfMissed: false);
+      await tester.pump();
+
+      expect(harness.continueTaps, 1);
+      expect(find.text("Your message is already on its way."), findsOneWidget);
+      await tester.pumpAndSettle(PregoPopupAlertPresenter.defaultDuration);
+    });
+
+    testWidgets("after Continue, its prompt and the Working row ease in with no frame jumping", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(shownAfter(messageId: "reply", refusal: null));
+      await tester.pumpAndSettle();
+      var lineTop = tester.getTopLeft(interruptedLine).dy;
+
+      harness
+        ..setInterruptedTurn(shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.promptPending))
+        ..sendDirectly(_textSubmission(promptId: "prm_continue", text: "Continue where you left off."));
+      await tester.pump();
+      for (var ms = 0; ms <= 1000; ms += 16) {
+        if (ms == 160) harness.setBusy(true);
+        if (ms == 320) harness.acceptSendingSubmission();
+        await tester.pump(const Duration(milliseconds: 16));
+        final top = tester.getTopLeft(interruptedLine).dy;
+        expect((top - lineTop).abs(), lessThan(12), reason: "the transcript glides at $ms ms");
+        lineTop = top;
+      }
+      expect(find.byType(TranscriptWorkingRow), findsOneWidget);
+    });
+
+    testWidgets("offers no Continue once a later turn follows", (tester) async {
+      final harness = await _pumpTurns(tester, messages: [prompt, reply]);
+      harness.setInterruptedTurn(
+        shownAfter(messageId: "reply", refusal: InterruptedTurnContinueRefusal.laterTurn),
+      );
+      await tester.pumpAndSettle();
+
+      expect(interruptedLine, findsOneWidget);
+      expect(continueButton, findsNothing);
     });
   });
 }

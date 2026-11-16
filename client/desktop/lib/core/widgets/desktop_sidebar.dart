@@ -34,6 +34,7 @@ class const DesktopSidebar({
   required final VoidCallback onStartNewSession,
   required final VoidCallback onOpenSearch,
   required final VoidCallback onOpenArchived,
+  required final VoidCallback onOpenScheduled,
   required final SessionListActionDispatcher sessionActions,
   required final VoidCallback onToggleCollapsed,
   required final ComputerSwitchCallback onSwitchComputer,
@@ -90,6 +91,14 @@ class const DesktopSidebar({
               status: null,
               shortcut: null,
               onPressed: onOpenArchived,
+            ),
+            _SidebarButton(
+              key: const Key("desktop-sidebar-scheduled"),
+              label: loc.scheduledTasksTitle,
+              icon: const Icon(TablerLight.calendar_time, size: _navIconSize),
+              status: null,
+              shortcut: null,
+              onPressed: onOpenScheduled,
             ),
             _SidebarFilter(projectState: state, projectId: filterId, projectName: filterName),
             Expanded(

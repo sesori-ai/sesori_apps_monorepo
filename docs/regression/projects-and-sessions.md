@@ -470,10 +470,14 @@ state.
   "Jump to latest" pill is neutral. Text fields show no required-field asterisk,
   and their placeholders are tertiary.
 - The phone's open root session page offers the row's actions from a menu in its glass bar: Changes with its
-  line counts, then Rename, Mark as unread, Archive, Archive keeping the worktree when the session has one,
-  and Delete, from the shared dispatcher. Mark as unread always sends unread, whatever local state says.
+  line counts, then Rename, Mark as unread, Send to another session…, Archive and Delete, from the shared
+  dispatcher. Mark as unread always sends unread, whatever local state says.
   Archive, Delete and Mark as unread return to the session list. A sub-agent's page offers no row actions,
   and the read-only archived view offers neither those nor Changes.
+- Every live root session offers "Send to another session…" after Mark as read or unread and before Archive,
+  in the phone's row menu and session page menu and in the desktop sidebar's row menu and session page menu,
+  all from the shared dispatcher. Archived and sub-agent sessions don't offer it. See
+  [Session sending](session-sending.md).
 - Beside the centred title, the phone's session bar carries only Back, Prompts and that menu, so the
   title keeps the rest of the row at 320 px and under large text scaling. It shows no Changes button and no
   busy spinner; the transcript, the composer and the sub-agents bar report the session's progress. The
@@ -586,7 +590,9 @@ state.
   time, except that a scheduled auto-continuation shows "Resumes <time>" in
   its place while the session is neither running nor waiting for the user;
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, starting under the logo, one tertiary meta line holds any state that needs
-  words ("Waiting" in amber, else retrying), then the project when the list gives
+  words ("Waiting" in amber, else retrying, else "Interrupted" in secondary for a
+  session that is not running, whose turn a bridge stop cut off, until the user
+  opens it or sends to it), then the project when the list gives
   one, then background tasks as a quiet count: a stack glyph and the number,
   which screen readers hear as "2 background tasks". Waiting and retrying hide
   the count. A plain running session has no words on the line; the sparkle and

@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
@@ -33,17 +34,24 @@ void main() {
 
   Future<void> pump({required WidgetTester tester, required Widget child}) async {
     await tester.pumpWidget(
-      MaterialApp(
-        theme: buildPregoThemeData(brightness: Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: child,
+      BlocProvider(
+        create: (_) => testBridgeKindCubit(kind: null),
+        child: MaterialApp(
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: child,
+        ),
       ),
     );
     await tester.pumpAndSettle();
   }
 
-  Future<void> pumpList({required WidgetTester tester, required ScheduledTaskResult<List<ScheduledTask>> tasks}) {
+  Future<void> pumpList({
+    required WidgetTester tester,
+    required ScheduledTaskResult<List<ScheduledTask>> tasks,
+    VoidCallback? onNewTask,
+  }) {
     when(() => repository.listTasks()).thenAnswer((_) async => tasks);
     return pump(
       tester: tester,
@@ -52,6 +60,7 @@ void main() {
         exit: ScheduledPageExit.back,
         onExit: () {},
         onOpenTask: ({required taskId}) {},
+        onNewTask: onNewTask ?? () {},
       ),
     );
   }
@@ -99,10 +108,30 @@ void main() {
       await pumpList(tester: tester, tasks: const ScheduledTaskBridgeOutdated());
       expect(find.text("Update this computer to schedule tasks"), findsOneWidget);
     });
+
+    testWidgets("the + opens New task", (tester) async {
+      var opened = 0;
+      await pumpList(
+        tester: tester,
+        tasks: ScheduledTaskSuccess(value: [_recurring]),
+        onNewTask: () => opened++,
+      );
+      await tester.tap(find.byKey(const Key("scheduled-tasks-new")));
+      expect(opened, 1);
+    });
+
+    testWidgets("the + on an older computer says how to update it", (tester) async {
+      var opened = 0;
+      await pumpList(tester: tester, tasks: const ScheduledTaskBridgeOutdated(), onNewTask: () => opened++);
+      await tester.tap(find.byKey(const Key("scheduled-tasks-new")));
+      await tester.pumpAndSettle();
+      expect(find.text("Update Sesori Bridge"), findsOneWidget);
+      expect(opened, 0);
+    });
   });
 
   group("Task page", () {
-    Future<void> pumpTask({required WidgetTester tester, required ScheduledTask task}) {
+    Future<void> pumpTask({required WidgetTester tester, required ScheduledTask task, VoidCallback? onEdit}) {
       when(() => repository.listTasks()).thenAnswer((_) async => ScheduledTaskSuccess(value: [task]));
       when(() => repository.listRuns(taskId: task.id)).thenAnswer((_) async => const ScheduledTaskSuccess(value: []));
       return pump(
@@ -112,14 +141,18 @@ void main() {
               ScheduledTaskDetailCubit(repository: repository, connectionService: connection, taskId: task.id),
           onBack: () {},
           onDeleted: () {},
+          onEdit: onEdit ?? () {},
         ),
       );
     }
 
-    testWidgets("offers Rename for a task this app can edit", (tester) async {
-      await pumpTask(tester: tester, task: _recurring);
+    testWidgets("offers Edit and Rename for a task this app can edit", (tester) async {
+      var edits = 0;
+      await pumpTask(tester: tester, task: _recurring, onEdit: () => edits++);
       expect(find.byKey(const Key("scheduled-task-rename")), findsOneWidget);
       expect(find.byKey(const Key("scheduled-task-read-only")), findsNothing);
+      await tester.tap(find.byKey(const Key("scheduled-task-edit")));
+      expect(edits, 1);
     });
 
     testWidgets("shows a task from a newer app read-only, still runnable and deletable", (tester) async {
@@ -129,6 +162,7 @@ void main() {
       );
       expect(find.byKey(const Key("scheduled-task-read-only")), findsOneWidget);
       expect(find.byKey(const Key("scheduled-task-rename")), findsNothing);
+      expect(find.byKey(const Key("scheduled-task-edit")), findsNothing);
       expect(find.byKey(const Key("scheduled-task-run-now")), findsOneWidget);
       expect(find.byKey(const Key("scheduled-task-delete")), findsOneWidget);
     });

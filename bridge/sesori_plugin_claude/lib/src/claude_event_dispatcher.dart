@@ -624,6 +624,14 @@ final class ClaudeEventDispatcher({
     )) {
       return const [];
     }
+    final stopped = _content.userInterruptMessage(
+      sessionId: sessionId,
+      messageId: messageId,
+      modelId: _modelId(sessionId: sessionId),
+      time: _messageTime(message.timestamp),
+      blocks: mapped,
+    );
+    if (stopped != null) return [BridgeSseMessageUpdated(info: stopped.info)];
     final user = _content.userMessage(
       content: message.message["content"],
       sessionId: sessionId,

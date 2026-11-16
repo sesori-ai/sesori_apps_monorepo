@@ -12,6 +12,18 @@ enum CodexRolloutRole() {
   unknown,
 }
 
+/// Why Codex aborted a turn (`TurnAbortReason`, observed on 0.169.0).
+enum CodexRolloutTurnAbortReason() {
+  /// A client interrupted the turn, as a user Stop does.
+  interrupted,
+
+  /// A new turn replaced the running one.
+  replaced,
+  @JsonValue("review_ended")
+  reviewEnded,
+  unknown,
+}
+
 enum CodexRolloutImageGenerationStatus() {
   @JsonValue("in_progress")
   inProgress,
@@ -128,6 +140,7 @@ sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
   @FreezedUnionValue("turn_aborted")
   const factory turnAborted({
     @JsonKey(name: "turn_id") required String? turnId,
+    @JsonKey(unknownEnumValue: CodexRolloutTurnAbortReason.unknown) required CodexRolloutTurnAbortReason? reason,
   }) = CodexRolloutTurnAbortedEventDto;
 
   @FreezedUnionValue("thread_rolled_back")

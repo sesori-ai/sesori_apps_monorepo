@@ -244,6 +244,22 @@ void main() {
     });
   });
 
+  test("a row is interrupted while its interruption is unacknowledged and the session is not running", () {
+    SessionInterruption interruption({required bool unacknowledged}) =>
+        SessionInterruption(afterMessageId: "m1", unacknowledged: unacknowledged);
+    bridge.sessions = [
+      _session(id: "c", updatedAt: 3).copyWith(interruption: interruption(unacknowledged: true)),
+      _session(id: "b", updatedAt: 2).copyWith(interruption: interruption(unacknowledged: false)),
+      _session(id: "a", updatedAt: 1).copyWith(interruption: interruption(unacknowledged: true)),
+    ];
+    activity.emitSessionActivity({
+      "one": {"a": _running},
+    });
+    withCubit((cubit, async) {
+      expect([for (final row in cubit.state.rows) row.isInterrupted], [true, false, false]);
+    });
+  });
+
   test("a chip and a project filter are the window's key", () {
     bridge.sessions = [_session(id: "b", updatedAt: 2, projectId: "two"), _session(id: "a", updatedAt: 1)];
     withCubit((cubit, async) {
