@@ -21,3 +21,10 @@ standard `spawn_subagent` `tool_call` with its `_meta`, the
 cancelled), plus the autonomous parent `turn_completed` under `_x.ai/session/update`. The 2026-09-10 scoped-stop QA
 recorded the child-cancel application envelope returned inside the outer JSON-RPC result. Field names, nesting, and
 enum values are verbatim; ids, descriptions, prompts, outputs, and counters are synthetic.
+
+The `compaction_*.json` fixtures preserve frames recorded on 2026-11-15 from `grok 1.0.30 (04b7ffed98c6)` driven over
+ACP through a local OpenAI-compatible endpoint with a small context window: `auto_compact_started`,
+`auto_compact_completed` and `auto_compact_failed` under `_x.ai/session_notification`, the `_x.ai/queue/changed` entry
+that runs a manual `/compact`, and that compaction's `auto_compact_completed`. Field names, nesting and token counts are
+verbatim; session ids, prompt ids and timestamps are synthetic, and the failure was forced by a local proxy answering
+500.
