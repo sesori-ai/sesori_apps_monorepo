@@ -118,8 +118,9 @@ void main() {
       }
     });
 
-    test("an empty session id is a 400", () async {
+    test("an empty session or anchor id is a 400", () async {
       expect((await patch(sessionId: "", afterSessionId: null)).status, 400);
+      expect((await patch(sessionId: "s1", afterSessionId: "")).status, 400);
     });
   });
 }

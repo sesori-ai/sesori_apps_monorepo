@@ -1159,6 +1159,10 @@ void main() {
           // An update carrying c's old place does not pull it back.
           emit(SesoriSseEvent.sessionUpdated(info: bridge.sessions[2].copyWith(title: "Renamed")));
           expect(ids(window), ["c", "a", "b", "d"]);
+          // Nor does a reload, which the bridge answers in its stored order.
+          unawaited(window.reload());
+          async.flushMicrotasks();
+          expect(ids(window), ["c", "a", "b", "d"]);
 
           answer.complete(
             ApiResponse.success(MoveSessionPinResponse(sessions: [bridge.sessions[2].copyWith(pinOrder: 31)])),
@@ -1185,11 +1189,15 @@ void main() {
           unawaited(window.movePin(sessionId: "a", afterSessionId: "c").then((value) => moved = value));
           async.flushMicrotasks();
           expect(ids(window), ["b", "c", "a", "d"]);
+          // Unpinning b meanwhile takes it out of the pinned rows at once.
+          emit(SesoriSseEvent.sessionUpdated(info: bridge.sessions[1].copyWith(pinOrder: null)));
+          expect(ids(window), ["c", "a", "d", "b"]);
+          bridge.sessions[1] = bridge.sessions[1].copyWith(pinOrder: null);
 
           answer.complete(ApiResponse.error(ApiError.generic()));
           async.flushMicrotasks();
           expect(moved, isFalse);
-          expect(ids(window), ["a", "b", "c", "d"]);
+          expect(ids(window), ["a", "c", "d", "b"]);
           unawaited(window.dispose());
         });
       });

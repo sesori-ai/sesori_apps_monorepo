@@ -587,6 +587,8 @@ class SessionWindowService({
     _seedUnseen(sessions: sessions, sinceTick: unseenTick);
     final replay = _takeReplay();
     _rowsOutdated = false;
+    // The bridge answers in its stored order, which a pending move is ahead of.
+    if (_pendingPinOrders.isNotEmpty) sessions.sort((a, b) => _compare(a: a, b: b));
     _emit(
       SessionWindowLoaded(
         sessions: List.unmodifiable(sessions),
@@ -1026,7 +1028,11 @@ class SessionWindowService({
   }
 
   /// [session]'s pin order, as a move still waiting for the bridge shows it.
-  int? _pinOrderOf(Session session) => _pendingPinOrders[session.id]?.pinOrder ?? session.pinOrder;
+  /// A pending move's pin order, unless the session has since been unpinned.
+  int? _pinOrderOf(Session session) => switch (session.pinOrder) {
+    null => null,
+    final pinOrder => _pendingPinOrders[session.id]?.pinOrder ?? pinOrder,
+  };
 
   /// The bridge's search order: newest first (archived: most recently
   /// archived first), then by id descending.
