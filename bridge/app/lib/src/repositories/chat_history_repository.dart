@@ -783,6 +783,11 @@ class ChatHistoryRepository({
   /// internal parts hidden from clients do not affect visible equivalence. The
   /// imported row remains authoritative for replay metadata.
   ///
+  /// [interruptedAfterMessageId] is the stored row a bridge stop cut its turn
+  /// off after, if any. When that row is still the newest the store holds, it
+  /// matches by its previous neighbor and content alone (see
+  /// [_interruptedTailPair]).
+  ///
   /// Returns, for each stored row an imported row replaced under a different
   /// id, that imported row's id.
   ///
@@ -802,6 +807,7 @@ class ChatHistoryRepository({
     required int watermark,
     required int backendActivityAt,
     required int syncedAt,
+    required String? interruptedAfterMessageId,
   }) async {
     final importedIds = {for (final message in messages) message.info.id};
     final storedRows = await _chatHistoryDao.getMessages(sessionId: sessionId, limit: null, before: null);
@@ -1012,6 +1018,23 @@ class ChatHistoryRepository({
     }
 
     for (final MapEntry(key: importedIndex, value: storedIndex) in invocationTurnPairs.entries) {
+      semanticallyImportedStoredIds.add(storedContextRows[storedIndex].messageId);
+      semanticPairs[importedIndex] = storedIndex;
+    }
+
+    if (_interruptedTailPair(
+          interruptedAfterMessageId: interruptedAfterMessageId,
+          messages: messages,
+          importedFingerprints: importedSemanticFingerprints,
+          importedContexts: importedSemanticContexts,
+          storedRows: storedContextRows,
+          storedFingerprints: storedSemanticFingerprints,
+          storedContexts: storedSemanticContexts,
+          storedIds: storedIds,
+          pairedStoredIds: semanticallyImportedStoredIds,
+          pairedImportedIndexes: semanticPairs.keys.toSet(),
+        )
+        case (:final importedIndex, :final storedIndex)) {
       semanticallyImportedStoredIds.add(storedContextRows[storedIndex].messageId);
       semanticPairs[importedIndex] = storedIndex;
     }
@@ -1822,6 +1845,51 @@ class ChatHistoryRepository({
   }
 
   String _exactIdentityAnchor({required String messageId}) => jsonEncode({"exactMessageId": messageId});
+
+  /// The replayed row for the newest stored row when a bridge stop cut its
+  /// turn off right after it. The stop landed before the bridge stored the
+  /// row the replay has next, so the stored row has no next neighbor and its
+  /// full context can't match. It pairs with the one unpaired replayed row of
+  /// the same content and previous neighbor.
+  ({int importedIndex, int storedIndex})? _interruptedTailPair({
+    required String? interruptedAfterMessageId,
+    required List<MessageWithParts> messages,
+    required List<_SemanticMessageFingerprints?> importedFingerprints,
+    required List<String?> importedContexts,
+    required List<HistoryMessagesTableData> storedRows,
+    required List<_SemanticMessageFingerprints?> storedFingerprints,
+    required List<String?> storedContexts,
+    required Set<String> storedIds,
+    required Set<String> pairedStoredIds,
+    required Set<int> pairedImportedIndexes,
+  }) {
+    final storedIndex = storedRows.indexWhere((row) => row.messageId == interruptedAfterMessageId);
+    if (storedIndex == -1 || pairedStoredIds.contains(interruptedAfterMessageId)) return null;
+    final storedContext = storedContexts[storedIndex];
+    if (storedContext == null) return null;
+    if (jsonDecode(storedContext) case [final previous, final content, null]) {
+      final storedCreatedAt = storedFingerprints[storedIndex]?.createdAt;
+      bool continuesStoredRow(int index) {
+        if (pairedImportedIndexes.contains(index) || storedIds.contains(messages[index].info.id)) return false;
+        final createdAt = importedFingerprints[index]?.createdAt;
+        if (createdAt != null && storedCreatedAt != null && createdAt != storedCreatedAt) return false;
+        final context = importedContexts[index];
+        return context != null &&
+            switch (jsonDecode(context)) {
+              [final importedPrevious, final importedContent, _] =>
+                importedPrevious == previous && importedContent == content,
+              _ => false,
+            };
+      }
+
+      final candidates = [
+        for (var index = 0; index < messages.length; index++)
+          if (continuesStoredRow(index)) index,
+      ];
+      if (candidates case [final importedIndex]) return (importedIndex: importedIndex, storedIndex: storedIndex);
+    }
+    return null;
+  }
 
   List<String?> _semanticContextFingerprints({
     required List<_SemanticMessageFingerprints?> fingerprints,

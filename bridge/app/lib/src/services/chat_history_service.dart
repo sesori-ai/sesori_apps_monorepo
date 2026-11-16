@@ -1305,6 +1305,7 @@ class ChatHistoryService({
             observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
         final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+        final interruption = (await _interruptions.readMany(sessionIds: {sessionId}))[sessionId];
         final replacementIds = await _chatHistoryRepository.replaceSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
@@ -1313,6 +1314,7 @@ class ChatHistoryService({
           watermark: backendActivityAt,
           backendActivityAt: backendActivityAt,
           syncedAt: DateTime.now().millisecondsSinceEpoch,
+          interruptedAfterMessageId: interruption?.afterMessageId,
         );
         await _reanchorInterruption(sessionId: sessionId, replacementIds: replacementIds);
         final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;
